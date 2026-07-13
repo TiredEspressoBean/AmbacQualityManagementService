@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-07-13).** The model layer prescribed here (separate SupplierNCR / SCAR / IncomingInspection / SupplierApproval-as-ASL tables) contradicts shipped code and locked product decisions: a failing `QualityReports` record IS the NCR; SCAR rides CAPA; ASL is a derived view; incoming inspection is `QualityReports(material_lot=…)`. The design of record is `RECEIVING_INSPECTION_DESIGN.md` §5a/§10 (scorecard salvage merged there). This file is pending deletion.
+
 # Supplier Quality Management - Plan
 
 **Last Updated:** April 2026

@@ -1,6 +1,6 @@
 # Work Order Management: Feature Matrix
 
-**Last Updated:** March 24, 2026
+**Last Updated:** July 13, 2026
 **Scope:** Work order management features for small-to-mid manufacturers (50-500 employees). Enterprise-only features (multi-site, IoT, advanced compliance) are tracked separately.
 **Alignment:** Maps to five-tier structure (Lite/Standard/Pro/Premium/Enterprise) in MES_FEATURE_TIERS.md. See FEATURE_INVENTORY.csv for granular competitor benchmarking.
 
@@ -108,11 +108,11 @@ Split WOs for partial shipment, rework routing, and yield tracking.
 
 | # | Feature | Description | Standards | Status |
 |---|---------|-------------|-----------|--------|
-| 1.3.1 | Simple split (quantity) | Split WO of 100 into 60 and 40, maintaining traceability link | — | PLANNED |
-| 1.3.2 | Split at operation | Split mid-process: 30 parts at step 5 go to new WO, 70 continue | — | PLANNED |
-| 1.3.3 | Split for rework | Separate failed parts into rework WO with different routing | AS9100 (8.7), IATF 16949 (8.7.1.4) | PLANNED |
-| 1.3.5 | Parent-child WO hierarchy | Track original WO → all splits/rework WOs as a tree | AS9100 (traceability) | PLANNED |
-| 1.4.3 | Rework loop tracking | Track rework count per part; enforce max rework attempts | IATF 16949 (8.7.1.4), ISO 13485 | PARTIAL |
+| 1.3.1 | Simple split (quantity) | Split WO of 100 into 60 and 40, maintaining traceability link | — | DONE |
+| 1.3.2 | Split at operation | Split mid-process: 30 parts at step 5 go to new WO, 70 continue | — | DONE |
+| 1.3.3 | Split for rework | Separate failed parts into rework WO with different routing | AS9100 (8.7), IATF 16949 (8.7.1.4) | DONE |
+| 1.3.5 | Parent-child WO hierarchy | Track original WO → all splits/rework WOs as a tree | AS9100 (traceability) | DONE |
+| 1.4.3 | Rework loop tracking | Track rework count per part; enforce max rework attempts | IATF 16949 (8.7.1.4), ISO 13485 | DONE |
 | 1.4.5 | Scrap rate alerts | Notify supervisor when WO scrap rate exceeds threshold | IATF 16949 (10.2.3) | PLANNED |
 | 1.4.8 | Yield tracking | Good parts vs started quantity with yield loss categorization | All | PLANNED |
 
@@ -121,7 +121,7 @@ Split WOs for partial shipment, rework routing, and yield tracking.
 | # | Feature | Status |
 |---|---------|--------|
 | 1.4.1 | Scrap disposition from WO with reason codes | DONE |
-| 1.4.2 | Rework routing assignment | PARTIAL |
+| 1.4.2 | Rework routing assignment | DONE |
 | 1.4.6 | MRB workflow (Use As-Is, Rework, Return, Scrap with approvals) | DONE |
 
 ---
@@ -143,7 +143,7 @@ APIs exist for most of these — needs editor pages and UI. Lot tracking and gen
 | 3.2.7 | Material substitution tracking UI | Record approved substitute usage with authorization | AS9100, IATF 16949 | API |
 | 3.2.8 | Lot splitting/merging UI | Split lot into sub-lots for different WOs | — | API |
 | 3.2.10 | Shelf life / expiration | Track expiration, prevent use of expired lots, alert before expiration | ISO 13485 | PARTIAL |
-| 3.2.11 | Incoming material inspection | Inspect received lots before releasing to production | AS9100, IATF 16949 | PLANNED |
+| 3.2.11 | Incoming material inspection | Inspect received lots before releasing to production | AS9100, IATF 16949 | DONE |
 
 ### Already Done
 
@@ -363,9 +363,9 @@ Every shop sends work out for plating, heat treat, NDT. Compliance-driven (AS910
 
 | # | Feature | Description | Standards | Status |
 |---|---------|-------------|-----------|--------|
-| 9.1.1 | Outside processing step type | Mark routing step as "outside processing" — parts leave the building | AS9100 (8.4), IATF 16949 | PLANNED |
-| 9.1.2 | Subcontractor tracking | Which supplier, expected/actual dates | AS9100 (8.4.2) | PLANNED |
-| 9.1.3 | Ship-out / receive-back workflow | Track parts leaving and returning; receiving inspection on return | AS9100 (8.4.2) | PLANNED |
+| 9.1.1 | Outside processing step type | Mark routing step as "outside processing" — parts leave the building | AS9100 (8.4), IATF 16949 | DONE |
+| 9.1.2 | Subcontractor tracking | Which supplier, expected/actual dates | AS9100 (8.4.2) | PARTIAL |
+| 9.1.3 | Ship-out / receive-back workflow | Track parts leaving and returning; receiving inspection on return | AS9100 (8.4.2) | DONE |
 | 9.1.4 | Supplier cert verification | Verify NADCAP, AS9100 certs before allowing outside processing | AS9100 (8.4.1) | PLANNED |
 
 ---
@@ -478,7 +478,7 @@ Every shop sends work out for plating, heat treat, NDT. Compliance-driven (AS910
 |---|--------|------|--------|------------|
 | 1 | Labels & Scanning | Standard | ~1 week | PLANNED |
 | 2 | WO Lifecycle Gaps | Lite/Standard | ~1 week | PLANNED |
-| 3 | WO Splitting & Rework | Standard | ~2-3 weeks | PLANNED |
+| 3 | WO Splitting & Rework | Standard | ~2-3 weeks | Splits & rework loop DONE |
 | 4 | Material Traceability UI | Standard/Pro | ~2-3 weeks | API exists, needs UI |
 | 5 | Scheduling — Resource Modeling | Standard | ~1 week | API exists, needs UI |
 | 6 | Scheduling — CP-SAT Solver | Premium | ~2-3 weeks | PLANNED |
@@ -490,7 +490,7 @@ Every shop sends work out for plating, heat treat, NDT. Compliance-driven (AS910
 | 12 | Shop Floor Execution Gaps | Standard/Pro | ~1-2 weeks | API exists for most |
 | 13 | Quality Gaps | Pro | ~2 weeks | Skeletons exist for CoC/FAI |
 | 14 | Compliance | Pro | ~1 week | PARTIAL |
-| 15 | Outside Processing | Pro | ~1-2 weeks | PLANNED |
+| 15 | Outside Processing | Pro | ~1-2 weeks | DONE except cert verification |
 | 16 | Reporting & Analytics | Standard/Pro | ~2 weeks | Data exists, needs aggregation |
 | 17 | Integrations | Standard/Premium | ~1 week | Foundations done |
 | — | **Total** | — | **~28-35 weeks** | — |

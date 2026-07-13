@@ -2,6 +2,8 @@
 
 **Last Updated:** April 2026
 
+> **MECHANISM SUPERSEDED — read before using this doc.** The Playwright pipeline described below (`REPORT_CONFIG` in `services/pdf_generator.py`, warm Chromium, React print pages gated on `[data-print-ready]`) has been **deleted**. PDF generation now runs on the **Typst adapter registry**: each report type is a `ReportAdapter` subclass in `Tracker/reports/adapters/` (param serializer + typed context model + Typst template), registered in `Tracker/reports/services/registry.py` and compiled by `Tracker/reports/services/typst_generator.py`. QR codes and barcodes render server-side (`Tracker/reports/services/barcodes.py`) — no `qrcode.react`/`jsbarcode`, no React print pages, no print routes. What **remains valid** here: the `<GenerateDocumentDialog>` UX spec, the trigger-button placement tables, and the Avery-label layout/content specs. Read every `REPORT_CONFIG` / print-page / `data-print-ready` passage as historical.
+
 Covers the generate/print dialog, label components, and the two initial verticals: part labels and SPC print page. For PDF infrastructure details, see `PDF_EXPORTS_REQUIREMENTS.md`. For label design decisions, see `WO_MANAGEMENT_FEATURE_MATRIX.md` Bucket 1.
 
 ---
@@ -12,38 +14,24 @@ Every printable/generatable document in the app follows the same pattern. This s
 
 ### The Pattern (for any new document/label type)
 
-**Backend (one config entry):**
+**Backend (one adapter + one Typst template):**
 ```python
-# In Tracker/services/pdf_generator.py → REPORT_CONFIG
-"my_new_document": {
-    "route": "/my-thing/{id}/print",
-    "wait_selector": "[data-print-ready]",
-    "title": "My Document",
-    "timeout": 15000,
-    # Optional overrides (omit for default Letter with 0.5in margins):
-    "page": {"format": "Letter"},
-    "margin": {"top": "0.5in", "bottom": "0.5in", "left": "0.5in", "right": "0.5in"},
-    "needs_scroll": False,
-}
+# In Tracker/reports/adapters/my_new_document.py — see adapters/base.py for the contract
+class MyNewDocumentAdapter(ReportAdapter):
+    name = "my_new_document"                      # registry key = reportType in the dialog
+    title = "My Document"
+    template_path = "my_new_document.typ"         # under Tracker/reports/templates/
+    context_model_class = MyNewDocumentContext    # typed context passed to the template
+    param_serializer_class = MyNewDocumentParams  # tenant-scoped param validation
+
+    def build_context(self, params): ...          # ORM query → context model
+
+# Register: append the dotted path to REPORT_ADAPTERS in Tracker/reports/services/registry.py
 ```
 
-**Frontend (three files):**
+**Frontend (one trigger button):**
 
-1. **Print page component** (`src/pages/MyDocumentPrintPage.tsx`):
-   - Fetches its own data via existing hooks
-   - Wraps in `<PrintLayout>` for documents, bare `<div data-print-ready>` for labels
-   - Sets `data-print-ready` only after all data is loaded and rendered
-
-2. **Route** (`src/router.tsx`):
-   ```tsx
-   export const myDocumentPrintRoute = createRoute({
-     getParentRoute: () => rootRoute,
-     path: '/my-thing/$id/print',
-     component: lazyRouteComponent(() => import("@/pages/MyDocumentPrintPage")),
-   })
-   ```
-
-3. **Trigger button** (on the relevant detail/list page):
+Trigger button on the relevant detail/list page — no print page, no route; the PDF renders server-side:
    ```tsx
    <GenerateDocumentDialog
      reportType="my_new_document"
@@ -57,32 +45,24 @@ That's it. The dialog handles download/email/DMS. The PDF generator handles rend
 
 ### Adding a New Label Type
 
-Same pattern but with page size overrides and no `PrintLayout`:
+Same adapter pattern; page size lives in the Typst template, not the adapter:
 
-```python
-"my_label": {
-    "route": "/labels/my-thing/print",
-    "wait_selector": "[data-print-ready]",
-    "title": "My Label",
-    "timeout": 10000,
-    "page": {"width": "4in", "height": "2in"},
-    "margin": {"top": "0", "bottom": "0", "left": "0", "right": "0"},
-},
+```typst
+// In the label's .typ template
+#set page(width: 4in, height: 2in, margin: 0in)
 ```
 
-For sheet labels (multiple labels per page), use Letter format with Avery-specific margins and a CSS grid layout in the print page component.
+For sheet labels (multiple labels per page), use Letter format with Avery-specific margins and a Typst grid in the template. Shipped reference: `Tracker/reports/adapters/part_id_label.py` (single) and `part_id_label_batch.py` (Avery sheet).
 
 ---
 
 ## Prerequisites
 
-**NPM packages to install (not currently in project):**
-- `qrcode.react` — QR code SVG rendering
-- `jsbarcode` — Code 128 barcode rendering
+**NPM packages:** none — *(superseded: `qrcode.react` / `jsbarcode` were for browser-rendered labels; QR + Code 128 now render server-side via `Tracker/reports/services/barcodes.py`)*
 
 **Existing infrastructure (already built):**
-- `Tracker/services/pdf_generator.py` — warm browser, config-driven, LLM guide comments
-- `Tracker/viewsets/reports.py` — `/api/reports/download/` (sync) and `/api/reports/generate/` (async email)
+- `Tracker/reports/services/` — Typst compiler (`typst_generator.py`), adapter dispatcher (`pdf_generator.py`), registry (`registry.py`) *(supersedes the warm-browser generator)*
+- `Tracker/reports/viewsets.py` — `/api/reports/download/` (sync) and `/api/reports/generate/` (async email)
 - `ambac-tracker-ui/src/hooks/useReportEmail.ts` — `downloadReport()` and `requestReport()`
 - `ambac-tracker-ui/src/components/print-layout.tsx` — shared document wrapper
 - SPC hooks exist: `useSpcHierarchy`, `useSpcData`, `useSpcCapability`, `useSpcActiveBaseline`
@@ -268,25 +248,7 @@ interface PartLabelProps {
 }
 ```
 
-**REPORT_CONFIG entries:**
-```python
-"part_label_sheet": {
-    "route": "/labels/part/print",
-    "wait_selector": "[data-print-ready]",
-    "title": "Part Labels",
-    "timeout": 15000,
-    "page": {"format": "Letter"},
-    "margin": {"top": "0.5in", "bottom": "0.5in", "left": "0.19in", "right": "0.19in"},
-},
-"part_label_single": {
-    "route": "/labels/part/print",
-    "wait_selector": "[data-print-ready]",
-    "title": "Part Label",
-    "timeout": 10000,
-    "page": {"width": "2.625in", "height": "1in"},
-    "margin": {"top": "0", "bottom": "0", "left": "0", "right": "0"},
-},
-```
+**Adapters (shipped — superseded the REPORT_CONFIG entries planned here):** `part_id_label` (single) and `part_id_label_batch` (Avery sheet) in `Tracker/reports/adapters/`. Page geometry lives in their Typst templates; QR/barcode render server-side via `barcodes.py`.
 
 ### Performance Expectations
 
@@ -488,7 +450,7 @@ Each one is ~1-2 days of work: a print page component that fetches data and rend
 2. Verify DMS save creates Documents with correct classification and source linkage
 3. Verify email delivery for both types
 4. Test batch label performance at 500 parts
-5. Verify Playwright warm browser generates both types correctly via management command
+5. Verify the Typst pipeline generates both types correctly via management command
 
 **Total: ~8-12 days for both verticals + the reusable dialog.**
 
@@ -509,8 +471,8 @@ Each one is ~1-2 days of work: a print page component that fetches data and rend
 | SPC baseline hook | `useSpcActiveBaseline` | `ambac-tracker-ui/src/hooks/useSpcActiveBaseline.ts` |
 | SPC interactive page (reference for real data usage) | Already wired to API | `ambac-tracker-ui/src/pages/SpcPage.tsx` |
 | Traveler data endpoint | Part step-by-step history | `api_Parts_traveler_retrieve()` in generated client |
-| Print page wrapper | `PrintLayout` with `data-print-ready` | `ambac-tracker-ui/src/components/print-layout.tsx` |
-| REPORT_CONFIG | Config-driven PDF generation | `Tracker/services/pdf_generator.py` |
+| Report adapter contract | `ReportAdapter` base class (supersedes print pages + REPORT_CONFIG) | `Tracker/reports/adapters/base.py` |
+| Adapter registry | `REPORT_ADAPTERS` tuple | `Tracker/reports/services/registry.py` |
 | WO detail action buttons | Status action buttons in header | `ambac-tracker-ui/src/pages/WorkOrderDetailPage.tsx` ~line 143 |
 | Route definitions | Lazy-loaded print routes | `ambac-tracker-ui/src/router.tsx` ~line 524 (spcPrintRoute example) |
 | Parts list API | Fetch parts by WO or IDs | `api_Parts_list()` in generated client |

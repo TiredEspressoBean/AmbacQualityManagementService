@@ -1,5 +1,11 @@
 # Reman ↔ DWI Integration
 
+> **Status (2026-07-13): implemented.** Teardown substep captures create
+> `HarvestedComponent` rows via
+> `Tracker/services/dwi/harvested_component_capture.py`; see also
+> `services/reman/{teardown,harvested_component,core}.py`. Companion design:
+> `DIGITAL_WORK_INSTRUCTIONS_DESIGN.md` (also implemented).
+
 ## Overview
 
 Companion to `DIGITAL_WORK_INSTRUCTIONS_DESIGN.md`. Captures the reman-specific design surface that surfaces when integrating Digital Work Instructions with the existing Core / HarvestedComponent / DisassemblyBOMLine models in `Tracker/models/reman.py`.

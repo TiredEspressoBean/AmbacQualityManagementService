@@ -1,7 +1,7 @@
 # SecureModel Auto-Tenant-Scoping
 
 **Last Updated:** April 2026
-**Status:** Note for future work — not started
+**Status:** Implemented as designed — see `Tracker/models/core.py` (`SecureManager`) and `Tracker/middleware.py`
 **Context:** This belongs to the parallel tenant-scoping-hardening
 workstream (see the other CC session's prompt), but the key insight
 is recorded here so it doesn't get lost.

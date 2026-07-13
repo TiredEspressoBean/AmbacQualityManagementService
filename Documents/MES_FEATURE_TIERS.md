@@ -1,6 +1,18 @@
 # MES Feature Tiers
 
-**Last Updated:** June 1, 2026
+**Last Updated:** July 13, 2026
+
+> **July 2026 audit note (July 13):** marker pass for work shipped since June 1, verified against the codebase:
+> - **Pro §23 Sampling** row added: [x] Z1.4 three-way severity switching (Normal/Tightened/Reduced) — Tables II-A/B/C in `acceptance_sampling.py`, `SamplingSeverityState` runtime + read-only endpoint.
+> - **Pro §25 Calibration** row added: [x] personal gauge calibration nag (`/api/CalibrationRecords/my-gauge-nag/`).
+> - **Pro §22 Approvals** row added: [x] claim action for group-routed approvals (`claimable` list + `claim` action).
+> - **Pro §29 Outside Processing**: step type and ship-out/receive-back workflow [ ] → [x]; subcontractor tracking [ ] → [~] (actual dates only, no expected dates); supplier cert verification stays [ ].
+> - **Standard §12** Incoming material inspection: [ ] → [x] (IncomingInspection worklist API + `/production/incoming` queue + receiving-inspection runtime).
+> - **Standard §14** Operator work queue and **Pro §14** "What's next?": [ ] → [~] — QA-inspector persona shipped (QA personas land on `/quality/inbox` with a flat inspection inbox + FPI queue-jumper); production-operator home is still a `/dev` prototype. Shift handoff notes remain [ ].
+> - **Standard §5** FPI row note enriched with the acknowledge loop (FPI request/decided events + acknowledge action).
+> - **Lite §10** row added: [x] disposition due dates (`QuarantineDisposition.due_date`).
+> - **Platform** in-app notification feed added under Current Platform Features (bell + `/notifications` + `/api/notifications/feed/`).
+> - Summary counts, scheduling-stripped tables, and Positioning totals recounted to match.
 
 > **June 2026 audit note:** Standard and Pro tiers were re-verified per-section against the codebase, and the progress totals were recounted from scratch. Markers updated:
 > - **Standard §5** Step execution measurements: [~] → [x] (full backend + step-level integration).
@@ -176,7 +188,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Sampling requirement
 - [x] Measurement definitions per step
 - [x] Next step routing - *Decision-based routing via StepEdge with conditions*
-- [x] First Piece Inspection - *FPIRecord with 4 scopes: PER_WORK_ORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR*
+- [x] First Piece Inspection - *FPIRecord with 4 scopes: PER_WORK_ORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR; acknowledge loop (request/decided events + operator acknowledge action, July 2026)*
 - [~] Step override workflow - *Override types: MISSING_QA, MEASUREMENT_FAIL, FPI_FAIL, TRAINING_EXPIRED*
 - [x] Step execution measurements - *StepExecutionMeasurement model + StepMeasurementRequirement integrated at step level (`qms.py:2390`, `mes_lite.py:342`)*
 - [~] Controlled rollback - *rollback_requires_approval on Steps*
@@ -315,11 +327,12 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 
 ## 10. Quarantine & Disposition
 
-### 🟢 Lite (4 features)
+### 🟢 Lite (5 features)
 - [x] Quarantine dispositions (REWORK/SCRAP/USE_AS_IS/RETURN)
 - [x] Disposition types
 - [x] Disposition workflow (OPEN → IN_PROGRESS → CLOSED)
 - [x] Resolution tracking
+- [x] Disposition due dates - *QuarantineDisposition.due_date drives due indicators on quality inboxes (July 2026)*
 
 ---
 
@@ -350,7 +363,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] BOM explosion per WO - *BOM report (Typst) renders WO BOM; BOM/BOMLine models power it*
 - [ ] Material availability check - *Before WO release, verify materials available*
 - [ ] Material reservation - *Reserve specific lots for WOs to prevent double-allocation*
-- [ ] Incoming material inspection - *Inspect received lots before releasing to production*
+- [x] Incoming material inspection - *IncomingInspection worklist API + /production/incoming queue + receiving-inspection runtime (July 2026)*
 - [~] Shelf life / expiration tracking - *Track expiration, prevent use of expired lots*
 
 ---
@@ -384,7 +397,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 
 **Dispatch:**
 - [x] Daily dispatch list per work center - *dispatch_list Typst report*
-- [ ] Operator work queue ("what's assigned to me")
+- [~] Operator work queue ("what's assigned to me") - *QA persona shipped (QA personas land on /quality/inbox flat inspection inbox, July 2026); production-operator home still a /dev prototype*
 - [ ] Claim/unclaim work
 
 **Resource Definitions:**
@@ -395,7 +408,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 *Includes all Standard, plus:*
 - [ ] Resource allocation (equipment + labor)
 - [ ] Shift handoff notes
-- [ ] "What's next?" suggestion - *After completing current op, system suggests next*
+- [~] "What's next?" suggestion - *QA-inspector half shipped (inspection inbox + FPI queue-jumper on /quality/inbox, July 2026); operator half still a /dev mock*
 
 ### 🟠 Premium (+22 = 38 total)
 *Includes all Pro, plus:*
@@ -570,7 +583,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 
 ## 22. Approval Workflows (Pro)
 
-### 🟡 Pro (10 features)
+### 🟡 Pro (11 features)
 - [x] Approval templates
 - [x] Multi-level approval
 - [x] Group-based approval
@@ -581,8 +594,9 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Signature capture with meaning
 - [x] Escalation (configurable days + escalation target) - *Phase 4 (June 2026): `EscalationPolicy` / `EscalationStep` / `EscalationInstance` with stateful re-escalation, ack tracking, and NotificationRule chain binding*
 - [x] My pending approvals
+- [x] Claim group-routed approvals - *claimable list + claim action on ApprovalRequest (July 2026)*
 
-### 🟠 Premium (+2 = 12 total)
+### 🟠 Premium (+2 = 13 total)
 *Includes all Pro, plus:*
 - [x] Threshold approval
 - [x] Self-approval controls
@@ -591,7 +605,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 
 ## 23. Sampling (Pro)
 
-### 🟡 Pro (7 features)
+### 🟡 Pro (8 features)
 - [x] Sampling rule sets
 - [x] Multiple rule types (6 types)
 - [x] Primary/fallback rules
@@ -599,6 +613,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Sampling audit log
 - [x] Sampling analytics
 - [x] Part sampling assignment
+- [x] Z1.4 three-way severity switching (Normal/Tightened/Reduced) - *Tables II-A/B/C + SamplingSeverityState runtime + read-only endpoint (July 2026)*
 
 ---
 
@@ -614,12 +629,13 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 
 ## 25. Calibration (Pro)
 
-### 🟡 Pro (3 features)
+### 🟡 Pro (4 features)
 - [x] Calibration records (full CRUD with result/type/traceability)
 - [x] Calibration due dates (overdue/due_soon/current status)
 - [x] Calibration traceability (certificate number, standards used, as-found)
+- [x] Personal gauge calibration nag - */api/CalibrationRecords/my-gauge-nag/ (July 2026)*
 
-### 🟠 Premium (+1 = 4 total)
+### 🟠 Premium (+1 = 5 total)
 *Includes all Pro, plus:*
 - [x] Affected parts lookup (parts inspected during calibration period)
 
@@ -654,9 +670,9 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 ## 29. Outside Processing (Pro)
 
 ### 🟡 Pro (4 features)
-- [ ] Outside processing step type - *Mark routing step as "outside processing"*
-- [ ] Subcontractor tracking - *Which supplier, expected/actual dates*
-- [ ] Ship-out / receive-back workflow - *Track parts leaving and returning; receiving inspection on return*
+- [x] Outside processing step type - *Steps.is_outside_process + outside_supplier FK (July 2026)*
+- [~] Subcontractor tracking - *Supplier + actual ship/return dates on OutsideProcessShipment; expected/promise dates not tracked*
+- [x] Ship-out / receive-back workflow - *send_out/receive_back/accept/reject actions; return inspection reuses the DWI receiving-inspection runtime; /production/outside-processing board (July 2026)*
 - [ ] Supplier cert verification - *Verify NADCAP, AS9100 certs before allowing outside processing*
 
 ### Design Notes
@@ -757,6 +773,7 @@ Integration and connectivity features are platform concerns, not MES functionali
 - [x] Azure Blob Storage (documents)
 - [x] CSV import/export for bulk operations
 - [x] HubSpot CRM sync
+- [x] In-app notification feed - *bell + /notifications page + /api/notifications/feed/ (July 2026)*
 
 ### Planned Platform Features
 - [ ] Basic label printing
@@ -786,19 +803,19 @@ Integration and connectivity features are platform concerns, not MES functionali
 
 | Tier | Cumulative | New at Tier |
 |------|-----------|-------------|
-| **Lite** | 83 | 83 |
-| **Standard** | 199 | 116 |
-| **Pro** | 296 | 97 |
-| **Premium** | 336 | 40 |
-| **Enterprise** | 372 | 36 |
+| **Lite** | 84 | 84 |
+| **Standard** | 200 | 116 |
+| **Pro** | 300 | 100 |
+| **Premium** | 340 | 40 |
+| **Enterprise** | 376 | 36 |
 
 ### Progress by Tier (features new at each tier)
 
 | Tier | Done | API Ready | Missing | Total | Progress (strict) | Progress (incl. API-ready) |
 |------|------|-----------|---------|-------|--------------------|---------------------------|
-| **Lite** | 81 | 2 | 0 | 83 | 98% | 100% |
-| **Standard** | 63 | 19 | 34 | 116 | **54%** | **71%** |
-| **Pro** | 65 | 13 | 19 | 97 | **67%** | **80%** |
+| **Lite** | 82 | 2 | 0 | 84 | 98% | 100% |
+| **Standard** | 64 | 20 | 32 | 116 | **55%** | **72%** |
+| **Pro** | 70 | 15 | 15 | 100 | **70%** | **85%** |
 | **Premium** | 18 | 0 | 22 | 40 | 45% | 45% |
 | **Enterprise** | 5 | 2 | 29 | 36 | 14% | 19% |
 
@@ -810,15 +827,15 @@ Section 14 scheduling contributes 12 features at Standard tier (1 [x], 4 [~], 7 
 
 | Scope | Done | API | Missing | Total | Strict | Incl. API |
 |---|---|---|---|---|---|---|
-| Strip §14 only | 62 | 15 | 27 | 104 | 60% | 74% |
-| Strip §14 + sched-derived reports + material gating + WAITING | 62 | 15 | 19 | 96 | 65% | 80% |
-| Strip §14 + above + downtime/OEE cluster | 62 | 10 | 17 | 89 | 70% | 81% |
+| Strip §14 only | 63 | 15 | 26 | 104 | 61% | 75% |
+| Strip §14 + sched-derived reports + material gating + WAITING | 63 | 15 | 18 | 96 | 66% | 81% |
+| Strip §14 + above + downtime/OEE cluster | 63 | 10 | 16 | 89 | 71% | 82% |
 
-Pro's scheduling-adjacent surface is small (just 3 §14 items); Pro stays at ~68% strict / ~82% incl. API across all scopes.
+Pro's scheduling-adjacent surface is small (just 3 §14 items); Pro stays at ~70-72% strict / ~85-87% incl. API across all scopes.
 
 ### What remains in Standard (scheduling-stripped, scope C)
 
-The 17 genuinely-missing items: WO cloning, templates, partial close, closure checklist, yield tracking (§1); 5 Label print/scan UI items (§7); operator acknowledgment, add-step-mid-process (§8); full genealogy, incoming material inspection (§12); ERP integration push, report completions to ERP, webhook on WO events (§16). Plus 2 OEE display items stripped under broad C scope but still real work.
+The 16 genuinely-missing items: WO cloning, templates, partial close, closure checklist, yield tracking (§1); 5 Label print/scan UI items (§7); operator acknowledgment, add-step-mid-process (§8); full genealogy (§12); ERP integration push, report completions to ERP, webhook on WO events (§16). Plus 2 OEE display items stripped under broad C scope but still real work.
 
 The 10 [~] (API-complete, needs UI) items: Section 5 step workflow polish (override, rollback, requirements — 3); Section 6 work center editor (1); skill verification enforcement (§8); material lot tracking + shelf-life UI (§12); Parts genealogy + lot merge (§3); rework loops (§4); plus the §14 [~] items if Section 14 not stripped.
 
@@ -849,10 +866,10 @@ These capabilities are not part of the MES tier ladder. Some belong permanently 
 
 ## Positioning
 
-**Today (372 features across 35 sections):**
-- Lite MES: 98% complete (83 features, 81 done) — effectively shippable
-- Standard MES: 54% complete strict / 71% including API-ready (116 new features). With scheduling stripped: ~70% strict / ~81% incl. API-ready.
-- Pro MES: 67% complete strict / 80% incl. API-ready (97 new features; CAPA/SPC/sampling/approvals/training/calibration done; PPAP/audit/outside processing/compliance gaps)
+**Today (376 features across 35 sections):**
+- Lite MES: 98% complete (84 features, 82 done) — effectively shippable
+- Standard MES: 55% complete strict / 72% including API-ready (116 new features). With scheduling stripped: ~71% strict / ~82% incl. API-ready.
+- Pro MES: 70% complete strict / 85% incl. API-ready (100 new features; CAPA/SPC/sampling/approvals/training/calibration/outside processing done; PPAP/audit/compliance gaps)
 - Premium: 45% complete (40 new features; 3D viz/AI/advanced workflows done, CP-SAT scheduling unbuilt)
 - Enterprise: 14% strict / 19% incl. API-ready (36 features, not target market)
 - Reman Add-on: API complete, needs UI
@@ -862,7 +879,7 @@ These capabilities are not part of the MES tier ladder. Some belong permanently 
 1. **Scheduling** — biggest unbuilt area: 46 features across Standard/Pro/Premium/Enterprise, only 1 partially implemented
 2. **Labels & Scanning** — 8 Standard features, all unbuilt
 3. **WO Lifecycle** — 11 Standard features (splitting, rework, yield tracking), all unbuilt
-4. **Outside Processing** — 4 Pro features, all unbuilt (AS9100 requirement)
+4. **Outside Processing** — core shipped July 2026 (step type, shipments, return inspection); supplier cert verification still open (depends on Supplier Quality module)
 5. **Quality Reports/Certs** — CoC, FAI, DHR partially built
 
 **Target buyer:** Pro tier for compliance-driven manufacturers who:

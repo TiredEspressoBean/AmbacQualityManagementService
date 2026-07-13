@@ -1,5 +1,7 @@
 # Integration Framework
 
+> **Current state:** The framework is live — the `integrations/` app exists with `IntegrationConfig`, `IntegrationSyncLog`, and `ProcessedWebhook`, the adapter registry, and `HubSpotAdapter` as the reference implementation (plus `HubSpotOrderLink` / `HubSpotCompanyLink` link models). The de-weld is incomplete: `Companies` still carries inline hubspot fields (e.g. `hubspot_api_id` in `Tracker/models/core.py`).
+
 ## Overview
 
 A separate Django app (`integrations/`) for connecting uqmes to external systems (CRM, ERP, accounting, etc.) without polluting the core Tracker models. HubSpot is the reference implementation. The existing HubSpot integration -- currently welded into Orders and Companies via inline fields and reading credentials from Django settings -- gets refactored into this framework.

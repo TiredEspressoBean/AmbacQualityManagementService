@@ -1,6 +1,9 @@
 # Operator UI Audit & Remediation Plan — Rework and Bulk Axes
 
-> **Status:** Draft for review. Findings from a read-only audit (2026-06-16). No code changed.
+> **Status (2026-07-13): Complete — Phases 0–4 shipped** (see the ✅ markers per
+> phase; migrations, services, and tests landed). Originally a read-only audit
+> (2026-06-16); retained as the finished-work record and design rationale
+> (esp. the disposition/NCR decisions and the per-load batch pivot).
 > **Scope:** How operators experience (a) **bulk/batch steps** and (b) **rework steps**, traced
 > across the two authoring surfaces (the process flow map and the DWI editor), the operator runtime,
 > the supervisor control surface, and the backing services.

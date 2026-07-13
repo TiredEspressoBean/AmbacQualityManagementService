@@ -22,6 +22,8 @@ The permission system is fully implemented including API endpoints for tenant se
 - [x] Permission list endpoint with categories (`/api/permissions/`)
 - [x] Preset list endpoint (`/api/presets/`)
 - [x] Effective permissions endpoint (`/api/users/{id}/effective-permissions/`)
+- [x] Permission-coverage guard test (`Tracker/tests/test_permission_coverage.py`) — every permission must be granted by at least one preset or explicitly opted out, so new models can't ship unreachable perms
+- [x] Approval claim action — group-eligible approvers can claim a pending approval; recorded via the `CLAIMED` assignment source (2026-07)
 
 **Permission counts by role:**
 | Role | Permissions | Notes |

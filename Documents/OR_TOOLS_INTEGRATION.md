@@ -1,5 +1,11 @@
 # OR-Tools Integration Plan
 
+> **Status (2026-07-13): planned — build not started.** CP-SAT scheduling is
+> an intended Premium differentiator (MES_FEATURE_TIERS §14), sequenced after
+> WorkCenter mapping + routing enrichment + the execution feedback loop
+> (OPERATOR_EXPERIENCE_DESIGN §10 rungs 0–3). Companion build plan:
+> `SCHEDULING_IMPLEMENTATION_PLAN.md`.
+
 ## Overview
 
 Three separate services powered by Google OR-Tools CP-SAT:

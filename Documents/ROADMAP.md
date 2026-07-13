@@ -11,7 +11,7 @@ This document provides a complete view of all features: completed, in progress, 
 **Timeline:** [TO BE FILLED]
 **Team Size:** [TO BE FILLED]
 **Starting Point:** [TO BE FILLED - What technologies were you familiar with vs. learned from scratch?]
-**Architecture:** Django 5.1 + React 19 + PostgreSQL + pgvector + LangGraph + Ollama + Azure App Services
+**Architecture:** Django 5.1 + React 19 + PostgreSQL + pgvector + LangGraph + Ollama + Railway
 
 **Technologies Learned During Development:**
 [TO BE FILLED - List technologies you learned while building this project]
@@ -977,7 +977,7 @@ This document provides a complete view of all features: completed, in progress, 
 - ✅ **Completed:** Western Electric rules for out-of-control detection (8 rules)
 - ✅ **Completed:** Clickable data points linking to quality reports
 - ✅ **Completed:** Hierarchical process/step/measurement navigation
-- ✅ **Completed:** PDF export via Playwright (Email Report button)
+- ✅ **Completed:** PDF export via Typst adapter pipeline (Email Report button)
 - ✅ **Completed:** Baseline persistence with full audit trail
 - ✅ **Completed:** Baseline vs Monitoring mode toggle
 - ✅ **Completed:** Histogram with LSL/USL spec limits
@@ -1128,7 +1128,7 @@ Major categories:
 - 3D visualization with heat maps and annotation
 - **3D annotation workflow integration** (COMPLETED - ready for quality inspection and FAI)
 - **Statistical Process Control (SPC)** - X-bar/R, I-MR charts, Cpk/Ppk, Western Electric rules
-- **PDF generation infrastructure** - Playwright, Celery, email delivery, DMS integration
+- **PDF generation infrastructure** - Typst adapter registry, Celery, email delivery, DMS integration
 - AI digital coworker with 5 core tools
 - Document management with AI embeddings and classification-based security
 - Permission-based RBAC with 7 user groups

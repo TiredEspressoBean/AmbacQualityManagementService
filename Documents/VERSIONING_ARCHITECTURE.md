@@ -1,8 +1,8 @@
 # Versioning Architecture
 
 **Last Updated:** April 2026
-**Status:** Pre-refactor planning — consolidates all findings from
-architecture review sessions.
+**Status:** Implemented (`create_new_version()` live across the codebase);
+this doc remains the authoritative model-by-model categorization.
 
 This document is the single source of truth for which models get
 explicit versioning, which stay audit-log-only, and what

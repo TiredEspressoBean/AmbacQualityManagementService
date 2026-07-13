@@ -1,8 +1,10 @@
 # Typst Migration Plan — Full Replacement for Playwright PDF Pipeline
 
 **Last Updated:** April 2026
-**Status:** Planning (pre-launch — no production users)
+**Status:** Completed (April 2026) — historical record
 **Owner:** TBD
+
+> **This migration shipped.** The Typst pipeline is live — see `Tracker/reports/adapters/` for the adapter registry that replaced the Playwright pipeline described below.
 
 ---
 

@@ -1,5 +1,11 @@
 # Step Completion System Design
 
+> **Status (2026-07-13): implemented.** The step-execution machinery designed
+> here is live well beyond this doc's "Partial" current-state table —
+> `StepExecution` (claim/complete/rollback), `StepOverride`, `StepRollback`,
+> transition logging, `Tracker/services/mes/steps.py`. Kept for design
+> rationale; code is the source of truth for behavior.
+
 ## Overview
 
 This document defines the completion semantics for manufacturing process steps in the Ambac Tracker MES/QMS system. It addresses how parts transition between steps, integrating with existing scheduling and labor tracking infrastructure.

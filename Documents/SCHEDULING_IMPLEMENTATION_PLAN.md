@@ -1,5 +1,12 @@
 # Scheduling System Implementation Plan
 
+> **Status (2026-07-13): planned — build not started.** CP-SAT scheduling is
+> an intended Premium differentiator (MES_FEATURE_TIERS §14). Sequenced after
+> the MES maturity ladder makes its inputs honest — WorkCenter mapping,
+> routing std times, and the execution feedback loop
+> (OPERATOR_EXPERIENCE_DESIGN §10, rungs 0–3). Don't start phases 2+ before
+> those rungs; landing surfaces must not depend on scheduling until it exists.
+
 Step-by-step build plan for the OR-Tools scheduling system described in `OR_TOOLS_INTEGRATION.md`. Each phase is dependency-ordered, testable in isolation, and marked as internal or customer-facing.
 
 **Existing models referenced:** `Steps`, `StepEdge`, `StepExecution`, `Parts`, `WorkOrder`, `Processes`, `Equipments`, `WorkCenter`, `Shift`, `ScheduleSlot`, `DowntimeEvent` (in `mes_lite.py` and `mes_standard.py`).

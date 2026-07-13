@@ -2,7 +2,10 @@
 
 **Status:** Planned
 **Estimated effort:** ~325 LOC, 2-3 weeks
-**Depends on:** CP-SAT scheduler (Premium tier)
+**Depends on:** CP-SAT scheduler (Premium tier — intended; see
+`SCHEDULING_IMPLEMENTATION_PLAN.md`). Note: the learned durations also have a
+pre-scheduler use — they feed maturity rung 2's "honest ~min/pc & ETAs"
+(OPERATOR_EXPERIENCE_DESIGN §10) — so this can land before CP-SAT if wanted.
 
 ## Overview
 

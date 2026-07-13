@@ -1,5 +1,13 @@
 # Refactor Plan
 
+> **Status (2026-07-13): substantially implemented.** SecureManager tenant
+> auto-scoping shipped (`Tracker/models/core.py`); the services layer exists
+> as `Tracker/services/{core,mes,qms,dwi,reman,change_control,life_tracking}/`;
+> coverage guards exist (`test_permission_coverage.py`, `test_rls_coverage.py`,
+> `test_endpoint_tenant_access_coverage.py`, `test_serializer_fk_coverage.py`).
+> The emergent service structure is plain function modules — the proposed
+> `SecureService` class taxonomy below was not adopted. Historical record.
+
 ## Status
 
 - Current phase: not started (plan drafting)

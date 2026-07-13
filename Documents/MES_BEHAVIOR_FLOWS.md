@@ -5,7 +5,11 @@ systems run in real factories. Diagrams are the source of truth; prose is
 just enough context to read them.
 
 Every flow is **synchronous unless explicitly noted**. No Celery cascades,
-no event fan-out, no background magic.
+no event fan-out, no background magic. One intentional exception (flow #7):
+sealing a batch whose live cohort exceeds 50 parts dispatches
+`advance_lot_task` (Celery, idempotent, `transaction.on_commit`) instead of
+advancing inline, so the seal request stays bounded. The seal itself is
+still synchronous; only the advancement retry moves off-request.
 
 ---
 
@@ -189,37 +193,63 @@ flowchart TD
 
 ---
 
-## 7. Batch lifecycle (per-cohort operations like heat treat)
+## 7. Batch lifecycle (per-load operations like heat treat)
 
-When a Step has BATCH-scope substeps, an operator manages the batch as a
-unit. The seal action is the cohort's "complete step" trigger.
+When a Step has BATCH-scope substeps, an operator groups parts into a
+**load** (one BatchExecution) and manages the load as a unit. A
+fixed-capacity op (furnace, wash tank, autoclave) legitimately splits one
+lot into several loads run concurrently or in sequence, so **multiple open
+BatchExecutions per (WO, step) are valid and required**. The seal action
+is the load's "complete step" trigger.
 
 ```mermaid
 flowchart TD
-    A[Operator at batch station<br/>sees BATCH-scope step] --> B[Click 'Start batch with cohort']
-    B --> C[Create BatchExecution<br/>parts = current cohort<br/>sealed_at=NULL]
-    C --> D[Operator runs physical<br/>batch operation<br/>e.g., load oven, start cycle]
-    D --> E[Operator captures<br/>BATCH-scope substep data<br/>cycle temp, dwell time, etc.]
-    E --> F[Write SubstepCompletion rows<br/>linked to BatchExecution]
-    F --> G[Operator clicks<br/>'Seal batch']
-    G --> H[Server: validate]
-    H --> I{All required BATCH<br/>substeps complete?}
-    I -->|No| J[Reject 400<br/>'Cycle log incomplete']
-    I -->|Yes| K{All parts in batch<br/>share work_order?}
-    K -->|No| L[Reject 400<br/>'Cross-WO membership']
-    K -->|Yes| M[Set sealed_at = now<br/>Audit log]
-    M --> N[Synchronously try_advance_lot<br/>for the WO+Step]
-    N --> O[Each cohort part's gate<br/>now sees a sealed batch<br/>covering it]
-    O --> P[Cohort advances together<br/>to next step]
-    J -.->|Operator captures missing data| E
+    A[Operator at batch station<br/>sees BATCH-scope step] --> B[Select subset of cohort<br/>units for this load]
+    B --> C{Any selected part already<br/>in an OPEN batch<br/>at this step?}
+    C -->|Yes| C2[Reject 400<br/>'already in an open batch']
+    C -->|No| D[Create BatchExecution<br/>parts = selected load<br/>sealed_at=NULL]
+    D --> E[Operator runs physical<br/>batch operation<br/>e.g., load oven, start cycle]
+    E --> F[Operator captures<br/>BATCH-scope substep data<br/>cycle temp, dwell time, etc.]
+    F --> G[Write SubstepCompletion rows<br/>linked to BatchExecution]
+    G --> H[Operator clicks<br/>'Seal batch']
+    H --> I[Server: validate<br/>drop members that went terminal<br/>scrapped / cancelled]
+    I --> J{Any live parts left?}
+    J -->|No| K[Reject 400<br/>'No live parts']
+    J -->|Yes| L{All required BATCH<br/>substeps complete?}
+    L -->|No| M[Reject 400<br/>'Cycle log incomplete']
+    L -->|Yes| N{All parts in load share<br/>the batch's work_order?}
+    N -->|No| O[Reject 400<br/>'Cross-WO membership']
+    N -->|Yes| P[Set sealed_at = now<br/>Audit log]
+    P --> Q{Live cohort over<br/>50 parts?}
+    Q -->|No| R[Synchronously try_advance_lot<br/>for the WO+Step]
+    Q -->|Yes| S[Dispatch advance_lot_task<br/>Celery, on_commit<br/>the one async exception]
+    R --> T[Each load member's gate<br/>now sees ITS sealed load]
+    S --> T
+    T --> U[Sealed load advances independently<br/>other loads and unbatched<br/>parts wait at the step]
+    M -.->|Operator captures missing data| F
+    C2 -.->|Operator picks other units| B
 ```
 
 **Key points:**
 - Operator deliberately seals; no auto-seal on last capture.
-- Sealing is the per-cohort analog of "Complete step" — same advancement
+- Sealing is the per-load analog of "Complete step" — same advancement
   trigger semantics.
-- One BatchExecution per WO. Multi-WO physical runs produce multiple
-  BatchExecution rows.
+- **The invariant is disjoint membership, not batch uniqueness.** A part
+  is in at most one *open* batch at a step — else it's ambiguous which
+  load's cycle data covers it. Enforced by
+  `batch_lifecycle.assert_no_open_batch_overlap` at batch start. Sealed
+  batches don't reserve membership. There is deliberately **no** "one open
+  batch per (WO, step)" constraint — that would forbid furnace-load
+  splitting.
+- **Each sealed load advances independently.** On a batch step the engine
+  advances each cohort part whose gate clears individually; one sealed
+  load moves on without waiting for the others. Non-batch steps keep
+  classic all-or-none lot cohesion.
+- Membership within one BatchExecution is single-WO. Multi-WO physical
+  runs produce multiple BatchExecution rows.
+- Seal reconciles membership: members that went terminal after start are
+  dropped; split parts stay (the batch substep still covers a split-out
+  part's operation).
 
 ---
 
@@ -277,8 +307,9 @@ flowchart TD
 ## 9. Advancement gate (what `can_advance_from_step` evaluates)
 
 Called synchronously inside any advancement-triggering action (Complete
-step, seal batch, force advance, split-driven cohort retry). Returns a list
-of blockers; empty list = clear.
+step, seal batch — or from `advance_lot_task` when a >50-part seal went
+async, force advance, split-driven cohort retry). Returns a list of
+blockers; empty list = clear.
 
 ```mermaid
 flowchart TD
@@ -311,9 +342,9 @@ flowchart TD
         SG9 -->|Yes| SG11{N/A still valid?<br/>not critical,<br/>allow_not_applicable,<br/>has reason code}
         SG11 -->|No| SG12[Blocker: 'N/A no longer valid']
         SG11 -->|Yes| SG13[Satisfied]
-        SG4 -->|BATCH| SG14{Sealed BatchExecution<br/>covers this part?}
+        SG4 -->|BATCH| SG14{Sealed BatchExecution<br/>covers THIS part?}
         SG14 -->|No| SG15[Blocker: 'no sealed batch']
-        SG14 -->|Yes| SG16{Cohort completion<br/>exists for substep?}
+        SG14 -->|Yes| SG16{Completion on that<br/>sealed load for substep?}
         SG16 -->|No| SG17[Blocker: 'no batch completion']
         SG16 -->|Yes| SG18[Satisfied]
     end
@@ -321,6 +352,11 @@ flowchart TD
 
 **Key points:**
 - Pure read query. No side effects.
+- **The BATCH branch is per-part, not per-cohort.** A part's gate clears
+  only when its own sealed load carries the substep completion. This is
+  what makes flow #7's independent per-load advancement work: sealing load
+  A clears load A's members while load B's members (and unbatched parts)
+  still hit "no sealed batch."
 - N/A is re-validated at gate time so retroactive `is_critical=True` edits
   invalidate existing N/A rows.
 - Voided completions don't satisfy.
@@ -418,37 +454,60 @@ flowchart TB
     end
 ```
 
+One deliberate exception to "no Celery": sealing a batch whose live cohort
+exceeds 50 parts dispatches `advance_lot_task` (idempotent,
+`transaction.on_commit`) instead of gating + advancing hundreds of parts
+inline in the seal request (flow #7). That is a bounded-request escape
+hatch on a single trigger, not event fan-out — everything else stays
+synchronous.
+
 ---
 
 ## 13. The audit-checklist
 
 Use the boxes below to verify implementation matches the flow charts.
 
+> Most of this checklist predates the 2026-06 operator-runtime remediation
+> (`OPERATOR_UI_REWORK_BULK_REMEDIATION.md`). Rows re-verified against code
+> on 2026-07-13 are marked; unmarked UI-facing rows still need
+> re-verification.
+
 ### Currently over-built (Celery + cascades that shouldn't exist)
 
-- [ ] `Tracker/services/mes/advancement_tasks.py` — Celery task. **Delete.**
-- [ ] `submit_substep` fires `fire_for_part` (advancement_tasks). **Strip.**
-- [ ] `seal_batch` fires `try_advance_lot_task.delay(...)`. **Replace with
-  synchronous `try_advance_lot()` call inside the seal request.**
-- [ ] `split_part_from_lot` fires `fire_for_part`. **Strip; advancement
+- [x] `Tracker/services/mes/advancement_tasks.py` — Celery task. **Deleted.**
+- [x] `submit_substep` fires `fire_for_part` (advancement_tasks).
+  **Stripped** — no `fire_for_part` remains anywhere in `Tracker/`.
+- [x] `seal_batch` fires `try_advance_lot_task.delay(...)`. **Resolved with
+  a deliberate carve-out (remediation task 3d):** cohorts ≤ 50 parts call
+  `try_advance_lot()` synchronously inside the seal request; larger cohorts
+  dispatch `advance_lot_task` (Celery, idempotent, `on_commit`) so the seal
+  request stays bounded. This is the one intentional async path (flow #7).
+- [x] `split_part_from_lot` fires `fire_for_part`. **Stripped;** advancement
   happens synchronously in the split request via direct
-  `try_advance_lot()`.**
-- [ ] `approve_step_override` fires `fire_for_part`. **Strip.**
-- [ ] `try_advance_lot` recurses into next-step advancement. **Remove —
-  next step waits for its operator.**
+  `try_advance_lot()`.
+- [x] `approve_step_override` fires `fire_for_part`. **Stripped.**
+- [x] `try_advance_lot` recurses into next-step advancement. **Resolved as
+  a bounded synchronous cascade** (`_MAX_CASCADE_DEPTH = 10`): walks
+  forward only through zero-substep, non-terminal steps; any step with
+  operator work halts the cascade and waits for its operator. Matches §15's
+  E3 node.
 
 ### Currently under-built relative to flows
 
 - [ ] **Flow #2:** Operator runtime's "Complete step" doesn't actually run
   the gate or advance. `handleCompleteStep` only submits captures.
+  *(Predates the 2026-06 remediation — re-verify.)*
 - [ ] **Flow #3:** Out-of-spec capture doesn't show an operator-facing
-  toast.
-- [ ] **Flow #9:** New blocker #8 (PENDING SamplingDecisions at
-  `Step.is_terminal=True`) isn't implemented. Required to force
-  pre-shipment reconciliation of LAST_N_PARTS / EXACT_COUNT decisions.
-- [ ] **Flow #10:** No QA-side void affordance in the UI.
+  toast. *(Predates the 2026-06 remediation — re-verify.)*
+- [x] **Flow #9:** New blocker #8 (PENDING SamplingDecisions at
+  `Step.is_terminal=True`) — **implemented** in
+  `Tracker/services/dwi/advancement_gate.py` (terminal-step PENDING count
+  blocker).
+- [ ] **Flow #10:** No QA-side void affordance in the UI. *(Predates the
+  2026-06 remediation — re-verify.)*
 - [ ] **Flow #11:** No supervisor-side review UI for superseded /
-  retroactively-selected decisions.
+  retroactively-selected decisions. *(Predates the 2026-06 remediation —
+  re-verify.)*
 
 ### Aligned with flows
 
@@ -460,8 +519,15 @@ Use the boxes below to verify implementation matches the flow charts.
 - [x] **Flow #5:** Rework split routes to `rework_target_step`, bumps
   `visit_number`.
 - [x] **Flow #6:** Force advance perm-gated on WO Control page.
-- [x] **Flow #7:** One BatchExecution per WO invariant; multi-WO oven
-  cycles produce N BatchExecution rows.
+- [x] **Flow #7:** Per-load model (remediation Decisions #14/#15):
+  multiple BatchExecutions per (WO, step) are valid; the invariant is
+  disjoint open-batch membership (`assert_no_open_batch_overlap`); each
+  sealed load advances independently
+  (`_evaluate_and_advance` batch-step branch). Single-WO membership per
+  BatchExecution still holds; multi-WO oven cycles produce N
+  BatchExecution rows. *(Earlier "one BatchExecution per WO" uniqueness
+  claim was the pre-remediation model — a DB constraint to that effect
+  was added and reverted as wrong.)*
 - [x] **Flow #8:** SamplingDecision write logic correct per rule type.
   DESELECTED substeps show "Not in sample" badge (defensible for IATF
   audit; reversed earlier hide-entirely decision).
@@ -637,7 +703,7 @@ When a lot won't advance, the diagnostic walk is:
 2. For each blocker, identify the source table:
    - "Substep 'X' not completed" → missing `SubstepCompletion` row, or `is_voided=True` on the existing one
    - "Sampling decision missing" → bug; `SamplingDecision` row absent (the entry hook didn't fire)
-   - "Batch substep '...' requires sealed batch" → no `BatchExecution.sealed_at` for the cohort
+   - "Batch substep '...' requires sealed batch" → no sealed `BatchExecution` covering *this part* (it may be unbatched, or its load is still open — another load's seal doesn't count)
    - "N/A no longer valid" → substep had `is_critical` flipped to True after the N/A row was written
    - "PENDING reconciliation needed" (terminal blocker #8) → `reconcile_pending_decisions` hasn't run, or PENDING rules can't auto-resolve
 3. Fix the data or take the appropriate action (record completion, seal batch, supervisor reconciliation).

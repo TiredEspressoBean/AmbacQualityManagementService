@@ -32,7 +32,9 @@ working; two from anywhere.* Cheap to demo, brag-able, and the incumbents lose i
   models with no mappings. Scope/filter concepts must be client-side lenses until the
   mapping layer exists.
 - Guardrail carried from receiving (§11 there): mid-market <200 heads; implement the
-  floor, don't grow an enterprise tier. Full APS is explicitly out (see §10).
+  floor, don't grow an enterprise tier. Scheduling is a later rung, not a
+  current dependency (see §10) — nothing on these surfaces may rely on it
+  until it exists.
 
 ## 3. Architecture: three tiers, tiers are fallbacks not waypoints
 
@@ -197,7 +199,11 @@ logged as a quiet soft-skip.
 history)` ordered by WO priority → due → aging. Contract: *usually right with a
 visible escape* — not divinely correct. Empty-at-scope degrades gracefully.
 
-**QA inspector (prototype at `/dev/qa-home`):** pinned **first-piece queue-jumper**
+**QA inspector — SHIPPED 2026-07-13** (`QaHomePage` at `/quality/inbox`; QA
+personas land on it from Home via `primaryPersona`; verified in-browser incl.
+the FPI acknowledge loop and its `sign_off_fpi` gate. The `/dev/qa-home`
+prototype is now redundant — delete when convenient). The spec as built:
+pinned **first-piece queue-jumper**
 banner (andon semantics: live "machine waiting" timer + Start check; the operator sees
 seen/in-progress states on their side). Below it ONE flat inspection inbox —
 count-filter chips (All / Receiving / In-process / Final / First piece + Overdue;
@@ -288,7 +294,8 @@ incrementally):
 | 1. **BOM** | models exist, dormant | comes alive via rung 0 |
 | 2. **Routing enrichment** | Processes/Steps/Edges ≈ 70% of routing | + per-op resource needs & std times → honest ~min/pc, ETAs |
 | 3. **WorkCenter mapping** | skeleton models, unmapped | formal relevance signal; replaces the client-side lens |
-| 4. **Lightweight scheduling** | nothing | due-date sequencing + rough-cut capacity view. **Full finite-capacity APS: permanently out** for this segment |
+| 4. **Lightweight scheduling** | nothing | due-date sequencing + rough-cut capacity view first |
+| 5. **CP-SAT finite-capacity scheduling** | nothing (plans exist: SCHEDULING_IMPLEMENTATION_PLAN, OR_TOOLS_INTEGRATION) | **intended** — the planned Premium differentiator (MES_FEATURE_TIERS §14); sequenced after rungs 0–3 make its inputs honest |
 
 Interim relevance signals (pre-rung-3): history-inferred (`completed_by`), cert-gating
 (exists), explicit "my steps" preference.
@@ -302,18 +309,30 @@ Interim relevance signals (pre-rung-3): history-inferred (`completed_by`), cert-
   Break, setup→run fork).
 - `/dev/work-queue` — v3 at-scale: readiness sections, blocked bucket w/ aging +
   Nudge, filter rail w/ comboboxes, horizon buckets; QA lens flat + chips + horizons.
-- `/dev/qa-home` — **new**: the QA-inspector task inbox per §6 (FPI queue-jumper
-  banner, chip-filtered flat inbox, severity badges w/ switch-back, claim queue,
-  gauge nag, blocked-time footer).
-- **Real app (committed):** role-gated home blocks (scan box → *currently the control
-  page — retarget to operator surface*, WO queue w/ persona CTAs, inspection queue,
-  quality actions), typecheck fixed & clean, seeded demo covers SQM/OSP/DWI.
-- **Uncommitted at time of writing:** operator-home v4 delta, `/dev/qa-home` + its
-  route, this doc refresh. (v3 prototypes + doc v1 are committed at `7724e76`.)
+- `/dev/qa-home` — superseded by the shipped `QaHomePage` (§6); deletable.
+- **Real app (master @ fca5530, 2026-07-13):** QA landing shipped (§6);
+  `/inbox` carries dispositions + the available-to-claim strip; **in-app
+  notification feed** shipped (bell + `/notifications` + `/api/notifications/
+  feed/` over NotificationOutbox — the awareness surface, distinct from
+  /inbox commitments); role-gated home blocks for other personas (scan box →
+  *still the control page — retarget to operator surface*); typecheck clean;
+  seeded demo covers SQM/OSP/DWI.
 
 ## 12. Backlog — single source of truth (build order)
 
-**The ~2-week wiring plan (no scheduling, no workcenters touched):**
+**SHIPPED 2026-07-13 (the QMS side, master @ fca5530):** approval **claim**
+(claimable + claim actions over the existing ApproverAssignment through-table);
+**SamplingSeverityState exposure** (read-only `/SamplingSeverityStates/` w/
+switch-back derivations from the engine's own thresholds); **inspection inbox**
+(`/api/InspectionInbox/`, flat row list, IncomingInspection convention);
+**FPI acknowledge loop** (`acknowledged_by/at`, `fpi.requested`/`fpi.decided`
+events); **gauge nag** (`/CalibrationRecords/my-gauge-nag/`); disposition
+`due_date`; `hold_reason` vocabulary (AWAITING_COC, GAUGE_UNAVAILABLE);
+**QA landing** (§6) + `/inbox` additions + the **in-app notification feed**
+(§11). Migrations 0095–0097.
+
+**The ~2-week wiring plan (no scheduling, no workcenters touched) — the
+OPERATOR side of this remains open:**
 1. **Operator work surface** — WO detail operator-mode trim; retarget scan + all
    Starts. *(FE, 1–2 d — serves flows 2 & 1)*
 2. **Queue aggregate endpoint** — WO×step, readiness conjunction, server ranking,
@@ -333,20 +352,28 @@ expiry — the one new "social" aggregate); who-is-my-lead relationship; attribu
 decision for durable Resume; consumption hook (rung 0 — also receiving §11 follow-up);
 `split_from_cohort` missing on Parts serializer (runtime filter is a silent no-op).
 
-**Round-4 additions (each wires with its host feature, not standalone):** FPI
-request→ack→verdict states + notification (rides the blocker/owner plumbing; powers
-the operator strip *and* the inspector banner); shift-note read-acknowledgment (field
-on the shift-notes model — the ack is the QMS-friendly part); setup/run fork on the
-labor session (a category on TimeEntry, one tap at Start); approval **claim** action
-for group-eligible ApprovalRequests (Accept → assigned; the Veeva pattern);
-per-user gauge-usage link (measurement equipment × user, recent window) to power the
-personal cal nag; soft-skip event (THEN-start over UP NEXT) for coaching data;
-time-became-ready timestamp on the queue aggregate (feeds the aging tint — falls out
-of the readiness conjunction anyway).
+**Round-4 additions still open (each wires with its host feature):**
+shift-note read-acknowledgment (field on the shift-notes model — the ack is the
+QMS-friendly part); setup/run fork on the labor session (zero schema —
+`TimeEntry.entry_type` already has SETUP/PRODUCTION; one tap at Start);
+soft-skip event (THEN-start over UP NEXT) for coaching data; time-became-ready
+on the queue aggregate (falls out of `StepExecution.entered_at`). *Shipped
+2026-07-13:* FPI ack loop, approval claim, gauge nag (see above).
+
+**Named gaps confirmed by the shipped work:** `EquipmentUsage` has **no runtime
+writer** (seeds only — the gauge nag unions report-attached equipment as a
+workaround; the instance-binding write belongs to the capture-screen work);
+starter notification rules don't yet cover `fpi.*` (events registered, nothing
+routes them); demo seed lacks a Tightened severity state and a group-routed
+approval (the severity badge and claim strip have no live demo data); the
+`*_info` DictField serializer blobs are schema-untyped (forces hand-written FE
+types — burn down by declaring small inline serializers).
 
 **BE wiring inventory (verified against the codebase, 2026-07-08).** Two Explore
 sweeps mapped every element of both prototypes to what exists. Net: cheaper than
-budgeted; only the two §9 tables are genuinely new.
+budgeted; only the two §9 tables are genuinely new. *(2026-07-13: the Tier 1/
+Tier 2 QMS items below have since shipped — see the SHIPPED block above. The
+Tier 0 operator items and Tier 3 tables remain open.)*
 
 - *Tier 0 — exists, wire only:* TimeEntry `clock_in`/`clock_out` actions;
   **`entry_type` already has SETUP/PRODUCTION** (the setup→run fork is zero schema);

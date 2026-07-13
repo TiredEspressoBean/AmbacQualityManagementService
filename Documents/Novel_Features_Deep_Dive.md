@@ -15,7 +15,7 @@ Technical documentation of features that differentiate this QMS from commercial 
 5. [Row-Level Security via SecureManager Pattern](#feature-5-row-level-security-via-securemanager-pattern)
 6. [Hybrid Document Search with Context Windows](#feature-6-hybrid-document-search-with-context-windows)
 7. [SPC Control Chart Baseline Persistence with QMS Audit Trail](#feature-7-spc-control-chart-baseline-persistence-with-qms-audit-trail)
-8. [Server-Side PDF Generation via React Page Rendering](#feature-8-server-side-pdf-generation-via-react-page-rendering)
+8. [Server-Side PDF Generation via Typst Adapter Registry](#feature-8-server-side-pdf-generation-via-typst-adapter-registry)
 9. [Scope API - Graph-Based Data Access with Security](#feature-9-scope-api---graph-based-data-access-with-security)
 10. [Handwritten Signature Capture for Compliance](#feature-10-handwritten-signature-capture-for-compliance)
 
@@ -592,61 +592,63 @@ export const useSpcActiveBaseline = (measurementId: number | null) => {
 
 ---
 
-## Feature 8: Server-Side PDF Generation via React Page Rendering
+## Feature 8: Server-Side PDF Generation via Typst Adapter Registry
 
 **Key Files:**
-- `PartsTracker/Tracker/services/pdf_generator.py` - Playwright PDF generation service
-- `PartsTracker/Tracker/viewsets/reports.py` - Report API endpoints
+- `PartsTracker/Tracker/reports/adapters/` - One adapter per report type (~14 shipped)
+- `PartsTracker/Tracker/reports/adapters/base.py` - `ReportAdapter` contract
+- `PartsTracker/Tracker/reports/services/typst_generator.py` - Typst compiler integration
+- `PartsTracker/Tracker/reports/services/registry.py` - `REPORT_ADAPTERS` registry
+- `PartsTracker/Tracker/reports/viewsets.py` - Report API endpoints
+- `PartsTracker/Tracker/reports/tasks.py` - Celery task for async generate-and-email
 - `PartsTracker/Tracker/models/qms.py` - GeneratedReport model
-- `PartsTracker/Tracker/tasks.py` - Celery task `generate_and_email_report`
-- `ambac-tracker-ui/src/components/print-layout.tsx` - Shared print wrapper
-- `ambac-tracker-ui/src/pages/SpcPrintPage.tsx` - Print-optimized SPC view
-- `ambac-tracker-ui/src/hooks/useReportEmail.ts` - Reusable hook for any page
 
 ### What It Does
 
-Instead of building separate PDF templates, the system renders actual React pages as PDFs using Playwright (headless Chromium). This means PDFs look exactly like what users see on screen—same charts, same layouts, same data.
+Every report type is a small adapter class: a tenant-scoped param serializer, a typed context model, a `build_context()` ORM query, and a Typst template. The dispatcher validates params, builds the context, and compiles the template to PDF with Typst — a modern typesetting engine that installs as a ~15 MB pip package with no browser dependency.
 
 Flow:
-1. User clicks "Email Report" on any supported page
-2. API queues a Celery task
-3. Playwright opens the print-optimized route (e.g., `/spc/print?processId=1&stepId=2`)
-4. Waits for `[data-print-ready]` selector (ensures charts are rendered)
-5. Generates PDF (Letter format, 0.5in margins)
-6. Saves to Documents model (DMS integration)
-7. Emails PDF to user
-8. Stores `GeneratedReport` record for audit trail
+1. User clicks "Generate" on any supported page
+2. API validates params via the adapter's serializer (tenant-scoping enforced) and queues a Celery task (or renders synchronously for download)
+3. `build_context()` queries the ORM and returns a typed context model
+4. Typst compiles the template with that context to PDF
+5. Saves to Documents model (DMS integration)
+6. Emails PDF to user
+7. Stores `GeneratedReport` record for audit trail
+
+*(An earlier iteration rendered React print pages in headless Chromium via Playwright; it was replaced pre-launch by the Typst pipeline for security, cost, and deployment simplicity.)*
 
 ### Why It's Novel
 
-Most QMS systems use server-side PDF libraries (ReportLab, WeasyPrint) that require maintaining separate templates. When the UI changes, the PDF templates need manual updates. This approach:
+Most QMS systems bolt on a separate reporting tool or a heavyweight browser-rendering pipeline. This approach:
 
-- **Single source of truth**: React components render both web and PDF
-- **Pixel-perfect output**: Charts, tables, styling all match the web view
-- **Easy to add new reports**: Just create a print route and add config
+- **Security by design**: PDFs render from an ORM context dict — no HTTP round-trip, no auth forwarding, no way to smuggle cross-tenant IDs through the renderer; params are validated by a tenant-scoped serializer
+- **Real typesetting**: Deterministic, compliance-grade documents (proper pagination, typography, CeTZ charts for SPC) rather than browser print output
+- **Trivial to extend**: One adapter file + one Typst template + one registry line per new report; the test mixin gives four free tests per adapter
 
 **Commercial Comparison:**
 
 - **MasterControl**: Server-generated PDFs with separate templates
 - **ETQ Reliance**: Crystal Reports integration (separate tool)
 - **Arena PLM**: Export to PDF via print dialog (client-side, inconsistent)
-- **Yours**: Server-side Playwright renders actual React pages, async via Celery, DMS integration
+- **Yours**: Typed adapter registry compiled by Typst, async via Celery, DMS integration
 
 ### Technical Implementation
 
 **Architecture:**
 
-- **Playwright**: Headless Chromium for server-side rendering
-- **Celery**: Async task processing (PDF generation can take 5-15 seconds)
+- **Typst**: Rust-based typesetting engine (pip-installable, no idle RAM, no Chromium)
+- **Pydantic context models**: Typed contract between adapter and template
+- **Celery**: Async task processing for generate-and-email
 - **DMS Integration**: Generated PDFs stored as Documents with audit trail
 - **Email Delivery**: Django email backend sends PDF attachment
 
 **Adding a new report type** requires only:
-1. Add config to `PdfGenerator.REPORT_CONFIG`
-2. Create print page component with `[data-print-ready]` attribute
-3. Add route and button with `useReportEmail()` hook
+1. Subclass `ReportAdapter` (param serializer + context model + `build_context()`)
+2. Write the Typst template under `Tracker/reports/templates/`
+3. Append one dotted path to `REPORT_ADAPTERS` in `services/registry.py`
 
-**Performance Characteristics:** TBD
+**Performance Characteristics:** Simple documents compile in tens of milliseconds; chart-heavy documents (SPC with CeTZ) in ~200-500ms.
 
 ---
 
@@ -886,7 +888,7 @@ class CAPATasks(SecureModel):
 | **Customer Portal**      | 🔶 Read-only | 🔶 Basic         | ❌ None        | 🔶 Limited   | ✅ Self-service + prefs      |
 | **RBAC Enforcement**     | ✅ App-level  | ✅ App-level      | ✅ App-level   | ✅ App-level  | ✅ ORM-level (SecureManager) |
 | **Document Search**      | 🔶 Keyword   | 🔶 Keyword       | 🔶 Keyword    | 🔶 Basic     | ✅ Hybrid semantic + keyword |
-| **PDF Generation**       | 🔶 Print dialog | 🔶 Separate tool | 🔶 Templates | 🔶 Crystal Reports | ✅ React→PDF via Playwright |
+| **PDF Generation**       | 🔶 Print dialog | 🔶 Separate tool | 🔶 Templates | 🔶 Crystal Reports | ✅ Typst adapter registry |
 | **Graph Data Access**    | ❌ Fixed joins | 🔶 SQL views    | ❌ Manual     | ❌ Manual    | ✅ Scope API with security   |
 | **E-Signatures**         | 🔶 Password only | 🔶 Password only | 🔶 Typed name | 🔶 Checkbox | ✅ Handwritten + password    |
 

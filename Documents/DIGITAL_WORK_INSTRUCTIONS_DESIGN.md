@@ -1,5 +1,10 @@
 # Digital Work Instructions (Substep) Design
 
+> **Status (2026-07-13): implemented as designed.** `Substep`,
+> `BatchExecution`, `SubstepCompletion`, `SubstepResponse`, `SamplingDecision`,
+> gate completions, and translations live in `Tracker/models/dwi.py`, with
+> `viewsets/dwi.py` and `services/dwi/`. Kept as the design record.
+
 ## Overview
 
 Adds a substep layer below the existing `Steps` (Op) model to support Dozuki-style digital work instructions: rich content per substep, resource callouts, mandatory acknowledgment/signoff, per-substep measurement capture, and per-substep change control.

@@ -10,10 +10,12 @@
 |-------|--------|-------------|
 | Phase 0 | ✅ Complete | Schema foundations (UUIDs, tenant FK, constraints, seeding) |
 | Phase 1 | ✅ Complete | RLS + Tenant Middleware implemented |
-| Phase 2 | 🔲 Pending | Facility support (multi-site) |
+| Phase 2 | 🔶 Partial | Facility support (multi-site) — `Facility` model + `UserRole.facility` exist; facility-level data filtering still pending |
 | Phase 3 | 🔲 Pending | Customer portal |
 | Phase 4 | 🔲 Pending | Dedicated deployments |
 | Phase 5 | 🔲 Pending | Hub + Sync (air-gapped)
+
+**Update:** `SecureManager` ContextVar auto-scoping is live — `.objects` on every `SecureModel` auto-filters to the current tenant (set by `TenantMiddleware` / `tenant_context()`); see `Tracker/models/core.py` and `Documents/SECURE_MODEL_TENANT_AUTO_SCOPING.md`.
 
 ---
 

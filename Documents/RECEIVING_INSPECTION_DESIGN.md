@@ -1,6 +1,6 @@
 # Receiving Inspection — Design
 
-Status: **partially built** · Owner: cisherwood · Last updated: 2026-07-01
+Status: **partially built** · Owner: cisherwood · Last updated: 2026-07-13
 
 ## Status & how to read this doc
 
@@ -70,7 +70,7 @@ class SamplePlan:
     reject_number: int      # Re (sentinel 1 for variables)
     strategy: str           # 'C0' | 'Z14' | 'Z19'
     inspection_level: str   # 'I' | 'II' | 'III'
-    severity: str           # 'NORMAL' | 'TIGHTENED' | 'REDUCED'  (⚠ currently a passthrough label — not used to switch tables)
+    severity: str           # 'NORMAL' | 'TIGHTENED' | 'REDUCED'  (selects Z1.4 Table II-A/B/C; effective value comes from the switching engine, §1 index / services.qms.severity_switching)
     method: str = ""        # '' | 'K_SINGLE'  (variables k-method)
     k: float | None = None  # Z1.9 acceptability constant
 
@@ -78,12 +78,14 @@ def compute_sample_plan(*, lot_size, aql, inspection_level='II', severity='NORMA
 def evaluate_variables(*, values, usl=None, lsl=None, k) -> dict   # Z1.9 x̄/s vs k verdict
 ```
 
-> ⚠ **Table-verification status (2026-07):** Z1.4 code letters (all levels) and
-> sample-sizes-by-letter are verified; Z1.9 sample sizes verified. **Outstanding:**
-> the `_Z14_NORMAL_AC` M/N high-AQL cells are suspect (repeated `21` placeholders
-> where the standard has up-arrows), and the full Z1.9 `k` table + C=0 columns need a
-> controlled-copy QA sign-off. Un-tabulated cells fail closed (raise); non-standard
-> AQLs snap up.
+> ✅ **Table-verification status (updated 2026-07-07):** all formerly-outstanding items
+> are resolved. Z1.4 Table II-A re-transcribed from the MIL-STD-105E scan with arrows
+> preserved + followed (the suspect M/N `21`s were up-arrows, now fixed — 2026-07-06);
+> Z1.9 std-dev `k` verified B–J, K–P fail closed pending a purchased Z1.9-2003 copy;
+> and **three-way severity switching is live (2026-07-07)** — `compute_sample_plan`
+> resolves the severity-specific tables (II-A/B/C), with the effective severity supplied
+> by `services.qms.severity_switching`. Un-tabulated cells fail closed (raise);
+> non-standard AQLs snap up. Details in §17.
 
 - Pure computation, **no DB / no tenant scope** — a stateless utility module.
 - **Pluggable strategies, not Z1.4-only.** Encode both:
@@ -593,9 +595,14 @@ block is a later option behind the same flag.
   event. Opt-in, run from the scorecard refresh or a beat task.
 - Connects to the gate engine's severity loop: a CONDITIONAL/SUSPENDED supplier can
   drive TIGHTENED sampling for its receiving step (set the supplier-scoped
-  `SamplingRuleSet.severity`). ⚠ **Note:** setting `severity` is a **numeric no-op until Z1.4
-  severity switching is built** (`compute_sample_plan` ignores `severity` today), so this half
-  is advisory. A sustained-good standing earning skip-lot / dock-to-stock stays deferred (§11).
+  `SamplingRuleSet.severity`). ✅ **Note (updated 2026-07-13): Z1.4 severity switching is
+  live** — `compute_sample_plan` resolves severity-specific tables (II-A normal / II-B
+  tightened / II-C reduced), and the *effective* severity for a Z1.4 `(step, supplier)`
+  comes from the switching engine (`services.qms.severity_switching.effective_severity`,
+  runtime state in `SamplingSeverityState`, updated automatically from lot history by
+  `update_after_lot`). `SamplingRuleSet.severity` is the *starting* severity, honored
+  until history moves the state. A sustained-good standing earning skip-lot /
+  dock-to-stock stays deferred (§11).
 
 ### 10.4 Expiry
 
@@ -671,6 +678,48 @@ against the supplier and feeds the scorecard. Turns reject → disposition(RTV) 
    auto-suspends; it emits `supplier.standing_review` and a human confirms via the SQ
    lifecycle. (Built 2026-07-04; §10.3.) Note: auto-*severity-switching* on the sampling
    plan IS automated — that's a statistical plan mechanic, not an ASL standing transition.
+
+### 10.10 Scorecard calculation notes (salvaged from SQM_UI_PLAN, 2026-07-13)
+
+> `SQM_UI_PLAN.md` (April 2026) is **superseded** — its model layer (separate
+> SupplierNCR / SCAR / IncomingInspection / SupplierApproval tables) contradicts the
+> shipped code and locked decisions above. This subsection preserves the only parts
+> worth keeping. **Nothing here describes shipped behavior** — the shipped scorecard
+> (`services/qms/supplier_scorecard.py`) is a *live, stateless* rollup with explicit
+> A/B/C thresholds (reject rate / CoC / on-time from `MaterialLot.promised_date` /
+> open-SCAR count), deliberately simple for the §11 target and the single source of
+> thresholds per §10.3. The notes below are reference material for the **deferred
+> true-PPM enhancement** (§11 / §17) if it ever lands.
+
+**Weighted composite (reference, not shipped).** Quality (PPM) 40% · on-time delivery
+30% · SCAR response rate 20% · lot acceptance 10% → composite 0–100 → letter
+A 90–100 / B 70–89 / C 50–69 / D 1–49 / F 0-or-disqualified. Conflicts with the shipped
+explicit-threshold A/B/C tier — adopt only if a customer demands a composite score.
+
+**PPM formula (the useful part).**
+`ppm = (rejected_parts / total_received_parts) × 1,000,000`;
+`quality_score = max(0, (10000 − ppm) / 10000 × 100)` (PPM 0 → 100, 1000 → 90,
+5000 → 50, ≥10000 → 0). Feasible now that per-sample defect data exists (§17).
+
+**Edge cases (worth adopting whenever PPM/composite lands):**
+- **Null metric** (no inspections / no PO receipts in period) → exclude its weight and
+  redistribute proportionally across metrics with data; all-null → no scorecard.
+- **No SCARs in period** → response rate = 100, not null — don't penalize having no issues.
+- **Zero activity all period** → generate nothing; the previous snapshot stays "current".
+- **New supplier** → rate on whatever metrics have data, weights redistributed to 100%.
+
+**Snapshot cadence (reference).** The plan stored monthly snapshots (beat task on the
+1st + manual recalc), keeping raw metrics *and* the composite for audit history.
+Relevant only if scorecards ever become stored records; the shipped one computes live.
+
+**Supplier-detail UI patterns worth keeping** (remapped onto shipped models: NCR tab =
+failing `QualityReports` rows; SCAR tab = `CAPA(SUPPLIER)`; ASL tab =
+`SupplierQualification`): a multi-tab supplier detail page (`CapaDetailPage` pattern) —
+Overview (contact + current rating + approval status + recent-activity timeline),
+Performance (12-month composite/PPM/OTD charts + metric cards with trend arrows),
+pre-filtered NCRs / SCARs / Inspections tabs, Documents — and a **scorecard card grid**
+(large letter grade + score progress bar + per-metric trend arrows + status/risk badges,
+sortable by rating / name / last inspection).
 
 ---
 
@@ -972,6 +1021,17 @@ so the doc reflects reality, with honest built-vs-stub characterization.
 CAPA(SUPPLIER) as an 8D request. The supplier *response* capture (Tier-3 portal) stays deferred.
 
 **Supplier scorecard rating tier + badge (Tier-1 #1) — built** (A/B/C + `rating_reason`).
+
+**Severity-switching runtime state exposed read-only (2026-07-13).** `SamplingSeverityState`
+now has a READ-ONLY API at `/api/SamplingSeverityStates/` (`SamplingSeverityStateViewSet`,
+`ReadOnlyModelViewSet`; filters: `step` / `supplier` / `severity` / `discontinued`), so
+inspector/supplier views can show the effective severity and the switch-back position
+instead of hiding the machinery. The serializer adds derived fields `rejects_in_window` /
+`next_severity_on_accepts` / `accepts_needed` from
+`services.qms.severity_switching.switching_status()` — the engine's own thresholds, so the
+badge can never drift from what it enforces. `view_samplingseveritystate` is granted via
+`STAFF_VIEW_PERMISSIONS` (`presets.py`); mutations remain exclusive to the switching
+engine's `update_after_lot()` — no write endpoint exists.
 
 **OSP attaches to the receiving node (design decision, 2026-07) — BUILT end-to-end (2026-07-06).**
 An OSP step is a node in the process; *send-out* and *receive-back* are states/actions on that

@@ -10,6 +10,9 @@
 | Escalation | EscalationPolicy + EscalationStep + EscalationInstance + beat task + `is_acknowledged` registry | Frontend demo done; backend not started |
 | 4 | WatchedRecord, dry-run preview, activity log, unsubscribe links | Not started |
 | 5 | Migrate legacy email sends, ship system templates, retire `services/core/notification.py` | Not started |
+| In-app feed | Feed reader over `NotificationOutbox` — `/api/notifications/feed/`, bell, `/notifications` page | **Done** (2026-07-13, shipped out of phase order) |
+
+**In-app feed (shipped 2026-07-13).** The reader side of `InAppChannel` landed ahead of its planned phase: `NotificationFeedViewSet` (`Tracker/viewsets/notifications.py`) exposes `/api/notifications/feed/` over the request user's own `NotificationOutbox` rows (self-scoped), with an `?unread=true` filter, an `unread-count` action, idempotent `mark-read`, and `mark-all-read`. Frontend: notification bell in the top chrome (`ambac-tracker-ui/src/components/notifications/NotificationBell.tsx`) and the `/notifications` feed page.
 
 Frontend demos (running on a module-level `demoRuleStore`) live in `ambac-tracker-ui/src/pages/{settings,profile}/Notification*` and validate the UX before backend land. Replace the store with TanStack Query against `/api/notifications/*` once Phase 3 backend ships.
 
@@ -95,6 +98,8 @@ Payload schemas are frozen dataclasses with a `sample()` classmethod. The datacl
 ~25 events across Quality (NCR, CAPA, RCA, FPI, inspection, disposition), Orders & WorkOrders (received, ship-date-changed, late-risk, shipped, released, step-complete, held), Documents & Change Control (approval-required, released, approval-decided), Training, Sampling, Equipment (calibration due/overdue), and System (privileged-role-changed, account-locked).
 
 Full catalog in `ambac-tracker-ui/src/lib/notifications/eventCatalog.ts` (frontend mirror) and the various `events.py` modules (backend source of truth).
+
+**Registered 2026-07:** `fpi.requested` / `fpi.decided` (the first-piece andon loop) are live in `Tracker/services/qms/events.py`. **Named gap:** the starter rules in `Tracker/services/core/notifications/system_rules.py` do not yet cover `fpi.*` — new tenants get no default routing for these events until a starter rule is added.
 
 ## Data Model
 

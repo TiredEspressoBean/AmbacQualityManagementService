@@ -1,5 +1,11 @@
 # Change Control Plan
 
+> **Status (2026-07-13): Phase 1 shipped.** `ProcessChangeRequest`/`Order`/
+> `Notice` + `ArtifactSequence` live in `Tracker/models/change_control.py`,
+> with `viewsets/change_control.py` and `services/change_control/`. The
+> out-of-scope FDA boundary below remains a standing decision. Phase 2
+> (document-change artifacts) remains open.
+
 ## Status: Approved for Phase 1 build
 
 Design for change-control infrastructure that wraps controlled changes (process, document, eventually BOM) and routes them through a three-stage Request → Order → Notice pattern matching IATF 16949 and AS9100D expectations. Provides the manufacturing-side change governance layer; complements (does not replace) PLM systems that own engineering-side design management.
