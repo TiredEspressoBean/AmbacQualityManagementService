@@ -16,7 +16,8 @@ attrs==25.4.0
 azure-core==1.38.0
 azure-storage-blob==12.28.0
 billiard==4.2.4
-cascadio==0.0.13
+bleach==6.4.0
+cascadio==0.0.14
 celery==5.6.2
 # 3D model processing (mesh optimization)
 fast-simplification>=0.1.7
@@ -89,6 +90,7 @@ urllib3==2.6.3
 uuid-utils==0.14.0
 vine==5.1.0
 wcwidth==0.2.14
+webencodings==0.5.1
 whitenoise==6.11.0
 dj-database-url==2.3.0
 gunicorn==23.0.0
