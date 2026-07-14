@@ -289,21 +289,6 @@ export function SubstepEditorPage() {
         });
     }, []);
 
-    if (!stepId) {
-        return (
-            <div className="p-6">
-                <h1 className="text-xl font-semibold">Substep Editor</h1>
-                <p className="mt-2 text-sm text-muted-foreground">
-                    Missing stepId in the route. Navigate via{" "}
-                    <code className="font-mono text-xs">
-                        /editor/processes/$processId/steps/$stepId/substeps
-                    </code>
-                    .
-                </p>
-            </div>
-        );
-    }
-
     const substeps: Substep[] = (data?.results as Substep[] | undefined) ?? [];
     // DRAFT-only authoring guard. The backend stamps each substep with
     // `is_editable` (derived from its parent Step's consuming Processes —
@@ -524,6 +509,24 @@ export function SubstepEditorPage() {
         Object.keys(pendingBySubstepId).length +
         pendingCreates.length +
         pendingDeletes.size;
+
+    // Missing-stepId guard lives here, after every hook, so hook order stays
+    // stable across renders (rules-of-hooks). Everything above is null-safe when
+    // stepId is absent: data is undefined → substeps [] → derived values empty.
+    if (!stepId) {
+        return (
+            <div className="p-6">
+                <h1 className="text-xl font-semibold">Substep Editor</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    Missing stepId in the route. Navigate via{" "}
+                    <code className="font-mono text-xs">
+                        /editor/processes/$processId/steps/$stepId/substeps
+                    </code>
+                    .
+                </p>
+            </div>
+        );
+    }
 
     return (
         <SubstepAuthoringProvider value={{ stepId, processId }}>
