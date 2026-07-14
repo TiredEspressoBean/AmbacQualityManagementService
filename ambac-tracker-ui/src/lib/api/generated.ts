@@ -33701,6 +33701,11 @@ Usage:
         schema: z.number().int().optional(),
       },
       {
+        name: "batch_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "current_state",
         type: "Query",
         schema: z.enum(["CLOSED", "IN_PROGRESS", "OPEN"]).optional(),

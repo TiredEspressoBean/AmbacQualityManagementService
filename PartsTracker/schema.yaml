@@ -15661,6 +15661,11 @@ paths:
         schema:
           type: integer
       - in: query
+        name: batch_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: current_state
         schema:
           type: string

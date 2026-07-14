@@ -94,6 +94,9 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
     # Fixed filterset fields - these should be actual model fields, not SerializerMethodField names
     filterset_fields = ["disposition_number", "current_state", "disposition_type", "resolution_completed",
                         "assigned_to", "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name",
+                        # Batch dispositions (a failed cycle's whole load) — filter/list by the batch,
+                        # or reach them as a class via batch_execution (part is null on these).
+                        "batch_execution",
                         # Held-lots surface + RTV loop: reach the rejected lot / its supplier through the
                         # linked receiving quality reports (no denormalized FK on the disposition).
                         "quality_reports__material_lot", "quality_reports__material_lot__supplier"]

@@ -38340,6 +38340,7 @@ export interface operations {
         parameters: {
             query?: {
                 assigned_to?: number;
+                batch_execution?: string;
                 /**
                  * @description * `OPEN` - Open
                  *     * `IN_PROGRESS` - In Progress
