@@ -20893,6 +20893,11 @@ export interface components {
             scrap_verified_at?: string | null;
             /** Format: uuid */
             part?: string | null;
+            /**
+             * Format: uuid
+             * @description Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
+             */
+            batch_execution?: string | null;
             /** Format: uuid */
             step?: string | null;
             rework_attempt_at_step?: number;
@@ -22940,6 +22945,11 @@ export interface components {
             scrap_verified_at?: string | null;
             /** Format: uuid */
             part?: string | null;
+            /**
+             * Format: uuid
+             * @description Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
+             */
+            batch_execution?: string | null;
             /** Format: uuid */
             step?: string | null;
             readonly step_info: {
@@ -22950,7 +22960,7 @@ export interface components {
             quality_reports: string[];
             /** Format: uuid */
             readonly work_order_id: string | null;
-            readonly work_order_erp_id: string | null;
+            readonly work_order_erp_id: string;
             readonly assignee_name: string;
             readonly choices_data: {
                 [key: string]: unknown;
@@ -23015,6 +23025,11 @@ export interface components {
             scrap_verified_at?: string | null;
             /** Format: uuid */
             part?: string | null;
+            /**
+             * Format: uuid
+             * @description Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
+             */
+            batch_execution?: string | null;
             /** Format: uuid */
             step?: string | null;
             rework_attempt_at_step?: number;

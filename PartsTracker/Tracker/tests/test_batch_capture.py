@@ -182,9 +182,16 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
         # The reading promoted to a MeasurementResult under the batch report.
         self.assertEqual(MeasurementResult.objects.filter(report=qr).count(), 1)
 
-    def test_failing_batch_cycle_fails_report_but_quarantines_no_part(self):
-        """A bad cycle marks the report FAIL, but the part-scoped side-effect
-        machinery (auto-quarantine) is skipped — there's no single part."""
+    def test_failing_batch_cycle_contains_the_load(self):
+        """A bad cycle marks the report FAIL and contains the whole load:
+        in-production member parts are quarantined and ONE batch-linked
+        disposition opens (not a per-part or orphaned part=None one)."""
+        from Tracker.models import QuarantineDisposition
+        # Members are actively in production at the cycle.
+        for p in self.parts:
+            p.part_status = PartsStatus.IN_PROGRESS
+            p.save(update_fields=["part_status"])
+
         submit_substep(
             substep=self.batch_insp,
             batch_execution=self.batch,
@@ -194,9 +201,55 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
         )
         qr = QualityReports.objects.get(batch_execution=self.batch, substep=self.batch_insp)
         self.assertEqual(qr.status, "FAIL")
+
+        # Every in-production member is held.
         for p in self.parts:
             p.refresh_from_db()
-            self.assertNotEqual(p.part_status, PartsStatus.QUARANTINED)
+            self.assertEqual(p.part_status, PartsStatus.QUARANTINED)
+
+        # Exactly one disposition, linked to the batch, none orphaned to a part.
+        disps = QuarantineDisposition.objects.filter(batch_execution=self.batch)
+        self.assertEqual(disps.count(), 1)
+        self.assertIsNone(disps.first().part_id)
+        self.assertEqual(
+            QuarantineDisposition.objects.filter(part__in=self.parts).count(), 0,
+        )
+
+    def test_failing_batch_cycle_leaves_terminal_parts_but_still_opens_disposition(self):
+        """Parts already past the step (completed) aren't retroactively un-
+        completed, but the batch disposition still opens to cover the load."""
+        from Tracker.models import QuarantineDisposition
+        for p in self.parts:
+            p.part_status = PartsStatus.COMPLETED
+            p.save(update_fields=["part_status"])
+
+        submit_substep(
+            substep=self.batch_insp, batch_execution=self.batch, user=self.user,
+            captures=[{"node_id": str(uuid4()), "kind": "measurement",
+                       "measurement_definition_id": str(self.md.id), "value_numeric": 9.0}],
+        )
+        for p in self.parts:
+            p.refresh_from_db()
+            self.assertEqual(p.part_status, PartsStatus.COMPLETED)  # not un-completed
+        self.assertEqual(
+            QuarantineDisposition.objects.filter(batch_execution=self.batch).count(), 1,
+        )
+
+    def test_failing_batch_cycle_disposition_is_idempotent(self):
+        """Re-capturing a still-failing cycle doesn't pile up dispositions."""
+        from Tracker.models import QuarantineDisposition
+        for p in self.parts:
+            p.part_status = PartsStatus.IN_PROGRESS
+            p.save(update_fields=["part_status"])
+        for _ in range(2):
+            submit_substep(
+                substep=self.batch_insp, batch_execution=self.batch, user=self.user,
+                captures=[{"node_id": str(uuid4()), "kind": "measurement",
+                           "measurement_definition_id": str(self.md.id), "value_numeric": 9.0}],
+            )
+        self.assertEqual(
+            QuarantineDisposition.objects.filter(batch_execution=self.batch).count(), 1,
+        )
 
     def test_repeat_capture_converges_on_one_batch_report(self):
         for ph in (7.0, 7.2):

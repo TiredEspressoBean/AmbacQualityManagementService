@@ -5532,6 +5532,12 @@ export type QuarantineDisposition = {
   scrap_verified_by_name: string;
   scrap_verified_at?: (string | null) | undefined;
   part?: (string | null) | undefined;
+  batch_execution?:
+    | /**
+     * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
+     */
+    (string | null)
+    | undefined;
   step?: (string | null) | undefined;
   step_info: {};
   rework_attempt_at_step?: /**
@@ -5542,7 +5548,7 @@ export type QuarantineDisposition = {
   rework_limit_exceeded: boolean;
   quality_reports: Array<string>;
   work_order_id: string | null;
-  work_order_erp_id: string | null;
+  work_order_erp_id: string;
   assignee_name: string;
   choices_data: {};
   annotation_status: {};
@@ -9323,6 +9329,10 @@ export type PatchedQuarantineDispositionRequest = Partial<{
   scrap_verified_by: number | null;
   scrap_verified_at: string | null;
   part: string | null;
+  /**
+   * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
+   */
+  batch_execution: string | null;
   step: string | null;
   /**
    * @minimum -2147483648
@@ -10704,6 +10714,12 @@ export type QuarantineDispositionRequest = {
   scrap_verified_by?: (number | null) | undefined;
   scrap_verified_at?: (string | null) | undefined;
   part?: (string | null) | undefined;
+  batch_execution?:
+    | /**
+     * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
+     */
+    (string | null)
+    | undefined;
   step?: (string | null) | undefined;
   rework_attempt_at_step?: /**
    * @minimum -2147483648
@@ -15696,6 +15712,7 @@ const QuarantineDisposition = z.object({
   scrap_verified_by_name: z.string(),
   scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
   part: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullish(),
   step: z.string().uuid().nullish(),
   step_info: z.object({}).partial().passthrough().nullable(),
   rework_attempt_at_step: z
@@ -15707,7 +15724,7 @@ const QuarantineDisposition = z.object({
   rework_limit_exceeded: z.boolean(),
   quality_reports: z.array(z.string().uuid()),
   work_order_id: z.string().uuid().nullable(),
-  work_order_erp_id: z.string().nullable(),
+  work_order_erp_id: z.string(),
   assignee_name: z.string(),
   choices_data: z.object({}).partial().passthrough().nullable(),
   annotation_status: z.object({}).partial().passthrough(),
@@ -15744,6 +15761,7 @@ const QuarantineDispositionRequest = z.object({
   scrap_verified_by: z.number().int().nullish(),
   scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
   part: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullish(),
   step: z.string().uuid().nullish(),
   rework_attempt_at_step: z
     .number()
@@ -15778,6 +15796,7 @@ const PatchedQuarantineDispositionRequest = z
     scrap_verified_by: z.number().int().nullable(),
     scrap_verified_at: z.string().datetime({ offset: true }).nullable(),
     part: z.string().uuid().nullable(),
+    batch_execution: z.string().uuid().nullable(),
     step: z.string().uuid().nullable(),
     rework_attempt_at_step: z.number().int().gte(-2147483648).lte(2147483647),
     quality_reports: z.array(z.string().uuid()),

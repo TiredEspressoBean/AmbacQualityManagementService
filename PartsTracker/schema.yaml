@@ -45982,6 +45982,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when this disposition covers a failed batch cycle (the
+            whole load), instead of a single part. Affected parts are the batch's
+            members. Mutually exclusive with `part` in practice.
         step:
           type: string
           format: uuid
@@ -49611,6 +49618,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when this disposition covers a failed batch cycle (the
+            whole load), instead of a single part. Affected parts are the batch's
+            members. Mutually exclusive with `part` in practice.
         step:
           type: string
           format: uuid
@@ -49635,11 +49649,10 @@ components:
         work_order_id:
           type: string
           format: uuid
-          readOnly: true
           nullable: true
+          readOnly: true
         work_order_erp_id:
           type: string
-          nullable: true
           readOnly: true
         assignee_name:
           type: string
@@ -49768,6 +49781,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when this disposition covers a failed batch cycle (the
+            whole load), instead of a single part. Affected parts are the batch's
+            members. Mutually exclusive with `part` in practice.
         step:
           type: string
           format: uuid

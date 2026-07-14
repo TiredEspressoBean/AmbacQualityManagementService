@@ -723,7 +723,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
     severity_display = serializers.SerializerMethodField()
     containment_completed_by_name = serializers.SerializerMethodField()
     scrap_verified_by_name = serializers.SerializerMethodField()
-    work_order_id = serializers.UUIDField(source='part.work_order_id', read_only=True, allow_null=True)
+    work_order_id = serializers.SerializerMethodField()
     work_order_erp_id = serializers.SerializerMethodField()
 
     class Meta:
@@ -745,7 +745,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'scrap_verified', 'scrap_verification_method', 'scrap_verified_by',
             'scrap_verified_by_name', 'scrap_verified_at',
             # Relationships
-            'part', 'step', 'step_info', 'rework_attempt_at_step',
+            'part', 'batch_execution', 'step', 'step_info', 'rework_attempt_at_step',
             'rework_limit_exceeded', 'quality_reports',
             # WO denormalization (for frontend exception → WO linking)
             'work_order_id', 'work_order_erp_id',
@@ -763,8 +763,22 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         )
 
     @extend_schema_field(serializers.CharField(allow_null=True))
+    def _work_order(self, obj):
+        # Part dispositions carry the WO through the part; batch dispositions
+        # (part is null) carry it through the batch execution.
+        if obj.part_id and getattr(obj.part, 'work_order_id', None):
+            return obj.part.work_order
+        if obj.batch_execution_id:
+            return obj.batch_execution.work_order
+        return None
+
+    @extend_schema_field(serializers.UUIDField(allow_null=True))
+    def get_work_order_id(self, obj):
+        wo = self._work_order(obj)
+        return str(wo.id) if wo else None
+
     def get_work_order_erp_id(self, obj):
-        wo = getattr(obj.part, 'work_order', None) if obj.part_id else None
+        wo = self._work_order(obj)
         return wo.ERP_id if wo else None
 
     def create(self, validated_data):

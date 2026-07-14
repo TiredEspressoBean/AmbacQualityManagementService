@@ -55,6 +55,15 @@ def auto_create_disposition(sender, instance, created, **kwargs):
         # confirmed §15 defect. So auto-create only for in-process (part) failures.
         if instance.material_lot_id:
             return
+        # Batch-cycle failures span the whole load, not one part. Contain the
+        # load and open a single batch-linked disposition via the service
+        # (cross-aggregate write → service, not this signal). Without this the
+        # part-branch below would mint an orphaned part=None disposition and
+        # leave the suspect load uncontained.
+        if instance.batch_execution_id:
+            from Tracker.services.qms.batch_disposition import contain_failed_batch
+            contain_failed_batch(instance)
+            return
         # Check if disposition already exists for this quality report
         if not instance.dispositions.filter(current_state__in=['OPEN', 'IN_PROGRESS']).exists():
             # Find a QA user to assign to (or use the operator)

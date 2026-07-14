@@ -818,6 +818,13 @@ class QuarantineDisposition(SecureModel):
 
     # Relationships
     part = models.ForeignKey('Parts', on_delete=models.PROTECT, null=True, blank=True)
+    batch_execution = models.ForeignKey(
+        'Tracker.BatchExecution', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='dispositions',
+        help_text="Set when this disposition covers a failed batch cycle (the whole "
+                  "load), instead of a single part. Affected parts are the batch's "
+                  "members. Mutually exclusive with `part` in practice.",
+    )
     step = models.ForeignKey('Steps', on_delete=models.PROTECT, null=True, blank=True, related_name='dispositions')
     quality_reports = models.ManyToManyField('QualityReports', related_name='dispositions')
     documents = GenericRelation('Documents')
