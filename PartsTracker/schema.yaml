@@ -49487,7 +49487,7 @@ components:
           type: boolean
       required:
       - status
-    QualityStatusEnum:
+    QualityStatusD0aEnum:
       enum:
       - PASS
       - FAIL
@@ -53064,7 +53064,7 @@ components:
         quality_status:
           nullable: true
           oneOf:
-          - $ref: '#/components/schemas/QualityStatusEnum'
+          - $ref: '#/components/schemas/QualityStatusD0aEnum'
           - $ref: '#/components/schemas/NullEnum'
         parts_at_step:
           type: integer
@@ -56349,6 +56349,100 @@ components:
       - file_url
       - id
       - uploaded_at
+    TravelerBatchCycle:
+      type: object
+      description: |-
+        A batch cycle this part shared at this step (heat-treat / wash / plating).
+
+        The reading and verdict belong to the whole load, not to this part — this
+        is the read side of the BatchExecution model: "this measurement came from
+        the cycle you rode in with N other parts", without the audit lie of
+        attributing a shared cycle value to one part.
+      properties:
+        batch_id:
+          type: string
+          format: uuid
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        sealed_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        part_count:
+          type: integer
+        quality_status:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TravelerBatchCycleQualityStatusEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/TravelerBatchMeasurement'
+      required:
+      - batch_id
+      - completed_at
+      - measurements
+      - part_count
+      - quality_status
+      - sealed_at
+      - started_at
+    TravelerBatchCycleQualityStatusEnum:
+      enum:
+      - PASS
+      - FAIL
+      type: string
+      description: |-
+        * `PASS` - PASS
+        * `FAIL` - FAIL
+    TravelerBatchMeasurement:
+      type: object
+      description: A cycle-level reading (wash temp, bath pH) taken once for the whole
+        load.
+      properties:
+        label:
+          type: string
+        nominal:
+          type: number
+          format: double
+          nullable: true
+        upper_tol:
+          type: number
+          format: double
+          nullable: true
+        lower_tol:
+          type: number
+          format: double
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        actual_value:
+          type: number
+          format: double
+          nullable: true
+        passed:
+          type: boolean
+          nullable: true
+        recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - actual_value
+      - label
+      - lower_tol
+      - nominal
+      - passed
+      - recorded_at
+      - unit
+      - upper_tol
     TravelerDefect:
       type: object
       description: Defect found at a step
@@ -56511,7 +56605,7 @@ components:
         quality_status:
           nullable: true
           oneOf:
-          - $ref: '#/components/schemas/QualityStatusEnum'
+          - $ref: '#/components/schemas/QualityStatusD0aEnum'
           - $ref: '#/components/schemas/NullEnum'
         defects_found:
           type: array
@@ -56525,9 +56619,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TravelerAttachment'
+        batch_cycles:
+          type: array
+          items:
+            $ref: '#/components/schemas/TravelerBatchCycle'
       required:
       - approved_by
       - attachments
+      - batch_cycles
       - completed_at
       - defects_found
       - duration_seconds

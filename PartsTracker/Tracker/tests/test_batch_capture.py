@@ -313,3 +313,19 @@ class BatchQueryableApiTests(TenantTestCase):
         rows = self._rows(resp)
         self.assertGreaterEqual(len(rows), 1)
         self.assertTrue(all(row["batch_execution"] == str(self.batch.id) for row in rows))
+
+    def test_traveler_surfaces_batch_cycle_on_member_part(self):
+        """The read-side payoff: a member part's traveler shows the shared cycle
+        at its step — verdict, member count, and the cycle reading — without
+        attributing the shared value to the part itself."""
+        resp = self.client.get(f"/api/Parts/{self.parts[0].id}/traveler/")
+        self.assertEqual(resp.status_code, 200)
+        entry = next(e for e in resp.json()["traveler"] if e["step_id"] == str(self.step.id))
+        self.assertEqual(len(entry["batch_cycles"]), 1)
+        cycle = entry["batch_cycles"][0]
+        self.assertEqual(cycle["part_count"], 2)          # shared with the sibling
+        self.assertEqual(cycle["quality_status"], "PASS")  # pH 7.1 within 7.0±0.5
+        self.assertIn("pH", [m["label"] for m in cycle["measurements"]])
+        # The part's own per-part measurements stay empty — the reading is the
+        # cycle's, not this part's.
+        self.assertEqual(entry["measurements"], [])

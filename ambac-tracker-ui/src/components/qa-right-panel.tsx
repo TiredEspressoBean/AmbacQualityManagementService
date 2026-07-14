@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QaDocumentsSection } from "./qa-documents-section";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
 import { usePartTraveler } from "@/hooks/parts";
-import { Box, History, CheckCircle2, Clock, Circle, User, Gauge, AlertTriangle, Paperclip, Wrench } from "lucide-react";
+import { Box, History, CheckCircle2, Clock, Circle, User, Gauge, AlertTriangle, Paperclip, Wrench, Boxes } from "lucide-react";
 import type { Schema } from "@/lib/api/types";
 import { PartAnnotator } from "@/pages/PartAnnotator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -209,6 +209,53 @@ export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart
                                                                         </p>
                                                                     )}
                                                                 </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Batch cycles — cycle-level readings shared across the load.
+                                                            Distinguished from per-part measurements (dashed box + "shared
+                                                            with N parts") so a shared value is never read as this part's. */}
+                                                        {step.batch_cycles && step.batch_cycles.length > 0 && (
+                                                            <div className="mt-3 space-y-1">
+                                                                {step.batch_cycles.map((b, bIdx) => (
+                                                                    <div
+                                                                        key={b.batch_id ?? bIdx}
+                                                                        className="rounded border border-dashed border-muted-foreground/40 bg-background/40 px-2 py-1.5"
+                                                                    >
+                                                                        <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1 flex-wrap">
+                                                                            <Boxes className="h-3 w-3" />
+                                                                            Batch cycle
+                                                                            <span className="font-normal">
+                                                                                · shared with {b.part_count} part{b.part_count === 1 ? "" : "s"}
+                                                                            </span>
+                                                                            {b.quality_status && (
+                                                                                <Badge
+                                                                                    variant={b.quality_status === "PASS" ? "default" : "destructive"}
+                                                                                    className="text-xs ml-1"
+                                                                                >
+                                                                                    {b.quality_status}
+                                                                                </Badge>
+                                                                            )}
+                                                                        </p>
+                                                                        {b.measurements.length > 0 && (
+                                                                            <div className="space-y-1">
+                                                                                {b.measurements.map((m, idx) => (
+                                                                                    <div key={idx} className="flex items-center justify-between text-xs bg-background/50 rounded px-2 py-1">
+                                                                                        <span>{m.label}</span>
+                                                                                        <span className={m.passed === false ? "text-red-600" : m.passed ? "text-green-600" : ""}>
+                                                                                            {m.actual_value ?? "—"} {m.unit}
+                                                                                            {m.nominal != null && (
+                                                                                                <span className="text-muted-foreground ml-1">
+                                                                                                    (nom: {m.nominal})
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         )}
 

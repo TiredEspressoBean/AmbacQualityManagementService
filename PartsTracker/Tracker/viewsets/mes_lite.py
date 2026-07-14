@@ -831,7 +831,8 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         """
         from Tracker.models import (
             ProcessStep, QualityReports, MeasurementResult, QuarantineDisposition,
-            EquipmentUsage, MaterialUsage, Documents, StepExecution, TimeEntry
+            EquipmentUsage, MaterialUsage, Documents, StepExecution, TimeEntry,
+            BatchExecution,
         )
         from django.contrib.contenttypes.models import ContentType
 
@@ -913,6 +914,17 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 if mu.step_id not in material_map:
                     material_map[mu.step_id] = []
                 material_map[mu.step_id].append(mu)
+
+        # Get batch cycles this part rode in, grouped by step. A batch cycle's
+        # readings and verdict belong to the whole load — surfaced here so the
+        # traveler shows "this came from the cycle you shared with N parts"
+        # without attributing a shared value to this one part.
+        batches = BatchExecution.objects.filter(parts=part).prefetch_related(
+            'measurements__measurement_definition', 'quality_reports', 'parts',
+        )
+        batch_map = {}  # step_id -> list of BatchExecution
+        for b in batches:
+            batch_map.setdefault(b.step_id, []).append(b)
 
         # Get attachments for this part and its steps
         part_ct = ContentType.objects.get_for_model(Parts)
@@ -1111,6 +1123,40 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                     'classification': doc.classification
                 })
 
+            # Build batch-cycle list — cycles this part shared at this step.
+            batch_cycles = []
+            for b in batch_map.get(step_id, []):
+                b_measurements = []
+                for m in b.measurements.all():
+                    d = m.measurement_definition
+                    b_measurements.append({
+                        'label': d.label if d else 'Unknown',
+                        'nominal': d.nominal if d else None,
+                        'upper_tol': d.upper_tol if d else None,
+                        'lower_tol': d.lower_tol if d else None,
+                        'unit': d.unit if d else '',
+                        'actual_value': float(m.value) if m.value is not None else None,
+                        'passed': m.is_within_spec,
+                        'recorded_at': m.recorded_at,
+                    })
+                # Verdict from any batch inspection report on the cycle.
+                b_status = None
+                for qr in b.quality_reports.all():
+                    if qr.status == 'FAIL':
+                        b_status = 'FAIL'
+                        break
+                    elif qr.status == 'PASS' and b_status != 'FAIL':
+                        b_status = 'PASS'
+                batch_cycles.append({
+                    'batch_id': b.id,
+                    'started_at': b.started_at,
+                    'sealed_at': b.sealed_at,
+                    'completed_at': b.completed_at,
+                    'part_count': len(b.parts.all()),
+                    'quality_status': b_status,
+                    'measurements': b_measurements,
+                })
+
             traveler.append({
                 'step_id': step_id,
                 'step_name': step.name,
@@ -1128,6 +1174,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 'defects_found': defects_found,
                 'materials_used': materials_used,
                 'attachments': attachments,
+                'batch_cycles': batch_cycles,
             })
 
         return Response({

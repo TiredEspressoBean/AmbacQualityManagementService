@@ -762,6 +762,35 @@ class TravelerAttachmentSerializer(serializers.Serializer):
     classification = serializers.CharField(allow_null=True)
 
 
+class TravelerBatchMeasurementSerializer(serializers.Serializer):
+    """A cycle-level reading (wash temp, bath pH) taken once for the whole load."""
+    label = serializers.CharField()
+    nominal = serializers.FloatField(allow_null=True)
+    upper_tol = serializers.FloatField(allow_null=True)
+    lower_tol = serializers.FloatField(allow_null=True)
+    unit = serializers.CharField(allow_null=True)
+    actual_value = serializers.FloatField(allow_null=True)
+    passed = serializers.BooleanField(allow_null=True)
+    recorded_at = serializers.DateTimeField(allow_null=True)
+
+
+class TravelerBatchCycleSerializer(serializers.Serializer):
+    """A batch cycle this part shared at this step (heat-treat / wash / plating).
+
+    The reading and verdict belong to the whole load, not to this part — this
+    is the read side of the BatchExecution model: "this measurement came from
+    the cycle you rode in with N other parts", without the audit lie of
+    attributing a shared cycle value to one part.
+    """
+    batch_id = serializers.UUIDField()
+    started_at = serializers.DateTimeField(allow_null=True)
+    sealed_at = serializers.DateTimeField(allow_null=True)
+    completed_at = serializers.DateTimeField(allow_null=True)
+    part_count = serializers.IntegerField()
+    quality_status = serializers.ChoiceField(choices=['PASS', 'FAIL'], allow_null=True)
+    measurements = TravelerBatchMeasurementSerializer(many=True)
+
+
 class TravelerStepEntrySerializer(serializers.Serializer):
     """Full step entry in the part traveler history"""
     step_id = serializers.UUIDField()
@@ -783,6 +812,7 @@ class TravelerStepEntrySerializer(serializers.Serializer):
     defects_found = TravelerDefectSerializer(many=True)
     materials_used = TravelerMaterialSerializer(many=True)
     attachments = TravelerAttachmentSerializer(many=True)
+    batch_cycles = TravelerBatchCycleSerializer(many=True)
 
 
 class PartTravelerResponseSerializer(serializers.Serializer):

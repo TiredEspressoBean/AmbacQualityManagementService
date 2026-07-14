@@ -8192,10 +8192,11 @@ export type TravelerStepEntry = {
   approved_by: TravelerApproval;
   equipment_used: Array<TravelerEquipment>;
   measurements: Array<TravelerMeasurement>;
-  quality_status: QualityStatusEnum | NullEnum | null;
+  quality_status: QualityStatusD0aEnum | NullEnum | null;
   defects_found: Array<TravelerDefect>;
   materials_used: Array<TravelerMaterial>;
   attachments: Array<TravelerAttachment>;
+  batch_cycles: Array<TravelerBatchCycle>;
 };
 export type TravelerStepStatusEnum =
   /**
@@ -8234,7 +8235,7 @@ export type TravelerMeasurement = {
   recorded_at: string;
   recorded_by: string | null;
 };
-export type QualityStatusEnum =
+export type QualityStatusD0aEnum =
   /**
    * * `PASS` - PASS
    * `FAIL` - FAIL
@@ -8260,6 +8261,33 @@ export type TravelerAttachment = {
   file_url: string;
   uploaded_at: string;
   classification: string | null;
+};
+export type TravelerBatchCycle = {
+  batch_id: string;
+  started_at: string | null;
+  sealed_at: string | null;
+  completed_at: string | null;
+  part_count: number;
+  quality_status: TravelerBatchCycleQualityStatusEnum | NullEnum | null;
+  measurements: Array<TravelerBatchMeasurement>;
+};
+export type TravelerBatchCycleQualityStatusEnum =
+  /**
+   * * `PASS` - PASS
+   * `FAIL` - FAIL
+   *
+   * @enum PASS, FAIL
+   */
+  "PASS" | "FAIL";
+export type TravelerBatchMeasurement = {
+  label: string;
+  nominal: number | null;
+  upper_tol: number | null;
+  lower_tol: number | null;
+  unit: string | null;
+  actual_value: number | null;
+  passed: boolean | null;
+  recorded_at: string | null;
 };
 export type PartsBulkSetStatusInputRequest = {
   ids: Array<string>;
@@ -11598,7 +11626,7 @@ export type StepSummary = {
   completed_at: string | null;
   duration_seconds: number | null;
   operator_name: string | null;
-  quality_status: QualityStatusEnum | NullEnum | null;
+  quality_status: QualityStatusD0aEnum | NullEnum | null;
   parts_at_step: number;
   parts_completed: number;
   measurement_count: number;
@@ -15278,7 +15306,7 @@ const TravelerMeasurement = z.object({
   recorded_at: z.string().datetime({ offset: true }),
   recorded_by: z.string().nullable(),
 });
-const QualityStatusEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
+const QualityStatusD0aEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
 const TravelerDefect = z.object({
   error_type_id: z.string().uuid().nullable(),
   error_name: z.string(),
@@ -15297,6 +15325,28 @@ const TravelerAttachment = z.object({
   uploaded_at: z.string().datetime({ offset: true }),
   classification: z.string().nullable(),
 });
+const TravelerBatchCycleQualityStatusEnum = z.enum(["PASS", "FAIL"]);
+const TravelerBatchMeasurement = z.object({
+  label: z.string(),
+  nominal: z.number().nullable(),
+  upper_tol: z.number().nullable(),
+  lower_tol: z.number().nullable(),
+  unit: z.string().nullable(),
+  actual_value: z.number().nullable(),
+  passed: z.boolean().nullable(),
+  recorded_at: z.string().datetime({ offset: true }).nullable(),
+});
+const TravelerBatchCycle = z.object({
+  batch_id: z.string().uuid(),
+  started_at: z.string().datetime({ offset: true }).nullable(),
+  sealed_at: z.string().datetime({ offset: true }).nullable(),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
+  part_count: z.number().int(),
+  quality_status: z
+    .union([TravelerBatchCycleQualityStatusEnum, NullEnum])
+    .nullable(),
+  measurements: z.array(TravelerBatchMeasurement),
+});
 const TravelerStepEntry = z.object({
   step_id: z.string().uuid(),
   step_name: z.string(),
@@ -15310,10 +15360,11 @@ const TravelerStepEntry = z.object({
   approved_by: TravelerApproval.nullable(),
   equipment_used: z.array(TravelerEquipment),
   measurements: z.array(TravelerMeasurement),
-  quality_status: z.union([QualityStatusEnum, NullEnum]).nullable(),
+  quality_status: z.union([QualityStatusD0aEnum, NullEnum]).nullable(),
   defects_found: z.array(TravelerDefect),
   materials_used: z.array(TravelerMaterial),
   attachments: z.array(TravelerAttachment),
+  batch_cycles: z.array(TravelerBatchCycle),
 });
 const PartTravelerResponse = z.object({
   part_id: z.string().uuid(),
@@ -17765,7 +17816,7 @@ const StepSummary = z.object({
   completed_at: z.string().datetime({ offset: true }).nullable(),
   duration_seconds: z.number().int().nullable(),
   operator_name: z.string().nullable(),
-  quality_status: z.union([QualityStatusEnum, NullEnum]).nullable(),
+  quality_status: z.union([QualityStatusD0aEnum, NullEnum]).nullable(),
   parts_at_step: z.number().int(),
   parts_completed: z.number().int(),
   measurement_count: z.number().int(),
@@ -19650,10 +19701,13 @@ export const schemas = {
   TravelerApproval,
   TravelerEquipment,
   TravelerMeasurement,
-  QualityStatusEnum,
+  QualityStatusD0aEnum,
   TravelerDefect,
   TravelerMaterial,
   TravelerAttachment,
+  TravelerBatchCycleQualityStatusEnum,
+  TravelerBatchMeasurement,
+  TravelerBatchCycle,
   TravelerStepEntry,
   PartTravelerResponse,
   AdvanceLotInputRequest,

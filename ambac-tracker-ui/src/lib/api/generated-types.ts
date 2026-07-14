@@ -22871,7 +22871,7 @@ export interface components {
          *     * `CONDITIONAL` - CONDITIONAL
          * @enum {string}
          */
-        QualityStatusEnum: "PASS" | "FAIL" | "CONDITIONAL";
+        QualityStatusD0aEnum: "PASS" | "FAIL" | "CONDITIONAL";
         /**
          * @description Base serializer for SecureModel instances.
          *
@@ -24747,7 +24747,7 @@ export interface components {
             completed_at: string | null;
             duration_seconds: number | null;
             operator_name: string | null;
-            quality_status: (components["schemas"]["QualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
+            quality_status: (components["schemas"]["QualityStatusD0aEnum"] | components["schemas"]["NullEnum"]) | null;
             parts_at_step: number;
             parts_completed: number;
             measurement_count: number;
@@ -26475,6 +26475,49 @@ export interface components {
             uploaded_at: string;
             classification: string | null;
         };
+        /**
+         * @description A batch cycle this part shared at this step (heat-treat / wash / plating).
+         *
+         *     The reading and verdict belong to the whole load, not to this part — this
+         *     is the read side of the BatchExecution model: "this measurement came from
+         *     the cycle you rode in with N other parts", without the audit lie of
+         *     attributing a shared cycle value to one part.
+         */
+        TravelerBatchCycle: {
+            /** Format: uuid */
+            batch_id: string;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            sealed_at: string | null;
+            /** Format: date-time */
+            completed_at: string | null;
+            part_count: number;
+            quality_status: (components["schemas"]["TravelerBatchCycleQualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
+            measurements: components["schemas"]["TravelerBatchMeasurement"][];
+        };
+        /**
+         * @description * `PASS` - PASS
+         *     * `FAIL` - FAIL
+         * @enum {string}
+         */
+        TravelerBatchCycleQualityStatusEnum: "PASS" | "FAIL";
+        /** @description A cycle-level reading (wash temp, bath pH) taken once for the whole load. */
+        TravelerBatchMeasurement: {
+            label: string;
+            /** Format: double */
+            nominal: number | null;
+            /** Format: double */
+            upper_tol: number | null;
+            /** Format: double */
+            lower_tol: number | null;
+            unit: string | null;
+            /** Format: double */
+            actual_value: number | null;
+            passed: boolean | null;
+            /** Format: date-time */
+            recorded_at: string | null;
+        };
         /** @description Defect found at a step */
         TravelerDefect: {
             /** Format: uuid */
@@ -26541,10 +26584,11 @@ export interface components {
             approved_by: components["schemas"]["TravelerApproval"] | null;
             equipment_used: components["schemas"]["TravelerEquipment"][];
             measurements: components["schemas"]["TravelerMeasurement"][];
-            quality_status: (components["schemas"]["QualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
+            quality_status: (components["schemas"]["QualityStatusD0aEnum"] | components["schemas"]["NullEnum"]) | null;
             defects_found: components["schemas"]["TravelerDefect"][];
             materials_used: components["schemas"]["TravelerMaterial"][];
             attachments: components["schemas"]["TravelerAttachment"][];
+            batch_cycles: components["schemas"]["TravelerBatchCycle"][];
         };
         /**
          * @description * `COMPLETED` - COMPLETED
