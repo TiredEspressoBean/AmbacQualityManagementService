@@ -40114,11 +40114,19 @@ components:
       - updated_at
     MeasurementDataPoint:
       type: object
-      description: Individual measurement data point for SPC charts.
+      description: |-
+        Individual measurement data point for SPC charts.
+
+        `id` / `report_id` are nullable: points now come from the merged two-tier
+        collector (spc_ingest.collect_spc_rows), where a point may originate from a
+        StepExecutionMeasurement (batch/process data) rather than a single
+        MeasurementResult, so there is no one report id. The chart keys points by
+        index, not by these ids.
       properties:
         id:
           type: string
           format: uuid
+          nullable: true
         value:
           type: number
           format: double
@@ -40128,6 +40136,7 @@ components:
         report_id:
           type: string
           format: uuid
+          nullable: true
         part_erp_id:
           type: string
         operator_name:
@@ -40136,11 +40145,9 @@ components:
         is_within_spec:
           type: boolean
       required:
-      - id
       - is_within_spec
       - operator_name
       - part_erp_id
-      - report_id
       - timestamp
       - value
     MeasurementDefinition:

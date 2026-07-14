@@ -23,7 +23,6 @@ explicitly, in addition to the param serializer's upstream check.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -218,11 +217,10 @@ class SpcAdapter(ReportAdapter):
     def build_context(self, validated_params, user, tenant) -> SpcReportContext:
         from Tracker.models import (
             MeasurementDefinition,
-            MeasurementResult,
             ProcessStep,
-            StepExecutionMeasurement,
         )
         from Tracker.models.spc import SPCBaseline
+        from Tracker.services.qms.spc_ingest import collect_spc_rows
 
         measurement_id = validated_params["measurement_id"]
         days = validated_params.get("days", 90)
@@ -240,19 +238,11 @@ class SpcAdapter(ReportAdapter):
         end = timezone.now()
         start = end - timedelta(days=days)
 
-        # Two-tier UNION read (per architectural decision #21):
-        # - MeasurementResult feeds inspection records (QC bench, FPI, DWI
-        #   inspection-point captures).
-        # - StepExecutionMeasurement feeds process data (DWI MeasurementInput
-        #   captures at routine substeps + the legacy direct-record viewset).
-        # Both sources are normalized to `_SpcRow` and merged by timestamp.
-        results = _collect_normalized_rows(
-            tenant=tenant,
-            measurement_id=measurement_id,
-            start=start,
-            end=end,
-            MeasurementResult=MeasurementResult,
-            StepExecutionMeasurement=StepExecutionMeasurement,
+        # Two-tier read (decision #21), deduped and merged by the shared
+        # collector — see services/qms/spc_ingest.collect_spc_rows. The live
+        # chart endpoints read the same source, so PDF and screen agree.
+        results = collect_spc_rows(
+            tenant=tenant, measurement_id=measurement_id, start=start, end=end,
         )
 
         # Spec limits
@@ -417,88 +407,11 @@ def _to_float(v) -> Optional[float]:
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class _SpcRow:
-    """Normalized data point fed to statistics + capability + chart logic.
-
-    Used to merge MeasurementResult (inspection records) and
-    StepExecutionMeasurement (process data) into one timeline without
-    leaking source-specific shapes into the stats / capability code.
+def _collect_normalized_rows(*, tenant, measurement_id, start, end, **_ignored):
+    """Back-compat shim — the collection moved to
+    services/qms/spc_ingest.collect_spc_rows. Kept so existing callers/tests
+    that pass the old (MeasurementResult, StepExecutionMeasurement) kwargs
+    still work; those model kwargs are ignored (the service imports them).
     """
-    timestamp: datetime
-    value: float
-    is_within_spec: bool
-    part_erp_id: str
-    operator_name: Optional[str]
-
-
-def _collect_normalized_rows(
-    *,
-    tenant,
-    measurement_id,
-    start: datetime,
-    end: datetime,
-    MeasurementResult,
-    StepExecutionMeasurement,
-) -> list[_SpcRow]:
-    """Read both measurement sources for the window, normalize, merge, sort.
-
-    Tenant filter applied to both queries (defense-in-depth). Rows with
-    ``is_within_spec is None`` are dropped — they indicate a row where the
-    spec evaluation didn't run, which shouldn't happen in normal paths
-    but defends against partial-state seed/test data.
-    """
-    inspection_rows = (
-        MeasurementResult.objects
-        .filter(
-            tenant=tenant,
-            definition_id=measurement_id,
-            value_numeric__isnull=False,
-            report__created_at__gte=start,
-            report__created_at__lte=end,
-            archived=False,
-        )
-        .select_related("report", "report__part", "created_by")
-    )
-
-    process_rows = (
-        StepExecutionMeasurement.objects
-        .filter(
-            tenant=tenant,
-            measurement_definition_id=measurement_id,
-            value__isnull=False,
-            is_within_spec__isnull=False,
-            recorded_at__gte=start,
-            recorded_at__lte=end,
-            archived=False,
-        )
-        .select_related(
-            "step_execution",
-            "step_execution__part",
-            "recorded_by",
-        )
-    )
-
-    rows: list[_SpcRow] = []
-    for mr in inspection_rows:
-        rows.append(_SpcRow(
-            timestamp=mr.report.created_at,
-            value=float(mr.value_numeric),
-            is_within_spec=bool(mr.is_within_spec),
-            part_erp_id=(mr.report.part.ERP_id if mr.report.part else "") or "",
-            operator_name=_user_name(mr.created_by),
-        ))
-    for sem in process_rows:
-        rows.append(_SpcRow(
-            timestamp=sem.recorded_at,
-            value=float(sem.value),
-            is_within_spec=bool(sem.is_within_spec),
-            part_erp_id=(
-                sem.step_execution.part.ERP_id
-                if sem.step_execution and sem.step_execution.part
-                else ""
-            ) or "",
-            operator_name=_user_name(sem.recorded_by),
-        ))
-    rows.sort(key=lambda r: r.timestamp)
-    return rows
+    from Tracker.services.qms.spc_ingest import collect_spc_rows
+    return collect_spc_rows(tenant=tenant, measurement_id=measurement_id, start=start, end=end)

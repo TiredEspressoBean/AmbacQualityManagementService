@@ -17485,16 +17485,24 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
-        /** @description Individual measurement data point for SPC charts. */
+        /**
+         * @description Individual measurement data point for SPC charts.
+         *
+         *     `id` / `report_id` are nullable: points now come from the merged two-tier
+         *     collector (spc_ingest.collect_spc_rows), where a point may originate from a
+         *     StepExecutionMeasurement (batch/process data) rather than a single
+         *     MeasurementResult, so there is no one report id. The chart keys points by
+         *     index, not by these ids.
+         */
         MeasurementDataPoint: {
             /** Format: uuid */
-            id: string;
+            id?: string | null;
             /** Format: double */
             value: number;
             /** Format: date-time */
             timestamp: string;
             /** Format: uuid */
-            report_id: string;
+            report_id?: string | null;
             part_erp_id: string;
             operator_name: string | null;
             is_within_spec: boolean;

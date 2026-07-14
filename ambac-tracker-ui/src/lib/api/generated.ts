@@ -11178,10 +11178,10 @@ export type SPCDataResponse = {
   statistics: {};
 };
 export type MeasurementDataPoint = {
-  id: string;
+  id?: (string | null) | undefined;
   value: number;
   timestamp: string;
-  report_id: string;
+  report_id?: (string | null) | undefined;
   part_erp_id: string;
   operator_name: string | null;
   is_within_spec: boolean;
@@ -19096,10 +19096,10 @@ const SPCCapabilityResponse = z.object({
   interpretation: z.string(),
 });
 const MeasurementDataPoint = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid().nullish(),
   value: z.number(),
   timestamp: z.string().datetime({ offset: true }),
-  report_id: z.string().uuid(),
+  report_id: z.string().uuid().nullish(),
   part_erp_id: z.string(),
   operator_name: z.string().nullable(),
   is_within_spec: z.boolean(),

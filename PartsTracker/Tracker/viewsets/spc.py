@@ -99,11 +99,18 @@ class ProcessSPCSerializer(serializers.ModelSerializer):
 
 
 class MeasurementDataPointSerializer(serializers.Serializer):
-    """Individual measurement data point for SPC charts."""
-    id = serializers.UUIDField()
+    """Individual measurement data point for SPC charts.
+
+    `id` / `report_id` are nullable: points now come from the merged two-tier
+    collector (spc_ingest.collect_spc_rows), where a point may originate from a
+    StepExecutionMeasurement (batch/process data) rather than a single
+    MeasurementResult, so there is no one report id. The chart keys points by
+    index, not by these ids.
+    """
+    id = serializers.UUIDField(required=False, allow_null=True)
     value = serializers.FloatField()
     timestamp = serializers.DateTimeField()
-    report_id = serializers.UUIDField()
+    report_id = serializers.UUIDField(required=False, allow_null=True)
     part_erp_id = serializers.CharField()
     operator_name = serializers.CharField(allow_null=True)
     is_within_spec = serializers.BooleanField()
@@ -275,31 +282,24 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         end_date = timezone.now()
         start_date = end_date - timedelta(days=days)
 
-        # Query measurement results - filter by tenant using qs_for_user()
-        results = self.qs_for_user(MeasurementResult).filter(
-            definition_id=measurement_id,
-            value_numeric__isnull=False,
-            report__created_at__gte=start_date,
-            report__created_at__lte=end_date,
-            archived=False,
-        ).select_related(
-            'report',
-            'report__part',
-            'created_by',
-        ).order_by('report__created_at')[:limit]
+        # Two-tier read via the shared collector — same source as the PDF
+        # report, so process parameters (batch cycle readings, routine-substep
+        # captures) chart on screen, not just inspection-point measurements.
+        from Tracker.services.qms.spc_ingest import collect_spc_rows
+        rows = collect_spc_rows(
+            tenant=definition.tenant, measurement_id=measurement_id,
+            start=start_date, end=end_date,
+        )[:limit]
 
-        # Build data points
-        data_points = []
-        for result in results:
-            data_points.append({
-                'id': result.id,
-                'value': result.value_numeric,
-                'timestamp': result.report.created_at,
-                'report_id': result.report_id,
-                'part_erp_id': result.report.part.ERP_id if result.report.part else 'N/A',
-                'operator_name': result.created_by.get_full_name() if result.created_by else None,
-                'is_within_spec': result.is_within_spec,
-            })
+        data_points = [{
+            'id': None,
+            'value': r.value,
+            'timestamp': r.timestamp,
+            'report_id': None,
+            'part_erp_id': r.part_erp_id or 'N/A',
+            'operator_name': r.operator_name,
+            'is_within_spec': r.is_within_spec,
+        } for r in rows]
 
         # Calculate statistics
         if data_points:
@@ -421,14 +421,15 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         end_date = timezone.now()
         start_date = end_date - timedelta(days=days)
 
-        # Get all values - filter by tenant using qs_for_user()
-        values = list(self.qs_for_user(MeasurementResult).filter(
-            definition_id=measurement_id,
-            value_numeric__isnull=False,
-            report__created_at__gte=start_date,
-            report__created_at__lte=end_date,
-            archived=False,
-        ).values_list('value_numeric', flat=True).order_by('report__created_at'))
+        # Two-tier read via the shared collector (same source as the chart and
+        # the PDF report) so capability reflects process parameters too.
+        from Tracker.services.qms.spc_ingest import collect_spc_rows
+        values = [
+            r.value for r in collect_spc_rows(
+                tenant=definition.tenant, measurement_id=measurement_id,
+                start=start_date, end=end_date,
+            )
+        ]
 
         if len(values) < 2:
             return Response({

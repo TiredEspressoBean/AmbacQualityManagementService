@@ -1200,6 +1200,74 @@ class SpcAdapterUnionReadTests(DwiPhase3BaseTestCase):
         self.assertEqual(timestamps, sorted(timestamps))
 
 
+class SpcIngestDedupTests(DwiPhase3BaseTestCase):
+    """The two-tier collector dedups: an inspection-point capture writes both a
+    SEM and a promoted MeasurementResult for one physical reading, so the SEM
+    must not be counted again. Routine-substep and batch (process-parameter)
+    SEMs — which never promote — are counted."""
+
+    def _window(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        return (timezone.now() - timedelta(days=30), timezone.now() + timedelta(hours=1))
+
+    def test_inspection_capture_counts_once_not_twice(self):
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+        from Tracker.services.qms.spc_ingest import collect_spc_rows
+
+        # One inspection-point capture → 1 SEM (Tier 1) + 1 promoted MR (Tier 2).
+        record_dwi_measurement(
+            step_execution=self.step_execution, substep=self.inspection_substep,
+            measurement_definition=self.measurement_def, value=1.247, recorded_by=self.user,
+        )
+        start, end = self._window()
+        rows = collect_spc_rows(
+            tenant=self.tenant, measurement_id=self.measurement_def.id, start=start, end=end,
+        )
+        # Exactly one row — the MR. The inspection SEM is deduped out.
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].value, 1.247)
+
+    def test_routine_process_capture_is_counted(self):
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+        from Tracker.services.qms.spc_ingest import collect_spc_rows
+
+        # Routine (non-inspection) substep → SEM only, no MR. Must still chart.
+        record_dwi_measurement(
+            step_execution=self.step_execution, substep=self.routine_substep,
+            measurement_definition=self.measurement_def, value=1.250, recorded_by=self.user,
+        )
+        start, end = self._window()
+        rows = collect_spc_rows(
+            tenant=self.tenant, measurement_id=self.measurement_def.id, start=start, end=end,
+        )
+        self.assertEqual([r.value for r in rows], [1.250])
+
+    def test_batch_process_parameter_is_counted_with_no_part(self):
+        """A batch cycle reading on a routine batch substep charts as a process
+        parameter — SEM with a null step_execution, so no part attribution."""
+        from Tracker.models import BatchExecution, StepExecutionMeasurement, Substep
+        from Tracker.services.qms.spc_ingest import collect_spc_rows
+
+        batch_substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=5, title="Cycle reading",
+            scope="batch", is_inspection_point=False,
+        )
+        batch = BatchExecution.objects.create(
+            tenant=self.tenant, work_order=self.work_order, step=self.step, started_by=self.user,
+        )
+        StepExecutionMeasurement.objects.create(
+            tenant=self.tenant, batch_execution=batch, measurement_definition=self.measurement_def,
+            value=1.248, recorded_by=self.user, substep=batch_substep,
+        )
+        start, end = self._window()
+        rows = collect_spc_rows(
+            tenant=self.tenant, measurement_id=self.measurement_def.id, start=start, end=end,
+        )
+        self.assertEqual([r.value for r in rows], [1.248])
+        self.assertEqual(rows[0].part_erp_id, "")  # cycle value belongs to no one part
+
+
 class SubstepBodyBlocksNodeIdValidationTest(TestCase):
     """`SubstepSerializer.validate_body_blocks` — node_id format + uniqueness.
 
