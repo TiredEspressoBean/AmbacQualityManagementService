@@ -5360,9 +5360,13 @@ export type QualityReports = {
    */
   step_execution: string | null;
   /**
-   * The substep whose capture produced this report. One report per (step_execution, substep) inspection event.
+   * The substep whose capture produced this report. One report per (step_execution, substep) or (batch_execution, substep) event.
    */
   substep: string | null;
+  /**
+   * The batch whose capture produced this report, for BATCH-scope inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive with step_execution — a report is per-part OR per-batch, never both.
+   */
+  batch_execution: string | null;
   equipment_links: Array<QualityReportEquipment>;
   personnel_links: Array<QualityReportPersonnel>;
   part_info: {};
@@ -6348,8 +6352,19 @@ export type PaginatedStepExecutionMeasurementList = {
 };
 export type StepExecutionMeasurement = {
   id: string;
-  step_execution: string;
+  step_execution?:
+    | /**
+     * The part-visit this reading belongs to. Null for BATCH-scope measurements, which key on batch_execution instead.
+     */
+    (string | null)
+    | undefined;
   step_execution_info: {};
+  batch_execution?:
+    | /**
+     * The batch this reading belongs to, for BATCH-scope substeps (one cycle reading for the whole load). Mutually exclusive with step_execution.
+     */
+    (string | null)
+    | undefined;
   measurement_definition: string;
   measurement_definition_info: {};
   value?:
@@ -14472,6 +14487,7 @@ const QualityReports = z.object({
   reject_number: z.number().int().nullable(),
   step_execution: z.string().uuid().nullable(),
   substep: z.string().uuid().nullable(),
+  batch_execution: z.string().uuid().nullable(),
   equipment_links: z.array(QualityReportEquipment),
   personnel_links: z.array(QualityReportPersonnel),
   part_info: z.object({}).partial().passthrough().nullable(),
@@ -16109,8 +16125,9 @@ const PatchedShiftRequest = z
   .partial();
 const StepExecutionMeasurement = z.object({
   id: z.string().uuid(),
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
   step_execution_info: z.object({}).partial().passthrough().nullable(),
+  batch_execution: z.string().uuid().nullish(),
   measurement_definition: z.string().uuid(),
   measurement_definition_info: z.object({}).partial().passthrough().nullable(),
   value: z
@@ -16137,7 +16154,8 @@ const PaginatedStepExecutionMeasurementList = z.object({
   results: z.array(StepExecutionMeasurement),
 });
 const StepExecutionMeasurementRequest = z.object({
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullish(),
   measurement_definition: z.string().uuid(),
   value: z
     .string()
@@ -16151,7 +16169,8 @@ const StepExecutionMeasurementRequest = z.object({
 });
 const PatchedStepExecutionMeasurementRequest = z
   .object({
-    step_execution: z.string().uuid(),
+    step_execution: z.string().uuid().nullable(),
+    batch_execution: z.string().uuid().nullable(),
     measurement_definition: z.string().uuid(),
     value: z
       .string()

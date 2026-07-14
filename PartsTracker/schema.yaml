@@ -46371,6 +46371,15 @@ components:
         step_execution:
           type: string
           format: uuid
+          nullable: true
+          description: The part-visit this reading belongs to. Null for BATCH-scope
+            measurements, which key on batch_execution instead.
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: The batch this reading belongs to, for BATCH-scope substeps
+            (one cycle reading for the whole load). Mutually exclusive with step_execution.
         measurement_definition:
           type: string
           format: uuid
@@ -49320,7 +49329,15 @@ components:
           readOnly: true
           nullable: true
           description: The substep whose capture produced this report. One report
-            per (step_execution, substep) inspection event.
+            per (step_execution, substep) or (batch_execution, substep) event.
+        batch_execution:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The batch whose capture produced this report, for BATCH-scope
+            inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive
+            with step_execution — a report is per-part OR per-batch, never both.
         equipment_links:
           type: array
           items:
@@ -49367,6 +49384,7 @@ components:
           type: boolean
       required:
       - accept_number
+      - batch_execution
       - created_at
       - detected_by_info
       - equipment_links
@@ -52413,11 +52431,20 @@ components:
         step_execution:
           type: string
           format: uuid
+          nullable: true
+          description: The part-visit this reading belongs to. Null for BATCH-scope
+            measurements, which key on batch_execution instead.
         step_execution_info:
           type: object
           additionalProperties: {}
           nullable: true
           readOnly: true
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: The batch this reading belongs to, for BATCH-scope substeps
+            (one cycle reading for the whole load). Mutually exclusive with step_execution.
         measurement_definition:
           type: string
           format: uuid
@@ -52494,7 +52521,6 @@ components:
       - recorded_by
       - recorded_by_info
       - spec_status
-      - step_execution
       - step_execution_info
       - updated_at
     StepExecutionMeasurementRequest:
@@ -52504,6 +52530,15 @@ components:
         step_execution:
           type: string
           format: uuid
+          nullable: true
+          description: The part-visit this reading belongs to. Null for BATCH-scope
+            measurements, which key on batch_execution instead.
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: The batch this reading belongs to, for BATCH-scope substeps
+            (one cycle reading for the whole load). Mutually exclusive with step_execution.
         measurement_definition:
           type: string
           format: uuid
@@ -52536,7 +52571,6 @@ components:
       required:
       - measurement_definition
       - recorded_by
-      - step_execution
     StepExecutionRequest:
       type: object
       description: |-

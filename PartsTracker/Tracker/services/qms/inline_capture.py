@@ -39,14 +39,15 @@ from Tracker.services.qms.quality_report import record_quality_report_side_effec
 
 
 def record_dwi_measurement(
-    step_execution: StepExecution,
-    substep: Substep,
-    measurement_definition: MeasurementDefinition,
+    step_execution: Optional[StepExecution] = None,
+    substep: Substep = None,
+    measurement_definition: MeasurementDefinition = None,
     value: Optional[float] = None,
     value_string: str = "",
     recorded_by=None,
     equipment: Optional[Equipments] = None,
     sample_number: Optional[int] = None,
+    batch_execution=None,
 ) -> StepExecutionMeasurement:
     """Record a DWI MeasurementInput capture.
 
@@ -88,9 +89,12 @@ def record_dwi_measurement(
     with transaction.atomic():
         # Tier 1: always write process data. SecureModel.save() auto-fills
         # tenant from the ContextVar; StepExecutionMeasurement.save() then
-        # auto-evaluates is_within_spec from the definition.
+        # auto-evaluates is_within_spec from the definition. A reading targets
+        # exactly one of step_execution / batch_execution (BATCH-scope readings
+        # belong to the cycle, not to any one part).
         sem = StepExecutionMeasurement.objects.create(
             step_execution=step_execution,
+            batch_execution=batch_execution,
             measurement_definition=measurement_definition,
             value=value,
             string_value=value_string,
@@ -111,6 +115,7 @@ def record_dwi_measurement(
                 recorded_by=recorded_by,
                 equipment=equipment,
                 sample_number=sample_number,
+                batch_execution=batch_execution,
             )
 
     return sem
@@ -119,7 +124,7 @@ def record_dwi_measurement(
 def _promote_to_inspection_record(
     *,
     sem: StepExecutionMeasurement,
-    step_execution: StepExecution,
+    step_execution: Optional[StepExecution],
     substep: Substep,
     measurement_definition: MeasurementDefinition,
     value: Optional[float],
@@ -127,12 +132,14 @@ def _promote_to_inspection_record(
     recorded_by,
     equipment: Optional[Equipments],
     sample_number: Optional[int] = None,
+    batch_execution=None,
 ) -> None:
     """Find or create the QualityReports + create a MeasurementResult.
 
     Idempotent on the QualityReports lookup: one report per (step_execution,
-    substep) inspection event. Subsequent captures during the same substep
-    attach as additional MeasurementResult rows under the existing report.
+    substep) — or (batch_execution, substep) for BATCH-scope readings —
+    inspection event. Subsequent captures during the same substep attach as
+    additional MeasurementResult rows under the existing report.
 
     Side effects (`record_quality_report_side_effects`) fire when:
     1. The QualityReports is created for the first time, OR
@@ -145,9 +152,22 @@ def _promote_to_inspection_record(
     """
     from Tracker.models import MaterialLot, OutsideProcessShipment
 
-    step = step_execution.step
-
-    if step_execution.part_id is not None:
+    if batch_execution is not None:
+        # BATCH-scope reading: one report per (batch_execution, substep). The
+        # cycle measurement (wash temp, cure time) belongs to the load, not a
+        # part — so no auto-quarantine of an individual part here.
+        step = batch_execution.step
+        report_fields = {
+            'batch_execution': batch_execution,
+            'substep': substep,
+        }
+        report = (
+            QualityReports.objects
+            .filter(batch_execution=batch_execution, substep=substep)
+            .first()
+        )
+    elif step_execution is not None and step_execution.part_id is not None:
+        step = step_execution.step
         # Part DWI: one report per (step_execution, substep) inspection event.
         part = step_execution.part
         report_fields = {
@@ -167,6 +187,7 @@ def _promote_to_inspection_record(
         # outside_process.receive_parts_back), so reuse that subject-keyed report —
         # DWI captures append to it. Cores and other subjects have no
         # inspection-record promotion path in v1.
+        step = step_execution.step
         subj = step_execution.subject_object
         if isinstance(subj, MaterialLot):
             report_fields = {'material_lot': subj}
@@ -242,8 +263,14 @@ def _promote_to_inspection_record(
     # into FAIL (auto-quarantine, ncr.opened, sampling fallback). Subsequent
     # measurements that keep the report in FAIL don't re-fire (would be
     # noise even though events are idempotent).
+    #
+    # Batch-cycle reports are excluded: every side effect here is part-scoped
+    # (sampling-trigger state, auto-quarantine, sibling fallback-sampling), and
+    # a batch report has no single part to react on — SamplingTriggerManager
+    # would dereference a null part. A failed batch cycle is recorded as a FAIL
+    # on the report (visible in the inbox); reacting to it is not v1 behavior.
     transitioning_into_fail = (prior_status != "FAIL" and new_status == "FAIL")
-    if is_new_report or transitioning_into_fail:
+    if (is_new_report or transitioning_into_fail) and batch_execution is None:
         record_quality_report_side_effects(report)
 
 

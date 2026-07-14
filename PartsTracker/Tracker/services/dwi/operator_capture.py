@@ -161,14 +161,16 @@ def submit_substep(
             )
 
     with transaction.atomic():
-        # Batch substeps span many parts → no single-part QualityReport; skip the
-        # inspection-record side effects in batch mode (per-part SAMPLED substeps
-        # carry the inspection findings). v1 batch substeps are attestation/status/etc.
-        report = (
-            ensure_quality_report(substep, step_execution, user)
-            if (substep.is_inspection_point and not is_batch)
-            else None
-        )
+        # An inspection-point substep gets a QualityReports either way; the
+        # keying mode differs. Batch → one report for the whole load (keyed on
+        # batch_execution); per-part → one report per visit (keyed on
+        # step_execution). ensure_quality_report picks the mode.
+        if substep.is_inspection_point:
+            report = ensure_quality_report(
+                substep, step_execution, user, batch_execution=batch_execution,
+            )
+        else:
+            report = None
         response_count = 0
         measurement_count = 0
 
@@ -179,15 +181,10 @@ def submit_substep(
                 continue
 
             if kind == "measurement":
-                if is_batch:
-                    # Per-batch measurements need a batch-scoped measurement store
-                    # (deferred — needs a migration). Keep measurements on per-part
-                    # SAMPLED substeps for now.
-                    raise ValidationError(
-                        "Batch-scope measurements aren't supported yet; keep measurement "
-                        "captures on per-part (SAMPLED) substeps."
-                    )
-                _handle_measurement(cap, substep, step_execution, user, sample_number)
+                _handle_measurement(
+                    cap, substep, step_execution, user, sample_number,
+                    batch_execution=batch_execution,
+                )
                 # MeasurementInput doesn't write SubstepResponse — its row
                 # lives in StepExecutionMeasurement (+ MeasurementResult via
                 # promotion). We still count it for the response total so
@@ -310,12 +307,22 @@ def submit_substep(
 # QualityReports lifecycle
 # -------------------------------------------------------------------------
 
-def ensure_quality_report(substep, step_execution, user) -> QualityReports:
-    """Find or create the QualityReports for this (step_execution, substep)
-    inspection event. `record_dwi_measurement` finds-or-creates against the same
-    pair, so both capture paths converge on one report row — the partial unique
-    constraint on (step_execution, substep) is what makes that convergence a
-    guarantee rather than a hope.
+def ensure_quality_report(substep, step_execution=None, user=None, *, batch_execution=None) -> QualityReports:
+    """Find or create the QualityReports for this inspection event.
+
+    Three keying modes, mutually exclusive:
+    - **batch** (`batch_execution` set): one report per (batch_execution, substep)
+      — BATCH-scope inspection substeps (a wash/heat-treat cycle inspected once
+      for the whole load).
+    - **part** (`step_execution` on a part): one report per (step_execution,
+      substep). `record_dwi_measurement` finds-or-creates against the same pair,
+      so both capture paths converge on one row — the partial unique constraints
+      are what make that convergence a guarantee rather than a hope.
+    - **receiving/OSP** (`step_execution` on a MaterialLot / shipment subject):
+      converge on the subject-keyed report opened up front.
+
+    `batch_execution` is keyword-only so the existing positional callers
+    (`ensure_inspection_qr` viewset, part-path callers) keep working unchanged.
 
     Exposed via `POST /api/Substeps/{id}/ensure_inspection_qr/` so the
     operator runtime can pre-bind a QR to capture nodes (PartAnnotation,
@@ -323,6 +330,23 @@ def ensure_quality_report(substep, step_execution, user) -> QualityReports:
     operator finishes the substep. Idempotent — safe to call eagerly on
     substep open.
     """
+    if batch_execution is not None:
+        # BATCH-scope inspection — one report per (batch_execution, substep).
+        report, _ = QualityReports.objects.get_or_create(
+            batch_execution=batch_execution,
+            substep=substep,
+            defaults={
+                "step": batch_execution.step,
+                "detected_by": user,
+                "sampling_method": "dwi_substep_submit",
+                "status": "PENDING",
+            },
+        )
+        return report
+
+    if step_execution is None:
+        return None  # type: ignore[return-value]
+
     if step_execution.part_id is not None:
         # Part DWI — one report per (step_execution, substep).
         report, _ = QualityReports.objects.get_or_create(
@@ -370,7 +394,7 @@ def ensure_quality_report(substep, step_execution, user) -> QualityReports:
 # Per-kind handlers
 # -------------------------------------------------------------------------
 
-def _handle_measurement(cap, substep, step_execution, user, sample_number=None):
+def _handle_measurement(cap, substep, step_execution, user, sample_number=None, *, batch_execution=None):
     """Route MeasurementInput captures through the existing two-tier service
     so Tier 1 (StepExecutionMeasurement) and Tier 2 (QualityReports +
     MeasurementResult) stay in lockstep with non-substep capture paths.
@@ -378,7 +402,10 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None):
     ``sample_number`` tags the promoted MeasurementResult with which sampled
     unit (1..n) this reading belongs to — set by the receiving unit-by-unit
     runtime so the lot-acceptance evaluators (attribute defective-unit count,
-    Z1.9 per-reading) can group/gather correctly. None for per-part DWI."""
+    Z1.9 per-reading) can group/gather correctly. None for per-part DWI.
+
+    ``batch_execution`` routes a BATCH-scope reading (one cycle measurement for
+    the whole load) to the batch keying instead of step_execution."""
     md_id = cap.get("measurement_definition_id")
     if not md_id:
         return
@@ -403,6 +430,7 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None):
         recorded_by=user,
         equipment=equipment,
         sample_number=sample_number,
+        batch_execution=batch_execution,
     )
 
 

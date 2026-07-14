@@ -21139,8 +21139,16 @@ export interface components {
         };
         /** @description Serializer for step execution measurements. */
         PatchedStepExecutionMeasurementRequest: {
-            /** Format: uuid */
-            step_execution?: string;
+            /**
+             * Format: uuid
+             * @description The part-visit this reading belongs to. Null for BATCH-scope measurements, which key on batch_execution instead.
+             */
+            step_execution?: string | null;
+            /**
+             * Format: uuid
+             * @description The batch this reading belongs to, for BATCH-scope substeps (one cycle reading for the whole load). Mutually exclusive with step_execution.
+             */
+            batch_execution?: string | null;
             /** Format: uuid */
             measurement_definition?: string;
             /**
@@ -22801,9 +22809,14 @@ export interface components {
             readonly step_execution: string | null;
             /**
              * Format: uuid
-             * @description The substep whose capture produced this report. One report per (step_execution, substep) inspection event.
+             * @description The substep whose capture produced this report. One report per (step_execution, substep) or (batch_execution, substep) event.
              */
             readonly substep: string | null;
+            /**
+             * Format: uuid
+             * @description The batch whose capture produced this report, for BATCH-scope inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive with step_execution — a report is per-part OR per-batch, never both.
+             */
+            readonly batch_execution: string | null;
             readonly equipment_links: components["schemas"]["QualityReportEquipment"][];
             readonly personnel_links: components["schemas"]["QualityReportPersonnel"][];
             readonly part_info: {
@@ -24363,11 +24376,19 @@ export interface components {
         StepExecutionMeasurement: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: uuid */
-            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The part-visit this reading belongs to. Null for BATCH-scope measurements, which key on batch_execution instead.
+             */
+            step_execution?: string | null;
             readonly step_execution_info: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Format: uuid
+             * @description The batch this reading belongs to, for BATCH-scope substeps (one cycle reading for the whole load). Mutually exclusive with step_execution.
+             */
+            batch_execution?: string | null;
             /** Format: uuid */
             measurement_definition: string;
             readonly measurement_definition_info: {
@@ -24413,8 +24434,16 @@ export interface components {
         };
         /** @description Serializer for step execution measurements. */
         StepExecutionMeasurementRequest: {
-            /** Format: uuid */
-            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The part-visit this reading belongs to. Null for BATCH-scope measurements, which key on batch_execution instead.
+             */
+            step_execution?: string | null;
+            /**
+             * Format: uuid
+             * @description The batch this reading belongs to, for BATCH-scope substeps (one cycle reading for the whole load). Mutually exclusive with step_execution.
+             */
+            batch_execution?: string | null;
             /** Format: uuid */
             measurement_definition: string;
             /**

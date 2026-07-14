@@ -433,7 +433,15 @@ class QualityReports(SecureModel):
         'Tracker.Substep', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='quality_reports',
         help_text="The substep whose capture produced this report. One report per "
-                  "(step_execution, substep) inspection event.",
+                  "(step_execution, substep) or (batch_execution, substep) event.",
+    )
+    batch_execution = models.ForeignKey(
+        'Tracker.BatchExecution', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='quality_reports',
+        help_text="The batch whose capture produced this report, for BATCH-scope "
+                  "inspection substeps (wash/heat-treat/plating cycles). Mutually "
+                  "exclusive with step_execution — a report is per-part OR per-batch, "
+                  "never both.",
     )
 
     class Meta:
@@ -448,6 +456,7 @@ class QualityReports(SecureModel):
             models.Index(fields=['step', 'created_at'], name='qr_step_created_idx'),
             models.Index(fields=['status', 'created_at'], name='qr_status_created_idx'),
             models.Index(fields=['step_execution', 'substep'], name='qr_exec_substep_idx'),
+            models.Index(fields=['batch_execution', 'substep'], name='qr_batch_substep_idx'),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -464,6 +473,20 @@ class QualityReports(SecureModel):
                 fields=['step_execution', 'substep'],
                 condition=models.Q(step_execution__isnull=False) & models.Q(substep__isnull=False),
                 name='qualityreport_exec_substep_uniq',
+            ),
+            # Batch counterpart: one report per (batch, substep) inspection event.
+            # BATCH-scope substeps key here instead of on step_execution.
+            models.UniqueConstraint(
+                fields=['batch_execution', 'substep'],
+                condition=models.Q(batch_execution__isnull=False) & models.Q(substep__isnull=False),
+                name='qualityreport_batch_substep_uniq',
+            ),
+            # The two provenance modes are exclusive: a report is per-part
+            # (step_execution) OR per-batch (batch_execution), never both. Both
+            # null is still fine — receiving / OSP / hand-logged reports.
+            models.CheckConstraint(
+                check=~(models.Q(step_execution__isnull=False) & models.Q(batch_execution__isnull=False)),
+                name='qualityreport_not_both_provenance',
             ),
             # A report targets at most one subject — a part, an incoming lot, or a
             # returned outside-process shipment — never two at once. `part` is
@@ -2931,7 +2954,19 @@ class StepExecutionMeasurement(SecureModel):
     step_execution = models.ForeignKey(
         'Tracker.StepExecution',
         on_delete=models.CASCADE,
-        related_name='measurements'
+        related_name='measurements',
+        null=True, blank=True,
+        help_text='The part-visit this reading belongs to. Null for BATCH-scope '
+                  'measurements, which key on batch_execution instead.',
+    )
+    batch_execution = models.ForeignKey(
+        'Tracker.BatchExecution',
+        on_delete=models.CASCADE,
+        related_name='measurements',
+        null=True, blank=True,
+        help_text='The batch this reading belongs to, for BATCH-scope substeps '
+                  '(one cycle reading for the whole load). Mutually exclusive '
+                  'with step_execution.',
     )
     measurement_definition = models.ForeignKey(
         'Tracker.MeasurementDefinition',
@@ -2990,10 +3025,23 @@ class StepExecutionMeasurement(SecureModel):
     class Meta:
         verbose_name = 'Step Execution Measurement'
         verbose_name_plural = 'Step Execution Measurements'
-        ordering = ['step_execution', 'recorded_at']
+        ordering = ['recorded_at']
         indexes = [
             models.Index(fields=['step_execution', 'measurement_definition']),
             models.Index(fields=['substep', 'recorded_at'], name='dwi_sem_substep_time_idx'),
+            models.Index(fields=['batch_execution', 'measurement_definition'], name='dwi_sem_batch_def_idx'),
+        ]
+        constraints = [
+            # A reading belongs to exactly one target: a part-visit or a batch,
+            # never both and never neither. (QualityReports allows "neither" for
+            # subject-less reports; a raw measurement always has a source.)
+            models.CheckConstraint(
+                check=(
+                    models.Q(step_execution__isnull=False, batch_execution__isnull=True)
+                    | models.Q(step_execution__isnull=True, batch_execution__isnull=False)
+                ),
+                name='sem_exactly_one_target',
+            ),
         ]
 
     def __str__(self):
