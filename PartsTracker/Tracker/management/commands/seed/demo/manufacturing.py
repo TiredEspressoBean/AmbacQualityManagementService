@@ -283,6 +283,21 @@ DEMO_MEASUREMENTS = [
         'type': 'NUMERIC',
         'spc_enabled': False,
     },
+    {
+        # A BATCH-scope process parameter: one bath temperature per wash cycle,
+        # shared by every part in the load. Feeds the batch inspection substep at
+        # Cleaning — the demo's example of a cycle reading that belongs to the
+        # load, not to any one part. spc_enabled so it can seed process-parameter
+        # SPC later.
+        'label': 'Bath Temperature',
+        'step': 'Cleaning',
+        'unit': 'C',
+        'nominal': 60.0,
+        'lower_tol': 5.0,   # LSL = 55
+        'upper_tol': 5.0,   # USL = 65
+        'type': 'NUMERIC',
+        'spc_enabled': True,
+    },
 ]
 
 

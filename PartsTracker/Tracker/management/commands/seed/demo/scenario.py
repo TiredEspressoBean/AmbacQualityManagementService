@@ -133,6 +133,12 @@ class DemoScenario(BaseSeeder):
             result['manufacturing'], result['models_3d'],
             result['receiving'], result['outside_process'])
 
+        # Phase 4c2: Batch cycle readings — backfill bath-temp captures onto the
+        # sealed Cleaning loads now that the wash inspection substep exists (4c).
+        # Gives the part traveler real cycle data to surface without a live run.
+        self.log("\n--- Phase 4c2: Batch Cycle Readings ---")
+        self._backfill_batch_captures(result['users'])
+
         # Phase 4d: SHOWCASE storyline (named objects threaded by one hero part)
         self.log("\n--- Phase 4d: Showcase Storyline ---")
         result['showcase'] = self._seed_showcase(
@@ -320,6 +326,17 @@ class DemoScenario(BaseSeeder):
         seeder.seed_batch_executions(process, users)
 
         return result
+
+    def _backfill_batch_captures(self, users):
+        """Phase 4c2: seed bath-temp readings on the sealed Cleaning loads.
+
+        Separate from _seed_orders because it must run after the DWI phase
+        (4c) — the wash inspection substep the captures bind to is authored
+        there. Re-instantiates the orders seeder; it queries the batches and
+        substep it needs from the DB.
+        """
+        seeder = DemoOrdersSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        return seeder.backfill_batch_cycle_captures(users)
 
     def _seed_quality_events(self, orders, users, manufacturing):
         """

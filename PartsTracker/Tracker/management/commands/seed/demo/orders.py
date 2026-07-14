@@ -782,3 +782,64 @@ class DemoOrdersSeeder(BaseSeeder):
 
         self.log(f"  Created {count} batch executions")
         return {'batch_executions': count}
+
+    def backfill_batch_cycle_captures(self, users):
+        """Seed a bath-temperature reading on each sealed Cleaning load.
+
+        Runs AFTER the DWI phase (it needs the wash inspection substep to
+        exist). Uses the real submit_substep path, so each load gets a batch
+        StepExecutionMeasurement + a batch QualityReport exactly as a live
+        capture would — which is what the part traveler reads to show
+        "this cycle reading came from the load you shared with N parts".
+        One load runs hot (out of spec) so the FAIL verdict has demo data too.
+        """
+        from uuid import uuid4
+        from Tracker.models import (
+            BatchExecution, MeasurementDefinition, Substep,
+            StepExecutionMeasurement, QualityReports,
+        )
+        from Tracker.services.dwi.operator_capture import submit_substep
+
+        self.log("Backfilling batch cycle readings (Cleaning loads)...")
+
+        substep = Substep.objects.filter(
+            tenant=self.tenant, step__name='Cleaning',
+            title='Run ultrasonic wash cycle', is_inspection_point=True,
+        ).first()
+        md = MeasurementDefinition.objects.filter(
+            tenant=self.tenant, label='Bath Temperature', step__name='Cleaning',
+        ).first()
+        if substep is None or md is None:
+            self.log("  Wash inspection substep / Bath Temperature def missing; "
+                     "skipping batch captures", warning=True)
+            return {'batch_captures': 0}
+
+        operator = (users.get('employees') or users.get('managers') or [None])[0]
+
+        batches = list(BatchExecution.objects.filter(
+            tenant=self.tenant, step__name='Cleaning', sealed_at__isnull=False,
+        ).order_by('started_at'))
+
+        count = 0
+        for i, be in enumerate(batches):
+            # Mostly in-spec (58–62 within 55–65); the last sealed load runs hot
+            # (71 > USL) → a FAIL cycle, which records the verdict but quarantines
+            # no individual part (the batch spans the whole load).
+            hot = (i == len(batches) - 1 and len(batches) > 1)
+            temp = 71.0 if hot else 58.0 + (i % 5)
+            submit_substep(
+                substep=substep, batch_execution=be, user=operator,
+                captures=[{"node_id": str(uuid4()), "kind": "measurement",
+                           "measurement_definition_id": str(md.id), "value_numeric": temp}],
+            )
+            # Backdate the reading + report to the load's date (submit_substep
+            # stamps 'now'); .update() bypasses auto_now.
+            when = be.sealed_at or be.started_at
+            if when:
+                StepExecutionMeasurement.objects.filter(batch_execution=be).update(recorded_at=when)
+                QualityReports.objects.filter(batch_execution=be).update(created_at=when, updated_at=when)
+            count += 1
+
+        self.log(f"  Backfilled {count} batch cycle readings"
+                 f"{' (incl. 1 FAIL)' if len(batches) > 1 else ''}")
+        return {'batch_captures': count}

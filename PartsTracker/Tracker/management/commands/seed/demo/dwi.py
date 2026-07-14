@@ -338,9 +338,17 @@ class DemoDwiSeeder(BaseSeeder):
                     # BATCH scope: one cycle cleans the whole basket, so the
                     # capture binds to the load's BatchExecution, not per part.
                     "scope": SubstepScope.BATCH,
+                    # Inspection point: the bath-temperature reading below is a
+                    # cycle-level QA measurement, so this substep promotes to a
+                    # batch-scoped QualityReport (PASS/FAIL on the whole load).
+                    "is_inspection_point": True,
                     "body": _doc(
                         _heading("Ultrasonic clean — whole load"),
                         _callout("note", "One cycle cleans the entire basket; the result applies to every part in the load."),
+                        # Cycle-level reading: bath temp is measured once for the
+                        # load. Binds to the BatchExecution (StepExecutionMeasurement
+                        # + a batch QualityReport), not to any one part.
+                        *maybe_measure("Cleaning", "bath-temp", "Bath Temperature"),
                         _attest_confirm("Cleaning", "cycle-done", "Cycle complete", "Confirm the wash and rinse cycle finished and the basket was inspected."),
                     ),
                 },
