@@ -33297,6 +33297,16 @@ Usage:
     requestFormat: "json",
     parameters: [
       {
+        name: "batch_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "batch_execution__parts",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -35898,6 +35908,11 @@ Response:
     description: `List step execution measurements with filtering`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "batch_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
       {
         name: "equipment",
         type: "Query",

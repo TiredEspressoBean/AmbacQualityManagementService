@@ -15238,6 +15238,20 @@ paths:
                 queryset = Order.objects.all()
                 serializer_class = OrderSerializer
       parameters:
+      - in: query
+        name: batch_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: batch_execution__parts
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        explode: true
+        style: form
       - name: limit
         required: false
         in: query
@@ -17900,6 +17914,11 @@ paths:
       operationId: api_StepExecutionMeasurements_list
       description: List step execution measurements with filtering
       parameters:
+      - in: query
+        name: batch_execution
+        schema:
+          type: string
+          format: uuid
       - in: query
         name: equipment
         schema:

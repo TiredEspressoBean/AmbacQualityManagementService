@@ -38056,6 +38056,8 @@ export interface operations {
     api_QualityReports_list: {
         parameters: {
             query?: {
+                batch_execution?: string;
+                batch_execution__parts?: string[];
                 /** @description Number of results to return per page. */
                 limit?: number;
                 machine?: string;
@@ -39681,6 +39683,7 @@ export interface operations {
     api_StepExecutionMeasurements_list: {
         parameters: {
             query?: {
+                batch_execution?: string;
                 equipment?: string;
                 /** @description Filter by spec compliance */
                 is_within_spec?: boolean;

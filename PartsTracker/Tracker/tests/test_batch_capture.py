@@ -30,7 +30,7 @@ from Tracker.models import (
 )
 from Tracker.services.dwi.batch_lifecycle import seal_batch
 from Tracker.services.dwi.operator_capture import submit_substep
-from Tracker.tests.base import TenantContextMixin, VectorTestCase
+from Tracker.tests.base import TenantContextMixin, TenantTestCase, VectorTestCase
 
 
 class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
@@ -228,3 +228,88 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
                 tenant=self.tenant, measurement_definition=self.md, value=7.0,
                 recorded_by=self.user,  # no step_execution, no batch_execution
             )
+
+
+class BatchQueryableApiTests(TenantTestCase):
+    """Phase 2.5: batch reports/measurements are reachable over the API — by
+    batch id, and (the traveler read pattern) by a member part. Before this,
+    the QR/SEM viewsets had no batch filter, so batch data was write-only.
+
+    Authenticated as superuser to isolate filter behavior from the permission
+    gate (a separate concern), scoped to tenant_a via the X-Tenant-ID header.
+    """
+
+    def setUp(self):
+        super().setUp()
+        t = self.tenant_a
+        self.part_type = PartTypes.objects.create(tenant=t, name="Widget")
+        self.process = Processes.objects.create(tenant=t, name="P", part_type=self.part_type)
+        self.step = Steps.objects.create(
+            tenant=t, part_type=self.part_type, name="Passivate", step_type="TASK",
+        )
+        ProcessStep.objects.create(process=self.process, step=self.step, order=1)
+        self.substep = Substep.objects.create(
+            tenant=t, step=self.step, order=0, title="Bath check",
+            scope="batch", is_inspection_point=True,
+        )
+        self.md = MeasurementDefinition.objects.create(
+            tenant=t, label="pH", type="NUMERIC", unit="pH",
+            nominal=7.0, upper_tol=0.5, lower_tol=0.5, step=self.step,
+        )
+        self.wo = WorkOrder.objects.create(
+            tenant=t, ERP_id="WO-BQ", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=2, process=self.process,
+        )
+        self.parts = [
+            Parts.objects.create(
+                tenant=t, ERP_id=f"P-BQ-{i}", part_type=self.part_type,
+                work_order=self.wo, step=self.step,
+            )
+            for i in range(2)
+        ]
+        self.batch = BatchExecution.objects.create(
+            tenant=t, work_order=self.wo, step=self.step, started_by=self.user_a,
+        )
+        self.batch.parts.set(self.parts)
+        submit_substep(
+            substep=self.substep, batch_execution=self.batch, user=self.user_a,
+            captures=[{"node_id": str(uuid4()), "kind": "measurement",
+                       "measurement_definition_id": str(self.md.id), "value_numeric": 7.1}],
+        )
+        self.batch_qr = QualityReports.objects.get(
+            batch_execution=self.batch, substep=self.substep,
+        )
+        self.authenticate_superuser(tenant=t)
+
+    def _rows(self, resp):
+        data = resp.json()
+        return data["results"] if isinstance(data, dict) and "results" in data else data
+
+    def test_report_queryable_by_batch(self):
+        resp = self.client.get(f"/api/QualityReports/?batch_execution={self.batch.id}")
+        self.assertEqual(resp.status_code, 200)
+        ids = [row["id"] for row in self._rows(resp)]
+        self.assertIn(str(self.batch_qr.id), ids)
+
+    def test_report_queryable_by_member_part(self):
+        # The traveler's read: "batch reports for this part" via the members M2M.
+        resp = self.client.get(f"/api/QualityReports/?batch_execution__parts={self.parts[0].id}")
+        self.assertEqual(resp.status_code, 200)
+        ids = [row["id"] for row in self._rows(resp)]
+        self.assertIn(str(self.batch_qr.id), ids)
+
+    def test_batch_report_absent_from_part_scoped_query(self):
+        # A batch report has part=null, so the pre-existing WO-scoped query
+        # (part__work_order) does NOT surface it — which is exactly why the
+        # batch filter had to be added.
+        resp = self.client.get(f"/api/QualityReports/?part__work_order={self.wo.id}")
+        self.assertEqual(resp.status_code, 200)
+        ids = [row["id"] for row in self._rows(resp)]
+        self.assertNotIn(str(self.batch_qr.id), ids)
+
+    def test_measurement_queryable_by_batch(self):
+        resp = self.client.get(f"/api/StepExecutionMeasurements/?batch_execution={self.batch.id}")
+        self.assertEqual(resp.status_code, 200)
+        rows = self._rows(resp)
+        self.assertGreaterEqual(len(rows), 1)
+        self.assertTrue(all(row["batch_execution"] == str(self.batch.id) for row in rows))

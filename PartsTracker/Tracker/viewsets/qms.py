@@ -46,7 +46,11 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixi
     serializer_class = QualityReportsSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
-    filterset_fields = ['status', 'part', 'step', 'machine', 'part__work_order']
+    # batch_execution reaches batch-scope inspection reports (part is null on
+    # those); batch_execution__parts is the traveler read pattern — "the batch
+    # reports for this part" via the batch's member-parts M2M.
+    filterset_fields = ['status', 'part', 'step', 'machine', 'part__work_order',
+                        'batch_execution', 'batch_execution__parts']
     ordering_fields = ['id', 'status', 'created_at']
     ordering = ['-created_at']
     search_fields = ['description', 'part__ERP_id']
@@ -1702,7 +1706,8 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
     from Tracker.models import StepExecutionMeasurement
     queryset = StepExecutionMeasurement.unscoped.all()
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['step_execution', 'measurement_definition', 'is_within_spec', 'equipment']
+    filterset_fields = ['step_execution', 'batch_execution', 'measurement_definition',
+                        'is_within_spec', 'equipment']
     ordering_fields = ['recorded_at', 'created_at']
     ordering = ['-recorded_at']
 
