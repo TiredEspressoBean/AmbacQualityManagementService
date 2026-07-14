@@ -43,6 +43,7 @@ import {
     ExternalLink,
     CheckCircle,
     FileText,
+    Boxes,
 } from "lucide-react"
 
 import { ReportButton } from "@/components/reports/ReportButton"
@@ -1022,6 +1023,42 @@ export default function EditDispositionFormPage() {
                                             <span>{part.order_name}</span>
                                         </div>
                                     )}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Affected Load Card — a batch disposition covers a whole
+                            cycle's load, not one part; show the members and which are held. */}
+                        {mode === "edit" && disposition?.batch_execution && (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm flex items-center gap-2">
+                                        <Boxes className="h-4 w-4" />
+                                        Affected Load
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Cycle step:</span>
+                                        <span>{(disposition.step_info as { name?: string } | null)?.name ?? "—"}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Parts in load:</span>
+                                        <span>{disposition.affected_parts?.length ?? 0}</span>
+                                    </div>
+                                    <div className="space-y-1 pt-1">
+                                        {(disposition.affected_parts ?? []).map((p) => (
+                                            <div key={p.id} className="flex justify-between items-center rounded bg-muted/40 px-2 py-1">
+                                                <span className="font-mono text-xs">{p.erp_id}</span>
+                                                <Badge
+                                                    variant={p.part_status === "QUARANTINED" ? "destructive" : "outline"}
+                                                    className="text-xs"
+                                                >
+                                                    {p.part_status?.replace(/_/g, " ")}
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </CardContent>
                             </Card>
                         )}

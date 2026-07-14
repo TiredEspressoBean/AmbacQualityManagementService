@@ -673,6 +673,14 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
 
 # ===== DIGITAL TRAVELER SERIALIZERS =====
 
+# quality_status value-sets. A step (or its summary) can be CONDITIONAL; a batch
+# cycle can only pass or fail. Named so the two distinct sets get stable, distinct
+# OpenAPI enum components (see ENUM_NAME_OVERRIDES in settings) instead of a
+# hash-resolved collision.
+STEP_QUALITY_STATUSES = ['PASS', 'FAIL', 'CONDITIONAL']
+BATCH_CYCLE_QUALITY_STATUSES = ['PASS', 'FAIL']
+
+
 # --- Work Order Step Summary (lightweight) ---
 
 class StepSummarySerializer(serializers.Serializer):
@@ -685,7 +693,7 @@ class StepSummarySerializer(serializers.Serializer):
     completed_at = serializers.DateTimeField(allow_null=True)
     duration_seconds = serializers.IntegerField(allow_null=True)
     operator_name = serializers.CharField(allow_null=True)
-    quality_status = serializers.ChoiceField(choices=['PASS', 'FAIL', 'CONDITIONAL'], allow_null=True)
+    quality_status = serializers.ChoiceField(choices=STEP_QUALITY_STATUSES, allow_null=True)
     parts_at_step = serializers.IntegerField()
     parts_completed = serializers.IntegerField()
     measurement_count = serializers.IntegerField()
@@ -787,7 +795,7 @@ class TravelerBatchCycleSerializer(serializers.Serializer):
     sealed_at = serializers.DateTimeField(allow_null=True)
     completed_at = serializers.DateTimeField(allow_null=True)
     part_count = serializers.IntegerField()
-    quality_status = serializers.ChoiceField(choices=['PASS', 'FAIL'], allow_null=True)
+    quality_status = serializers.ChoiceField(choices=BATCH_CYCLE_QUALITY_STATUSES, allow_null=True)
     measurements = TravelerBatchMeasurementSerializer(many=True)
 
 
@@ -808,7 +816,7 @@ class TravelerStepEntrySerializer(serializers.Serializer):
 
     equipment_used = TravelerEquipmentSerializer(many=True)
     measurements = TravelerMeasurementSerializer(many=True)
-    quality_status = serializers.ChoiceField(choices=['PASS', 'FAIL', 'CONDITIONAL'], allow_null=True)
+    quality_status = serializers.ChoiceField(choices=STEP_QUALITY_STATUSES, allow_null=True)
     defects_found = TravelerDefectSerializer(many=True)
     materials_used = TravelerMaterialSerializer(many=True)
     attachments = TravelerAttachmentSerializer(many=True)

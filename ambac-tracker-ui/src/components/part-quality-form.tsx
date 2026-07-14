@@ -57,7 +57,7 @@ import { isFieldRequired } from "@/lib/zod-config";
 const formSchema = z.object({
     part: z.string(),
     operator: z.array(z.number()).min(1, "At least one operator must be selected"),
-    machine: z.string({ required_error: "Machine selection is required" }),
+    production_equipment: z.string({ required_error: "Machine selection is required" }),
     description: z.string().optional(),
     status: schemas.QualityReportStatusEnum,
     sampling_rule: z.string().optional(),
@@ -82,7 +82,7 @@ const formSchema = z.object({
 type FormValues = {
     part: string;
     operator: number[];
-    machine: string;
+    production_equipment: string;
     description?: string;
     status: "PENDING" | "PASS" | "FAIL";
     sampling_rule?: string;
@@ -102,7 +102,7 @@ type FormValues = {
 
 const required = {
     operator: isFieldRequired(formSchema.shape.operator),
-    machine: isFieldRequired(formSchema.shape.machine),
+    production_equipment: isFieldRequired(formSchema.shape.production_equipment),
 };
 
 const operatorOptionsInfinite = () =>
@@ -176,7 +176,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
         defaultValues: {
             part: part?.id,
             operator: [],
-            machine: undefined,
+            production_equipment: undefined,
             status: "PENDING",
             description: "",
             step: stepId,
@@ -380,10 +380,10 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                 {/* Machine Field */}
                 <FormField
                     control={control}
-                    name="machine"
+                    name="production_equipment"
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel required={required.machine}>Machine</FormLabel>
+                            <FormLabel required={required.production_equipment}>Machine</FormLabel>
                             <Popover open={machinePopoverOpen} onOpenChange={setMachinePopoverOpen}>
                                 <PopoverTrigger asChild>
                                     <FormControl>

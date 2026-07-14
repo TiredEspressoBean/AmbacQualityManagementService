@@ -12,8 +12,17 @@ from Tracker.models import (
     QualityReports, QualityErrorsList, QuarantineDisposition,
     MeasurementResult, EquipmentUsage, MeasurementDefinition,
     SPCBaseline, ChartType, BaselineStatus,
+    QualityReportEquipment, EquipmentRole,
 )
 from .base import BaseSeeder
+
+
+def _link_production_equipment(qr, equipment):
+    """Record the report's production machine as a PRODUCTION QualityReportEquipment row."""
+    if equipment is not None:
+        QualityReportEquipment.objects.create(
+            quality_report=qr, equipment=equipment, role=EquipmentRole.PRODUCTION,
+        )
 
 
 class QualitySeeder(BaseSeeder):
@@ -77,7 +86,6 @@ class QualitySeeder(BaseSeeder):
         qr = QualityReports.objects.create(
             tenant=self.tenant,
             part=part,
-            machine=selected_equipment,
             step=step,
             description=f"{step.name} results for {part.ERP_id} - "
                        f"{'measurements completed successfully' if status == 'PASS' else 'issues found during testing'}",
@@ -85,6 +93,7 @@ class QualitySeeder(BaseSeeder):
             status=status,
             detected_by=operator,
         )
+        _link_production_equipment(qr, selected_equipment)
         # Add operator (M2M field)
         qr.operators.add(operator)
 
@@ -317,13 +326,13 @@ class QualitySeeder(BaseSeeder):
 
                 qr = QualityReports.objects.create(
                     tenant=self.tenant,
-                    machine=selected_equipment,
                     step=step,
                     description=f"Historical QA at {step.name}",
                     sampling_method="STATISTICAL",
                     status=status,
                     detected_by=operator,
                 )
+                _link_production_equipment(qr, selected_equipment)
 
                 # Backdate
                 report_time = timestamp + timedelta(hours=random.randint(6, 18), minutes=random.randint(0, 59))

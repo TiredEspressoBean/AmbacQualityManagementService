@@ -238,9 +238,9 @@ class SpcAdapter(ReportAdapter):
         end = timezone.now()
         start = end - timedelta(days=days)
 
-        # Two-tier read (decision #21), deduped and merged by the shared
-        # collector — see services/qms/spc_ingest.collect_spc_rows. The live
-        # chart endpoints read the same source, so PDF and screen agree.
+        # Two-tier read, deduped and merged by the shared collector
+        # (services/qms/spc_ingest.collect_spc_rows). The live chart endpoints
+        # read the same source, so PDF and screen agree.
         results = collect_spc_rows(
             tenant=tenant, measurement_id=measurement_id, start=start, end=end,
         )

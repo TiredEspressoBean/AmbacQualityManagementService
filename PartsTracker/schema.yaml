@@ -15258,11 +15258,6 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
-      - in: query
-        name: machine
-        schema:
-          type: string
-          format: uuid
       - name: offset
         required: false
         in: query
@@ -34074,6 +34069,14 @@ components:
         * `FAI` - First Article
         * `SURVEY` - Survey
         * `HISTORICAL` - Historical
+    BatchCycleQualityStatusEnum:
+      enum:
+      - PASS
+      - FAIL
+      type: string
+      description: |-
+        * `PASS` - PASS
+        * `FAIL` - FAIL
     BatchExecution:
       type: object
       description: |-
@@ -36665,6 +36668,24 @@ components:
       required:
       - component_type
       - core_type
+    DispositionAffectedPart:
+      type: object
+      description: |-
+        A member part of a batch disposition's load — shown in the form's
+        affected-load panel so QA can see which parts the failed cycle covers and
+        which were held.
+      properties:
+        id:
+          type: string
+          format: uuid
+        erp_id:
+          type: string
+        part_status:
+          type: string
+      required:
+      - erp_id
+      - id
+      - part_status
     DispositionBreakdownResponse:
       type: object
       properties:
@@ -45848,9 +45869,10 @@ components:
           type: string
           format: uuid
           nullable: true
-        machine:
+        production_equipment:
           type: string
           format: uuid
+          writeOnly: true
           nullable: true
         operators:
           type: array
@@ -49253,10 +49275,6 @@ components:
           type: string
           format: uuid
           nullable: true
-        machine:
-          type: string
-          format: uuid
-          nullable: true
         operators:
           type: array
           items:
@@ -49453,9 +49471,10 @@ components:
           type: string
           format: uuid
           nullable: true
-        machine:
+        production_equipment:
           type: string
           format: uuid
+          writeOnly: true
           nullable: true
         operators:
           type: array
@@ -49501,16 +49520,6 @@ components:
           type: boolean
       required:
       - status
-    QualityStatusD0aEnum:
-      enum:
-      - PASS
-      - FAIL
-      - CONDITIONAL
-      type: string
-      description: |-
-        * `PASS` - PASS
-        * `FAIL` - FAIL
-        * `CONDITIONAL` - CONDITIONAL
     QuarantineDisposition:
       type: object
       description: |-
@@ -49646,6 +49655,11 @@ components:
           items:
             type: string
             format: uuid
+        affected_parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DispositionAffectedPart'
+          readOnly: true
         work_order_id:
           type: string
           format: uuid
@@ -49653,6 +49667,7 @@ components:
           readOnly: true
         work_order_erp_id:
           type: string
+          nullable: true
           readOnly: true
         assignee_name:
           type: string
@@ -49677,6 +49692,7 @@ components:
         archived:
           type: boolean
       required:
+      - affected_parts
       - annotation_status
       - assignee_name
       - can_be_completed
@@ -53091,7 +53107,7 @@ components:
         quality_status:
           nullable: true
           oneOf:
-          - $ref: '#/components/schemas/QualityStatusD0aEnum'
+          - $ref: '#/components/schemas/TravelerStepQualityStatusEnum'
           - $ref: '#/components/schemas/NullEnum'
         parts_at_step:
           type: integer
@@ -56406,7 +56422,7 @@ components:
         quality_status:
           nullable: true
           oneOf:
-          - $ref: '#/components/schemas/TravelerBatchCycleQualityStatusEnum'
+          - $ref: '#/components/schemas/BatchCycleQualityStatusEnum'
           - $ref: '#/components/schemas/NullEnum'
         measurements:
           type: array
@@ -56420,14 +56436,6 @@ components:
       - quality_status
       - sealed_at
       - started_at
-    TravelerBatchCycleQualityStatusEnum:
-      enum:
-      - PASS
-      - FAIL
-      type: string
-      description: |-
-        * `PASS` - PASS
-        * `FAIL` - FAIL
     TravelerBatchMeasurement:
       type: object
       description: A cycle-level reading (wash temp, bath pH) taken once for the whole
@@ -56632,7 +56640,7 @@ components:
         quality_status:
           nullable: true
           oneOf:
-          - $ref: '#/components/schemas/QualityStatusD0aEnum'
+          - $ref: '#/components/schemas/TravelerStepQualityStatusEnum'
           - $ref: '#/components/schemas/NullEnum'
         defects_found:
           type: array
@@ -56667,6 +56675,16 @@ components:
       - step_id
       - step_name
       - step_order
+    TravelerStepQualityStatusEnum:
+      enum:
+      - PASS
+      - FAIL
+      - CONDITIONAL
+      type: string
+      description: |-
+        * `PASS` - PASS
+        * `FAIL` - FAIL
+        * `CONDITIONAL` - CONDITIONAL
     TravelerStepStatusEnum:
       enum:
       - COMPLETED

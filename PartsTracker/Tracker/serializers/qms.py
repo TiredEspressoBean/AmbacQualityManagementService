@@ -7,7 +7,7 @@ from rest_framework import serializers
 from Tracker.models import (
     # QMS models
     QualityErrorsList, MeasurementResult, QualityReports,
-    QualityReportEquipment, QualityReportPersonnel,
+    QualityReportEquipment, QualityReportPersonnel, EquipmentRole, Equipments,
     QuarantineDisposition, SupplierQualification, PartApproval,
     # CAPA models
     CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, RootCause, CapaVerification,
@@ -162,10 +162,18 @@ class QualityReportPersonnelSerializer(serializers.ModelSerializer):
 class QualityReportsSerializer(SecureModelMixin):
     """Quality reports serializer"""
     measurements = MeasurementResultSerializer(many=True, required=False)
-    # New role-tagged shapes (read-only for now — operator-runtime phase
-    # will accept them on write through dedicated capture endpoints).
+    # Role-tagged equipment (read). The operator-runtime path populates these
+    # via dedicated capture endpoints; the manual QR form writes the single
+    # production machine through `production_equipment` below.
     equipment_links = QualityReportEquipmentSerializer(many=True, read_only=True)
     personnel_links = QualityReportPersonnelSerializer(many=True, read_only=True)
+    # Write-only convenience for the manual QR form: the single production
+    # machine, persisted as a PRODUCTION QualityReportEquipment row. Read it
+    # back via `machine_info`.
+    production_equipment = TenantScopedPrimaryKeyRelatedField(
+        queryset=Equipments.unscoped.all(),
+        required=False, allow_null=True, write_only=True,
+    )
 
     # Display fields for related models
     part_info = serializers.SerializerMethodField()
@@ -181,7 +189,7 @@ class QualityReportsSerializer(SecureModelMixin):
 
     class Meta:
         model = QualityReports
-        fields = ["id", "report_number", "step", "part", "machine", "operators", "sampling_method", "status",
+        fields = ["id", "report_number", "step", "part", "production_equipment", "operators", "sampling_method", "status",
                   "status_display", "description", "file", "created_at", "errors", "measurements", "sampling_audit_log",
                   "detected_by", "detected_by_info", "verified_by", "verified_by_info",
                   "is_first_piece",  # First Piece Inspection flag
@@ -232,11 +240,12 @@ class QualityReportsSerializer(SecureModelMixin):
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_machine_info(self, obj):
-        if obj.machine:
+        machine = obj.primary_machine  # PRODUCTION-role equipment (QRE)
+        if machine:
             return {
-                'id': obj.machine.id,
-                'name': obj.machine.name,
-                'type': obj.machine.equipment_type.name if obj.machine.equipment_type else None,
+                'id': machine.id,
+                'name': machine.name,
+                'type': machine.equipment_type.name if machine.equipment_type else None,
             }
         return None
 
@@ -295,7 +304,10 @@ class QualityReportsSerializer(SecureModelMixin):
         from Tracker.services.qms.quality_report import record_quality_report_side_effects
 
         measurements_data = validated_data.pop("measurements", [])
+        production_equipment = validated_data.pop("production_equipment", None)
         report = super().create(validated_data)
+
+        self._set_production_equipment(report, production_equipment)
 
         for m in measurements_data:
             MeasurementResult.objects.create(report=report, definition_id=m['definition'].id,
@@ -305,6 +317,25 @@ class QualityReportsSerializer(SecureModelMixin):
 
         record_quality_report_side_effects(report)
         return report
+
+    def update(self, instance, validated_data):
+        # `production_equipment` isn't a model field; handle it, then let the
+        # default update apply the rest.
+        has_equipment = "production_equipment" in validated_data
+        production_equipment = validated_data.pop("production_equipment", None)
+        instance = super().update(instance, validated_data)
+        if has_equipment:
+            self._set_production_equipment(instance, production_equipment)
+        return instance
+
+    def _set_production_equipment(self, report, equipment):
+        """Persist the manual form's single production machine as the report's
+        PRODUCTION QualityReportEquipment row. None clears it."""
+        report.equipment_links.filter(role=EquipmentRole.PRODUCTION).delete()
+        if equipment is not None:
+            QualityReportEquipment.objects.create(
+                quality_report=report, equipment=equipment, role=EquipmentRole.PRODUCTION,
+            )
 
 
 # ===== SAMPLING RULE SERIALIZERS =====
@@ -709,9 +740,19 @@ class SamplingTriggerStateSerializer(SecureModelMixin):
 # `Tracker.serializers.notification_schedule`.
 
 
+class DispositionAffectedPartSerializer(serializers.Serializer):
+    """A member part of a batch disposition's load — shown in the form's
+    affected-load panel so QA can see which parts the failed cycle covers and
+    which were held."""
+    id = serializers.UUIDField()
+    erp_id = serializers.CharField()
+    part_status = serializers.CharField()
+
+
 class QuarantineDispositionSerializer(SecureModelMixin):
     disposition_number = serializers.CharField(read_only=True)
     assignee_name = serializers.SerializerMethodField()
+    affected_parts = serializers.SerializerMethodField()
     choices_data = serializers.SerializerMethodField()
     resolution_completed_by_name = serializers.SerializerMethodField()
     step_info = serializers.SerializerMethodField()
@@ -747,6 +788,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             # Relationships
             'part', 'batch_execution', 'step', 'step_info', 'rework_attempt_at_step',
             'rework_limit_exceeded', 'quality_reports',
+            # Batch dispositions: the member parts of the affected load
+            'affected_parts',
             # WO denormalization (for frontend exception → WO linking)
             'work_order_id', 'work_order_erp_id',
             # Computed
@@ -759,13 +802,24 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'disposition_number', 'assignee_name', 'choices_data', 'step_info', 'rework_limit_exceeded',
             'annotation_status', 'can_be_completed', 'completion_blockers',
             'severity_display', 'containment_completed_by_name', 'scrap_verified_by_name',
-            'work_order_id', 'work_order_erp_id',
+            'work_order_id', 'work_order_erp_id', 'affected_parts',
         )
 
-    @extend_schema_field(serializers.CharField(allow_null=True))
+    @extend_schema_field(DispositionAffectedPartSerializer(many=True))
+    def get_affected_parts(self, obj):
+        """Member parts of the batch this disposition covers (empty for part /
+        general dispositions). Lets the form show the affected load."""
+        if not obj.batch_execution_id:
+            return []
+        return [
+            {'id': p.id, 'erp_id': p.ERP_id, 'part_status': p.part_status}
+            for p in obj.batch_execution.parts.all()
+        ]
+
     def _work_order(self, obj):
         # Part dispositions carry the WO through the part; batch dispositions
-        # (part is null) carry it through the batch execution.
+        # (part is null) carry it through the batch execution. Both may be
+        # absent (general / lot-reject dispositions) → None.
         if obj.part_id and getattr(obj.part, 'work_order_id', None):
             return obj.part.work_order
         if obj.batch_execution_id:
@@ -777,6 +831,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         wo = self._work_order(obj)
         return str(wo.id) if wo else None
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_work_order_erp_id(self, obj):
         wo = self._work_order(obj)
         return wo.ERP_id if wo else None

@@ -32,7 +32,7 @@ const STATUS_OPTIONS = schemas.QualityReportStatusEnum.options;
 const formSchema = schemas.QualityReportsRequest.pick({
     step: true,
     part: true,
-    machine: true,
+    production_equipment: true,
     status: true,
     description: true,
     detected_by: true,
@@ -48,7 +48,7 @@ const formSchema = schemas.QualityReportsRequest.pick({
 // Surfaces upstream API renames as compile errors.
 type FormValues = Pick<
     Schema<"QualityReportsRequest">,
-    "step" | "part" | "machine" | "status" | "description" | "detected_by" | "verified_by" | "is_first_piece" | "archived"
+    "step" | "part" | "production_equipment" | "status" | "description" | "detected_by" | "verified_by" | "is_first_piece" | "archived"
 > & {
     measurements?: unknown[];
 };
@@ -131,7 +131,10 @@ export default function EditQualityReportFormPage() {
             form.reset({
                 part: qualityReport.part ?? undefined,
                 step: qualityReport.step ?? undefined,
-                machine: qualityReport.machine ?? undefined,
+                // Prefill the production machine from the PRODUCTION equipment link.
+                production_equipment: qualityReport.equipment_links?.find(
+                    (l) => l.role === "PRODUCTION",
+                )?.equipment ?? undefined,
                 status: qualityReport.status ?? "PENDING",
                 description: qualityReport.description ?? "",
                 detected_by: qualityReport.detected_by ?? undefined,
@@ -347,7 +350,7 @@ export default function EditQualityReportFormPage() {
                     {/* Machine/Equipment */}
                     <FormField
                         control={form.control}
-                        name="machine"
+                        name="production_equipment"
                         render={({ field }) => {
                             const selectedMachine = equipment.find((e) => e.id === field.value);
                             return (
@@ -379,7 +382,7 @@ export default function EditQualityReportFormPage() {
                                                         <CommandItem
                                                             value="none"
                                                             onSelect={() => {
-                                                                form.setValue("machine", undefined);
+                                                                form.setValue("production_equipment", undefined);
                                                                 setMachineSearch("");
                                                             }}
                                                         >
@@ -393,7 +396,7 @@ export default function EditQualityReportFormPage() {
                                                                 key={e.id}
                                                                 value={e.name}
                                                                 onSelect={() => {
-                                                                    form.setValue("machine", e.id);
+                                                                    form.setValue("production_equipment", e.id);
                                                                     setMachineSearch("");
                                                                 }}
                                                             >

@@ -18,17 +18,6 @@
         {% csrf_token %}
         {{ form.non_field_errors }}
 
-        <!-- Machine -->
-        <div>
-            <label for="{{ form.machine.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                {{ form.machine.label }}
-            </label>
-            {{ form.machine }}
-            {% if form.machine.errors %}
-                <p class="mt-1 text-red-600 text-sm">{{ form.machine.errors.0 }}</p>
-            {% endif %}
-        </div>
-
         <!-- Operator -->
         <div>
             <label for="{{ form.operator.id_for_label }}" class="block text-sm font-medium text-gray-700">

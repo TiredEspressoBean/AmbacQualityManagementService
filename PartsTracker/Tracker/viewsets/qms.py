@@ -49,7 +49,7 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixi
     # batch_execution reaches batch-scope inspection reports (part is null on
     # those); batch_execution__parts is the traveler read pattern — "the batch
     # reports for this part" via the batch's member-parts M2M.
-    filterset_fields = ['status', 'part', 'step', 'machine', 'part__work_order',
+    filterset_fields = ['status', 'part', 'step', 'part__work_order',
                         'batch_execution', 'batch_execution__parts']
     ordering_fields = ['id', 'status', 'created_at']
     ordering = ['-created_at']
@@ -64,9 +64,8 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixi
         return qs.select_related(
             'part', 'part__part_type', 'part__work_order', 'part__work_order__process',
             'step', 'step__part_type',
-            'machine', 'machine__equipment_type',
             'file',
-        ).prefetch_related('operators', 'errors')
+        ).prefetch_related('operators', 'errors', 'equipment_links__equipment')
 
 
 class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
@@ -126,8 +125,9 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
         # can otherwise yield a disposition once per matching quality report.
         return qs.select_related('assigned_to',
                                                              'resolution_completed_by',
-                                                             'part__part_type').prefetch_related(
-            'quality_reports', 'documents').distinct()
+                                                             'part__part_type',
+                                                             'batch_execution').prefetch_related(
+            'quality_reports', 'documents', 'batch_execution__parts').distinct()
 
     @action(detail=True, methods=['post'], url_path='close')
     def close(self, request, pk=None):

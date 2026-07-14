@@ -890,12 +890,9 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         modelType: 'parts',
                         fieldName: 'part',
                         label: 'Part Documents'
-                    },
-                    {
-                        modelType: 'equipments',
-                        fieldName: 'machine',
-                        label: 'Machine Documents'
                     }
+                    // No single-machine documents link — equipment is role-tagged
+                    // on equipment_links, not a single FK.
                 ],
                 actionButtons: [
                     {

@@ -285,13 +285,6 @@ class QualityReports(SecureModel):
     part = models.ForeignKey("Parts", on_delete=models.SET_NULL, null=True, blank=True, related_name="error_reports")
     """The specific part associated with this error report (if known)."""
 
-    machine = models.ForeignKey("Equipments", on_delete=models.SET_NULL, null=True, blank=True)
-    """DEPRECATED — superseded by `equipments` M2M (through `QualityReportEquipment`)
-    which supports multi-equipment attribution with per-row roles (PRODUCTION /
-    FIXTURE / TOOL / GAUGE / OTHER). Kept for backward compatibility while
-    callers migrate; `primary_machine` property reads the new shape.
-    Remove in a follow-up once all readers are switched."""
-
     equipments = models.ManyToManyField(
         "Equipments",
         through="QualityReportEquipment",
@@ -547,14 +540,10 @@ class QualityReports(SecureModel):
     def primary_machine(self):
         """Canonical read for "which machine produced the part on this report."
 
-        Reads from the new equipment_links through table (role=PRODUCTION),
-        falling back to the deprecated `machine` FK during the transition
-        period. Callers should prefer this over `.machine` going forward.
+        The production-role equipment from the `equipment_links` through table.
         """
         prod_link = self.equipment_links.filter(role=EquipmentRole.PRODUCTION).first()
-        if prod_link:
-            return prod_link.equipment
-        return self.machine
+        return prod_link.equipment if prod_link else None
 
     @property
     def primary_detector(self):
@@ -843,6 +832,12 @@ class QuarantineDisposition(SecureModel):
         ]
         constraints = [
             models.UniqueConstraint(fields=['tenant', 'disposition_number'], name='disposition_tenant_number_uniq'),
+            # A disposition is scoped to a single part OR a whole batch (the load),
+            # never both. Neither is also valid (lot-reject / general dispositions).
+            models.CheckConstraint(
+                check=~(models.Q(part__isnull=False) & models.Q(batch_execution__isnull=False)),
+                name='disposition_not_both_part_and_batch',
+            ),
         ]
         indexes = [
             models.Index(fields=['current_state', 'created_at'], name='disposition_state_created_idx'),

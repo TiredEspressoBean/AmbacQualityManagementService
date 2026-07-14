@@ -410,6 +410,11 @@ SPECTACULAR_SETTINGS = {
         # 'approval_type' collision: core Approval vs PartApproval (PPAP/FAI)
         "ApprovalTypeEnum": "Tracker.models.core.Approval_Type.choices",
         "PartApprovalTypeEnum": "Tracker.models.qms.PartApproval.APPROVAL_TYPE_CHOICES",
+        # Two distinct 'quality_status' value-sets on the part traveler: a step
+        # can be CONDITIONAL, a batch cycle can only PASS/FAIL. Name both so
+        # spectacular doesn't hash-resolve the collision (keys enums by value-set).
+        "TravelerStepQualityStatusEnum": "Tracker.serializers.mes_lite.STEP_QUALITY_STATUSES",
+        "BatchCycleQualityStatusEnum": "Tracker.serializers.mes_lite.BATCH_CYCLE_QUALITY_STATUSES",
         # Severity enum - both CAPA and Disposition use same values, use single name
         "SeverityEnum": "Tracker.models.qms.CapaSeverity.choices",
         # Step/workflow enums - reference the choices lists on the Steps model

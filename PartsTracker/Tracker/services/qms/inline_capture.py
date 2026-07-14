@@ -209,10 +209,12 @@ def _promote_to_inspection_record(
     is_new_report = report is None
 
     if is_new_report:
+        # The measuring instrument is recorded on the StepExecutionMeasurement
+        # (SEM.equipment) created by the caller — its metrology home; the report
+        # carries equipment only via role-tagged QualityReportEquipment.
         report = QualityReports.objects.create(
             step=step,
             detected_by=recorded_by,
-            machine=equipment,
             sampling_method="inline_dwi",
             status="PENDING",  # set properly after the MeasurementResult is in
             **report_fields,

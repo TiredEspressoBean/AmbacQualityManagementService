@@ -2,7 +2,7 @@
 measurements feed a control chart", used by both the live chart endpoints
 (`viewsets/spc.py`) and the PDF report (`reports/adapters/spc.py`).
 
-Two-tier read (architectural decision #21 in DIGITAL_WORK_INSTRUCTIONS_DESIGN):
+Two tiers feed a control chart:
   - `MeasurementResult` — inspection records (QC bench, FPI, and DWI
     inspection-point captures, which promote a reading into a QualityReport).
   - `StepExecutionMeasurement` — process data (DWI MeasurementInput captures at

@@ -14560,6 +14560,12 @@ export interface components {
          */
         BasisEnum: "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL";
         /**
+         * @description * `PASS` - PASS
+         *     * `FAIL` - FAIL
+         * @enum {string}
+         */
+        BatchCycleQualityStatusEnum: "PASS" | "FAIL";
+        /**
          * @description Minimal BatchExecution shape for the lifecycle viewset.
          *
          *     The viewset only exposes list/retrieve + the seal action in this
@@ -15857,6 +15863,17 @@ export interface components {
             positions?: unknown;
             line_number?: number;
             archived?: boolean;
+        };
+        /**
+         * @description A member part of a batch disposition's load — shown in the form's
+         *     affected-load panel so QA can see which parts the failed cycle covers and
+         *     which were held.
+         */
+        DispositionAffectedPart: {
+            /** Format: uuid */
+            id: string;
+            erp_id: string;
+            part_status: string;
         };
         DispositionBreakdownResponse: {
             data: {
@@ -20818,7 +20835,7 @@ export interface components {
             /** Format: uuid */
             part?: string | null;
             /** Format: uuid */
-            machine?: string | null;
+            production_equipment?: string | null;
             /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
@@ -22768,8 +22785,6 @@ export interface components {
             step?: string | null;
             /** Format: uuid */
             part?: string | null;
-            /** Format: uuid */
-            machine?: string | null;
             /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
@@ -22856,7 +22871,7 @@ export interface components {
             /** Format: uuid */
             part?: string | null;
             /** Format: uuid */
-            machine?: string | null;
+            production_equipment?: string | null;
             /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
@@ -22878,13 +22893,6 @@ export interface components {
             is_first_piece?: boolean;
             archived?: boolean;
         };
-        /**
-         * @description * `PASS` - PASS
-         *     * `FAIL` - FAIL
-         *     * `CONDITIONAL` - CONDITIONAL
-         * @enum {string}
-         */
-        QualityStatusD0aEnum: "PASS" | "FAIL" | "CONDITIONAL";
         /**
          * @description Base serializer for SecureModel instances.
          *
@@ -22958,9 +22966,10 @@ export interface components {
             rework_attempt_at_step?: number;
             readonly rework_limit_exceeded: boolean;
             quality_reports: string[];
+            readonly affected_parts: components["schemas"]["DispositionAffectedPart"][];
             /** Format: uuid */
             readonly work_order_id: string | null;
-            readonly work_order_erp_id: string;
+            readonly work_order_erp_id: string | null;
             readonly assignee_name: string;
             readonly choices_data: {
                 [key: string]: unknown;
@@ -24770,7 +24779,7 @@ export interface components {
             completed_at: string | null;
             duration_seconds: number | null;
             operator_name: string | null;
-            quality_status: (components["schemas"]["QualityStatusD0aEnum"] | components["schemas"]["NullEnum"]) | null;
+            quality_status: (components["schemas"]["TravelerStepQualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
             parts_at_step: number;
             parts_completed: number;
             measurement_count: number;
@@ -26516,15 +26525,9 @@ export interface components {
             /** Format: date-time */
             completed_at: string | null;
             part_count: number;
-            quality_status: (components["schemas"]["TravelerBatchCycleQualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
+            quality_status: (components["schemas"]["BatchCycleQualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
             measurements: components["schemas"]["TravelerBatchMeasurement"][];
         };
-        /**
-         * @description * `PASS` - PASS
-         *     * `FAIL` - FAIL
-         * @enum {string}
-         */
-        TravelerBatchCycleQualityStatusEnum: "PASS" | "FAIL";
         /** @description A cycle-level reading (wash temp, bath pH) taken once for the whole load. */
         TravelerBatchMeasurement: {
             label: string;
@@ -26607,12 +26610,19 @@ export interface components {
             approved_by: components["schemas"]["TravelerApproval"] | null;
             equipment_used: components["schemas"]["TravelerEquipment"][];
             measurements: components["schemas"]["TravelerMeasurement"][];
-            quality_status: (components["schemas"]["QualityStatusD0aEnum"] | components["schemas"]["NullEnum"]) | null;
+            quality_status: (components["schemas"]["TravelerStepQualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
             defects_found: components["schemas"]["TravelerDefect"][];
             materials_used: components["schemas"]["TravelerMaterial"][];
             attachments: components["schemas"]["TravelerAttachment"][];
             batch_cycles: components["schemas"]["TravelerBatchCycle"][];
         };
+        /**
+         * @description * `PASS` - PASS
+         *     * `FAIL` - FAIL
+         *     * `CONDITIONAL` - CONDITIONAL
+         * @enum {string}
+         */
+        TravelerStepQualityStatusEnum: "PASS" | "FAIL" | "CONDITIONAL";
         /**
          * @description * `COMPLETED` - COMPLETED
          *     * `IN_PROGRESS` - IN_PROGRESS
@@ -38127,7 +38137,6 @@ export interface operations {
                 batch_execution__parts?: string[];
                 /** @description Number of results to return per page. */
                 limit?: number;
-                machine?: string;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */

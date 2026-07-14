@@ -251,6 +251,44 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
             QuarantineDisposition.objects.filter(batch_execution=self.batch).count(), 1,
         )
 
+    def test_batch_disposition_serializes_affected_parts(self):
+        """The disposition serializer exposes the batch's member parts (with
+        status) so the form's affected-load panel can render them."""
+        from Tracker.models import QuarantineDisposition
+        from Tracker.serializers.qms import QuarantineDispositionSerializer
+        for p in self.parts:
+            p.part_status = PartsStatus.IN_PROGRESS
+            p.save(update_fields=["part_status"])
+        submit_substep(
+            substep=self.batch_insp, batch_execution=self.batch, user=self.user,
+            captures=[{"node_id": str(uuid4()), "kind": "measurement",
+                       "measurement_definition_id": str(self.md.id), "value_numeric": 9.0}],
+        )
+        disp = QuarantineDisposition.objects.get(batch_execution=self.batch)
+        affected = QuarantineDispositionSerializer(disp).data["affected_parts"]
+        self.assertEqual({row["erp_id"] for row in affected}, {p.ERP_id for p in self.parts})
+        # All held (were IN_PROGRESS) → QUARANTINED in the affected list.
+        self.assertTrue(all(row["part_status"] == "QUARANTINED" for row in affected))
+
+    def test_part_disposition_has_empty_affected_parts(self):
+        """A non-batch disposition reports no affected load."""
+        from Tracker.models import QuarantineDisposition
+        from Tracker.serializers.qms import QuarantineDispositionSerializer
+        disp = QuarantineDisposition.objects.create(
+            tenant=self.tenant, part=self.parts[0], step=self.step, assigned_to=self.user,
+        )
+        self.assertEqual(QuarantineDispositionSerializer(disp).data["affected_parts"], [])
+
+    def test_disposition_cannot_target_both_part_and_batch(self):
+        """A disposition is scoped to a part OR a batch, never both."""
+        from django.db import IntegrityError, transaction
+        from Tracker.models import QuarantineDisposition
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            QuarantineDisposition.objects.create(
+                tenant=self.tenant, part=self.parts[0], batch_execution=self.batch,
+                step=self.step, assigned_to=self.user,
+            )
+
     def test_repeat_capture_converges_on_one_batch_report(self):
         for ph in (7.0, 7.2):
             submit_substep(

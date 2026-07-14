@@ -232,8 +232,9 @@ class CapaSeeder(BaseSeeder):
         error_descriptions = []
 
         for qr in quality_reports:
-            if qr.machine:
-                equipment_failures[qr.machine] += 1
+            machine = qr.primary_machine  # PRODUCTION-role equipment (QRE)
+            if machine:
+                equipment_failures[machine] += 1
             if qr.detected_by:
                 operator_failures[qr.detected_by] += 1
             for error in qr.errors.all():

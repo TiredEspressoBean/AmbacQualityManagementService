@@ -5290,7 +5290,6 @@ export type QualityReports = {
   report_number: string;
   step?: (string | null) | undefined;
   part?: (string | null) | undefined;
-  machine?: (string | null) | undefined;
   operators?: /**
    * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
    */
@@ -5547,8 +5546,9 @@ export type QuarantineDisposition = {
   number | undefined;
   rework_limit_exceeded: boolean;
   quality_reports: Array<string>;
+  affected_parts: Array<DispositionAffectedPart>;
   work_order_id: string | null;
-  work_order_erp_id: string;
+  work_order_erp_id: string | null;
   assignee_name: string;
   choices_data: {};
   annotation_status: {};
@@ -5576,6 +5576,11 @@ export type DispositionTypeEnum =
    * @enum REWORK, REPAIR, SCRAP, USE_AS_IS, RETURN_TO_SUPPLIER
    */
   "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+export type DispositionAffectedPart = {
+  id: string;
+  erp_id: string;
+  part_status: string;
+};
 export type PaginatedRcaRecordList = {
   /**
    * @example 123
@@ -8198,7 +8203,7 @@ export type TravelerStepEntry = {
   approved_by: TravelerApproval;
   equipment_used: Array<TravelerEquipment>;
   measurements: Array<TravelerMeasurement>;
-  quality_status: QualityStatusD0aEnum | NullEnum | null;
+  quality_status: TravelerStepQualityStatusEnum | NullEnum | null;
   defects_found: Array<TravelerDefect>;
   materials_used: Array<TravelerMaterial>;
   attachments: Array<TravelerAttachment>;
@@ -8241,7 +8246,7 @@ export type TravelerMeasurement = {
   recorded_at: string;
   recorded_by: string | null;
 };
-export type QualityStatusD0aEnum =
+export type TravelerStepQualityStatusEnum =
   /**
    * * `PASS` - PASS
    * `FAIL` - FAIL
@@ -8274,10 +8279,10 @@ export type TravelerBatchCycle = {
   sealed_at: string | null;
   completed_at: string | null;
   part_count: number;
-  quality_status: TravelerBatchCycleQualityStatusEnum | NullEnum | null;
+  quality_status: BatchCycleQualityStatusEnum | NullEnum | null;
   measurements: Array<TravelerBatchMeasurement>;
 };
-export type TravelerBatchCycleQualityStatusEnum =
+export type BatchCycleQualityStatusEnum =
   /**
    * * `PASS` - PASS
    * `FAIL` - FAIL
@@ -9255,7 +9260,7 @@ export type PatchedProcessesRequest = Partial<{
 export type PatchedQualityReportsRequest = Partial<{
   step: string | null;
   part: string | null;
-  machine: string | null;
+  production_equipment: string | null;
   /**
    * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
    */
@@ -10630,7 +10635,7 @@ export type QualityReportPersonnelRequest = {
 export type QualityReportsRequest = {
   step?: (string | null) | undefined;
   part?: (string | null) | undefined;
-  machine?: (string | null) | undefined;
+  production_equipment?: (string | null) | undefined;
   operators?: /**
    * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
    */
@@ -11642,7 +11647,7 @@ export type StepSummary = {
   completed_at: string | null;
   duration_seconds: number | null;
   operator_name: string | null;
-  quality_status: QualityStatusD0aEnum | NullEnum | null;
+  quality_status: TravelerStepQualityStatusEnum | NullEnum | null;
   parts_at_step: number;
   parts_completed: number;
   measurement_count: number;
@@ -14508,7 +14513,6 @@ const QualityReports = z.object({
   report_number: z.string(),
   step: z.string().uuid().nullish(),
   part: z.string().uuid().nullish(),
-  machine: z.string().uuid().nullish(),
   operators: z.array(z.number().int()).optional(),
   sampling_method: z.string().max(50).optional(),
   status: QualityReportStatusEnum,
@@ -15322,7 +15326,7 @@ const TravelerMeasurement = z.object({
   recorded_at: z.string().datetime({ offset: true }),
   recorded_by: z.string().nullable(),
 });
-const QualityStatusD0aEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
+const TravelerStepQualityStatusEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
 const TravelerDefect = z.object({
   error_type_id: z.string().uuid().nullable(),
   error_name: z.string(),
@@ -15341,7 +15345,7 @@ const TravelerAttachment = z.object({
   uploaded_at: z.string().datetime({ offset: true }),
   classification: z.string().nullable(),
 });
-const TravelerBatchCycleQualityStatusEnum = z.enum(["PASS", "FAIL"]);
+const BatchCycleQualityStatusEnum = z.enum(["PASS", "FAIL"]);
 const TravelerBatchMeasurement = z.object({
   label: z.string(),
   nominal: z.number().nullable(),
@@ -15358,9 +15362,7 @@ const TravelerBatchCycle = z.object({
   sealed_at: z.string().datetime({ offset: true }).nullable(),
   completed_at: z.string().datetime({ offset: true }).nullable(),
   part_count: z.number().int(),
-  quality_status: z
-    .union([TravelerBatchCycleQualityStatusEnum, NullEnum])
-    .nullable(),
+  quality_status: z.union([BatchCycleQualityStatusEnum, NullEnum]).nullable(),
   measurements: z.array(TravelerBatchMeasurement),
 });
 const TravelerStepEntry = z.object({
@@ -15376,7 +15378,7 @@ const TravelerStepEntry = z.object({
   approved_by: TravelerApproval.nullable(),
   equipment_used: z.array(TravelerEquipment),
   measurements: z.array(TravelerMeasurement),
-  quality_status: z.union([QualityStatusD0aEnum, NullEnum]).nullable(),
+  quality_status: z.union([TravelerStepQualityStatusEnum, NullEnum]).nullable(),
   defects_found: z.array(TravelerDefect),
   materials_used: z.array(TravelerMaterial),
   attachments: z.array(TravelerAttachment),
@@ -15644,7 +15646,7 @@ const MeasurementResultRequest = z.object({
 const QualityReportsRequest = z.object({
   step: z.string().uuid().nullish(),
   part: z.string().uuid().nullish(),
-  machine: z.string().uuid().nullish(),
+  production_equipment: z.string().uuid().nullish(),
   operators: z.array(z.number().int()).optional(),
   sampling_method: z.string().min(1).max(50).optional(),
   status: QualityReportStatusEnum,
@@ -15661,7 +15663,7 @@ const PatchedQualityReportsRequest = z
   .object({
     step: z.string().uuid().nullable(),
     part: z.string().uuid().nullable(),
-    machine: z.string().uuid().nullable(),
+    production_equipment: z.string().uuid().nullable(),
     operators: z.array(z.number().int()),
     sampling_method: z.string().min(1).max(50),
     status: QualityReportStatusEnum,
@@ -15683,6 +15685,11 @@ const DispositionTypeEnum = z.enum([
   "USE_AS_IS",
   "RETURN_TO_SUPPLIER",
 ]);
+const DispositionAffectedPart = z.object({
+  id: z.string().uuid(),
+  erp_id: z.string(),
+  part_status: z.string(),
+});
 const QuarantineDisposition = z.object({
   id: z.string().uuid(),
   disposition_number: z.string(),
@@ -15723,8 +15730,9 @@ const QuarantineDisposition = z.object({
     .optional(),
   rework_limit_exceeded: z.boolean(),
   quality_reports: z.array(z.string().uuid()),
+  affected_parts: z.array(DispositionAffectedPart),
   work_order_id: z.string().uuid().nullable(),
-  work_order_erp_id: z.string(),
+  work_order_erp_id: z.string().nullable(),
   assignee_name: z.string(),
   choices_data: z.object({}).partial().passthrough().nullable(),
   annotation_status: z.object({}).partial().passthrough(),
@@ -17835,7 +17843,7 @@ const StepSummary = z.object({
   completed_at: z.string().datetime({ offset: true }).nullable(),
   duration_seconds: z.number().int().nullable(),
   operator_name: z.string().nullable(),
-  quality_status: z.union([QualityStatusD0aEnum, NullEnum]).nullable(),
+  quality_status: z.union([TravelerStepQualityStatusEnum, NullEnum]).nullable(),
   parts_at_step: z.number().int(),
   parts_completed: z.number().int(),
   measurement_count: z.number().int(),
@@ -19720,11 +19728,11 @@ export const schemas = {
   TravelerApproval,
   TravelerEquipment,
   TravelerMeasurement,
-  QualityStatusD0aEnum,
+  TravelerStepQualityStatusEnum,
   TravelerDefect,
   TravelerMaterial,
   TravelerAttachment,
-  TravelerBatchCycleQualityStatusEnum,
+  BatchCycleQualityStatusEnum,
   TravelerBatchMeasurement,
   TravelerBatchCycle,
   TravelerStepEntry,
@@ -19766,6 +19774,7 @@ export const schemas = {
   PatchedQualityReportsRequest,
   CurrentStateEnum,
   DispositionTypeEnum,
+  DispositionAffectedPart,
   QuarantineDisposition,
   PaginatedQuarantineDispositionList,
   QuarantineDispositionRequest,
@@ -33383,11 +33392,6 @@ Usage:
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
-      },
-      {
-        name: "machine",
-        type: "Query",
-        schema: z.string().uuid().optional(),
       },
       {
         name: "offset",

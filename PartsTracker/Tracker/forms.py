@@ -173,7 +173,9 @@ class ErrorReportForm(forms.ModelForm):
 
     class Meta:
         model = QualityReports
-        fields = ['machine', 'description', 'file']
+        # This legacy server-rendered form no longer captures equipment; the
+        # React QR flow records it via role-tagged QualityReportEquipment.
+        fields = ['description', 'file']
 
     def __init__(self, *args, **kwargs):
         part_type = kwargs.pop('part_type', None)

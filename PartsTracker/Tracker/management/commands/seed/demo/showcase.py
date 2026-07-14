@@ -252,7 +252,6 @@ class DemoShowcaseSeeder(BaseSeeder):
                 "verified_by": None,
                 "sampling_method": "manual",
                 "is_first_piece": False,
-                "machine": None,
                 "file": None,
                 "sampling_audit_log": None,
             },

@@ -339,8 +339,8 @@ class DemoQualitySeeder(BaseSeeder):
             step = step_map.get(qr_data['step'])
 
             if part and step:
-                machine = equipment_map.get(qr_data['step'])
-                qr = self._create_quality_report(qr_data, part, step, qa_inspector, machine, operators)
+                production_equipment = equipment_map.get(qr_data['step'])
+                qr = self._create_quality_report(qr_data, part, step, qa_inspector, production_equipment, operators)
                 result['quality_reports'].append(qr)
                 qr_map[qr_data['id']] = qr
 
@@ -377,7 +377,7 @@ class DemoQualitySeeder(BaseSeeder):
 
         return result
 
-    def _create_quality_report(self, qr_data, part, step, inspector, machine=None, operators=None):
+    def _create_quality_report(self, qr_data, part, step, inspector, production_equipment=None, operators=None):
         """
         Create a quality report.
 
@@ -389,7 +389,7 @@ class DemoQualitySeeder(BaseSeeder):
         - part, step: ForeignKeys
         - sampling_method: CharField (default 'manual')
         - is_first_piece: BooleanField (default False)
-        - machine: ForeignKey to Equipments (optional)
+        - production_equipment: Equipments used, recorded as a PRODUCTION QualityReportEquipment row (optional)
         - operators: ManyToManyField to User (optional)
 
         NOTE: Uses update_or_create to ensure enum values are updated properly.
@@ -409,11 +409,19 @@ class DemoQualitySeeder(BaseSeeder):
                 'verified_by': None,  # Explicit - no second signature required for demo
                 'sampling_method': 'manual',  # Explicit - don't rely on model default
                 'is_first_piece': False,  # Explicit - don't rely on model default
-                'machine': machine,  # Link to equipment used during inspection
                 'file': None,  # Explicit - no attached document
                 'sampling_audit_log': None,  # Explicit - not linked to sampling audit
             }
         )
+
+        # Production machine → PRODUCTION QualityReportEquipment. Reset first so
+        # update_or_create re-runs stay idempotent.
+        if production_equipment is not None:
+            from Tracker.models import QualityReportEquipment, EquipmentRole
+            qr.equipment_links.filter(role=EquipmentRole.PRODUCTION).delete()
+            QualityReportEquipment.objects.create(
+                quality_report=qr, equipment=production_equipment, role=EquipmentRole.PRODUCTION,
+            )
 
         # Backdate created_at for historical data (FPY trend needs dated records)
         if qr_data.get('days_ago'):
