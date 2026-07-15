@@ -145,12 +145,24 @@ export function UserDetailPage() {
                                     <dt className="text-sm font-medium text-muted-foreground">Email</dt>
                                     <dd className="text-sm font-medium">{user.email || "—"}</dd>
                                 </div>
-                                <div className="flex items-center justify-between py-2 border-b">
-                                    <dt className="text-sm font-medium text-muted-foreground">Company</dt>
-                                    <dd className="text-sm font-medium">
-                                        {user.parent_company?.name || "No company assigned"}
-                                    </dd>
-                                </div>
+                                {/* Internal staff belong to the tenant (their org); only external
+                                    portal users carry a customer/external company. Showing an empty
+                                    "Company" for staff is misleading — branch on user_type. */}
+                                {user.user_type === "PORTAL" ? (
+                                    <div className="flex items-center justify-between py-2 border-b">
+                                        <dt className="text-sm font-medium text-muted-foreground">Company</dt>
+                                        <dd className="text-sm font-medium">
+                                            {user.parent_company?.name || "—"}
+                                        </dd>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between py-2 border-b">
+                                        <dt className="text-sm font-medium text-muted-foreground">Organization</dt>
+                                        <dd className="text-sm font-medium">
+                                            {(user.tenant as { name?: string } | null | undefined)?.name || "—"}
+                                        </dd>
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between py-2 border-b">
                                     <dt className="text-sm font-medium text-muted-foreground">User type</dt>
                                     <dd className="text-sm font-medium">
