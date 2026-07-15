@@ -1,0 +1,274 @@
+{
+  "measurement_label": "Flow Rate",
+  "process_name": "Injector Reman",
+  "step_name": "Flow Testing",
+  "chart_mode": "xbar-r",
+  "window_days": 90,
+  "subgroup_size": 5,
+  "window_start": "2026-04-16T19:29:30.753698Z",
+  "window_end": "2026-07-15T19:29:30.753698Z",
+  "generated_at": "2026-07-15T19:29:30.768453Z",
+  "generated_by": null,
+  "tenant_name": "Demo Company",
+  "spec": {
+    "nominal": 120.0,
+    "upper_tol": 20.0,
+    "lower_tol": 20.0,
+    "usl": 140.0,
+    "lsl": 100.0,
+    "unit": "mL/min"
+  },
+  "statistics": {
+    "count": 30,
+    "mean": 121.809333,
+    "std_dev": 9.229527,
+    "min": 102.05,
+    "max": 142.0,
+    "within_spec_count": 28,
+    "out_of_spec_count": 2
+  },
+  "capability": {
+    "sample_size": 30,
+    "subgroup_size": 5,
+    "num_subgroups": 6,
+    "std_dev_within": 9.258383,
+    "std_dev_overall": 9.229527,
+    "cp": 0.72,
+    "cpk": 0.655,
+    "pp": 0.722,
+    "ppk": 0.657,
+    "interpretation": "Process is not capable — immediate action required."
+  },
+  "baseline": {
+    "chart_type": "I_MR",
+    "subgroup_size": 1,
+    "frozen_at": "2026-05-15T16:45:43.769111Z",
+    "frozen_by": "Maria Santos",
+    "sample_count": 30,
+    "notes": "Initial baseline from production startup",
+    "xbar_ucl": null,
+    "xbar_cl": null,
+    "xbar_lcl": null,
+    "range_ucl": null,
+    "range_cl": null,
+    "range_lcl": null,
+    "individual_ucl": 129.0,
+    "individual_cl": 120.0,
+    "individual_lcl": 111.0,
+    "mr_ucl": 10.17,
+    "mr_cl": 3.108
+  },
+  "data_points": [
+    {
+      "timestamp": "2026-06-24T16:45:43.769111Z",
+      "value": 128.73,
+      "part_erp_id": "INJ-0038-001",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-25T16:45:43.769111Z",
+      "value": 121.37,
+      "part_erp_id": "INJ-0038-002",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-25T16:45:43.769111Z",
+      "value": 107.89,
+      "part_erp_id": "INJ-0038-004",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-26T16:45:43.769111Z",
+      "value": 115.44,
+      "part_erp_id": "INJ-0038-003",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-26T16:45:43.769111Z",
+      "value": 122.81,
+      "part_erp_id": "INJ-0038-005",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-27T16:45:43.769111Z",
+      "value": 114.34,
+      "part_erp_id": "INJ-0038-006",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-27T16:45:43.769111Z",
+      "value": 122.84,
+      "part_erp_id": "INJ-0038-007",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-28T16:45:43.769111Z",
+      "value": 125.13,
+      "part_erp_id": "INJ-0038-008",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-29T16:45:43.769111Z",
+      "value": 125.37,
+      "part_erp_id": "INJ-0038-010",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-29T16:45:43.769111Z",
+      "value": 130.0,
+      "part_erp_id": "INJ-0038-009",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-06-30T16:45:43.769111Z",
+      "value": 109.2,
+      "part_erp_id": "INJ-0038-011",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-01T16:45:43.769111Z",
+      "value": 124.58,
+      "part_erp_id": "INJ-0038-012",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-09T16:45:43.769111Z",
+      "value": 142.0,
+      "part_erp_id": "INJ-0042-001",
+      "operator": "Maria Santos",
+      "is_within_spec": false
+    },
+    {
+      "timestamp": "2026-07-09T16:45:43.769111Z",
+      "value": 120.47,
+      "part_erp_id": "INJ-0042-002",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-09T16:45:43.769111Z",
+      "value": 120.85,
+      "part_erp_id": "INJ-0042-003",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-10T16:45:43.769111Z",
+      "value": 109.62,
+      "part_erp_id": "INJ-0042-004",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-10T16:45:43.769111Z",
+      "value": 122.25,
+      "part_erp_id": "INJ-0042-005",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-10T16:45:43.769111Z",
+      "value": 102.05,
+      "part_erp_id": "INJ-0042-006",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-11T16:45:43.769111Z",
+      "value": 127.26,
+      "part_erp_id": "INJ-0042-007",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-11T16:45:43.769111Z",
+      "value": 130.0,
+      "part_erp_id": "INJ-0042-008",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-11T16:45:43.769111Z",
+      "value": 124.7,
+      "part_erp_id": "INJ-0042-009",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-11T16:45:43.769111Z",
+      "value": 113.82,
+      "part_erp_id": "INJ-0042-019",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-12T16:45:43.769111Z",
+      "value": 112.47,
+      "part_erp_id": "INJ-0042-010",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-12T16:45:43.769111Z",
+      "value": 119.46,
+      "part_erp_id": "INJ-0042-011",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-12T16:45:43.769111Z",
+      "value": 111.43,
+      "part_erp_id": "INJ-0042-012",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-12T16:45:43.769111Z",
+      "value": 130.0,
+      "part_erp_id": "INJ-0042-017",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-13T16:45:43.769111Z",
+      "value": 123.31,
+      "part_erp_id": "INJ-0042-013",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-13T16:45:43.769111Z",
+      "value": 124.89,
+      "part_erp_id": "INJ-0042-014",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-13T16:45:43.769111Z",
+      "value": 130.0,
+      "part_erp_id": "INJ-0042-015",
+      "operator": "Maria Santos",
+      "is_within_spec": true
+    },
+    {
+      "timestamp": "2026-07-13T16:45:43.769111Z",
+      "value": 142.0,
+      "part_erp_id": "INJ-0042-016",
+      "operator": "Maria Santos",
+      "is_within_spec": false
+    }
+  ],
+  "data_truncated": false
+}

@@ -1,0 +1,12 @@
+{
+  "scar_number": "SCAR-ASSESS-READY",
+  "supplier_name": "—",
+  "issued_by_org": "Demo Company",
+  "issued_by_person": "Maria Santos",
+  "issued_date": "2026-07-14",
+  "response_due_date": null,
+  "severity": "MAJOR",
+  "status": "PENDING_VERIFICATION",
+  "problem_statement": "Assessment CAPA - Ready for closure verification. Repeated dimensional failures on bore operations traced to worn tooling. All corrective actions complete.",
+  "immediate_action": ""
+}
