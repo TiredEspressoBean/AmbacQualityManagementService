@@ -34,6 +34,7 @@ import { useMyCapaTasks } from "@/hooks/useMyCapaTasks";
 import { useMyDispositions } from "@/hooks/useMyDispositions";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
 import { usePendingFpis } from "@/hooks/usePendingFpis";
+import { ScanBox } from "@/components/home/home-blocks";
 
 type InboxType = InspectionInboxRow["type"];
 
@@ -417,6 +418,7 @@ export function QaHomePage({ user }: { user: AuthUser }) {
                     </Button>
                 </Link>
             </div>
+            <ScanBox autoFocus={false} />
             <FpiBanner />
             <InboxList />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

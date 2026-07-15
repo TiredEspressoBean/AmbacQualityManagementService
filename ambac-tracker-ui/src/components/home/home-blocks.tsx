@@ -8,7 +8,10 @@
  * model, so nothing here may depend on either.
  *
  *  - ScanBox: travelers are the dispatch system in an unscheduled shop —
- *    scan/type a WO or part number and land on that WO's control page.
+ *    scan/type a WO or part number and land on that WO's detail page, where
+ *    Start Work + the Digital Traveler live (OPERATOR_EXPERIENCE_DESIGN §8:
+ *    "scan and all Start buttons land here"). The /control page is the
+ *    lead/manager surface and has no run action.
  *  - Work-order queue: competitors' operator queues list JOBS, not serials
  *    (Fulcrum/Epicor/Global Shop/Katana), so the row unit is the work order in
  *    priority/due order; per-part detail lives on the WO control page.
@@ -39,7 +42,7 @@ import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 // navigates to the work order's control page (ops + inspection live there).
 // ---------------------------------------------------------------------------
 
-function ScanBox() {
+export function ScanBox({ autoFocus = true }: { autoFocus?: boolean } = {}) {
     const navigate = useNavigate();
     const [code, setCode] = useState("");
     const [busy, setBusy] = useState(false);
@@ -56,7 +59,7 @@ function ScanBox() {
             const wo = (wos.results ?? []).find((w) => (w.ERP_id ?? "").toLowerCase() === q.toLowerCase())
                 ?? ((wos.results?.length ?? 0) === 1 ? wos.results![0] : undefined);
             if (wo) {
-                navigate({ to: "/workorder/$workOrderId/control", params: { workOrderId: String(wo.id) } });
+                navigate({ to: "/workorder/$workOrderId", params: { workOrderId: String(wo.id) } });
                 return;
             }
             const parts = (await api.api_Parts_list({ queries: { search: q, limit: 5 } } as never)) as {
@@ -65,7 +68,7 @@ function ScanBox() {
             const part = (parts.results ?? []).find((p) => (p.ERP_id ?? "").toLowerCase() === q.toLowerCase())
                 ?? ((parts.results?.length ?? 0) === 1 ? parts.results![0] : undefined);
             if (part?.work_order) {
-                navigate({ to: "/workorder/$workOrderId/control", params: { workOrderId: String(part.work_order) } });
+                navigate({ to: "/workorder/$workOrderId", params: { workOrderId: String(part.work_order) } });
                 return;
             }
             toast.error(`Nothing found for "${q}"`, {
@@ -88,7 +91,7 @@ function ScanBox() {
                 onKeyDown={(e) => { if (e.key === "Enter") void resolve(); }}
                 placeholder="Scan or type a work order / part number…"
                 className="border-0 shadow-none focus-visible:ring-0 text-base"
-                autoFocus
+                autoFocus={autoFocus}
             />
             <Button onClick={() => void resolve()} disabled={busy || !code.trim()}>
                 {busy ? "Looking up…" : "Go"}
