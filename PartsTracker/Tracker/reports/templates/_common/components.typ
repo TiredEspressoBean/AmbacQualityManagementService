@@ -114,20 +114,27 @@
 )[#body]
 
 // Table header band (caller supplies the grid of header cells).
+// `spacing: 0pt` so the header + rows abut with no gap — the rows are
+// intentionally top-less and share the border above them (a gap would leave
+// each row open-topped / "U-shaped").
 #let table-header(body) = block(
   fill: rgb("#dbe2ea"),
   stroke: 0.9pt + rule,
   inset: (x: 6pt, y: 5pt),
   width: 100%,
+  spacing: 0pt,
   radius: (top-left: 3pt, top-right: 3pt),
 )[#body]
 
-// Striped table row (caller supplies the grid of row cells).
+// Striped table row (caller supplies the grid of row cells). Top-less by
+// design; `spacing: 0pt` makes it abut the header/previous row so its top edge
+// is the line above it (see table-header note).
 #let table-row(idx, body, inset-y: 5pt) = block(
   fill: if calc.rem(idx, 2) == 0 { white } else { rgb("#eef2f7") },
   stroke: (bottom: 0.5pt + rule, left: 0.75pt + rule, right: 0.75pt + rule),
   inset: (x: 6pt, y: inset-y),
   width: 100%,
+  spacing: 0pt,
 )[#body]
 
 // ---------------------------------------------------------------------------
