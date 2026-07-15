@@ -22,6 +22,7 @@ import {
     Users as UsersIcon,
     X,
     Edit,
+    Eye,
     Link as LinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -577,6 +578,15 @@ export function UserManagementPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={() => navigate({
+                                                            to: "/admin/users/$id",
+                                                            params: { id: String(u.id) },
+                                                        })}
+                                                    >
+                                                        <Eye className="h-4 w-4 mr-2" />
+                                                        View
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         onClick={() => navigate({
                                                             to: "/UserForm/edit/$id",
