@@ -5,6 +5,9 @@ django-model-utils>=4.4.0
 hubspot-api-client>=12.0.0
 # Report pipeline
 typst==0.14.8
+# Barcode / QR rendering for report labels + the WO traveler (SVG embedded in Typst)
+python-barcode==0.16.1
+qrcode==8.2
 # Pydantic — adapter context models at the Typst template boundary
 pydantic>=2.13
 # CEL expression engine — NotificationRule.conditions evaluation (Phase 3)
