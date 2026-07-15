@@ -28,11 +28,18 @@ export function CalibrationDashboardPage() {
         <div className="container mx-auto p-6">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">Calibration Dashboard</h1>
-                <ReportButton
-                    reportType="calibration_due"
-                    label="Calibration Due"
-                    params={{}}
-                />
+                <div className="flex items-center gap-2">
+                    <ReportButton
+                        reportType="calibration_due"
+                        label="Calibration Due"
+                        params={{}}
+                    />
+                    <ReportButton
+                        reportType="checking_aids"
+                        label="Checking Aids"
+                        params={{}}
+                    />
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">

@@ -375,12 +375,18 @@ export default function EditDispositionFormPage() {
                         )}
                     </div>
                     {mode === "edit" && dispositionId && (
-                        <ReportButton
-                            reportType="ncr"
-                            label="NCR Report"
-                            className="ml-auto"
-                            params={{ id: dispositionId }}
-                        />
+                        <div className="ml-auto flex items-center gap-2">
+                            <ReportButton
+                                reportType="ncr_report"
+                                label="NCR Report"
+                                params={{ id: dispositionId }}
+                            />
+                            <ReportButton
+                                reportType="deviation_request"
+                                label="Deviation Request"
+                                params={{ id: dispositionId }}
+                            />
+                        </div>
                     )}
                 </div>
             </div>

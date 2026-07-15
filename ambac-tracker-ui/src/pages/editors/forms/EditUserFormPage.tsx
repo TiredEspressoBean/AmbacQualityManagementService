@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { ReportButton } from "@/components/reports/ReportButton";
 import {
     Form,
     FormControl,
@@ -174,16 +175,25 @@ export default function UserFormPage() {
 
     return (
         <div className="max-w-3xl mx-auto py-10">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold">
-                    {mode === "edit" ? "Edit User" : "Create User"}
-                </h1>
-                <p className="text-muted-foreground">
-                    {mode === "edit"
-                        ? "Update the user information below"
-                        : "Add a new user to the system"
-                    }
-                </p>
+            <div className="mb-8 flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold">
+                        {mode === "edit" ? "Edit User" : "Create User"}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        {mode === "edit"
+                            ? "Update the user information below"
+                            : "Add a new user to the system"
+                        }
+                    </p>
+                </div>
+                {mode === "edit" && userId && (
+                    <ReportButton
+                        reportType="training_record"
+                        label="Training Record"
+                        params={{ user_id: userId }}
+                    />
+                )}
             </div>
 
             <Form {...form}>

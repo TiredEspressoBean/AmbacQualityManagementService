@@ -14,6 +14,7 @@ import { QaRightPanel } from "@/components/qa-right-panel";
 import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { WorkOrderPartsTable } from "@/components/work-order-parts-table";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { StatusBadge } from "@/components/flow/overlays/StatusBadge";
 import { cn } from "@/lib/utils";
 import type { WorkOrderStatusEnum } from "@/lib/api/generated";
@@ -142,6 +143,11 @@ export function WorkOrderDetailPage() {
 
                 {/* Status Actions */}
                 <div className="flex items-center gap-2">
+                    <ReportButton
+                        reportType="work_order_traveler"
+                        label="Traveler"
+                        params={{ id: workOrderId }}
+                    />
                     <StartWorkDialog workOrderId={workOrderId} />
                     <WorkOrderStatusActions
                         workOrderId={workOrderId}

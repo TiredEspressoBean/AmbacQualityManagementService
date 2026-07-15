@@ -336,11 +336,18 @@ export function CapaDetailPage() {
                     <p className="text-muted-foreground">{capa?.capa_type_display}</p>
                 </div>
 
-                <ReportButton
-                    reportType="capa_report"
-                    label="CAPA Report"
-                    params={capaId && !isDemo ? { id: capaId } : null}
-                />
+                <div className="flex items-center gap-2">
+                    <ReportButton
+                        reportType="capa_report"
+                        label="CAPA Report"
+                        params={capaId && !isDemo ? { id: capaId } : null}
+                    />
+                    <ReportButton
+                        reportType="scar"
+                        label="SCAR"
+                        params={capaId && !isDemo ? { id: capaId } : null}
+                    />
+                </div>
             </div>
 
             {/* Summary Card */}

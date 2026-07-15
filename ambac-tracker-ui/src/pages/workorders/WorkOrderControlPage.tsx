@@ -1271,6 +1271,11 @@ export function WorkOrderControlPage() {
                         label="Pick List"
                         params={workOrderId ? { id: workOrderId } : null}
                     />
+                    <ReportButton
+                        reportType="part_id_label_batch"
+                        label="Part Labels"
+                        params={{ work_order_id: workOrderId }}
+                    />
                     <Button
                         variant={splitMode ? "default" : "outline"}
                         onClick={() => (splitMode ? exitSplitMode() : enterSplitMode("QUANTITY"))}
