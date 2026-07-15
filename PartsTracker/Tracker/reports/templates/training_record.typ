@@ -11,17 +11,13 @@
 //   6. Signature block — Employee, Trainer, Supervisor (3-column)
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared kv / badge / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
-
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
 
 // Status badge — CURRENT=green, EXPIRED=red, EXPIRING_SOON=amber, no expiry=muted
 #let status-badge(status) = {
@@ -29,20 +25,6 @@
   else if status == "EXPIRED"   { badge("EXPIRED",        bad,  rgb("#fee2e2")) }
   else if status == "EXPIRING_SOON" { badge("EXPIRING SOON", warn, rgb("#fef3c7")) }
   else                          { badge(status,           muted, rgb("#e2e8f0")) }
-}
-
-// Key-value helper for the employee info block
-#let kv(key, value) = grid(
-  columns: (90pt, 1fr),
-  text(size: 9pt, fill: muted, font: sans-font)[#key],
-  text(size: 9pt, font: sans-font)[#value],
-)
-
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
 }
 
 // Signature line
@@ -82,13 +64,7 @@
 
 // ── Employee info ─────────────────────────────────────────────────────────────
 
-#block(
-  fill: rgb("#f8fafc"),
-  stroke: 0.5pt + rule,
-  radius: 4pt,
-  inset: 12pt,
-  width: 100%,
-)[
+#info-box[
   #text(size: 9pt, weight: "semibold", fill: muted, font: sans-font)[EMPLOYEE]
   #v(6pt)
   #kv("Name:", data.employee_name)
@@ -102,13 +78,7 @@
 
 // ── Summary bar ──────────────────────────────────────────────────────────────
 
-#block(
-  fill: rgb("#f8fafc"),
-  stroke: 0.5pt + rule,
-  radius: 4pt,
-  inset: 12pt,
-  width: 100%,
-)[
+#info-box[
   #grid(
     columns: (1fr, 1fr, 1fr, 1fr),
     column-gutter: 12pt,
@@ -160,13 +130,7 @@
   #set par(justify: false)
 
   // Table header
-  #block(
-    fill: rgb("#f1f5f9"),
-    stroke: 0.5pt + rule,
-    inset: (x: 6pt, y: 5pt),
-    width: 100%,
-    radius: (top-left: 3pt, top-right: 3pt),
-  )[
+  #table-header[
     #grid(
       columns: (2.8fr, 1.2fr, 1.2fr, 1.6fr, 1.1fr),
       column-gutter: 6pt,
@@ -180,13 +144,7 @@
 
   // Table rows
   #for (idx, rec) in data.records.enumerate() [
-    #let row-fill = if calc.rem(idx, 2) == 0 { white } else { rgb("#f8fafc") }
-    #block(
-      fill: row-fill,
-      stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-      inset: (x: 6pt, y: 5pt),
-      width: 100%,
-    )[
+    #table-row(idx)[
       #grid(
         columns: (2.8fr, 1.2fr, 1.2fr, 1.6fr, 1.1fr),
         column-gutter: 6pt,

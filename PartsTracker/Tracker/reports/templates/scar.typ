@@ -11,15 +11,11 @@
 //   5. Supplier sign-off + return instructions
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8.5pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
+// ── Helpers — shared badge / field / divider come from _common/components.typ ──
 
 #let severity-badge(s) = {
   if s == "CRITICAL" { badge("CRITICAL", bad, rgb("#fee2e2")) }
@@ -35,14 +31,6 @@
   else if s == "CLOSED" { badge("CLOSED", ok, rgb("#dcfce7")) }
   else { badge(s, muted, rgb("#e2e8f0")) }
 }
-
-#let kv(label, value) = grid(
-  columns: (auto, 1fr), column-gutter: 10pt,
-  text(fill: muted, font: sans-font, size: 9pt)[*#label*],
-  if value == none or value == "" [ #text(fill: muted, style: "italic")[—] ] else [ #value ],
-)
-
-#let divider() = { v(6pt); line(length: 100%, stroke: 0.4pt + rule); v(6pt) }
 
 #let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #d ]
 
@@ -88,12 +76,12 @@
 
 #grid(
   columns: (1fr, 1fr), column-gutter: 16pt, row-gutter: 6pt,
-  kv("Issued To (Supplier)", text(weight: "semibold")[#data.supplier_name]),
-  kv("Issued By", data.issued_by_org),
-  kv("Originator", data.issued_by_person),
-  kv("Severity", severity-badge(data.severity)),
-  kv("Date Issued", fmt-date(data.issued_date)),
-  kv("Response Due", fmt-date(data.response_due_date)),
+  field("Issued To (Supplier)", text(weight: "semibold")[#data.supplier_name]),
+  field("Issued By", data.issued_by_org),
+  field("Originator", data.issued_by_person),
+  field("Severity", severity-badge(data.severity)),
+  field("Date Issued", fmt-date(data.issued_date)),
+  field("Response Due", fmt-date(data.response_due_date)),
 )
 
 #v(8pt)

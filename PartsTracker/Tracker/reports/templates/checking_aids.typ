@@ -13,31 +13,13 @@
 //   4. Quality Manager signature block
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared field / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
-
-// Key-value row helper — muted label, value in ink
-#let kv(label, value) = grid(
-  columns: (auto, 1fr),
-  column-gutter: 10pt,
-  text(fill: muted, font: sans-font, size: 9pt)[*#label*],
-  if value == none or value == "" {
-    text(fill: muted, style: "italic")[—]
-  } else {
-    value
-  },
-)
-
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
-}
 
 // ----------------------------------------------------------------------------
 // Document
@@ -64,24 +46,18 @@
 
 // ── Header info ──────────────────────────────────────────────────────────────
 
-#block(
-  fill: rgb("#f8fafc"),
-  stroke: 0.5pt + rule,
-  radius: 4pt,
-  inset: 12pt,
-  width: 100%,
-)[
+#info-box[
   #grid(
     columns: (1fr, 1fr),
     column-gutter: 24pt,
     row-gutter: 6pt,
-    kv("Organization:", data.tenant_name),
-    kv("Submission Date:", str(data.submission_date)),
-    kv(
+    field("Organization:", data.tenant_name),
+    field("Submission Date:", str(data.submission_date)),
+    field(
       "Part Number:",
       if data.part_number == none { none } else { data.part_number },
     ),
-    kv("Total Gages:", str(data.total_count)),
+    field("Total Gages:", str(data.total_count)),
   )
 ]
 
@@ -100,13 +76,7 @@
   #set par(justify: false)
 
   // Table header
-  #block(
-    fill: rgb("#f1f5f9"),
-    stroke: 0.5pt + rule,
-    inset: (x: 6pt, y: 5pt),
-    width: 100%,
-    radius: (top-left: 3pt, top-right: 3pt),
-  )[
+  #table-header[
     #grid(
       columns: (1.5fr, 2.2fr, 1.6fr, 1.5fr, 1.1fr),
       column-gutter: 6pt,
@@ -120,13 +90,7 @@
 
   // Table rows
   #for (idx, item) in data.items.enumerate() [
-    #let row-fill = if calc.rem(idx, 2) == 0 { white } else { rgb("#f8fafc") }
-    #block(
-      fill: row-fill,
-      stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-      inset: (x: 6pt, y: 5pt),
-      width: 100%,
-    )[
+    #table-row(idx)[
       #grid(
         columns: (1.5fr, 2.2fr, 1.6fr, 1.5fr, 1.1fr),
         column-gutter: 6pt,
@@ -195,13 +159,12 @@
 )
 
 #v(16pt)
-#divider()
 
 // ── Footer note ───────────────────────────────────────────────────────────────
 
-#text(size: 8.5pt, fill: muted)[
-  *Note:* This is a PPAP Element 16 submission artifact. It records the
+#footer-note([
+  This is a PPAP Element 16 submission artifact. It records the
   measurement equipment used to verify conformance at the time of PPAP
   submission, not live calibration status. For current calibration status
   see the Calibration Due Report.
-]
+])

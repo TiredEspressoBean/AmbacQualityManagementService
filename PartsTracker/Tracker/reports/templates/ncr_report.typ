@@ -15,17 +15,13 @@
 //  10. Closure signature block
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared badge / field come from _common/components.typ
 // ----------------------------------------------------------------------------
-
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8.5pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
 
 #let state-badge(state) = {
   if state == "OPEN" { badge("OPEN", warn, rgb("#fef3c7")) }
@@ -40,18 +36,6 @@
   else if sev == "MINOR" { badge("MINOR", muted, rgb("#e2e8f0")) }
   else { badge(sev, muted, rgb("#e2e8f0")) }
 }
-
-// Field/value row — label muted, value in ink. Accepts `none` for missing data.
-#let field(label, value) = grid(
-  columns: (auto, 1fr),
-  column-gutter: 10pt,
-  text(fill: muted, font: sans-font, size: 9pt)[*#label*],
-  if value == none or value == "" [
-    #text(fill: muted, style: "italic")[—]
-  ] else [
-    #value
-  ],
-)
 
 // Format an ISO datetime string → "2026-04-13 14:22 UTC" (light touch).
 #let fmt-dt(iso) = {

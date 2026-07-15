@@ -9,17 +9,13 @@
 //   4. Footer note (planning document, not a quality record)
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared badge / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
-
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
 
 // Status badge — OVERDUE=red, DUE_SOON=amber, CURRENT=green
 #let status-badge(status) = {
@@ -34,13 +30,6 @@
   else if result == "FAIL" { badge("FAIL",  bad,  rgb("#fee2e2")) }
   else if result == "LIMITED" { badge("LIMITED", warn, rgb("#fef3c7")) }
   else                   { badge(result,   muted, rgb("#e2e8f0")) }
-}
-
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
 }
 
 // ----------------------------------------------------------------------------
@@ -72,13 +61,7 @@
 
 // ── Summary bar ──────────────────────────────────────────────────────────────
 
-#block(
-  fill: rgb("#f8fafc"),
-  stroke: 0.5pt + rule,
-  radius: 4pt,
-  inset: 12pt,
-  width: 100%,
-)[
+#info-box[
   #grid(
     columns: (1fr, 1fr, 1fr),
     column-gutter: 12pt,
@@ -127,13 +110,7 @@
   #set par(justify: false)
 
   // Table header
-  #block(
-    fill: rgb("#f1f5f9"),
-    stroke: 0.5pt + rule,
-    inset: (x: 6pt, y: 5pt),
-    width: 100%,
-    radius: (top-left: 3pt, top-right: 3pt),
-  )[
+  #table-header[
     #grid(
       columns: (2.5fr, 1.8fr, 1.4fr, 1.1fr, 1.1fr, 0.7fr, 1fr),
       column-gutter: 6pt,
@@ -149,13 +126,7 @@
 
   // Table rows
   #for (idx, item) in data.items.enumerate() [
-    #let row-fill = if calc.rem(idx, 2) == 0 { white } else { rgb("#f8fafc") }
-    #block(
-      fill: row-fill,
-      stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-      inset: (x: 6pt, y: 5pt),
-      width: 100%,
-    )[
+    #table-row(idx)[
       #grid(
         columns: (2.5fr, 1.8fr, 1.4fr, 1.1fr, 1.1fr, 0.7fr, 1fr),
         column-gutter: 6pt,
@@ -195,13 +166,12 @@
 ]
 
 #v(16pt)
-#divider()
 
 // ── Footer note ───────────────────────────────────────────────────────────────
 
-#text(size: 8.5pt, fill: muted)[
-  *Note:* This is a planning document generated from calibration record data as
+#footer-note([
+  This is a planning document generated from calibration record data as
   of #data.generated_date. It is not a calibration certificate or quality record.
   Status thresholds: OVERDUE = past due date; DUE SOON = due within 30 days;
   CURRENT = more than 30 days remaining.
-]
+])

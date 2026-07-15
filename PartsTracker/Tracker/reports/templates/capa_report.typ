@@ -17,19 +17,15 @@
 //   8. Signature block — Initiator | Quality Manager | Approver
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared badge / field / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
 
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8.5pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
-
-// Status badge
+// Status badge (custom OPEN/CLOSED/PENDING_VERIFICATION mapping — kept local)
 #let status-badge(s) = {
   if s == "OPEN"                  { badge("OPEN",                 accent, rgb("#dbeafe")) }
   else if s == "IN_PROGRESS"      { badge("IN PROGRESS",          warn,   rgb("#fef3c7")) }
@@ -70,26 +66,6 @@
   else if s == "REJECTED" { badge("REJECTED",     bad,  rgb("#fee2e2")) }
   else if s == "PENDING"  { badge("PENDING",      warn, rgb("#fef3c7")) }
   else                    { badge("NOT REQUIRED",  muted, rgb("#e2e8f0")) }
-}
-
-// Field/value row — muted label, value body text; handles none/empty gracefully.
-// Named `kv` to avoid shadowing the Typst built-in `field`.
-#let kv(label, value) = grid(
-  columns: (auto, 1fr),
-  column-gutter: 10pt,
-  text(fill: muted, font: sans-font, size: 9pt)[*#label*],
-  if value == none or value == "" [
-    #text(fill: muted, style: "italic")[—]
-  ] else [
-    #value
-  ],
-)
-
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
 }
 
 // Format a date string or none → em-dash
@@ -159,17 +135,17 @@
   column-gutter: 16pt,
   row-gutter: 6pt,
 
-  kv("CAPA Type",      capa-type-label(data.capa_type)),
-  kv("Severity",       severity-badge(data.severity)),
+  field("CAPA Type",      capa-type-label(data.capa_type)),
+  field("Severity",       severity-badge(data.severity)),
 
-  kv("Initiated By",   data.initiated_by),
-  kv("Assigned To",    data.assigned_to),
+  field("Initiated By",   data.initiated_by),
+  field("Assigned To",    data.assigned_to),
 
-  kv("Date Opened",    fmt-date(data.initiated_date)),
-  kv("Due Date",       fmt-date(data.due_date)),
+  field("Date Opened",    fmt-date(data.initiated_date)),
+  field("Due Date",       fmt-date(data.due_date)),
 
-  kv("Completed Date", fmt-date(data.completed_date)),
-  kv("Status",         status-badge(data.status)),
+  field("Completed Date", fmt-date(data.completed_date)),
+  field("Status",         status-badge(data.status)),
 )
 
 #divider()
@@ -204,11 +180,11 @@
     column-gutter: 16pt,
     row-gutter: 6pt,
 
-    kv("Method",       rca-method-label(data.rca.method)),
-    kv("Conducted By", data.rca.conducted_by),
+    field("Method",       rca-method-label(data.rca.method)),
+    field("Conducted By", data.rca.conducted_by),
 
-    kv("Date",         fmt-date(data.rca.conducted_date)),
-    kv("",             none),
+    field("Date",         fmt-date(data.rca.conducted_date)),
+    field("",             none),
   )
 
   #v(6pt)
@@ -352,13 +328,7 @@
       set par(justify: false)
 
       // Header row
-      block(
-        fill: rgb("#f1f5f9"),
-        stroke: 0.5pt + rule,
-        inset: (x: 6pt, y: 5pt),
-        width: 100%,
-        radius: (top-left: 3pt, top-right: 3pt),
-      )[
+      table-header[
         #grid(
           columns: (3fr, 1.5fr, 1fr, 1fr, 1.2fr),
           column-gutter: 6pt,
@@ -372,13 +342,7 @@
 
       // Data rows
       for (idx, task) in group.enumerate() {
-        let row-fill = if calc.rem(idx, 2) == 0 { white } else { rgb("#f8fafc") }
-        block(
-          fill: row-fill,
-          stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-          inset: (x: 6pt, y: 5pt),
-          width: 100%,
-        )[
+        table-row(idx)[
           #grid(
             columns: (3fr, 1.5fr, 1fr, 1fr, 1.2fr),
             column-gutter: 6pt,
@@ -426,11 +390,11 @@
     column-gutter: 16pt,
     row-gutter: 6pt,
 
-    kv("Verified By",     v-data.verified_by),
-    kv("Verification Date", fmt-date(v-data.verification_date)),
+    field("Verified By",     v-data.verified_by),
+    field("Verification Date", fmt-date(v-data.verification_date)),
 
-    kv("Result",          effectiveness-badge(v-data.effectiveness_result)),
-    kv("",                none),
+    field("Result",          effectiveness-badge(v-data.effectiveness_result)),
+    field("",                none),
   )
 
   #v(8pt)
@@ -475,11 +439,11 @@
     column-gutter: 16pt,
     row-gutter: 6pt,
 
-    kv("Approval Status", approval-badge(data.approval.approval_status)),
-    kv("Approved By",     data.approval.approved_by),
+    field("Approval Status", approval-badge(data.approval.approval_status)),
+    field("Approved By",     data.approval.approved_by),
 
-    kv("Approved Date",   fmt-date(data.approval.approved_at)),
-    kv("",                none),
+    field("Approved Date",   fmt-date(data.approval.approved_at)),
+    field("",                none),
   )
 ]
 

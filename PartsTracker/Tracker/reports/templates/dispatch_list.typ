@@ -12,17 +12,13 @@
 //   4. Footer note (planning document, not a quality record)
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared badge / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
-
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
 
 // Priority badge colouring
 #let priority-badge(p) = {
@@ -65,13 +61,6 @@
   }
 }
 
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
-}
-
 // Column widths shared between header and data rows
 #let col-widths = (1.4fr, 2.2fr, 0.7fr, 1.1fr, 0.65fr, 1fr, 1.1fr)
 
@@ -104,13 +93,7 @@
 
 // ── Summary bar ──────────────────────────────────────────────────────────────
 
-#block(
-  fill: rgb("#f8fafc"),
-  stroke: 0.5pt + rule,
-  radius: 4pt,
-  inset: 12pt,
-  width: 100%,
-)[
+#info-box[
   #grid(
     columns: (1fr, 1fr),
     column-gutter: 12pt,
@@ -251,14 +234,12 @@
   ]
 ]
 
-#divider()
-
 // ── Footer note ───────────────────────────────────────────────────────────────
 
-#text(size: 8.5pt, fill: muted)[
-  *Note:* This Dispatch List is a planning document generated from live production
+#footer-note([
+  This Dispatch List is a planning document generated from live production
   data as of #data.generated_date. It is not a quality record or traveler. Work
   centers are approximated by the current manufacturing step assigned to each part.
   Sort order: most urgent (earliest due date) first within each work center.
   Days column: negative values indicate the work order is past its due date.
-]
+])

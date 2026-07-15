@@ -13,17 +13,13 @@
 //   8. "End of Certificate" marker (ISO 17025 requirement)
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared badge / field / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
-
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8.5pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
 
 // Result badge — PASS=green, FAIL=red, LIMITED=amber
 #let result-badge(result) = {
@@ -44,25 +40,6 @@
 #let fmt-cal-type(t) = t.replace("_", " ").split(" ").map(w =>
   upper(w.first()) + lower(w.slice(1))
 ).join(" ")
-
-// Field/value row — muted label, value in ink; handles none/empty gracefully
-#let kv(label, value) = grid(
-  columns: (auto, 1fr),
-  column-gutter: 10pt,
-  text(fill: muted, font: sans-font, size: 9pt)[*#label*],
-  if value == none or value == "" [
-    #text(fill: muted, style: "italic")[—]
-  ] else [
-    #value
-  ],
-)
-
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
-}
 
 // ----------------------------------------------------------------------------
 // Document
@@ -99,14 +76,14 @@
   column-gutter: 16pt,
   row-gutter: 6pt,
 
-  kv("Instrument Name", data.equipment_name),
-  kv("Serial Number", data.equipment_serial),
+  field("Instrument Name", data.equipment_name),
+  field("Serial Number", data.equipment_serial),
 
-  kv("Equipment Type", data.equipment_type),
-  kv("Manufacturer", data.equipment_manufacturer),
+  field("Equipment Type", data.equipment_type),
+  field("Manufacturer", data.equipment_manufacturer),
 
-  kv("Model Number", data.equipment_model),
-  kv("Location", data.equipment_location),
+  field("Model Number", data.equipment_model),
+  field("Location", data.equipment_location),
 )
 
 #divider()
@@ -120,17 +97,17 @@
   column-gutter: 16pt,
   row-gutter: 6pt,
 
-  kv("Calibration Date", str(data.calibration_date)),
-  kv("Next Due Date", str(data.due_date)),
+  field("Calibration Date", str(data.calibration_date)),
+  field("Next Due Date", str(data.due_date)),
 
-  kv(
+  field(
     "Calibration Type",
     fmt-cal-type(data.calibration_type),
   ),
-  kv("Performed By", data.performed_by),
+  field("Performed By", data.performed_by),
 
-  kv("External Lab", data.external_lab),
-  kv("", none),
+  field("External Lab", data.external_lab),
+  field("", none),
 )
 
 #divider()

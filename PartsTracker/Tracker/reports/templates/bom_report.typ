@@ -9,19 +9,16 @@
 //   4. Footer note (shop reference document, not a quality record)
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared kv / badge / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
 
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
-
-// Status badge — DRAFT=amber, RELEASED=green, OBSOLETE=red
+// Status badge — DRAFT=amber, RELEASED=green, OBSOLETE=red (local mapping
+// differs from the kit's status-badge, so keep it to preserve output).
 #let status-badge(status) = {
   if status == "RELEASED"  { badge("RELEASED",  ok,   rgb("#dcfce7")) }
   else if status == "DRAFT" { badge("DRAFT",    warn,  rgb("#fef3c7")) }
@@ -29,28 +26,13 @@
   else                     { badge(status,      muted, rgb("#e2e8f0")) }
 }
 
-// Optional indicator badge
+// Optional indicator badge (uses the shared badge)
 #let optional-badge(is_optional) = {
   if is_optional {
     badge("OPT", warn, rgb("#fef3c7"))
   } else {
     text(size: 8pt, fill: muted, font: sans-font)[—]
   }
-}
-
-// Key-value row helper for the header info block
-#let kv(key, value) = grid(
-  columns: (90pt, 1fr),
-  column-gutter: 6pt,
-  text(size: 9pt, fill: muted, font: sans-font)[#key],
-  text(size: 9pt)[#value],
-)
-
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
 }
 
 // ----------------------------------------------------------------------------
@@ -80,13 +62,7 @@
 
 // ── Header info ──────────────────────────────────────────────────────────────
 
-#block(
-  fill: rgb("#f8fafc"),
-  stroke: 0.5pt + rule,
-  radius: 4pt,
-  inset: 12pt,
-  width: 100%,
-)[
+#info-box[
   #grid(
     columns: (1fr, 1fr),
     column-gutter: 24pt,
@@ -116,13 +92,7 @@
   #set par(justify: false)
 
   // Table header
-  #block(
-    fill: rgb("#f1f5f9"),
-    stroke: 0.5pt + rule,
-    inset: (x: 6pt, y: 5pt),
-    width: 100%,
-    radius: (top-left: 3pt, top-right: 3pt),
-  )[
+  #table-header[
     #grid(
       columns: (0.7fr, 1.5fr, 2.5fr, 0.6fr, 0.6fr, 0.65fr, 2fr),
       column-gutter: 6pt,
@@ -138,13 +108,7 @@
 
   // Table rows
   #for (idx, line) in data.lines.enumerate() [
-    #let row-fill = if calc.rem(idx, 2) == 0 { white } else { rgb("#f8fafc") }
-    #block(
-      fill: row-fill,
-      stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-      inset: (x: 6pt, y: 5pt),
-      width: 100%,
-    )[
+    #table-row(idx)[
       #grid(
         columns: (0.7fr, 1.5fr, 2.5fr, 0.6fr, 0.6fr, 0.65fr, 2fr),
         column-gutter: 6pt,

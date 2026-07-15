@@ -11,17 +11,13 @@
 //   6. Signature block — Engineering + Quality (+ Customer if customer approval required)
 
 #import "_common/page-setup.typ": *
+#import "_common/components.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Helpers — shared badge / field / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
-
-#let badge(label, fg, bg) = box(
-  fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
-  text(size: 8.5pt, weight: "semibold", fill: fg, font: sans-font)[#label]
-)
 
 // Disposition type badge — USE_AS_IS=blue, REPAIR=amber
 #let disposition-badge(dtype) = {
@@ -47,25 +43,6 @@
   if state == "CLOSED" { badge("CLOSED", ok, rgb("#dcfce7")) }
   else if state == "IN_PROGRESS" { badge("IN PROGRESS", warn, rgb("#fef3c7")) }
   else { badge("OPEN", muted, rgb("#e2e8f0")) }
-}
-
-// Field/value row — muted label, value in ink; handles none/empty gracefully
-#let kv(label, value) = grid(
-  columns: (auto, 1fr),
-  column-gutter: 10pt,
-  text(fill: muted, font: sans-font, size: 9pt)[*#label*],
-  if value == none or value == "" [
-    #text(fill: muted, style: "italic")[—]
-  ] else [
-    #value
-  ],
-)
-
-// Section divider rule
-#let divider() = {
-  v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
-  v(6pt)
 }
 
 // ----------------------------------------------------------------------------
@@ -112,14 +89,14 @@
   column-gutter: 16pt,
   row-gutter: 6pt,
 
-  kv("Part / Serial Number", data.part_erp_id),
-  kv("Part Type", data.part_type_name),
+  field("Part / Serial Number", data.part_erp_id),
+  field("Part Type", data.part_type_name),
 
-  kv("Work Order", data.work_order_erp_id),
-  kv("Detected at Step", data.step_name),
+  field("Work Order", data.work_order_erp_id),
+  field("Detected at Step", data.step_name),
 
-  kv("MRB Reviewer", data.assigned_to),
-  kv("", none),
+  field("MRB Reviewer", data.assigned_to),
+  field("", none),
 )
 
 #divider()
@@ -180,13 +157,13 @@
         #badge("PENDING", warn, rgb("#fef3c7"))
       ]
     ],
-    kv("Approval Reference", data.customer_approval_reference),
+    field("Approval Reference", data.customer_approval_reference),
 
-    kv(
+    field(
       "Approval Date",
       if data.customer_approval_date == none { "" } else { str(data.customer_approval_date) },
     ),
-    kv("", none),
+    field("", none),
   )
 ]
 
