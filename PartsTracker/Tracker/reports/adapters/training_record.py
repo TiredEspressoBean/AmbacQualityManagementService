@@ -71,14 +71,14 @@ class TrainingRecordContext(BaseModel):
 
 class TrainingRecordParamsSerializer(serializers.Serializer):
     """
-    Accepts {"user_id": <uuid>} and confirms the user exists in the
+    Accepts {"user_id": <int>} and confirms the user exists in the
     requesting user's tenant.
 
-    The user PKs are UUIDs (SecureModel default), so user_id is a
-    UUIDField, not IntegerField.
+    `Tracker.User` extends Django's AbstractUser (NOT SecureModel), so its
+    PK is an integer AutoField — user_id is an IntegerField, not a UUIDField.
     """
 
-    user_id = serializers.UUIDField()
+    user_id = serializers.IntegerField()
 
     def validate_user_id(self, value):
         from Tracker.models import User
