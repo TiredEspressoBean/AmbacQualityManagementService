@@ -206,7 +206,7 @@
     #for (idx, pair) in data.rca.five_whys.whys.enumerate() [
       #block(
         fill: if calc.rem(idx, 2) == 0 { rgb("#f8fafc") } else { white },
-        stroke: 0.4pt + rule,
+        stroke: 0.7pt + rule,
         inset: (x: 8pt, y: 6pt),
         width: 100%,
         radius: 3pt,
@@ -265,7 +265,7 @@
         (
           block(
             fill: rgb("#f8fafc"),
-            stroke: 0.4pt + rule,
+            stroke: 0.7pt + rule,
             inset: (x: 8pt, y: 6pt),
             width: 100%,
             radius: 3pt,

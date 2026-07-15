@@ -127,7 +127,7 @@
     kv("Generated:", data.generated_date, label-width: auto),
   )
   #v(8pt)
-  #line(length: 100%, stroke: 0.3pt + rule)
+  #line(length: 100%, stroke: 0.6pt + rule)
   #v(8pt)
   #grid(
     columns: (1fr, 1fr, 2fr),

@@ -134,7 +134,7 @@
   #table(
     columns: (1fr, 1fr, 1fr, 1fr),
     align: (left, right, right, right),
-    stroke: 0.4pt + rule,
+    stroke: 0.7pt + rule,
     inset: 6pt,
     table.header(
       [*Series*], [*UCL*], [*CL*], [*LCL*],
@@ -232,7 +232,7 @@
   #table(
     columns: (auto, 1fr, auto, auto, auto),
     align: (left, left, right, center, left),
-    stroke: 0.4pt + rule,
+    stroke: 0.7pt + rule,
     inset: 5pt,
     table.header(
       [*Timestamp*], [*Part*], [*Value*], [*Spec*], [*Operator*],

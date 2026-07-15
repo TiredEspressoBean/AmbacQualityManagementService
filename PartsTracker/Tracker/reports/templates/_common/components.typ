@@ -28,7 +28,7 @@
 // Section divider rule (matches the house `divider()` verbatim).
 #let divider() = {
   v(6pt)
-  line(length: 100%, stroke: 0.4pt + rule)
+  line(length: 100%, stroke: 0.6pt + rule)
   v(6pt)
 }
 
@@ -106,8 +106,8 @@
 
 // Boxed key-value panel (the shared `#f8fafc` info block).
 #let info-box(body) = block(
-  fill: rgb("#f8fafc"),
-  stroke: 0.5pt + rule,
+  fill: rgb("#f1f5f9"),
+  stroke: 0.75pt + rule,
   radius: 4pt,
   inset: 12pt,
   width: 100%,
@@ -115,8 +115,8 @@
 
 // Table header band (caller supplies the grid of header cells).
 #let table-header(body) = block(
-  fill: rgb("#f1f5f9"),
-  stroke: 0.5pt + rule,
+  fill: rgb("#dbe2ea"),
+  stroke: 0.9pt + rule,
   inset: (x: 6pt, y: 5pt),
   width: 100%,
   radius: (top-left: 3pt, top-right: 3pt),
@@ -124,8 +124,8 @@
 
 // Striped table row (caller supplies the grid of row cells).
 #let table-row(idx, body, inset-y: 5pt) = block(
-  fill: if calc.rem(idx, 2) == 0 { white } else { rgb("#f8fafc") },
-  stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
+  fill: if calc.rem(idx, 2) == 0 { white } else { rgb("#eef2f7") },
+  stroke: (bottom: 0.5pt + rule, left: 0.75pt + rule, right: 0.75pt + rule),
   inset: (x: 6pt, y: inset-y),
   width: 100%,
 )[#body]

@@ -139,7 +139,7 @@
         columns: (2fr, auto, 1fr, auto, 2fr),
         align: (left, center, left, center, left),
         stroke: (x, y) => (
-          bottom: if y == 0 { 0.8pt + ink } else { 0.3pt + rule },
+          bottom: if y == 0 { 0.8pt + ink } else { 0.5pt + rule },
           top: if y == 0 { 0.8pt + ink } else { none },
         ),
         inset: (x: 6pt, y: 4pt),

@@ -9,15 +9,17 @@
 // Or use the palette / typography helpers directly.
 
 // ----------------------------------------------------------------------------
-// Palette — deliberately muted for print, all colors readable in grayscale.
+// Palette — tuned for SHOP-FLOOR print survivability: high contrast, dark
+// borders, all colors readable in grayscale and on a smudged photocopy.
+// (Screen-light slate-on-white did not survive the floor.)
 // ----------------------------------------------------------------------------
-#let ink        = rgb("#0f172a")   // body text
-#let muted      = rgb("#475569")   // labels, captions
-#let rule       = rgb("#cbd5e1")   // table borders, separators
-#let accent     = rgb("#1e40af")   // links, emphasis
-#let ok         = rgb("#166534")   // pass / approved
-#let warn       = rgb("#92400e")   // draft / marginal
-#let bad        = rgb("#991b1b")   // fail / rejected
+#let ink        = rgb("#0f172a")   // body text (near-black)
+#let muted      = rgb("#334155")   // labels, captions — darkened for legibility
+#let rule       = rgb("#64748b")   // table borders, separators — dark enough to copy
+#let accent     = rgb("#1e3a8a")   // links, emphasis (deeper blue)
+#let ok         = rgb("#14532d")   // pass / approved (deep green)
+#let warn       = rgb("#854d0e")   // draft / marginal (deep amber)
+#let bad        = rgb("#7f1d1d")   // fail / rejected (deep red)
 
 // ----------------------------------------------------------------------------
 // Typography
@@ -51,12 +53,12 @@
           [#title],
           align(right)[#if doc-id != none [#doc-id] else []])
         #v(-8pt)
-        #line(length: 100%, stroke: 0.3pt + rule)
+        #line(length: 100%, stroke: 0.6pt + rule)
       ]
     },
     footer: context {
       set text(size: 8pt, fill: muted, font: sans-font)
-      line(length: 100%, stroke: 0.3pt + rule)
+      line(length: 100%, stroke: 0.6pt + rule)
       v(2pt)
       grid(columns: (1fr, 1fr, 1fr),
         [#classification],
@@ -70,7 +72,7 @@
   set par(justify: true, leading: 0.65em)
   show heading: set text(font: sans-font, weight: "semibold", fill: ink)
   show heading.where(level: 1): it => {
-    v(4pt); it; v(-2pt); line(length: 100%, stroke: 0.5pt + rule); v(4pt)
+    v(4pt); it; v(-2pt); line(length: 100%, stroke: 0.9pt + rule); v(4pt)
   }
   body
 }
