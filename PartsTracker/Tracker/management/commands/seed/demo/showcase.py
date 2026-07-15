@@ -99,6 +99,10 @@ class DemoShowcaseSeeder(BaseSeeder):
         #        so the WO traveler resolves a real drawing number + revision.
         result["drawing"] = self._drawing_document(part_type, admin_user)
 
+        # --- 6) Released assembly BOM (+ component part types) so the BOM panel,
+        #        bom_report, and pick_list resolve real content in the demo.
+        result["bom"] = self._bom(part_type, admin_user)
+
         self._log_summary(result)
         return result
 
@@ -404,6 +408,71 @@ class DemoShowcaseSeeder(BaseSeeder):
         self.log(f"  Created upstream as-built history for {count} step(s)")
         return count
 
+    def _bom(self, part_type, admin_user):
+        """Seed a RELEASED assembly BOM for the injector part type, creating the
+        component part types it references. Un-orphans bom_report and gives the
+        BOM panel + pick_list real content. Idempotent."""
+        if part_type is None:
+            self.log("  No injector part type — skipping SHOWCASE BOM", warning=True)
+            return None
+
+        from decimal import Decimal
+        from Tracker.models.mes_lite import PartTypes
+        from Tracker.models.mes_standard import BOM, BOMLine
+
+        # (name, ERP_id, ID_prefix, find_number, qty, uom, optional)
+        components = [
+            ("Injector Nozzle Assembly", "CRI-NZL", "NZL", "10", 1, "EA", False),
+            ("Control Valve Assembly", "CRI-VLV", "VLV", "20", 1, "EA", False),
+            ("Injector Spring", "CRI-SPR", "SPR", "30", 1, "EA", False),
+            ("Solenoid Coil", "CRI-SOL", "SOL", "40", 1, "EA", False),
+            ("Seal & O-Ring Kit", "CRI-SEAL", "SEAL", "50", 1, "EA", True),
+        ]
+        comp_types = {}
+        for name, erp, prefix, *_ in components:
+            pt = PartTypes.objects.filter(tenant=self.tenant, name=name).first()
+            if not pt:
+                pt = PartTypes.objects.create(
+                    tenant=self.tenant, name=name, ERP_id=erp, ID_prefix=prefix,
+                )
+            comp_types[name] = pt
+
+        bom = BOM.objects.filter(
+            tenant=self.tenant, part_type=part_type, revision="A", bom_type="ASSEMBLY",
+        ).first()
+        created = False
+        if not bom:
+            bom = BOM.objects.create(
+                tenant=self.tenant,
+                part_type=part_type,
+                revision="A",
+                bom_type="ASSEMBLY",
+                status="RELEASED",
+                description="Common Rail Injector assembly BOM (SHOWCASE demo).",
+                effective_date=(self.today - timedelta(days=60)).date(),
+                approved_by=admin_user,
+                approved_at=self.today - timedelta(days=60),
+            )
+            created = True
+        elif bom.status != "RELEASED":
+            BOM.objects.filter(pk=bom.pk).update(status="RELEASED")
+
+        if created or bom.lines.count() == 0:
+            for name, erp, prefix, find, qty, uom, optional in components:
+                BOMLine.objects.create(
+                    tenant=self.tenant,
+                    bom=bom,
+                    component_type=comp_types[name],
+                    quantity=Decimal(qty),
+                    unit_of_measure=uom,
+                    find_number=find,
+                    line_number=int(find),
+                    is_optional=optional,
+                )
+
+        self.log(f"  BOM {bom.revision} ({bom.status}) with {bom.lines.count()} lines for {part_type.name}")
+        return bom
+
     def _annotation_error_type(self):
         """An ErrorType flagged requires_3d_annotation=True for this tenant."""
         return (
@@ -440,3 +509,6 @@ class DemoShowcaseSeeder(BaseSeeder):
             self.log(f"    - Quality report: {qr.report_number} status={qr.status} errors={linked}")
         if drawing:
             self.log(f"    - Drawing: {drawing.file_name} (Rev {drawing.version}) on part type")
+        bom = result.get("bom")
+        if bom:
+            self.log(f"    - BOM: {bom.part_type.name} Rev {bom.revision} ({bom.status}), {bom.lines.count()} lines")
