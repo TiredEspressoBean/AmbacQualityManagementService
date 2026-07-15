@@ -4,17 +4,29 @@ import {toast} from "sonner";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
+import {useQuery} from "@tanstack/react-query";
 import {Button} from "@/components/ui/button";
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Badge} from "@/components/ui/badge";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import {useParams} from "@tanstack/react-router";
 
 import {useRetrievePartType} from "@/hooks/useRetrievePartType";
 import {useCreatePartType} from "@/hooks/useCreatePartType";
 import {useUpdatePartType} from "@/hooks/useUpdatePartType";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
-import {schemas} from "@/lib/api/generated";
+import {api, schemas} from "@/lib/api/generated";
+import {ReportButton} from "@/components/reports/ReportButton";
 import {isFieldRequired} from "@/lib/zod-config";
 
 // Use generated schema - error messages handled by global error map
@@ -201,10 +213,117 @@ export default function PartTypeFormPage() {
             </form>
         </Form>
         {mode === "edit" && partTypeId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <BomPanel partTypeId={partTypeId} />
+            </div>)}
+        {mode === "edit" && partTypeId && (
 
             <div className="max-w-3xl mx-auto py-6">
                 <h3 className="text-lg font-semibold">Attach Documents</h3>
                 <DocumentUploader objectId={partTypeId} contentType="parttypes"/>
             </div>)}
     </div>);
+}
+
+// ---------------------------------------------------------------------------
+// Bill of Materials panel — read-only view of the part type's BOM.
+//   * lists BOMs for the part type, picks the RELEASED one (highest revision),
+//     else falls back to the latest BOM regardless of status;
+//   * fetches the chosen BOM's detail (with nested lines) to render the table.
+// ---------------------------------------------------------------------------
+
+type BomListItem = z.infer<typeof schemas.BOMList>;
+type BomDetail = z.infer<typeof schemas.BOM>;
+
+function pickBom(boms: BomListItem[]): BomListItem | undefined {
+    if (boms.length === 0) return undefined;
+    // Highest revision first (revisions are short strings, e.g. "A", "B", "10").
+    const byRevisionDesc = (a: BomListItem, b: BomListItem) =>
+        (b.revision ?? "").localeCompare(a.revision ?? "", undefined, { numeric: true });
+    const released = boms.filter((b) => b.status === "RELEASED").sort(byRevisionDesc);
+    if (released.length > 0) return released[0];
+    return [...boms].sort(byRevisionDesc)[0];
+}
+
+function BomPanel({partTypeId}: {partTypeId: string}) {
+    const {data: bomList, isLoading: listLoading} = useQuery({
+        queryKey: ["BOMs", "list", {part_type: partTypeId}] as const,
+        queryFn: () =>
+            api.api_BOMs_list({queries: {part_type: partTypeId, limit: 100}}) as Promise<
+                z.infer<typeof schemas.PaginatedBOMListList>
+            >,
+    });
+
+    const chosen = pickBom(bomList?.results ?? []);
+
+    const {data: bom, isLoading: detailLoading} = useQuery({
+        queryKey: ["BOMs", "detail", chosen?.id] as const,
+        queryFn: () =>
+            api.api_BOMs_retrieve({params: {id: chosen!.id}}) as Promise<BomDetail>,
+        enabled: !!chosen?.id,
+    });
+
+    const lines = bom?.lines ?? [];
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Bill of Materials</CardTitle>
+                    <ReportButton
+                        reportType="bom_report"
+                        label="BOM Report"
+                        params={chosen ? {id: chosen.id} : null}
+                    />
+                </div>
+                {chosen && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+                        <span>Rev {chosen.revision}</span>
+                        <span>·</span>
+                        <Badge variant={chosen.status === "RELEASED" ? "default" : "secondary"}>
+                            {chosen.status ?? "—"}
+                        </Badge>
+                        <span>·</span>
+                        <span>{chosen.line_count} line{chosen.line_count === 1 ? "" : "s"}</span>
+                    </div>
+                )}
+            </CardHeader>
+            <CardContent>
+                {listLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading BOMs…</p>
+                ) : !chosen ? (
+                    <p className="text-sm text-muted-foreground">No released BOM for this part type.</p>
+                ) : detailLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading lines…</p>
+                ) : lines.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">This BOM has no lines.</p>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Find #</TableHead>
+                                <TableHead>Component</TableHead>
+                                <TableHead>Qty</TableHead>
+                                <TableHead>UoM</TableHead>
+                                <TableHead>Optional</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {lines.map((line) => (
+                                <TableRow key={line.id}>
+                                    <TableCell>{line.find_number || "—"}</TableCell>
+                                    <TableCell className="font-medium">
+                                        {line.component_type_name || "—"}
+                                    </TableCell>
+                                    <TableCell>{line.quantity}</TableCell>
+                                    <TableCell>{line.unit_of_measure || "—"}</TableCell>
+                                    <TableCell>{line.is_optional ? "Yes" : "No"}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </CardContent>
+        </Card>
+    );
 }
