@@ -265,11 +265,9 @@
 
 #v(6pt)
 
-// ── Closeout — sign-off key + final release + footer travel together as one
-// non-breakable unit, so they land whole on a page and the footer never
-// orphans onto a near-empty trailing page. ──────────────────────────────────
-#block(breakable: false, width: 100%)[
-
+// ── Closeout — the sign-off key has one row per operation and flows after the
+// routing (a long routing's key may span pages); Final Release + footer are
+// glued together below so the footer never orphans. ─────────────────────────
 = Sign-off Key
 
 #text(size: 8pt, fill: muted, font: sans-font)[
@@ -280,26 +278,27 @@
 #v(5pt)
 
 #let keyhead(n) = text(size: 7.5pt, fill: muted, font: sans-font, weight: "semibold")[#n]
-#let keycell() = box(width: 100%, height: 13pt, stroke: (bottom: 0.5pt + rule))
+#let keycell() = box(width: 100%, height: 22pt, stroke: (bottom: 0.5pt + rule))
 
-// One signer slot per operation, sized from the routing. Two signers per grid
-// row → ceil(n / 2) rows; a floor of 3 rows keeps short routings from looking
-// bare.
-#let keyrows = calc.max(3, calc.ceil(data.operations.len() / 2))
+// One row per operation, sized directly from the routing so the number of
+// sign-off rows matches the step count (floor of 3 for very short routings).
+#let keyrows = calc.max(3, data.operations.len())
 
 #grid(
-  columns: (1.6fr, 0.9fr, 0.7fr, 1.6fr, 0.9fr, 0.7fr),
+  columns: (2.6fr, 1fr, 1fr),
   column-gutter: 14pt,
-  row-gutter: 5pt,
-  keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
+  row-gutter: 6pt,
   keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
   ..range(keyrows).map(_ => (
-    keycell(), keycell(), keycell(),
     keycell(), keycell(), keycell(),
   )).flatten(),
 )
 
 #v(6pt)
+
+// Final Release + footer stay together (non-breakable) so the footer never
+// orphans onto a near-empty trailing page.
+#block(breakable: false, width: 100%)[
 
 = Final Release
 
@@ -312,14 +311,14 @@
     capture("Qty rejected", value: data.qty_rejected),
     capture("Qty scrapped", value: data.qty_scrapped),
     capture("Date completed", value: data.date_completed),
-    grid.cell(colspan: 4, capture("NCR # / Disposition — record any nonconformance raised and how it was dispositioned", h: 20pt)),
+    grid.cell(colspan: 4, capture("NCR # / Disposition — record any nonconformance raised and how it was dispositioned", h: 15pt)),
     capture("Final inspection — sign-off / date", value: data.final_signoff),
     grid.cell(colspan: 2, capture("QA release — “released for shipment” stamp / signature", value: data.qa_release)),
     capture("Date released", value: data.date_released),
   )
 ]
 
-#v(8pt)
+#v(5pt)
 
 // ── Footer note ─────────────────────────────────────────────────────────────
 
@@ -338,4 +337,4 @@
   Uncontrolled printed snapshot as of #data.generated_date — verify the current revision before use.
 ])
 
-]  // end closeout block
+]  // end final-release + footer block
