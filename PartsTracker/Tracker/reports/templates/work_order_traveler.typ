@@ -26,6 +26,13 @@
 
 #let data = json.decode(sys.inputs.at("data"))
 
+// Local fills — kept light so the document reads as a clean table rather than a
+// stack of outlined forms. `band` shades the read-only reference row; `chip`
+// marks a captured (as-built) value. Both are airy enough to sit under text
+// without competing with the dark ink/rule colors (tuned for photocopying).
+#let band = rgb("#f6f8fb")
+#let chip = rgb("#eef2f7")
+
 // ----------------------------------------------------------------------------
 // Local helpers — landscape wet-ink cells (no house equivalent)
 // ----------------------------------------------------------------------------
@@ -34,11 +41,15 @@
 // pre-filled (as-built): the box grows to fit its content so text never
 // overflows or overlaps the row below.
 #let signoff(value: none, h: 16pt) = if value == none or value == "" {
-  box(width: 100%, height: h, stroke: 0.5pt + rule, radius: 2pt)[]
+  // Blank write-in field — a baseline rule reads as "write here" with far
+  // less ink than a full outlined box.
+  box(width: 100%, height: h, stroke: (bottom: 0.5pt + rule))[]
 } else {
+  // Pre-filled (as-built) value — a soft fill chip (no border) shows captured
+  // data without adding another outline to the row. Grows to fit its content.
   block(
-    width: 100%, stroke: 0.5pt + rule, radius: 2pt,
-    inset: (x: 4pt, y: 3pt),
+    width: 100%, fill: chip, radius: 2pt,
+    inset: (x: 5pt, y: 3pt),
   )[
     #set par(leading: 0.4em)
     #text(size: 8pt, font: sans-font)[#value]
@@ -50,7 +61,7 @@
 // cells pass an explicit taller height.
 #let capture(label, value: none, h: 18pt) = [
   #text(size: 8pt, fill: muted, font: sans-font)[#label]
-  #v(2pt)
+  #v(3.5pt)
   #signoff(value: value, h: h)
 ]
 
@@ -152,10 +163,10 @@
 // ── Packet contents (what should physically travel with this job) ───────────
 
 #box(
-  fill: rgb("#f1f5f9"), stroke: 0.75pt + rule, radius: 4pt,
+  fill: band, stroke: 0.5pt + rule, radius: 4pt,
   inset: (x: 10pt, y: 7pt), width: 100%,
 )[
-  #text(size: 8.5pt, fill: muted, font: sans-font, weight: "semibold")[Packet includes:]
+  #text(size: 8pt, fill: muted, font: sans-font, weight: "semibold")[Packet includes:]
   #h(10pt)
   #chk[Engineering drawing (Rev #if data.drawing_revision != none [#data.drawing_revision.replace("Rev ", "")] else [\_\_])]
   #h(14pt) #chk[Material cert]
@@ -195,7 +206,7 @@
 
   // Header labels the info-band columns; each capture box carries its own label.
   #block(
-    width: 100%, fill: rgb("#dbe2ea"), stroke: 0.9pt + rule,
+    width: 100%, fill: band, stroke: (bottom: 0.75pt + rule),
     inset: (x: 8pt, y: 5pt), below: 0pt,
   )[
     #grid(
@@ -212,16 +223,17 @@
     // info band and capture band never split across a page boundary.
     #block(
       width: 100%, breakable: false, above: 0pt, below: 0pt,
-      stroke: (left: 0.75pt + rule, right: 0.75pt + rule, bottom: 0.75pt + rule),
+      stroke: (bottom: 0.5pt + rule),
     )[
-      // ── Info band — read-only reference, pulled from the routing ──
+      // ── Info band — read-only reference, pulled from the routing.
+      //    Light fill (no rule) sets it apart from the white capture band below.
       #block(
-        width: 100%, fill: rgb("#eef2f7"), above: 0pt, below: 0pt,
-        stroke: (bottom: 0.5pt + rule), inset: (x: 8pt, y: 4pt),
+        width: 100%, fill: band, above: 0pt, below: 0pt,
+        inset: (x: 8pt, y: 4pt),
       )[
         #grid(
           columns: icols, column-gutter: 6pt, align: top + left,
-          text(fill: ink, font: mono-font, weight: "bold", size: 11pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
+          text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
           [
             #text(weight: "semibold", font: sans-font)[#op.step_name]
             #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
@@ -246,14 +258,14 @@
               ]
               #for spec in op.specs [
                 #v(1pt)
-                #text(size: 7.5pt, font: mono-font)[• #spec]
+                #text(size: 7.5pt, fill: muted, font: sans-font)[• #spec]
               ]
             ]
           ],
         )
       ]
-      // ── Capture band — fill-in boxes (fallback wet-ink; mirrors the record) ──
-      #block(width: 100%, above: 0pt, below: 0pt, inset: (x: 8pt, y: 4pt))[
+      // ── Capture band — fill-in fields (fallback wet-ink; mirrors the record) ──
+      #block(width: 100%, above: 0pt, below: 0pt, inset: (x: 8pt, top: 5pt, bottom: 3pt))[
         #grid(
           columns: capcols, column-gutter: 6pt, align: top + left,
           capture("Operator / Date", value: op.operator, h: 24pt),
