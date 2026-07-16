@@ -104,9 +104,9 @@
 // Panels & tables
 // ---------------------------------------------------------------------------
 
-// Boxed key-value panel (the shared `#f8fafc` info block).
+// Boxed key-value panel (shared info block).
 #let info-box(body) = block(
-  fill: rgb("#f1f5f9"),
+  fill: panel,
   stroke: 0.75pt + rule,
   radius: 4pt,
   inset: 12pt,
@@ -118,7 +118,7 @@
 // intentionally top-less and share the border above them (a gap would leave
 // each row open-topped / "U-shaped").
 #let table-header(body) = block(
-  fill: rgb("#dbe2ea"),
+  fill: band,
   stroke: 0.9pt + rule,
   inset: (x: 6pt, y: 5pt),
   width: 100%,
@@ -130,7 +130,7 @@
 // design; `spacing: 0pt` makes it abut the header/previous row so its top edge
 // is the line above it (see table-header note).
 #let table-row(idx, body, inset-y: 5pt) = block(
-  fill: if calc.rem(idx, 2) == 0 { white } else { rgb("#eef2f7") },
+  fill: if calc.rem(idx, 2) == 0 { white } else { stripe },
   stroke: (bottom: 0.5pt + rule, left: 0.75pt + rule, right: 0.75pt + rule),
   inset: (x: 6pt, y: inset-y),
   width: 100%,

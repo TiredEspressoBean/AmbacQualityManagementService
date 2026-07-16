@@ -21,6 +21,13 @@
 #let warn       = rgb("#854d0e")   // draft / marginal (deep amber)
 #let bad        = rgb("#7f1d1d")   // fail / rejected (deep red)
 
+// Fill tints — bold enough to survive the shop floor / a photocopier (see the
+// palette note above). Shared so every template pulls the same shades.
+#let panel      = rgb("#f1f5f9")   // boxed info panels (info-box)
+#let band       = rgb("#d8e1ec")   // table header / section band
+#let stripe     = rgb("#eaeef4")   // zebra alternate row
+#let chip       = rgb("#dbe6f2")   // captured-value highlight (as-built)
+
 // ----------------------------------------------------------------------------
 // Typography
 // ----------------------------------------------------------------------------
