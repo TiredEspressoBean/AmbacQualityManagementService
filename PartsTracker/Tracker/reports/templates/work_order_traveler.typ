@@ -172,7 +172,7 @@
   Operations are signed off on the digital work order as they complete, and
   these columns fill from that record. The write-in space is a fallback — if a
   device isn't at hand or something needs a note, write it here to keep the job
-  moving, then enter it into the software.
+  moving.
 ]
 #v(6pt)
 
