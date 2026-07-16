@@ -108,7 +108,7 @@ class WorkOrderTravelerAsBuiltUnitTests(SimpleTestCase):
         self.assertIsNone(_short_date(None))
         self.assertEqual(_join_person_date(U("Mike Rogers"), SimpleNamespace(month=7, day=9)), "Mike R. · 7/9")
 
-    def test_step_actuals_maps_verdict_and_truncates_remark(self):
+    def test_step_actuals_maps_verdict_and_keeps_full_remark(self):
         from types import SimpleNamespace
         adapter = self._adapter()
 
@@ -129,8 +129,9 @@ class WorkOrderTravelerAsBuiltUnitTests(SimpleTestCase):
         self.assertEqual(operator, "Sarah C. · 7/14")
         self.assertEqual(inspector, "Sarah C. · 7/15")
         self.assertEqual(acc_rej, "REJ")
-        self.assertTrue(remarks.endswith("…"))
-        self.assertLessEqual(len(remarks), 39)
+        # Full text is preserved (no truncation) — the Remarks box grows to fit;
+        # clipping a nonconformance finding mid-sentence loses traceability.
+        self.assertEqual(remarks, long_desc)
 
         qr_pass = SimpleNamespace(
             verified_by=None, detected_by=U(),

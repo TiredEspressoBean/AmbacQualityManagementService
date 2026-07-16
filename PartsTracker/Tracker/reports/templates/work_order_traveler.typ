@@ -253,7 +253,7 @@
   ]
 ]
 
-#v(14pt)
+#v(6pt)
 
 // ── Sign-off key (print each signer once, then initial the rows above) ───────
 
@@ -267,21 +267,21 @@
 #v(5pt)
 
 #let keyhead(n) = text(size: 7.5pt, fill: muted, font: sans-font, weight: "semibold")[#n]
-#let keycell() = box(width: 100%, height: 15pt, stroke: (bottom: 0.5pt + rule))
+#let keycell() = box(width: 100%, height: 13pt, stroke: (bottom: 0.5pt + rule))
 
 #grid(
   columns: (1.6fr, 0.9fr, 0.7fr, 1.6fr, 0.9fr, 0.7fr),
   column-gutter: 14pt,
-  row-gutter: 7pt,
+  row-gutter: 5pt,
   keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
   keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
-  ..range(4).map(_ => (
+  ..range(3).map(_ => (
     keycell(), keycell(), keycell(),
     keycell(), keycell(), keycell(),
   )).flatten(),
 )
 
-#v(14pt)
+#v(6pt)
 
 // ── Final-release footer ────────────────────────────────────────────────────
 
@@ -302,25 +302,21 @@
   )
 ]
 
-#v(12pt)
+#v(8pt)
 
 // ── Footer note ─────────────────────────────────────────────────────────────
 
 #footer-note([
-  The digital work order is the system of record; this printed traveler is a
-  read-only snapshot at print time, reprinted as the job changes. Scan the
-  header barcode (#data.wo_number) to open the live job and record each
-  operation there — that is the authoritative sign-off, captured directly in
-  the software. The write-in boxes are a fallback for keeping the job moving
-  when a device isn't at hand; enter anything written here into the software
-  when you can. QA sign-off operations require a qualified inspector. Do not
-  advance the job past a failed or unsigned control step, and do not release for
-  shipment with any open control step or nonconformance.
+  The digital work order is the system of record — scan the header barcode
+  (#data.wo_number) to open the live job; capturing each operation there is the
+  authoritative sign-off. QA sign-off operations require a qualified inspector.
+  Do not advance the job past a failed or unsigned control step, and do not
+  release for shipment with any open control step or nonconformance.
 ])
 
 #v(6pt)
 
 // Document-control line — a printed copy is a snapshot, not the controlled master.
 #align(center, text(size: 7pt, fill: muted, font: sans-font)[
-  The digital work order is the system of record — this is an uncontrolled printed snapshot as of #data.generated_date. Verify the current revision before use.
+  Uncontrolled printed snapshot as of #data.generated_date — verify the current revision before use.
 ])

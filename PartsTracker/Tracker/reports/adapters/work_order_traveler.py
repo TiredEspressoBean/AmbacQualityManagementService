@@ -507,9 +507,11 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                 acc_rej = "ACC"
             elif status == "FAIL":
                 acc_rej = "REJ"
+            # Full text — the Remarks box grows to fit; clipping a
+            # nonconformance finding mid-sentence loses traceability.
             desc = (quality_report.description or "").strip()
             if desc:
-                remarks = (desc[:38] + "…") if len(desc) > 39 else desc
+                remarks = desc
 
         return operator, inspector, acc_rej, remarks
 
