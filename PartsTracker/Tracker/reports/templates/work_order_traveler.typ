@@ -32,6 +32,7 @@
 // without competing with the dark ink/rule colors (tuned for photocopying).
 #let band = rgb("#f6f8fb")
 #let chip = rgb("#eef2f7")
+#let stripe = rgb("#f7f9fc")  // zebra shade for alternating routing rows
 
 // ----------------------------------------------------------------------------
 // Local helpers — landscape wet-ink cells (no house equivalent)
@@ -214,7 +215,9 @@
     align: top + left,
     // Horizontal rules only (no verticals); a heavier rule under the header.
     stroke: (x, y) => (bottom: if y == 0 { 0.75pt + rule } else { 0.5pt + rule }),
-    fill: (x, y) => if y == 0 { band },
+    // Header shaded; data rows zebra-striped (every other row) to help the eye
+    // track across the wide landscape rows.
+    fill: (x, y) => if y == 0 { band } else if calc.even(y) { stripe },
 
     table.header(
       repeat: true,
