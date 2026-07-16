@@ -103,6 +103,10 @@ class DemoShowcaseSeeder(BaseSeeder):
         #        bom_report, and pick_list resolve real content in the demo.
         result["bom"] = self._bom(part_type, admin_user)
 
+        # --- 7) Shop operation numbers (10, 20, …) on the routing so the
+        #        traveler's Op column shows real op numbers, not the fallback.
+        result["operation_numbers"] = self._operation_numbers(process)
+
         self._log_summary(result)
         return result
 
@@ -408,6 +412,23 @@ class DemoShowcaseSeeder(BaseSeeder):
         self.log(f"  Created upstream as-built history for {count} step(s)")
         return count
 
+    def _operation_numbers(self, process):
+        """Assign shop operation numbers (order × 10) to the process's steps so
+        the traveler shows real Op numbers. Idempotent — only fills blanks.
+        operation_number is a non-versioning label, so a plain update is fine."""
+        if process is None:
+            return 0
+        from Tracker.models.mes_lite import ProcessStep, Steps
+
+        count = 0
+        for ps in ProcessStep.objects.filter(process=process).select_related("step"):
+            step = ps.step
+            if not (getattr(step, "operation_number", "") or "").strip():
+                Steps.objects.filter(pk=step.pk).update(operation_number=str(ps.order * 10))
+                count += 1
+        self.log(f"  Assigned operation numbers to {count} step(s)")
+        return count
+
     def _bom(self, part_type, admin_user):
         """Seed a RELEASED assembly BOM for the injector part type, creating the
         component part types it references. Un-orphans bom_report and gives the
@@ -512,3 +533,6 @@ class DemoShowcaseSeeder(BaseSeeder):
         bom = result.get("bom")
         if bom:
             self.log(f"    - BOM: {bom.part_type.name} Rev {bom.revision} ({bom.status}), {bom.lines.count()} lines")
+        opnums = result.get("operation_numbers")
+        if opnums:
+            self.log(f"    - Operation numbers assigned to {opnums} step(s)")
