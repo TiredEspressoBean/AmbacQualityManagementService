@@ -168,6 +168,14 @@
 
 = Routing — #str(data.total_operations) operations
 
+#text(size: 8pt, fill: muted, font: sans-font)[
+  Operations are signed off on the digital work order as they complete, and
+  these columns fill from that record. The write-in space is a fallback — if a
+  device isn't at hand or something needs a note, write it here to keep the job
+  moving, then enter it into the software.
+]
+#v(6pt)
+
 #if data.operations.len() == 0 [
   #text(fill: muted, style: "italic")[
     No routing found for this work order. Confirm a process is assigned before
@@ -252,9 +260,9 @@
 = Sign-off Key
 
 #text(size: 8pt, fill: muted, font: sans-font)[
-  Print each signer once below, then use their initials to sign the routing rows
-  above. Paper sign-offs mirror the record captured in the software — the
-  authoritative sign-off lives on the digital work order.
+  Print each signer once below. If you sign a routing row on paper, use these
+  initials — paper sign-offs are a fallback; the authoritative sign-off is
+  captured on the digital work order.
 ]
 #v(5pt)
 
@@ -300,12 +308,14 @@
 
 #footer-note([
   The digital work order is the system of record; this printed traveler is a
-  working copy — a snapshot at print time, reprinted as the job changes. Scan
-  the header barcode (#data.wo_number) to open the live job. Sign each step on
-  the floor as it completes and record it in the software; QA sign-off
-  operations require a qualified inspector. Do not advance the job past a failed
-  or unsigned control step, and do not release for shipment with any open
-  control step or nonconformance.
+  read-only snapshot at print time, reprinted as the job changes. Scan the
+  header barcode (#data.wo_number) to open the live job and record each
+  operation there — that is the authoritative sign-off, captured directly in
+  the software. The write-in boxes are a fallback for keeping the job moving
+  when a device isn't at hand; enter anything written here into the software
+  when you can. QA sign-off operations require a qualified inspector. Do not
+  advance the job past a failed or unsigned control step, and do not release for
+  shipment with any open control step or nonconformance.
 ])
 
 #v(6pt)
