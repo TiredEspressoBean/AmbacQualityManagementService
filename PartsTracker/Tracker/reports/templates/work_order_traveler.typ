@@ -41,9 +41,8 @@
 // pre-filled (as-built): the box grows to fit its content so text never
 // overflows or overlaps the row below.
 #let signoff(value: none, h: 16pt) = if value == none or value == "" {
-  // Blank write-in field — a baseline rule reads as "write here" with far
-  // less ink than a full outlined box.
-  box(width: 100%, height: h, stroke: (bottom: 0.5pt + rule))[]
+  // Blank write-in field — a light bordered box gives four walls to write in.
+  box(width: 100%, height: h, stroke: 0.5pt + rule, radius: 2pt)[]
 } else {
   // Pre-filled (as-built) value — a soft fill chip (no border) shows captured
   // data without adding another outline to the row. Grows to fit its content.
@@ -199,76 +198,66 @@
   #set text(size: 8.5pt)
 
   // One row per operation: reference columns (Op / Operation / Type / Controls
-  // & Specs) on the left, calm fill-in fields (Operator / Inspector / Acc / Rej
-  // / Remarks) on the right. Blank fields are baseline underlines; captured
-  // as-built values are soft chips. Fill-in cells are tall for handwriting.
+  // & Specs) on the left, fill-in columns (Operator / Inspector / Acc / Rej /
+  // Remarks) on the right. A native table() reprints the column header at the
+  // top of every page the routing spans (table.header repeat). Blank fields are
+  // bordered boxes to write in; captured as-built values are soft chips.
   #let cols = (0.45fr, 1.9fr, 0.75fr, 2.2fr, 1.3fr, 1.3fr, 0.42fr, 0.42fr, 1.9fr)
+  #let hdr(body, ..a) = text(weight: "semibold", font: sans-font, ..a)[#body]
 
-  #block(
-    width: 100%, fill: band, stroke: (bottom: 0.75pt + rule),
-    inset: (x: 8pt, y: 5pt), below: 0pt,
-  )[
-    #grid(
-      columns: cols, column-gutter: 6pt,
-      text(weight: "semibold", font: sans-font)[Op],
-      text(weight: "semibold", font: sans-font)[Operation],
-      text(weight: "semibold", font: sans-font)[Type],
-      text(weight: "semibold", font: sans-font)[Controls & Specs],
-      text(weight: "semibold", font: sans-font)[Operator / Date],
-      text(weight: "semibold", font: sans-font)[Inspector / Date],
-      text(weight: "semibold", font: sans-font, size: 7.5pt)[Acc],
-      text(weight: "semibold", font: sans-font, size: 7.5pt)[Rej],
-      text(weight: "semibold", font: sans-font)[Remarks],
-    )
-  ]
+  #table(
+    columns: cols,
+    inset: (x: 6pt, y: 5pt),
+    align: top + left,
+    // Horizontal rules only (no verticals); a heavier rule under the header.
+    stroke: (x, y) => (bottom: if y == 0 { 0.75pt + rule } else { 0.5pt + rule }),
+    fill: (x, y) => if y == 0 { band },
 
-  #for (idx, op) in data.operations.enumerate() [
-    // Each operation is one non-breakable row so it never splits across pages.
-    #block(
-      width: 100%, breakable: false, above: 0pt, below: 0pt,
-      stroke: (bottom: 0.5pt + rule), inset: (x: 8pt, y: 5pt),
-    )[
-      #grid(
-        columns: cols, column-gutter: 6pt, align: top + left,
-        text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
-        [
-          #text(weight: "semibold", font: sans-font)[#op.step_name]
-          #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
-          #if op.description != none [
+    table.header(
+      repeat: true,
+      hdr[Op], hdr[Operation], hdr[Type], hdr[Controls & Specs],
+      hdr[Operator / Date], hdr[Inspector / Date],
+      hdr(size: 7.5pt)[Acc], hdr(size: 7.5pt)[Rej], hdr[Remarks],
+    ),
+
+    ..data.operations.map(op => (
+      text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
+      [
+        #text(weight: "semibold", font: sans-font)[#op.step_name]
+        #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
+        #if op.description != none [
+          #v(1pt)
+          #text(size: 7.5pt, fill: muted, font: sans-font)[#op.description]
+        ]
+      ],
+      [
+        #text(fill: muted, font: sans-font)[#op.step_type]
+        #if op.std_time != none [
+          #v(1pt)
+          #text(size: 7.5pt, fill: muted, font: sans-font)[⏱ #op.std_time]
+        ]
+      ],
+      [
+        #if op.controls.len() == 0 and op.specs.len() == 0 [
+          #text(fill: muted)[—]
+        ] else [
+          #if op.controls.len() > 0 [
+            #text(size: 8pt, fill: muted, font: sans-font)[#op.controls.join(" · ")]
+          ]
+          #for spec in op.specs [
             #v(1pt)
-            #text(size: 7.5pt, fill: muted, font: sans-font)[#op.description]
+            #text(size: 7.5pt, fill: muted, font: sans-font)[• #spec]
           ]
-        ],
-        [
-          #text(fill: muted, font: sans-font)[#op.step_type]
-          #if op.std_time != none [
-            #v(1pt)
-            #text(size: 7.5pt, fill: muted, font: sans-font)[⏱ #op.std_time]
-          ]
-        ],
-        [
-          #if op.controls.len() == 0 and op.specs.len() == 0 [
-            #text(fill: muted)[—]
-          ] else [
-            #if op.controls.len() > 0 [
-              #text(size: 8pt, fill: muted, font: sans-font)[#op.controls.join(" · ")]
-            ]
-            #for spec in op.specs [
-              #v(1pt)
-              #text(size: 7.5pt, fill: muted, font: sans-font)[• #spec]
-            ]
-          ]
-        ],
-        // Fill-in fields — tall cells for handwriting; blank = underline,
-        // as-built value = soft chip.
-        signoff(value: op.operator, h: 32pt),
-        signoff(value: op.inspector, h: 32pt),
-        signoff(h: 32pt),
-        signoff(h: 32pt),
-        signoff(value: op.remarks, h: 32pt),
-      )
-    ]
-  ]
+        ]
+      ],
+      // Fill-in fields — tall bordered boxes for handwriting; as-built = chip.
+      signoff(value: op.operator, h: 32pt),
+      signoff(value: op.inspector, h: 32pt),
+      signoff(h: 32pt),
+      signoff(h: 32pt),
+      signoff(value: op.remarks, h: 32pt),
+    )).flatten(),
+  )
 ]
 
 #v(6pt)
