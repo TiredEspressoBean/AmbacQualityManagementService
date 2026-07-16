@@ -54,6 +54,7 @@ class TravelerOperation(BaseModel):
     """One routing row (operation) in the traveler."""
 
     seq: str                       # ProcessStep.order, rendered as a string
+    op_number: Optional[str] = None  # Steps.operation_number; falls back to seq
     step_name: str
     step_type: str                 # human-readable step-type label
     description: Optional[str] = None      # short step description
@@ -382,6 +383,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                 )
                 operations.append(TravelerOperation(
                     seq=str(ps.order),
+                    op_number=(getattr(step, "operation_number", "") or "").strip() or None,
                     step_name=step.name,
                     step_type=step.get_step_type_display(),
                     description=description,

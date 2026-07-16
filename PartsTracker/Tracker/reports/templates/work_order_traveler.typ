@@ -152,19 +152,19 @@
 ] else [
   #set text(size: 8.5pt)
 
-  #let cols = (0.4fr, 2.3fr, 1fr, 3fr, 1.3fr, 1.3fr, 0.7fr, 1.6fr)
+  #let cols = (0.5fr, 2fr, 0.9fr, 2.3fr, 1.15fr, 1.15fr, 1fr, 2.3fr)
 
   #table-header[
     #grid(
       columns: cols,
       column-gutter: 6pt,
-      text(weight: "semibold", font: sans-font)[Seq],
+      text(weight: "semibold", font: sans-font)[Op],
       text(weight: "semibold", font: sans-font)[Operation],
       text(weight: "semibold", font: sans-font)[Type],
       text(weight: "semibold", font: sans-font)[Controls & Specs],
       align(center)[#text(weight: "semibold", font: sans-font)[Operator / Date]],
       align(center)[#text(weight: "semibold", font: sans-font)[Inspector / Date]],
-      align(center)[#text(weight: "semibold", font: sans-font)[Acc/Rej]],
+      align(center)[#text(weight: "semibold", font: sans-font)[Qty Acc / Rej]],
       align(center)[#text(weight: "semibold", font: sans-font)[Remarks]],
     )
   ]
@@ -175,7 +175,7 @@
         columns: cols,
         column-gutter: 6pt,
         align: horizon + left,
-        text(fill: muted, font: mono-font)[#op.seq],
+        text(fill: ink, font: mono-font, weight: "semibold")[#if op.op_number != none [#op.op_number] else [#op.seq]],
         [
           #text(weight: "semibold", font: sans-font)[#op.step_name]
           #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
@@ -204,10 +204,17 @@
             ]
           ]
         ],
-        signoff(value: op.operator),
-        signoff(value: op.inspector),
-        signoff(value: op.acc_rej),
-        signoff(value: op.remarks),
+        signoff(value: op.operator, h: 26pt),
+        signoff(value: op.inspector, h: 26pt),
+        // Quantity accepted / rejected — blank number boxes for wet-ink counts.
+        [
+          #stack(spacing: 4pt,
+            grid(columns: (auto, 1fr), column-gutter: 4pt, align: horizon,
+              text(size: 7pt, fill: muted, font: sans-font)[Acc], signoff(h: 13pt)),
+            grid(columns: (auto, 1fr), column-gutter: 4pt, align: horizon,
+              text(size: 7pt, fill: muted, font: sans-font)[Rej], signoff(h: 13pt)))
+        ],
+        signoff(value: op.remarks, h: 34pt),
       )
     ]
   ]
