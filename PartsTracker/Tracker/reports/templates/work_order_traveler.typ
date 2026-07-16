@@ -84,6 +84,13 @@
 #set page(flipped: true)
 #set text(hyphenate: false)
 #set par(justify: false)
+// Shop-floor legibility: a sans reads far better than a serif through scratched
+// or dirty safety glasses. Switch the body off the shared serif (body-font) to
+// the shared sans (headings/labels already use it). Noto Sans is the deployable
+// choice — the Docker image installs fonts-noto-core and Typst scans
+// /usr/share/fonts. (Locally, where Noto isn't installed, Typst falls back to
+// its default; production renders Noto Sans.)
+#set text(font: sans-font)
 
 // ── Header: title (left) + barcode (right) ──────────────────────────────────
 
