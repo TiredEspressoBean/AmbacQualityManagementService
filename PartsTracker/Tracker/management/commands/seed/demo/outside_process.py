@@ -60,7 +60,7 @@ class DemoOutsideProcessSeeder(BaseSeeder):
 
         # --- OSP step: a subcontract node with a default vendor ---
         osp_step, _ = Steps.objects.update_or_create(
-            tenant=self.tenant, part_type=part_type, name="Nitride Coating (Outside Process)",
+            tenant=self.tenant, part_type=part_type, name="Nitride Coating",
             defaults={
                 "step_type": "TASK",
                 "description": "Send injector bodies out for nitride coating, then inspect on return.",

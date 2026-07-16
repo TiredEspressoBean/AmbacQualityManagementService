@@ -46,7 +46,9 @@
 }
 
 // A labelled capture box (label above a blank or pre-filled sign-off box).
-#let capture(label, value: none, h: 22pt) = [
+// Default height suits the job-level Final Release boxes; per-op capture
+// cells pass an explicit taller height.
+#let capture(label, value: none, h: 18pt) = [
   #text(size: 8pt, fill: muted, font: sans-font)[#label]
   #v(2pt)
   #signoff(value: value, h: h)
@@ -169,10 +171,11 @@
 = Routing — #str(data.total_operations) operations
 
 #text(size: 8pt, fill: muted, font: sans-font)[
-  Operations are signed off on the digital work order as they complete, and
-  these columns fill from that record. The write-in space is a fallback — if a
-  device isn't at hand or something needs a note, write it here to keep the job
-  moving.
+  Each operation shows a shaded reference band (what the step is) above a
+  fill-in band that mirrors the digital record. Operations are signed off on
+  the digital work order as they complete. The fill-in band is a fallback — if
+  a device isn't at hand or something needs a note, write it here to keep the
+  job moving.
 ]
 #v(6pt)
 
@@ -184,78 +187,92 @@
 ] else [
   #set text(size: 8.5pt)
 
-  #let cols = (0.5fr, 2fr, 0.9fr, 2.3fr, 1.15fr, 1.15fr, 1fr, 2.3fr)
+  // Two bands per operation:
+  //  • info band (shaded)  — what the operation is: Op / Operation / Type / Controls
+  //  • capture band (white) — where it gets filled in: sign-offs, counts, remarks
+  #let icols = (0.55fr, 2.4fr, 1fr, 2.7fr)
+  #let capcols = (1.5fr, 1.5fr, 0.6fr, 0.6fr, 2.7fr)
 
-  #table-header[
+  // Header labels the info-band columns; each capture box carries its own label.
+  #block(
+    width: 100%, fill: rgb("#dbe2ea"), stroke: 0.9pt + rule,
+    inset: (x: 8pt, y: 5pt), below: 0pt,
+  )[
     #grid(
-      columns: cols,
-      column-gutter: 6pt,
+      columns: icols, column-gutter: 6pt,
       text(weight: "semibold", font: sans-font)[Op],
       text(weight: "semibold", font: sans-font)[Operation],
       text(weight: "semibold", font: sans-font)[Type],
       text(weight: "semibold", font: sans-font)[Controls & Specs],
-      align(center)[#text(weight: "semibold", font: sans-font)[Operator / Date]],
-      align(center)[#text(weight: "semibold", font: sans-font)[Inspector / Date]],
-      align(center)[#text(weight: "semibold", font: sans-font)[Qty Acc / Rej]],
-      align(center)[#text(weight: "semibold", font: sans-font)[Remarks]],
     )
   ]
 
   #for (idx, op) in data.operations.enumerate() [
-    #table-row(idx)[
-      #grid(
-        columns: cols,
-        column-gutter: 6pt,
-        align: horizon + left,
-        text(fill: ink, font: mono-font, weight: "semibold")[#if op.op_number != none [#op.op_number] else [#op.seq]],
-        [
-          #text(weight: "semibold", font: sans-font)[#op.step_name]
-          #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
-          #if op.description != none [
-            #v(1pt)
-            #text(size: 7.5pt, fill: muted, font: sans-font)[#op.description]
-          ]
-        ],
-        [
-          #text(fill: muted, font: sans-font)[#op.step_type]
-          #if op.std_time != none [
-            #v(1pt)
-            #text(size: 7.5pt, fill: muted, font: sans-font)[⏱ #op.std_time]
-          ]
-        ],
-        [
-          #if op.controls.len() == 0 and op.specs.len() == 0 [
-            #text(fill: muted)[—]
-          ] else [
-            #if op.controls.len() > 0 [
-              #text(size: 8pt, fill: muted, font: sans-font)[#op.controls.join(" · ")]
-            ]
-            #for spec in op.specs [
+    // Each operation stays whole on one page (breakable: false) so its
+    // info band and capture band never split across a page boundary.
+    #block(
+      width: 100%, breakable: false, above: 0pt, below: 0pt,
+      stroke: (left: 0.75pt + rule, right: 0.75pt + rule, bottom: 0.75pt + rule),
+    )[
+      // ── Info band — read-only reference, pulled from the routing ──
+      #block(
+        width: 100%, fill: rgb("#eef2f7"), above: 0pt, below: 0pt,
+        stroke: (bottom: 0.5pt + rule), inset: (x: 8pt, y: 4pt),
+      )[
+        #grid(
+          columns: icols, column-gutter: 6pt, align: top + left,
+          text(fill: ink, font: mono-font, weight: "bold", size: 11pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
+          [
+            #text(weight: "semibold", font: sans-font)[#op.step_name]
+            #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
+            #if op.description != none [
               #v(1pt)
-              #text(size: 7.5pt, font: mono-font)[• #spec]
+              #text(size: 7.5pt, fill: muted, font: sans-font)[#op.description]
             ]
-          ]
-        ],
-        // Tall enough for multiple initials + dates (rework visits, multi-signer).
-        signoff(value: op.operator, h: 42pt),
-        signoff(value: op.inspector, h: 42pt),
-        // Quantity accepted / rejected — blank number boxes for wet-ink counts.
-        [
-          #stack(spacing: 4pt,
-            grid(columns: (auto, 1fr), column-gutter: 4pt, align: horizon,
-              text(size: 7pt, fill: muted, font: sans-font)[Acc], signoff(h: 13pt)),
-            grid(columns: (auto, 1fr), column-gutter: 4pt, align: horizon,
-              text(size: 7pt, fill: muted, font: sans-font)[Rej], signoff(h: 13pt)))
-        ],
-        signoff(value: op.remarks, h: 42pt),
-      )
+          ],
+          [
+            #text(fill: muted, font: sans-font)[#op.step_type]
+            #if op.std_time != none [
+              #v(1pt)
+              #text(size: 7.5pt, fill: muted, font: sans-font)[⏱ #op.std_time]
+            ]
+          ],
+          [
+            #if op.controls.len() == 0 and op.specs.len() == 0 [
+              #text(fill: muted)[—]
+            ] else [
+              #if op.controls.len() > 0 [
+                #text(size: 8pt, fill: muted, font: sans-font)[#op.controls.join(" · ")]
+              ]
+              #for spec in op.specs [
+                #v(1pt)
+                #text(size: 7.5pt, font: mono-font)[• #spec]
+              ]
+            ]
+          ],
+        )
+      ]
+      // ── Capture band — fill-in boxes (fallback wet-ink; mirrors the record) ──
+      #block(width: 100%, above: 0pt, below: 0pt, inset: (x: 8pt, y: 4pt))[
+        #grid(
+          columns: capcols, column-gutter: 6pt, align: top + left,
+          capture("Operator / Date", value: op.operator, h: 24pt),
+          capture("Inspector / Date", value: op.inspector, h: 24pt),
+          capture("Qty acc", h: 24pt),
+          capture("Qty rej", h: 24pt),
+          capture("Remarks / notes", value: op.remarks, h: 24pt),
+        )
+      ]
     ]
   ]
 ]
 
 #v(6pt)
 
-// ── Sign-off key (print each signer once, then initial the rows above) ───────
+// ── Closeout — sign-off key + final release + footer travel together as one
+// non-breakable unit, so they land whole on a page and the footer never
+// orphans onto a near-empty trailing page. ──────────────────────────────────
+#block(breakable: false, width: 100%)[
 
 = Sign-off Key
 
@@ -283,19 +300,18 @@
 
 #v(6pt)
 
-// ── Final-release footer ────────────────────────────────────────────────────
-
 = Final Release
 
 #info-box[
   #grid(
     columns: (1fr, 1fr, 1fr, 1fr),
     column-gutter: 20pt,
-    row-gutter: 12pt,
+    row-gutter: 9pt,
     capture("Qty accepted", value: data.qty_accepted),
     capture("Qty rejected", value: data.qty_rejected),
     capture("Qty scrapped", value: data.qty_scrapped),
     capture("Date completed", value: data.date_completed),
+    grid.cell(colspan: 4, capture("NCR # / Disposition — record any nonconformance raised and how it was dispositioned", h: 20pt)),
     capture("Final inspection — sign-off / date", value: data.final_signoff),
     grid.cell(colspan: 2, capture("QA release — “released for shipment” stamp / signature", value: data.qa_release)),
     capture("Date released", value: data.date_released),
@@ -320,3 +336,5 @@
 #align(center, text(size: 7pt, fill: muted, font: sans-font)[
   Uncontrolled printed snapshot as of #data.generated_date — verify the current revision before use.
 ])
+
+]  // end closeout block
