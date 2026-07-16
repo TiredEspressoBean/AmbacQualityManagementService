@@ -204,6 +204,9 @@
   // bordered boxes to write in; captured as-built values are soft chips.
   #let cols = (0.45fr, 1.9fr, 0.75fr, 2.2fr, 1.3fr, 1.3fr, 0.42fr, 0.42fr, 1.9fr)
   #let hdr(body, ..a) = text(weight: "semibold", font: sans-font, ..a)[#body]
+  // Guard: each cell is unbreakable, so an operation's row relocates whole to
+  // the next page rather than splitting its boxes across the page boundary.
+  #let c = table.cell.with(breakable: false)
 
   #table(
     columns: cols,
@@ -221,8 +224,8 @@
     ),
 
     ..data.operations.map(op => (
-      text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
-      [
+      c(text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]]),
+      c[
         #text(weight: "semibold", font: sans-font)[#op.step_name]
         #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
         #if op.description != none [
@@ -230,14 +233,14 @@
           #text(size: 7.5pt, fill: muted, font: sans-font)[#op.description]
         ]
       ],
-      [
+      c[
         #text(fill: muted, font: sans-font)[#op.step_type]
         #if op.std_time != none [
           #v(1pt)
           #text(size: 7.5pt, fill: muted, font: sans-font)[⏱ #op.std_time]
         ]
       ],
-      [
+      c[
         #if op.controls.len() == 0 and op.specs.len() == 0 [
           #text(fill: muted)[—]
         ] else [
@@ -251,11 +254,11 @@
         ]
       ],
       // Fill-in fields — tall bordered boxes for handwriting; as-built = chip.
-      signoff(value: op.operator, h: 32pt),
-      signoff(value: op.inspector, h: 32pt),
-      signoff(h: 32pt),
-      signoff(h: 32pt),
-      signoff(value: op.remarks, h: 32pt),
+      c(signoff(value: op.operator, h: 32pt)),
+      c(signoff(value: op.inspector, h: 32pt)),
+      c(signoff(h: 32pt)),
+      c(signoff(h: 32pt)),
+      c(signoff(value: op.remarks, h: 32pt)),
     )).flatten(),
   )
 ]
@@ -279,13 +282,18 @@
 #let keyhead(n) = text(size: 7.5pt, fill: muted, font: sans-font, weight: "semibold")[#n]
 #let keycell() = box(width: 100%, height: 13pt, stroke: (bottom: 0.5pt + rule))
 
+// One signer slot per operation, sized from the routing. Two signers per grid
+// row → ceil(n / 2) rows; a floor of 3 rows keeps short routings from looking
+// bare.
+#let keyrows = calc.max(3, calc.ceil(data.operations.len() / 2))
+
 #grid(
   columns: (1.6fr, 0.9fr, 0.7fr, 1.6fr, 0.9fr, 0.7fr),
   column-gutter: 14pt,
   row-gutter: 5pt,
   keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
   keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
-  ..range(3).map(_ => (
+  ..range(keyrows).map(_ => (
     keycell(), keycell(), keycell(),
     keycell(), keycell(), keycell(),
   )).flatten(),
