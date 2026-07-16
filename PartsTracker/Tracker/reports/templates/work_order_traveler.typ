@@ -52,6 +52,13 @@
   #signoff(value: value, h: h)
 ]
 
+// An empty tick box + label (for the packet-contents checklist).
+#let chk(label) = box(baseline: 1.5pt)[
+  #box(width: 9pt, height: 9pt, stroke: 0.75pt + rule, radius: 1pt)
+  #h(3pt)
+  #text(size: 8.5pt, font: sans-font)[#label]
+]
+
 // ----------------------------------------------------------------------------
 // Document — landscape, no hyphenation (keeps IDs like ORD-SHOWCASE intact)
 // ----------------------------------------------------------------------------
@@ -140,6 +147,23 @@
 
 #v(12pt)
 
+// ── Packet contents (what should physically travel with this job) ───────────
+
+#box(
+  fill: rgb("#f1f5f9"), stroke: 0.75pt + rule, radius: 4pt,
+  inset: (x: 10pt, y: 7pt), width: 100%,
+)[
+  #text(size: 8.5pt, fill: muted, font: sans-font, weight: "semibold")[Packet includes:]
+  #h(10pt)
+  #chk[Engineering drawing (Rev #if data.drawing_revision != none [#data.drawing_revision.replace("Rev ", "")] else [\_\_])]
+  #h(14pt) #chk[Material cert]
+  #h(14pt) #chk[First-article (FAIR)]
+  #h(14pt) #chk[Inspection sheet]
+  #h(14pt) #chk[Other: #box(width: 90pt, height: 9pt, stroke: (bottom: 0.6pt + rule))]
+]
+
+#v(12pt)
+
 // ── Routing table ───────────────────────────────────────────────────────────
 
 = Routing — #str(data.total_operations) operations
@@ -204,8 +228,9 @@
             ]
           ]
         ],
-        signoff(value: op.operator, h: 26pt),
-        signoff(value: op.inspector, h: 26pt),
+        // Tall enough for multiple initials + dates (rework visits, multi-signer).
+        signoff(value: op.operator, h: 42pt),
+        signoff(value: op.inspector, h: 42pt),
         // Quantity accepted / rejected — blank number boxes for wet-ink counts.
         [
           #stack(spacing: 4pt,
@@ -214,11 +239,39 @@
             grid(columns: (auto, 1fr), column-gutter: 4pt, align: horizon,
               text(size: 7pt, fill: muted, font: sans-font)[Rej], signoff(h: 13pt)))
         ],
-        signoff(value: op.remarks, h: 34pt),
+        signoff(value: op.remarks, h: 42pt),
       )
     ]
   ]
 ]
+
+#v(14pt)
+
+// ── Sign-off key (print each signer once, then initial the rows above) ───────
+
+= Sign-off Key
+
+#text(size: 8pt, fill: muted, font: sans-font)[
+  Print each signer once below, then use their initials to sign the routing rows
+  above. Initials on a step attest the operation was performed / inspected as
+  written.
+]
+#v(5pt)
+
+#let keyhead(n) = text(size: 7.5pt, fill: muted, font: sans-font, weight: "semibold")[#n]
+#let keycell() = box(width: 100%, height: 15pt, stroke: (bottom: 0.5pt + rule))
+
+#grid(
+  columns: (1.6fr, 0.9fr, 0.7fr, 1.6fr, 0.9fr, 0.7fr),
+  column-gutter: 14pt,
+  row-gutter: 7pt,
+  keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
+  keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
+  ..range(4).map(_ => (
+    keycell(), keycell(), keycell(),
+    keycell(), keycell(), keycell(),
+  )).flatten(),
+)
 
 #v(14pt)
 
@@ -252,4 +305,11 @@
   open this job on screen. Do not advance the job past a failed or unsigned
   control step, and do not release for shipment with any open control step or
   nonconformance.
+])
+
+#v(6pt)
+
+// Document-control line — a printed copy is a snapshot, not the controlled master.
+#align(center, text(size: 7pt, fill: muted, font: sans-font)[
+  Uncontrolled copy when printed — verify the current revision before use. · Printed #data.generated_date
 ])
