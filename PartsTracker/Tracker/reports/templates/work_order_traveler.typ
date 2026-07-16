@@ -253,8 +253,8 @@
 
 #text(size: 8pt, fill: muted, font: sans-font)[
   Print each signer once below, then use their initials to sign the routing rows
-  above. Initials on a step attest the operation was performed / inspected as
-  written.
+  above. Paper sign-offs mirror the record captured in the software — the
+  authoritative sign-off lives on the digital work order.
 ]
 #v(5pt)
 
@@ -299,17 +299,18 @@
 // ── Footer note ─────────────────────────────────────────────────────────────
 
 #footer-note([
-  This packet must accompany the work order through every operation. Operators
-  and inspectors sign off each step as it completes; QA sign-off operations
-  require a qualified inspector. Scan the header barcode (#data.wo_number) to
-  open this job on screen. Do not advance the job past a failed or unsigned
-  control step, and do not release for shipment with any open control step or
-  nonconformance.
+  The digital work order is the system of record; this printed traveler is a
+  working copy — a snapshot at print time, reprinted as the job changes. Scan
+  the header barcode (#data.wo_number) to open the live job. Sign each step on
+  the floor as it completes and record it in the software; QA sign-off
+  operations require a qualified inspector. Do not advance the job past a failed
+  or unsigned control step, and do not release for shipment with any open
+  control step or nonconformance.
 ])
 
 #v(6pt)
 
 // Document-control line — a printed copy is a snapshot, not the controlled master.
 #align(center, text(size: 7pt, fill: muted, font: sans-font)[
-  Uncontrolled copy when printed — verify the current revision before use. · Printed #data.generated_date
+  The digital work order is the system of record — this is an uncontrolled printed snapshot as of #data.generated_date. Verify the current revision before use.
 ])
