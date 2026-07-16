@@ -171,6 +171,7 @@ export default function ProcessFlowPage() {
       return {
         id: step.id as string,
         name: step.name as string,
+        operation_number: (step.operation_number as string | undefined) ?? "",
         order: ps.order as number, // order is on ProcessStep, not Step
         step_type: step.step_type as StepData['step_type'],
         is_decision_point: step.is_decision_point as boolean | undefined,
@@ -370,6 +371,7 @@ export default function ProcessFlowPage() {
           ...prev.data,
           // eslint-disable-next-line local/no-as-any -- ReactFlow Node.data is untyped Record; label field is set by our FlowCanvas node factory
           label: data.name ?? (prev.data as any).label,
+          operation_number: updatedStep.operation_number ?? "",
           step: updatedStep,
           isDecisionPoint: updatedStep.is_decision_point,
           decisionType: updatedStep.decision_type,
@@ -424,6 +426,7 @@ export default function ProcessFlowPage() {
         id: isExisting ? step.id : undefined, // Only include ID for existing steps
         _temp_id: !isExisting ? step.id : undefined, // Temp ID for new steps
         name: step.name,
+        operation_number: step.operation_number || '',
         order: index + 1,
         is_entry_point: index === 0 || step.is_entry_point || false,
         description: step.description || '',

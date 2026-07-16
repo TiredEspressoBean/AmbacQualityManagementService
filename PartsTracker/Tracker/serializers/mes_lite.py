@@ -852,12 +852,14 @@ class StepsSerializer(SecureModelMixin):
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
 
     # Fields whose edits are metadata-only and should NOT trigger a new version.
-    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+    # operation_number is a shop-floor routing label, not process behaviour — a
+    # quick edit shouldn't fork a new Step version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'operation_number'})
 
     class Meta:
         model = Steps
         fields = (
-            'id', 'name', 'expected_duration', 'description', 'block_on_quarantine',
+            'id', 'name', 'operation_number', 'expected_duration', 'description', 'block_on_quarantine',
             'requires_qa_signoff', 'sampling_required', 'min_sampling_rate', 'pass_threshold',
             # First Piece Inspection
             'requires_first_piece_inspection',
@@ -1089,7 +1091,7 @@ class StepSerializer(SecureModelMixin):
     class Meta:
         model = Steps
         fields = [
-            "id", "name", "description", "part_type", "part_type_name", "expected_duration",
+            "id", "name", "operation_number", "description", "part_type", "part_type_name", "expected_duration",
             # QA settings
             "requires_qa_signoff", "sampling_required", "min_sampling_rate",
             "block_on_quarantine", "pass_threshold",

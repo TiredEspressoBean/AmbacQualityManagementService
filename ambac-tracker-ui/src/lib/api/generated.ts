@@ -4959,6 +4959,12 @@ export type Step = {
    * @maxLength 50
    */
   name: string;
+  operation_number?: /**
+   * Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position.
+   *
+   * @maxLength 20
+   */
+  string | undefined;
   description?: (string | null) | undefined;
   part_type: string;
   part_type_name: string | null;
@@ -6572,6 +6578,12 @@ export type Steps = {
    * @maxLength 50
    */
   name: string;
+  operation_number?: /**
+   * Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position.
+   *
+   * @maxLength 20
+   */
+  string | undefined;
   expected_duration?: (string | null) | undefined;
   description?: (string | null) | undefined;
   block_on_quarantine?: boolean | undefined;
@@ -9748,6 +9760,12 @@ export type PatchedStepsRequest = Partial<{
    * @maxLength 50
    */
   name: string;
+  /**
+   * Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position.
+   *
+   * @maxLength 20
+   */
+  operation_number: string;
   expected_duration: string | null;
   description: string | null;
   block_on_quarantine: boolean;
@@ -11532,6 +11550,12 @@ export type StepRequest = {
    * @maxLength 50
    */
   name: string;
+  operation_number?: /**
+   * Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position.
+   *
+   * @maxLength 20
+   */
+  string | undefined;
   description?: (string | null) | undefined;
   part_type: string;
   expected_duration?: (string | null) | undefined;
@@ -11660,6 +11684,12 @@ export type StepsRequest = {
    * @maxLength 50
    */
   name: string;
+  operation_number?: /**
+   * Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position.
+   *
+   * @maxLength 20
+   */
+  string | undefined;
   expected_duration?: (string | null) | undefined;
   description?: (string | null) | undefined;
   block_on_quarantine?: boolean | undefined;
@@ -15481,6 +15511,7 @@ const RevisitAssignmentEnum = z.enum(["ANY", "SAME", "DIFFERENT", "ROLE"]);
 const Step = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
+  operation_number: z.string().max(20).optional(),
   description: z.string().nullish(),
   part_type: z.string().uuid(),
   part_type_name: z.string().nullable(),
@@ -16459,6 +16490,7 @@ const PatchedStepOverrideRequest = z
 const Steps = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
+  operation_number: z.string().max(20).optional(),
   expected_duration: z.string().nullish(),
   description: z.string().nullish(),
   block_on_quarantine: z.boolean().optional(),
@@ -16494,6 +16526,7 @@ const PaginatedStepsList = z.object({
 });
 const StepsRequest = z.object({
   name: z.string().min(1).max(50),
+  operation_number: z.string().max(20).optional(),
   expected_duration: z.string().nullish(),
   description: z.string().nullish(),
   block_on_quarantine: z.boolean().optional(),
@@ -16519,6 +16552,7 @@ const StepsRequest = z.object({
 const PatchedStepsRequest = z
   .object({
     name: z.string().min(1).max(50),
+    operation_number: z.string().max(20),
     expected_duration: z.string().nullable(),
     description: z.string().nullable(),
     block_on_quarantine: z.boolean(),
@@ -16545,6 +16579,7 @@ const PatchedStepsRequest = z
 const StepWithResolvedRules = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
+  operation_number: z.string().max(20).optional(),
   description: z.string().nullish(),
   expected_duration: z.string().nullish(),
   part_type: z.string().uuid(),
@@ -19420,6 +19455,7 @@ const StepEdgeRequest = z.object({
 });
 const StepRequest = z.object({
   name: z.string().min(1).max(50),
+  operation_number: z.string().max(20).optional(),
   description: z.string().nullish(),
   part_type: z.string().uuid(),
   expected_duration: z.string().nullish(),

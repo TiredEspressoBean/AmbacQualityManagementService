@@ -46,7 +46,7 @@ import { schemas } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
 import { isFieldRequired } from "@/lib/zod-config";
 
-type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "part_type" | "requires_first_piece_inspection"> & {
+type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "part_type" | "requires_first_piece_inspection" | "operation_number"> & {
     rules: { rule_type: string; value: string | number | null; order: number }[]
     fallback_rules?: { rule_type: string; value: string | number | null; order: number }[]
     tighten_after?: number
@@ -66,6 +66,7 @@ const formSchema = schemas.StepsRequest.pick({
     description: true,
     part_type: true,
     requires_first_piece_inspection: true,
+    operation_number: true,
 }).extend({
     // Override part_type to be string (ID value from select)
     part_type: z.string(),
@@ -108,6 +109,7 @@ export default function StepFormPage() {
             description: "",
             part_type: "",
             requires_first_piece_inspection: false,
+            operation_number: "",
             rules: [],
             fallback_rules: [],
             tighten_after: undefined,
@@ -119,6 +121,7 @@ export default function StepFormPage() {
         if (mode === "edit" && step) {
             const stepWithRules = step as typeof step & {
                 requires_first_piece_inspection?: boolean
+                operation_number?: string
                 active_ruleset?: { rules?: FormValues["rules"]; tighten_after?: number; fallback_duration?: number }
                 fallback_ruleset?: { rules?: FormValues["rules"] }
             }
@@ -128,6 +131,7 @@ export default function StepFormPage() {
                 description: step.description ?? "",
                 part_type: step.part_type,
                 requires_first_piece_inspection: stepWithRules.requires_first_piece_inspection ?? false,
+                operation_number: stepWithRules.operation_number ?? "",
                 rules: stepWithRules.active_ruleset?.rules ?? [],
                 fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
                 tighten_after: stepWithRules.active_ruleset?.tighten_after ?? undefined,
@@ -242,6 +246,21 @@ export default function StepFormPage() {
                                     <Input placeholder="e.g. Machining, Assembly, Quality Check" {...field} />
                                 </FormControl>
                                 <FormDescription>A descriptive name for this step</FormDescription>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="operation_number"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Operation number</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g. 10" {...field} value={field.value ?? ""} />
+                                </FormControl>
+                                <FormDescription>Optional operation number for this step</FormDescription>
                                 <FormMessage/>
                             </FormItem>
                         )}

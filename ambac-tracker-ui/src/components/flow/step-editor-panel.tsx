@@ -186,6 +186,21 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
           )}
         </div>
 
+        {/* Operation number */}
+        <div className="space-y-1.5">
+          <Label htmlFor="step-operation-number">Operation number</Label>
+          {editable ? (
+            <Input
+              id="step-operation-number"
+              value={data.operation_number ?? ''}
+              onChange={(e) => onUpdate(node.id, { operation_number: e.target.value })}
+              placeholder="e.g. 10"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">{data.operation_number || 'Not set'}</p>
+          )}
+        </div>
+
         {/* Description */}
         <div className="space-y-1.5">
           <Label htmlFor="step-description">Description</Label>

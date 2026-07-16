@@ -522,9 +522,9 @@ class StepWithResolvedRulesSerializer(SecureModelMixin):
 
     class Meta:
         model = Steps
-        fields = ["id", "name", "description", "expected_duration", "part_type", "part_type_name",
-                  "part_type_info", "active_ruleset", "fallback_ruleset", "sampling_required",
-                  "min_sampling_rate", "created_at", "updated_at", "archived"]
+        fields = ["id", "name", "operation_number", "description", "expected_duration", "part_type",
+                  "part_type_name", "part_type_info", "active_ruleset", "fallback_ruleset",
+                  "sampling_required", "min_sampling_rate", "created_at", "updated_at", "archived"]
 
     @extend_schema_field({
         "type": "object",

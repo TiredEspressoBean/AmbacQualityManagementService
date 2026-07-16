@@ -17,6 +17,7 @@ export type StepType = StepTypeEnum;
 export interface StepData {
   id: string;
   name: string;
+  operation_number?: string;
   order: number; // From ProcessStep.order
   step_type?: StepType;
   is_decision_point?: boolean;
@@ -138,6 +139,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
       position: { x: index * 250, y: 0 }, // Spread out for initial render
       data: {
         label: step.name,
+        operation_number: step.operation_number ?? "",
         step,
         isDecisionPoint: step.is_decision_point,
         decisionType: step.decision_type,

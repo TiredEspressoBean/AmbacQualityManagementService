@@ -21290,6 +21290,8 @@ export interface components {
          */
         PatchedStepsRequest: {
             name?: string;
+            /** @description Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position. */
+            operation_number?: string;
             expected_duration?: string | null;
             description?: string | null;
             block_on_quarantine?: boolean;
@@ -24201,6 +24203,8 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             name: string;
+            /** @description Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position. */
+            operation_number?: string;
             description?: string | null;
             /** Format: uuid */
             part_type: string;
@@ -24681,6 +24685,8 @@ export interface components {
         /** @description Step serializer - just the node properties (no process/order/branching) */
         StepRequest: {
             name: string;
+            /** @description Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position. */
+            operation_number?: string;
             description?: string | null;
             /** Format: uuid */
             part_type: string;
@@ -24802,6 +24808,8 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             name: string;
+            /** @description Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position. */
+            operation_number?: string;
             description?: string | null;
             expected_duration?: string | null;
             /** Format: uuid */
@@ -24878,6 +24886,8 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             name: string;
+            /** @description Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position. */
+            operation_number?: string;
             expected_duration?: string | null;
             description?: string | null;
             block_on_quarantine?: boolean;
@@ -24950,6 +24960,8 @@ export interface components {
          */
         StepsRequest: {
             name: string;
+            /** @description Human-facing operation number for travelers/routing (e.g. '10', '20', 'OP-30'). Free-form; blank falls back to the routing position. */
+            operation_number?: string;
             expected_duration?: string | null;
             description?: string | null;
             block_on_quarantine?: boolean;

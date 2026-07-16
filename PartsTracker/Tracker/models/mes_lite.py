@@ -510,6 +510,16 @@ class Steps(SecureModel):
     name = models.CharField(max_length=50)
     """Name of the step, e.g., 'Inspection', 'Assembly'."""
 
+    operation_number = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Human-facing operation number for travelers/routing (e.g. '10', "
+                  "'20', 'OP-30'). Free-form; blank falls back to the routing position.",
+    )
+    """Shop-floor operation number shown on the traveler. Optional label distinct
+    from the process routing position (ProcessStep.order)."""
+
     pass_threshold = models.FloatField(default=1.0)
     """Cohort-readiness fraction for batch steps: the fraction of the lot that must
     be READY_FOR_NEXT_STEP before the batch advances (used with
