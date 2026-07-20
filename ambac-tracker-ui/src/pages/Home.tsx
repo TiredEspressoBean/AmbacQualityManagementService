@@ -2,6 +2,7 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import Login from "@/components/auth/Login";
 import { primaryPersona, resolveHomeBlocks } from "@/components/home/home-blocks";
 import { QaHomePage } from "@/pages/quality/QaHomePage";
+import { OperatorHomePage } from "@/pages/operator/OperatorHomePage";
 
 export default function Home() {
     const { data: user, isLoading } = useAuthUser();
@@ -24,6 +25,13 @@ export default function Home() {
     const persona = primaryPersona(user);
     if (persona === "QA Inspector" || persona === "QA Manager") {
         return <QaHomePage user={user} />;
+    }
+
+    // Operators land on the kiosk-tile operator home (design doc §6): a full
+    // task surface, not the generic block stack. Currently a preview shell —
+    // Scan + In progress are live, the rest is dimmed until its backend lands.
+    if (persona === "Operator") {
+        return <OperatorHomePage user={user} />;
     }
 
     const blocks = resolveHomeBlocks(user);

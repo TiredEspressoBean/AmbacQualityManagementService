@@ -26337,9 +26337,12 @@ export interface components {
          *     * `REWORK` - Rework
          *     * `DOWNTIME` - Downtime
          *     * `INDIRECT` - Indirect Labor
+         *     * `SHIFT` - On Shift
+         *     * `BREAK` - Break
+         *     * `LUNCH` - Lunch
          * @enum {string}
          */
-        TimeEntryTypeEnum: "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT";
+        TimeEntryTypeEnum: "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT" | "SHIFT" | "BREAK" | "LUNCH";
         /**
          * @description Serializer for TrainingRecord model.
          *
@@ -43548,14 +43551,18 @@ export interface operations {
         parameters: {
             query?: {
                 approved?: boolean;
+                end_time__isnull?: boolean;
                 /**
                  * @description * `PRODUCTION` - Production
                  *     * `SETUP` - Setup/Changeover
                  *     * `REWORK` - Rework
                  *     * `DOWNTIME` - Downtime
                  *     * `INDIRECT` - Indirect Labor
+                 *     * `SHIFT` - On Shift
+                 *     * `BREAK` - Break
+                 *     * `LUNCH` - Lunch
                  */
-                entry_type?: "DOWNTIME" | "INDIRECT" | "PRODUCTION" | "REWORK" | "SETUP";
+                entry_type?: "BREAK" | "DOWNTIME" | "INDIRECT" | "LUNCH" | "PRODUCTION" | "REWORK" | "SETUP" | "SHIFT";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */

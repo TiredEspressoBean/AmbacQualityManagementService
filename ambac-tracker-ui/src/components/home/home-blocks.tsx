@@ -39,7 +39,8 @@ import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 // ---------------------------------------------------------------------------
 // Scan box — traveler-first entry. Accepts keyboard-wedge scanners (they type
 // the code + Enter) and manual typing; resolves a WO ERP id or part ERP id and
-// navigates to the work order's control page (ops + inspection live there).
+// navigates to the work order detail page (Start Work + Digital Traveler +
+// Documents live there — the operator work surface, per design doc §8).
 // ---------------------------------------------------------------------------
 
 export function ScanBox({ autoFocus = true }: { autoFocus?: boolean } = {}) {

@@ -1239,10 +1239,20 @@ export type TimeEntryTypeEnum =
    * `REWORK` - Rework
    * `DOWNTIME` - Downtime
    * `INDIRECT` - Indirect Labor
+   * `SHIFT` - On Shift
+   * `BREAK` - Break
+   * `LUNCH` - Lunch
    *
-   * @enum PRODUCTION, SETUP, REWORK, DOWNTIME, INDIRECT
+   * @enum PRODUCTION, SETUP, REWORK, DOWNTIME, INDIRECT, SHIFT, BREAK, LUNCH
    */
-  "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT";
+  | "PRODUCTION"
+  | "SETUP"
+  | "REWORK"
+  | "DOWNTIME"
+  | "INDIRECT"
+  | "SHIFT"
+  | "BREAK"
+  | "LUNCH";
 export type Core = {
   id: string;
   /**
@@ -17307,6 +17317,9 @@ const TimeEntryTypeEnum = z.enum([
   "REWORK",
   "DOWNTIME",
   "INDIRECT",
+  "SHIFT",
+  "BREAK",
+  "LUNCH",
 ]);
 const TimeEntry = z.object({
   id: z.string().uuid(),
@@ -39912,10 +39925,24 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
         schema: z.boolean().optional(),
       },
       {
+        name: "end_time__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "entry_type",
         type: "Query",
         schema: z
-          .enum(["DOWNTIME", "INDIRECT", "PRODUCTION", "REWORK", "SETUP"])
+          .enum([
+            "BREAK",
+            "DOWNTIME",
+            "INDIRECT",
+            "LUNCH",
+            "PRODUCTION",
+            "REWORK",
+            "SETUP",
+            "SHIFT",
+          ])
           .optional(),
       },
       {
