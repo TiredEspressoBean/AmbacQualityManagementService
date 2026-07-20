@@ -524,7 +524,15 @@ class TimeEntryViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSe
     )
     serializer_class = TimeEntrySerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['user', 'entry_type', 'work_order', 'approved']
+    # end_time__isnull exposes "my open entry" as a clean server query (the clock
+    # state read the operator home needs), without a client-side history scan.
+    filterset_fields = {
+        'user': ['exact'],
+        'entry_type': ['exact'],
+        'work_order': ['exact'],
+        'approved': ['exact'],
+        'end_time': ['isnull'],
+    }
     ordering_fields = ['start_time', 'end_time', 'entry_type']
     ordering = ['-start_time']
 

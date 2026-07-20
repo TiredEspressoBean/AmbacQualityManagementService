@@ -1296,6 +1296,9 @@ class TimeEntry(SecureModel):
         ('REWORK', 'Rework'),
         ('DOWNTIME', 'Downtime'),
         ('INDIRECT', 'Indirect Labor'),
+        ('SHIFT', 'On Shift'),
+        ('BREAK', 'Break'),
+        ('LUNCH', 'Lunch'),
     ]
 
     entry_type = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)

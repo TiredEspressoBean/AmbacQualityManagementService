@@ -23368,21 +23368,31 @@ paths:
         schema:
           type: boolean
       - in: query
+        name: end_time__isnull
+        schema:
+          type: boolean
+      - in: query
         name: entry_type
         schema:
           type: string
           enum:
+          - BREAK
           - DOWNTIME
           - INDIRECT
+          - LUNCH
           - PRODUCTION
           - REWORK
           - SETUP
+          - SHIFT
         description: |-
           * `PRODUCTION` - Production
           * `SETUP` - Setup/Changeover
           * `REWORK` - Rework
           * `DOWNTIME` - Downtime
           * `INDIRECT` - Indirect Labor
+          * `SHIFT` - On Shift
+          * `BREAK` - Break
+          * `LUNCH` - Lunch
       - name: limit
         required: false
         in: query
@@ -56082,6 +56092,9 @@ components:
       - REWORK
       - DOWNTIME
       - INDIRECT
+      - SHIFT
+      - BREAK
+      - LUNCH
       type: string
       description: |-
         * `PRODUCTION` - Production
@@ -56089,6 +56102,9 @@ components:
         * `REWORK` - Rework
         * `DOWNTIME` - Downtime
         * `INDIRECT` - Indirect Labor
+        * `SHIFT` - On Shift
+        * `BREAK` - Break
+        * `LUNCH` - Lunch
     TrainingRecord:
       type: object
       description: |-
