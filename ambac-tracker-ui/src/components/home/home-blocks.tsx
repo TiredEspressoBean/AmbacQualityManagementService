@@ -29,12 +29,34 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, CheckSquare, PackageSearch, ScanLine, Wrench } from "lucide-react";
+import {
+    AlertTriangle, ArrowRight, CalendarClock, CheckSquare, ClipboardCheck, FileCheck,
+    FileText, FileWarning, Gauge, GitBranch, Inbox, Megaphone, PackageSearch, ScanLine,
+    Truck, Wrench,
+} from "lucide-react";
 import type { AuthUser } from "@/hooks/useAuthUser";
+import { KpiCard, AttentionList } from "@/components/analytics";
 import { useMyCapaTasks } from "@/hooks/useMyCapaTasks";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
 import { useIncomingInspection } from "@/hooks/useIncomingInspection";
+import { useNeedsAttention } from "@/hooks/useNeedsAttention";
+import { useDashboardKpis } from "@/hooks/useDashboardKpis";
+import { useClaimableApprovals } from "@/hooks/useClaimableApprovals";
+import { useClaimApproval } from "@/hooks/useClaimApproval";
+import { useDocumentStats } from "@/hooks/useDocumentStats";
+import {
+    useProcessChangeRequests, useProcessChangeOrders, useProcessChangeNotices,
+} from "@/hooks/useProcessChangeArtifacts";
+import { useOSPShipments, useReadyToShip } from "@/hooks/useOutsideProcess";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
+
+/** Normalize a list endpoint's envelope (paginated `{count,results}` or a bare
+ *  array) to a row count — the change-control hooks return an untyped envelope. */
+function countRows(data: unknown): number {
+    if (Array.isArray(data)) return data.length;
+    const r = data as { count?: number; results?: unknown[] } | undefined;
+    return r?.count ?? r?.results?.length ?? 0;
+}
 
 // ---------------------------------------------------------------------------
 // Scan box — traveler-first entry. Accepts keyboard-wedge scanners (they type
@@ -327,6 +349,164 @@ function MyQualityActionsBlock({ user }: { user: AuthUser }) {
 }
 
 // ---------------------------------------------------------------------------
+// Needs attention (manager/lead triage feed) — the backend computes what's
+// urgent (`/api/dashboard/needs_attention/`) so the block never goes stale;
+// each item deep-links to the surface that resolves it.
+// ---------------------------------------------------------------------------
+
+function NeedsAttentionBlock() {
+    const { data } = useNeedsAttention();
+    const items = (data?.data ?? []).slice(0, 6);
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                    Needs attention
+                    {items.length > 0 && <Badge variant="secondary" className="ml-1">{items.length}</Badge>}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <AttentionList
+                    items={items.map((i) => ({
+                        severity: i.severity,
+                        message: i.message,
+                        count: i.count,
+                        link: i.link,
+                        linkParams: i.linkParams,
+                    }))}
+                    emptyMessage="All clear — nothing needs attention right now."
+                />
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Quality KPIs (manager oversight) — the tenant-wide dashboard headline
+// numbers, each a deep link to where you act on them.
+// ---------------------------------------------------------------------------
+
+function QualityKpisBlock() {
+    const { data, isLoading } = useDashboardKpis();
+    const overdue = data?.overdue_capas ?? 0;
+    return (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <KpiCard title="Open NCRs" value={data?.open_ncrs ?? 0} icon={FileWarning} link="/quality/ncrs" isLoading={isLoading} />
+            <KpiCard title="In quarantine" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" isLoading={isLoading} />
+            <KpiCard title="Active CAPAs" value={data?.active_capas ?? 0} icon={ClipboardCheck} link="/quality/capas" isLoading={isLoading} />
+            <KpiCard title="Overdue CAPAs" value={overdue} icon={AlertTriangle} link="/quality/capas" variant={overdue > 0 ? "danger" : "default"} isLoading={isLoading} />
+            <KpiCard title="First pass yield" value={`${data?.current_fpy ?? 0}%`} icon={Gauge} link="/analysis" isLoading={isLoading} />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Available to claim (approver queue) — group-eligible approvals nobody has
+// picked up yet. Hidden when empty so it never clutters the stack.
+// ---------------------------------------------------------------------------
+
+function AvailableToClaimBlock() {
+    const { data: claimable = [] } = useClaimableApprovals();
+    const claim = useClaimApproval();
+    if (claimable.length === 0) return null;
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <Inbox className="h-4 w-4 text-muted-foreground" />
+                    Available to claim
+                    <Badge variant="secondary" className="ml-1">{claimable.length}</Badge>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {claimable.slice(0, 5).map((c) => (
+                    <div key={c.id} className="flex items-center gap-3 rounded-md border p-2.5">
+                        <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm">
+                                {c.approval_number} · {c.reason || c.approval_type}
+                            </div>
+                            {c.due_date && (
+                                <div className="text-xs text-muted-foreground">due {c.due_date.slice(0, 10)}</div>
+                            )}
+                        </div>
+                        <Button
+                            size="sm" variant="outline" className="shrink-0"
+                            disabled={claim.isPending}
+                            onClick={() =>
+                                claim.mutate(c.id, {
+                                    onSuccess: () => toast.success("Claimed — moved to your approvals."),
+                                    onError: () => toast.error("Could not claim (someone may have beaten you to it)."),
+                                })
+                            }
+                        >
+                            Accept
+                        </Button>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Documents (Document Controller) — the controlled-doc work queue: what needs
+// my sign-off, what's pending, what's due for its periodic review.
+// ---------------------------------------------------------------------------
+
+function DocumentsBlock() {
+    const { data, isLoading } = useDocumentStats();
+    const needsMe = data?.needs_my_approval ?? 0;
+    const dueReview = data?.due_for_review ?? 0;
+    return (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <KpiCard title="Needs my approval" value={needsMe} icon={ClipboardCheck} link="/documents" variant={needsMe > 0 ? "warning" : "default"} isLoading={isLoading} />
+            <KpiCard title="Pending approval" value={data?.pending_approval ?? 0} icon={FileText} link="/documents" isLoading={isLoading} />
+            <KpiCard title="Due for review" value={dueReview} icon={CalendarClock} link="/documents/list" variant={dueReview > 0 ? "warning" : "default"} isLoading={isLoading} />
+            <KpiCard title="Released" value={data?.released ?? 0} icon={FileCheck} link="/documents/list" isLoading={isLoading} />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Change control (Engineering) — the PCR/PCO/PCN pipeline, each a link into
+// the change-control workspace. Counts only for now (the artifact hooks return
+// an untyped envelope); row detail lands when the list surface is typed.
+// ---------------------------------------------------------------------------
+
+function ChangeControlBlock() {
+    const { data: pcrs } = useProcessChangeRequests();
+    const { data: pcos } = useProcessChangeOrders();
+    const { data: pcns } = useProcessChangeNotices();
+    return (
+        <div className="grid grid-cols-3 gap-3">
+            <KpiCard title="Change requests" value={countRows(pcrs)} icon={GitBranch} link="/quality/change-control" />
+            <KpiCard title="Change orders" value={countRows(pcos)} icon={FileText} link="/quality/change-control" />
+            <KpiCard title="Change notices" value={countRows(pcns)} icon={Megaphone} link="/quality/change-control" />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Outside processing at risk (Production oversight) — parts out at vendors and
+// parts staged to ship. Hidden when there's no subcontract activity.
+// ---------------------------------------------------------------------------
+
+function OutsideProcessingBlock() {
+    const { data: sent } = useOSPShipments({ status: "SENT" });
+    const { data: ready = [] } = useReadyToShip();
+    const out = countRows(sent);
+    const readyCount = ready.length;
+    if (out === 0 && readyCount === 0) return null;
+    return (
+        <div className="grid grid-cols-2 gap-3">
+            <KpiCard title="Out at vendors" value={out} icon={Truck} link="/production/outside-processing" />
+            <KpiCard title="Ready to ship" value={readyCount} icon={PackageSearch} link="/production/outside-processing" variant={readyCount > 0 ? "warning" : "default"} />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Registry + persona resolution
 // ---------------------------------------------------------------------------
 
@@ -337,10 +517,17 @@ type BlockDef = {
     Component: (props: { user: AuthUser }) => React.ReactNode;
 };
 
-const EVERYONE = ["Operator", "Shift Lead", "QA Inspector", "QA Manager", "Production Manager", "Tenant Admin"];
+// Every internal "doer" role (excludes external Auditor/Customer, and platform
+// System Admin which sees all blocks via `seesAll`). Gates the universal blocks.
+const EVERYONE = [
+    "Operator", "Shift Lead", "QA Inspector", "QA Manager", "Production Manager",
+    "Tenant Admin", "Document Controller", "Engineering",
+];
 
 const BLOCKS: BlockDef[] = [
     { id: "scan", groups: EVERYONE, Component: () => <ScanBox /> },
+    { id: "needs-attention", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
+    { id: "quality-kpis", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <QualityKpisBlock /> },
     {
         id: "wo-queue",
         groups: ["Operator", "Shift Lead", "Production Manager", "Tenant Admin"],
@@ -351,17 +538,27 @@ const BLOCKS: BlockDef[] = [
         },
     },
     { id: "inspection", groups: ["QA Inspector", "Shift Lead", "QA Manager", "Tenant Admin"], Component: () => <InspectionQueueBlock /> },
+    { id: "production-osp", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <OutsideProcessingBlock /> },
+    { id: "documents", groups: ["Document Controller", "Tenant Admin"], Component: () => <DocumentsBlock /> },
+    { id: "change-control", groups: ["Engineering", "Tenant Admin"], Component: () => <ChangeControlBlock /> },
+    { id: "available-to-claim", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <AvailableToClaimBlock /> },
     { id: "quality-actions", groups: EVERYONE, Component: ({ user }) => <MyQualityActionsBlock user={user} /> },
 ];
 
 /** Per-persona block ordering — the first matched persona wins, so the top
- *  card (after the scan box) is the user's main job. */
+ *  card is the user's main job. Managers/leads lead with oversight (triage +
+ *  KPIs); doers lead with scan/queue; authoring roles lead with their domain. */
 const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
+    // Operator + QA Inspector are intercepted in Home to full-surface pages;
+    // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
-    { group: "Shift Lead", order: ["scan", "wo-queue", "inspection", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["scan", "inspection", "quality-actions", "wo-queue"] },
-    { group: "Production Manager", order: ["scan", "wo-queue", "quality-actions"] },
+    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "available-to-claim", "inspection", "quality-actions", "scan"] },
+    { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wo-queue", "production-osp", "available-to-claim", "quality-actions", "scan"] },
+    { group: "Shift Lead", order: ["scan", "wo-queue", "needs-attention", "inspection", "production-osp", "available-to-claim", "quality-actions"] },
+    { group: "Document Controller", order: ["documents", "quality-actions", "scan"] },
+    { group: "Engineering", order: ["change-control", "quality-actions", "scan"] },
+    { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "wo-queue", "inspection", "documents", "change-control", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
 /** The user's primary persona (first PERSONA_ORDER match), or null. Home uses

@@ -20,10 +20,12 @@ export default function Home() {
         return <Login />;
     }
 
-    // QA personas land on the inspection task inbox — a full surface, not a
-    // block stack (design doc §6: the QA landing is a task inbox).
+    // QA Inspector lands on the inspection task inbox — a full surface, not a
+    // block stack (design doc §6: the inspector landing is a task inbox). The
+    // QA Manager is an OVERSIGHT role, not a doer — it gets the block stack
+    // (triage + KPIs), NOT the inspector's queue.
     const persona = primaryPersona(user);
-    if (persona === "QA Inspector" || persona === "QA Manager") {
+    if (persona === "QA Inspector") {
         return <QaHomePage user={user} />;
     }
 
