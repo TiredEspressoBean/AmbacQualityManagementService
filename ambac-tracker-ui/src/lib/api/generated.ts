@@ -4067,6 +4067,40 @@ export type PaginatedIntegrationSyncLogList = {
     | undefined;
   results: Array<IntegrationSyncLog>;
 };
+export type PaginatedJobRoleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<JobRole>;
+};
+export type JobRole = {
+  id: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  description?: string | undefined;
+  active?: /**
+   * Inactive roles are hidden from assignment pickers.
+   */
+  boolean | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
 export type PaginatedMaterialLotList = {
   /**
    * @example 123
@@ -6216,11 +6250,14 @@ export type ShiftNote = {
   work_order?: (string | null) | undefined;
   work_order_erp_id: string | null;
   priority?: ShiftNotePriorityEnum | undefined;
+  acknowledgment_required?: boolean | undefined;
   effective_from?: (string | null) | undefined;
   effective_until?: (string | null) | undefined;
   is_locked: boolean;
   acknowledged: boolean;
   ack_count: number;
+  acknowledged_by: Array<ShiftNoteAckRosterItem>;
+  audience_size: number;
   /**
    * Whether this record has been voided
    */
@@ -6236,6 +6273,10 @@ export type ShiftNotePriorityEnum =
    * @enum NORMAL, HIGH
    */
   "NORMAL" | "HIGH";
+export type ShiftNoteAckRosterItem = {
+  user_name: string;
+  acknowledged_at: string;
+};
 export type PaginatedStepDistributionResponseList = {
   /**
    * @example 123
@@ -7798,6 +7839,19 @@ export type TrainingRecord = {
   training_type: string;
   training_type_info: {};
   completed_date: string;
+  level?: /**
+     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+    
+    * `1` - Level 1 — Trainee (supervised)
+    * `2` - Level 2 — Assisted (output checked)
+    * `3` - Level 3 — Qualified (independent)
+    * `4` - Level 4 — Expert (can train/sign off others)
+     *
+     * @minimum 0
+     * @maximum 32767
+     */
+  CompetencyLevelEnum | undefined;
+  level_display: string;
   expires_date?:
     | /**
      * Date training expires. Null = never expires.
@@ -7818,6 +7872,16 @@ export type TrainingRecord = {
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type CompetencyLevelEnum =
+  /**
+   * * `1` - Level 1 — Trainee (supervised)
+   * `2` - Level 2 — Assisted (output checked)
+   * `3` - Level 3 — Qualified (independent)
+   * `4` - Level 4 — Expert (can train/sign off others)
+   *
+   * @enum 1, 2, 3, 4
+   */
+  1 | 2 | 3 | 4;
 export type PaginatedTrainingRequirementList = {
   /**
    * @example 123
@@ -7841,12 +7905,32 @@ export type TrainingRequirement = {
   id: string;
   training_type: string;
   training_type_info: {};
+  min_level?: /**
+     * Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+    
+    * `1` - Level 1 — Trainee (supervised)
+    * `2` - Level 2 — Assisted (output checked)
+    * `3` - Level 3 — Qualified (independent)
+    * `4` - Level 4 — Expert (can train/sign off others)
+     *
+     * @minimum 0
+     * @maximum 32767
+     */
+  CompetencyLevelEnum | undefined;
+  min_level_display: string;
   step?: (string | null) | undefined;
   step_info: {};
   process?: (string | null) | undefined;
   process_info: {};
   equipment_type?: (string | null) | undefined;
   equipment_type_info: {};
+  job_role?:
+    | /**
+     * Role-scoped requirement: the competence this job role must hold.
+     */
+    (string | null)
+    | undefined;
+  job_role_info: {};
   notes?: /**
    * Why is this required? e.g., 'Per WI-042' or 'Customer requirement'
    */
@@ -7993,6 +8077,13 @@ export type User = {
   user_type: string;
   user_type_display: string;
   tenant_membership_status: TenantMembershipStatusEnum;
+  job_role?:
+    | /**
+     * Primary job role / position — drives the required-competency profile.
+     */
+    (string | null)
+    | undefined;
+  job_role_name: string | null;
 };
 export type TenantMinimal = {
   id: string;
@@ -9748,6 +9839,7 @@ export type PatchedShiftNoteRequest = Partial<{
   string>;
   work_order: string | null;
   priority: ShiftNotePriorityEnum;
+  acknowledgment_required: boolean;
   effective_from: string | null;
   effective_until: string | null;
 }>;
@@ -10394,6 +10486,60 @@ export type PatchedTimeEntryRequest = Partial<{
    */
   downtime_reason: string;
   approved: boolean;
+  archived: boolean;
+}>;
+export type PatchedTrainingRecordRequest = Partial<{
+  user: number;
+  training_type: string;
+  completed_date: string;
+  /**
+     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+    
+    * `1` - Level 1 — Trainee (supervised)
+    * `2` - Level 2 — Assisted (output checked)
+    * `3` - Level 3 — Qualified (independent)
+    * `4` - Level 4 — Expert (can train/sign off others)
+     *
+     * @minimum 0
+     * @maximum 32767
+     */
+  level: CompetencyLevelEnum;
+  /**
+   * Date training expires. Null = never expires.
+   */
+  expires_date: string | null;
+  /**
+   * Person who conducted the training
+   */
+  trainer: number | null;
+  notes: string;
+  archived: boolean;
+}>;
+export type PatchedTrainingRequirementRequest = Partial<{
+  training_type: string;
+  /**
+     * Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+    
+    * `1` - Level 1 — Trainee (supervised)
+    * `2` - Level 2 — Assisted (output checked)
+    * `3` - Level 3 — Qualified (independent)
+    * `4` - Level 4 — Expert (can train/sign off others)
+     *
+     * @minimum 0
+     * @maximum 32767
+     */
+  min_level: CompetencyLevelEnum;
+  step: string | null;
+  process: string | null;
+  equipment_type: string | null;
+  /**
+   * Role-scoped requirement: the competence this job role must hold.
+   */
+  job_role: string | null;
+  /**
+   * Why is this required? e.g., 'Per WI-042' or 'Customer requirement'
+   */
+  notes: string;
   archived: boolean;
 }>;
 export type PatchedWorkOrderRequest = Partial<{
@@ -11525,6 +11671,7 @@ export type ShiftNoteRequest = {
     | undefined;
   work_order?: (string | null) | undefined;
   priority?: ShiftNotePriorityEnum | undefined;
+  acknowledgment_required?: boolean | undefined;
   effective_from?: (string | null) | undefined;
   effective_until?: (string | null) | undefined;
 };
@@ -12449,6 +12596,100 @@ export type TimeEntryRequest = {
    */
   string | undefined;
   approved?: boolean | undefined;
+  archived?: boolean | undefined;
+};
+export type TrainingMatrix = {
+  qualified_at: number;
+  job_roles: Array<TrainingMatrixColumn>;
+  training_types: Array<TrainingMatrixColumn>;
+  operators: Array<TrainingMatrixOperator>;
+  coverage: Array<TrainingMatrixCoverage>;
+};
+export type TrainingMatrixColumn = {
+  id: string;
+  name: string;
+};
+export type TrainingMatrixOperator = {
+  id: number;
+  name: string;
+  job_role: string | null;
+  job_role_name: string;
+  required_count: number;
+  gap_count: number;
+  cells: Array<TrainingMatrixCell>;
+};
+export type TrainingMatrixCell = {
+  training_type: string;
+  level: number;
+  level_display: string;
+  status: string;
+  expires_date: string | null;
+  required_level: number;
+  gap: boolean;
+};
+export type TrainingMatrixCoverage = {
+  training_type: string;
+  qualified_count: number;
+  expiring_count: number;
+};
+export type TrainingRecordRequest = {
+  user: number;
+  training_type: string;
+  completed_date: string;
+  level?: /**
+     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+    
+    * `1` - Level 1 — Trainee (supervised)
+    * `2` - Level 2 — Assisted (output checked)
+    * `3` - Level 3 — Qualified (independent)
+    * `4` - Level 4 — Expert (can train/sign off others)
+     *
+     * @minimum 0
+     * @maximum 32767
+     */
+  CompetencyLevelEnum | undefined;
+  expires_date?:
+    | /**
+     * Date training expires. Null = never expires.
+     */
+    (string | null)
+    | undefined;
+  trainer?:
+    | /**
+     * Person who conducted the training
+     */
+    (number | null)
+    | undefined;
+  notes?: string | undefined;
+  archived?: boolean | undefined;
+};
+export type TrainingRequirementRequest = {
+  training_type: string;
+  min_level?: /**
+     * Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+    
+    * `1` - Level 1 — Trainee (supervised)
+    * `2` - Level 2 — Assisted (output checked)
+    * `3` - Level 3 — Qualified (independent)
+    * `4` - Level 4 — Expert (can train/sign off others)
+     *
+     * @minimum 0
+     * @maximum 32767
+     */
+  CompetencyLevelEnum | undefined;
+  step?: (string | null) | undefined;
+  process?: (string | null) | undefined;
+  equipment_type?: (string | null) | undefined;
+  job_role?:
+    | /**
+     * Role-scoped requirement: the competence this job role must hold.
+     */
+    (string | null)
+    | undefined;
+  notes?: /**
+   * Why is this required? e.g., 'Per WI-042' or 'Customer requirement'
+   */
+  string | undefined;
   archived?: boolean | undefined;
 };
 export type UserDetail = {
@@ -13547,6 +13788,37 @@ const SupplierScorecard = z.object({
   recommended_action: z.string(),
   recommendation_reason: z.string(),
 });
+const TrainingMatrixColumn = z.object({ id: z.string(), name: z.string() });
+const TrainingMatrixCell = z.object({
+  training_type: z.string(),
+  level: z.number().int(),
+  level_display: z.string(),
+  status: z.string(),
+  expires_date: z.string().nullable(),
+  required_level: z.number().int(),
+  gap: z.boolean(),
+});
+const TrainingMatrixOperator = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  job_role: z.string().nullable(),
+  job_role_name: z.string(),
+  required_count: z.number().int(),
+  gap_count: z.number().int(),
+  cells: z.array(TrainingMatrixCell),
+});
+const TrainingMatrixCoverage = z.object({
+  training_type: z.string(),
+  qualified_count: z.number().int(),
+  expiring_count: z.number().int(),
+});
+const TrainingMatrix = z.object({
+  qualified_at: z.number().int(),
+  job_roles: z.array(TrainingMatrixColumn),
+  training_types: z.array(TrainingMatrixColumn),
+  operators: z.array(TrainingMatrixOperator),
+  coverage: z.array(TrainingMatrixCoverage),
+});
 const CoreStatusEnum = z.enum([
   "RECEIVED",
   "IN_DISASSEMBLY",
@@ -14511,6 +14783,35 @@ const InspectionInboxRow = z.object({
   resume: z.string().nullable(),
   blocked_reason: z.string().nullable(),
 });
+const JobRole = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  description: z.string().optional(),
+  active: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedJobRoleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(JobRole),
+});
+const JobRoleRequest = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  active: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedJobRoleRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    description: z.string(),
+    active: z.boolean(),
+    archived: z.boolean(),
+  })
+  .partial();
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
   "AWAITING_INSPECTION",
@@ -16296,6 +16597,10 @@ const PatchedScheduleSlotRequest = z
   })
   .partial();
 const ShiftNotePriorityEnum = z.enum(["NORMAL", "HIGH"]);
+const ShiftNoteAckRosterItem = z.object({
+  user_name: z.string(),
+  acknowledged_at: z.string().datetime({ offset: true }),
+});
 const ShiftNote = z.object({
   id: z.string().uuid(),
   author: z.number().int().nullable(),
@@ -16305,11 +16610,14 @@ const ShiftNote = z.object({
   work_order: z.string().uuid().nullish(),
   work_order_erp_id: z.string().nullable(),
   priority: ShiftNotePriorityEnum.optional(),
+  acknowledgment_required: z.boolean().optional(),
   effective_from: z.string().datetime({ offset: true }).nullish(),
   effective_until: z.string().datetime({ offset: true }).nullish(),
   is_locked: z.boolean(),
   acknowledged: z.boolean(),
   ack_count: z.number().int(),
+  acknowledged_by: z.array(ShiftNoteAckRosterItem),
+  audience_size: z.number().int(),
   is_voided: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -16325,6 +16633,7 @@ const ShiftNoteRequest = z.object({
   audience_roles: z.array(z.string().min(1).max(100)).optional(),
   work_order: z.string().uuid().nullish(),
   priority: ShiftNotePriorityEnum.optional(),
+  acknowledgment_required: z.boolean().optional(),
   effective_from: z.string().datetime({ offset: true }).nullish(),
   effective_until: z.string().datetime({ offset: true }).nullish(),
 });
@@ -16334,6 +16643,7 @@ const PatchedShiftNoteRequest = z
     audience_roles: z.array(z.string().min(1).max(100)),
     work_order: z.string().uuid().nullable(),
     priority: ShiftNotePriorityEnum,
+    acknowledgment_required: z.boolean(),
     effective_from: z.string().datetime({ offset: true }).nullable(),
     effective_until: z.string().datetime({ offset: true }).nullable(),
   })
@@ -17559,6 +17869,12 @@ const InviteViewerResponse = z.object({
   user_created: z.boolean(),
 });
 const InviteError = z.object({ detail: z.string() });
+const CompetencyLevelEnum = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+]);
 const TrainingRecord = z.object({
   id: z.string().uuid(),
   user: z.number().int(),
@@ -17566,6 +17882,8 @@ const TrainingRecord = z.object({
   training_type: z.string().uuid(),
   training_type_info: z.object({}).partial().passthrough().nullable(),
   completed_date: z.string(),
+  level: CompetencyLevelEnum.optional(),
+  level_display: z.string(),
   expires_date: z.string().nullish(),
   trainer: z.number().int().nullish(),
   trainer_info: z.object({}).partial().passthrough().nullable(),
@@ -17586,6 +17904,7 @@ const TrainingRecordRequest = z.object({
   user: z.number().int(),
   training_type: z.string().uuid(),
   completed_date: z.string(),
+  level: CompetencyLevelEnum.optional(),
   expires_date: z.string().nullish(),
   trainer: z.number().int().nullish(),
   notes: z.string().optional(),
@@ -17596,6 +17915,7 @@ const PatchedTrainingRecordRequest = z
     user: z.number().int(),
     training_type: z.string().uuid(),
     completed_date: z.string(),
+    level: CompetencyLevelEnum,
     expires_date: z.string().nullable(),
     trainer: z.number().int().nullable(),
     notes: z.string(),
@@ -17612,12 +17932,16 @@ const TrainingRequirement = z.object({
   id: z.string().uuid(),
   training_type: z.string().uuid(),
   training_type_info: z.object({}).partial().passthrough().nullable(),
+  min_level: CompetencyLevelEnum.optional(),
+  min_level_display: z.string(),
   step: z.string().uuid().nullish(),
   step_info: z.object({}).partial().passthrough().nullable(),
   process: z.string().uuid().nullish(),
   process_info: z.object({}).partial().passthrough().nullable(),
   equipment_type: z.string().uuid().nullish(),
   equipment_type_info: z.object({}).partial().passthrough().nullable(),
+  job_role: z.string().uuid().nullish(),
+  job_role_info: z.object({}).partial().passthrough().nullable(),
   notes: z.string().optional(),
   scope: z.string(),
   scope_display: z.string(),
@@ -17633,18 +17957,22 @@ const PaginatedTrainingRequirementList = z.object({
 });
 const TrainingRequirementRequest = z.object({
   training_type: z.string().uuid(),
+  min_level: CompetencyLevelEnum.optional(),
   step: z.string().uuid().nullish(),
   process: z.string().uuid().nullish(),
   equipment_type: z.string().uuid().nullish(),
+  job_role: z.string().uuid().nullish(),
   notes: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedTrainingRequirementRequest = z
   .object({
     training_type: z.string().uuid(),
+    min_level: CompetencyLevelEnum,
     step: z.string().uuid().nullable(),
     process: z.string().uuid().nullable(),
     equipment_type: z.string().uuid().nullable(),
+    job_role: z.string().uuid().nullable(),
     notes: z.string(),
     archived: z.boolean(),
   })
@@ -17705,6 +18033,8 @@ const User = z.object({
   user_type: z.string(),
   user_type_display: z.string(),
   tenant_membership_status: TenantMembershipStatusEnum,
+  job_role: z.string().uuid().nullish(),
+  job_role_name: z.string().nullable(),
 });
 const PaginatedUserList = z.object({
   count: z.number().int(),
@@ -17724,6 +18054,7 @@ const UserRequest = z.object({
   is_staff: z.boolean().optional(),
   is_active: z.boolean().optional(),
   parent_company_id: z.string().uuid().nullish(),
+  job_role: z.string().uuid().nullish(),
 });
 const PatchedUserRequest = z
   .object({
@@ -17738,6 +18069,7 @@ const PatchedUserRequest = z
     is_staff: z.boolean(),
     is_active: z.boolean(),
     parent_company_id: z.string().uuid().nullable(),
+    job_role: z.string().uuid().nullable(),
   })
   .partial();
 const BulkUserActivationInputRequest = z.object({
@@ -19715,6 +20047,11 @@ export const schemas = {
   CompanyRequest,
   PatchedCompanyRequest,
   SupplierScorecard,
+  TrainingMatrixColumn,
+  TrainingMatrixCell,
+  TrainingMatrixOperator,
+  TrainingMatrixCoverage,
+  TrainingMatrix,
   CoreStatusEnum,
   ConditionGradeEnum,
   SourceTypeEnum,
@@ -19809,6 +20146,10 @@ export const schemas = {
   InspectionInboxSeveritySeverityEnum,
   InspectionInboxSeverity,
   InspectionInboxRow,
+  JobRole,
+  PaginatedJobRoleList,
+  JobRoleRequest,
+  PatchedJobRoleRequest,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,
@@ -19991,6 +20332,7 @@ export const schemas = {
   ScheduleSlotRequest,
   PatchedScheduleSlotRequest,
   ShiftNotePriorityEnum,
+  ShiftNoteAckRosterItem,
   ShiftNote,
   PaginatedShiftNoteList,
   ShiftNoteRequest,
@@ -20101,6 +20443,7 @@ export const schemas = {
   InviteViewerInputRequest,
   InviteViewerResponse,
   InviteError,
+  CompetencyLevelEnum,
   TrainingRecord,
   PaginatedTrainingRecordList,
   TrainingRecordRequest,
@@ -23333,6 +23676,14 @@ Provides list, create, retrieve, update, and delete operations.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/CompetenceMatrix/",
+    alias: "api_CompetenceMatrix_retrieve",
+    description: `Operators x training-types competency matrix with per-skill coverage counts. HR / quality view — requires view_training_matrix.`,
+    requestFormat: "json",
+    response: TrainingMatrix,
   },
   {
     method: "get",
@@ -27674,6 +28025,154 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: z.array(IntegrationCatalogItem),
+  },
+  {
+    method: "get",
+    path: "/api/JobRoles/",
+    alias: "api_JobRoles_list",
+    description: `List job roles`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedJobRoleList,
+  },
+  {
+    method: "post",
+    path: "/api/JobRoles/",
+    alias: "api_JobRoles_create",
+    description: `Create a new job role`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: JobRoleRequest,
+      },
+    ],
+    response: JobRole,
+  },
+  {
+    method: "get",
+    path: "/api/JobRoles/:id/",
+    alias: "api_JobRoles_retrieve",
+    description: `Retrieve a specific job role`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: JobRole,
+  },
+  {
+    method: "put",
+    path: "/api/JobRoles/:id/",
+    alias: "api_JobRoles_update",
+    description: `Update a job role`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: JobRoleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: JobRole,
+  },
+  {
+    method: "patch",
+    path: "/api/JobRoles/:id/",
+    alias: "api_JobRoles_partial_update",
+    description: `Partially update a job role`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedJobRoleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: JobRole,
+  },
+  {
+    method: "delete",
+    path: "/api/JobRoles/:id/",
+    alias: "api_JobRoles_destroy",
+    description: `Soft delete a job role`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/JobRoles/export-excel/",
+    alias: "api_JobRoles_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/JobRoles/metadata/",
+    alias: "api_JobRoles_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -40566,6 +41065,13 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     requestFormat: "json",
     parameters: [
       {
+        name: "level",
+        type: "Query",
+        schema: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -40701,6 +41207,13 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     requestFormat: "json",
     parameters: [
       {
+        name: "level",
+        type: "Query",
+        schema: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -40749,6 +41262,13 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         name: "days",
         type: "Query",
         schema: z.number().int().optional().default(30),
+      },
+      {
+        name: "level",
+        type: "Query",
+        schema: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .optional(),
       },
       {
         name: "limit",
@@ -40824,6 +41344,13 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     requestFormat: "json",
     parameters: [
       {
+        name: "level",
+        type: "Query",
+        schema: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -40882,9 +41409,21 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.string().optional(),
       },
       {
+        name: "job_role",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "min_level",
+        type: "Query",
+        schema: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .optional(),
       },
       {
         name: "offset",
@@ -41037,9 +41576,21 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "job_role",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "min_level",
+        type: "Query",
+        schema: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .optional(),
       },
       {
         name: "offset",
@@ -41092,9 +41643,21 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "job_role",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "min_level",
+        type: "Query",
+        schema: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .optional(),
       },
       {
         name: "offset",

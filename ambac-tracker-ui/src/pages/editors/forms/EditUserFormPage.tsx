@@ -31,8 +31,16 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 import { useRetrieveUser } from "@/hooks/useRetrieveUser";
+import { useJobRoles } from "@/hooks/useJobRoles";
 import { useCreateUser } from "@/hooks/useCreateUser";
 import { useUpdateUser } from "@/hooks/useUpdateUser";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
@@ -49,6 +57,7 @@ const formSchema = schemas.UserRequest.pick({
     is_staff: true,
     is_active: true,
     parent_company_id: true,
+    job_role: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -80,6 +89,9 @@ export default function UserFormPage() {
         search: companySearch,
     });
 
+    const { data: jobRolesData } = useJobRoles({ active: true });
+    const jobRoles = jobRolesData?.results ?? [];
+
     // Get current user to check staff/superuser status
     const { data: currentUser } = useAuthUser();
     const canEditStaffStatus = currentUser?.is_staff === true || currentUser?.is_superuser === true;
@@ -94,6 +106,7 @@ export default function UserFormPage() {
             is_staff: false,
             is_active: true,
             parent_company_id: undefined,
+            job_role: null,
         },
     });
 
@@ -108,6 +121,7 @@ export default function UserFormPage() {
                 is_staff: user.is_staff ?? false,
                 is_active: user.is_active ?? true,
                 parent_company_id: user.parent_company?.id ?? undefined,
+                job_role: user.job_role ?? null,
             });
         }
     }, [mode, user, form]);
@@ -124,6 +138,7 @@ export default function UserFormPage() {
             email: values.email || undefined,
             is_active: values.is_active !== undefined ? values.is_active : true,
             parent_company_id: values.parent_company_id || undefined,
+            job_role: values.job_role ?? null,
         };
 
         // Only staff users can set is_staff field
@@ -363,6 +378,36 @@ export default function UserFormPage() {
                                 </Popover>
                                 <FormDescription>
                                     Associate this user with a company, or leave blank for no company
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="job_role"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Job Role</FormLabel>
+                                <Select
+                                    value={field.value ?? "__none__"}
+                                    onValueChange={(v) => field.onChange(v === "__none__" ? null : v)}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="No role" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="__none__">No role</SelectItem>
+                                        {jobRoles.map((r) => (
+                                            <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Primary job role / position — drives the required-competency profile in the training matrix.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

@@ -89,6 +89,13 @@ export function TrainingDashboardPage() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                         <Link
+                            to="/quality/training/matrix"
+                            className="block p-3 rounded-lg border hover:bg-accent transition-colors"
+                        >
+                            <div className="font-medium">Training Matrix</div>
+                            <div className="text-sm text-muted-foreground">Competency levels &amp; coverage across operators</div>
+                        </Link>
+                        <Link
                             to="/quality/training/records"
                             className="block p-3 rounded-lg border hover:bg-accent transition-colors"
                         >
@@ -101,6 +108,13 @@ export function TrainingDashboardPage() {
                         >
                             <div className="font-medium">Manage Training Types</div>
                             <div className="text-sm text-muted-foreground">Configure training categories</div>
+                        </Link>
+                        <Link
+                            to="/quality/training/roles"
+                            className="block p-3 rounded-lg border hover:bg-accent transition-colors"
+                        >
+                            <div className="font-medium">Job Roles</div>
+                            <div className="text-sm text-muted-foreground">Define roles &amp; required competencies</div>
                         </Link>
                         <Link
                             to="/TrainingRecordForm/$id"
@@ -148,7 +162,10 @@ export function TrainingDashboardPage() {
                                             <span className="font-medium text-sm truncate">
                                                 {record.user_info?.full_name || record.user_info?.username}
                                             </span>
-                                            <StatusBadge status="EXPIRING_SOON" size="sm" />
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <Badge variant="outline" className="text-[10px]">L{record.level ?? 3}</Badge>
+                                                <StatusBadge status="EXPIRING_SOON" size="sm" />
+                                            </div>
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">
                                             {record.training_type_info?.name}
@@ -200,10 +217,13 @@ export function TrainingDashboardPage() {
                                             <span className="font-medium text-sm truncate">
                                                 {record.training_type_info?.name}
                                             </span>
-                                            <StatusBadge
-                                                status={record.status?.toUpperCase() || 'CURRENT'}
-                                                size="sm"
-                                            />
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <Badge variant="outline" className="text-[10px]">L{record.level ?? 3}</Badge>
+                                                <StatusBadge
+                                                    status={record.status?.toUpperCase() || 'CURRENT'}
+                                                    size="sm"
+                                                />
+                                            </div>
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">
                                             Completed: {new Date(record.completed_date).toLocaleDateString()}

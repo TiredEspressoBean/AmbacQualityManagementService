@@ -398,6 +398,9 @@ SPECTACULAR_SETTINGS = {
         "OrdersStatusEnum": "Tracker.models.mes_lite.OrdersStatus.choices",
         "WorkOrderStatusEnum": "Tracker.models.mes_lite.WorkOrderStatus.choices",
         "ProcessStatusEnum": "Tracker.models.mes_lite.ProcessStatus.choices",
+        # Competency scale shared by TrainingRecord.level and TrainingRequirement.min_level
+        # (same value-set → one shared name covers both).
+        "CompetencyLevelEnum": "Tracker.models.qms.CompetencyLevel.choices",
         # Receiving / supplier-quality 'status' choice sets (were colliding as StatusEnum).
         # SupplierQualification & PartApproval have byte-identical lifecycle values, and
         # spectacular keys enums by value-set — so one shared name covers both (adding a

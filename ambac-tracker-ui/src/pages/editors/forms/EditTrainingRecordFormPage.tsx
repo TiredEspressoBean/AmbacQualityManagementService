@@ -18,6 +18,13 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -45,22 +52,32 @@ const formSchema = schemas.TrainingRecordRequest.pick({
     user: true,
     training_type: true,
     completed_date: true,
+    level: true,
     expires_date: true,
     trainer: true,
     notes: true,
 });
 
-type FormValues = Pick<Schema<"TrainingRecordRequest">, "user" | "training_type" | "completed_date" | "expires_date" | "trainer" | "notes">;
+type FormValues = Pick<Schema<"TrainingRecordRequest">, "user" | "training_type" | "completed_date" | "level" | "expires_date" | "trainer" | "notes">;
 
 // Pre-compute required fields
 const required = {
     user: isFieldRequired(formSchema.shape.user),
     training_type: isFieldRequired(formSchema.shape.training_type),
     completed_date: isFieldRequired(formSchema.shape.completed_date),
+    level: isFieldRequired(formSchema.shape.level),
     expires_date: isFieldRequired(formSchema.shape.expires_date),
     trainer: isFieldRequired(formSchema.shape.trainer),
     notes: isFieldRequired(formSchema.shape.notes),
 };
+
+// Competency scale (mirrors CompetencyLevel on the backend).
+const LEVEL_OPTIONS = [
+    { value: 1, label: "Level 1 — Trainee", hint: "Supervised only" },
+    { value: 2, label: "Level 2 — Assisted", hint: "Output still checked" },
+    { value: 3, label: "Level 3 — Qualified", hint: "Independent, to standard" },
+    { value: 4, label: "Level 4 — Expert", hint: "Can train / sign off others" },
+] as const;
 
 export default function EditTrainingRecordFormPage() {
     const params = useParams({ strict: false });
@@ -96,6 +113,7 @@ export default function EditTrainingRecordFormPage() {
             user: undefined,
             training_type: undefined,
             completed_date: "",
+            level: 3,
             expires_date: null,
             trainer: null,
             notes: "",
@@ -109,6 +127,7 @@ export default function EditTrainingRecordFormPage() {
                 user: record.user ?? undefined,
                 training_type: record.training_type ?? undefined,
                 completed_date: record.completed_date ?? "",
+                level: record.level ?? 3,
                 expires_date: record.expires_date ?? null,
                 trainer: record.trainer ?? null,
                 notes: record.notes ?? "",
@@ -124,6 +143,7 @@ export default function EditTrainingRecordFormPage() {
             user: values.user,
             training_type: values.training_type,
             completed_date: values.completed_date,
+            level: values.level,
             expires_date: values.expires_date || undefined,
             trainer: values.trainer || undefined,
             notes: values.notes || undefined,
@@ -331,6 +351,38 @@ export default function EditTrainingRecordFormPage() {
                                         />
                                     </PopoverContent>
                                 </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {/* Competency Level */}
+                    <FormField
+                        control={form.control}
+                        name="level"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Competency Level {required.level && "*"}</FormLabel>
+                                <Select
+                                    value={field.value != null ? String(field.value) : "3"}
+                                    onValueChange={(v) => field.onChange(Number(v))}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select level" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {LEVEL_OPTIONS.map((opt) => (
+                                            <SelectItem key={opt.value} value={String(opt.value)}>
+                                                {opt.label} — <span className="text-muted-foreground">{opt.hint}</span>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Assessed competency reached — Level 3 (Qualified) = works unsupervised.
+                                </FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}

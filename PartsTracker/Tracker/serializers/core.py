@@ -340,15 +340,18 @@ class UserSerializer(SecureModelMixin):
     # distinct from the GLOBAL `is_active` account flag. Frontend status pills
     # should read THIS, not `is_active`.
     tenant_membership_status = serializers.SerializerMethodField()
+    # Primary job role / position — drives the required-competency profile.
+    job_role_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
             'last_login', 'parent_company', 'parent_company_id', 'groups',
-            'tenant', 'user_type', 'user_type_display', 'tenant_membership_status')
+            'tenant', 'user_type', 'user_type_display', 'tenant_membership_status',
+            'job_role', 'job_role_name')
         read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display',
-                            'tenant_membership_status')
+                            'tenant_membership_status', 'job_role_name')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
@@ -372,6 +375,11 @@ class UserSerializer(SecureModelMixin):
         """Get formatted full name or fallback to username/email"""
         full_name = f"{obj.first_name or ''} {obj.last_name or ''}".strip()
         return full_name or obj.username or obj.email or f"User {obj.id}"
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_job_role_name(self, obj):
+        """Name of the user's assigned job role, or None."""
+        return obj.job_role.name if obj.job_role_id else None
 
     @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_groups(self, obj):

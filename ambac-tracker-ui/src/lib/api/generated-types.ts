@@ -1349,6 +1349,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/CompetenceMatrix/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Operators x training-types competency matrix with per-skill coverage counts. HR / quality view — requires view_training_matrix. */
+        get: operations["api_CompetenceMatrix_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/": {
         parameters: {
             query?: never;
@@ -3525,6 +3542,78 @@ export interface paths {
         };
         /** @description The inspector's flat task inbox: FPI first, then by urgency tone, then age. Derive type-count chips (with oldest-age — counts alone hide rot) from the rows. */
         get: operations["api_InspectionInbox_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/JobRoles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List job roles */
+        get: operations["api_JobRoles_list"];
+        put?: never;
+        /** @description Create a new job role */
+        post: operations["api_JobRoles_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/JobRoles/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Retrieve a specific job role */
+        get: operations["api_JobRoles_retrieve"];
+        /** @description Update a job role */
+        put: operations["api_JobRoles_update"];
+        post?: never;
+        /** @description Soft delete a job role */
+        delete: operations["api_JobRoles_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Partially update a job role */
+        patch: operations["api_JobRoles_partial_update"];
+        trace?: never;
+    };
+    "/api/JobRoles/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_JobRoles_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/JobRoles/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_JobRoles_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -15304,6 +15393,14 @@ export interface components {
             hubspot_api_id?: string | null;
             archived?: boolean;
         };
+        /**
+         * @description * `1` - Level 1 — Trainee (supervised)
+         *     * `2` - Level 2 — Assisted (output checked)
+         *     * `3` - Level 3 — Qualified (independent)
+         *     * `4` - Level 4 — Expert (can train/sign off others)
+         * @enum {integer}
+         */
+        CompetencyLevelEnum: 1 | 2 | 3 | 4;
         CompleteStepResponse: {
             status: string;
             reason?: string;
@@ -17350,6 +17447,28 @@ export interface components {
             invitation_id: number | null;
             user_created: boolean;
         };
+        /** @description Serializer for JobRole — the HR/organizational role competency hangs off. */
+        JobRole: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            /** @description Inactive roles are hidden from assignment pickers. */
+            active?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /** @description Serializer for JobRole — the HR/organizational role competency hangs off. */
+        JobRoleRequest: {
+            name: string;
+            description?: string;
+            /** @description Inactive roles are hidden from assignment pickers. */
+            active?: boolean;
+            archived?: boolean;
+        };
         KeywordSearchResponse: {
             query: string;
             total_results: number;
@@ -18560,6 +18679,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["IntegrationSyncLog"][];
+        };
+        PaginatedJobRoleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["JobRole"][];
         };
         PaginatedMaterialLotList: {
             /** @example 123 */
@@ -20498,6 +20632,14 @@ export interface components {
             api_url?: string;
             config?: unknown;
         };
+        /** @description Serializer for JobRole — the HR/organizational role competency hangs off. */
+        PatchedJobRoleRequest: {
+            name?: string;
+            description?: string;
+            /** @description Inactive roles are hidden from assignment pickers. */
+            active?: boolean;
+            archived?: boolean;
+        };
         /**
          * @description Material lot serializer with hybrid versioning routing.
          *
@@ -21282,6 +21424,7 @@ export interface components {
             /** Format: uuid */
             work_order?: string | null;
             priority?: components["schemas"]["ShiftNotePriorityEnum"];
+            acknowledgment_required?: boolean;
             /** Format: date-time */
             effective_from?: string | null;
             /** Format: date-time */
@@ -21951,6 +22094,15 @@ export interface components {
             /** Format: date */
             completed_date?: string;
             /**
+             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+             *
+             *     * `1` - Level 1 — Trainee (supervised)
+             *     * `2` - Level 2 — Assisted (output checked)
+             *     * `3` - Level 3 — Qualified (independent)
+             *     * `4` - Level 4 — Expert (can train/sign off others)
+             */
+            level?: components["schemas"]["CompetencyLevelEnum"];
+            /**
              * Format: date
              * @description Date training expires. Null = never expires.
              */
@@ -21969,12 +22121,26 @@ export interface components {
         PatchedTrainingRequirementRequest: {
             /** Format: uuid */
             training_type?: string;
+            /**
+             * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+             *
+             *     * `1` - Level 1 — Trainee (supervised)
+             *     * `2` - Level 2 — Assisted (output checked)
+             *     * `3` - Level 3 — Qualified (independent)
+             *     * `4` - Level 4 — Expert (can train/sign off others)
+             */
+            min_level?: components["schemas"]["CompetencyLevelEnum"];
             /** Format: uuid */
             step?: string | null;
             /** Format: uuid */
             process?: string | null;
             /** Format: uuid */
             equipment_type?: string | null;
+            /**
+             * Format: uuid
+             * @description Role-scoped requirement: the competence this job role must hold.
+             */
+            job_role?: string | null;
             /** @description Why is this required? e.g., 'Per WI-042' or 'Customer requirement' */
             notes?: string;
             archived?: boolean;
@@ -22048,6 +22214,11 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Primary job role / position — drives the required-competency profile.
+             */
+            job_role?: string | null;
         };
         /**
          * @description Work center serializer with equipment list.
@@ -24307,6 +24478,7 @@ export interface components {
             work_order?: string | null;
             readonly work_order_erp_id: string | null;
             priority?: components["schemas"]["ShiftNotePriorityEnum"];
+            acknowledgment_required?: boolean;
             /** Format: date-time */
             effective_from?: string | null;
             /** Format: date-time */
@@ -24314,12 +24486,20 @@ export interface components {
             readonly is_locked: boolean;
             readonly acknowledged: boolean;
             readonly ack_count: number;
+            readonly acknowledged_by: components["schemas"]["ShiftNoteAckRosterItem"][];
+            readonly audience_size: number;
             /** @description Whether this record has been voided */
             readonly is_voided: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /** @description One entry in a note's acknowledgment roster (typed for the FE). */
+        ShiftNoteAckRosterItem: {
+            user_name: string;
+            /** Format: date-time */
+            acknowledged_at: string;
         };
         /**
          * @description * `NORMAL` - Normal
@@ -24352,6 +24532,7 @@ export interface components {
             /** Format: uuid */
             work_order?: string | null;
             priority?: components["schemas"]["ShiftNotePriorityEnum"];
+            acknowledgment_required?: boolean;
             /** Format: date-time */
             effective_from?: string | null;
             /** Format: date-time */
@@ -26563,6 +26744,46 @@ export interface components {
          * @enum {string}
          */
         TimeEntryTypeEnum: "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT" | "SHIFT" | "BREAK" | "LUNCH";
+        /** @description Operators x training-types competency matrix. */
+        TrainingMatrix: {
+            qualified_at: number;
+            job_roles: components["schemas"]["TrainingMatrixColumn"][];
+            training_types: components["schemas"]["TrainingMatrixColumn"][];
+            operators: components["schemas"]["TrainingMatrixOperator"][];
+            coverage: components["schemas"]["TrainingMatrixCoverage"][];
+        };
+        /** @description One operator's standing on one training type. */
+        TrainingMatrixCell: {
+            training_type: string;
+            level: number;
+            level_display: string;
+            status: string;
+            /** Format: date */
+            expires_date: string | null;
+            required_level: number;
+            gap: boolean;
+        };
+        /** @description A training type used as a matrix column. */
+        TrainingMatrixColumn: {
+            id: string;
+            name: string;
+        };
+        /** @description Per-training-type coverage — how many operators are qualified / expiring. */
+        TrainingMatrixCoverage: {
+            training_type: string;
+            qualified_count: number;
+            expiring_count: number;
+        };
+        /** @description A matrix row: an operator, their role, and their cells. */
+        TrainingMatrixOperator: {
+            id: number;
+            name: string;
+            job_role: string | null;
+            job_role_name: string;
+            required_count: number;
+            gap_count: number;
+            cells: components["schemas"]["TrainingMatrixCell"][];
+        };
         /**
          * @description Serializer for TrainingRecord model.
          *
@@ -26583,6 +26804,16 @@ export interface components {
             } | null;
             /** Format: date */
             completed_date: string;
+            /**
+             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+             *
+             *     * `1` - Level 1 — Trainee (supervised)
+             *     * `2` - Level 2 — Assisted (output checked)
+             *     * `3` - Level 3 — Qualified (independent)
+             *     * `4` - Level 4 — Expert (can train/sign off others)
+             */
+            level?: components["schemas"]["CompetencyLevelEnum"];
+            readonly level_display: string;
             /**
              * Format: date
              * @description Date training expires. Null = never expires.
@@ -26615,6 +26846,15 @@ export interface components {
             /** Format: date */
             completed_date: string;
             /**
+             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+             *
+             *     * `1` - Level 1 — Trainee (supervised)
+             *     * `2` - Level 2 — Assisted (output checked)
+             *     * `3` - Level 3 — Qualified (independent)
+             *     * `4` - Level 4 — Expert (can train/sign off others)
+             */
+            level?: components["schemas"]["CompetencyLevelEnum"];
+            /**
              * Format: date
              * @description Date training expires. Null = never expires.
              */
@@ -26638,6 +26878,16 @@ export interface components {
             readonly training_type_info: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+             *
+             *     * `1` - Level 1 — Trainee (supervised)
+             *     * `2` - Level 2 — Assisted (output checked)
+             *     * `3` - Level 3 — Qualified (independent)
+             *     * `4` - Level 4 — Expert (can train/sign off others)
+             */
+            min_level?: components["schemas"]["CompetencyLevelEnum"];
+            readonly min_level_display: string;
             /** Format: uuid */
             step?: string | null;
             readonly step_info: {
@@ -26651,6 +26901,14 @@ export interface components {
             /** Format: uuid */
             equipment_type?: string | null;
             readonly equipment_type_info: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Format: uuid
+             * @description Role-scoped requirement: the competence this job role must hold.
+             */
+            job_role?: string | null;
+            readonly job_role_info: {
                 [key: string]: unknown;
             } | null;
             /** @description Why is this required? e.g., 'Per WI-042' or 'Customer requirement' */
@@ -26672,12 +26930,26 @@ export interface components {
         TrainingRequirementRequest: {
             /** Format: uuid */
             training_type: string;
+            /**
+             * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+             *
+             *     * `1` - Level 1 — Trainee (supervised)
+             *     * `2` - Level 2 — Assisted (output checked)
+             *     * `3` - Level 3 — Qualified (independent)
+             *     * `4` - Level 4 — Expert (can train/sign off others)
+             */
+            min_level?: components["schemas"]["CompetencyLevelEnum"];
             /** Format: uuid */
             step?: string | null;
             /** Format: uuid */
             process?: string | null;
             /** Format: uuid */
             equipment_type?: string | null;
+            /**
+             * Format: uuid
+             * @description Role-scoped requirement: the competence this job role must hold.
+             */
+            job_role?: string | null;
             /** @description Why is this required? e.g., 'Per WI-042' or 'Customer requirement' */
             notes?: string;
             archived?: boolean;
@@ -26910,6 +27182,12 @@ export interface components {
             readonly user_type: string;
             readonly user_type_display: string;
             readonly tenant_membership_status: components["schemas"]["TenantMembershipStatusEnum"];
+            /**
+             * Format: uuid
+             * @description Primary job role / position — drives the required-competency profile.
+             */
+            job_role?: string | null;
+            readonly job_role_name: string | null;
         };
         /** @description Detailed user serializer with company info */
         UserDetail: {
@@ -27014,6 +27292,11 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Primary job role / position — drives the required-competency profile.
+             */
+            job_role?: string | null;
         };
         /** @description Simplified user serializer for dropdowns and selections */
         UserSelect: {
@@ -30730,6 +31013,25 @@ export interface operations {
             };
         };
     };
+    api_CompetenceMatrix_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingMatrix"];
+                };
+            };
+        };
+    };
     api_Cores_list: {
         parameters: {
             query?: {
@@ -34368,6 +34670,203 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectionInboxRow"][];
+                };
+            };
+        };
+    };
+    api_JobRoles_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by active flag */
+                active?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description Search by name or description */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedJobRoleList"];
+                };
+            };
+        };
+    };
+    api_JobRoles_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobRoleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["JobRoleRequest"];
+                "multipart/form-data": components["schemas"]["JobRoleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRole"];
+                };
+            };
+        };
+    };
+    api_JobRoles_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Job Role. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRole"];
+                };
+            };
+        };
+    };
+    api_JobRoles_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Job Role. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobRoleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["JobRoleRequest"];
+                "multipart/form-data": components["schemas"]["JobRoleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRole"];
+                };
+            };
+        };
+    };
+    api_JobRoles_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Job Role. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_JobRoles_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Job Role. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedJobRoleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedJobRoleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedJobRoleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRole"];
+                };
+            };
+        };
+    };
+    api_JobRoles_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_JobRoles_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -44354,6 +44853,15 @@ export interface operations {
     api_TrainingRecords_list: {
         parameters: {
             query?: {
+                /**
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 *
+                 *     * `1` - Level 1 — Trainee (supervised)
+                 *     * `2` - Level 2 — Assisted (output checked)
+                 *     * `3` - Level 3 — Qualified (independent)
+                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 */
+                level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -44514,6 +45022,15 @@ export interface operations {
     api_TrainingRecords_expired_list: {
         parameters: {
             query?: {
+                /**
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 *
+                 *     * `1` - Level 1 — Trainee (supervised)
+                 *     * `2` - Level 2 — Assisted (output checked)
+                 *     * `3` - Level 3 — Qualified (independent)
+                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 */
+                level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -44547,6 +45064,15 @@ export interface operations {
             query?: {
                 /** @description Days until expiration */
                 days?: number;
+                /**
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 *
+                 *     * `1` - Level 1 — Trainee (supervised)
+                 *     * `2` - Level 2 — Assisted (output checked)
+                 *     * `3` - Level 3 — Qualified (independent)
+                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 */
+                level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -44621,6 +45147,15 @@ export interface operations {
     api_TrainingRecords_my_training_list: {
         parameters: {
             query?: {
+                /**
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 *
+                 *     * `1` - Level 1 — Trainee (supervised)
+                 *     * `2` - Level 2 — Assisted (output checked)
+                 *     * `3` - Level 3 — Qualified (independent)
+                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 */
+                level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -44673,8 +45208,18 @@ export interface operations {
             query?: {
                 /** @description Filter by equipment type ID */
                 equipment_type?: string;
+                job_role?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /**
+                 * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+                 *
+                 *     * `1` - Level 1 — Trainee (supervised)
+                 *     * `2` - Level 2 — Assisted (output checked)
+                 *     * `3` - Level 3 — Qualified (independent)
+                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 */
+                min_level?: 1 | 2 | 3 | 4;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
@@ -44856,8 +45401,18 @@ export interface operations {
         parameters: {
             query: {
                 equipment_type?: string;
+                job_role?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /**
+                 * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+                 *
+                 *     * `1` - Level 1 — Trainee (supervised)
+                 *     * `2` - Level 2 — Assisted (output checked)
+                 *     * `3` - Level 3 — Qualified (independent)
+                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 */
+                min_level?: 1 | 2 | 3 | 4;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
@@ -44890,8 +45445,18 @@ export interface operations {
         parameters: {
             query: {
                 equipment_type?: string;
+                job_role?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /**
+                 * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+                 *
+                 *     * `1` - Level 1 — Trainee (supervised)
+                 *     * `2` - Level 2 — Assisted (output checked)
+                 *     * `3` - Level 3 — Qualified (independent)
+                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 */
+                min_level?: 1 | 2 | 3 | 4;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */

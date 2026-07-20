@@ -723,6 +723,30 @@ export const trainingTypesRoute = createRoute({
     component: lazyRouteComponent(() => import("@/pages/quality/TrainingTypesPage"), "TrainingTypesPage"),
 });
 
+export const trainingMatrixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/quality/training/matrix',
+    component: lazyRouteComponent(() => import("@/pages/quality/TrainingMatrixPage"), "TrainingMatrixPage"),
+});
+
+export const jobRolesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/quality/training/roles',
+    component: lazyRouteComponent(() => import("@/pages/quality/JobRolesPage"), "JobRolesPage"),
+});
+
+export const jobRoleNewRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/quality/training/roles/new',
+    component: lazyRouteComponent(() => import("@/pages/editors/forms/EditJobRoleFormPage")),
+});
+
+export const jobRoleEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/quality/training/roles/$roleId/edit',
+    component: lazyRouteComponent(() => import("@/pages/editors/forms/EditJobRoleFormPage")),
+});
+
 export const trainingRecordFormRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/TrainingRecordForm/$id',
@@ -749,6 +773,14 @@ export const operatorHomeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/production/operator',
     component: lazyRouteComponent(() => import("@/pages/operator/OperatorHomePage"), "OperatorHomeRoute"),
+});
+
+// Shift notes — lead authoring / management surface (operators read + ack on
+// the operator home).
+export const shiftNotesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/shift-notes',
+    component: lazyRouteComponent(() => import("@/pages/production/ShiftNotesPage"), "default"),
 });
 
 // Calibration Routes
@@ -930,6 +962,18 @@ export const qaHomePrototypeRoute = createRoute({
     component: lazyRouteComponent(() => import("@/pages/dev/QaHomePrototype"), "QaHomePrototype"),
 });
 
+// Preview: per-role home landings (real block stacks, role switcher, no login needed)
+export const homeLandingsSpikeRoute = createRoute({
+    getParentRoute: () => rootRoute, path: '/dev/home-landings',
+    component: lazyRouteComponent(() => import("@/pages/dev/HomeLandingsSpike"), "HomeLandingsSpike"),
+});
+
+// Design prototype: operator training / competency matrix (mock data, no backend)
+export const trainingMatrixPrototypeRoute = createRoute({
+    getParentRoute: () => rootRoute, path: '/dev/training-matrix',
+    component: lazyRouteComponent(() => import("@/pages/dev/TrainingMatrixPrototype"), "TrainingMatrixPrototype"),
+});
+
 // Reman Routes
 export const coresEditorRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -1100,7 +1144,7 @@ const operatorSubstepRuntimeRoute = createRoute({
     }),
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, EditOrdersPartsFormRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, samplingRulesCreateRoute, samplingRulesEditRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, userManagementRoute, bulkUserActionsRoute, userDetailRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, notificationRuleNewRoute, notificationRuleEditRoute, notificationScheduleNewRoute, notificationScheduleEditRoute, notificationDefaultsSettingsRoute, myNotificationsRoute, notificationFeedRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, changeControlRoute, pcrDetailRoute, pcoDetailRoute, pcnDetailRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingRecordFormRoute, trainingTypeFormRoute, calibrationDashboardRoute, calibrationRecordsRoute, calibrationRecordFormRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, operatorHomePrototypeRoute, workQueuePrototypeRoute, qaHomePrototypeRoute, qaInboxRoute, operatorHomeRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreReceiveBatchRoute, coreDisassemblyRoute, harvestedComponentsRoute, materialLotsRoute, receiveLotsBatchRoute, receivingInspectionQueueRoute, receivingInspectionRoute, incomingHubRoute, outsideProcessingBoardRoute, receivingPlansRoute, receivingPlanEditorRoute, receivingPlanSubstepsRoute, supplierQualityRoute, supplierQualificationsRoute, supplierQualificationNewRoute, supplierQualificationEditRoute, partApprovalsRoute, partApprovalNewRoute, partApprovalEditRoute, dwiSpikeRoute, substepEditorRoute, operatorSubstepRuntimeRoute])
+const routeTree = rootRoute.addChildren([homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, EditOrdersPartsFormRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, samplingRulesCreateRoute, samplingRulesEditRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, userManagementRoute, bulkUserActionsRoute, userDetailRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, notificationRuleNewRoute, notificationRuleEditRoute, notificationScheduleNewRoute, notificationScheduleEditRoute, notificationDefaultsSettingsRoute, myNotificationsRoute, notificationFeedRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, changeControlRoute, pcrDetailRoute, pcoDetailRoute, pcnDetailRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingMatrixRoute, jobRolesRoute, jobRoleNewRoute, jobRoleEditRoute, trainingRecordFormRoute, trainingTypeFormRoute, calibrationDashboardRoute, calibrationRecordsRoute, calibrationRecordFormRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, operatorHomePrototypeRoute, workQueuePrototypeRoute, qaHomePrototypeRoute, homeLandingsSpikeRoute, trainingMatrixPrototypeRoute, qaInboxRoute, operatorHomeRoute, shiftNotesRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreReceiveBatchRoute, coreDisassemblyRoute, harvestedComponentsRoute, materialLotsRoute, receiveLotsBatchRoute, receivingInspectionQueueRoute, receivingInspectionRoute, incomingHubRoute, outsideProcessingBoardRoute, receivingPlansRoute, receivingPlanEditorRoute, receivingPlanSubstepsRoute, supplierQualityRoute, supplierQualificationsRoute, supplierQualificationNewRoute, supplierQualificationEditRoute, partApprovalsRoute, partApprovalNewRoute, partApprovalEditRoute, dwiSpikeRoute, substepEditorRoute, operatorSubstepRuntimeRoute])
 
 // Create router with context
 export function createAppRouter(queryClient: QueryClient) {

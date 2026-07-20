@@ -24,6 +24,7 @@ import { useParams } from "@tanstack/react-router";
 import { useRetrieveEquipmentType } from "@/hooks/useRetrieveEquipmentType";
 import { useCreateEquipmentType } from "@/hooks/useCreateEquipmentType";
 import { useUpdateEquipmentType } from "@/hooks/useUpdateEquipmentType";
+import { TrainingRequirementsEditor } from "@/components/training/TrainingRequirementsEditor";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 
@@ -269,6 +270,16 @@ export default function EquipmentTypeFormPage() {
                             : "Create Equipment Type"}
                 </Button>
             </form>
+
+            {mode === "edit" && equipmentTypeId && (
+                <div className="max-w-3xl mx-auto pb-10">
+                    <TrainingRequirementsEditor
+                        scope={{ equipment_type: equipmentTypeId }}
+                        title="Required training to operate"
+                        description="Certifications operators must hold to use equipment of this type — applied wherever this equipment is used."
+                    />
+                </div>
+            )}
         </Form>
     );
 }

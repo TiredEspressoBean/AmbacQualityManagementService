@@ -4261,6 +4261,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/CompetenceMatrix/:
+    get:
+      operationId: api_CompetenceMatrix_retrieve
+      description: Operators x training-types competency matrix with per-skill coverage
+        counts. HR / quality view — requires view_training_matrix.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingMatrix'
+          description: ''
   /api/Cores/:
     get:
       operationId: api_Cores_list
@@ -9356,6 +9373,237 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/InspectionInboxRow'
+          description: ''
+  /api/JobRoles/:
+    get:
+      operationId: api_JobRoles_list
+      description: List job roles
+      parameters:
+      - in: query
+        name: active
+        schema:
+          type: boolean
+        description: Filter by active flag
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search by name or description
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJobRoleList'
+          description: ''
+    post:
+      operationId: api_JobRoles_create
+      description: Create a new job role
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRoleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobRoleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobRoleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRole'
+          description: ''
+  /api/JobRoles/{id}/:
+    get:
+      operationId: api_JobRoles_retrieve
+      description: Retrieve a specific job role
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Job Role.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRole'
+          description: ''
+    put:
+      operationId: api_JobRoles_update
+      description: Update a job role
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Job Role.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRoleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobRoleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobRoleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRole'
+          description: ''
+    patch:
+      operationId: api_JobRoles_partial_update
+      description: Partially update a job role
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Job Role.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedJobRoleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedJobRoleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedJobRoleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRole'
+          description: ''
+    delete:
+      operationId: api_JobRoles_destroy
+      description: Soft delete a job role
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Job Role.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/JobRoles/export-excel/:
+    get:
+      operationId: api_JobRoles_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/JobRoles/metadata/:
+    get:
+      operationId: api_JobRoles_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/MaterialLots/:
     get:
@@ -24121,6 +24369,22 @@ paths:
       operationId: api_TrainingRecords_list
       description: List training records with filtering
       parameters:
+      - in: query
+        name: level
+        schema:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+        description: |-
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+
+          * `1` - Level 1 — Trainee (supervised)
+          * `2` - Level 2 — Assisted (output checked)
+          * `3` - Level 3 — Qualified (independent)
+          * `4` - Level 4 — Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24321,6 +24585,22 @@ paths:
       operationId: api_TrainingRecords_expired_list
       description: Get all expired training records
       parameters:
+      - in: query
+        name: level
+        schema:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+        description: |-
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+
+          * `1` - Level 1 — Trainee (supervised)
+          * `2` - Level 2 — Assisted (output checked)
+          * `3` - Level 3 — Qualified (independent)
+          * `4` - Level 4 — Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24381,6 +24661,22 @@ paths:
           type: integer
           default: 30
         description: Days until expiration
+      - in: query
+        name: level
+        schema:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+        description: |-
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+
+          * `1` - Level 1 — Trainee (supervised)
+          * `2` - Level 2 — Assisted (output checked)
+          * `3` - Level 3 — Qualified (independent)
+          * `4` - Level 4 — Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24482,6 +24778,22 @@ paths:
       operationId: api_TrainingRecords_my_training_list
       description: Get training records for the current authenticated user
       parameters:
+      - in: query
+        name: level
+        schema:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+        description: |-
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+
+          * `1` - Level 1 — Trainee (supervised)
+          * `2` - Level 2 — Assisted (output checked)
+          * `3` - Level 3 — Qualified (independent)
+          * `4` - Level 4 — Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24557,12 +24869,33 @@ paths:
         schema:
           type: string
         description: Filter by equipment type ID
+      - in: query
+        name: job_role
+        schema:
+          type: string
+          format: uuid
       - name: limit
         required: false
         in: query
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: min_level
+        schema:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+        description: |-
+          Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+
+          * `1` - Level 1 — Trainee (supervised)
+          * `2` - Level 2 — Assisted (output checked)
+          * `3` - Level 3 — Qualified (independent)
+          * `4` - Level 4 — Expert (can train/sign off others)
       - name: offset
         required: false
         in: query
@@ -24787,12 +25120,33 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: job_role
+        schema:
+          type: string
+          format: uuid
       - name: limit
         required: false
         in: query
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: min_level
+        schema:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+        description: |-
+          Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+
+          * `1` - Level 1 — Trainee (supervised)
+          * `2` - Level 2 — Assisted (output checked)
+          * `3` - Level 3 — Qualified (independent)
+          * `4` - Level 4 — Expert (can train/sign off others)
       - name: offset
         required: false
         in: query
@@ -24854,12 +25208,33 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: job_role
+        schema:
+          type: string
+          format: uuid
       - name: limit
         required: false
         in: query
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: min_level
+        schema:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+        description: |-
+          Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+
+          * `1` - Level 1 — Trainee (supervised)
+          * `2` - Level 2 — Assisted (output checked)
+          * `3` - Level 3 — Qualified (independent)
+          * `4` - Level 4 — Expert (can train/sign off others)
       - name: offset
         required: false
         in: query
@@ -35706,6 +36081,18 @@ components:
       required:
       - description
       - name
+    CompetencyLevelEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      type: integer
+      description: |-
+        * `1` - Level 1 — Trainee (supervised)
+        * `2` - Level 2 — Assisted (output checked)
+        * `3` - Level 3 — Qualified (independent)
+        * `4` - Level 4 — Expert (can train/sign off others)
     CompleteStepResponse:
       type: object
       properties:
@@ -39923,6 +40310,56 @@ components:
       - invitation_id
       - status
       - user_created
+    JobRole:
+      type: object
+      description: Serializer for JobRole — the HR/organizational role competency
+        hangs off.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        active:
+          type: boolean
+          description: Inactive roles are hidden from assignment pickers.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
+    JobRoleRequest:
+      type: object
+      description: Serializer for JobRole — the HR/organizational role competency
+        hangs off.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        active:
+          type: boolean
+          description: Inactive roles are hidden from assignment pickers.
+        archived:
+          type: boolean
+      required:
+      - name
     KeywordSearchResponse:
       type: object
       properties:
@@ -42159,6 +42596,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/IntegrationSyncLog'
+    PaginatedJobRoleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobRole'
     PaginatedMaterialLotList:
       type: object
       required:
@@ -45486,6 +45946,22 @@ components:
           format: uri
           maxLength: 200
         config: {}
+    PatchedJobRoleRequest:
+      type: object
+      description: Serializer for JobRole — the HR/organizational role competency
+        hangs off.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        active:
+          type: boolean
+          description: Inactive roles are hidden from assignment pickers.
+        archived:
+          type: boolean
     PatchedMaterialLotRequest:
       type: object
       description: |-
@@ -46767,6 +47243,8 @@ components:
           nullable: true
         priority:
           $ref: '#/components/schemas/ShiftNotePriorityEnum'
+        acknowledgment_required:
+          type: boolean
         effective_from:
           type: string
           format: date-time
@@ -47791,6 +48269,18 @@ components:
         completed_date:
           type: string
           format: date
+        level:
+          allOf:
+          - $ref: '#/components/schemas/CompetencyLevelEnum'
+          description: |-
+            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+
+            * `1` - Level 1 — Trainee (supervised)
+            * `2` - Level 2 — Assisted (output checked)
+            * `3` - Level 3 — Qualified (independent)
+            * `4` - Level 4 — Expert (can train/sign off others)
+          minimum: 0
+          maximum: 32767
         expires_date:
           type: string
           format: date
@@ -47815,6 +48305,18 @@ components:
         training_type:
           type: string
           format: uuid
+        min_level:
+          allOf:
+          - $ref: '#/components/schemas/CompetencyLevelEnum'
+          description: |-
+            Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+
+            * `1` - Level 1 — Trainee (supervised)
+            * `2` - Level 2 — Assisted (output checked)
+            * `3` - Level 3 — Qualified (independent)
+            * `4` - Level 4 — Expert (can train/sign off others)
+          minimum: 0
+          maximum: 32767
         step:
           type: string
           format: uuid
@@ -47827,6 +48329,12 @@ components:
           type: string
           format: uuid
           nullable: true
+        job_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Role-scoped requirement: the competence this job role must
+            hold.'
         notes:
           type: string
           description: Why is this required? e.g., 'Per WI-042' or 'Customer requirement'
@@ -47943,6 +48451,12 @@ components:
           format: uuid
           writeOnly: true
           nullable: true
+        job_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: Primary job role / position — drives the required-competency
+            profile.
     PatchedWorkCenterRequest:
       type: object
       description: |-
@@ -52416,6 +52930,8 @@ components:
           readOnly: true
         priority:
           $ref: '#/components/schemas/ShiftNotePriorityEnum'
+        acknowledgment_required:
+          type: boolean
         effective_from:
           type: string
           format: date-time
@@ -52433,6 +52949,14 @@ components:
         ack_count:
           type: integer
           readOnly: true
+        acknowledged_by:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShiftNoteAckRosterItem'
+          readOnly: true
+        audience_size:
+          type: integer
+          readOnly: true
         is_voided:
           type: boolean
           readOnly: true
@@ -52448,6 +52972,8 @@ components:
       required:
       - ack_count
       - acknowledged
+      - acknowledged_by
+      - audience_size
       - author
       - author_name
       - body
@@ -52457,6 +52983,18 @@ components:
       - is_voided
       - updated_at
       - work_order_erp_id
+    ShiftNoteAckRosterItem:
+      type: object
+      description: One entry in a note's acknowledgment roster (typed for the FE).
+      properties:
+        user_name:
+          type: string
+        acknowledged_at:
+          type: string
+          format: date-time
+      required:
+      - acknowledged_at
+      - user_name
     ShiftNotePriorityEnum:
       enum:
       - NORMAL
@@ -52501,6 +53039,8 @@ components:
           nullable: true
         priority:
           $ref: '#/components/schemas/ShiftNotePriorityEnum'
+        acknowledgment_required:
+          type: boolean
         effective_from:
           type: string
           format: date-time
@@ -56624,6 +57164,117 @@ components:
         * `SHIFT` - On Shift
         * `BREAK` - Break
         * `LUNCH` - Lunch
+    TrainingMatrix:
+      type: object
+      description: Operators x training-types competency matrix.
+      properties:
+        qualified_at:
+          type: integer
+        job_roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingMatrixColumn'
+        training_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingMatrixColumn'
+        operators:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingMatrixOperator'
+        coverage:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingMatrixCoverage'
+      required:
+      - coverage
+      - job_roles
+      - operators
+      - qualified_at
+      - training_types
+    TrainingMatrixCell:
+      type: object
+      description: One operator's standing on one training type.
+      properties:
+        training_type:
+          type: string
+        level:
+          type: integer
+        level_display:
+          type: string
+        status:
+          type: string
+        expires_date:
+          type: string
+          format: date
+          nullable: true
+        required_level:
+          type: integer
+        gap:
+          type: boolean
+      required:
+      - expires_date
+      - gap
+      - level
+      - level_display
+      - required_level
+      - status
+      - training_type
+    TrainingMatrixColumn:
+      type: object
+      description: A training type used as a matrix column.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+    TrainingMatrixCoverage:
+      type: object
+      description: Per-training-type coverage — how many operators are qualified /
+        expiring.
+      properties:
+        training_type:
+          type: string
+        qualified_count:
+          type: integer
+        expiring_count:
+          type: integer
+      required:
+      - expiring_count
+      - qualified_count
+      - training_type
+    TrainingMatrixOperator:
+      type: object
+      description: 'A matrix row: an operator, their role, and their cells.'
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        job_role:
+          type: string
+          nullable: true
+        job_role_name:
+          type: string
+        required_count:
+          type: integer
+        gap_count:
+          type: integer
+        cells:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingMatrixCell'
+      required:
+      - cells
+      - gap_count
+      - id
+      - job_role
+      - job_role_name
+      - name
+      - required_count
     TrainingRecord:
       type: object
       description: |-
@@ -56654,6 +57305,21 @@ components:
         completed_date:
           type: string
           format: date
+        level:
+          allOf:
+          - $ref: '#/components/schemas/CompetencyLevelEnum'
+          description: |-
+            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+
+            * `1` - Level 1 — Trainee (supervised)
+            * `2` - Level 2 — Assisted (output checked)
+            * `3` - Level 3 — Qualified (independent)
+            * `4` - Level 4 — Expert (can train/sign off others)
+          minimum: 0
+          maximum: 32767
+        level_display:
+          type: string
+          readOnly: true
         expires_date:
           type: string
           format: date
@@ -56691,6 +57357,7 @@ components:
       - created_at
       - id
       - is_current
+      - level_display
       - status
       - trainer_info
       - training_type
@@ -56714,6 +57381,18 @@ components:
         completed_date:
           type: string
           format: date
+        level:
+          allOf:
+          - $ref: '#/components/schemas/CompetencyLevelEnum'
+          description: |-
+            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+
+            * `1` - Level 1 — Trainee (supervised)
+            * `2` - Level 2 — Assisted (output checked)
+            * `3` - Level 3 — Qualified (independent)
+            * `4` - Level 4 — Expert (can train/sign off others)
+          minimum: 0
+          maximum: 32767
         expires_date:
           type: string
           format: date
@@ -56751,6 +57430,21 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        min_level:
+          allOf:
+          - $ref: '#/components/schemas/CompetencyLevelEnum'
+          description: |-
+            Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+
+            * `1` - Level 1 — Trainee (supervised)
+            * `2` - Level 2 — Assisted (output checked)
+            * `3` - Level 3 — Qualified (independent)
+            * `4` - Level 4 — Expert (can train/sign off others)
+          minimum: 0
+          maximum: 32767
+        min_level_display:
+          type: string
+          readOnly: true
         step:
           type: string
           format: uuid
@@ -56778,6 +57472,17 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        job_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Role-scoped requirement: the competence this job role must
+            hold.'
+        job_role_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
         notes:
           type: string
           description: Why is this required? e.g., 'Per WI-042' or 'Customer requirement'
@@ -56801,6 +57506,8 @@ components:
       - created_at
       - equipment_type_info
       - id
+      - job_role_info
+      - min_level_display
       - process_info
       - scope
       - scope_display
@@ -56819,6 +57526,18 @@ components:
         training_type:
           type: string
           format: uuid
+        min_level:
+          allOf:
+          - $ref: '#/components/schemas/CompetencyLevelEnum'
+          description: |-
+            Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
+
+            * `1` - Level 1 — Trainee (supervised)
+            * `2` - Level 2 — Assisted (output checked)
+            * `3` - Level 3 — Qualified (independent)
+            * `4` - Level 4 — Expert (can train/sign off others)
+          minimum: 0
+          maximum: 32767
         step:
           type: string
           format: uuid
@@ -56831,6 +57550,12 @@ components:
           type: string
           format: uuid
           nullable: true
+        job_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Role-scoped requirement: the competence this job role must
+            hold.'
         notes:
           type: string
           description: Why is this required? e.g., 'Per WI-042' or 'Customer requirement'
@@ -57355,11 +58080,22 @@ components:
           allOf:
           - $ref: '#/components/schemas/TenantMembershipStatusEnum'
           readOnly: true
+        job_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: Primary job role / position — drives the required-competency
+            profile.
+        job_role_name:
+          type: string
+          nullable: true
+          readOnly: true
       required:
       - date_joined
       - full_name
       - groups
       - id
+      - job_role_name
       - last_login
       - parent_company
       - tenant
@@ -57581,6 +58317,12 @@ components:
           format: uuid
           writeOnly: true
           nullable: true
+        job_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: Primary job role / position — drives the required-competency
+            profile.
       required:
       - username
     UserSelect:

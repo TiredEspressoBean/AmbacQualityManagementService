@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DurationInput } from '@/components/ui/duration-input';
-import { Trash2, X, Ruler, Target, Settings, FileText, Eye, ListChecks, ArrowRight, ChevronDown } from 'lucide-react';
+import { Trash2, X, Ruler, Target, Settings, FileText, Eye, ListChecks, ArrowRight, ChevronDown, GraduationCap } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useSubsteps } from '@/hooks/useSubsteps';
 import type { StepData } from './use-steps-to-flow';
@@ -23,6 +23,8 @@ import { useContentTypeMapping } from '@/hooks/useContentTypes';
 import { MeasurementsEditor } from './measurements-editor';
 import { StepSamplingEditor } from './step-sampling-editor';
 import { StepDocumentsEditor } from './step-documents-editor';
+import { StepTrainingRequirementsEditor } from './step-training-requirements-editor';
+import { useTrainingRequirements } from '@/hooks/useTrainingRequirements';
 import { parseDurationToMinutes, formatMinutesToDuration, formatDurationDisplay } from '@/lib/duration-utils';
 
 /** Terminal status options */
@@ -102,11 +104,16 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   // eslint-disable-next-line local/no-as-any -- FlowNodeData is a union type; we use structural access for the step sub-shape here
   const data = node.data as any;
   const stepId = data.step?.id as string | undefined;
+  // The flow renders placeholder node ids (e.g. "3") on first paint before the
+  // real process (with UUID step ids) loads. Step-scoped queries hit UUID-only
+  // filters, so gate them on a real UUID id to avoid transient 400s.
+  const stepIdIsUuid = !!stepId && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(stepId);
 
   // State for editor dialogs
   const [measurementsOpen, setMeasurementsOpen] = useState(false);
   const [samplingOpen, setSamplingOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [trainingOpen, setTrainingOpen] = useState(false);
 
   // Get content type ID for steps
   const { getContentTypeId, isLoading: contentTypesLoading } = useContentTypeMapping();
@@ -116,19 +123,22 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   const { data: measurementsResponse } = useRetrieveMeasurementDefinitions(
     { step: stepId },
     undefined,
-    { enabled: !!stepId }
+    { enabled: stepIdIsUuid }
   );
   const measurementCount = measurementsResponse?.count ?? 0;
 
   // Substep count — enables a "Substeps (N)" affordance that drills into the
   // DWI substep editor for this step.
-  const { data: substepsResponse } = useSubsteps(stepId ? { step: stepId } : undefined);
+  const { data: substepsResponse } = useSubsteps(
+    stepIdIsUuid ? { step: stepId } : undefined,
+    { enabled: stepIdIsUuid }
+  );
   const substepCount = substepsResponse?.count ?? 0;
 
   // Fetch sampling rules count
   const { data: stepWithRules } = useRetrieveStepWithSamplingRules(
     { params: { id: stepId! } },
-    { enabled: !!stepId }
+    { enabled: stepIdIsUuid }
   );
   // active_ruleset may be on the extended type from the hook
   // eslint-disable-next-line local/no-as-any -- active_ruleset is not in Schema<"ProcessStep">; backend returns it via extended serializer (FLAG: add active_ruleset to ProcessStepSerializer)
@@ -144,6 +154,13 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
     { enabled: !!stepId && !!stepsContentTypeId && !contentTypesLoading }
   );
   const documentCount = documentsResponse?.count ?? 0;
+
+  // Fetch training-requirement count for this step (UUID-gated, see above).
+  const { data: trainingReqResponse } = useTrainingRequirements(
+    { queries: { step: stepId } },
+    { enabled: stepIdIsUuid, retry: false }
+  );
+  const trainingReqCount = stepIdIsUuid ? (trainingReqResponse?.count ?? 0) : 0;
 
   // Vendor options for an outside-process (subcontract) receiving node.
   const { data: companiesData } = useRetrieveCompanies(
@@ -510,6 +527,28 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 )}
               </div>
 
+              {/* Required Training */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                  <span>Required Training</span>
+                  {trainingReqCount > 0 && (
+                    <Badge variant="secondary" className="text-xs">{trainingReqCount}</Badge>
+                  )}
+                </div>
+                {stepId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setTrainingOpen(true)}
+                    title={editable ? "Configure required training" : "View required training"}
+                  >
+                    {editable ? <Settings className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
+
               {/* Substeps — drill-down into the DWI substep editor. Disabled
                   until the step is persisted (needs a real stepId in the URL). */}
               <div className="flex items-center justify-between">
@@ -540,7 +579,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
 
               {!stepId && editable && (
                 <p className="text-xs text-muted-foreground">
-                  Save process to configure measurements, sampling, documents, and substeps
+                  Save process to configure measurements, sampling, documents, training, and substeps
                 </p>
               )}
             </div>
@@ -774,6 +813,13 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               stepName={data.label || 'Step'}
               open={documentsOpen}
               onOpenChange={setDocumentsOpen}
+              readOnly={!editable}
+            />
+            <StepTrainingRequirementsEditor
+              stepId={stepId}
+              stepName={data.label || 'Step'}
+              open={trainingOpen}
+              onOpenChange={setTrainingOpen}
               readOnly={!editable}
             />
           </>

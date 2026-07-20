@@ -338,6 +338,7 @@ router.register(r'SamplingDecisions', SamplingDecisionViewSet, basename='Samplin
 router.register(r'TrainingTypes', TrainingTypeViewSet, basename='TrainingTypes')
 router.register(r'TrainingRecords', TrainingRecordViewSet, basename='TrainingRecords')
 router.register(r'TrainingRequirements', TrainingRequirementViewSet, basename='TrainingRequirements')
+router.register(r'JobRoles', JobRoleViewSet, basename='JobRoles')
 
 # ===== CALIBRATION VIEWSETS =====
 router.register(r'CalibrationRecords', CalibrationRecordViewSet, basename='CalibrationRecords')
@@ -393,6 +394,7 @@ urlpatterns += [
     path("media/<path:path>", serve_media_iframe_safe),
     path('api/', include(router.urls)),  # ✅ Adds /api/TrackerOrders/
     path("api/orders/<uuid:order_id>/parts/", PartsByOrderView.as_view(), name="order-parts-list"),
+    path("api/CompetenceMatrix/", CompetenceMatrixView.as_view(), name="competence-matrix"),
     # Legacy event-type catalog kept at this path; Phase 3 also exposes it at
     # /api/notifications/events/ below for the new frontend.
     path("api/NotificationEventTypes/", NotificationEventTypeCatalogView.as_view(), name="notification-event-types"),

@@ -16,6 +16,8 @@ from Tracker.models import (
     Processes,
     Steps,
     EquipmentType,
+    CompetencyLevel,
+    JobRole,
     TrainingType,
     TrainingRecord,
     TrainingRequirement,
@@ -24,6 +26,8 @@ from Tracker.services.training import (
     check_training_authorization,
     get_required_training,
     get_qualified_users_for_step,
+    build_training_matrix,
+    get_role_requirements,
 )
 from Tracker.tests.base import TenantContextMixin
 
@@ -225,7 +229,7 @@ class TrainingAuthorizationTests(TrainingModuleTestCase):
         self.assertFalse(result.authorized)
         self.assertEqual(len(result.missing), 1)
         self.assertEqual(result.missing[0][0], "CMM Operation")
-        self.assertEqual(result.missing[0][1], "Not completed")
+        self.assertIn("Not completed", result.missing[0][1])
 
     def test_expired_training_not_authorized(self):
         """User with expired training is not authorized."""
@@ -294,6 +298,108 @@ class TrainingAuthorizationTests(TrainingModuleTestCase):
         self.assertEqual(len(result.verified), 1)  # Safety training
         self.assertEqual(len(result.missing), 2)  # CMM and soldering
 
+    def test_below_required_level_not_authorized(self):
+        """Holding the training but below the required level is not authorized."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training,
+            step=self.inspection_step,
+            min_level=CompetencyLevel.EXPERT,
+            tenant=self.tenant,
+        )
+        TrainingRecord.objects.create(
+            user=self.operator,
+            training_type=self.cmm_training,
+            completed_date=date.today(),
+            level=CompetencyLevel.QUALIFIED,
+            tenant=self.tenant,
+        )
+        result = check_training_authorization(user=self.operator, step=self.inspection_step)
+        self.assertFalse(result.authorized)
+        self.assertEqual(len(result.missing), 1)
+        self.assertIn("needs Level 4", result.missing[0][1])
+
+    def test_meets_required_level_authorized(self):
+        """A higher held level than required satisfies the requirement."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training,
+            step=self.inspection_step,
+            min_level=CompetencyLevel.ASSISTED,
+            tenant=self.tenant,
+        )
+        TrainingRecord.objects.create(
+            user=self.operator,
+            training_type=self.cmm_training,
+            completed_date=date.today(),
+            level=CompetencyLevel.QUALIFIED,
+            tenant=self.tenant,
+        )
+        result = check_training_authorization(user=self.operator, step=self.inspection_step)
+        self.assertTrue(result.authorized)
+
+    def test_max_level_across_multiple_records(self):
+        """Current competency = max level among a user's in-date records for a type."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training,
+            step=self.inspection_step,
+            min_level=CompetencyLevel.QUALIFIED,
+            tenant=self.tenant,
+        )
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today() - timedelta(days=100),
+            level=CompetencyLevel.TRAINEE, tenant=self.tenant,
+        )
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today(),
+            level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+        result = check_training_authorization(user=self.operator, step=self.inspection_step)
+        self.assertTrue(result.authorized)
+
+    def test_strictest_min_level_wins_across_sources(self):
+        """When a type is required by two sources, the highest min_level applies."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training, step=self.inspection_step,
+            min_level=CompetencyLevel.ASSISTED, tenant=self.tenant,
+        )
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training, equipment_type=self.cmm_type,
+            min_level=CompetencyLevel.EXPERT, tenant=self.tenant,
+        )
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today(), level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+        result = check_training_authorization(
+            user=self.operator, step=self.inspection_step, equipment_type=self.cmm_type,
+        )
+        self.assertFalse(result.authorized)
+        self.assertEqual(len(result.missing), 1)
+        self.assertIn("needs Level 4", result.missing[0][1])
+
+    def test_default_level_preserves_legacy_authorization(self):
+        """A record/requirement with default levels (Qualified) stays authorized —
+        the backfill guarantee for pre-level data."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training, step=self.inspection_step, tenant=self.tenant,
+        )
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today(), tenant=self.tenant,
+        )
+        result = check_training_authorization(user=self.operator, step=self.inspection_step)
+        self.assertTrue(result.authorized)
+
+    def test_get_required_training_returns_min_levels(self):
+        """get_required_training returns {training_type: min_level}."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training, step=self.inspection_step,
+            min_level=CompetencyLevel.EXPERT, tenant=self.tenant,
+        )
+        required = get_required_training(self.inspection_step)
+        self.assertEqual(required, {self.cmm_training: CompetencyLevel.EXPERT})
+
 
 class GetQualifiedUsersTests(TrainingModuleTestCase):
     """Tests for get_qualified_users_for_step."""
@@ -331,6 +437,131 @@ class GetQualifiedUsersTests(TrainingModuleTestCase):
 
         self.assertIn(self.operator, qualified)
         self.assertNotIn(self.untrained_user, qualified)
+
+    def test_qualified_respects_min_level(self):
+        """Only users at/above the requirement's min_level are returned."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training,
+            step=self.inspection_step,
+            min_level=CompetencyLevel.EXPERT,
+            tenant=self.tenant,
+        )
+        # operator holds it but only at Qualified (below Expert)
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today(), level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+        # untrained_user holds it at Expert
+        TrainingRecord.objects.create(
+            user=self.untrained_user, training_type=self.cmm_training,
+            completed_date=date.today(), level=CompetencyLevel.EXPERT, tenant=self.tenant,
+        )
+        qualified = get_qualified_users_for_step(step=self.inspection_step, tenant=self.tenant)
+        self.assertIn(self.untrained_user, qualified)
+        self.assertNotIn(self.operator, qualified)
+
+
+class TrainingMatrixServiceTests(TrainingModuleTestCase):
+    """Tests for build_training_matrix (the CompetenceMatrix aggregate)."""
+
+    def test_matrix_cells_and_coverage(self):
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today(), level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.soldering_training,
+            completed_date=date.today(), level=CompetencyLevel.TRAINEE, tenant=self.tenant,
+        )
+        matrix = build_training_matrix(tenant=self.tenant)
+
+        # Columns include the training types
+        names = {c['name'] for c in matrix['training_types']}
+        self.assertIn("CMM Operation", names)
+        self.assertIn("IPC-A-610", names)
+
+        # Operator row carries the right cell levels
+        op = next(o for o in matrix['operators'] if o['id'] == self.operator.id)
+        levels = {c['training_type']: c['level'] for c in op['cells']}
+        self.assertEqual(levels[str(self.cmm_training.id)], CompetencyLevel.QUALIFIED)
+        self.assertEqual(levels[str(self.soldering_training.id)], CompetencyLevel.TRAINEE)
+
+        # Coverage: CMM has one qualified (L3), soldering has none (only L1)
+        cov = {c['training_type']: c for c in matrix['coverage']}
+        self.assertEqual(cov[str(self.cmm_training.id)]['qualified_count'], 1)
+        self.assertEqual(cov[str(self.soldering_training.id)]['qualified_count'], 0)
+
+    def test_expired_record_shows_zero_level_cell(self):
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today() - timedelta(days=400),
+            expires_date=date.today() - timedelta(days=35),
+            level=CompetencyLevel.EXPERT, tenant=self.tenant,
+        )
+        matrix = build_training_matrix(tenant=self.tenant)
+        op = next(o for o in matrix['operators'] if o['id'] == self.operator.id)
+        cell = next(c for c in op['cells'] if c['training_type'] == str(self.cmm_training.id))
+        self.assertEqual(cell['level'], 0)
+        self.assertEqual(cell['status'], 'EXPIRED')
+
+
+class RoleRequirementTests(TrainingModuleTestCase):
+    """Tests for JobRole-scoped requirements + role gaps in the matrix."""
+
+    def test_job_role_requirement_target(self):
+        role = JobRole.objects.create(name="CMM Inspector", tenant=self.tenant)
+        req = TrainingRequirement.objects.create(
+            training_type=self.cmm_training, job_role=role,
+            min_level=CompetencyLevel.EXPERT, tenant=self.tenant,
+        )
+        self.assertEqual(req.scope, 'job_role')
+        self.assertEqual(req.target, role)
+
+    def test_get_role_requirements(self):
+        role = JobRole.objects.create(name="Machinist", tenant=self.tenant)
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training, job_role=role,
+            min_level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+        self.assertEqual(get_role_requirements(role), {self.cmm_training: CompetencyLevel.QUALIFIED})
+
+    def test_matrix_role_gaps(self):
+        from Tracker.models import User
+        role = JobRole.objects.create(name="CMM Inspector", tenant=self.tenant)
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training, job_role=role,
+            min_level=CompetencyLevel.EXPERT, tenant=self.tenant,
+        )
+        TrainingRequirement.objects.create(
+            training_type=self.soldering_training, job_role=role,
+            min_level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+        # Assign the role without mutating the shared class-level instance.
+        op_user = User.objects.get(pk=self.operator.pk)
+        op_user.job_role = role
+        op_user.save(update_fields=['job_role'])
+        # Holds CMM at L3 (below required L4); nothing on soldering (missing).
+        TrainingRecord.objects.create(
+            user=op_user, training_type=self.cmm_training,
+            completed_date=date.today(), level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+
+        matrix = build_training_matrix(tenant=self.tenant)
+        op = next(o for o in matrix['operators'] if o['id'] == op_user.id)
+        self.assertEqual(op['job_role_name'], "CMM Inspector")
+        self.assertEqual(op['required_count'], 2)
+        self.assertEqual(op['gap_count'], 2)
+
+        cells = {c['training_type']: c for c in op['cells']}
+        cmm_cell = cells[str(self.cmm_training.id)]
+        self.assertEqual(cmm_cell['required_level'], CompetencyLevel.EXPERT)
+        self.assertTrue(cmm_cell['gap'])
+        # A required-but-untrained type still surfaces as a level-0 gap cell.
+        sol_cell = cells[str(self.soldering_training.id)]
+        self.assertEqual(sol_cell['level'], 0)
+        self.assertTrue(sol_cell['gap'])
+
+        self.assertIn("CMM Inspector", {r['name'] for r in matrix['job_roles']})
 
 
 class TrainingRecordTests(TrainingModuleTestCase):

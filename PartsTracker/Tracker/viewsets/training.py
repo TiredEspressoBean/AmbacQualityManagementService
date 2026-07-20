@@ -7,15 +7,19 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, inline_serializer
 from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-from Tracker.models import TrainingType, TrainingRecord, TrainingRequirement
+from Tracker.models import TrainingType, TrainingRecord, TrainingRequirement, JobRole
 from Tracker.serializers.training import (
     TrainingTypeSerializer,
     TrainingRecordSerializer,
     TrainingRequirementSerializer,
+    TrainingMatrixSerializer,
+    JobRoleSerializer,
 )
+from Tracker.services.training import build_training_matrix
 from .base import TenantScopedMixin
 from .core import ExcelExportMixin, ListMetadataMixin
 
@@ -85,9 +89,9 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMix
     queryset = TrainingRecord.unscoped.all()
     serializer_class = TrainingRecordSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['user', 'training_type', 'trainer']
+    filterset_fields = ['user', 'training_type', 'trainer', 'level']
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'training_type__name', 'notes']
-    ordering_fields = ['completed_date', 'expires_date', 'created_at']
+    ordering_fields = ['completed_date', 'expires_date', 'level', 'created_at']
     ordering = ['-completed_date']
     pagination_class = LimitOffsetPagination
 
@@ -250,9 +254,9 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpo
     queryset = TrainingRequirement.unscoped.all()
     serializer_class = TrainingRequirementSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['training_type', 'step', 'process', 'equipment_type']
-    search_fields = ['training_type__name', 'step__name', 'process__name', 'equipment_type__name', 'notes']
-    ordering_fields = ['training_type__name', 'created_at']
+    filterset_fields = ['training_type', 'step', 'process', 'equipment_type', 'job_role', 'min_level']
+    search_fields = ['training_type__name', 'step__name', 'process__name', 'equipment_type__name', 'job_role__name', 'notes']
+    ordering_fields = ['training_type__name', 'min_level', 'created_at']
     ordering = ['training_type__name']
     pagination_class = LimitOffsetPagination
 
@@ -261,7 +265,7 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpo
             return TrainingRequirement.objects.none()
 
         qs = super().get_queryset()
-        return qs.select_related('training_type', 'step', 'process', 'equipment_type')
+        return qs.select_related('training_type', 'step', 'process', 'equipment_type', 'job_role')
 
     @extend_schema(
         description="Get all training requirements for a specific step",
@@ -298,3 +302,75 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpo
         qs = self.get_queryset().filter(process_id=process_id)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
+
+
+# ===== JOB ROLE VIEWSET =====
+
+@extend_schema_view(
+    list=extend_schema(
+        description="List job roles",
+        parameters=[
+            OpenApiParameter(name='search', description='Search by name or description', required=False, type=str),
+            OpenApiParameter(name='active', description='Filter by active flag', required=False, type=bool),
+        ],
+    ),
+    create=extend_schema(description="Create a new job role"),
+    retrieve=extend_schema(description="Retrieve a specific job role"),
+    update=extend_schema(description="Update a job role"),
+    partial_update=extend_schema(description="Partially update a job role"),
+    destroy=extend_schema(description="Soft delete a job role"),
+)
+class JobRoleViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing job roles (HR/organizational positions).
+
+    Job roles carry required-competency profiles via TrainingRequirement rows
+    scoped to the role, and users are assigned a primary role via User.job_role.
+    """
+    queryset = JobRole.unscoped.all()
+    serializer_class = JobRoleSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['active']
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['name']
+    pagination_class = LimitOffsetPagination
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return JobRole.objects.none()
+        return super().get_queryset()
+
+
+# ===== COMPETENCE MATRIX =====
+
+class CompetenceMatrixView(APIView):
+    """
+    Read-only competency matrix aggregate: operators (rows) x training types
+    (columns), each cell carrying the operator's current level, plus per-skill
+    coverage (how many are qualified / expiring).
+
+    A single JSON object (not a collection), so it's an APIView rather than a
+    router ViewSet — a `list` action would make spectacular type the response as
+    an array and break the generated client at runtime.
+
+    Supervisor/HR surface — gated on the dedicated `view_training_matrix`
+    permission (distinct from view_trainingrecord) so line operators don't see
+    the org-wide grid.
+    """
+
+    @extend_schema(
+        description="Operators x training-types competency matrix with per-skill "
+                    "coverage counts. HR / quality view — requires view_training_matrix.",
+        responses={200: TrainingMatrixSerializer},
+    )
+    def get(self, request):
+        if not request.user.has_perm('Tracker.view_training_matrix'):
+            return Response(
+                {'detail': 'You do not have permission to view the training matrix.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        # `.objects` is tenant-scoped for the duration of the request, so the
+        # aggregate is automatically limited to the caller's tenant.
+        data = build_training_matrix()
+        return Response(TrainingMatrixSerializer(data).data)

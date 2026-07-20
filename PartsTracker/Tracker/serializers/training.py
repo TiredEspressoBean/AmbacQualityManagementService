@@ -2,8 +2,66 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from Tracker.models import TrainingType, TrainingRecord, TrainingRequirement
+from Tracker.models import TrainingType, TrainingRecord, TrainingRequirement, JobRole
 from .core import SecureModelMixin
+
+
+class JobRoleSerializer(SecureModelMixin):
+    """Serializer for JobRole — the HR/organizational role competency hangs off."""
+
+    class Meta:
+        model = JobRole
+        fields = [
+            'id', 'name', 'description', 'active',
+            'created_at', 'updated_at', 'archived',
+        ]
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+
+# ===== COMPETENCE MATRIX (read-only aggregate) =====
+
+class TrainingMatrixColumnSerializer(serializers.Serializer):
+    """A training type used as a matrix column."""
+    id = serializers.CharField()
+    name = serializers.CharField()
+
+
+class TrainingMatrixCellSerializer(serializers.Serializer):
+    """One operator's standing on one training type."""
+    training_type = serializers.CharField()
+    level = serializers.IntegerField()
+    level_display = serializers.CharField()
+    status = serializers.CharField()
+    expires_date = serializers.DateField(allow_null=True)
+    required_level = serializers.IntegerField()   # 0 = not required by the operator's role
+    gap = serializers.BooleanField()              # held level below role requirement
+
+
+class TrainingMatrixOperatorSerializer(serializers.Serializer):
+    """A matrix row: an operator, their role, and their cells."""
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    job_role = serializers.CharField(allow_null=True)
+    job_role_name = serializers.CharField(allow_blank=True)
+    required_count = serializers.IntegerField()
+    gap_count = serializers.IntegerField()
+    cells = TrainingMatrixCellSerializer(many=True)
+
+
+class TrainingMatrixCoverageSerializer(serializers.Serializer):
+    """Per-training-type coverage — how many operators are qualified / expiring."""
+    training_type = serializers.CharField()
+    qualified_count = serializers.IntegerField()
+    expiring_count = serializers.IntegerField()
+
+
+class TrainingMatrixSerializer(serializers.Serializer):
+    """Operators x training-types competency matrix."""
+    qualified_at = serializers.IntegerField()
+    job_roles = TrainingMatrixColumnSerializer(many=True)   # {id, name} of active roles, for filtering
+    training_types = TrainingMatrixColumnSerializer(many=True)
+    operators = TrainingMatrixOperatorSerializer(many=True)
+    coverage = TrainingMatrixCoverageSerializer(many=True)
 
 
 class TrainingTypeSerializer(SecureModelMixin):
@@ -46,6 +104,7 @@ class TrainingRecordSerializer(SecureModelMixin):
     user_info = serializers.SerializerMethodField()
     training_type_info = serializers.SerializerMethodField()
     trainer_info = serializers.SerializerMethodField()
+    level_display = serializers.CharField(source='get_level_display', read_only=True)
     status = serializers.CharField(read_only=True)
     is_current = serializers.BooleanField(read_only=True)
 
@@ -53,11 +112,12 @@ class TrainingRecordSerializer(SecureModelMixin):
         model = TrainingRecord
         fields = [
             'id', 'user', 'user_info', 'training_type', 'training_type_info',
-            'completed_date', 'expires_date', 'trainer', 'trainer_info',
+            'completed_date', 'level', 'level_display', 'expires_date',
+            'trainer', 'trainer_info',
             'notes', 'status', 'is_current',
             'created_at', 'updated_at', 'archived'
         ]
-        read_only_fields = ('id', 'status', 'is_current', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'level_display', 'status', 'is_current', 'created_at', 'updated_at')
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_user_info(self, obj):
@@ -106,6 +166,8 @@ class TrainingRequirementSerializer(SecureModelMixin):
     step_info = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
     equipment_type_info = serializers.SerializerMethodField()
+    job_role_info = serializers.SerializerMethodField()
+    min_level_display = serializers.CharField(source='get_min_level_display', read_only=True)
     scope = serializers.CharField(read_only=True)
     scope_display = serializers.SerializerMethodField()
 
@@ -113,12 +175,14 @@ class TrainingRequirementSerializer(SecureModelMixin):
         model = TrainingRequirement
         fields = [
             'id', 'training_type', 'training_type_info',
+            'min_level', 'min_level_display',
             'step', 'step_info', 'process', 'process_info',
             'equipment_type', 'equipment_type_info',
+            'job_role', 'job_role_info',
             'notes', 'scope', 'scope_display',
             'created_at', 'updated_at', 'archived'
         ]
-        read_only_fields = ('id', 'scope', 'scope_display', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'min_level_display', 'scope', 'scope_display', 'created_at', 'updated_at')
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_training_type_info(self, obj):
@@ -161,9 +225,19 @@ class TrainingRequirementSerializer(SecureModelMixin):
             }
         return None
 
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_job_role_info(self, obj):
+        """Return job role details if this requirement is for a role."""
+        if obj.job_role:
+            return {
+                'id': str(obj.job_role.id),
+                'name': obj.job_role.name,
+            }
+        return None
+
     @extend_schema_field(serializers.CharField())
     def get_scope_display(self, obj) -> str:
-        """Return human-readable scope description like 'Step: Machining' or 'Process: Assembly'."""
+        """Return human-readable scope like 'Step: Machining' or 'Role: CMM Inspector'."""
         target = obj.target
         if not target:
             return "Unknown"
@@ -175,4 +249,6 @@ class TrainingRequirementSerializer(SecureModelMixin):
             return f"Process: {target.name}"
         elif scope == 'equipment_type':
             return f"Equipment Type: {target.name}"
+        elif scope == 'job_role':
+            return f"Role: {target.name}"
         return str(target)

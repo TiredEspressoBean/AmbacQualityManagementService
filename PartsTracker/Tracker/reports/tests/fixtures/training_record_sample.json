@@ -6,6 +6,8 @@
     {
       "topic": "Lockout/Tagout (LOTO) — OSHA 29 CFR 1910.147",
       "completed_date": "2025-03-10",
+      "level": 4,
+      "level_display": "Level 4 — Expert (can train/sign off others)",
       "expires_date": "2026-03-10",
       "trainer": "James Hollowell",
       "status": "CURRENT",
@@ -14,6 +16,8 @@
     {
       "topic": "Forklift Operation — Toyota 8FGU25",
       "completed_date": "2024-11-05",
+      "level": 3,
+      "level_display": "Level 3 — Qualified (independent)",
       "expires_date": "2025-11-05",
       "trainer": "James Hollowell",
       "status": "CURRENT",
@@ -22,6 +26,8 @@
     {
       "topic": "ISO 9001:2015 Awareness",
       "completed_date": "2023-06-14",
+      "level": 3,
+      "level_display": "Level 3 — Qualified (independent)",
       "expires_date": null,
       "trainer": "Renata Kowalski",
       "status": "CURRENT",
@@ -30,6 +36,8 @@
     {
       "topic": "Blueprint Reading & GD&T Fundamentals",
       "completed_date": "2023-01-20",
+      "level": 4,
+      "level_display": "Level 4 — Expert (can train/sign off others)",
       "expires_date": null,
       "trainer": "Derek Sung",
       "status": "CURRENT",
@@ -38,6 +46,8 @@
     {
       "topic": "SPC Fundamentals — Control Charts & Cpk",
       "completed_date": "2024-02-27",
+      "level": 2,
+      "level_display": "Level 2 — Assisted (output checked)",
       "expires_date": "2025-02-27",
       "trainer": "Renata Kowalski",
       "status": "EXPIRED",
@@ -46,6 +56,8 @@
     {
       "topic": "Hazardous Materials Handling — GHS/SDS",
       "completed_date": "2022-09-08",
+      "level": 3,
+      "level_display": "Level 3 — Qualified (independent)",
       "expires_date": "2024-09-08",
       "trainer": "James Hollowell",
       "status": "EXPIRED",

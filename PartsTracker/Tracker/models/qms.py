@@ -2181,6 +2181,48 @@ class GeneratedReport(SecureModel):
 
 # ===== TRAINING & CALIBRATION =====
 
+class CompetencyLevel(models.IntegerChoices):
+    """Ordered shop-floor competency scale (the de-facto 4-rung ILUO scale).
+
+    The number is the durable, comparable thing; the label is local dialect.
+    Level 3 (Qualified) is the "works unsupervised" line: 1-2 are below it
+    (still supervised / still checked), 4 is above (independent + can train).
+    Higher value = more competent, so authorization is a simple `held >= min`.
+    """
+
+    TRAINEE = 1, 'Level 1 — Trainee (supervised)'
+    ASSISTED = 2, 'Level 2 — Assisted (output checked)'
+    QUALIFIED = 3, 'Level 3 — Qualified (independent)'
+    EXPERT = 4, 'Level 4 — Expert (can train/sign off others)'
+
+
+class JobRole(SecureModel):
+    """
+    A job role / position (e.g. 'CMM Inspector', 'Machinist', 'Assembler').
+
+    Distinct from TenantGroup — which is a permission/security construct. JobRole
+    is the HR / organizational axis that competency requirements hang off: users
+    are assigned a primary `job_role`, and TrainingRequirement rows scoped to a
+    JobRole define that role's required competence profile (the required-vs-held
+    gap that drives the training matrix, onboarding, and audit views).
+    """
+
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    active = models.BooleanField(
+        default=True,
+        help_text="Inactive roles are hidden from assignment pickers.",
+    )
+
+    class Meta:
+        verbose_name = 'Job Role'
+        verbose_name_plural = 'Job Roles'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class TrainingType(SecureModel):
     """
     Defines a type of training or qualification that personnel can hold.
@@ -2241,6 +2283,16 @@ class TrainingRecord(SecureModel):
     completed_date = models.DateField()
     """Date training was completed."""
 
+    level = models.PositiveSmallIntegerField(
+        choices=CompetencyLevel.choices,
+        default=CompetencyLevel.QUALIFIED,
+        help_text="Assessed competency level reached by this record (1-4). "
+                  "This is the assessed result, not mere attendance — clause 7.2 evidence.",
+    )
+    """Competency level demonstrated. A user may hold several records for one
+    training type over time (renewals / progression); the current competency
+    is the max level among their in-date records."""
+
     expires_date = models.DateField(
         null=True,
         blank=True,
@@ -2263,6 +2315,12 @@ class TrainingRecord(SecureModel):
         verbose_name = 'Training Record'
         verbose_name_plural = 'Training Records'
         ordering = ['-completed_date']
+        permissions = [
+            # Org-wide competency matrix is a supervisor/HR/quality view — kept
+            # distinct from view_trainingrecord so line operators (who hold the
+            # record-view perm) don't get the cross-workforce grid.
+            ("view_training_matrix", "Can view the org-wide training competency matrix"),
+        ]
 
     def __str__(self):
         return f"{self.user} - {self.training_type} ({self.completed_date})"
@@ -2319,6 +2377,15 @@ class TrainingRequirement(SecureModel):
         related_name='requirements'
     )
 
+    min_level = models.PositiveSmallIntegerField(
+        choices=CompetencyLevel.choices,
+        default=CompetencyLevel.QUALIFIED,
+        help_text="Minimum competency level required to be authorized (1-4). "
+                  "Default Qualified (3) = must be independently qualified.",
+    )
+    """The minimum level a user must hold in `training_type` to satisfy this
+    requirement. A user is authorized when their current level >= min_level."""
+
     # Target - exactly one should be set
     step = models.ForeignKey(
         'Tracker.Steps',
@@ -2340,6 +2407,14 @@ class TrainingRequirement(SecureModel):
         null=True,
         blank=True,
         related_name='training_requirements'
+    )
+    job_role = models.ForeignKey(
+        'Tracker.JobRole',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='training_requirements',
+        help_text="Role-scoped requirement: the competence this job role must hold.",
     )
 
     notes = models.TextField(
@@ -2367,15 +2442,20 @@ class TrainingRequirement(SecureModel):
                 condition=models.Q(equipment_type__isnull=False),
                 name='unique_training_per_equipment_type'
             ),
+            models.UniqueConstraint(
+                fields=['training_type', 'job_role'],
+                condition=models.Q(job_role__isnull=False),
+                name='unique_training_per_job_role'
+            ),
         ]
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        targets = [self.step, self.process, self.equipment_type]
+        targets = [self.step, self.process, self.equipment_type, self.job_role]
         count = sum(1 for t in targets if t is not None)
         if count != 1:
             raise ValidationError(
-                "Exactly one of step, process, or equipment_type must be set."
+                "Exactly one of step, process, equipment_type, or job_role must be set."
             )
 
     def save(self, *args, **kwargs):
@@ -2384,17 +2464,19 @@ class TrainingRequirement(SecureModel):
 
     @property
     def target(self):
-        """Returns the Step, Process, or EquipmentType this requirement applies to."""
-        return self.step or self.process or self.equipment_type
+        """Returns the Step, Process, EquipmentType, or JobRole this applies to."""
+        return self.step or self.process or self.equipment_type or self.job_role
 
     @property
     def scope(self):
-        """Returns 'step', 'process', or 'equipment_type'."""
+        """Returns 'step', 'process', 'equipment_type', or 'job_role'."""
         if self.step:
             return 'step'
         if self.process:
             return 'process'
-        return 'equipment_type'
+        if self.equipment_type:
+            return 'equipment_type'
+        return 'job_role'
 
     def __str__(self):
         return f"{self.training_type} → {self.target}"

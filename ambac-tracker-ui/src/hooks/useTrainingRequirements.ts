@@ -8,6 +8,9 @@ export const trainingRequirementsOptions = (options: ListParams = {}) => queryOp
     queryFn: () => api.api_TrainingRequirements_list(options),
 });
 
-export function useTrainingRequirements(options: ListParams = {}) {
-    return useQuery({ ...trainingRequirementsOptions(options) });
+export function useTrainingRequirements(
+    options: ListParams = {},
+    queryOpts?: { enabled?: boolean; retry?: boolean },
+) {
+    return useQuery({ ...trainingRequirementsOptions(options), ...queryOpts });
 }

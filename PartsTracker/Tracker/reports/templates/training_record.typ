@@ -132,10 +132,11 @@
   // Table header
   #table-header[
     #grid(
-      columns: (2.8fr, 1.2fr, 1.2fr, 1.6fr, 1.1fr),
+      columns: (2.6fr, 1.1fr, 0.9fr, 1.1fr, 1.5fr, 1.0fr),
       column-gutter: 6pt,
       text(weight: "semibold", font: sans-font)[Training Topic],
       text(weight: "semibold", font: sans-font)[Completed],
+      align(center)[#text(weight: "semibold", font: sans-font)[Level]],
       text(weight: "semibold", font: sans-font)[Expires],
       text(weight: "semibold", font: sans-font)[Trainer / Provider],
       align(center)[#text(weight: "semibold", font: sans-font)[Status]],
@@ -146,7 +147,7 @@
   #for (idx, rec) in data.records.enumerate() [
     #table-row(idx)[
       #grid(
-        columns: (2.8fr, 1.2fr, 1.2fr, 1.6fr, 1.1fr),
+        columns: (2.6fr, 1.1fr, 0.9fr, 1.1fr, 1.5fr, 1.0fr),
         column-gutter: 6pt,
         align(horizon)[
           #text(font: sans-font, weight: "semibold")[#rec.topic]
@@ -157,6 +158,9 @@
         ],
         align(horizon)[
           #text(fill: muted)[#rec.completed_date]
+        ],
+        align(horizon + center)[
+          #text(font: sans-font, weight: "semibold")[L#rec.level]
         ],
         align(horizon)[
           #if rec.expires_date != none [

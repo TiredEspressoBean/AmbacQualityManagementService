@@ -113,8 +113,14 @@ STAFF_VIEW_PERMISSIONS = [
     'view_samplingseveritystate',
     # Process Change Control
     'view_processchangerequest', 'view_processchangeorder', 'view_processchangenotice',
-    # Training
+    # Training. `view_training_matrix` lives here (not per-group) as a
+    # transparent lean/ILUO board: every internal-staff group spreads
+    # STAFF_VIEW_PERMISSIONS, so all staff (incl. operators) see the competency
+    # grid; the Customer preset omits this bundle, so externals stay out. Pull
+    # this one line out to a narrower set if competency is ever made HR-private.
     'view_trainingrecord', 'view_trainingtype', 'view_trainingrequirement',
+    'view_training_matrix',
+    'view_jobrole',
     # Reports
     'view_generatedreport',
     # AI Chat & Embeddings
@@ -303,6 +309,8 @@ AUTHORING_PERMISSIONS = [
     # Training program definitions
     'add_trainingtype', 'change_trainingtype', 'delete_trainingtype',
     'add_trainingrequirement', 'change_trainingrequirement', 'delete_trainingrequirement',
+    # Job roles (HR / competency profiles)
+    'add_jobrole', 'change_jobrole', 'delete_jobrole',
     # AI embedding pipeline (document-derived)
     'add_docchunk', 'change_docchunk', 'delete_docchunk',
     # Process change control — PCO/PCN lifecycle; PCR proposing is broad

@@ -36,6 +36,8 @@ class TrainingRecordEntry(BaseModel):
 
     topic: str                        # TrainingType.name
     completed_date: date
+    level: int                        # 1-4 competency level (assessed result)
+    level_display: str                # e.g. "Level 3 — Qualified (independent)"
     expires_date: Optional[date]      # None = never expires
     trainer: str                      # trainer full name / email, or empty string
     status: str                       # CURRENT / EXPIRED / EXPIRING_SOON
@@ -169,6 +171,8 @@ class TrainingRecordAdapter(ReportAdapter):
             entries.append(TrainingRecordEntry(
                 topic=rec.training_type.name,
                 completed_date=rec.completed_date,
+                level=rec.level,
+                level_display=rec.get_level_display(),
                 expires_date=rec.expires_date,
                 trainer=_user_display(rec.trainer),
                 status=status,

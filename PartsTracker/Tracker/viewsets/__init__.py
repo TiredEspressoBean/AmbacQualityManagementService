@@ -123,6 +123,8 @@ from .training import (
     TrainingTypeViewSet,
     TrainingRecordViewSet,
     TrainingRequirementViewSet,
+    JobRoleViewSet,
+    CompetenceMatrixView,
 )
 
 # Calibration ViewSets
@@ -415,6 +417,8 @@ __all__ = [
     'TrainingTypeViewSet',
     'TrainingRecordViewSet',
     'TrainingRequirementViewSet',
+    'JobRoleViewSet',
+    'CompetenceMatrixView',
 
     # Calibration
     'CalibrationRecordViewSet',
@@ -555,6 +559,7 @@ def register_viewsets(router):
     router.register(r'TrainingTypes', TrainingTypeViewSet, basename='TrainingTypes')
     router.register(r'TrainingRecords', TrainingRecordViewSet, basename='TrainingRecords')
     router.register(r'TrainingRequirements', TrainingRequirementViewSet, basename='TrainingRequirements')
+    router.register(r'JobRoles', JobRoleViewSet, basename='JobRoles')
 
     # ===== CALIBRATION VIEWSETS =====
     router.register(r'CalibrationRecords', CalibrationRecordViewSet, basename='CalibrationRecords')

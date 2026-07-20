@@ -22,8 +22,8 @@ export const substepsOptions = (queries?: SubstepsListQueries) =>
     });
 
 /** List substeps. Pass `{ step: <step_id> }` to fetch substeps for a step. */
-export function useSubsteps(queries?: SubstepsListQueries) {
-    return useQuery(substepsOptions(queries));
+export function useSubsteps(queries?: SubstepsListQueries, opts?: { enabled?: boolean }) {
+    return useQuery({ ...substepsOptions(queries), ...opts });
 }
 
 /** Single substep by id. */

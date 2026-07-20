@@ -265,6 +265,8 @@ from .qms import (
     GeneratedReport,
 
     # Training & Calibration
+    CompetencyLevel,
+    JobRole,
     TrainingType,
     TrainingRecord,
     TrainingRequirement,
@@ -524,6 +526,8 @@ __all__ = [
     'GeneratedReport',
 
     # Training & Calibration
+    'CompetencyLevel',
+    'JobRole',
     'TrainingType',
     'TrainingRecord',
     'TrainingRequirement',

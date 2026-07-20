@@ -1674,6 +1674,15 @@ class User(AbstractUser):
         help_text="Type of user account"
     )
 
+    job_role = models.ForeignKey(
+        'Tracker.JobRole',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        help_text="Primary job role / position — drives the required-competency profile.",
+    )
+
     first_name = models.CharField(max_length=150, blank=True, null=True)
     """User's first name - nullable to support HubSpot contacts without complete information."""
 
