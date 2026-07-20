@@ -36,13 +36,14 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-    AlertTriangle, BookOpen, Check, ChevronsUpDown, Clock, Hand, Lock, Megaphone, PlayCircle, ScanLine, Timer, Wrench, XCircle,
+    AlertTriangle, BookOpen, Check, ChevronsUpDown, Clock, Hand, Lock, Megaphone, PlayCircle, ScanLine, StickyNote, Timer, Wrench, XCircle,
 } from "lucide-react";
 
 import { api } from "@/lib/api/generated";
 import { useAuthUser, type AuthUser } from "@/hooks/useAuthUser";
 import { ScanBox } from "@/components/home/home-blocks";
 import { useNotificationFeed, useMarkNotificationRead } from "@/hooks/notificationFeed";
+import { useActiveShiftNotes, useAcknowledgeShiftNote } from "@/hooks/shiftNotes";
 
 // ---------------------------------------------------------------------------
 // MOCK — drives the PREVIEW (dimmed) tiles so the planned layout is legible.
@@ -219,6 +220,10 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const markRead = useMarkNotificationRead();
     const unread = feedItems ?? [];
 
+    // LIVE — human-authored shift notes active for this operator; "Got it" acks.
+    const { data: shiftNotes = [] } = useActiveShiftNotes();
+    const ackShiftNote = useAcknowledgeShiftNote();
+
     // PREVIEW state — drives the dimmed tiles so the layout is legible.
     const [queue, setQueue] = useState<QueueOp[]>(INITIAL_QUEUE);
     const [blockedCount, setBlockedCount] = useState(2); // pre-existing blocked jobs (global)
@@ -333,7 +338,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Orient the viewer: what's real vs. planned. */}
             <p className="text-xs text-muted-foreground">
-                Preview build — <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, and the <b className="text-foreground">clock</b> (in/out/break/lunch) are live.
+                Preview build — <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, and the <b className="text-foreground">clock</b> (in/out/break/lunch) are live.
                 Dimmed tiles show the planned layout; they light up as the queue service and blocker model land.
             </p>
 
@@ -497,6 +502,40 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs"
                                     disabled={markRead.isPending}
                                     onClick={() => markRead.mutate(n.id)}
+                                >
+                                    Got it
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </Tile>
+
+                {/* SHIFT NOTES — LIVE: human-authored floor handoff for this
+                    operator. "Got it" acknowledges (a receipt), distinct from
+                    the feed's mark-read. */}
+                <Tile className="md:col-span-2 border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950">
+                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+                        <StickyNote className="h-3.5 w-3.5" /> Shift notes
+                        {shiftNotes.length > 0 && (
+                            <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">{shiftNotes.length}</Badge>
+                        )}
+                    </div>
+                    <div className="mt-2 space-y-1.5 text-sm">
+                        {shiftNotes.length === 0 && (
+                            <p className="text-muted-foreground">No shift notes right now.</p>
+                        )}
+                        {shiftNotes.map((n) => (
+                            <div key={n.id} className="flex items-start gap-2">
+                                <div className="min-w-0 flex-1">
+                                    {n.priority === "HIGH" && (
+                                        <Badge variant="destructive" className="mr-1 align-middle text-[10px]">High</Badge>
+                                    )}
+                                    <b>{n.author_name ?? "Lead"}:</b> {n.body}
+                                </div>
+                                <Button
+                                    size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs"
+                                    disabled={ackShiftNote.isPending}
+                                    onClick={() => ackShiftNote.mutate(n.id)}
                                 >
                                     Got it
                                 </Button>

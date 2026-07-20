@@ -35743,14 +35743,9 @@ problem from the round-4 research).`,
     method: "post",
     path: "/api/ShiftNotes/:id/acknowledge/",
     alias: "api_ShiftNotes_acknowledge_create",
-    description: `Record that this user saw the note (idempotent).`,
+    description: `Record that this user saw the note (idempotent). No request body.`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ShiftNoteRequest,
-      },
       {
         name: "id",
         type: "Path",
@@ -35763,14 +35758,10 @@ problem from the round-4 research).`,
     method: "post",
     path: "/api/ShiftNotes/:id/retract/",
     alias: "api_ShiftNotes_retract_create",
-    description: `Retract (void) a note. Author-tier (change_shiftnote).`,
+    description: `Retract (void) a note. Author-tier (change_shiftnote). Optional
+&#x60;reason&#x60; in the body is honored if present, but not required.`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ShiftNoteRequest,
-      },
       {
         name: "id",
         type: "Path",
@@ -35782,11 +35773,48 @@ problem from the round-4 research).`,
   {
     method: "get",
     path: "/api/ShiftNotes/active/",
-    alias: "api_ShiftNotes_active_retrieve",
+    alias: "api_ShiftNotes_active_list",
     description: `The notes this operator should see now (audience ∩ effective ∩
 un-acked). Paginated to match the list contract.`,
     requestFormat: "json",
-    response: ShiftNote,
+    parameters: [
+      {
+        name: "author",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "is_voided",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "priority",
+        type: "Query",
+        schema: z.enum(["HIGH", "NORMAL"]).optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedShiftNoteList,
   },
   {
     method: "get",

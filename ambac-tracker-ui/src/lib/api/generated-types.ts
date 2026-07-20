@@ -7423,7 +7423,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Record that this user saw the note (idempotent). */
+        /** @description Record that this user saw the note (idempotent). No request body. */
         post: operations["api_ShiftNotes_acknowledge_create"];
         delete?: never;
         options?: never;
@@ -7440,7 +7440,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Retract (void) a note. Author-tier (change_shiftnote). */
+        /**
+         * @description Retract (void) a note. Author-tier (change_shiftnote). Optional
+         *     `reason` in the body is honored if present, but not required.
+         */
         post: operations["api_ShiftNotes_retract_create"];
         delete?: never;
         options?: never;
@@ -7459,7 +7462,7 @@ export interface paths {
          * @description The notes this operator should see now (audience ∩ effective ∩
          *     un-acked). Paginated to match the list contract.
          */
-        get: operations["api_ShiftNotes_active_retrieve"];
+        get: operations["api_ShiftNotes_active_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40006,13 +40009,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShiftNoteRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ShiftNoteRequest"];
-                "multipart/form-data": components["schemas"]["ShiftNoteRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -40034,13 +40031,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShiftNoteRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ShiftNoteRequest"];
-                "multipart/form-data": components["schemas"]["ShiftNoteRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -40052,9 +40043,24 @@ export interface operations {
             };
         };
     };
-    api_ShiftNotes_active_retrieve: {
+    api_ShiftNotes_active_list: {
         parameters: {
-            query?: never;
+            query?: {
+                author?: number;
+                is_voided?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `NORMAL` - Normal
+                 *     * `HIGH` - High
+                 */
+                priority?: "HIGH" | "NORMAL";
+                work_order?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -40066,7 +40072,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ShiftNote"];
+                    "application/json": components["schemas"]["PaginatedShiftNoteList"];
                 };
             };
         };
