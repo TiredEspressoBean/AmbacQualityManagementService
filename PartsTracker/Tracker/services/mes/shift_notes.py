@@ -16,7 +16,7 @@ from django.utils import timezone
 _UNSET = object()
 
 
-def _audience_user_ids(tenant, audience_roles):
+def audience_user_ids(tenant, audience_roles):
     """Resolve a note's audience to concrete user ids (for from_payload
     notification routing). Empty audience = everyone on the floor (internal,
     active users in the tenant); otherwise users in the named tenant groups."""
@@ -36,7 +36,8 @@ def _audience_user_ids(tenant, audience_roles):
 
 def publish_shift_note(
     *, author, tenant, body, audience_roles=None, work_order=None,
-    priority="NORMAL", effective_from=None, effective_until=None,
+    priority="NORMAL", acknowledgment_required=False,
+    effective_from=None, effective_until=None,
 ):
     """Create and publish a shift note, then emit shift_note.published so the
     audience gets a feed alert. Returns the ShiftNote."""
@@ -54,6 +55,7 @@ def publish_shift_note(
         audience_roles=audience,
         work_order=work_order,
         priority=priority,
+        acknowledgment_required=acknowledgment_required,
         effective_from=effective_from,
         effective_until=effective_until,
     )
@@ -76,7 +78,7 @@ def publish_shift_note(
             body_preview=note.body[:140],
             work_order_erp_id=(note.work_order.ERP_id if note.work_order_id else ""),
             priority=note.priority,
-            recipient_user_ids=_audience_user_ids(tenant, audience),
+            recipient_user_ids=audience_user_ids(tenant, audience),
         ),
         correlation_id=f"shift_note:{note.id}",
         idempotency_key=f"shift_note.published:{note.id}",

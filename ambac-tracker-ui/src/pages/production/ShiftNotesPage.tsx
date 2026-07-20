@@ -6,6 +6,7 @@
  */
 import { useState } from "react";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { StickyNote, Users, X } from "lucide-react";
@@ -28,6 +29,7 @@ export default function ShiftNotesPage() {
 
     const [audience, setAudience] = useState<string[]>([]);
     const [highPriority, setHighPriority] = useState(false);
+    const [ackRequired, setAckRequired] = useState(false);
 
     // Audience options = the tenant's groups (empty selection → everyone).
     const { data: groupPage } = useQuery({
@@ -41,11 +43,17 @@ export default function ShiftNotesPage() {
 
     const submit = (body: string) => {
         publish.mutate(
-            { body, audience_roles: audience, priority: highPriority ? "HIGH" : "NORMAL" },
+            {
+                body,
+                audience_roles: audience,
+                priority: highPriority ? "HIGH" : "NORMAL",
+                acknowledgment_required: ackRequired,
+            },
             {
                 onSuccess: () => {
                     setAudience([]);
                     setHighPriority(false);
+                    setAckRequired(false);
                     toast.success("Shift note posted.");
                 },
                 onError: () => toast.error("Couldn't post the note — check your access."),
@@ -99,6 +107,14 @@ export default function ShiftNotesPage() {
                             />
                             High priority
                         </label>
+                        <label className="flex cursor-pointer items-center gap-1.5 text-xs">
+                            <input
+                                type="checkbox"
+                                checked={ackRequired}
+                                onChange={(e) => setAckRequired(e.target.checked)}
+                            />
+                            Requires acknowledgment
+                        </label>
                     </div>
                     <QuickComposer
                         multiline
@@ -125,6 +141,9 @@ export default function ShiftNotesPage() {
                                     {n.priority === "HIGH" && (
                                         <Badge variant="destructive" className="text-[10px]">High</Badge>
                                     )}
+                                    {n.acknowledgment_required && (
+                                        <Badge className="bg-amber-500 text-[10px] text-white hover:bg-amber-500">Must ack</Badge>
+                                    )}
                                     {(n.audience_roles ?? []).length === 0 ? (
                                         <Badge variant="outline" className="text-[10px]">Everyone</Badge>
                                     ) : (
@@ -132,10 +151,34 @@ export default function ShiftNotesPage() {
                                             <Badge key={r} variant="outline" className="text-[10px]">{r}</Badge>
                                         ))
                                     )}
-                                    <span>· {n.ack_count} ack{n.ack_count === 1 ? "" : "s"}</span>
+                                    {n.work_order && n.work_order_erp_id && (
+                                        <Link
+                                            to="/workorder/$workOrderId"
+                                            params={{ workOrderId: n.work_order }}
+                                            className="font-mono text-indigo-600 underline-offset-4 hover:underline dark:text-indigo-300"
+                                        >
+                                            {n.work_order_erp_id}
+                                        </Link>
+                                    )}
                                     {n.is_voided && <Badge variant="outline" className="text-[10px]">Retracted</Badge>}
                                 </div>
                                 <p className="mt-1 whitespace-pre-wrap text-sm">{n.body}</p>
+                                {/* Roster: must-ack notes show who's seen it (the compliance
+                                    record); informational notes just show a count. */}
+                                {n.acknowledgment_required ? (
+                                    <div className="mt-1.5 text-xs text-muted-foreground">
+                                        <span className={n.ack_count < n.audience_size ? "font-medium text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}>
+                                            Acknowledged {n.ack_count} of {n.audience_size}
+                                        </span>
+                                        {n.acknowledged_by.length > 0 && (
+                                            <span> · {n.acknowledged_by.map((a) => a.user_name).join(", ")}</span>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="mt-1.5 text-xs text-muted-foreground">
+                                        {n.ack_count} acknowledgment{n.ack_count === 1 ? "" : "s"}
+                                    </div>
+                                )}
                             </div>
                             {!n.is_voided && (
                                 <Button

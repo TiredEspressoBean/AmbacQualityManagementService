@@ -43,7 +43,7 @@ import { api } from "@/lib/api/generated";
 import { useAuthUser, type AuthUser } from "@/hooks/useAuthUser";
 import { ScanBox } from "@/components/home/home-blocks";
 import { useNotificationFeed, useMarkNotificationRead } from "@/hooks/notificationFeed";
-import { useActiveShiftNotes, useAcknowledgeShiftNote } from "@/hooks/shiftNotes";
+import { useActiveShiftNotes, useAcknowledgeShiftNote, type ShiftNote } from "@/hooks/shiftNotes";
 
 // ---------------------------------------------------------------------------
 // MOCK — drives the PREVIEW (dimmed) tiles so the planned layout is legible.
@@ -223,6 +223,28 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // LIVE — human-authored shift notes active for this operator; "Got it" acks.
     const { data: shiftNotes = [] } = useActiveShiftNotes();
     const ackShiftNote = useAcknowledgeShiftNote();
+    const mustAckNotes = shiftNotes.filter((n) => n.acknowledgment_required);
+    const infoNotes = shiftNotes.filter((n) => !n.acknowledgment_required);
+    const noteRow = (n: ShiftNote) => (
+        <div key={n.id} className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+                {n.priority === "HIGH" && (
+                    <Badge variant="destructive" className="mr-1 align-middle text-[10px]">High</Badge>
+                )}
+                <b>{n.author_name ?? "Lead"}:</b> {n.body}
+                {n.work_order_erp_id ? (
+                    <span className="ml-1 font-mono text-xs text-muted-foreground">· {n.work_order_erp_id}</span>
+                ) : null}
+            </div>
+            <Button
+                size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs"
+                disabled={ackShiftNote.isPending}
+                onClick={() => ackShiftNote.mutate(n.id)}
+            >
+                Got it
+            </Button>
+        </div>
+    );
 
     // PREVIEW state — drives the dimmed tiles so the layout is legible.
     const [queue, setQueue] = useState<QueueOp[]>(INITIAL_QUEUE);
@@ -520,28 +542,21 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                             <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">{shiftNotes.length}</Badge>
                         )}
                     </div>
-                    <div className="mt-2 space-y-1.5 text-sm">
-                        {shiftNotes.length === 0 && (
-                            <p className="text-muted-foreground">No shift notes right now.</p>
-                        )}
-                        {shiftNotes.map((n) => (
-                            <div key={n.id} className="flex items-start gap-2">
-                                <div className="min-w-0 flex-1">
-                                    {n.priority === "HIGH" && (
-                                        <Badge variant="destructive" className="mr-1 align-middle text-[10px]">High</Badge>
-                                    )}
-                                    <b>{n.author_name ?? "Lead"}:</b> {n.body}
-                                </div>
-                                <Button
-                                    size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs"
-                                    disabled={ackShiftNote.isPending}
-                                    onClick={() => ackShiftNote.mutate(n.id)}
-                                >
-                                    Got it
-                                </Button>
+                    {shiftNotes.length === 0 && (
+                        <p className="mt-2 text-sm text-muted-foreground">No shift notes right now.</p>
+                    )}
+                    {/* Must-acknowledge notes lead, called out — a compulsory action. */}
+                    {mustAckNotes.length > 0 && (
+                        <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-950">
+                            <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                                <AlertTriangle className="h-3 w-3" /> Must acknowledge
                             </div>
-                        ))}
-                    </div>
+                            <div className="space-y-1.5 text-sm">{mustAckNotes.map(noteRow)}</div>
+                        </div>
+                    )}
+                    {infoNotes.length > 0 && (
+                        <div className="mt-2 space-y-1.5 text-sm">{infoNotes.map(noteRow)}</div>
+                    )}
                 </Tile>
 
                 {/* THEN — the rest of the queue. Needs the queue aggregate. Preview. */}

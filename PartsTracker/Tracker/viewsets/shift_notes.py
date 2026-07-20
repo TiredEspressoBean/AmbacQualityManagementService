@@ -17,6 +17,7 @@ from Tracker.serializers.shift_notes import ShiftNoteSerializer
 from Tracker.services.mes.shift_notes import (
     acknowledge_shift_note,
     active_shift_notes_for_user,
+    publish_shift_note,
     retract_shift_note,
 )
 from Tracker.viewsets.base import TenantScopedMixin
@@ -40,7 +41,21 @@ class ShiftNoteViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     action_permissions = {"retract": ["change_shiftnote"]}
 
     def perform_create(self, serializer):
-        serializer.save(tenant=self.tenant, author=self.request.user)
+        # Route creation through the service so publishing emits
+        # shift_note.published (the feed alert) — plain serializer.save() would
+        # persist the row but skip the notification.
+        data = serializer.validated_data
+        serializer.instance = publish_shift_note(
+            author=self.request.user,
+            tenant=self.tenant,
+            body=data.get("body", ""),
+            audience_roles=data.get("audience_roles") or [],
+            work_order=data.get("work_order"),
+            priority=data.get("priority", "NORMAL"),
+            acknowledgment_required=data.get("acknowledgment_required", False),
+            effective_from=data.get("effective_from"),
+            effective_until=data.get("effective_until"),
+        )
 
     def perform_destroy(self, instance):
         # Defensive: if DELETE were ever reachable, soft-void rather than

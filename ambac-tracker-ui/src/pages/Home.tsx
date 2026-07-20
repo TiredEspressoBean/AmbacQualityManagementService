@@ -62,7 +62,10 @@ export default function Home() {
                 <h1 className="text-2xl font-semibold tracking-tight">
                     Welcome back{user.first_name ? `, ${user.first_name}` : ""}
                 </h1>
-                <p className="text-sm text-muted-foreground">Here's what needs you right now.</p>
+                <p className="text-sm text-muted-foreground">
+                    {persona ? <span className="font-medium text-foreground">{persona}</span> : null}
+                    {persona ? " · " : ""}Here's what needs you right now.
+                </p>
             </div>
             {blocks.map((b) => (
                 <b.Component key={b.id} user={user} />

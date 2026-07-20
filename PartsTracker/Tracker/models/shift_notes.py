@@ -54,6 +54,10 @@ class ShiftNote(SecureModel, VoidableModel):
         choices=ShiftNotePriority.choices,
         default=ShiftNotePriority.NORMAL,
     )
+    # Two kinds: informational (dismiss-on-ack) vs acknowledgment-required
+    # (compulsory — the operator sees a prominent "must acknowledge" call, and
+    # the author gets a who-saw-it roster for the audit trail).
+    acknowledgment_required = models.BooleanField(default=False)
     # Validity window — a shift note goes stale ("before lunch"), unlike a
     # point-in-time notification. Null bound = open-ended.
     effective_from = models.DateTimeField(null=True, blank=True)

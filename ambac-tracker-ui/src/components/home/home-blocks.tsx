@@ -34,8 +34,9 @@ import {
     FileText, FileWarning, Gauge, GitBranch, Inbox, Megaphone, PackageSearch, ScanLine,
     Truck, Wrench,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { AuthUser } from "@/hooks/useAuthUser";
-import { KpiCard, AttentionList } from "@/components/analytics";
+import { AttentionList } from "@/components/analytics";
 import { useMyCapaTasks } from "@/hooks/useMyCapaTasks";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
 import { useIncomingInspection } from "@/hooks/useIncomingInspection";
@@ -349,6 +350,78 @@ function MyQualityActionsBlock({ user }: { user: AuthUser }) {
 }
 
 // ---------------------------------------------------------------------------
+// Compact stat primitives — the QUIET "reference" counterpart to an act-now
+// list block. A stat is ~64px tall (vs the shared KpiCard's ~240px), lays out
+// as an even-fill strip (no orphaned dead cell), reads muted at zero so real
+// counts pop, and colors only a non-zero value. Reference blocks use these;
+// act-now blocks (needs-attention, queues) keep full Card+list chrome — that
+// contrast is what carries the act-now vs reference hierarchy.
+// ---------------------------------------------------------------------------
+
+function StatTile({
+    label, value, icon: Icon, link, variant = "default",
+}: {
+    label: string;
+    value: number | string;
+    icon: LucideIcon;
+    link: string;
+    variant?: "default" | "warning" | "danger";
+}) {
+    const isZero = value === 0 || value === "0" || value === "0%";
+    const valueClass = isZero
+        ? "text-muted-foreground/50"
+        : variant === "danger"
+            ? "text-red-600 dark:text-red-400"
+            : variant === "warning"
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-foreground";
+    return (
+        <Link
+            to={link}
+            className="min-w-[130px] flex-1 rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-accent"
+        >
+            <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs text-muted-foreground">{label}</span>
+                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            </div>
+            <div className={`mt-0.5 text-2xl font-semibold tabular-nums ${valueClass}`}>{value}</div>
+        </Link>
+    );
+}
+
+/** Even-fill row of stat tiles: flex-1 tiles stretch to fill the last row, so a
+ *  count that doesn't divide the grid never leaves an orphaned empty cell. */
+function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
+            <div className="flex flex-wrap gap-2">{children}</div>
+        </div>
+    );
+}
+
+/** Graceful all-clear state for a primary block whose data is zero — next-step
+ *  scent instead of a row of dead zeros (the "dead page" first-login problem). */
+function EmptyBlock({ icon: Icon, title, message, to, cta }: {
+    icon: LucideIcon; title: string; message: string; to: string; cta: string;
+}) {
+    return (
+        <Card>
+            <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
+                <Icon className="h-8 w-8 text-muted-foreground/60" />
+                <div className="text-sm font-medium">{title}</div>
+                <p className="max-w-xs text-xs text-muted-foreground">{message}</p>
+                <Link to={to}>
+                    <Button variant="outline" size="sm" className="mt-1">
+                        {cta} <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                </Link>
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Needs attention (manager/lead triage feed) — the backend computes what's
 // urgent (`/api/dashboard/needs_attention/`) so the block never goes stale;
 // each item deep-links to the surface that resolves it.
@@ -388,16 +461,16 @@ function NeedsAttentionBlock() {
 // ---------------------------------------------------------------------------
 
 function QualityKpisBlock() {
-    const { data, isLoading } = useDashboardKpis();
+    const { data } = useDashboardKpis();
     const overdue = data?.overdue_capas ?? 0;
     return (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <KpiCard title="Open NCRs" value={data?.open_ncrs ?? 0} icon={FileWarning} link="/quality/ncrs" isLoading={isLoading} />
-            <KpiCard title="In quarantine" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" isLoading={isLoading} />
-            <KpiCard title="Active CAPAs" value={data?.active_capas ?? 0} icon={ClipboardCheck} link="/quality/capas" isLoading={isLoading} />
-            <KpiCard title="Overdue CAPAs" value={overdue} icon={AlertTriangle} link="/quality/capas" variant={overdue > 0 ? "danger" : "default"} isLoading={isLoading} />
-            <KpiCard title="First pass yield" value={`${data?.current_fpy ?? 0}%`} icon={Gauge} link="/analysis" isLoading={isLoading} />
-        </div>
+        <StatSection title="Quality">
+            <StatTile label="Open NCRs" value={data?.open_ncrs ?? 0} icon={FileWarning} link="/quality/ncrs" />
+            <StatTile label="In quarantine" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" />
+            <StatTile label="Active CAPAs" value={data?.active_capas ?? 0} icon={ClipboardCheck} link="/quality/capas" />
+            <StatTile label="Overdue CAPAs" value={overdue} icon={AlertTriangle} link="/quality/capas" variant={overdue > 0 ? "danger" : "default"} />
+            <StatTile label="First pass yield" value={`${data?.current_fpy ?? 0}%`} icon={Gauge} link="/analysis" />
+        </StatSection>
     );
 }
 
@@ -455,16 +528,27 @@ function AvailableToClaimBlock() {
 // ---------------------------------------------------------------------------
 
 function DocumentsBlock() {
-    const { data, isLoading } = useDocumentStats();
+    const { data } = useDocumentStats();
     const needsMe = data?.needs_my_approval ?? 0;
+    const pending = data?.pending_approval ?? 0;
     const dueReview = data?.due_for_review ?? 0;
+    const released = data?.released ?? 0;
+    if (needsMe + pending + dueReview + released === 0) {
+        return (
+            <EmptyBlock
+                icon={FileCheck} title="Documents"
+                message="Nothing needs your sign-off or review right now."
+                to="/documents" cta="Open documents"
+            />
+        );
+    }
     return (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <KpiCard title="Needs my approval" value={needsMe} icon={ClipboardCheck} link="/documents" variant={needsMe > 0 ? "warning" : "default"} isLoading={isLoading} />
-            <KpiCard title="Pending approval" value={data?.pending_approval ?? 0} icon={FileText} link="/documents" isLoading={isLoading} />
-            <KpiCard title="Due for review" value={dueReview} icon={CalendarClock} link="/documents/list" variant={dueReview > 0 ? "warning" : "default"} isLoading={isLoading} />
-            <KpiCard title="Released" value={data?.released ?? 0} icon={FileCheck} link="/documents/list" isLoading={isLoading} />
-        </div>
+        <StatSection title="Documents">
+            <StatTile label="Needs my approval" value={needsMe} icon={ClipboardCheck} link="/documents" variant={needsMe > 0 ? "warning" : "default"} />
+            <StatTile label="Pending approval" value={pending} icon={FileText} link="/documents" />
+            <StatTile label="Due for review" value={dueReview} icon={CalendarClock} link="/documents/list" variant={dueReview > 0 ? "warning" : "default"} />
+            <StatTile label="Released" value={released} icon={FileCheck} link="/documents/list" />
+        </StatSection>
     );
 }
 
@@ -478,12 +562,22 @@ function ChangeControlBlock() {
     const { data: pcrs } = useProcessChangeRequests();
     const { data: pcos } = useProcessChangeOrders();
     const { data: pcns } = useProcessChangeNotices();
+    const r = countRows(pcrs), o = countRows(pcos), n = countRows(pcns);
+    if (r + o + n === 0) {
+        return (
+            <EmptyBlock
+                icon={GitBranch} title="Change control"
+                message="No change requests, orders, or notices in flight."
+                to="/quality/change-control" cta="Open change control"
+            />
+        );
+    }
     return (
-        <div className="grid grid-cols-3 gap-3">
-            <KpiCard title="Change requests" value={countRows(pcrs)} icon={GitBranch} link="/quality/change-control" />
-            <KpiCard title="Change orders" value={countRows(pcos)} icon={FileText} link="/quality/change-control" />
-            <KpiCard title="Change notices" value={countRows(pcns)} icon={Megaphone} link="/quality/change-control" />
-        </div>
+        <StatSection title="Change control">
+            <StatTile label="Change requests" value={r} icon={GitBranch} link="/quality/change-control" />
+            <StatTile label="Change orders" value={o} icon={FileText} link="/quality/change-control" />
+            <StatTile label="Change notices" value={n} icon={Megaphone} link="/quality/change-control" />
+        </StatSection>
     );
 }
 
@@ -499,10 +593,10 @@ function OutsideProcessingBlock() {
     const readyCount = ready.length;
     if (out === 0 && readyCount === 0) return null;
     return (
-        <div className="grid grid-cols-2 gap-3">
-            <KpiCard title="Out at vendors" value={out} icon={Truck} link="/production/outside-processing" />
-            <KpiCard title="Ready to ship" value={readyCount} icon={PackageSearch} link="/production/outside-processing" variant={readyCount > 0 ? "warning" : "default"} />
-        </div>
+        <StatSection title="Outside processing">
+            <StatTile label="Out at vendors" value={out} icon={Truck} link="/production/outside-processing" />
+            <StatTile label="Ready to ship" value={readyCount} icon={PackageSearch} link="/production/outside-processing" variant={readyCount > 0 ? "warning" : "default"} />
+        </StatSection>
     );
 }
 

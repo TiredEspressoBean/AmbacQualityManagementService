@@ -118,6 +118,50 @@ class ShiftNoteApiTests(TenantTestCase):
         resp = self.client.post("/api/ShiftNotes/", {"body": "hi", "audience_roles": []}, format="json")
         self.assertEqual(resp.status_code, 403)
 
+    def test_ack_required_note_exposes_roster(self):
+        self.authenticate_as(self.lead, self.tenant_a)
+        resp = self.client.post(
+            "/api/ShiftNotes/",
+            {"body": "Gauge #7 out of cal — do not use.", "audience_roles": [],
+             "acknowledgment_required": True},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertTrue(resp.data["acknowledgment_required"])
+        self.assertEqual(resp.data["ack_count"], 0)
+        self.assertEqual(resp.data["acknowledged_by"], [])
+        note_id = resp.data["id"]
+
+        # Operator acknowledges.
+        self.authenticate_as(self.operator, self.tenant_a)
+        self.assertEqual(
+            self.client.post(f"/api/ShiftNotes/{note_id}/acknowledge/").status_code, 200
+        )
+
+        # Lead sees the roster: one acker, audience sized.
+        self.authenticate_as(self.lead, self.tenant_a)
+        got = self.client.get(f"/api/ShiftNotes/{note_id}/")
+        self.assertEqual(got.data["ack_count"], 1)
+        self.assertEqual(len(got.data["acknowledged_by"]), 1)
+        self.assertGreaterEqual(got.data["audience_size"], 1)
+
+    def test_api_create_routes_through_publish_and_emits(self):
+        # Guards the fix: perform_create must go through publish_shift_note so
+        # the feed alert (shift_note.published) fires — plain serializer.save()
+        # would persist the row but skip the notification.
+        from unittest.mock import patch
+
+        self.authenticate_as(self.lead, self.tenant_a)
+        with patch("Tracker.services.core.notifications.emit") as mock_emit:
+            resp = self.client.post(
+                "/api/ShiftNotes/",
+                {"body": "Run WO-51 next.", "audience_roles": []},
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertTrue(mock_emit.called)
+        self.assertEqual(mock_emit.call_args.args[0], "shift_note.published")
+
     def test_operator_can_read_active_and_acknowledge(self):
         note = publish_shift_note(author=self.lead, tenant=self.tenant_a, body="see me")
         self.authenticate_as(self.operator, self.tenant_a)
