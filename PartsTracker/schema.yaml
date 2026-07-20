@@ -17931,7 +17931,7 @@ paths:
   /api/ShiftNotes/{id}/acknowledge/:
     post:
       operationId: api_ShiftNotes_acknowledge_create
-      description: Record that this user saw the note (idempotent).
+      description: Record that this user saw the note (idempotent). No request body.
       parameters:
       - in: path
         name: id
@@ -17942,18 +17942,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ShiftNoteRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ShiftNoteRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ShiftNoteRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -17967,7 +17955,9 @@ paths:
   /api/ShiftNotes/{id}/retract/:
     post:
       operationId: api_ShiftNotes_retract_create
-      description: Retract (void) a note. Author-tier (change_shiftnote).
+      description: |-
+        Retract (void) a note. Author-tier (change_shiftnote). Optional
+        `reason` in the body is honored if present, but not required.
       parameters:
       - in: path
         name: id
@@ -17978,18 +17968,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ShiftNoteRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ShiftNoteRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ShiftNoteRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -18002,10 +17980,52 @@ paths:
           description: ''
   /api/ShiftNotes/active/:
     get:
-      operationId: api_ShiftNotes_active_retrieve
+      operationId: api_ShiftNotes_active_list
       description: |-
         The notes this operator should see now (audience ∩ effective ∩
         un-acked). Paginated to match the list contract.
+      parameters:
+      - in: query
+        name: author
+        schema:
+          type: integer
+      - in: query
+        name: is_voided
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: priority
+        schema:
+          type: string
+          enum:
+          - HIGH
+          - NORMAL
+        description: |-
+          * `NORMAL` - Normal
+          * `HIGH` - High
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
       tags:
       - api
       security:
@@ -18016,7 +18036,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ShiftNote'
+                $ref: '#/components/schemas/PaginatedShiftNoteList'
           description: ''
   /api/Shifts/:
     get:

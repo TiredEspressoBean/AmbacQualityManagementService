@@ -6,6 +6,7 @@ floor can see notes. `acknowledge` is CRUD-exempt: an operator acking a note is
 not authoring one, so it must not demand add_shiftnote.
 """
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
@@ -46,6 +47,7 @@ class ShiftNoteViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         # hard-delete. The real retract path is the `retract` action below.
         retract_shift_note(instance, user=self.request.user)
 
+    @extend_schema(responses=ShiftNoteSerializer(many=True))
     @action(detail=False, methods=["get"], url_path="active")
     def active(self, request):
         """The notes this operator should see now (audience ∩ effective ∩
@@ -56,16 +58,19 @@ class ShiftNoteViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             return self.get_paginated_response(self.get_serializer(page, many=True).data)
         return Response(self.get_serializer(notes, many=True).data)
 
+    @extend_schema(request=None, responses=ShiftNoteSerializer)
     @action(detail=True, methods=["post"], url_path="acknowledge")
     def acknowledge(self, request, pk=None):
-        """Record that this user saw the note (idempotent)."""
+        """Record that this user saw the note (idempotent). No request body."""
         note = self.get_object()
         acknowledge_shift_note(note, user=request.user)
         return Response(self.get_serializer(note).data)
 
+    @extend_schema(request=None, responses=ShiftNoteSerializer)
     @action(detail=True, methods=["post"], url_path="retract")
     def retract(self, request, pk=None):
-        """Retract (void) a note. Author-tier (change_shiftnote)."""
+        """Retract (void) a note. Author-tier (change_shiftnote). Optional
+        `reason` in the body is honored if present, but not required."""
         note = self.get_object()
         retract_shift_note(note, user=request.user, reason=request.data.get("reason", ""))
         return Response(self.get_serializer(note).data)

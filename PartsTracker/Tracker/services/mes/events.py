@@ -142,3 +142,53 @@ register_event(EventType(
     description='Shipment dispatched. Customer-scoped rules can route to ExternalContacts.',
     external_routable=True,
 ))
+
+
+# =============================================================================
+# shift_note.published — fired when a lead publishes a floor handoff note.
+# Recipients are the note's audience (resolved at publish time), routed via
+# `recipient_strategy='from_payload'` reading `recipient_user_ids`.
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class ShiftNotePublishedPayload:
+    """Payload for `shift_note.published`. `recipient_user_ids` carries the
+    note's resolved audience for from_payload routing."""
+
+    id: str                              # ShiftNote id (source GFK / correlation)
+    tenant_id: str
+    author_name: str
+    body_preview: str
+    work_order_erp_id: str
+    priority: str                        # 'NORMAL' / 'HIGH'
+    recipient_user_ids: list[int]
+
+    @classmethod
+    def sample(cls) -> 'ShiftNotePublishedPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000f1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            author_name='Luis Ramirez (Shift Lead)',
+            body_preview='Prioritize WO-2024-0042 before lunch — customer pickup at 2pm.',
+            work_order_erp_id='WO-2024-0042',
+            priority='HIGH',
+            recipient_user_ids=[42],
+        )
+
+
+register_event(EventType(
+    code='shift_note.published',
+    label='Shift Note Published',
+    domain='Production',
+    payload_schema=ShiftNotePublishedPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=[],          # routing is per-note via payload.recipient_user_ids
+    default_on=True,
+    transactional=True,
+    description=(
+        'A lead published a shift-handoff note. Recipients are the note\'s '
+        'audience, routed via payload.recipient_user_ids.'
+    ),
+    external_routable=False,
+))

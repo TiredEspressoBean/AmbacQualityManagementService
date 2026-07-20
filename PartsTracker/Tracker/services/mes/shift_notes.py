@@ -16,27 +16,72 @@ from django.utils import timezone
 _UNSET = object()
 
 
+def _audience_user_ids(tenant, audience_roles):
+    """Resolve a note's audience to concrete user ids (for from_payload
+    notification routing). Empty audience = everyone on the floor (internal,
+    active users in the tenant); otherwise users in the named tenant groups."""
+    from Tracker.models import User, UserRole
+
+    if audience_roles:
+        return list(
+            UserRole.objects.filter(
+                group__tenant=tenant, group__name__in=audience_roles
+            ).values_list("user_id", flat=True).distinct()
+        )
+    return list(
+        User.objects.filter(tenant=tenant, is_active=True, user_type="INTERNAL")
+        .values_list("id", flat=True)
+    )
+
+
 def publish_shift_note(
     *, author, tenant, body, audience_roles=None, work_order=None,
     priority="NORMAL", effective_from=None, effective_until=None,
 ):
-    """Create and publish a shift note. Returns the ShiftNote."""
+    """Create and publish a shift note, then emit shift_note.published so the
+    audience gets a feed alert. Returns the ShiftNote."""
     from Tracker.models import ShiftNote
 
     body = (body or "").strip()
     if not body:
         raise ValueError("Shift note body cannot be empty.")
 
-    return ShiftNote.objects.create(
+    audience = list(audience_roles or [])
+    note = ShiftNote.objects.create(
         tenant=tenant,
         author=author,
         body=body,
-        audience_roles=list(audience_roles or []),
+        audience_roles=audience,
         work_order=work_order,
         priority=priority,
         effective_from=effective_from,
         effective_until=effective_until,
     )
+
+    # Alert the audience via the notification feed (the note is the record;
+    # the engine only points at it). Recipients resolved from the audience.
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.mes.events import ShiftNotePublishedPayload
+
+    author_name = ""
+    if author is not None:
+        author_name = author.get_full_name() or getattr(author, "email", "") or ""
+    emit(
+        "shift_note.published",
+        tenant=tenant,
+        payload=ShiftNotePublishedPayload(
+            id=str(note.id),
+            tenant_id=str(tenant.id),
+            author_name=author_name,
+            body_preview=note.body[:140],
+            work_order_erp_id=(note.work_order.ERP_id if note.work_order_id else ""),
+            priority=note.priority,
+            recipient_user_ids=_audience_user_ids(tenant, audience),
+        ),
+        correlation_id=f"shift_note:{note.id}",
+        idempotency_key=f"shift_note.published:{note.id}",
+    )
+    return note
 
 
 def edit_shift_note(

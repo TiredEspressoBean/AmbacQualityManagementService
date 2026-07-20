@@ -95,6 +95,15 @@ STARTER_RULES = [
         "channels": ["in_app"],
         "min_gap_seconds": 0,
     },
+    {
+        "event_code": "shift_note.published",
+        "name": "Shift notes — alert the audience",
+        "description": "Default starter rule. The note's audience gets alerted, routed via payload.recipient_user_ids.",
+        "recipient_strategy": "from_payload",
+        "recipient_group_names": [],
+        "channels": ["in_app"],
+        "min_gap_seconds": 0,
+    },
 ]
 
 

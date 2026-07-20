@@ -369,6 +369,17 @@ WILDCARD_GENERIC = {
 }
 
 
+SHIFT_NOTE_PUBLISHED = {
+    "event_code": "shift_note.published",
+    "in_app": {
+        "subject": "Shift note from {{ payload.author_name }}",
+        "body_text": "{{ payload.body_preview }}",
+        "action_url_template": "/production/operator",
+        "severity": "info",
+        "icon": "sticky-note",
+    },
+}
+
 ALL_TEMPLATES = [
     NCR_OPENED,
     STEP_FAILURE,
@@ -377,6 +388,7 @@ ALL_TEMPLATES = [
     DOCUMENT_APPROVAL_REQUIRED,
     ORDER_SHIPPED,
     GAGE_CALIBRATION_OVERDUE,
+    SHIFT_NOTE_PUBLISHED,
     WILDCARD_GENERIC,
 ]
 
