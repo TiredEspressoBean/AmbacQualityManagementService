@@ -2477,13 +2477,20 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         GET /step-executions/my_workload/
 
         Returns all active step executions assigned to the current user.
-        Used for operator work queue / inbox.
+        Used for operator work queue / inbox. Paginated to match the schema
+        (spectacular paginates list actions on a paginated viewset) and the rest
+        of the list endpoints — the FE client expects the {results: [...]} shape.
         """
         queryset = self.get_queryset().filter(
             assigned_to=request.user,
             exited_at__isnull=True,
             status__in=['PENDING', 'IN_PROGRESS']
         ).order_by('entered_at')
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = StepExecutionListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
         serializer = StepExecutionListSerializer(queryset, many=True)
         return Response(serializer.data)
