@@ -6,7 +6,7 @@ import {
     Calendar, Building2, User, FileText, Package,
     Activity, ChevronDown, ChevronRight, Timer,
     CalendarClock, Users, File, Download, Image, FileSpreadsheet,
-    Send, MessageSquare, Eye, EyeOff
+    MessageSquare, Eye, EyeOff
 } from "lucide-react";
 import { formatDistanceToNow, format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { InviteToOrderModal } from "@/components/invite-to-order-modal";
 import { OrderLineItem } from "@/components/order-line-item";
 import { OrderDocumentsModal } from "@/components/order-documents-modal";
+import { QuickComposer } from "@/components/QuickComposer";
 
 function getStatusIcon(stage: any, size: "sm" | "md" = "md") {
     const sizeClass = size === "sm" ? "w-4 h-4" : "w-5 h-5";
@@ -161,7 +162,6 @@ export function OrderDetailsPage() {
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
     const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
     const [notesExpanded, setNotesExpanded] = useState(false);
-    const [newNote, setNewNote] = useState("");
     const [noteVisibility, setNoteVisibility] = useState<"visible" | "internal">("visible");
 
     const { data, isLoading, error, refetch } = useOrderDetails(orderNumber);
@@ -176,7 +176,6 @@ export function OrderDetailsPage() {
             );
         },
         onSuccess: () => {
-            setNewNote("");
             refetch();
         },
     });
@@ -452,20 +451,11 @@ export function OrderDetailsPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Add Note Form */}
-                            <div className="flex gap-2">
-                                <div className="flex-1 flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Add a note..."
-                                        value={newNote}
-                                        onChange={(e) => setNewNote(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" && newNote.trim()) {
-                                                addNoteMutation.mutate({ message: newNote, visibility: noteVisibility });
-                                            }
-                                        }}
-                                        className="flex-1 px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                                    />
+                            <QuickComposer
+                                placeholder="Add a note..."
+                                submitting={addNoteMutation.isPending}
+                                onSubmit={(message) => addNoteMutation.mutate({ message, visibility: noteVisibility })}
+                                trailing={
                                     <Button
                                         variant="outline"
                                         size="icon"
@@ -474,15 +464,8 @@ export function OrderDetailsPage() {
                                     >
                                         {noteVisibility === "visible" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                                     </Button>
-                                </div>
-                                <Button
-                                    size="icon"
-                                    disabled={!newNote.trim() || addNoteMutation.isPending}
-                                    onClick={() => addNoteMutation.mutate({ message: newNote, visibility: noteVisibility })}
-                                >
-                                    <Send className="h-4 w-4" />
-                                </Button>
-                            </div>
+                                }
+                            />
 
                             {/* Notes Timeline */}
                             {notes_timeline && notes_timeline.length > 0 ? (
