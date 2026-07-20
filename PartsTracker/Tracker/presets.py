@@ -71,6 +71,8 @@ STAFF_VIEW_PERMISSIONS = [
     'view_workorderhold', 'view_steprollback', 'view_batchrollback',
     'view_stepoverride', 'view_fpirecord', 'view_batchexecution',
     'view_steprequirement',
+    # Shift notes (all floor staff read; authoring is a lead grant)
+    'view_shiftnote', 'view_shiftnoteack',
     # BOM & Materials
     'view_bom', 'view_bomline', 'view_assemblyusage', 'view_disassemblybomline',
     'view_materiallot', 'view_materialusage', 'view_harvestedcomponent',
@@ -403,6 +405,13 @@ NOTIFICATION_ADMIN_PERMISSIONS = [
     'add_notificationschedule', 'change_notificationschedule',
 ]
 
+# Authoring shift notes (floor handoff) = the supervisor tier (Shift Lead +
+# Production Manager + Tenant Admin), NOT line operators. No delete_ — notes
+# soft-delete via void (retract), so retract is gated by change_shiftnote.
+SHIFT_NOTE_AUTHOR_PERMISSIONS = [
+    'add_shiftnote', 'change_shiftnote',
+]
+
 # =============================================================================
 # GROUP PRESETS
 # =============================================================================
@@ -458,6 +467,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Author shift notes (floor handoff)
+            *SHIFT_NOTE_AUTHOR_PERMISSIONS,
         ],
     },
 
@@ -515,6 +526,7 @@ GROUP_PRESETS = {
         'name': 'Production Manager',
         'description': 'Manage production operations, work orders, scheduling',
         'permissions': [
+            *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
@@ -559,6 +571,7 @@ GROUP_PRESETS = {
         'name': 'Shift Lead',
         'description': 'Floor supervisor: runs work like an operator plus team visibility and quality oversight',
         'permissions': [
+            *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,

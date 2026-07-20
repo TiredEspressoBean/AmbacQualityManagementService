@@ -17731,6 +17731,293 @@ paths:
               schema:
                 $ref: '#/components/schemas/ScheduleSlot'
           description: ''
+  /api/ShiftNotes/:
+    get:
+      operationId: api_ShiftNotes_list
+      description: Human-authored floor handoff notes. Retract = DELETE (soft void).
+      parameters:
+      - in: query
+        name: author
+        schema:
+          type: integer
+      - in: query
+        name: is_voided
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: priority
+        schema:
+          type: string
+          enum:
+          - HIGH
+          - NORMAL
+        description: |-
+          * `NORMAL` - Normal
+          * `HIGH` - High
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedShiftNoteList'
+          description: ''
+    post:
+      operationId: api_ShiftNotes_create
+      description: Human-authored floor handoff notes. Retract = DELETE (soft void).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftNote'
+          description: ''
+  /api/ShiftNotes/{id}/:
+    get:
+      operationId: api_ShiftNotes_retrieve
+      description: Human-authored floor handoff notes. Retract = DELETE (soft void).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this shift note.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftNote'
+          description: ''
+    put:
+      operationId: api_ShiftNotes_update
+      description: Human-authored floor handoff notes. Retract = DELETE (soft void).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this shift note.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftNote'
+          description: ''
+    patch:
+      operationId: api_ShiftNotes_partial_update
+      description: Human-authored floor handoff notes. Retract = DELETE (soft void).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this shift note.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedShiftNoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedShiftNoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedShiftNoteRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftNote'
+          description: ''
+    delete:
+      operationId: api_ShiftNotes_destroy
+      description: Human-authored floor handoff notes. Retract = DELETE (soft void).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this shift note.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/ShiftNotes/{id}/acknowledge/:
+    post:
+      operationId: api_ShiftNotes_acknowledge_create
+      description: Record that this user saw the note (idempotent).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this shift note.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftNote'
+          description: ''
+  /api/ShiftNotes/{id}/retract/:
+    post:
+      operationId: api_ShiftNotes_retract_create
+      description: Retract (void) a note. Author-tier (change_shiftnote).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this shift note.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftNoteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftNote'
+          description: ''
+  /api/ShiftNotes/active/:
+    get:
+      operationId: api_ShiftNotes_active_retrieve
+      description: |-
+        The notes this operator should see now (audience ∩ effective ∩
+        un-acked). Paginated to match the list contract.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftNote'
+          description: ''
   /api/Shifts/:
     get:
       operationId: api_Shifts_list
@@ -42542,6 +42829,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Shift'
+    PaginatedShiftNoteList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShiftNote'
     PaginatedStepDistributionResponseList:
       type: object
       required:
@@ -46400,6 +46710,50 @@ components:
         milestone_id:
           type: string
           format: uuid
+          nullable: true
+    PatchedShiftNoteRequest:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        body:
+          type: string
+          minLength: 1
+        audience_roles:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: Tenant group names targeted; empty = all floor staff.
+        work_order:
+          type: string
+          format: uuid
+          nullable: true
+        priority:
+          $ref: '#/components/schemas/ShiftNotePriorityEnum'
+        effective_from:
+          type: string
+          format: date-time
+          nullable: true
+        effective_until:
+          type: string
+          format: date-time
           nullable: true
     PatchedShiftRequest:
       type: object
@@ -51992,6 +52346,151 @@ components:
       - start_time
       - updated_at
       - version
+    ShiftNote:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        author:
+          type: integer
+          readOnly: true
+          nullable: true
+        author_name:
+          type: string
+          nullable: true
+          readOnly: true
+        body:
+          type: string
+        audience_roles:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+          description: Tenant group names targeted; empty = all floor staff.
+        work_order:
+          type: string
+          format: uuid
+          nullable: true
+        work_order_erp_id:
+          type: string
+          nullable: true
+          readOnly: true
+        priority:
+          $ref: '#/components/schemas/ShiftNotePriorityEnum'
+        effective_from:
+          type: string
+          format: date-time
+          nullable: true
+        effective_until:
+          type: string
+          format: date-time
+          nullable: true
+        is_locked:
+          type: boolean
+          readOnly: true
+        acknowledged:
+          type: boolean
+          readOnly: true
+        ack_count:
+          type: integer
+          readOnly: true
+        is_voided:
+          type: boolean
+          readOnly: true
+          description: Whether this record has been voided
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - ack_count
+      - acknowledged
+      - author
+      - author_name
+      - body
+      - created_at
+      - id
+      - is_locked
+      - is_voided
+      - updated_at
+      - work_order_erp_id
+    ShiftNotePriorityEnum:
+      enum:
+      - NORMAL
+      - HIGH
+      type: string
+      description: |-
+        * `NORMAL` - Normal
+        * `HIGH` - High
+    ShiftNoteRequest:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        body:
+          type: string
+          minLength: 1
+        audience_roles:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: Tenant group names targeted; empty = all floor staff.
+        work_order:
+          type: string
+          format: uuid
+          nullable: true
+        priority:
+          $ref: '#/components/schemas/ShiftNotePriorityEnum'
+        effective_from:
+          type: string
+          format: date-time
+          nullable: true
+        effective_until:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - body
     ShiftRequest:
       type: object
       description: |-

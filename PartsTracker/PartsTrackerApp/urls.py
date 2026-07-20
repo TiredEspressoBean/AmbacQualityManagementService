@@ -295,6 +295,9 @@ router.register(r'ScheduleSlots', ScheduleSlotViewSet, basename='ScheduleSlots')
 # Downtime
 router.register(r'DowntimeEvents', DowntimeEventViewSet, basename='DowntimeEvents')
 
+# Shift notes (human-authored floor handoff)
+router.register(r'ShiftNotes', ShiftNoteViewSet, basename='ShiftNotes')
+
 # Material Lots & Usage
 router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
 router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')

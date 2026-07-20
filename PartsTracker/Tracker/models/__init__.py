@@ -367,8 +367,18 @@ from .change_control import (
     ProcessChangeNotice,
 )
 
+from .shift_notes import (
+    ShiftNote,
+    ShiftNoteAck,
+    ShiftNotePriority,
+)
+
 # Define __all__ for explicit exports
 __all__ = [
+    # Shift notes (human-authored floor handoff)
+    'ShiftNote',
+    'ShiftNoteAck',
+    'ShiftNotePriority',
     # Core (Foundational Infrastructure)
     'SecureQuerySet',
     'SecureManager',

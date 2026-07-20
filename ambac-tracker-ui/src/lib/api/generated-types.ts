@@ -7376,6 +7376,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ShiftNotes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Human-authored floor handoff notes. Retract = DELETE (soft void). */
+        get: operations["api_ShiftNotes_list"];
+        put?: never;
+        /** @description Human-authored floor handoff notes. Retract = DELETE (soft void). */
+        post: operations["api_ShiftNotes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ShiftNotes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Human-authored floor handoff notes. Retract = DELETE (soft void). */
+        get: operations["api_ShiftNotes_retrieve"];
+        /** @description Human-authored floor handoff notes. Retract = DELETE (soft void). */
+        put: operations["api_ShiftNotes_update"];
+        post?: never;
+        /** @description Human-authored floor handoff notes. Retract = DELETE (soft void). */
+        delete: operations["api_ShiftNotes_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Human-authored floor handoff notes. Retract = DELETE (soft void). */
+        patch: operations["api_ShiftNotes_partial_update"];
+        trace?: never;
+    };
+    "/api/ShiftNotes/{id}/acknowledge/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record that this user saw the note (idempotent). */
+        post: operations["api_ShiftNotes_acknowledge_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ShiftNotes/{id}/retract/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Retract (void) a note. Author-tier (change_shiftnote). */
+        post: operations["api_ShiftNotes_retract_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ShiftNotes/active/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The notes this operator should see now (audience ∩ effective ∩
+         *     un-acked). Paginated to match the list contract.
+         */
+        get: operations["api_ShiftNotes_active_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Shifts/": {
         parameters: {
             query?: never;
@@ -18916,6 +19008,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Shift"][];
         };
+        PaginatedShiftNoteList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ShiftNote"][];
+        };
         PaginatedStepDistributionResponseList: {
             /** @example 123 */
             count: number;
@@ -21146,6 +21253,36 @@ export interface components {
         PatchedSetMilestoneInputRequest: {
             /** Format: uuid */
             milestone_id?: string | null;
+        };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        PatchedShiftNoteRequest: {
+            body?: string;
+            /** @description Tenant group names targeted; empty = all floor staff. */
+            audience_roles?: string[];
+            /** Format: uuid */
+            work_order?: string | null;
+            priority?: components["schemas"]["ShiftNotePriorityEnum"];
+            /** Format: date-time */
+            effective_from?: string | null;
+            /** Format: date-time */
+            effective_until?: string | null;
         };
         /**
          * @description Shift definition serializer.
@@ -24136,6 +24273,86 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
             readonly version: number;
+        };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        ShiftNote: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly author: number | null;
+            readonly author_name: string | null;
+            body: string;
+            /** @description Tenant group names targeted; empty = all floor staff. */
+            audience_roles?: string[];
+            /** Format: uuid */
+            work_order?: string | null;
+            readonly work_order_erp_id: string | null;
+            priority?: components["schemas"]["ShiftNotePriorityEnum"];
+            /** Format: date-time */
+            effective_from?: string | null;
+            /** Format: date-time */
+            effective_until?: string | null;
+            readonly is_locked: boolean;
+            readonly acknowledged: boolean;
+            readonly ack_count: number;
+            /** @description Whether this record has been voided */
+            readonly is_voided: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `NORMAL` - Normal
+         *     * `HIGH` - High
+         * @enum {string}
+         */
+        ShiftNotePriorityEnum: "NORMAL" | "HIGH";
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        ShiftNoteRequest: {
+            body: string;
+            /** @description Tenant group names targeted; empty = all floor staff. */
+            audience_roles?: string[];
+            /** Format: uuid */
+            work_order?: string | null;
+            priority?: components["schemas"]["ShiftNotePriorityEnum"];
+            /** Format: date-time */
+            effective_from?: string | null;
+            /** Format: date-time */
+            effective_until?: string | null;
         };
         /**
          * @description Shift definition serializer.
@@ -39617,6 +39834,239 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleSlot"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_list: {
+        parameters: {
+            query?: {
+                author?: number;
+                is_voided?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `NORMAL` - Normal
+                 *     * `HIGH` - High
+                 */
+                priority?: "HIGH" | "NORMAL";
+                work_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedShiftNoteList"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftNoteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShiftNoteRequest"];
+                "multipart/form-data": components["schemas"]["ShiftNoteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftNote"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftNote"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftNoteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShiftNoteRequest"];
+                "multipart/form-data": components["schemas"]["ShiftNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftNote"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_ShiftNotes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedShiftNoteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedShiftNoteRequest"];
+                "multipart/form-data": components["schemas"]["PatchedShiftNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftNote"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_acknowledge_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftNoteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShiftNoteRequest"];
+                "multipart/form-data": components["schemas"]["ShiftNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftNote"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_retract_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftNoteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShiftNoteRequest"];
+                "multipart/form-data": components["schemas"]["ShiftNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftNote"];
+                };
+            };
+        };
+    };
+    api_ShiftNotes_active_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftNote"];
                 };
             };
         };

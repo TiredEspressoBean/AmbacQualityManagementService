@@ -6181,6 +6181,61 @@ export type Shift = {
   archived?: boolean | undefined;
   version: number;
 };
+export type PaginatedShiftNoteList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ShiftNote>;
+};
+export type ShiftNote = {
+  id: string;
+  author: number | null;
+  author_name: string | null;
+  body: string;
+  audience_roles?: /**
+   * Tenant group names targeted; empty = all floor staff.
+   */
+  | Array</**
+       * @maxLength 100
+       */
+      string>
+    | undefined;
+  work_order?: (string | null) | undefined;
+  work_order_erp_id: string | null;
+  priority?: ShiftNotePriorityEnum | undefined;
+  effective_from?: (string | null) | undefined;
+  effective_until?: (string | null) | undefined;
+  is_locked: boolean;
+  acknowledged: boolean;
+  ack_count: number;
+  /**
+   * Whether this record has been voided
+   */
+  is_voided: boolean;
+  created_at: string;
+  updated_at: string;
+};
+export type ShiftNotePriorityEnum =
+  /**
+   * * `NORMAL` - Normal
+   * `HIGH` - High
+   *
+   * @enum NORMAL, HIGH
+   */
+  "NORMAL" | "HIGH";
 export type PaginatedStepDistributionResponseList = {
   /**
    * @example 123
@@ -9678,6 +9733,24 @@ export type PatchedScheduleSlotRequest = Partial<{
   notes: string;
   archived: boolean;
 }>;
+export type PatchedShiftNoteRequest = Partial<{
+  /**
+   * @minLength 1
+   */
+  body: string;
+  /**
+   * Tenant group names targeted; empty = all floor staff.
+   */
+  audience_roles: Array</**
+   * @minLength 1
+   * @maxLength 100
+   */
+  string>;
+  work_order: string | null;
+  priority: ShiftNotePriorityEnum;
+  effective_from: string | null;
+  effective_until: string | null;
+}>;
 export type PatchedStepExecutionRequest = Partial<{
   /**
    * The part being tracked through this step (mutually exclusive with `core`).
@@ -11435,6 +11508,25 @@ export type ScheduleSlotRequest = {
   status?: ScheduleSlotStatusEnum | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
+};
+export type ShiftNoteRequest = {
+  /**
+   * @minLength 1
+   */
+  body: string;
+  audience_roles?: /**
+   * Tenant group names targeted; empty = all floor staff.
+   */
+  | Array</**
+       * @minLength 1
+       * @maxLength 100
+       */
+      string>
+    | undefined;
+  work_order?: (string | null) | undefined;
+  priority?: ShiftNotePriorityEnum | undefined;
+  effective_from?: (string | null) | undefined;
+  effective_until?: (string | null) | undefined;
 };
 export type StepEdgeRequest = {
   from_step: string;
@@ -16203,6 +16295,49 @@ const PatchedScheduleSlotRequest = z
     archived: z.boolean(),
   })
   .partial();
+const ShiftNotePriorityEnum = z.enum(["NORMAL", "HIGH"]);
+const ShiftNote = z.object({
+  id: z.string().uuid(),
+  author: z.number().int().nullable(),
+  author_name: z.string().nullable(),
+  body: z.string(),
+  audience_roles: z.array(z.string().max(100)).optional(),
+  work_order: z.string().uuid().nullish(),
+  work_order_erp_id: z.string().nullable(),
+  priority: ShiftNotePriorityEnum.optional(),
+  effective_from: z.string().datetime({ offset: true }).nullish(),
+  effective_until: z.string().datetime({ offset: true }).nullish(),
+  is_locked: z.boolean(),
+  acknowledged: z.boolean(),
+  ack_count: z.number().int(),
+  is_voided: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedShiftNoteList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ShiftNote),
+});
+const ShiftNoteRequest = z.object({
+  body: z.string().min(1),
+  audience_roles: z.array(z.string().min(1).max(100)).optional(),
+  work_order: z.string().uuid().nullish(),
+  priority: ShiftNotePriorityEnum.optional(),
+  effective_from: z.string().datetime({ offset: true }).nullish(),
+  effective_until: z.string().datetime({ offset: true }).nullish(),
+});
+const PatchedShiftNoteRequest = z
+  .object({
+    body: z.string().min(1),
+    audience_roles: z.array(z.string().min(1).max(100)),
+    work_order: z.string().uuid().nullable(),
+    priority: ShiftNotePriorityEnum,
+    effective_from: z.string().datetime({ offset: true }).nullable(),
+    effective_until: z.string().datetime({ offset: true }).nullable(),
+  })
+  .partial();
 const Shift = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -19855,6 +19990,11 @@ export const schemas = {
   PaginatedScheduleSlotList,
   ScheduleSlotRequest,
   PatchedScheduleSlotRequest,
+  ShiftNotePriorityEnum,
+  ShiftNote,
+  PaginatedShiftNoteList,
+  ShiftNoteRequest,
+  PatchedShiftNoteRequest,
   Shift,
   PaginatedShiftList,
   ShiftRequest,
@@ -35468,6 +35608,185 @@ problem from the round-4 research).`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/ShiftNotes/",
+    alias: "api_ShiftNotes_list",
+    description: `Human-authored floor handoff notes. Retract &#x3D; DELETE (soft void).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "author",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "is_voided",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "priority",
+        type: "Query",
+        schema: z.enum(["HIGH", "NORMAL"]).optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedShiftNoteList,
+  },
+  {
+    method: "post",
+    path: "/api/ShiftNotes/",
+    alias: "api_ShiftNotes_create",
+    description: `Human-authored floor handoff notes. Retract &#x3D; DELETE (soft void).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ShiftNoteRequest,
+      },
+    ],
+    response: ShiftNote,
+  },
+  {
+    method: "get",
+    path: "/api/ShiftNotes/:id/",
+    alias: "api_ShiftNotes_retrieve",
+    description: `Human-authored floor handoff notes. Retract &#x3D; DELETE (soft void).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ShiftNote,
+  },
+  {
+    method: "put",
+    path: "/api/ShiftNotes/:id/",
+    alias: "api_ShiftNotes_update",
+    description: `Human-authored floor handoff notes. Retract &#x3D; DELETE (soft void).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ShiftNoteRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ShiftNote,
+  },
+  {
+    method: "patch",
+    path: "/api/ShiftNotes/:id/",
+    alias: "api_ShiftNotes_partial_update",
+    description: `Human-authored floor handoff notes. Retract &#x3D; DELETE (soft void).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedShiftNoteRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ShiftNote,
+  },
+  {
+    method: "delete",
+    path: "/api/ShiftNotes/:id/",
+    alias: "api_ShiftNotes_destroy",
+    description: `Human-authored floor handoff notes. Retract &#x3D; DELETE (soft void).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/ShiftNotes/:id/acknowledge/",
+    alias: "api_ShiftNotes_acknowledge_create",
+    description: `Record that this user saw the note (idempotent).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ShiftNoteRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ShiftNote,
+  },
+  {
+    method: "post",
+    path: "/api/ShiftNotes/:id/retract/",
+    alias: "api_ShiftNotes_retract_create",
+    description: `Retract (void) a note. Author-tier (change_shiftnote).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ShiftNoteRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ShiftNote,
+  },
+  {
+    method: "get",
+    path: "/api/ShiftNotes/active/",
+    alias: "api_ShiftNotes_active_retrieve",
+    description: `The notes this operator should see now (audience ∩ effective ∩
+un-acked). Paginated to match the list contract.`,
+    requestFormat: "json",
+    response: ShiftNote,
   },
   {
     method: "get",

@@ -232,8 +232,11 @@ from .change_control import (
     ProcessChangeNoticeViewSet,
 )
 
+from .shift_notes import ShiftNoteViewSet
+
 
 __all__ = [
+    'ShiftNoteViewSet',
     'NotificationEventTypeCatalogView',
     'NotificationFeedViewSet',
     'TenantRuleViewSet',

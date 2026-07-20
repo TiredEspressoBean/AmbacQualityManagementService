@@ -64,6 +64,9 @@ IMMUTABLE_MODELS = {
     # (the trigger raises for everyone, superusers included):
     'steptransitionlog', 'samplingauditlog', 'equipmentusage',
     'approvalresponse',
+    # A shift-note acknowledgment is a one-time receipt written by the
+    # acknowledge action; never edited or deleted via a role's CRUD.
+    'shiftnoteack',
     # Engine-managed audit record: StepGateFiring is created (+ its actions_taken
     # updated) by services.qms.quality_gate.evaluate_step_gate, never via a role's
     # CRUD. view_ is granted (STAFF_VIEW_PERMISSIONS); add/change/delete are not.
@@ -80,6 +83,7 @@ SYSTEM_WRITTEN_MODELS = {
     'samplingdecision', 'samplingtriggerstate', 'samplingseveritystate',
     'steptransitionlog', 'samplingauditlog',
     'stepgatefiring',   # created by the quality-gate engine, not via role CRUD
+    'shiftnoteack',     # written by the acknowledge action, not via role CRUD
 }
 
 # Granted to NO role as deliberate policy (not a gap to burn down). Maps
@@ -109,6 +113,9 @@ SOFT_DELETE_MODELS = {
     # (SUSPENDED/DISQUALIFIED/EXPIRED), and re-qualification creates a new row —
     # history is preserved, never hard-deleted.
     'supplierqualification', 'partapproval',
+    # Shift notes soft-delete via void (retract); retract is gated by
+    # change_shiftnote, not delete_shiftnote.
+    'shiftnote',
 }
 
 # Burn-down: operational perms that SHOULD be granted to roles but aren't yet.
