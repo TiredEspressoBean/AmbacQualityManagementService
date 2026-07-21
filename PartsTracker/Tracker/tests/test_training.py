@@ -708,13 +708,14 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         # for_user() row-filters executions to the user's own orders (404 here).
         self._grant(
             self.operator,
-            "add_stepexecution", "view_stepexecution", "full_tenant_access",
+            "add_stepexecution", "change_stepexecution", "view_stepexecution",
+            "full_tenant_access",
             group="ops",
         )
         self._grant(
             self.supervisor,
-            "add_stepexecution", "view_stepexecution", "override_training_gate",
-            "full_tenant_access",
+            "add_stepexecution", "change_stepexecution", "view_stepexecution",
+            "override_training_gate", "full_tenant_access",
             group="sups",
         )
 
@@ -831,6 +832,40 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         from Tracker.models import StepExecution
         ex = StepExecution.objects.get(pk=resp.data["id"])
         self.assertIsNone(ex.training_authorization)
+
+    def test_patch_to_in_progress_is_gated(self):
+        # The PATCH bypass: flip an existing PENDING row to IN_PROGRESS without
+        # the create/claim gate. Must be blocked for an unqualified operator.
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step, status="PENDING",
+        )
+        resp = self._client(self.operator).patch(
+            f"/api/StepExecutions/{ex.id}/", {"status": "IN_PROGRESS"}, format="json",
+        )
+        self.assertEqual(resp.status_code, 409, resp.content)
+        self.assertEqual(resp.data["code"], "training_not_authorized")
+        ex.refresh_from_db()
+        self.assertEqual(ex.status, "PENDING")  # not flipped
+
+    def test_patch_to_in_progress_second_person_override(self):
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step, status="PENDING",
+        )
+        resp = self._client(self.operator).patch(
+            f"/api/StepExecutions/{ex.id}/",
+            {
+                "status": "IN_PROGRESS",
+                "override_email": "sup@gate.test", "override_password": "suppass",
+                "override_reason": "resuming a mis-created row under supervision",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        ex.refresh_from_db()
+        self.assertEqual(ex.status, "IN_PROGRESS")
+        self.assertEqual(ex.training_authorization["override"]["authorized_by"], self.supervisor.id)
 
     # --- pre-flight work_authorization --------------------------------------
 

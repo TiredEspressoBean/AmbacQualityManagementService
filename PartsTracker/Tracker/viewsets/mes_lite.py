@@ -2525,6 +2525,30 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
             execution.training_authorization = snapshot
             execution.save(update_fields=['training_authorization'])
 
+    def update(self, request, *args, **kwargs):
+        # Close the PATCH bypass: flipping an existing row to IN_PROGRESS is the
+        # same "operator takes up the work" transition as create/claim, so it
+        # runs the same gate. `status` is a writable field and operators hold
+        # change_stepexecution, so without this a PATCH would skip the gate.
+        self._pending_training_snapshot = None
+        execution = self.get_object()
+        new_status = str(request.data.get('status', '')).upper()
+        if new_status == 'IN_PROGRESS' and execution.status != 'IN_PROGRESS':
+            process = getattr(execution.subject_work_order, 'process', None)
+            error, snapshot = self._training_gate(request, execution.step, process)
+            if error is not None:
+                return error
+            self._pending_training_snapshot = snapshot
+        return super().update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        snapshot = getattr(self, '_pending_training_snapshot', None)
+        if snapshot is not None:
+            execution = serializer.instance
+            execution.training_authorization = snapshot
+            execution.save(update_fields=['training_authorization'])
+
     @extend_schema(
         responses={200: WIPSummarySerializer(many=True)},
         description="Get WIP summary grouped by step for a process"
