@@ -772,6 +772,17 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         self.assertEqual(resp.data["code"], "training_not_authorized")
         self.assertTrue(resp.data["missing"])
 
+    def test_qualified_ignores_stray_bad_credentials(self):
+        # A qualified operator is never blocked by (or throttled on) stray/invalid
+        # override creds — the supervisor is only consulted when actually blocked.
+        self._qualify(self.operator)
+        resp = self._start(
+            self.operator,
+            override_email="sup@gate.test", override_password="WRONG",
+            override_reason="unnecessary",
+        )
+        self.assertEqual(resp.status_code, 201, resp.content)
+
     def test_second_person_override_succeeds_and_logs(self):
         # Operator (unqualified) starts; a DIFFERENT supervisor re-authenticates.
         resp = self._start(

@@ -2493,29 +2493,55 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
             return Response(body, status=status.HTTP_400_BAD_REQUEST)
         raise exc
 
+    def _gated_start(self, request, apply):
+        """Run a work-start op, escalating to a second-person supervisor override
+        ONLY when the unauthorized attempt is actually blocked.
+
+        `apply(authorizer)` calls the lifecycle service (authorize_start or
+        start_execution). We try it with no authorizer first: if it succeeds the
+        operator was authorized and no supervisor is consulted (so stray/invalid
+        override creds on an otherwise-authorized start are ignored, and the
+        password throttle isn't touched). Only on a StartGateError do we verify
+        a supervisor and retry. Returns ``(result, error_response)`` — exactly
+        one is non-None.
+        """
+        from Tracker.services.mes.lifecycle import StartGateError
+        try:
+            return apply(None), None
+        except StartGateError as first:
+            authorizer, verr = self._verify_supervisor(request)
+            if verr is not None:
+                return None, self._supervisor_error_response(verr)
+            if authorizer is None:
+                # No credentials supplied → return the original block.
+                return None, self._start_gate_error_response(first)
+            try:
+                return apply(authorizer), None
+            except StartGateError as second:
+                return None, self._start_gate_error_response(second)
+
     def create(self, request, *args, **kwargs):
         # Gate the transition INTO active work. `useEnsureStepExecution` (the
         # operator's Start-Work funnel) POSTs a row with status=IN_PROGRESS —
         # that's the real authorization point. A part merely arriving at a step
         # (PENDING) isn't gated; nobody is working it yet. The workflow engine
         # creates executions via the ORM, not this HTTP path, so it is untouched.
-        from Tracker.services.mes.lifecycle import authorize_start, StartGateError
+        from Tracker.services.mes.lifecycle import authorize_start
         self._pending_training_snapshot = None
         if str(request.data.get('status', '')).upper() == 'IN_PROGRESS':
             step = Steps.objects.filter(pk=request.data.get('step')).first()
             if step is not None:
-                authorizer, verr = self._verify_supervisor(request)
-                if verr is not None:
-                    return self._supervisor_error_response(verr)
                 process = self._gate_process_for(request.data)
-                try:
-                    self._pending_training_snapshot = authorize_start(
-                        request.user, step, process,
-                        authorizer=authorizer,
-                        reason=request.data.get('override_reason'),
-                    )
-                except StartGateError as exc:
-                    return self._start_gate_error_response(exc)
+                reason = request.data.get('override_reason')
+                snapshot, err = self._gated_start(
+                    request,
+                    lambda auth: authorize_start(
+                        request.user, step, process, authorizer=auth, reason=reason,
+                    ),
+                )
+                if err is not None:
+                    return err
+                self._pending_training_snapshot = snapshot
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -2532,23 +2558,22 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         # Close the PATCH bypass: flipping an existing row to IN_PROGRESS is the
         # same "operator takes up the work" transition as create/claim, so it
         # runs the same competence gate via the lifecycle service.
-        from Tracker.services.mes.lifecycle import authorize_start, StartGateError
+        from Tracker.services.mes.lifecycle import authorize_start
         self._pending_training_snapshot = None
         execution = self.get_object()
         new_status = str(request.data.get('status', '')).upper()
         if new_status == 'IN_PROGRESS' and execution.status != 'IN_PROGRESS':
-            authorizer, verr = self._verify_supervisor(request)
-            if verr is not None:
-                return self._supervisor_error_response(verr)
             process = getattr(execution.subject_work_order, 'process', None)
-            try:
-                self._pending_training_snapshot = authorize_start(
-                    request.user, execution.step, process,
-                    authorizer=authorizer,
-                    reason=request.data.get('override_reason'),
-                )
-            except StartGateError as exc:
-                return self._start_gate_error_response(exc)
+            reason = request.data.get('override_reason')
+            snapshot, err = self._gated_start(
+                request,
+                lambda auth: authorize_start(
+                    request.user, execution.step, process, authorizer=auth, reason=reason,
+                ),
+            )
+            if err is not None:
+                return err
+            self._pending_training_snapshot = snapshot
         return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
@@ -2735,7 +2760,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         this action only verifies the supervisor and translates errors. Both are
         logged on the execution's `training_authorization` snapshot.
         """
-        from Tracker.services.mes.lifecycle import start_execution, StartGateError
+        from Tracker.services.mes.lifecycle import start_execution
 
         execution = self.get_object()
 
@@ -2745,20 +2770,17 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Verify the supervisor (HTTP concern) if credentials were supplied;
-        # (None, None) when none were. Then delegate the state transition +
-        # reassignment/competence gates to the lifecycle service.
-        authorizer, verr = self._verify_supervisor(request)
-        if verr is not None:
-            return self._supervisor_error_response(verr)
-        try:
-            start_execution(
-                execution, request.user,
-                authorizer=authorizer,
-                reason=request.data.get('override_reason'),
-            )
-        except StartGateError as exc:
-            return self._start_gate_error_response(exc)
+        # Delegate the transition + reassignment/competence gates to the
+        # lifecycle service; a supervisor is only consulted if it's blocked.
+        reason = request.data.get('override_reason')
+        _, err = self._gated_start(
+            request,
+            lambda auth: start_execution(
+                execution, request.user, authorizer=auth, reason=reason,
+            ),
+        )
+        if err is not None:
+            return err
 
         serializer = StepExecutionSerializer(execution)
         return Response(serializer.data)
