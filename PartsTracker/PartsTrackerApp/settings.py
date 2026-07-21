@@ -778,6 +778,14 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=7, minute=15),
         "options": {"expires": 3600},
     },
+    # Daily proactive re-qualification reminders for operator training
+    # (emits training.expiring_soon at the 60/30-day marks + training.expired for
+    # freshly-lapsed certs)
+    "notify-expiring-training": {
+        "task": "Tracker.tasks.notify_expiring_training",
+        "schedule": crontab(hour=7, minute=20),
+        "options": {"expires": 3600},
+    },
     # Daily recommend-only scorecard→standing review (emits supplier.standing_review;
     # never auto-transitions a qualification)
     "review-supplier-standings": {

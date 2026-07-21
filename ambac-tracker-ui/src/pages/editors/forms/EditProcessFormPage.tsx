@@ -22,6 +22,7 @@ import {useRetrievePartTypes} from "@/hooks/useRetrievePartTypes";
 import StepFields from "@/components/step-fields";
 import {useDebounce} from "@/hooks/useDebounce.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
+import {TrainingRequirementsEditor} from "@/components/training/TrainingRequirementsEditor";
 import {parseDurationToMinutes, formatMinutesToDuration} from "@/lib/duration-utils";
 import {schemas} from "@/lib/api/generated";
 import {isFieldRequired} from "@/lib/zod-config";
@@ -382,9 +383,16 @@ export default function ProcessFormPage() {
             </Form>
             {mode === "edit" && processId && (
 
-                <div className="max-w-3xl mx-auto py-6">
-                    <h3 className="text-lg font-semibold">Attach Documents</h3>
-                    <DocumentUploader objectId={processId} contentType="processes"/>
+                <div className="max-w-3xl mx-auto py-6 space-y-6">
+                    <div>
+                        <h3 className="text-lg font-semibold">Attach Documents</h3>
+                        <DocumentUploader objectId={processId} contentType="processes"/>
+                    </div>
+                    <TrainingRequirementsEditor
+                        scope={{process: processId}}
+                        title="Required training (whole process)"
+                        description="Competencies required across this routing — applied to every step in it (e.g. ITAR awareness, general safety)."
+                    />
                 </div>)}
         </div>
     </FormProvider>);

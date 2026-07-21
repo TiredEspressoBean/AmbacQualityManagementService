@@ -6,6 +6,7 @@ and the training authorization service.
 """
 
 from datetime import date, timedelta
+from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
 
@@ -28,6 +29,7 @@ from Tracker.services.training import (
     get_qualified_users_for_step,
     build_training_matrix,
     get_role_requirements,
+    notify_expiring_training,
 )
 from Tracker.tests.base import TenantContextMixin
 
@@ -504,6 +506,28 @@ class TrainingMatrixServiceTests(TrainingModuleTestCase):
         self.assertEqual(cell['level'], 0)
         self.assertEqual(cell['status'], 'EXPIRED')
 
+    def test_matrix_is_tenant_scoped(self):
+        """Users from another tenant must never appear — explicitly or via the
+        ContextVar-derived (no-arg) path the endpoint uses."""
+        from Tracker.models import Tenant, User
+        from Tracker.utils.tenant_context import tenant_context
+
+        other = Tenant.objects.create(name="Other Tenant", slug="other-tenant")
+        ghost = User.objects.create_user(
+            username="ghost", email="ghost@other.com", password="x", tenant=other,
+        )
+
+        # Explicit tenant arg
+        ids = {o['id'] for o in build_training_matrix(tenant=self.tenant)['operators']}
+        self.assertIn(self.operator.id, ids)
+        self.assertNotIn(ghost.id, ids)
+
+        # No-arg path (endpoint) — must self-scope from the request ContextVar
+        with tenant_context(str(self.tenant.id)):
+            ids2 = {o['id'] for o in build_training_matrix()['operators']}
+        self.assertIn(self.operator.id, ids2)
+        self.assertNotIn(ghost.id, ids2)
+
 
 class RoleRequirementTests(TrainingModuleTestCase):
     """Tests for JobRole-scoped requirements + role gaps in the matrix."""
@@ -562,6 +586,64 @@ class RoleRequirementTests(TrainingModuleTestCase):
         self.assertTrue(sol_cell['gap'])
 
         self.assertIn("CMM Inspector", {r['name'] for r in matrix['job_roles']})
+
+
+class TrainingExpiryNotificationTests(TrainingModuleTestCase):
+    """notify_expiring_training decision logic (emit helpers patched out)."""
+
+    def _record(self, days_from_today, training_type=None):
+        return TrainingRecord.objects.create(
+            user=self.operator,
+            training_type=training_type or self.cmm_training,
+            completed_date=date.today() - timedelta(days=400),
+            expires_date=date.today() + timedelta(days=days_from_today),
+            level=CompetencyLevel.QUALIFIED,
+            tenant=self.tenant,
+        )
+
+    def test_within_30_day_window_emits_expiring_soon(self):
+        rec = self._record(20)
+        with patch('Tracker.services.training._emit_training_expiring_soon') as soon, \
+             patch('Tracker.services.training._emit_training_expired') as expd:
+            self.assertTrue(notify_expiring_training(rec))
+            soon.assert_called_once()
+            self.assertEqual(soon.call_args.kwargs['window'], 30)
+            expd.assert_not_called()
+
+    def test_within_60_day_window_emits_window_60(self):
+        rec = self._record(50)
+        with patch('Tracker.services.training._emit_training_expiring_soon') as soon:
+            self.assertTrue(notify_expiring_training(rec))
+            self.assertEqual(soon.call_args.kwargs['window'], 60)
+
+    def test_outside_window_no_emit(self):
+        rec = self._record(90)
+        with patch('Tracker.services.training._emit_training_expiring_soon') as soon:
+            self.assertFalse(notify_expiring_training(rec))
+            soon.assert_not_called()
+
+    def test_no_expiry_no_emit(self):
+        # safety_training has no validity period → record never expires
+        rec = TrainingRecord.objects.create(
+            user=self.operator, training_type=self.safety_training,
+            completed_date=date.today(), tenant=self.tenant,
+        )
+        with patch('Tracker.services.training._emit_training_expiring_soon') as soon:
+            self.assertFalse(notify_expiring_training(rec))
+            soon.assert_not_called()
+
+    def test_expired_emits_expired(self):
+        rec = self._record(-3)
+        with patch('Tracker.services.training._emit_training_expired') as expd:
+            self.assertTrue(notify_expiring_training(rec))
+            expd.assert_called_once()
+
+    def test_superseded_by_renewal_no_emit(self):
+        old = self._record(20)     # expiring soon
+        self._record(400)          # renewal with a later expiry supersedes it
+        with patch('Tracker.services.training._emit_training_expiring_soon') as soon:
+            self.assertFalse(notify_expiring_training(old))
+            soon.assert_not_called()
 
 
 class TrainingRecordTests(TrainingModuleTestCase):

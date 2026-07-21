@@ -632,3 +632,103 @@ register_event(EventType(
     description='A first-piece inspection was decided (passed / failed / waived) — the run can proceed or needs setup attention.',
     external_routable=False,
 ))
+
+
+# =============================================================================
+# training.expiring_soon / training.expired — operator competency expiry
+# =============================================================================
+
+@dataclass(frozen=True)
+class TrainingExpiringSoonPayload:
+    """Payload for `training.expiring_soon` — an operator's training/certification
+    is approaching its expiry date (fired at the 60/30-day reminder marks)."""
+
+    id: str                        # TrainingRecord id; satisfies correlation_id contract
+    tenant_id: str
+    record_id: str
+    user_id: int | None            # User PK is an int (AbstractUser default)
+    user_name: str
+    training_type_id: str
+    training_type_name: str
+    level: int
+    level_display: str
+    expires_date: str              # ISO date
+    days_to_expiry: int
+    reminder_window: int           # 60 or 30
+
+    @classmethod
+    def sample(cls) -> 'TrainingExpiringSoonPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000c1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            record_id='00000000-0000-0000-0000-0000000000c1',
+            user_id=42,
+            user_name='Maria Santos',
+            training_type_id='00000000-0000-0000-0000-0000000000c2',
+            training_type_name='CMM Operation',
+            level=3,
+            level_display='Level 3 — Qualified (independent)',
+            expires_date='2026-09-01',
+            days_to_expiry=28,
+            reminder_window=30,
+        )
+
+
+register_event(EventType(
+    code='training.expiring_soon',
+    label='Training Expiring Soon',
+    domain='Quality',
+    payload_schema=TrainingExpiringSoonPayload,
+    default_channels=['in_app', 'email'],
+    default_recipient_groups=['QA Manager', 'Production Manager'],
+    default_on=True,
+    transactional=False,
+    description="An operator's training/certification is approaching expiry — schedule requalification before it lapses.",
+    external_routable=False,
+))
+
+
+@dataclass(frozen=True)
+class TrainingExpiredPayload:
+    """Payload for `training.expired` — an operator's training/certification has
+    lapsed; they are no longer qualified for work requiring it."""
+
+    id: str
+    tenant_id: str
+    record_id: str
+    user_id: int | None
+    user_name: str
+    training_type_id: str
+    training_type_name: str
+    level: int
+    level_display: str
+    expires_date: str              # ISO date
+
+    @classmethod
+    def sample(cls) -> 'TrainingExpiredPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000c1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            record_id='00000000-0000-0000-0000-0000000000c1',
+            user_id=42,
+            user_name='Maria Santos',
+            training_type_id='00000000-0000-0000-0000-0000000000c2',
+            training_type_name='CMM Operation',
+            level=3,
+            level_display='Level 3 — Qualified (independent)',
+            expires_date='2026-07-14',
+        )
+
+
+register_event(EventType(
+    code='training.expired',
+    label='Training Expired',
+    domain='Quality',
+    payload_schema=TrainingExpiredPayload,
+    default_channels=['in_app', 'email'],
+    default_recipient_groups=['QA Manager', 'Production Manager'],
+    default_on=True,
+    transactional=False,
+    description="An operator's training/certification has lapsed — they are no longer qualified for work requiring it.",
+    external_routable=False,
+))

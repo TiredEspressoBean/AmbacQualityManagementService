@@ -296,11 +296,22 @@ def build_training_matrix(tenant=None):
     """
     from Tracker.models import User, TrainingType, TrainingRecord
 
+    # Tenant scoping is critical here: `User` is AbstractUser and its manager is
+    # NOT tenant-scoped (unlike SecureModel .objects), so users MUST be filtered
+    # by tenant explicitly. Fall back to the active-request tenant (ContextVar)
+    # when a tenant isn't passed, and refuse to return anyone with no tenant
+    # context rather than leak every tenant's users.
+    if tenant is None:
+        from Tracker.utils.tenant_context import current_tenant_var
+        tenant = current_tenant_var.get()
+
     types = list(TrainingType.objects.all().order_by('name'))
 
     users_qs = User.objects.filter(user_type='INTERNAL')
     if tenant:
         users_qs = users_qs.filter(tenant=tenant)
+    else:
+        users_qs = users_qs.none()  # no tenant context → don't leak cross-tenant users
     users = list(users_qs.order_by('first_name', 'last_name', 'username'))
 
     # One pass over the tenant's records. `.objects` is tenant-scoped in-request;
@@ -419,3 +430,97 @@ def build_training_matrix(tenant=None):
             for t in types
         ],
     }
+
+
+# ---- Expiry reminders (beat-task helpers) ----------------------------------
+
+_EXPIRY_REMINDER_DAYS = (30, 60)   # reminder marks (days out), tightest first
+_EXPIRED_LOOKBACK_DAYS = 7          # emit `training.expired` once for freshly-lapsed certs
+
+
+def _training_superseded(record) -> bool:
+    """True if another record supersedes this one for the same (user, training_type)
+    — a renewal with a later (or never) expiry. Prevents nagging about a cert that
+    has already been renewed; the superseding record is evaluated on its own."""
+    from Tracker.models import TrainingRecord
+    return TrainingRecord.objects.filter(
+        user_id=record.user_id,
+        training_type_id=record.training_type_id,
+    ).exclude(pk=record.pk).filter(
+        models.Q(expires_date__isnull=True) | models.Q(expires_date__gt=record.expires_date)
+    ).exists()
+
+
+def notify_expiring_training(record) -> bool:
+    """Emit `training.expiring_soon` (at the 60/30-day marks) or `training.expired`
+    (freshly lapsed) for a TrainingRecord. Idempotent per (record, window) so daily
+    runs don't spam; skips records already superseded by a renewal. Returns True if
+    an event was emitted."""
+    if record.expires_date is None:
+        return False
+    if _training_superseded(record):
+        return False
+    days = (record.expires_date - timezone.now().date()).days
+    if days < 0:
+        _emit_training_expired(record)
+        return True
+    window = next((d for d in _EXPIRY_REMINDER_DAYS if days <= d), None)
+    if window is None:
+        return False
+    _emit_training_expiring_soon(record, days_to_expiry=days, window=window)
+    return True
+
+
+def _emit_training_expiring_soon(record, *, days_to_expiry: int, window: int) -> None:
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import TrainingExpiringSoonPayload
+
+    tt = record.training_type
+    payload = TrainingExpiringSoonPayload(
+        id=str(record.id),
+        tenant_id=str(record.tenant_id) if record.tenant_id else "",
+        record_id=str(record.id),
+        user_id=record.user_id,
+        user_name=record.user.get_full_name() or record.user.username,
+        training_type_id=str(tt.id),
+        training_type_name=tt.name,
+        level=record.level,
+        level_display=record.get_level_display(),
+        expires_date=record.expires_date.isoformat(),
+        days_to_expiry=days_to_expiry,
+        reminder_window=window,
+    )
+    emit(
+        "training.expiring_soon",
+        tenant=record.tenant,
+        payload=payload,
+        correlation_id=f"training_record:{record.id}",
+        # One reminder per window (60, then 30) — keyed by window so it doesn't repeat daily.
+        idempotency_key=f"training.expiring_soon:{record.id}:{window}",
+    )
+
+
+def _emit_training_expired(record) -> None:
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import TrainingExpiredPayload
+
+    tt = record.training_type
+    payload = TrainingExpiredPayload(
+        id=str(record.id),
+        tenant_id=str(record.tenant_id) if record.tenant_id else "",
+        record_id=str(record.id),
+        user_id=record.user_id,
+        user_name=record.user.get_full_name() or record.user.username,
+        training_type_id=str(tt.id),
+        training_type_name=tt.name,
+        level=record.level,
+        level_display=record.get_level_display(),
+        expires_date=record.expires_date.isoformat(),
+    )
+    emit(
+        "training.expired",
+        tenant=record.tenant,
+        payload=payload,
+        correlation_id=f"training_record:{record.id}",
+        idempotency_key=f"training.expired:{record.id}",
+    )

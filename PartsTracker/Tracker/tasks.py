@@ -1562,6 +1562,37 @@ def notify_expiring_qualifications():
 
 
 @shared_task
+def notify_expiring_training():
+    """Celery Beat task: proactively remind on TrainingRecords approaching expiry
+    (emits training.expiring_soon at the 60/30-day marks) and flag freshly-lapsed
+    certs (training.expired). The service emits once per (record, window) so daily
+    runs don't spam, and skips records already superseded by a renewal. Cross-tenant
+    via `.all_tenants`; each emit runs in its tenant context."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from Tracker.models import TrainingRecord
+    from Tracker.services import training as svc
+
+    today = timezone.now().date()
+    horizon = today + timedelta(days=max(svc._EXPIRY_REMINDER_DAYS))
+    lookback = today - timedelta(days=svc._EXPIRED_LOOKBACK_DAYS)
+    notified = 0
+    due = (
+        TrainingRecord.all_tenants
+        .filter(expires_date__isnull=False, expires_date__gte=lookback, expires_date__lte=horizon)
+        .select_related('user', 'training_type')
+        .iterator()
+    )
+    for rec in due:
+        with tenant_context(str(rec.tenant_id)):
+            if svc.notify_expiring_training(rec):
+                notified += 1
+
+    logger.info("notify_expiring_training: notified=%d", notified)
+    return {'status': 'success', 'notified': notified}
+
+
+@shared_task
 def review_supplier_standings():
     """Celery Beat task (RECOMMEND-ONLY): for each supplier with receiving history,
     read its scorecard and emit `supplier.standing_review` when a qualification review
