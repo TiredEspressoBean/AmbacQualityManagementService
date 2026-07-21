@@ -647,11 +647,13 @@ class TrainingExpiryNotificationTests(TrainingModuleTestCase):
 
 
 class TrainingGateViewSetTests(TenantContextMixin, TestCase):
-    """The claim/create training gate (warn + supervisor override).
+    """The claim/create training gate (second-person supervisor override).
 
     Exercises the real operator funnel — POST /api/StepExecutions/ with
     status=IN_PROGRESS (what `useEnsureStepExecution` sends) — plus the
-    `claim` action, through the full permission stack.
+    `claim` action, through the full permission stack. An unqualified start is
+    resolved only by a DIFFERENT supervisor re-authenticating (never by the
+    actor themselves, even with the permission).
     """
 
     def setUp(self):
@@ -668,7 +670,12 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
             username="gate-op", email="op@gate.test", password="x", tenant=self.tenant,
         )
         self.supervisor = User.objects.create_user(
-            username="gate-sup", email="sup@gate.test", password="x", tenant=self.tenant,
+            username="gate-sup", email="sup@gate.test", password="suppass", tenant=self.tenant,
+        )
+        # A second non-supervisor, to prove a valid login without the override
+        # permission still can't authorize.
+        self.coworker = User.objects.create_user(
+            username="gate-cow", email="cow@gate.test", password="cowpass", tenant=self.tenant,
         )
 
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="Gate Widget")
@@ -751,42 +758,69 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         self.assertTrue(ex.training_authorization["authorized"])
         self.assertNotIn("override", ex.training_authorization)
 
-    def test_unqualified_create_blocked_409(self):
-        resp = self._client(self.operator).post("/api/StepExecutions/", {
+    def _start(self, actor, **extra):
+        body = {
             "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
-        }, format="json")
+        }
+        body.update(extra)
+        return self._client(actor).post("/api/StepExecutions/", body, format="json")
+
+    def test_unqualified_create_blocked_409(self):
+        resp = self._start(self.operator)
         self.assertEqual(resp.status_code, 409, resp.content)
         self.assertEqual(resp.data["code"], "training_not_authorized")
-        self.assertFalse(resp.data["can_override"])
         self.assertTrue(resp.data["missing"])
 
-    def test_unqualified_operator_override_forbidden_403(self):
-        resp = self._client(self.operator).post("/api/StepExecutions/", {
-            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
-            "override": True, "override_reason": "just do it",
-        }, format="json")
+    def test_second_person_override_succeeds_and_logs(self):
+        # Operator (unqualified) starts; a DIFFERENT supervisor re-authenticates.
+        resp = self._start(
+            self.operator,
+            override_email="sup@gate.test", override_password="suppass",
+            override_reason="urgent line-down, trainee supervised",
+        )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        from Tracker.models import StepExecution
+        ovr = StepExecution.objects.get(pk=resp.data["id"]).training_authorization["override"]
+        self.assertEqual(ovr["authorized_by"], self.supervisor.id)
+        self.assertEqual(ovr["worker"], self.operator.id)
+        self.assertIn("urgent line-down", ovr["reason"])
+
+    def test_override_by_self_rejected(self):
+        # A supervisor cannot authorize their OWN unqualified start.
+        resp = self._start(
+            self.supervisor,
+            override_email="sup@gate.test", override_password="suppass",
+            override_reason="I'll vouch for myself",
+        )
+        self.assertEqual(resp.status_code, 403, resp.content)
+        self.assertEqual(resp.data["code"], "override_self")
+
+    def test_override_requires_permission(self):
+        # A valid login without override_training_gate can't authorize.
+        resp = self._start(
+            self.operator,
+            override_email="cow@gate.test", override_password="cowpass",
+            override_reason="a coworker said ok",
+        )
         self.assertEqual(resp.status_code, 403, resp.content)
         self.assertEqual(resp.data["code"], "override_not_permitted")
 
-    def test_supervisor_override_requires_reason_400(self):
-        resp = self._client(self.supervisor).post("/api/StepExecutions/", {
-            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
-            "override": True,
-        }, format="json")
+    def test_override_bad_password_rejected(self):
+        resp = self._start(
+            self.operator,
+            override_email="sup@gate.test", override_password="wrong",
+            override_reason="line-down",
+        )
+        self.assertEqual(resp.status_code, 403, resp.content)
+        self.assertEqual(resp.data["code"], "override_auth_failed")
+
+    def test_override_requires_reason(self):
+        resp = self._start(
+            self.operator,
+            override_email="sup@gate.test", override_password="suppass",
+        )
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertEqual(resp.data["code"], "override_reason_required")
-
-    def test_supervisor_override_succeeds_and_logs(self):
-        resp = self._client(self.supervisor).post("/api/StepExecutions/", {
-            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
-            "override": True, "override_reason": "urgent line-down, trainee supervised",
-        }, format="json")
-        self.assertEqual(resp.status_code, 201, resp.content)
-        from Tracker.models import StepExecution
-        ex = StepExecution.objects.get(pk=resp.data["id"])
-        ovr = ex.training_authorization["override"]
-        self.assertEqual(ovr["by"], self.supervisor.id)
-        self.assertIn("urgent line-down", ovr["reason"])
 
     def test_pending_create_is_not_gated(self):
         # A part merely arriving at a step (no one working it) must not be gated.
@@ -801,14 +835,12 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
     # --- pre-flight work_authorization --------------------------------------
 
     def test_work_authorization_reports_per_part(self):
-        # operator unqualified, supervisor qualified → per-part authorized flag,
-        # and can_override reflects each user's grant.
+        # Per-part authorized flag reflects each user's own training records.
         self._qualify(self.supervisor)
         op_resp = self._client(self.operator).get(
             f"/api/StepExecutions/work_authorization/?parts={self.part.id}"
         )
         self.assertEqual(op_resp.status_code, 200, op_resp.content)
-        self.assertFalse(op_resp.data["can_override"])
         row = op_resp.data["results"][0]
         self.assertEqual(str(row["part"]), str(self.part.id))
         self.assertFalse(row["authorized"])
@@ -817,7 +849,6 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         sup_resp = self._client(self.supervisor).get(
             f"/api/StepExecutions/work_authorization/?parts={self.part.id}"
         )
-        self.assertTrue(sup_resp.data["can_override"])
         self.assertTrue(sup_resp.data["results"][0]["authorized"])
 
     # --- claim action --------------------------------------------------------
@@ -831,21 +862,29 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         self.assertEqual(resp.status_code, 409, resp.content)
         self.assertEqual(resp.data["code"], "training_not_authorized")
 
-    def test_claim_override_by_supervisor_logs(self):
+    def test_claim_override_by_second_person_logs(self):
+        # Operator claims their own step; a supervisor re-authenticates to allow
+        # it. Work is assigned to the operator, authorized by the supervisor.
         from Tracker.models import StepExecution
         ex = StepExecution.objects.create(
             tenant=self.tenant, part=self.part, step=self.step, status="PENDING",
         )
-        resp = self._client(self.supervisor).post(
+        resp = self._client(self.operator).post(
             f"/api/StepExecutions/{ex.id}/claim/",
-            {"override": True, "override_reason": "covering the station"},
+            {
+                "override_email": "sup@gate.test", "override_password": "suppass",
+                "override_reason": "covering the station",
+            },
             format="json",
         )
         self.assertEqual(resp.status_code, 200, resp.content)
         ex.refresh_from_db()
         self.assertEqual(ex.status, "IN_PROGRESS")
-        self.assertEqual(ex.assigned_to_id, self.supervisor.id)
-        self.assertIn("covering", ex.training_authorization["override"]["reason"])
+        self.assertEqual(ex.assigned_to_id, self.operator.id)
+        ovr = ex.training_authorization["override"]
+        self.assertEqual(ovr["authorized_by"], self.supervisor.id)
+        self.assertEqual(ovr["worker"], self.operator.id)
+        self.assertIn("covering", ovr["reason"])
 
 
 class TrainingRecordTests(TrainingModuleTestCase):

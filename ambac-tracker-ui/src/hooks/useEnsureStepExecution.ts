@@ -13,26 +13,29 @@ import { getCookie } from "@/lib/utils";
  * backend endpoint required.
  *
  * Training gate: creating the IN_PROGRESS row is the operator's real
- * work-start funnel, so the backend runs a competency check there (warn +
- * supervisor override). An unqualified start comes back as a structured
- * error (409/403/400 with a `code`); we surface it as `TrainingGateError`
- * so the caller can show the missing training and, for a supervisor, an
- * override affordance.
+ * work-start funnel, so the backend runs a competency check there. An
+ * unqualified start comes back as a structured error (409/4xx with a `code`);
+ * we surface it as `TrainingGateError` so the caller can show the missing
+ * training and the supervisor re-authorization panel. Resolving it requires a
+ * DIFFERENT supervisor to re-authenticate (second-person override) — passed as
+ * `override.{email,password,reason}` and verified server-side.
  */
 
 export type TrainingGateInfo = {
-    /** training_not_authorized | override_not_permitted | override_reason_required */
+    /** training_not_authorized | override_auth_failed | override_self |
+     *  override_not_permitted | override_reason_required | override_throttled */
     code: string;
     detail: string;
     missing: { training: string; reason: string }[];
-    /** Whether the CURRENT user is allowed to override the gate. */
-    can_override: boolean;
 };
 
 const GATE_CODES = new Set([
     "training_not_authorized",
+    "override_auth_failed",
+    "override_self",
     "override_not_permitted",
     "override_reason_required",
+    "override_throttled",
 ]);
 
 export class TrainingGateError extends Error {
@@ -44,12 +47,18 @@ export class TrainingGateError extends Error {
     }
 }
 
+/** Second-person supervisor authorization for an unqualified start. */
+export type OverrideCredentials = {
+    email: string;
+    password: string;
+    reason: string;
+};
+
 type EnsureVariables = {
     partId: string;
     stepId: string;
-    /** Supervisor override (requires override_training_gate); pairs with reason. */
-    override?: boolean;
-    overrideReason?: string;
+    /** Supervisor re-auth to push past the gate (a DIFFERENT user's login). */
+    override?: OverrideCredentials;
 };
 
 type EnsureResult = {
@@ -60,7 +69,7 @@ type EnsureResult = {
 
 export function useEnsureStepExecution() {
     return useMutation<EnsureResult, Error, EnsureVariables>({
-        mutationFn: async ({ partId, stepId, override, overrideReason }) => {
+        mutationFn: async ({ partId, stepId, override }) => {
             // 1. Try to find an existing execution for this (part, step).
             const listUrl =
                 `/api/StepExecutions/?part=${encodeURIComponent(partId)}` +
@@ -88,8 +97,9 @@ export function useEnsureStepExecution() {
                                 "X-CSRFToken": getCookie("csrftoken") ?? "",
                             },
                             body: JSON.stringify({
-                                override: true,
-                                override_reason: overrideReason ?? "",
+                                override_email: override.email,
+                                override_password: override.password,
+                                override_reason: override.reason,
                             }),
                         },
                     );
@@ -115,8 +125,9 @@ export function useEnsureStepExecution() {
                 status: "IN_PROGRESS",
             };
             if (override) {
-                body.override = true;
-                body.override_reason = overrideReason ?? "";
+                body.override_email = override.email;
+                body.override_password = override.password;
+                body.override_reason = override.reason;
             }
             const createResp = await fetch("/api/StepExecutions/", {
                 method: "POST",

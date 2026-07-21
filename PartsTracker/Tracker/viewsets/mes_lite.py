@@ -2408,59 +2408,91 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         return getattr(wo, 'process', None) if wo else None
 
     def _training_gate(self, request, step, process):
-        """Warn + supervisor-override training gate for starting active work.
+        """Training gate for starting active work, with second-person override.
+
+        If the operator (``request.user``) isn't qualified, the work is blocked
+        unless a *different* supervisor re-authenticates here to authorize it
+        (segregation of duties — the actor can never authorize their own start,
+        even if they hold the permission). The supervisor proves identity with
+        their own login; we verify without logging them in.
 
         Returns ``(error_response, snapshot)``:
           - ``error_response`` — a DRF ``Response`` to return immediately, or
             ``None`` when the work may proceed.
-          - ``snapshot`` — the authorization dict to persist on
+          - ``snapshot`` — the authorization dict persisted on
             ``execution.training_authorization`` (competence evidence at the
-            point of work). Includes the ``override`` block when a supervisor
-            pushed an unqualified operator through.
+            point of work). Carries the ``override`` block (who authorized, why,
+            when) when a supervisor pushed an unqualified operator through.
         """
+        from django.core.cache import cache
         from Tracker.services.training import check_training_authorization
+        from Tracker.models import User
 
         auth = check_training_authorization(request.user, step, process=process)
         snapshot = auth.to_dict()
         if auth.authorized:
             return None, snapshot
 
-        override_raw = request.data.get('override')
-        override = override_raw is True or str(override_raw).strip().lower() == 'true'
-        # Tenant-scoped perm check (the convention used by every viewset here),
-        # not the backend has_perm — override authority is a per-tenant grant.
-        can_override = request.user.has_tenant_perm('override_training_gate')
+        email = (request.data.get('override_email') or '').strip()
+        password = request.data.get('override_password') or ''
         reason = (request.data.get('override_reason') or '').strip()
 
-        if not override:
-            # Default: block, and tell the client whether an override is even
-            # possible for THIS user (drives the FE's override affordance).
-            return Response({
-                'detail': 'You are not qualified for this step.',
-                'code': 'training_not_authorized',
-                'missing': snapshot['missing'],
-                'can_override': can_override,
-            }, status=status.HTTP_409_CONFLICT), snapshot
+        def blocked(detail, code, http_status):
+            return Response(
+                {'detail': detail, 'code': code, 'missing': snapshot['missing']},
+                status=http_status,
+            ), snapshot
 
-        if not can_override:
-            return Response({
-                'detail': 'A supervisor override is required to start this step.',
-                'code': 'override_not_permitted',
-                'missing': snapshot['missing'],
-                'can_override': False,
-            }, status=status.HTTP_403_FORBIDDEN), snapshot
+        # No authorization attempt → plain block. The FE shows the supervisor
+        # re-auth panel; a supervisor is always the path (no self-override).
+        if not email and not password:
+            return blocked(
+                'You are not qualified for this step.',
+                'training_not_authorized', status.HTTP_409_CONFLICT,
+            )
+
+        # Rate-limit the supervisor password check so a shared terminal isn't a
+        # brute-force oracle. Only failed *authentication* counts toward the cap.
+        throttle_key = f"tgate_fail:{getattr(self.tenant, 'id', 'none')}:{email.lower()}"
+        if (cache.get(throttle_key) or 0) >= 5:
+            return blocked(
+                'Too many failed authorization attempts. Try again in a few minutes.',
+                'override_throttled', status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        # User's own manager isn't tenant-scoped — filter by tenant explicitly.
+        authorizer = User.objects.filter(email__iexact=email, tenant=self.tenant).first()
+        if not (authorizer and authorizer.is_active and authorizer.check_password(password)):
+            cache.set(throttle_key, (cache.get(throttle_key) or 0) + 1, 900)
+            return blocked(
+                'Supervisor authorization failed — check the email and password.',
+                'override_auth_failed', status.HTTP_403_FORBIDDEN,
+            )
+
+        if authorizer.id == request.user.id:
+            return blocked(
+                'The authorizing supervisor must be a different person than the operator.',
+                'override_self', status.HTTP_403_FORBIDDEN,
+            )
+
+        if not authorizer.has_tenant_perm('override_training_gate', tenant=self.tenant):
+            return blocked(
+                'That user is not authorized to override the training gate.',
+                'override_not_permitted', status.HTTP_403_FORBIDDEN,
+            )
 
         if not reason:
-            return Response({
-                'detail': 'An override reason is required.',
-                'code': 'override_reason_required',
-                'missing': snapshot['missing'],
-                'can_override': True,
-            }, status=status.HTTP_400_BAD_REQUEST), snapshot
+            return blocked(
+                'An override reason is required.',
+                'override_reason_required', status.HTTP_400_BAD_REQUEST,
+            )
 
+        cache.delete(throttle_key)
         snapshot['override'] = {
-            'by': request.user.id,
-            'by_name': request.user.get_full_name() or request.user.get_username(),
+            'worker': request.user.id,
+            'worker_name': request.user.get_full_name() or request.user.get_username(),
+            'authorized_by': authorizer.id,
+            'authorized_by_name': authorizer.get_full_name() or authorizer.get_username(),
             'reason': reason,
             'at': timezone.now().isoformat(),
         }
@@ -2632,13 +2664,17 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         request=inline_serializer(
             name="ClaimStepInput",
             fields={
-                'override': serializers.BooleanField(
+                'override_email': serializers.CharField(
                     required=False,
-                    help_text="Set true (with override_reason) to push past the training gate.",
+                    help_text="Authorizing supervisor's login email (second-person override).",
+                ),
+                'override_password': serializers.CharField(
+                    required=False,
+                    help_text="Authorizing supervisor's password — verified, never stored.",
                 ),
                 'override_reason': serializers.CharField(
                     required=False,
-                    help_text="Required when override=true. Logged on the execution.",
+                    help_text="Required when overriding. Logged on the execution.",
                 ),
             }
         ),
@@ -2652,11 +2688,11 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         Operator claims a pending step execution.
         Sets assigned_to to current user and status to in_progress.
 
-        Training gate (warn + supervisor override): the operator must be
-        qualified for the step. An unqualified claim is blocked (409) unless a
-        user with `override_training_gate` passes `override=true` and an
-        `override_reason`, which is logged on the execution's
-        `training_authorization` snapshot.
+        Training gate (second-person override): the operator must be qualified
+        for the step. An unqualified claim is blocked (409) unless a *different*
+        supervisor re-authenticates (`override_email` + `override_password`) and
+        supplies an `override_reason`; that authorization is logged on the
+        execution's `training_authorization` snapshot.
         """
         execution = self.get_object()
 
@@ -2693,7 +2729,6 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         responses={200: inline_serializer(
             name="WorkAuthorization",
             fields={
-                'can_override': serializers.BooleanField(),
                 'results': serializers.ListField(child=inline_serializer(
                     name="WorkAuthorizationRow",
                     fields={
@@ -2717,7 +2752,8 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         For each part, resolve its current step (+ the WorkOrder's process) and
         run the training authorization check for the CURRENT user. Memoized per
         (step, process) so a tote of parts at one station is one check, not N.
-        `can_override` is the user-level override grant (same for every row).
+        An unqualified part is resolved by a second-person supervisor override at
+        Start (see the claim / create gate), so no per-user flag is returned here.
         """
         from Tracker.services.training import check_training_authorization
 
@@ -2743,10 +2779,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 'missing': snap['missing'],
             })
 
-        return Response({
-            'can_override': request.user.has_tenant_perm('override_training_gate'),
-            'results': results,
-        })
+        return Response({'results': results})
 
     @extend_schema(
         responses={200: inline_serializer(

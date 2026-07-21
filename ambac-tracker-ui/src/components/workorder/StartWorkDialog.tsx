@@ -34,11 +34,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useRetrieveParts } from "@/hooks/parts";
 import {
     useEnsureStepExecution,
     TrainingGateError,
     type TrainingGateInfo,
+    type OverrideCredentials,
 } from "@/hooks/useEnsureStepExecution";
 import { useWorkAuthorization, type WorkAuthRow } from "@/hooks/useWorkAuthorization";
 
@@ -103,7 +105,6 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
         }
         return m;
     }, [authData]);
-    const canOverride = authData?.can_override ?? false;
 
     // The part list caps at 500 (§3.10). If the WO has more, the list is
     // incomplete — warn so the operator doesn't assume every part is shown.
@@ -136,16 +137,25 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
 
     const ensureExec = useEnsureStepExecution();
 
-    // Training gate (warn + supervisor override). When the backend blocks an
-    // unqualified start, we hold the gate details here and open the override
-    // panel instead of silently failing.
+    // Training gate. When the backend blocks an unqualified start, we hold the
+    // details here and open the supervisor re-authorization panel — a DIFFERENT
+    // supervisor must sign in to authorize (never the operator themselves).
     const [gate, setGate] = useState<TrainingGateInfo | null>(null);
+    const [supEmail, setSupEmail] = useState("");
+    const [supPassword, setSupPassword] = useState("");
     const [overrideReason, setOverrideReason] = useState("");
     const [overriding, setOverriding] = useState(false);
 
+    const resetOverride = () => {
+        setGate(null);
+        setSupEmail("");
+        setSupPassword("");
+        setOverrideReason("");
+    };
+
     /** Ensure the first part's execution, then route into the runtime. Shared
      *  by the normal start and the supervisor-override retry. */
-    const launch = async (opts?: { override?: boolean; overrideReason?: string }) => {
+    const launch = async (opts?: { override?: OverrideCredentials }) => {
         const firstId = selectedIds[0];
         const first = allParts.find((p) => String(p.id) === firstId);
         if (!first) return;
@@ -158,7 +168,6 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
             partId: firstId,
             stepId,
             override: opts?.override,
-            overrideReason: opts?.overrideReason,
         });
         const queue = selectedIds.slice(1);
 
@@ -166,8 +175,7 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
         // open if the operator hits the browser Back button.
         setSelectedIds([]);
         setOpen(false);
-        setGate(null);
-        setOverrideReason("");
+        resetOverride();
 
         navigate({
             to: "/operator/steps/$stepId/substeps",
@@ -199,7 +207,6 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                 code: "training_not_authorized",
                 detail: "You are not qualified for this step.",
                 missing: firstAuth.missing,
-                can_override: canOverride,
             });
             return;
         }
@@ -219,13 +226,24 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
         }
     };
 
+    const overrideReady =
+        supEmail.trim() !== "" && supPassword !== "" && overrideReason.trim() !== "";
+
     const handleOverride = async () => {
-        if (!overrideReason.trim()) return;
+        if (!overrideReady) return;
         setOverriding(true);
         try {
-            await launch({ override: true, overrideReason: overrideReason.trim() });
+            await launch({
+                override: {
+                    email: supEmail.trim(),
+                    password: supPassword,
+                    reason: overrideReason.trim(),
+                },
+            });
         } catch (e) {
             if (e instanceof TrainingGateError) {
+                // Keep the panel open with the specific reason (bad password,
+                // not a supervisor, same person, throttled…).
                 setGate(e.gate);
                 toast.error(e.gate.detail);
             } else {
@@ -373,15 +391,13 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                 </DialogFooter>
             </DialogContent>
 
-            {/* Training gate — block on missing competency, supervisor override */}
+            {/* Training gate — block on missing competency; a DIFFERENT
+                supervisor re-authenticates to authorize (second-person). */}
             <Dialog
                 open={!!gate}
                 onOpenChange={(v) => {
                     if (overriding) return;
-                    if (!v) {
-                        setGate(null);
-                        setOverrideReason("");
-                    }
+                    if (!v) resetOverride();
                 }}
             >
                 <DialogContent className="max-w-md">
@@ -391,9 +407,8 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                             Not qualified for this step
                         </DialogTitle>
                         <DialogDescription>
-                            {gate?.can_override
-                                ? "The operator isn't qualified. As a supervisor you can override with a logged reason."
-                                : "You aren't qualified to start this step. A supervisor must override to proceed."}
+                            The operator isn't qualified. A supervisor must sign in below
+                            to authorize this work — it's logged against their name.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -413,47 +428,54 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                         </ul>
                     </div>
 
-                    {gate?.can_override && (
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground">
-                                Override reason (required — recorded on the execution)
-                            </label>
-                            <Textarea
-                                value={overrideReason}
-                                onChange={(e) => setOverrideReason(e.target.value)}
-                                placeholder="e.g. line-down, trainee working under direct supervision"
-                                rows={3}
-                            />
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">
+                            Supervisor authorization
+                        </p>
+                        <Input
+                            type="email"
+                            autoComplete="off"
+                            value={supEmail}
+                            onChange={(e) => setSupEmail(e.target.value)}
+                            placeholder="Supervisor email"
+                        />
+                        <Input
+                            type="password"
+                            autoComplete="off"
+                            value={supPassword}
+                            onChange={(e) => setSupPassword(e.target.value)}
+                            placeholder="Supervisor password"
+                        />
+                        <Textarea
+                            value={overrideReason}
+                            onChange={(e) => setOverrideReason(e.target.value)}
+                            placeholder="Reason (required — e.g. line-down, trainee under direct supervision)"
+                            rows={2}
+                        />
+                    </div>
 
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            onClick={() => {
-                                setGate(null);
-                                setOverrideReason("");
-                            }}
+                            onClick={resetOverride}
                             disabled={overriding}
                         >
                             Cancel
                         </Button>
-                        {gate?.can_override && (
-                            <Button
-                                variant="destructive"
-                                onClick={handleOverride}
-                                disabled={!overrideReason.trim() || overriding}
-                            >
-                                {overriding ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                        Overriding…
-                                    </>
-                                ) : (
-                                    "Override & start"
-                                )}
-                            </Button>
-                        )}
+                        <Button
+                            variant="destructive"
+                            onClick={handleOverride}
+                            disabled={!overrideReady || overriding}
+                        >
+                            {overriding ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                    Authorizing…
+                                </>
+                            ) : (
+                                "Authorize & start"
+                            )}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

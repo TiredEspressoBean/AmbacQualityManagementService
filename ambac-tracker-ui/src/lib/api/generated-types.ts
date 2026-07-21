@@ -7832,11 +7832,11 @@ export interface paths {
          *     Operator claims a pending step execution.
          *     Sets assigned_to to current user and status to in_progress.
          *
-         *     Training gate (warn + supervisor override): the operator must be
-         *     qualified for the step. An unqualified claim is blocked (409) unless a
-         *     user with `override_training_gate` passes `override=true` and an
-         *     `override_reason`, which is logged on the execution's
-         *     `training_authorization` snapshot.
+         *     Training gate (second-person override): the operator must be qualified
+         *     for the step. An unqualified claim is blocked (409) unless a *different*
+         *     supervisor re-authenticates (`override_email` + `override_password`) and
+         *     supplies an `override_reason`; that authorization is logged on the
+         *     execution's `training_authorization` snapshot.
          */
         post: operations["api_StepExecutions_claim_create"];
         delete?: never;
@@ -15351,9 +15351,11 @@ export interface components {
             is_archived?: boolean;
         };
         ClaimStepInputRequest: {
-            /** @description Set true (with override_reason) to push past the training gate. */
-            override?: boolean;
-            /** @description Required when override=true. Logged on the execution. */
+            /** @description Authorizing supervisor's login email (second-person override). */
+            override_email?: string;
+            /** @description Authorizing supervisor's password — verified, never stored. */
+            override_password?: string;
+            /** @description Required when overriding. Logged on the execution. */
             override_reason?: string;
         };
         /**
@@ -27416,7 +27418,6 @@ export interface components {
             total_active: number;
         };
         WorkAuthorization: {
-            can_override: boolean;
             results: components["schemas"]["WorkAuthorizationRow"][];
         };
         WorkAuthorizationRow: {

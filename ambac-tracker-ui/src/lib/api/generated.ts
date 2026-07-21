@@ -12735,7 +12735,6 @@ export type UserDetail = {
   user_type_display: string;
 };
 export type WorkAuthorization = {
-  can_override: boolean;
   results: Array<WorkAuthorizationRow>;
 };
 export type WorkAuthorizationRow = {
@@ -16857,7 +16856,11 @@ const PatchedStepExecutionRequest = z
   })
   .partial();
 const ClaimStepInputRequest = z
-  .object({ override: z.boolean(), override_reason: z.string().min(1) })
+  .object({
+    override_email: z.string().min(1),
+    override_password: z.string().min(1),
+    override_reason: z.string().min(1),
+  })
   .partial();
 const StepDurationStats = z.object({
   step_id: z.string().uuid(),
@@ -16894,10 +16897,7 @@ const WorkAuthorizationRow = z.object({
   authorized: z.boolean(),
   missing: z.array(z.object({}).partial().passthrough()),
 });
-const WorkAuthorization = z.object({
-  can_override: z.boolean(),
-  results: z.array(WorkAuthorizationRow),
-});
+const WorkAuthorization = z.object({ results: z.array(WorkAuthorizationRow) });
 const BlockTypeEnum = z.enum([
   "QA_SIGNOFF",
   "FPI_REQUIRED",
@@ -37338,11 +37338,11 @@ Used by the workflow engine for tracking part progression through steps.`,
 Operator claims a pending step execution.
 Sets assigned_to to current user and status to in_progress.
 
-Training gate (warn + supervisor override): the operator must be
-qualified for the step. An unqualified claim is blocked (409) unless a
-user with &#x60;override_training_gate&#x60; passes &#x60;override&#x3D;true&#x60; and an
-&#x60;override_reason&#x60;, which is logged on the execution&#x27;s
-&#x60;training_authorization&#x60; snapshot.`,
+Training gate (second-person override): the operator must be qualified
+for the step. An unqualified claim is blocked (409) unless a *different*
+supervisor re-authenticates (&#x60;override_email&#x60; + &#x60;override_password&#x60;) and
+supplies an &#x60;override_reason&#x60;; that authorization is logged on the
+execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     requestFormat: "json",
     parameters: [
       {
