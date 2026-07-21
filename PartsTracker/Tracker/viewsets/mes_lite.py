@@ -4,6 +4,7 @@ from collections import Counter
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.http import HttpResponse
+from django.utils import timezone
 import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view, extend_schema, inline_serializer, OpenApiParameter, OpenApiTypes
@@ -2389,6 +2390,109 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
             return StepExecutionListSerializer
         return StepExecutionSerializer
 
+    # ------------------------------------------------------------------
+    # Training authorization gate (warn + supervisor override)
+    # ------------------------------------------------------------------
+    def _gate_process_for(self, data):
+        """Best-effort Process context for the gate, from the part's work order.
+
+        Step-level requirements are always enforced (we have the step);
+        process-level ones need the WorkOrder's process. Returns None when it
+        can't be resolved (e.g. a core teardown), leaving step-level intact.
+        """
+        part_id = data.get('part')
+        if not part_id:
+            return None
+        part = Parts.objects.filter(pk=part_id).select_related('work_order__process').first()
+        wo = getattr(part, 'work_order', None) if part else None
+        return getattr(wo, 'process', None) if wo else None
+
+    def _training_gate(self, request, step, process):
+        """Warn + supervisor-override training gate for starting active work.
+
+        Returns ``(error_response, snapshot)``:
+          - ``error_response`` — a DRF ``Response`` to return immediately, or
+            ``None`` when the work may proceed.
+          - ``snapshot`` — the authorization dict to persist on
+            ``execution.training_authorization`` (competence evidence at the
+            point of work). Includes the ``override`` block when a supervisor
+            pushed an unqualified operator through.
+        """
+        from Tracker.services.training import check_training_authorization
+
+        auth = check_training_authorization(request.user, step, process=process)
+        snapshot = auth.to_dict()
+        if auth.authorized:
+            return None, snapshot
+
+        override_raw = request.data.get('override')
+        override = override_raw is True or str(override_raw).strip().lower() == 'true'
+        # Tenant-scoped perm check (the convention used by every viewset here),
+        # not the backend has_perm — override authority is a per-tenant grant.
+        can_override = request.user.has_tenant_perm('override_training_gate')
+        reason = (request.data.get('override_reason') or '').strip()
+
+        if not override:
+            # Default: block, and tell the client whether an override is even
+            # possible for THIS user (drives the FE's override affordance).
+            return Response({
+                'detail': 'You are not qualified for this step.',
+                'code': 'training_not_authorized',
+                'missing': snapshot['missing'],
+                'can_override': can_override,
+            }, status=status.HTTP_409_CONFLICT), snapshot
+
+        if not can_override:
+            return Response({
+                'detail': 'A supervisor override is required to start this step.',
+                'code': 'override_not_permitted',
+                'missing': snapshot['missing'],
+                'can_override': False,
+            }, status=status.HTTP_403_FORBIDDEN), snapshot
+
+        if not reason:
+            return Response({
+                'detail': 'An override reason is required.',
+                'code': 'override_reason_required',
+                'missing': snapshot['missing'],
+                'can_override': True,
+            }, status=status.HTTP_400_BAD_REQUEST), snapshot
+
+        snapshot['override'] = {
+            'by': request.user.id,
+            'by_name': request.user.get_full_name() or request.user.get_username(),
+            'reason': reason,
+            'at': timezone.now().isoformat(),
+        }
+        return None, snapshot
+
+    def create(self, request, *args, **kwargs):
+        # Gate the transition INTO active work. `useEnsureStepExecution` (the
+        # operator's Start-Work funnel) POSTs a row with status=IN_PROGRESS —
+        # that's the real authorization point. A part merely arriving at a step
+        # (PENDING) isn't gated; nobody is working it yet. The workflow engine
+        # creates executions via the ORM, not this HTTP path, so it is untouched.
+        self._pending_training_snapshot = None
+        if str(request.data.get('status', '')).upper() == 'IN_PROGRESS':
+            step = Steps.objects.filter(pk=request.data.get('step')).first()
+            if step is not None:
+                process = self._gate_process_for(request.data)
+                error, snapshot = self._training_gate(request, step, process)
+                if error is not None:
+                    return error
+                self._pending_training_snapshot = snapshot
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        # Let the tenant-aware base assign tenant + save first, then stamp the
+        # authorization snapshot captured by create()'s gate.
+        super().perform_create(serializer)
+        snapshot = getattr(self, '_pending_training_snapshot', None)
+        if snapshot is not None:
+            execution = serializer.instance
+            execution.training_authorization = snapshot
+            execution.save(update_fields=['training_authorization'])
+
     @extend_schema(
         responses={200: WIPSummarySerializer(many=True)},
         description="Get WIP summary grouped by step for a process"
@@ -2527,7 +2631,16 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
     @extend_schema(
         request=inline_serializer(
             name="ClaimStepInput",
-            fields={}
+            fields={
+                'override': serializers.BooleanField(
+                    required=False,
+                    help_text="Set true (with override_reason) to push past the training gate.",
+                ),
+                'override_reason': serializers.CharField(
+                    required=False,
+                    help_text="Required when override=true. Logged on the execution.",
+                ),
+            }
         ),
         responses={200: StepExecutionSerializer}
     )
@@ -2538,6 +2651,12 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
 
         Operator claims a pending step execution.
         Sets assigned_to to current user and status to in_progress.
+
+        Training gate (warn + supervisor override): the operator must be
+        qualified for the step. An unqualified claim is blocked (409) unless a
+        user with `override_training_gate` passes `override=true` and an
+        `override_reason`, which is logged on the execution's
+        `training_authorization` snapshot.
         """
         execution = self.get_object()
 
@@ -2553,8 +2672,14 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        process = getattr(execution.subject_work_order, 'process', None)
+        error, snapshot = self._training_gate(request, execution.step, process)
+        if error is not None:
+            return error
+
         execution.assigned_to = request.user
         execution.status = 'IN_PROGRESS'
+        execution.training_authorization = snapshot
         execution.save()
 
         serializer = StepExecutionSerializer(execution)

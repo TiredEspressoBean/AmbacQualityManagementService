@@ -961,11 +961,14 @@ class StepExecutionSerializer(SecureModelMixin):
             'assigned_to', 'assigned_to_info',
             'completed_by', 'completed_by_info',
             'next_step', 'decision_result', 'status', 'is_active',
+            'training_authorization',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'created_at', 'updated_at', 'part_info', 'step_info',
-            'assigned_to_info', 'completed_by_info', 'duration_seconds', 'is_active'
+            'assigned_to_info', 'completed_by_info', 'duration_seconds', 'is_active',
+            # Server-computed competence snapshot / override log — never client-set.
+            'training_authorization',
         )
 
     @extend_schema_field(serializers.DictField(allow_null=True))

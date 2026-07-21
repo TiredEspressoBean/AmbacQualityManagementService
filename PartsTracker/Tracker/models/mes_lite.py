@@ -1478,6 +1478,19 @@ class StepExecution(SecureModel):
         help_text="Flag indicating operator reassignment is needed"
     )
 
+    # Training authorization snapshot, captured when work STARTS on this
+    # execution (competence evidence at the point of work — AS9100 clause 7.2).
+    # Holds the verified/missing training at that moment, and — if a supervisor
+    # pushed an unqualified operator through the gate — the override (who, why,
+    # when). Null until work is claimed/started; PENDING rows never set it.
+    training_authorization = models.JSONField(
+        null=True, blank=True,
+        help_text=(
+            "Snapshot of the operator's training authorization at work start "
+            "(audit trail). Includes the supervisor override, if one was used."
+        ),
+    )
+
     # FPI tracking
     is_fpi = models.BooleanField(
         default=False,
@@ -1538,6 +1551,12 @@ class StepExecution(SecureModel):
         ordering = ['entered_at']
         verbose_name = 'Step Execution'
         verbose_name_plural = 'Step Executions'
+        permissions = [
+            (
+                'override_training_gate',
+                'Can override the training authorization gate to start unqualified work',
+            ),
+        ]
         indexes = [
             models.Index(fields=['part', 'step']),
             models.Index(fields=['core', 'step']),

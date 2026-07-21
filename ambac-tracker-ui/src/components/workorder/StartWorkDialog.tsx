@@ -18,7 +18,7 @@
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Play, Loader2 } from "lucide-react";
+import { Play, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,13 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useRetrieveParts } from "@/hooks/parts";
-import { useEnsureStepExecution } from "@/hooks/useEnsureStepExecution";
+import {
+    useEnsureStepExecution,
+    TrainingGateError,
+    type TrainingGateInfo,
+} from "@/hooks/useEnsureStepExecution";
 
 type StartWorkDialogProps = {
     workOrderId: string;
@@ -108,55 +113,92 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
 
     const ensureExec = useEnsureStepExecution();
 
-    const handleStart = async () => {
-        if (selectedIds.length === 0) return;
+    // Training gate (warn + supervisor override). When the backend blocks an
+    // unqualified start, we hold the gate details here and open the override
+    // panel instead of silently failing.
+    const [gate, setGate] = useState<TrainingGateInfo | null>(null);
+    const [overrideReason, setOverrideReason] = useState("");
+    const [overriding, setOverriding] = useState(false);
+
+    /** Ensure the first part's execution, then route into the runtime. Shared
+     *  by the normal start and the supervisor-override retry. */
+    const launch = async (opts?: { override?: boolean; overrideReason?: string }) => {
         const firstId = selectedIds[0];
         const first = allParts.find((p) => String(p.id) === firstId);
         if (!first) return;
         const stepId = String(first.step);
 
+        // Only ensure the FIRST part's execution here. The remaining parts in
+        // the queue get their executions ensured by the runtime page as the
+        // operator advances — keeps this click cheap.
+        const { executionId } = await ensureExec.mutateAsync({
+            partId: firstId,
+            stepId,
+            override: opts?.override,
+            overrideReason: opts?.overrideReason,
+        });
+        const queue = selectedIds.slice(1);
+
+        // Reset + close before navigating so the dialog doesn't flash back
+        // open if the operator hits the browser Back button.
+        setSelectedIds([]);
+        setOpen(false);
+        setGate(null);
+        setOverrideReason("");
+
+        navigate({
+            to: "/operator/steps/$stepId/substeps",
+            params: { stepId },
+            // The runtime route's search shape requires every key present
+            // (fresh context — no inherited material_lot/osp_shipment/unit).
+            search: {
+                part: firstId,
+                workOrder: workOrderId,
+                execution: executionId,
+                at: 0,
+                queue: queue.length > 0 ? queue.join(",") : undefined,
+                material_lot: undefined,
+                osp_shipment: undefined,
+                unit: undefined,
+                debug: undefined,
+            },
+        });
+    };
+
+    const handleStart = async () => {
+        if (selectedIds.length === 0) return;
         setSubmitting(true);
         try {
-            // Only ensure the FIRST part's execution here. The remaining
-            // parts in the queue get their executions ensured by the
-            // runtime page as the operator advances to each — keeps this
-            // click cheap and avoids prefetching N rows of state the
-            // operator may never reach.
-            const { executionId } = await ensureExec.mutateAsync({
-                partId: firstId,
-                stepId,
-            });
-            // Rest of the queue (everything after the first part).
-            const queue = selectedIds.slice(1);
-
-            // Reset + close before navigating so the dialog doesn't flash
-            // back open if the operator hits the browser Back button.
-            setSelectedIds([]);
-            setOpen(false);
-
-            navigate({
-                to: "/operator/steps/$stepId/substeps",
-                params: { stepId },
-                // The runtime route's search shape requires every key present
-                // (fresh context — no inherited material_lot/osp_shipment/unit).
-                search: {
-                    part: firstId,
-                    workOrder: workOrderId,
-                    execution: executionId,
-                    at: 0,
-                    queue: queue.length > 0 ? queue.join(",") : undefined,
-                    material_lot: undefined,
-                    osp_shipment: undefined,
-                    unit: undefined,
-                    debug: undefined,
-                },
-            });
+            await launch();
         } catch (e) {
-            toast.error("Could not open the work surface", {
-                description: e instanceof Error ? e.message : undefined,
-            });
+            if (e instanceof TrainingGateError) {
+                setGate(e.gate);
+            } else {
+                toast.error("Could not open the work surface", {
+                    description: e instanceof Error ? e.message : undefined,
+                });
+            }
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleOverride = async () => {
+        if (!overrideReason.trim()) return;
+        setOverriding(true);
+        try {
+            await launch({ override: true, overrideReason: overrideReason.trim() });
+        } catch (e) {
+            if (e instanceof TrainingGateError) {
+                setGate(e.gate);
+                toast.error(e.gate.detail);
+            } else {
+                toast.error("Override failed", {
+                    description: e instanceof Error ? e.message : undefined,
+                });
+            }
+        } finally {
+            setOverriding(false);
         }
     };
 
@@ -281,6 +323,91 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                     </Button>
                 </DialogFooter>
             </DialogContent>
+
+            {/* Training gate — block on missing competency, supervisor override */}
+            <Dialog
+                open={!!gate}
+                onOpenChange={(v) => {
+                    if (overriding) return;
+                    if (!v) {
+                        setGate(null);
+                        setOverrideReason("");
+                    }
+                }}
+            >
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ShieldAlert className="h-5 w-5 text-destructive" />
+                            Not qualified for this step
+                        </DialogTitle>
+                        <DialogDescription>
+                            {gate?.can_override
+                                ? "The operator isn't qualified. As a supervisor you can override with a logged reason."
+                                : "You aren't qualified to start this step. A supervisor must override to proceed."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                        <p className="text-xs font-medium text-destructive mb-1.5">
+                            Missing training
+                        </p>
+                        <ul className="space-y-1 text-sm">
+                            {gate?.missing.map((m, i) => (
+                                <li key={i} className="flex justify-between gap-3">
+                                    <span className="font-medium">{m.training}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {m.reason}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {gate?.can_override && (
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-muted-foreground">
+                                Override reason (required — recorded on the execution)
+                            </label>
+                            <Textarea
+                                value={overrideReason}
+                                onChange={(e) => setOverrideReason(e.target.value)}
+                                placeholder="e.g. line-down, trainee working under direct supervision"
+                                rows={3}
+                            />
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setGate(null);
+                                setOverrideReason("");
+                            }}
+                            disabled={overriding}
+                        >
+                            Cancel
+                        </Button>
+                        {gate?.can_override && (
+                            <Button
+                                variant="destructive"
+                                onClick={handleOverride}
+                                disabled={!overrideReason.trim() || overriding}
+                            >
+                                {overriding ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                        Overriding…
+                                    </>
+                                ) : (
+                                    "Override & start"
+                                )}
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Dialog>
     );
 }

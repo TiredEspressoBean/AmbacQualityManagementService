@@ -646,6 +646,186 @@ class TrainingExpiryNotificationTests(TrainingModuleTestCase):
             soon.assert_not_called()
 
 
+class TrainingGateViewSetTests(TenantContextMixin, TestCase):
+    """The claim/create training gate (warn + supervisor override).
+
+    Exercises the real operator funnel — POST /api/StepExecutions/ with
+    status=IN_PROGRESS (what `useEnsureStepExecution` sends) — plus the
+    `claim` action, through the full permission stack.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import (
+            WorkOrder, WorkOrderStatus, Parts, ProcessStep, TenantGroup, UserRole,
+        )
+        from django.contrib.auth.models import Permission
+
+        self.tenant = Tenant.objects.create(name="Gate Tenant", slug="gate-tenant")
+        self.set_tenant_context(self.tenant)
+
+        self.operator = User.objects.create_user(
+            username="gate-op", email="op@gate.test", password="x", tenant=self.tenant,
+        )
+        self.supervisor = User.objects.create_user(
+            username="gate-sup", email="sup@gate.test", password="x", tenant=self.tenant,
+        )
+
+        self.pt = PartTypes.objects.create(tenant=self.tenant, name="Gate Widget")
+        self.process = Processes.objects.create(
+            tenant=self.tenant, name="Gate Process", part_type=self.pt,
+        )
+        self.step = Steps.objects.create(
+            tenant=self.tenant, part_type=self.pt, name="Gated Op", step_type="TASK",
+        )
+        ProcessStep.objects.create(process=self.process, step=self.step, order=1)
+        self.wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-GATE-1",
+            workorder_status=WorkOrderStatus.IN_PROGRESS, quantity=1, process=self.process,
+        )
+        self.part = Parts.objects.create(
+            tenant=self.tenant, ERP_id="P-GATE-1", part_type=self.pt,
+            work_order=self.wo, step=self.step,
+        )
+
+        # The step requires CMM training that neither user holds → gate fires.
+        self.cmm = TrainingType.objects.create(
+            name="CMM Operation", validity_period_days=365, tenant=self.tenant,
+        )
+        TrainingRequirement.objects.create(
+            training_type=self.cmm, step=self.step, tenant=self.tenant,
+        )
+
+        # Both users can create step executions; only the supervisor may override.
+        # full_tenant_access mirrors the real operator preset — without it,
+        # for_user() row-filters executions to the user's own orders (404 here).
+        self._grant(
+            self.operator,
+            "add_stepexecution", "view_stepexecution", "full_tenant_access",
+            group="ops",
+        )
+        self._grant(
+            self.supervisor,
+            "add_stepexecution", "view_stepexecution", "override_training_gate",
+            "full_tenant_access",
+            group="sups",
+        )
+
+    def _grant(self, user, *codenames, group):
+        from Tracker.models import TenantGroup, UserRole
+        from django.contrib.auth.models import Permission
+
+        grp, _ = TenantGroup.objects.get_or_create(
+            tenant=self.tenant, name=group, defaults={"is_custom": True},
+        )
+        grp.permissions.add(*Permission.objects.filter(codename__in=codenames))
+        UserRole.objects.get_or_create(user=user, group=grp)
+        user.clear_permission_cache(self.tenant)
+
+    def _client(self, user):
+        from rest_framework.test import APIClient
+        c = APIClient()
+        c.force_authenticate(user=user)
+        # TenantMiddleware runs before DRF auth, so it can't read user.tenant —
+        # the X-Tenant-ID header is how API/test clients set request context.
+        c.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
+        return c
+
+    def _qualify(self, user):
+        TrainingRecord.objects.create(
+            user=user, training_type=self.cmm,
+            completed_date=date.today(), level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
+
+    # --- create funnel -------------------------------------------------------
+
+    def test_qualified_create_succeeds_and_snapshots(self):
+        self._qualify(self.operator)
+        resp = self._client(self.operator).post("/api/StepExecutions/", {
+            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.get(pk=resp.data["id"])
+        self.assertIsNotNone(ex.training_authorization)
+        self.assertTrue(ex.training_authorization["authorized"])
+        self.assertNotIn("override", ex.training_authorization)
+
+    def test_unqualified_create_blocked_409(self):
+        resp = self._client(self.operator).post("/api/StepExecutions/", {
+            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
+        }, format="json")
+        self.assertEqual(resp.status_code, 409, resp.content)
+        self.assertEqual(resp.data["code"], "training_not_authorized")
+        self.assertFalse(resp.data["can_override"])
+        self.assertTrue(resp.data["missing"])
+
+    def test_unqualified_operator_override_forbidden_403(self):
+        resp = self._client(self.operator).post("/api/StepExecutions/", {
+            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
+            "override": True, "override_reason": "just do it",
+        }, format="json")
+        self.assertEqual(resp.status_code, 403, resp.content)
+        self.assertEqual(resp.data["code"], "override_not_permitted")
+
+    def test_supervisor_override_requires_reason_400(self):
+        resp = self._client(self.supervisor).post("/api/StepExecutions/", {
+            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
+            "override": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertEqual(resp.data["code"], "override_reason_required")
+
+    def test_supervisor_override_succeeds_and_logs(self):
+        resp = self._client(self.supervisor).post("/api/StepExecutions/", {
+            "part": str(self.part.id), "step": str(self.step.id), "status": "IN_PROGRESS",
+            "override": True, "override_reason": "urgent line-down, trainee supervised",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.get(pk=resp.data["id"])
+        ovr = ex.training_authorization["override"]
+        self.assertEqual(ovr["by"], self.supervisor.id)
+        self.assertIn("urgent line-down", ovr["reason"])
+
+    def test_pending_create_is_not_gated(self):
+        # A part merely arriving at a step (no one working it) must not be gated.
+        resp = self._client(self.operator).post("/api/StepExecutions/", {
+            "part": str(self.part.id), "step": str(self.step.id), "status": "PENDING",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.get(pk=resp.data["id"])
+        self.assertIsNone(ex.training_authorization)
+
+    # --- claim action --------------------------------------------------------
+
+    def test_claim_blocked_for_unqualified(self):
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step, status="PENDING",
+        )
+        resp = self._client(self.operator).post(f"/api/StepExecutions/{ex.id}/claim/", {}, format="json")
+        self.assertEqual(resp.status_code, 409, resp.content)
+        self.assertEqual(resp.data["code"], "training_not_authorized")
+
+    def test_claim_override_by_supervisor_logs(self):
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step, status="PENDING",
+        )
+        resp = self._client(self.supervisor).post(
+            f"/api/StepExecutions/{ex.id}/claim/",
+            {"override": True, "override_reason": "covering the station"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        ex.refresh_from_db()
+        self.assertEqual(ex.status, "IN_PROGRESS")
+        self.assertEqual(ex.assigned_to_id, self.supervisor.id)
+        self.assertIn("covering", ex.training_authorization["override"]["reason"])
+
+
 class TrainingRecordTests(TrainingModuleTestCase):
     """Tests for TrainingRecord model."""
 

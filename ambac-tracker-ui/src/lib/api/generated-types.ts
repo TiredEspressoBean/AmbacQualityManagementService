@@ -7831,6 +7831,12 @@ export interface paths {
          *
          *     Operator claims a pending step execution.
          *     Sets assigned_to to current user and status to in_progress.
+         *
+         *     Training gate (warn + supervisor override): the operator must be
+         *     qualified for the step. An unqualified claim is blocked (409) unless a
+         *     user with `override_training_gate` passes `override=true` and an
+         *     `override_reason`, which is logged on the execution's
+         *     `training_authorization` snapshot.
          */
         post: operations["api_StepExecutions_claim_create"];
         delete?: never;
@@ -15326,6 +15332,12 @@ export interface components {
             langgraph_thread_id: string;
             title?: string;
             is_archived?: boolean;
+        };
+        ClaimStepInputRequest: {
+            /** @description Set true (with override_reason) to push past the training gate. */
+            override?: boolean;
+            /** @description Required when override=true. Logged on the execution. */
+            override_reason?: string;
         };
         /**
          * @description * `PUBLIC` - Public
@@ -24772,6 +24784,8 @@ export interface components {
             decision_result?: string;
             status?: components["schemas"]["StepExecutionStatusEnum"];
             readonly is_active: boolean;
+            /** @description Snapshot of the operator's training authorization at work start (audit trail). Includes the supervisor override, if one was used. */
+            readonly training_authorization: unknown;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -41170,7 +41184,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ClaimStepInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ClaimStepInputRequest"];
+                "multipart/form-data": components["schemas"]["ClaimStepInputRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {

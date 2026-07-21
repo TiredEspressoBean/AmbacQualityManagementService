@@ -6372,6 +6372,10 @@ export type StepExecution = {
   string | undefined;
   status?: StepExecutionStatusEnum | undefined;
   is_active: boolean;
+  /**
+   * Snapshot of the operator's training authorization at work start (audit trail). Includes the supervisor override, if one was used.
+   */
+  training_authorization: unknown;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -16823,6 +16827,7 @@ const StepExecution = z.object({
   decision_result: z.string().max(50).optional(),
   status: StepExecutionStatusEnum.optional(),
   is_active: z.boolean(),
+  training_authorization: z.unknown().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -16840,6 +16845,9 @@ const PatchedStepExecutionRequest = z
     status: StepExecutionStatusEnum,
     archived: z.boolean(),
   })
+  .partial();
+const ClaimStepInputRequest = z
+  .object({ override: z.boolean(), override_reason: z.string().min(1) })
   .partial();
 const StepDurationStats = z.object({
   step_id: z.string().uuid(),
@@ -20352,6 +20360,7 @@ export const schemas = {
   StepExecutionRequest,
   StepExecution,
   PatchedStepExecutionRequest,
+  ClaimStepInputRequest,
   StepDurationStats,
   PaginatedStepExecutionList,
   WIPSummary,
@@ -37305,9 +37314,20 @@ Used by the workflow engine for tracking part progression through steps.`,
     description: `POST /step-executions/{id}/claim/
 
 Operator claims a pending step execution.
-Sets assigned_to to current user and status to in_progress.`,
+Sets assigned_to to current user and status to in_progress.
+
+Training gate (warn + supervisor override): the operator must be
+qualified for the step. An unqualified claim is blocked (409) unless a
+user with &#x60;override_training_gate&#x60; passes &#x60;override&#x3D;true&#x60; and an
+&#x60;override_reason&#x60;, which is logged on the execution&#x27;s
+&#x60;training_authorization&#x60; snapshot.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ClaimStepInputRequest,
+      },
       {
         name: "id",
         type: "Path",

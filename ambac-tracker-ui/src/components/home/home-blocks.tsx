@@ -45,6 +45,7 @@ import { useDashboardKpis } from "@/hooks/useDashboardKpis";
 import { useClaimableApprovals } from "@/hooks/useClaimableApprovals";
 import { useClaimApproval } from "@/hooks/useClaimApproval";
 import { useDocumentStats } from "@/hooks/useDocumentStats";
+import { useTrainingMatrix } from "@/hooks/useTrainingMatrix";
 import {
     useProcessChangeRequests, useProcessChangeOrders, useProcessChangeNotices,
 } from "@/hooks/useProcessChangeArtifacts";
@@ -475,6 +476,44 @@ function QualityKpisBlock() {
 }
 
 // ---------------------------------------------------------------------------
+// Competency coverage (HR / quality oversight) — the training-matrix headline
+// risks: skills nobody can do, skills only ONE person can do (bus factor), and
+// certs about to lapse. Each tile deep-links into the matrix to act on it.
+// ---------------------------------------------------------------------------
+
+function CompetencyCoverageBlock() {
+    const { data, isError } = useTrainingMatrix();
+    if (isError || !data) return null;
+    const coverage = data.coverage ?? [];
+    // No training types configured yet → nothing meaningful to show.
+    if (coverage.length === 0) return null;
+
+    const uncovered = coverage.filter((c) => c.qualified_count === 0).length;
+    const spof = coverage.filter((c) => c.qualified_count === 1).length;
+    const expiring = coverage.reduce((n, c) => n + (c.expiring_count ?? 0), 0);
+
+    return (
+        <StatSection title="Competency coverage">
+            <StatTile
+                label="Uncovered skills" value={uncovered} icon={AlertTriangle}
+                link="/quality/training/matrix"
+                variant={uncovered > 0 ? "danger" : "default"}
+            />
+            <StatTile
+                label="Single-operator skills" value={spof} icon={Wrench}
+                link="/quality/training/matrix"
+                variant={spof > 0 ? "warning" : "default"}
+            />
+            <StatTile
+                label="Expiring soon" value={expiring} icon={CalendarClock}
+                link="/quality/training/matrix"
+                variant={expiring > 0 ? "warning" : "default"}
+            />
+        </StatSection>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Available to claim (approver queue) — group-eligible approvals nobody has
 // picked up yet. Hidden when empty so it never clutters the stack.
 // ---------------------------------------------------------------------------
@@ -622,6 +661,7 @@ const BLOCKS: BlockDef[] = [
     { id: "scan", groups: EVERYONE, Component: () => <ScanBox /> },
     { id: "needs-attention", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
     { id: "quality-kpis", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <QualityKpisBlock /> },
+    { id: "competency-coverage", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <CompetencyCoverageBlock /> },
     {
         id: "wo-queue",
         groups: ["Operator", "Shift Lead", "Production Manager", "Tenant Admin"],
@@ -647,12 +687,12 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "available-to-claim", "inspection", "quality-actions", "scan"] },
-    { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wo-queue", "production-osp", "available-to-claim", "quality-actions", "scan"] },
+    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "competency-coverage", "available-to-claim", "inspection", "quality-actions", "scan"] },
+    { group: "Production Manager", order: ["needs-attention", "quality-kpis", "competency-coverage", "wo-queue", "production-osp", "available-to-claim", "quality-actions", "scan"] },
     { group: "Shift Lead", order: ["scan", "wo-queue", "needs-attention", "inspection", "production-osp", "available-to-claim", "quality-actions"] },
     { group: "Document Controller", order: ["documents", "quality-actions", "scan"] },
     { group: "Engineering", order: ["change-control", "quality-actions", "scan"] },
-    { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "wo-queue", "inspection", "documents", "change-control", "available-to-claim", "production-osp", "quality-actions", "scan"] },
+    { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "competency-coverage", "wo-queue", "inspection", "documents", "change-control", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
 /** The user's primary persona (first PERSONA_ORDER match), or null. Home uses

@@ -356,6 +356,18 @@ DECISION_RESOLUTION_PERMISSIONS = [
     'resolve_step_decision',
 ]
 
+# Training gate override: authorize an operator to START work they are not yet
+# qualified for (the warn + supervisor-override gate on claim / work-start). The
+# person on the line can't clear their own competency gap; a lead / manager
+# pushes it through with a logged reason (persisted on
+# StepExecution.training_authorization). Supervisor tier — same distribution as
+# decision resolution / FPI sign-off, deliberately withheld from the line
+# Operator. This is the "override / waive authority" the Shift Lead preset
+# comment anticipated.
+TRAINING_GATE_OVERRIDE_PERMISSIONS = [
+    'override_training_gate',
+]
+
 # First Piece Inspection buy-off: who may pass / fail / waive an FPI. Setup
 # verification must be independent of the operator who ran the first piece, so
 # this goes to the QA / lead / manager tier (same distribution as decision
@@ -475,6 +487,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Override the training gate to start unqualified work (logged)
+            *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Author shift notes (floor handoff)
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
         ],
@@ -503,6 +517,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Override the training gate to start unqualified work (logged)
+            *TRAINING_GATE_OVERRIDE_PERMISSIONS,
         ],
     },
 
@@ -548,6 +564,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Override the training gate to start unqualified work (logged)
+            *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
@@ -589,6 +607,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Override the training gate to start unqualified work (logged)
+            *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
