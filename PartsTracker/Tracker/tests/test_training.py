@@ -1046,6 +1046,62 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         _, blockers = other.can_advance_from_step(se, self.wo)
         self.assertFalse(self._training_blocker(blockers))
 
+    # --- lifecycle service, direct (no HTTP) ---------------------------------
+    # Locks the reusable seam's contract independently of the viewset.
+
+    def test_authorize_start_qualified_returns_clean_snapshot(self):
+        from Tracker.services.mes.lifecycle import authorize_start
+        self._qualify(self.operator)
+        snap = authorize_start(self.operator, self.step, self.process)
+        self.assertTrue(snap["authorized"])
+        self.assertNotIn("override", snap)
+
+    def test_authorize_start_unqualified_raises_notqualified(self):
+        from Tracker.services.mes.lifecycle import authorize_start, NotQualified
+        with self.assertRaises(NotQualified) as cm:
+            authorize_start(self.operator, self.step, self.process)
+        self.assertTrue(cm.exception.missing)
+
+    def test_authorize_start_override_records_both_identities(self):
+        from Tracker.services.mes.lifecycle import authorize_start
+        snap = authorize_start(
+            self.operator, self.step, self.process,
+            authorizer=self.supervisor, reason="line-down",
+        )
+        self.assertEqual(snap["override"]["worker"], self.operator.id)
+        self.assertEqual(snap["override"]["authorized_by"], self.supervisor.id)
+
+    def test_authorize_start_override_requires_reason(self):
+        from Tracker.services.mes.lifecycle import authorize_start, OverrideReasonRequired
+        with self.assertRaises(OverrideReasonRequired):
+            authorize_start(
+                self.operator, self.step, self.process, authorizer=self.supervisor,
+            )
+
+    def test_start_execution_reassignment_and_override_recorded(self):
+        from Tracker.models import StepExecution
+        from Tracker.services.mes.lifecycle import start_execution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step,
+            status="PENDING", assigned_to=self.coworker,
+        )
+        start_execution(ex, self.operator, authorizer=self.supervisor, reason="covering")
+        ex.refresh_from_db()
+        self.assertEqual(ex.status, "IN_PROGRESS")
+        self.assertEqual(ex.assigned_to_id, self.operator.id)
+        self.assertEqual(ex.training_authorization["reassignment"]["from"], self.coworker.id)
+        self.assertEqual(ex.training_authorization["override"]["authorized_by"], self.supervisor.id)
+
+    def test_start_execution_other_operator_needs_reassignment(self):
+        from Tracker.models import StepExecution
+        from Tracker.services.mes.lifecycle import start_execution, NeedsReassignment
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step,
+            status="PENDING", assigned_to=self.coworker,
+        )
+        with self.assertRaises(NeedsReassignment):
+            start_execution(ex, self.operator)  # no authorizer
+
 
 class TrainingRecordTests(TrainingModuleTestCase):
     """Tests for TrainingRecord model."""

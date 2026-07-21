@@ -44,11 +44,16 @@ class NeedsReassignment(StartGateError):
 
 
 class OverrideReasonRequired(StartGateError):
-    """A supervisor authorization was supplied without the required reason."""
+    """A supervisor authorization was supplied without the required reason.
 
-    def __init__(self, missing=None):
+    `detail` lets callers keep a context-specific message (e.g. reassignment vs
+    competence override) while sharing one error code.
+    """
+
+    def __init__(self, missing=None, detail=None):
         self.missing = missing
-        super().__init__("An override reason is required.")
+        self.detail = detail or "An override reason is required."
+        super().__init__(self.detail)
 
 
 def _person(user):
@@ -101,7 +106,7 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
         if authorizer is None:
             raise NeedsReassignment(current_operator=prior)
         if not (reason or '').strip():
-            raise OverrideReasonRequired()
+            raise OverrideReasonRequired(detail="A reason is required to reassign.")
         reassignment = {
             'from': prior.id,
             'from_name': _person(prior),

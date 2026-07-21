@@ -2487,8 +2487,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 'missing': exc.missing,
             }, status=status.HTTP_409_CONFLICT)
         if isinstance(exc, OverrideReasonRequired):
-            body = {'detail': 'An override reason is required.',
-                    'code': 'override_reason_required'}
+            body = {'detail': exc.detail, 'code': 'override_reason_required'}
             if exc.missing is not None:
                 body['missing'] = exc.missing
             return Response(body, status=status.HTTP_400_BAD_REQUEST)
