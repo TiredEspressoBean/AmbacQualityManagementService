@@ -2462,54 +2462,37 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         cache.delete(throttle_key)
         return cache_and_return((authorizer, None))
 
-    def _training_gate(self, request, step, process):
-        """Competence gate for starting active work, with second-person override.
+    def _supervisor_error_response(self, err):
+        """Translate a `_verify_supervisor` failure tuple → Response."""
+        detail, code, http_status = err
+        return Response({'detail': detail, 'code': code}, status=http_status)
 
-        If the operator (``request.user``) isn't qualified, the work is blocked
-        unless a *different* supervisor re-authenticates (see `_verify_supervisor`)
-        and supplies a reason. Returns ``(error_response, snapshot)``; the
-        snapshot is persisted on ``execution.training_authorization`` and carries
-        the ``override`` block (who authorized, why, when) when used.
-        """
-        from Tracker.services.training import check_training_authorization
-
-        auth = check_training_authorization(request.user, step, process=process)
-        snapshot = auth.to_dict()
-        if auth.authorized:
-            return None, snapshot
-
-        def blocked(detail, code, http_status):
-            return Response(
-                {'detail': detail, 'code': code, 'missing': snapshot['missing']},
-                status=http_status,
-            ), snapshot
-
-        authorizer, err = self._verify_supervisor(request)
-        if authorizer is None and err is None:
-            # No authorization attempt → plain block (FE shows the re-auth panel).
-            return blocked(
-                'You are not qualified for this step.',
-                'training_not_authorized', status.HTTP_409_CONFLICT,
-            )
-        if err is not None:
-            return blocked(*err)
-
-        reason = (request.data.get('override_reason') or '').strip()
-        if not reason:
-            return blocked(
-                'An override reason is required.',
-                'override_reason_required', status.HTTP_400_BAD_REQUEST,
-            )
-
-        snapshot['override'] = {
-            'worker': request.user.id,
-            'worker_name': request.user.get_full_name() or request.user.get_username(),
-            'authorized_by': authorizer.id,
-            'authorized_by_name': authorizer.get_full_name() or authorizer.get_username(),
-            'reason': reason,
-            'at': timezone.now().isoformat(),
-        }
-        return None, snapshot
+    def _start_gate_error_response(self, exc):
+        """Translate a work-start domain error (`services/mes/lifecycle`) → Response."""
+        from Tracker.services.mes.lifecycle import (
+            NotQualified, NeedsReassignment, OverrideReasonRequired,
+        )
+        if isinstance(exc, NeedsReassignment):
+            who = (exc.current_operator.get_full_name()
+                   or exc.current_operator.get_username())
+            return Response({
+                'detail': f"Assigned to {who}. A supervisor must reassign it.",
+                'code': 'assigned_to_other',
+                'assigned_to_name': who,
+            }, status=status.HTTP_409_CONFLICT)
+        if isinstance(exc, NotQualified):
+            return Response({
+                'detail': 'You are not qualified for this step.',
+                'code': 'training_not_authorized',
+                'missing': exc.missing,
+            }, status=status.HTTP_409_CONFLICT)
+        if isinstance(exc, OverrideReasonRequired):
+            body = {'detail': 'An override reason is required.',
+                    'code': 'override_reason_required'}
+            if exc.missing is not None:
+                body['missing'] = exc.missing
+            return Response(body, status=status.HTTP_400_BAD_REQUEST)
+        raise exc
 
     def create(self, request, *args, **kwargs):
         # Gate the transition INTO active work. `useEnsureStepExecution` (the
@@ -2517,20 +2500,28 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         # that's the real authorization point. A part merely arriving at a step
         # (PENDING) isn't gated; nobody is working it yet. The workflow engine
         # creates executions via the ORM, not this HTTP path, so it is untouched.
+        from Tracker.services.mes.lifecycle import authorize_start, StartGateError
         self._pending_training_snapshot = None
         if str(request.data.get('status', '')).upper() == 'IN_PROGRESS':
             step = Steps.objects.filter(pk=request.data.get('step')).first()
             if step is not None:
+                authorizer, verr = self._verify_supervisor(request)
+                if verr is not None:
+                    return self._supervisor_error_response(verr)
                 process = self._gate_process_for(request.data)
-                error, snapshot = self._training_gate(request, step, process)
-                if error is not None:
-                    return error
-                self._pending_training_snapshot = snapshot
+                try:
+                    self._pending_training_snapshot = authorize_start(
+                        request.user, step, process,
+                        authorizer=authorizer,
+                        reason=request.data.get('override_reason'),
+                    )
+                except StartGateError as exc:
+                    return self._start_gate_error_response(exc)
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         # Let the tenant-aware base assign tenant + save first, then stamp the
-        # authorization snapshot captured by create()'s gate.
+        # authorization snapshot computed by create()'s gate.
         super().perform_create(serializer)
         snapshot = getattr(self, '_pending_training_snapshot', None)
         if snapshot is not None:
@@ -2541,17 +2532,24 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
     def update(self, request, *args, **kwargs):
         # Close the PATCH bypass: flipping an existing row to IN_PROGRESS is the
         # same "operator takes up the work" transition as create/claim, so it
-        # runs the same gate. `status` is a writable field and operators hold
-        # change_stepexecution, so without this a PATCH would skip the gate.
+        # runs the same competence gate via the lifecycle service.
+        from Tracker.services.mes.lifecycle import authorize_start, StartGateError
         self._pending_training_snapshot = None
         execution = self.get_object()
         new_status = str(request.data.get('status', '')).upper()
         if new_status == 'IN_PROGRESS' and execution.status != 'IN_PROGRESS':
+            authorizer, verr = self._verify_supervisor(request)
+            if verr is not None:
+                return self._supervisor_error_response(verr)
             process = getattr(execution.subject_work_order, 'process', None)
-            error, snapshot = self._training_gate(request, execution.step, process)
-            if error is not None:
-                return error
-            self._pending_training_snapshot = snapshot
+            try:
+                self._pending_training_snapshot = authorize_start(
+                    request.user, execution.step, process,
+                    authorizer=authorizer,
+                    reason=request.data.get('override_reason'),
+                )
+            except StartGateError as exc:
+                return self._start_gate_error_response(exc)
         return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
@@ -2733,9 +2731,13 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
           - Reassignment: a ticket already assigned to a DIFFERENT operator is
             blocked (409 `assigned_to_other`); a supervisor can reassign it.
           - Competence: an unqualified operator is blocked (409); a supervisor
-            can override. See `_training_gate`.
-        Both are logged on the execution's `training_authorization` snapshot.
+            can override.
+        The transition + both gates live in `services/mes/lifecycle.start_execution`;
+        this action only verifies the supervisor and translates errors. Both are
+        logged on the execution's `training_authorization` snapshot.
         """
+        from Tracker.services.mes.lifecycle import start_execution, StartGateError
+
         execution = self.get_object()
 
         if execution.status == 'COMPLETED':
@@ -2744,51 +2746,20 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Reassignment gate — block taking someone else's ticket, unless a
-        # supervisor authorizes the reassignment (second-person).
-        reassignment = None
-        if execution.assigned_to_id and execution.assigned_to_id != request.user.id:
-            prior = execution.assigned_to
-            authorizer, err = self._verify_supervisor(request)
-            if authorizer is None and err is None:
-                return Response({
-                    'detail': f"Assigned to {prior.get_full_name() or prior.get_username()}. "
-                              "A supervisor must reassign it.",
-                    'code': 'assigned_to_other',
-                    'assigned_to_name': prior.get_full_name() or prior.get_username(),
-                }, status=status.HTTP_409_CONFLICT)
-            if err is not None:
-                detail, code, http_status = err
-                return Response({'detail': detail, 'code': code}, status=http_status)
-            reason = (request.data.get('override_reason') or '').strip()
-            if not reason:
-                return Response({
-                    'detail': 'A reason is required to reassign.',
-                    'code': 'override_reason_required',
-                }, status=status.HTTP_400_BAD_REQUEST)
-            reassignment = {
-                'from': prior.id,
-                'from_name': prior.get_full_name() or prior.get_username(),
-                'to': request.user.id,
-                'to_name': request.user.get_full_name() or request.user.get_username(),
-                'authorized_by': authorizer.id,
-                'authorized_by_name': authorizer.get_full_name() or authorizer.get_username(),
-                'reason': reason,
-                'at': timezone.now().isoformat(),
-            }
-
-        process = getattr(execution.subject_work_order, 'process', None)
-        error, snapshot = self._training_gate(request, execution.step, process)
-        if error is not None:
-            return error
-
-        if reassignment is not None:
-            snapshot['reassignment'] = reassignment
-
-        execution.assigned_to = request.user
-        execution.status = 'IN_PROGRESS'
-        execution.training_authorization = snapshot
-        execution.save()
+        # Verify the supervisor (HTTP concern) if credentials were supplied;
+        # (None, None) when none were. Then delegate the state transition +
+        # reassignment/competence gates to the lifecycle service.
+        authorizer, verr = self._verify_supervisor(request)
+        if verr is not None:
+            return self._supervisor_error_response(verr)
+        try:
+            start_execution(
+                execution, request.user,
+                authorizer=authorizer,
+                reason=request.data.get('override_reason'),
+            )
+        except StartGateError as exc:
+            return self._start_gate_error_response(exc)
 
         serializer = StepExecutionSerializer(execution)
         return Response(serializer.data)

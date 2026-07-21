@@ -7840,8 +7840,10 @@ export interface paths {
          *       - Reassignment: a ticket already assigned to a DIFFERENT operator is
          *         blocked (409 `assigned_to_other`); a supervisor can reassign it.
          *       - Competence: an unqualified operator is blocked (409); a supervisor
-         *         can override. See `_training_gate`.
-         *     Both are logged on the execution's `training_authorization` snapshot.
+         *         can override.
+         *     The transition + both gates live in `services/mes/lifecycle.start_execution`;
+         *     this action only verifies the supervisor and translates errors. Both are
+         *     logged on the execution's `training_authorization` snapshot.
          */
         post: operations["api_StepExecutions_claim_create"];
         delete?: never;

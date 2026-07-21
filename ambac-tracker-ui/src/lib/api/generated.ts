@@ -37346,8 +37346,10 @@ one supervisor re-authentication (&#x60;override_email&#x60; + &#x60;override_pa
   - Reassignment: a ticket already assigned to a DIFFERENT operator is
     blocked (409 &#x60;assigned_to_other&#x60;); a supervisor can reassign it.
   - Competence: an unqualified operator is blocked (409); a supervisor
-    can override. See &#x60;_training_gate&#x60;.
-Both are logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
+    can override.
+The transition + both gates live in &#x60;services/mes/lifecycle.start_execution&#x60;;
+this action only verifies the supervisor and translates errors. Both are
+logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     requestFormat: "json",
     parameters: [
       {
