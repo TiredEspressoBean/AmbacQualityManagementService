@@ -7947,6 +7947,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StepExecutions/work_authorization/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Per-part training authorization for the current user — the Start-Work pre-flight gate (so unqualified parts can be marked before launch, not just blocked on click). */
+        get: operations["api_StepExecutions_work_authorization_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepOverrides/": {
         parameters: {
             query?: never;
@@ -27398,6 +27415,20 @@ export interface components {
             in_progress_count: number;
             total_active: number;
         };
+        WorkAuthorization: {
+            can_override: boolean;
+            results: components["schemas"]["WorkAuthorizationRow"][];
+        };
+        WorkAuthorizationRow: {
+            /** Format: uuid */
+            part: string;
+            /** Format: uuid */
+            step: string | null;
+            authorized: boolean;
+            missing: {
+                [key: string]: unknown;
+            }[];
+        };
         /**
          * @description Work center serializer with equipment list.
          *
@@ -41428,6 +41459,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedWIPSummaryList"];
+                };
+            };
+        };
+    };
+    api_StepExecutions_work_authorization_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated part ids to check the current user against. */
+                parts?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkAuthorization"];
                 };
             };
         };

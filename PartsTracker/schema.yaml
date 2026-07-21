@@ -19577,6 +19577,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedWIPSummaryList'
           description: ''
+  /api/StepExecutions/work_authorization/:
+    get:
+      operationId: api_StepExecutions_work_authorization_retrieve
+      description: Per-part training authorization for the current user — the Start-Work
+        pre-flight gate (so unqualified parts can be marked before launch, not just
+        blocked on click).
+      parameters:
+      - in: query
+        name: parts
+        schema:
+          type: string
+        description: Comma-separated part ids to check the current user against.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkAuthorization'
+          description: ''
   /api/StepOverrides/:
     get:
       operationId: api_StepOverrides_list
@@ -58539,6 +58563,40 @@ components:
       - step_name
       - step_order
       - total_active
+    WorkAuthorization:
+      type: object
+      properties:
+        can_override:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkAuthorizationRow'
+      required:
+      - can_override
+      - results
+    WorkAuthorizationRow:
+      type: object
+      properties:
+        part:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+          nullable: true
+        authorized:
+          type: boolean
+        missing:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - authorized
+      - missing
+      - part
+      - step
     WorkCenter:
       type: object
       description: |-

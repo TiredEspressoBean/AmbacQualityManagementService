@@ -798,6 +798,28 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         ex = StepExecution.objects.get(pk=resp.data["id"])
         self.assertIsNone(ex.training_authorization)
 
+    # --- pre-flight work_authorization --------------------------------------
+
+    def test_work_authorization_reports_per_part(self):
+        # operator unqualified, supervisor qualified → per-part authorized flag,
+        # and can_override reflects each user's grant.
+        self._qualify(self.supervisor)
+        op_resp = self._client(self.operator).get(
+            f"/api/StepExecutions/work_authorization/?parts={self.part.id}"
+        )
+        self.assertEqual(op_resp.status_code, 200, op_resp.content)
+        self.assertFalse(op_resp.data["can_override"])
+        row = op_resp.data["results"][0]
+        self.assertEqual(str(row["part"]), str(self.part.id))
+        self.assertFalse(row["authorized"])
+        self.assertTrue(row["missing"])
+
+        sup_resp = self._client(self.supervisor).get(
+            f"/api/StepExecutions/work_authorization/?parts={self.part.id}"
+        )
+        self.assertTrue(sup_resp.data["can_override"])
+        self.assertTrue(sup_resp.data["results"][0]["authorized"])
+
     # --- claim action --------------------------------------------------------
 
     def test_claim_blocked_for_unqualified(self):

@@ -40,6 +40,7 @@ import {
     TrainingGateError,
     type TrainingGateInfo,
 } from "@/hooks/useEnsureStepExecution";
+import { useWorkAuthorization, type WorkAuthRow } from "@/hooks/useWorkAuthorization";
 
 type StartWorkDialogProps = {
     workOrderId: string;
@@ -81,6 +82,28 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
         () => partsByStep.flatMap(([_id, g]) => g.parts),
         [partsByStep],
     );
+
+    // Pre-flight: which of these parts is the current user qualified to work?
+    // Authorization is per-step, so every part in a step group shares a verdict.
+    const partIds = useMemo(() => allParts.map((p) => String(p.id)), [allParts]);
+    const { data: authData } = useWorkAuthorization(partIds, open);
+    const authByPart = useMemo(() => {
+        const m = new Map<string, WorkAuthRow>();
+        // The schema types `missing` as a loose dict; normalize to {training,reason}.
+        for (const r of authData?.results ?? []) {
+            m.set(String(r.part), {
+                part: String(r.part),
+                step: r.step ? String(r.step) : null,
+                authorized: !!r.authorized,
+                missing: (r.missing ?? []).map((x) => ({
+                    training: String((x as Record<string, unknown>).training ?? ""),
+                    reason: String((x as Record<string, unknown>).reason ?? ""),
+                })),
+            });
+        }
+        return m;
+    }, [authData]);
+    const canOverride = authData?.can_override ?? false;
 
     // The part list caps at 500 (§3.10). If the WO has more, the list is
     // incomplete — warn so the operator doesn't assume every part is shown.
@@ -167,6 +190,19 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
 
     const handleStart = async () => {
         if (selectedIds.length === 0) return;
+        // Pre-flight the first part (the one we launch). If the operator isn't
+        // qualified, open the gate panel straight away — no doomed create — so
+        // the resume path (existing execution) is gated too, not just create.
+        const firstAuth = authByPart.get(selectedIds[0]);
+        if (firstAuth && !firstAuth.authorized) {
+            setGate({
+                code: "training_not_authorized",
+                detail: "You are not qualified for this step.",
+                missing: firstAuth.missing,
+                can_override: canOverride,
+            });
+            return;
+        }
         setSubmitting(true);
         try {
             await launch();
@@ -249,6 +285,10 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                                 selectedInStep.length === stepPartIds.length;
                             const someSelected =
                                 selectedInStep.length > 0 && !allSelected;
+                            // Authorization is per-step → all parts in this group
+                            // share one verdict; read it off the first part.
+                            const groupAuth = authByPart.get(stepPartIds[0]);
+                            const stepBlocked = groupAuth ? !groupAuth.authorized : false;
                             return (
                             <div key={stepId} className="border-b last:border-b-0">
                                 <label className="bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground sticky top-0 flex items-center gap-2 cursor-pointer hover:bg-muted/60">
@@ -261,6 +301,15 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                                     <span className="text-[10px] opacity-60">
                                         ({selectedInStep.length} / {parts.length})
                                     </span>
+                                    {stepBlocked && (
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-auto gap-1 border-amber-500/50 text-amber-600 dark:text-amber-400"
+                                        >
+                                            <ShieldAlert className="h-3 w-3" />
+                                            Training needed
+                                        </Badge>
+                                    )}
                                 </label>
                                 {parts.map((p) => {
                                     const id = String(p.id);

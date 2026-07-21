@@ -12734,6 +12734,16 @@ export type UserDetail = {
   user_type: string;
   user_type_display: string;
 };
+export type WorkAuthorization = {
+  can_override: boolean;
+  results: Array<WorkAuthorizationRow>;
+};
+export type WorkAuthorizationRow = {
+  part: string;
+  step: string | null;
+  authorized: boolean;
+  missing: Array<{}>;
+};
 export type WorkOrder = {
   id: string;
   /**
@@ -16878,6 +16888,16 @@ const PaginatedWIPSummaryList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(WIPSummary),
 });
+const WorkAuthorizationRow = z.object({
+  part: z.string().uuid(),
+  step: z.string().uuid().nullable(),
+  authorized: z.boolean(),
+  missing: z.array(z.object({}).partial().passthrough()),
+});
+const WorkAuthorization = z.object({
+  can_override: z.boolean(),
+  results: z.array(WorkAuthorizationRow),
+});
 const BlockTypeEnum = z.enum([
   "QA_SIGNOFF",
   "FPI_REQUIRED",
@@ -20365,6 +20385,8 @@ export const schemas = {
   PaginatedStepExecutionList,
   WIPSummary,
   PaginatedWIPSummaryList,
+  WorkAuthorizationRow,
+  WorkAuthorization,
   BlockTypeEnum,
   StepOverrideStatusEnum,
   StepOverride,
@@ -37711,6 +37733,21 @@ user with &#x60;override_training_gate&#x60; passes &#x60;override&#x3D;true&#x6
       },
     ],
     response: PaginatedWIPSummaryList,
+  },
+  {
+    method: "get",
+    path: "/api/StepExecutions/work_authorization/",
+    alias: "api_StepExecutions_work_authorization_retrieve",
+    description: `Per-part training authorization for the current user — the Start-Work pre-flight gate (so unqualified parts can be marked before launch, not just blocked on click).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "parts",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: WorkAuthorization,
   },
   {
     method: "get",

@@ -2686,6 +2686,69 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         return Response(serializer.data)
 
     @extend_schema(
+        parameters=[OpenApiParameter(
+            'parts', OpenApiTypes.STR,
+            description="Comma-separated part ids to check the current user against.",
+        )],
+        responses={200: inline_serializer(
+            name="WorkAuthorization",
+            fields={
+                'can_override': serializers.BooleanField(),
+                'results': serializers.ListField(child=inline_serializer(
+                    name="WorkAuthorizationRow",
+                    fields={
+                        'part': serializers.UUIDField(),
+                        'step': serializers.UUIDField(allow_null=True),
+                        'authorized': serializers.BooleanField(),
+                        'missing': serializers.ListField(child=serializers.DictField()),
+                    },
+                )),
+            },
+        )},
+        description="Per-part training authorization for the current user — the "
+                    "Start-Work pre-flight gate (so unqualified parts can be marked "
+                    "before launch, not just blocked on click).",
+    )
+    @action(detail=False, methods=['get'])
+    def work_authorization(self, request):
+        """
+        GET /step-executions/work_authorization/?parts=<id>,<id>
+
+        For each part, resolve its current step (+ the WorkOrder's process) and
+        run the training authorization check for the CURRENT user. Memoized per
+        (step, process) so a tote of parts at one station is one check, not N.
+        `can_override` is the user-level override grant (same for every row).
+        """
+        from Tracker.services.training import check_training_authorization
+
+        ids = [p for p in (request.query_params.get('parts') or '').split(',') if p]
+        parts = Parts.objects.filter(pk__in=ids).select_related('step', 'work_order__process')
+
+        cache: dict = {}
+        results = []
+        for part in parts:
+            step = part.step
+            if step is None:
+                results.append({'part': str(part.id), 'step': None, 'authorized': True, 'missing': []})
+                continue
+            process = getattr(getattr(part, 'work_order', None), 'process', None)
+            key = (step.id, getattr(process, 'id', None))
+            if key not in cache:
+                cache[key] = check_training_authorization(request.user, step, process=process).to_dict()
+            snap = cache[key]
+            results.append({
+                'part': str(part.id),
+                'step': str(step.id),
+                'authorized': snap['authorized'],
+                'missing': snap['missing'],
+            })
+
+        return Response({
+            'can_override': request.user.has_tenant_perm('override_training_gate'),
+            'results': results,
+        })
+
+    @extend_schema(
         responses={200: inline_serializer(
             name="StepDurationStats",
             fields={

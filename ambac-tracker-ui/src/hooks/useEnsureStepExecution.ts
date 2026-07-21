@@ -72,6 +72,38 @@ export function useEnsureStepExecution() {
             const listData = await listResp.json();
             const existing = listData?.results?.[0];
             if (existing?.id) {
+                // Resume path: the row already exists (the create gate never
+                // sees it). When a supervisor is overriding, record it on the
+                // existing row via `claim` (server gates + stamps
+                // training_authorization). Without an override we only reach
+                // here for an authorized start (the dialog pre-flights first).
+                if (override) {
+                    const claimResp = await fetch(
+                        `/api/StepExecutions/${existing.id}/claim/`,
+                        {
+                            method: "POST",
+                            credentials: "include",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": getCookie("csrftoken") ?? "",
+                            },
+                            body: JSON.stringify({
+                                override: true,
+                                override_reason: overrideReason ?? "",
+                            }),
+                        },
+                    );
+                    if (!claimResp.ok) {
+                        const payload = await claimResp.json().catch(() => null);
+                        if (payload && GATE_CODES.has(payload.code)) {
+                            throw new TrainingGateError(payload as TrainingGateInfo);
+                        }
+                        const text =
+                            (payload && (payload.detail || JSON.stringify(payload))) ||
+                            `Claim failed: HTTP ${claimResp.status}`;
+                        throw new Error(text);
+                    }
+                }
                 return { executionId: String(existing.id), created: false };
             }
 
