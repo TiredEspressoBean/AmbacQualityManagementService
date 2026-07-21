@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Check, ArrowRight, Loader2 } from "lucide-react";
 import { useSubmitSubstep, type Substep } from "@/hooks/useSubsteps";
 import { useCompleteStep } from "@/hooks/parts";
+import { ensureStepExecution, TrainingGateError } from "@/hooks/useEnsureStepExecution";
 import type { OperatorResponses } from "@/components/dwi/shared/OperatorResponseContext";
 import { buildCaptures } from "@/lib/dwi/build-captures";
 import {
@@ -147,41 +148,31 @@ export async function advanceToNextQueuedPart({
         return;
     }
 
-    // Ensure StepExecution for the next part. Mirrors the
-    // `useEnsureStepExecution` hook but inline since this isn't React-render-time.
+    // Ensure the next part's StepExecution through the SHARED gated path
+    // (`ensureStepExecution`) — same competence + reassignment gate as the
+    // Start-Work dialog. Previously this was an ungated inline copy that
+    // silently reused an existing row, bypassing the gate for the queue flow.
     let executionId: string | null = null;
     try {
-        const listUrl =
-            `/api/StepExecutions/?part=${encodeURIComponent(nextPartId)}` +
-            `&step=${encodeURIComponent(nextStepId)}&limit=1`;
-        const lr = await fetch(listUrl, { credentials: "include" });
-        const ld = await lr.json();
-        const existing = ld?.results?.[0];
-        if (existing?.id) {
-            executionId = String(existing.id);
-        } else {
-            const csrf = document.cookie
-                .split(";")
-                .map((c) => c.trim())
-                .find((c) => c.startsWith("csrftoken="))
-                ?.split("=")[1] ?? "";
-            const cr = await fetch("/api/StepExecutions/", {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
-                body: JSON.stringify({
-                    part: nextPartId,
-                    step: nextStepId,
-                    status: "IN_PROGRESS",
-                }),
-            });
-            if (cr.ok) {
-                const created = await cr.json();
-                if (created?.id) executionId = String(created.id);
-            }
+        const result = await ensureStepExecution({
+            partId: nextPartId,
+            stepId: nextStepId,
+        });
+        executionId = result.executionId;
+    } catch (e) {
+        if (e instanceof TrainingGateError) {
+            // The next queued part is gated for this operator. Stop the queue
+            // and send them to Start Work, where the supervisor-override panel
+            // lives (we can't collect credentials from here).
+            toast.error(
+                e.gate.code === "assigned_to_other"
+                    ? "Next queued part is assigned to someone else — a supervisor must reassign it."
+                    : "You're not qualified for the next queued part — use Start Work to get a supervisor override.",
+                { description: `${ids.length} part${ids.length === 1 ? "" : "s"} remaining.` },
+            );
+            return;
         }
-    } catch {
-        // fall through
+        // fall through to the generic error below
     }
     if (!executionId) {
         toast.error("Could not open the next queued part — try Start Work again.");

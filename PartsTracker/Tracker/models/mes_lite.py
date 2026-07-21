@@ -1076,6 +1076,30 @@ class Steps(SecureModel):
                 substep_completion_blockers(self, step_execution, work_order)
             )
 
+        # 7.5. Competence gate (backstops the start gate on the advancement
+        # surface). An execution that NEVER passed a start gate has no
+        # `training_authorization` snapshot; such an execution must not advance a
+        # step carrying training requirements unless the recorded operator is
+        # qualified. Executions gated at start (snapshot present — authorized OR
+        # supervisor-override) are trusted and skipped, so already-authorized
+        # work is never re-blocked here (e.g. a cert that lapses mid-step). This
+        # is what closes `complete_step`/`increment`/`advance_lot` recording
+        # unqualified work directly through the ORM engine.
+        if step_execution.training_authorization is None:
+            from Tracker.services.training import (
+                get_required_training, check_training_authorization,
+            )
+            process = getattr(work_order, 'process', None)
+            if get_required_training(self, process):
+                worker = step_execution.assigned_to
+                if worker is None:
+                    blockers.append(
+                        "No qualified operator recorded for a step that requires training"
+                    )
+                elif not check_training_authorization(worker, self, process=process).authorized:
+                    who = worker.get_full_name() or worker.get_username()
+                    blockers.append(f"Operator {who} is not qualified for this step")
+
         # 8. Check for valid overrides that could clear blocks
         if blockers:
             valid_overrides = StepOverride.objects.filter(

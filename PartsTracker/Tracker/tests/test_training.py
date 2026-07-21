@@ -996,6 +996,56 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         self.assertEqual(ta["reassignment"]["authorized_by"], self.supervisor.id)
         self.assertEqual(ta["override"]["authorized_by"], self.supervisor.id)
 
+    # --- advancement competence gate (can_advance_from_step) ------------------
+    # Backstops the start gate on the ORM advancement surface
+    # (complete_step / increment / advance_lot).
+
+    def _bare_exec(self, **kw):
+        from Tracker.models import StepExecution
+        defaults = dict(tenant=self.tenant, part=self.part, step=self.step, status="PENDING")
+        defaults.update(kw)
+        return StepExecution.objects.create(**defaults)
+
+    def _training_blocker(self, blockers):
+        return [b for b in blockers if "qualified" in b.lower()]
+
+    def test_advance_blocks_ungated_unqualified_worker(self):
+        se = self._bare_exec(assigned_to=self.operator)  # ta=None; operator unqualified
+        _, blockers = self.step.can_advance_from_step(se, self.wo)
+        self.assertTrue(self._training_blocker(blockers))
+
+    def test_advance_blocks_ungated_no_worker_recorded(self):
+        se = self._bare_exec(assigned_to=None)  # never claimed → no worker
+        _, blockers = self.step.can_advance_from_step(se, self.wo)
+        self.assertTrue(self._training_blocker(blockers))
+
+    def test_advance_allows_ungated_qualified_worker(self):
+        self._qualify(self.operator)
+        se = self._bare_exec(assigned_to=self.operator)
+        _, blockers = self.step.can_advance_from_step(se, self.wo)
+        self.assertFalse(self._training_blocker(blockers))
+
+    def test_advance_trusts_gated_snapshot(self):
+        # Passed a start gate (snapshot present) → not re-blocked even though the
+        # recorded worker is unqualified now (no mid-stream re-block).
+        se = self._bare_exec(
+            assigned_to=self.operator,
+            training_authorization={"authorized": True, "missing": [], "verified": []},
+        )
+        _, blockers = self.step.can_advance_from_step(se, self.wo)
+        self.assertFalse(self._training_blocker(blockers))
+
+    def test_advance_ungated_step_without_requirement_ok(self):
+        from Tracker.models import StepExecution
+        other = Steps.objects.create(
+            tenant=self.tenant, part_type=self.pt, name="Ungated Op", step_type="TASK",
+        )
+        se = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=other, status="PENDING",
+        )
+        _, blockers = other.can_advance_from_step(se, self.wo)
+        self.assertFalse(self._training_blocker(blockers))
+
 
 class TrainingRecordTests(TrainingModuleTestCase):
     """Tests for TrainingRecord model."""

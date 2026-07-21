@@ -72,92 +72,103 @@ type EnsureResult = {
     created: boolean;
 };
 
-export function useEnsureStepExecution() {
-    return useMutation<EnsureResult, Error, EnsureVariables>({
-        mutationFn: async ({ partId, stepId, override }) => {
-            // 1. Try to find an existing execution for this (part, step).
-            const listUrl =
-                `/api/StepExecutions/?part=${encodeURIComponent(partId)}` +
-                `&step=${encodeURIComponent(stepId)}&limit=1`;
-            const listResp = await fetch(listUrl, { credentials: "include" });
-            if (!listResp.ok) {
-                throw new Error(`List failed: HTTP ${listResp.status}`);
-            }
-            const listData = await listResp.json();
-            const existing = listData?.results?.[0];
-            if (existing?.id) {
-                // Resume path (the common case: the engine pre-creates the row).
-                // Route it through `claim` so the server gates it — competence +
-                // reassignment — and records the worker (assigned_to), instead of
-                // silently handing back an ungated ticket. `claim` is idempotent
-                // for a row already IN_PROGRESS and owned by this user.
-                const claimResp = await fetch(
-                    `/api/StepExecutions/${existing.id}/claim/`,
-                    {
-                        method: "POST",
-                        credentials: "include",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRFToken": getCookie("csrftoken") ?? "",
-                        },
-                        body: JSON.stringify(override ? {
-                            override_email: override.email,
-                            override_password: override.password,
-                            override_reason: override.reason,
-                        } : {}),
-                    },
-                );
-                if (!claimResp.ok) {
-                    const payload = await claimResp.json().catch(() => null);
-                    if (payload && GATE_CODES.has(payload.code)) {
-                        throw new TrainingGateError(payload as TrainingGateInfo);
-                    }
-                    const text =
-                        (payload && (payload.detail || JSON.stringify(payload))) ||
-                        `Claim failed: HTTP ${claimResp.status}`;
-                    throw new Error(text);
-                }
-                return { executionId: String(existing.id), created: false };
-            }
-
-            // 2. Not found — create one. The viewset auto-fills tenant via
-            // SecureModel + middleware. visit_number defaults to 1.
-            const body: Record<string, unknown> = {
-                part: partId,
-                step: stepId,
-                status: "IN_PROGRESS",
-            };
-            if (override) {
-                body.override_email = override.email;
-                body.override_password = override.password;
-                body.override_reason = override.reason;
-            }
-            const createResp = await fetch("/api/StepExecutions/", {
+/**
+ * Get-or-create + GATE the StepExecution for (part, step). Plain async (not a
+ * hook) so non-render call sites — notably the serial-queue advance in
+ * completion-adapters — share this ONE gated path instead of duplicating an
+ * ungated copy. Both the found ("resume") and created branches go through the
+ * server gate (competence + reassignment) and record the worker.
+ */
+export async function ensureStepExecution(
+    { partId, stepId, override }: EnsureVariables,
+): Promise<EnsureResult> {
+    // 1. Try to find an existing execution for this (part, step).
+    const listUrl =
+        `/api/StepExecutions/?part=${encodeURIComponent(partId)}` +
+        `&step=${encodeURIComponent(stepId)}&limit=1`;
+    const listResp = await fetch(listUrl, { credentials: "include" });
+    if (!listResp.ok) {
+        throw new Error(`List failed: HTTP ${listResp.status}`);
+    }
+    const listData = await listResp.json();
+    const existing = listData?.results?.[0];
+    if (existing?.id) {
+        // Resume path (the common case: the engine pre-creates the row).
+        // Route it through `claim` so the server gates it — competence +
+        // reassignment — and records the worker (assigned_to), instead of
+        // silently handing back an ungated ticket. `claim` is idempotent
+        // for a row already IN_PROGRESS and owned by this user.
+        const claimResp = await fetch(
+            `/api/StepExecutions/${existing.id}/claim/`,
+            {
                 method: "POST",
                 credentials: "include",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRFToken": getCookie("csrftoken") ?? "",
                 },
-                body: JSON.stringify(body),
-            });
-            if (!createResp.ok) {
-                // The training gate answers with a structured JSON body; parse
-                // it so the caller can react (missing list + override option).
-                const payload = await createResp.json().catch(() => null);
-                if (payload && GATE_CODES.has(payload.code)) {
-                    throw new TrainingGateError(payload as TrainingGateInfo);
-                }
-                const text =
-                    (payload && (payload.detail || JSON.stringify(payload))) ||
-                    `Create failed: HTTP ${createResp.status}`;
-                throw new Error(text);
+                body: JSON.stringify(override ? {
+                    override_email: override.email,
+                    override_password: override.password,
+                    override_reason: override.reason,
+                } : {}),
+            },
+        );
+        if (!claimResp.ok) {
+            const payload = await claimResp.json().catch(() => null);
+            if (payload && GATE_CODES.has(payload.code)) {
+                throw new TrainingGateError(payload as TrainingGateInfo);
             }
-            const created = await createResp.json();
-            if (!created?.id) {
-                throw new Error("Create returned no id");
-            }
-            return { executionId: String(created.id), created: true };
+            const text =
+                (payload && (payload.detail || JSON.stringify(payload))) ||
+                `Claim failed: HTTP ${claimResp.status}`;
+            throw new Error(text);
+        }
+        return { executionId: String(existing.id), created: false };
+    }
+
+    // 2. Not found — create one. The viewset auto-fills tenant via
+    // SecureModel + middleware. visit_number defaults to 1.
+    const body: Record<string, unknown> = {
+        part: partId,
+        step: stepId,
+        status: "IN_PROGRESS",
+    };
+    if (override) {
+        body.override_email = override.email;
+        body.override_password = override.password;
+        body.override_reason = override.reason;
+    }
+    const createResp = await fetch("/api/StepExecutions/", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken") ?? "",
         },
+        body: JSON.stringify(body),
+    });
+    if (!createResp.ok) {
+        // The training gate answers with a structured JSON body; parse
+        // it so the caller can react (missing list + override option).
+        const payload = await createResp.json().catch(() => null);
+        if (payload && GATE_CODES.has(payload.code)) {
+            throw new TrainingGateError(payload as TrainingGateInfo);
+        }
+        const text =
+            (payload && (payload.detail || JSON.stringify(payload))) ||
+            `Create failed: HTTP ${createResp.status}`;
+        throw new Error(text);
+    }
+    const created = await createResp.json();
+    if (!created?.id) {
+        throw new Error("Create returned no id");
+    }
+    return { executionId: String(created.id), created: true };
+}
+
+export function useEnsureStepExecution() {
+    return useMutation<EnsureResult, Error, EnsureVariables>({
+        mutationFn: ensureStepExecution,
     });
 }
