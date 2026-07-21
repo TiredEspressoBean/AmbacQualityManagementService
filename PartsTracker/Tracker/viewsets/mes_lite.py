@@ -2407,35 +2407,76 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         wo = getattr(part, 'work_order', None) if part else None
         return getattr(wo, 'process', None) if wo else None
 
+    def _verify_supervisor(self, request):
+        """Verify a second-person supervisor from `override_email`/`override_password`
+        WITHOUT logging them in. Shared by the training gate and the reassignment
+        check, and memoized per request so one supervisor login clears both (and
+        the throttle only decrements once).
+
+        Returns ``(authorizer, error)``:
+          - ``(User, None)``  — a *different*, active user who holds
+            `override_training_gate` in this tenant.
+          - ``(None, (detail, code, http_status))`` — creds supplied but invalid.
+          - ``(None, None)`` — no creds supplied at all.
+        """
+        if hasattr(self, '_supervisor_cache'):
+            return self._supervisor_cache
+        from django.core.cache import cache
+        from Tracker.models import User
+
+        def cache_and_return(result):
+            self._supervisor_cache = result
+            return result
+
+        email = (request.data.get('override_email') or '').strip()
+        password = request.data.get('override_password') or ''
+        if not email and not password:
+            return cache_and_return((None, None))
+
+        # Rate-limit the password check so a shared terminal isn't a brute-force
+        # oracle. Only failed *authentication* counts toward the cap.
+        throttle_key = f"tgate_fail:{getattr(self.tenant, 'id', 'none')}:{email.lower()}"
+        if (cache.get(throttle_key) or 0) >= 5:
+            return cache_and_return((None, (
+                'Too many failed authorization attempts. Try again in a few minutes.',
+                'override_throttled', status.HTTP_429_TOO_MANY_REQUESTS)))
+
+        # User's own manager isn't tenant-scoped — filter by tenant explicitly.
+        authorizer = User.objects.filter(email__iexact=email, tenant=self.tenant).first()
+        if not (authorizer and authorizer.is_active and authorizer.check_password(password)):
+            cache.set(throttle_key, (cache.get(throttle_key) or 0) + 1, 900)
+            return cache_and_return((None, (
+                'Supervisor authorization failed — check the email and password.',
+                'override_auth_failed', status.HTTP_403_FORBIDDEN)))
+
+        if authorizer.id == request.user.id:
+            return cache_and_return((None, (
+                'The authorizing supervisor must be a different person than the operator.',
+                'override_self', status.HTTP_403_FORBIDDEN)))
+
+        if not authorizer.has_tenant_perm('override_training_gate', tenant=self.tenant):
+            return cache_and_return((None, (
+                'That user is not authorized to override.',
+                'override_not_permitted', status.HTTP_403_FORBIDDEN)))
+
+        cache.delete(throttle_key)
+        return cache_and_return((authorizer, None))
+
     def _training_gate(self, request, step, process):
-        """Training gate for starting active work, with second-person override.
+        """Competence gate for starting active work, with second-person override.
 
         If the operator (``request.user``) isn't qualified, the work is blocked
-        unless a *different* supervisor re-authenticates here to authorize it
-        (segregation of duties — the actor can never authorize their own start,
-        even if they hold the permission). The supervisor proves identity with
-        their own login; we verify without logging them in.
-
-        Returns ``(error_response, snapshot)``:
-          - ``error_response`` — a DRF ``Response`` to return immediately, or
-            ``None`` when the work may proceed.
-          - ``snapshot`` — the authorization dict persisted on
-            ``execution.training_authorization`` (competence evidence at the
-            point of work). Carries the ``override`` block (who authorized, why,
-            when) when a supervisor pushed an unqualified operator through.
+        unless a *different* supervisor re-authenticates (see `_verify_supervisor`)
+        and supplies a reason. Returns ``(error_response, snapshot)``; the
+        snapshot is persisted on ``execution.training_authorization`` and carries
+        the ``override`` block (who authorized, why, when) when used.
         """
-        from django.core.cache import cache
         from Tracker.services.training import check_training_authorization
-        from Tracker.models import User
 
         auth = check_training_authorization(request.user, step, process=process)
         snapshot = auth.to_dict()
         if auth.authorized:
             return None, snapshot
-
-        email = (request.data.get('override_email') or '').strip()
-        password = request.data.get('override_password') or ''
-        reason = (request.data.get('override_reason') or '').strip()
 
         def blocked(detail, code, http_status):
             return Response(
@@ -2443,51 +2484,23 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 status=http_status,
             ), snapshot
 
-        # No authorization attempt → plain block. The FE shows the supervisor
-        # re-auth panel; a supervisor is always the path (no self-override).
-        if not email and not password:
+        authorizer, err = self._verify_supervisor(request)
+        if authorizer is None and err is None:
+            # No authorization attempt → plain block (FE shows the re-auth panel).
             return blocked(
                 'You are not qualified for this step.',
                 'training_not_authorized', status.HTTP_409_CONFLICT,
             )
+        if err is not None:
+            return blocked(*err)
 
-        # Rate-limit the supervisor password check so a shared terminal isn't a
-        # brute-force oracle. Only failed *authentication* counts toward the cap.
-        throttle_key = f"tgate_fail:{getattr(self.tenant, 'id', 'none')}:{email.lower()}"
-        if (cache.get(throttle_key) or 0) >= 5:
-            return blocked(
-                'Too many failed authorization attempts. Try again in a few minutes.',
-                'override_throttled', status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-
-        # User's own manager isn't tenant-scoped — filter by tenant explicitly.
-        authorizer = User.objects.filter(email__iexact=email, tenant=self.tenant).first()
-        if not (authorizer and authorizer.is_active and authorizer.check_password(password)):
-            cache.set(throttle_key, (cache.get(throttle_key) or 0) + 1, 900)
-            return blocked(
-                'Supervisor authorization failed — check the email and password.',
-                'override_auth_failed', status.HTTP_403_FORBIDDEN,
-            )
-
-        if authorizer.id == request.user.id:
-            return blocked(
-                'The authorizing supervisor must be a different person than the operator.',
-                'override_self', status.HTTP_403_FORBIDDEN,
-            )
-
-        if not authorizer.has_tenant_perm('override_training_gate', tenant=self.tenant):
-            return blocked(
-                'That user is not authorized to override the training gate.',
-                'override_not_permitted', status.HTTP_403_FORBIDDEN,
-            )
-
+        reason = (request.data.get('override_reason') or '').strip()
         if not reason:
             return blocked(
                 'An override reason is required.',
                 'override_reason_required', status.HTTP_400_BAD_REQUEST,
             )
 
-        cache.delete(throttle_key)
         snapshot['override'] = {
             'worker': request.user.id,
             'worker_name': request.user.get_full_name() or request.user.get_username(),
@@ -2712,11 +2725,16 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         Operator claims a pending step execution.
         Sets assigned_to to current user and status to in_progress.
 
-        Training gate (second-person override): the operator must be qualified
-        for the step. An unqualified claim is blocked (409) unless a *different*
-        supervisor re-authenticates (`override_email` + `override_password`) and
-        supplies an `override_reason`; that authorization is logged on the
-        execution's `training_authorization` snapshot.
+        This is the transition an operator takes when they pick up a step —
+        the DWI runtime routes every Start-Work resume through here, so it is the
+        real authorization point. Two second-person gates apply, both cleared by
+        one supervisor re-authentication (`override_email` + `override_password`
+        + `override_reason`):
+          - Reassignment: a ticket already assigned to a DIFFERENT operator is
+            blocked (409 `assigned_to_other`); a supervisor can reassign it.
+          - Competence: an unqualified operator is blocked (409); a supervisor
+            can override. See `_training_gate`.
+        Both are logged on the execution's `training_authorization` snapshot.
         """
         execution = self.get_object()
 
@@ -2726,16 +2744,46 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if execution.assigned_to and execution.assigned_to != request.user:
-            return Response(
-                {"detail": "Already assigned to another operator"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Reassignment gate — block taking someone else's ticket, unless a
+        # supervisor authorizes the reassignment (second-person).
+        reassignment = None
+        if execution.assigned_to_id and execution.assigned_to_id != request.user.id:
+            prior = execution.assigned_to
+            authorizer, err = self._verify_supervisor(request)
+            if authorizer is None and err is None:
+                return Response({
+                    'detail': f"Assigned to {prior.get_full_name() or prior.get_username()}. "
+                              "A supervisor must reassign it.",
+                    'code': 'assigned_to_other',
+                    'assigned_to_name': prior.get_full_name() or prior.get_username(),
+                }, status=status.HTTP_409_CONFLICT)
+            if err is not None:
+                detail, code, http_status = err
+                return Response({'detail': detail, 'code': code}, status=http_status)
+            reason = (request.data.get('override_reason') or '').strip()
+            if not reason:
+                return Response({
+                    'detail': 'A reason is required to reassign.',
+                    'code': 'override_reason_required',
+                }, status=status.HTTP_400_BAD_REQUEST)
+            reassignment = {
+                'from': prior.id,
+                'from_name': prior.get_full_name() or prior.get_username(),
+                'to': request.user.id,
+                'to_name': request.user.get_full_name() or request.user.get_username(),
+                'authorized_by': authorizer.id,
+                'authorized_by_name': authorizer.get_full_name() or authorizer.get_username(),
+                'reason': reason,
+                'at': timezone.now().isoformat(),
+            }
 
         process = getattr(execution.subject_work_order, 'process', None)
         error, snapshot = self._training_gate(request, execution.step, process)
         if error is not None:
             return error
+
+        if reassignment is not None:
+            snapshot['reassignment'] = reassignment
 
         execution.assigned_to = request.user
         execution.status = 'IN_PROGRESS'

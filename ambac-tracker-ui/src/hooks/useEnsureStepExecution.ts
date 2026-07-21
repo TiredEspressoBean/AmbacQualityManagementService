@@ -22,15 +22,20 @@ import { getCookie } from "@/lib/utils";
  */
 
 export type TrainingGateInfo = {
-    /** training_not_authorized | override_auth_failed | override_self |
-     *  override_not_permitted | override_reason_required | override_throttled */
+    /** training_not_authorized | assigned_to_other | override_auth_failed |
+     *  override_self | override_not_permitted | override_reason_required |
+     *  override_throttled */
     code: string;
     detail: string;
-    missing: { training: string; reason: string }[];
+    /** Present for competence blocks; empty for a reassignment block. */
+    missing?: { training: string; reason: string }[];
+    /** Present for assigned_to_other — who currently holds the ticket. */
+    assigned_to_name?: string;
 };
 
 const GATE_CODES = new Set([
     "training_not_authorized",
+    "assigned_to_other",
     "override_auth_failed",
     "override_self",
     "override_not_permitted",
@@ -81,38 +86,36 @@ export function useEnsureStepExecution() {
             const listData = await listResp.json();
             const existing = listData?.results?.[0];
             if (existing?.id) {
-                // Resume path: the row already exists (the create gate never
-                // sees it). When a supervisor is overriding, record it on the
-                // existing row via `claim` (server gates + stamps
-                // training_authorization). Without an override we only reach
-                // here for an authorized start (the dialog pre-flights first).
-                if (override) {
-                    const claimResp = await fetch(
-                        `/api/StepExecutions/${existing.id}/claim/`,
-                        {
-                            method: "POST",
-                            credentials: "include",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-CSRFToken": getCookie("csrftoken") ?? "",
-                            },
-                            body: JSON.stringify({
-                                override_email: override.email,
-                                override_password: override.password,
-                                override_reason: override.reason,
-                            }),
+                // Resume path (the common case: the engine pre-creates the row).
+                // Route it through `claim` so the server gates it — competence +
+                // reassignment — and records the worker (assigned_to), instead of
+                // silently handing back an ungated ticket. `claim` is idempotent
+                // for a row already IN_PROGRESS and owned by this user.
+                const claimResp = await fetch(
+                    `/api/StepExecutions/${existing.id}/claim/`,
+                    {
+                        method: "POST",
+                        credentials: "include",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCookie("csrftoken") ?? "",
                         },
-                    );
-                    if (!claimResp.ok) {
-                        const payload = await claimResp.json().catch(() => null);
-                        if (payload && GATE_CODES.has(payload.code)) {
-                            throw new TrainingGateError(payload as TrainingGateInfo);
-                        }
-                        const text =
-                            (payload && (payload.detail || JSON.stringify(payload))) ||
-                            `Claim failed: HTTP ${claimResp.status}`;
-                        throw new Error(text);
+                        body: JSON.stringify(override ? {
+                            override_email: override.email,
+                            override_password: override.password,
+                            override_reason: override.reason,
+                        } : {}),
+                    },
+                );
+                if (!claimResp.ok) {
+                    const payload = await claimResp.json().catch(() => null);
+                    if (payload && GATE_CODES.has(payload.code)) {
+                        throw new TrainingGateError(payload as TrainingGateInfo);
                     }
+                    const text =
+                        (payload && (payload.detail || JSON.stringify(payload))) ||
+                        `Claim failed: HTTP ${claimResp.status}`;
+                    throw new Error(text);
                 }
                 return { executionId: String(existing.id), created: false };
             }

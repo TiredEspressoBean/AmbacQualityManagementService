@@ -404,29 +404,41 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <ShieldAlert className="h-5 w-5 text-destructive" />
-                            Not qualified for this step
+                            {gate?.code === "assigned_to_other"
+                                ? "Assigned to someone else"
+                                : "Not qualified for this step"}
                         </DialogTitle>
                         <DialogDescription>
-                            The operator isn't qualified. A supervisor must sign in below
-                            to authorize this work — it's logged against their name.
+                            {gate?.code === "assigned_to_other"
+                                ? "This step is assigned to another operator. A supervisor must sign in below to reassign it — logged against their name."
+                                : "The operator isn't qualified. A supervisor must sign in below to authorize this work — logged against their name."}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                        <p className="text-xs font-medium text-destructive mb-1.5">
-                            Missing training
-                        </p>
-                        <ul className="space-y-1 text-sm">
-                            {gate?.missing.map((m, i) => (
-                                <li key={i} className="flex justify-between gap-3">
-                                    <span className="font-medium">{m.training}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {m.reason}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                    {gate?.missing && gate.missing.length > 0 && (
+                        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                            <p className="text-xs font-medium text-destructive mb-1.5">
+                                Missing training
+                            </p>
+                            <ul className="space-y-1 text-sm">
+                                {gate.missing.map((m, i) => (
+                                    <li key={i} className="flex justify-between gap-3">
+                                        <span className="font-medium">{m.training}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {m.reason}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {gate?.code === "assigned_to_other" && gate.assigned_to_name && (
+                        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+                            Currently assigned to{" "}
+                            <span className="font-medium">{gate.assigned_to_name}</span>.
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">
@@ -449,7 +461,11 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                         <Textarea
                             value={overrideReason}
                             onChange={(e) => setOverrideReason(e.target.value)}
-                            placeholder="Reason (required — e.g. line-down, trainee under direct supervision)"
+                            placeholder={
+                                gate?.code === "assigned_to_other"
+                                    ? "Reason for reassignment (required)"
+                                    : "Reason (required — e.g. line-down, trainee under direct supervision)"
+                            }
                             rows={2}
                         />
                     </div>

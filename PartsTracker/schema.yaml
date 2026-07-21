@@ -19088,11 +19088,16 @@ paths:
         Operator claims a pending step execution.
         Sets assigned_to to current user and status to in_progress.
 
-        Training gate (second-person override): the operator must be qualified
-        for the step. An unqualified claim is blocked (409) unless a *different*
-        supervisor re-authenticates (`override_email` + `override_password`) and
-        supplies an `override_reason`; that authorization is logged on the
-        execution's `training_authorization` snapshot.
+        This is the transition an operator takes when they pick up a step —
+        the DWI runtime routes every Start-Work resume through here, so it is the
+        real authorization point. Two second-person gates apply, both cleared by
+        one supervisor re-authentication (`override_email` + `override_password`
+        + `override_reason`):
+          - Reassignment: a ticket already assigned to a DIFFERENT operator is
+            blocked (409 `assigned_to_other`); a supervisor can reassign it.
+          - Competence: an unqualified operator is blocked (409); a supervisor
+            can override. See `_training_gate`.
+        Both are logged on the execution's `training_authorization` snapshot.
       parameters:
       - in: path
         name: id

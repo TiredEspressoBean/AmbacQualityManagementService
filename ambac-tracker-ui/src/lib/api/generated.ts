@@ -37338,11 +37338,16 @@ Used by the workflow engine for tracking part progression through steps.`,
 Operator claims a pending step execution.
 Sets assigned_to to current user and status to in_progress.
 
-Training gate (second-person override): the operator must be qualified
-for the step. An unqualified claim is blocked (409) unless a *different*
-supervisor re-authenticates (&#x60;override_email&#x60; + &#x60;override_password&#x60;) and
-supplies an &#x60;override_reason&#x60;; that authorization is logged on the
-execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
+This is the transition an operator takes when they pick up a step —
+the DWI runtime routes every Start-Work resume through here, so it is the
+real authorization point. Two second-person gates apply, both cleared by
+one supervisor re-authentication (&#x60;override_email&#x60; + &#x60;override_password&#x60;
++ &#x60;override_reason&#x60;):
+  - Reassignment: a ticket already assigned to a DIFFERENT operator is
+    blocked (409 &#x60;assigned_to_other&#x60;); a supervisor can reassign it.
+  - Competence: an unqualified operator is blocked (409); a supervisor
+    can override. See &#x60;_training_gate&#x60;.
+Both are logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     requestFormat: "json",
     parameters: [
       {

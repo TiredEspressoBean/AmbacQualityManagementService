@@ -921,6 +921,81 @@ class TrainingGateViewSetTests(TenantContextMixin, TestCase):
         self.assertEqual(ovr["worker"], self.operator.id)
         self.assertIn("covering", ovr["reason"])
 
+    # --- reassignment (someone else's ticket) --------------------------------
+
+    def test_claim_assigned_to_other_blocked(self):
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step,
+            status="PENDING", assigned_to=self.coworker,
+        )
+        resp = self._client(self.operator).post(
+            f"/api/StepExecutions/{ex.id}/claim/", {}, format="json",
+        )
+        self.assertEqual(resp.status_code, 409, resp.content)
+        self.assertEqual(resp.data["code"], "assigned_to_other")
+        self.assertIn("assigned_to_name", resp.data)
+
+    def test_claim_reassign_by_supervisor(self):
+        # Operator IS qualified; the ticket is the coworker's → a supervisor
+        # reassigns it. No training override needed (they're qualified).
+        self._qualify(self.operator)
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step,
+            status="PENDING", assigned_to=self.coworker,
+        )
+        resp = self._client(self.operator).post(
+            f"/api/StepExecutions/{ex.id}/claim/",
+            {"override_email": "sup@gate.test", "override_password": "suppass",
+             "override_reason": "covering the coworker's station"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        ex.refresh_from_db()
+        self.assertEqual(ex.assigned_to_id, self.operator.id)
+        r = ex.training_authorization["reassignment"]
+        self.assertEqual(r["from"], self.coworker.id)
+        self.assertEqual(r["to"], self.operator.id)
+        self.assertEqual(r["authorized_by"], self.supervisor.id)
+        self.assertNotIn("override", ex.training_authorization)  # qualified
+
+    def test_claim_reassign_requires_reason(self):
+        self._qualify(self.operator)
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step,
+            status="PENDING", assigned_to=self.coworker,
+        )
+        resp = self._client(self.operator).post(
+            f"/api/StepExecutions/{ex.id}/claim/",
+            {"override_email": "sup@gate.test", "override_password": "suppass"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertEqual(resp.data["code"], "override_reason_required")
+
+    def test_claim_reassign_and_override_one_authorization(self):
+        # Operator is UNqualified AND the ticket is the coworker's — one
+        # supervisor login clears both the reassignment and the competence gate.
+        from Tracker.models import StepExecution
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step,
+            status="PENDING", assigned_to=self.coworker,
+        )
+        resp = self._client(self.operator).post(
+            f"/api/StepExecutions/{ex.id}/claim/",
+            {"override_email": "sup@gate.test", "override_password": "suppass",
+             "override_reason": "line-down, supervised and reassigned"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        ex.refresh_from_db()
+        self.assertEqual(ex.assigned_to_id, self.operator.id)
+        ta = ex.training_authorization
+        self.assertEqual(ta["reassignment"]["authorized_by"], self.supervisor.id)
+        self.assertEqual(ta["override"]["authorized_by"], self.supervisor.id)
+
 
 class TrainingRecordTests(TrainingModuleTestCase):
     """Tests for TrainingRecord model."""
