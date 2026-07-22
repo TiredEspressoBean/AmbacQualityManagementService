@@ -6426,8 +6426,8 @@ export type StepExecutionList = {
      */
     (string | null)
     | undefined;
-  part_erp_id: string;
-  part_status: string;
+  part_erp_id: string | null;
+  part_status: string | null;
   /**
    * The step being executed
    */
@@ -16787,8 +16787,8 @@ const StepExecutionStatusEnum = z.enum([
 const StepExecutionList = z.object({
   id: z.string().uuid(),
   part: z.string().uuid().nullish(),
-  part_erp_id: z.string(),
-  part_status: z.string(),
+  part_erp_id: z.string().nullable(),
+  part_status: z.string().nullable(),
   step: z.string().uuid(),
   step_name: z.string(),
   step_order: z.number().int().nullable(),

@@ -24827,8 +24827,8 @@ export interface components {
              * @description The part being tracked through this step (mutually exclusive with `core`).
              */
             part?: string | null;
-            readonly part_erp_id: string;
-            readonly part_status: string;
+            readonly part_erp_id: string | null;
+            readonly part_status: string | null;
             /**
              * Format: uuid
              * @description The step being executed

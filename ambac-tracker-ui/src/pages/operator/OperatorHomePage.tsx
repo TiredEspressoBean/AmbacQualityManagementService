@@ -452,7 +452,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                         <>
                             <div className="my-2 min-w-0">
                                 <div className="truncate font-medium">{activeRun.step_name}</div>
-                                <div className="truncate font-mono text-xs text-muted-foreground">{activeRun.part_erp_id}</div>
+                                <div className="truncate font-mono text-xs text-muted-foreground">{activeRun.part_erp_id ?? "—"}</div>
                                 <div className="text-xs text-muted-foreground">
                                     {activeRun.status === "IN_PROGRESS" ? "Running" : "Assigned"}
                                     {activeRun.entered_at ? ` · started ${formatDistanceToNow(new Date(activeRun.entered_at))} ago` : ""}
@@ -465,7 +465,9 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     to: "/operator/steps/$stepId/substeps",
                                     params: { stepId: String(activeRun.step) },
                                     search: {
-                                        part: String(activeRun.part),
+                                        // part is nullable on receiving/OSP-return-inspection
+                                        // runs; the runtime resolves those from execution alone.
+                                        part: activeRun.part ? String(activeRun.part) : undefined,
                                         execution: String(activeRun.id),
                                         workOrder: undefined,
                                         material_lot: undefined,
