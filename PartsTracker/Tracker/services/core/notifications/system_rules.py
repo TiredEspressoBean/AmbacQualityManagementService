@@ -135,6 +135,13 @@ STARTER_RULES = [
 def seed_system_rules_for_tenant(tenant) -> dict[str, int]:
     """Seed the starter rule set for a tenant. Idempotent.
 
+    Two passes:
+      1. Explicit STARTER_RULES entries (defined above).
+      2. Fallback synthesis from `EventType.default_recipient_groups` for any
+         registered event NOT covered by an explicit entry in pass 1. Keeps
+         the field's declared intent aligned with actual delivery — the
+         dispatcher itself is rule-driven and never reads the field.
+
     Skips events not registered in EVENT_REGISTRY (allows rule specs to be
     added before/after their event registrations). Skips group references
     that don't resolve on this tenant.
@@ -144,78 +151,106 @@ def seed_system_rules_for_tenant(tenant) -> dict[str, int]:
 
     Returns a counts dict: `{'created': N, 'skipped': M, 'errors': K}`.
     """
-    from Tracker.models import NotificationRule, TenantGroup
+    from Tracker.models import TenantGroup
     from .registry import EVENT_REGISTRY
 
-    created = 0
-    skipped = 0
-    errors = 0
+    counts = {"created": 0, "skipped": 0, "errors": 0}
 
     # Pre-fetch tenant groups by name for O(1) lookup.
     groups_by_name: dict[str, TenantGroup] = {
         g.name: g for g in TenantGroup.objects.filter(tenant=tenant)
     }
 
+    # Pass 1: explicit starter rules.
+    explicit_event_codes: set[str] = set()
     for spec in STARTER_RULES:
-        event_code = spec["event_code"]
-        if event_code not in EVENT_REGISTRY:
-            logger.debug(
-                "system rules: skipping %r — event not registered for tenant %s",
-                event_code, tenant.id,
-            )
-            skipped += 1
+        explicit_event_codes.add(spec["event_code"])
+        _seed_one_rule(tenant, spec, groups_by_name, EVENT_REGISTRY, counts)
+
+    # Pass 2: fallback from EventType.default_recipient_groups.
+    for event in EVENT_REGISTRY.values():
+        if event.code in explicit_event_codes:
             continue
-
-        name = spec["name"]
-        # Idempotency: skip if a rule with this name already exists for the event.
-        if NotificationRule.objects.filter(
-            tenant=tenant, event_code=event_code, name=name,
-        ).exists():
-            skipped += 1
+        if not event.default_recipient_groups:
             continue
-
-        # Resolve recipient groups by name; warn (not error) if a referenced
-        # group doesn't exist on this tenant.
-        resolved_groups = []
-        for group_name in spec["recipient_group_names"]:
-            group = groups_by_name.get(group_name)
-            if group is None:
-                logger.warning(
-                    "system rules: starter rule %r references group %r "
-                    "which doesn't exist on tenant %s — group skipped",
-                    name, group_name, tenant.id,
-                )
-                continue
-            resolved_groups.append(group)
-
-        try:
-            rule = NotificationRule.objects.create(
-                tenant=tenant,
-                name=name,
-                description=spec["description"],
-                event_code=event_code,
-                scope_kind="tenant",
-                conditions_source="",
-                channels=spec["channels"],
-                recipient_strategy=spec["recipient_strategy"],
-                min_gap_seconds=spec["min_gap_seconds"],
-                enabled=True,
-            )
-            if resolved_groups:
-                rule.recipient_groups.add(*resolved_groups)
-            created += 1
-        except Exception:
-            logger.exception(
-                "system rules: failed to create starter rule %r for tenant %s",
-                name, tenant.id,
-            )
-            errors += 1
+        spec = {
+            "event_code": event.code,
+            "name": f"{event.label} — default recipients",
+            "description": (
+                "Auto-seeded from the event's default recipient groups. "
+                "Edit or disable in the Notification Rules UI to customize."
+            ),
+            "recipient_strategy": "static",
+            "recipient_group_names": list(event.default_recipient_groups),
+            "channels": list(event.default_channels),
+            "min_gap_seconds": 0,
+        }
+        _seed_one_rule(tenant, spec, groups_by_name, EVENT_REGISTRY, counts)
 
     logger.info(
         "system rules: tenant=%s created=%d skipped=%d errors=%d",
-        tenant.id, created, skipped, errors,
+        tenant.id, counts["created"], counts["skipped"], counts["errors"],
     )
-    return {"created": created, "skipped": skipped, "errors": errors}
+    return counts
+
+
+def _seed_one_rule(tenant, spec, groups_by_name, event_registry, counts) -> None:
+    """Create one NotificationRule from a spec. Idempotent by (tenant, event, name).
+
+    Mutates `counts` in place: increments one of created/skipped/errors.
+    """
+    from Tracker.models import NotificationRule
+
+    event_code = spec["event_code"]
+    if event_code not in event_registry:
+        logger.debug(
+            "system rules: skipping %r — event not registered for tenant %s",
+            event_code, tenant.id,
+        )
+        counts["skipped"] += 1
+        return
+
+    name = spec["name"]
+    if NotificationRule.objects.filter(
+        tenant=tenant, event_code=event_code, name=name,
+    ).exists():
+        counts["skipped"] += 1
+        return
+
+    resolved_groups = []
+    for group_name in spec["recipient_group_names"]:
+        group = groups_by_name.get(group_name)
+        if group is None:
+            logger.warning(
+                "system rules: starter rule %r references group %r "
+                "which doesn't exist on tenant %s — group skipped",
+                name, group_name, tenant.id,
+            )
+            continue
+        resolved_groups.append(group)
+
+    try:
+        rule = NotificationRule.objects.create(
+            tenant=tenant,
+            name=name,
+            description=spec["description"],
+            event_code=event_code,
+            scope_kind="tenant",
+            conditions_source="",
+            channels=spec["channels"],
+            recipient_strategy=spec["recipient_strategy"],
+            min_gap_seconds=spec["min_gap_seconds"],
+            enabled=True,
+        )
+        if resolved_groups:
+            rule.recipient_groups.add(*resolved_groups)
+        counts["created"] += 1
+    except Exception:
+        logger.exception(
+            "system rules: failed to create starter rule %r for tenant %s",
+            name, tenant.id,
+        )
+        counts["errors"] += 1
 
 
 def list_starter_rule_specs() -> Iterable[dict]:

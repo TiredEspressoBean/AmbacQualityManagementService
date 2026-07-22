@@ -20,6 +20,11 @@ class EventType:
     domain: str
     payload_schema: Type
     default_channels: list[str] = field(default_factory=lambda: ['in_app'])
+    # Seed-time only. The dispatcher is rule-driven and never reads this field
+    # at delivery. `seed_system_rules_for_tenant` synthesizes a static-strategy
+    # NotificationRule from this list at tenant creation / re-seed for any
+    # event NOT covered by an explicit STARTER_RULES entry. Admins can edit or
+    # delete the synthesized rule in the UI like any other.
     default_recipient_groups: list[str] = field(default_factory=list)
     default_on: bool = False
     transactional: bool = False
