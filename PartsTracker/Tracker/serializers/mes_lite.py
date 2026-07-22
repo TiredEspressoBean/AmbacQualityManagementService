@@ -1041,8 +1041,11 @@ class StepExecutionSerializer(SecureModelMixin):
 
 class StepExecutionListSerializer(SecureModelMixin):
     """Lightweight serializer for list views - avoids N+1 with select_related."""
-    part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True)
-    part_status = serializers.CharField(source='part.part_status', read_only=True)
+    # StepExecution.part is nullable (receiving-inspection / OSP-return-inspection
+    # executions have no part), so these source-through fields must allow null —
+    # otherwise the zod client rejects the response the first time part is None.
+    part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True, allow_null=True)
+    part_status = serializers.CharField(source='part.part_status', read_only=True, allow_null=True)
     step_name = serializers.CharField(source='step.name', read_only=True)
     step_order = serializers.SerializerMethodField()
     assigned_to_name = serializers.SerializerMethodField()

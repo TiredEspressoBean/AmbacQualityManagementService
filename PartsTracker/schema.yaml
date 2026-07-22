@@ -53584,9 +53584,11 @@ components:
         part_erp_id:
           type: string
           readOnly: true
+          nullable: true
         part_status:
           type: string
           readOnly: true
+          nullable: true
         step:
           type: string
           format: uuid
