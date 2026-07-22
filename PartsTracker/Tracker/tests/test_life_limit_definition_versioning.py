@@ -43,7 +43,7 @@ class CreateNewLifeLimitDefinitionVersionTestCase(TenantTestCase):
         v2 = create_new_life_limit_definition_version(
             self.definition,
             user=self.user_a,
-            change_description='Rev B — tighten hard limit to 18000',
+            change_description='Rev B - tighten hard limit to 18000',
         )
         self.assertEqual(v2.version, 2)
         self.assertEqual(v2.previous_version_id, self.definition.pk)

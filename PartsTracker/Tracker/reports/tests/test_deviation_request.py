@@ -115,7 +115,7 @@ class DeviationRequestAdapterCrossTenantTests(TestCase):
             disposition_type="USE_AS_IS",
             severity="MINOR",
             current_state="OPEN",
-            description="Test cosmetic scratch — cross-tenant probe fixture",
+            description="Test cosmetic scratch - cross-tenant probe fixture",
             resolution_notes="No effect on form, fit, or function.",
             requires_customer_approval=False,
         )
@@ -127,7 +127,7 @@ class DeviationRequestAdapterCrossTenantTests(TestCase):
             disposition_type="REWORK",
             severity="MAJOR",
             current_state="OPEN",
-            description="Test rework disposition — type rejection probe",
+            description="Test rework disposition - type rejection probe",
             resolution_notes="",
             requires_customer_approval=False,
         )

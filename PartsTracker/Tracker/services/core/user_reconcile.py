@@ -310,7 +310,7 @@ def _reconcile_existing(
 # Workbook columns must match the keys consumed by `reconcile_user_row`.
 # Order is the column order in the Data sheet.
 TEMPLATE_COLUMNS: List[Dict[str, Any]] = [
-    {"key": "email",      "label": "Email",      "required": True,  "hint": "Required. Lookup key — unknown emails get created + invited."},
+    {"key": "email",      "label": "Email",      "required": True,  "hint": "Required. Lookup key - unknown emails get created + invited."},
     {"key": "first_name", "label": "First Name", "required": False, "hint": "Optional. Updates on existing users; populates new users on create."},
     {"key": "last_name",  "label": "Last Name",  "required": False, "hint": "Optional. Same as First Name."},
     {"key": "group",      "label": "Group",      "required": False, "hint": "Tenant group name. Multi-group: semicolon-separated (e.g. 'Operator;QA Inspector')."},
@@ -377,7 +377,7 @@ def build_user_reconcile_template(tenant: "Tenant", *, populate: bool = False) -
     instr = wb.create_sheet("Instructions")
     instr.column_dimensions["A"].width = 110
     instructions_lines = [
-        ("Bulk User Reconcile — Instructions", INSTRUCTIONS_HEADING),
+        ("Bulk User Reconcile - Instructions", INSTRUCTIONS_HEADING),
         ("", None),
         ("This workbook describes the DESIRED state of users in this organization.", INSTRUCTIONS_FONT),
         ("Each row in the 'Data' sheet is reconciled by email:", INSTRUCTIONS_FONT),
@@ -386,7 +386,7 @@ def build_user_reconcile_template(tenant: "Tenant", *, populate: bool = False) -
         ("  • Empty cells → no change to that field.", INSTRUCTIONS_FONT),
         ("  • Re-running the same workbook is a no-op once state matches.", INSTRUCTIONS_FONT),
         ("", None),
-        ("Resending invitations is NOT done from this workbook — use the per-row 'Resend invitation' action on the User Management page.", INSTRUCTIONS_FONT),
+        ("Resending invitations is NOT done from this workbook - use the per-row 'Resend invitation' action on the User Management page.", INSTRUCTIONS_FONT),
         ("", None),
         ("Columns:", Font(bold=True, size=12)),
     ]
@@ -395,7 +395,7 @@ def build_user_reconcile_template(tenant: "Tenant", *, populate: bool = False) -
         instructions_lines.append((f"{prefix}: {col['hint']}", INSTRUCTIONS_FONT))
     instructions_lines.extend([
         ("", None),
-        ("Group cell can contain multiple groups separated by ';' — for example 'Operator;QA Inspector'.", INSTRUCTIONS_FONT),
+        ("Group cell can contain multiple groups separated by ';' - for example 'Operator;QA Inspector'.", INSTRUCTIONS_FONT),
         ("Status cell accepts only the values from the 'Statuses' reference sheet (Active or Inactive).", INSTRUCTIONS_FONT),
         ("", None),
         ("Tip: rows ≥25 are queued in the background and the page will poll for completion automatically.", Font(italic=True, color="666666")),

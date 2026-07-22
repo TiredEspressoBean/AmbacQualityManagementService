@@ -12,7 +12,7 @@ If you don't want that, customize the name or remove the rule via
 post_save customization.
 
 Each starter rule is keyed by event + a stable "system rule name" so
-admins recognize them in the UI ("CAPA assignments — route to assignee"
+admins recognize them in the UI ("CAPA assignments - route to assignee"
 is more meaningful than "rule #1").
 
 The starter set is intentionally conservative — events we've actually
@@ -37,7 +37,7 @@ STARTER_RULES = [
     # ---- Quality / NCR ---------------------------------------------------
     {
         "event_code": "ncr.opened",
-        "name": "NCRs — route to QA Manager",
+        "name": "NCRs - route to QA Manager",
         "description": "Default starter rule. QA Manager group gets every NCR opened in this tenant.",
         "recipient_strategy": "static",
         "recipient_group_names": ["QA Manager"],
@@ -46,7 +46,7 @@ STARTER_RULES = [
     },
     {
         "event_code": "quality.step_failure",
-        "name": "Step failures — route to QA",
+        "name": "Step failures - route to QA",
         "description": "Default starter rule. QA Manager and Inspector groups get every step failure.",
         "recipient_strategy": "static",
         "recipient_group_names": ["QA Manager", "QA Inspector"],
@@ -59,7 +59,7 @@ STARTER_RULES = [
     # No static recipients on this rule.
     {
         "event_code": "capa.assigned",
-        "name": "CAPA assignments — route to assignee",
+        "name": "CAPA assignments - route to assignee",
         "description": "Default starter rule. The CAPA's assignee gets notified on create or reassignment.",
         "recipient_strategy": "from_payload",
         "recipient_group_names": [],
@@ -68,7 +68,7 @@ STARTER_RULES = [
     },
     {
         "event_code": "capa.ready_for_verification",
-        "name": "CAPA ready for verification — route to QA Manager",
+        "name": "CAPA ready for verification - route to QA Manager",
         "description": "Default starter rule. QA Manager group is notified when a CAPA's tasks and RCA are complete and it's ready for effectiveness verification.",
         "recipient_strategy": "static",
         "recipient_group_names": ["QA Manager"],
@@ -79,7 +79,7 @@ STARTER_RULES = [
     # ---- Work orders -----------------------------------------------------
     {
         "event_code": "workorder.overdue",
-        "name": "Overdue work orders — route to Production",
+        "name": "Overdue work orders - route to Production",
         "description": "Default starter rule. Production Manager group gets every overdue work order.",
         "recipient_strategy": "static",
         "recipient_group_names": ["Production Manager"],
@@ -88,7 +88,7 @@ STARTER_RULES = [
     },
     {
         "event_code": "workorder.held",
-        "name": "Held work orders — route to Production",
+        "name": "Held work orders - route to Production",
         "description": "Default starter rule. Production Manager group gets work orders held too long.",
         "recipient_strategy": "static",
         "recipient_group_names": ["Production Manager"],
@@ -100,7 +100,7 @@ STARTER_RULES = [
     # expiring/expired (from payload.recipient_user_ids). One rule per event.
     {
         "event_code": "training.expiring_soon",
-        "name": "Training expiring soon — route to QA, Production, and the operator",
+        "name": "Training expiring soon - route to QA, Production, and the operator",
         "description": "Default starter rule. QA Manager and Production Manager get the reminder; the operator whose cert is expiring is also notified.",
         "recipient_strategy": "union",
         "recipient_group_names": ["QA Manager", "Production Manager"],
@@ -109,7 +109,7 @@ STARTER_RULES = [
     },
     {
         "event_code": "training.expired",
-        "name": "Training expired — route to QA, Production, and the operator",
+        "name": "Training expired - route to QA, Production, and the operator",
         "description": "Default starter rule. QA Manager and Production Manager get the lapse alert; the operator whose cert lapsed is also notified.",
         "recipient_strategy": "union",
         "recipient_group_names": ["QA Manager", "Production Manager"],
@@ -118,7 +118,7 @@ STARTER_RULES = [
     },
     {
         "event_code": "shift_note.published",
-        "name": "Shift notes — alert the audience",
+        "name": "Shift notes - alert the audience",
         "description": "Default starter rule. The note's audience gets alerted, routed via payload.recipient_user_ids.",
         "recipient_strategy": "from_payload",
         "recipient_group_names": [],
@@ -175,7 +175,7 @@ def seed_system_rules_for_tenant(tenant) -> dict[str, int]:
             continue
         spec = {
             "event_code": event.code,
-            "name": f"{event.label} — default recipients",
+            "name": f"{event.label} - default recipients",
             "description": (
                 "Auto-seeded from the event's default recipient groups. "
                 "Edit or disable in the Notification Rules UI to customize."
@@ -204,7 +204,7 @@ def _seed_one_rule(tenant, spec, groups_by_name, event_registry, counts) -> None
     event_code = spec["event_code"]
     if event_code not in event_registry:
         logger.debug(
-            "system rules: skipping %r — event not registered for tenant %s",
+            "system rules: skipping %r - event not registered for tenant %s",
             event_code, tenant.id,
         )
         counts["skipped"] += 1
@@ -223,7 +223,7 @@ def _seed_one_rule(tenant, spec, groups_by_name, event_registry, counts) -> None
         if group is None:
             logger.warning(
                 "system rules: starter rule %r references group %r "
-                "which doesn't exist on tenant %s — group skipped",
+                "which doesn't exist on tenant %s - group skipped",
                 name, group_name, tenant.id,
             )
             continue

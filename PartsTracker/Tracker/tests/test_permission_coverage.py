@@ -171,7 +171,7 @@ class PermissionCoverageGuardTest(TestCase):
         )
         self.assertFalse(
             unexplained,
-            "\nPermissions granted to no preset group and not opted out — a "
+            "\nPermissions granted to no preset group and not opted out - a "
             "tenant user reaching these gets a 403.\nGrant each in "
             "Tracker/presets.py, or add a reasoned opt-out (a *_MODELS rule or "
             "KNOWN_GAPS) in this test:\n  " + "\n  ".join(unexplained),
@@ -180,7 +180,7 @@ class PermissionCoverageGuardTest(TestCase):
         stale_gaps = sorted(c for c in KNOWN_GAPS if c not in orphaned)
         self.assertFalse(
             stale_gaps,
-            "\nThese KNOWN_GAPS are now granted (or no longer exist) — remove "
+            "\nThese KNOWN_GAPS are now granted (or no longer exist) - remove "
             "them from KNOWN_GAPS (burn-down working):\n  "
             + "\n  ".join(stale_gaps),
         )
@@ -195,7 +195,7 @@ class PermissionCoverageGuardTest(TestCase):
         missing = validate_presets()
         self.assertFalse(
             missing,
-            "\nThese preset codenames match no Permission in the database — "
+            "\nThese preset codenames match no Permission in the database - "
             "typo or removed model? Seeding drops them silently:\n  "
             + "\n  ".join(missing),
         )

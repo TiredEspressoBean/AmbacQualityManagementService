@@ -30,7 +30,7 @@ class TestWorkOrderTravelerAdapter(ReportAdapterTestMixin, SimpleTestCase):
         self.skipTest(
             "Cross-tenant isolation is enforced by the tenant= filter in "
             "WorkOrderTravelerParamsSerializer.validate_id() and the ORM query "
-            "in build_context(). Full probe requires DB state — see integration tests."
+            "in build_context(). Full probe requires DB state - see integration tests."
         )
 
 
@@ -54,7 +54,7 @@ class WorkOrderTravelerFixtureShapeTests(SimpleTestCase):
         osp = [o for o in self._fixture["operations"] if o["is_outside_process"]]
         self.assertGreater(
             len(osp), 0,
-            "fixture has no outside-process op — the OSP branch is not exercised",
+            "fixture has no outside-process op - the OSP branch is not exercised",
         )
 
     def test_fixture_has_op_with_controls_and_op_without(self):
@@ -120,7 +120,7 @@ class WorkOrderTravelerAsBuiltUnitTests(SimpleTestCase):
             completed_by=None, assigned_to=U(),
             exited_at=None, started_at=SimpleNamespace(month=7, day=14), entered_at=None,
         )
-        long_desc = "Nozzle tip scoring found during visual inspection — annotate required"
+        long_desc = "Nozzle tip scoring found during visual inspection - annotate required"
         qr_fail = SimpleNamespace(
             verified_by=None, detected_by=U(),
             created_at=SimpleNamespace(month=7, day=15), status="FAIL", description=long_desc,

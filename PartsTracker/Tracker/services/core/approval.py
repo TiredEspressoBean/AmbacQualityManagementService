@@ -471,7 +471,7 @@ def notify_status_change(request: ApprovalRequest, new_status):
 
     if request.requested_by_id is None:
         logger.info(
-            "Skipping decision notification for AR %s — no requester on record",
+            "Skipping decision notification for AR %s - no requester on record",
             request.pk,
         )
         return

@@ -89,13 +89,13 @@ class RLSPolicyCoverageTests(SimpleTestCase):
         if new_drift:
             msgs.append(
                 "Tenant-scoped tables with NO RLS policy (add them to "
-                "setup_rls.py TENANT_SCOPED_TABLES, or — only with a documented "
-                "reason — to INTENTIONALLY_EXEMPT):\n  "
+                "setup_rls.py TENANT_SCOPED_TABLES, or - only with a documented "
+                "reason - to INTENTIONALLY_EXEMPT):\n  "
                 + "\n  ".join(sorted(new_drift))
             )
         if stale_baseline:
             msgs.append(
-                "KNOWN_UNCOVERED baseline is stale — these are now covered (or "
+                "KNOWN_UNCOVERED baseline is stale - these are now covered (or "
                 "no longer tenant-scoped). Remove them from KNOWN_UNCOVERED:\n  "
                 + "\n  ".join(sorted(stale_baseline))
             )

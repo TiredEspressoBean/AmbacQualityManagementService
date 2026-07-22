@@ -239,7 +239,7 @@ class DispatchListAdapter(ReportAdapter):
                     part_name=(
                         wo.process.part_type.name
                         if (wo.process and wo.process.part_type)
-                        else "—"
+                        else "-"
                     ),
                     qty_remaining=qty_remaining,
                     due_date=due_date,

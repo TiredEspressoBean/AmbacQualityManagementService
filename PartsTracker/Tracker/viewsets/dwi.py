@@ -274,7 +274,7 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         substep = self.get_object()
         if not substep.is_inspection_point:
             return Response(
-                {'detail': 'Substep is not an inspection point — no QR needed.'},
+                {'detail': 'Substep is not an inspection point - no QR needed.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         step_execution_id = request.data.get('step_execution')
@@ -296,7 +296,7 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         )
         if report is None:
             return Response(
-                {'detail': 'Cannot create QR — step execution has no part (core?).'},
+                {'detail': 'Cannot create QR - step execution has no part (core?).'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({

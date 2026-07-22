@@ -170,7 +170,7 @@ class ShiftNotePublishedPayload:
             id='00000000-0000-0000-0000-0000000000f1',
             tenant_id='00000000-0000-0000-0000-000000000000',
             author_name='Luis Ramirez (Shift Lead)',
-            body_preview='Prioritize WO-2024-0042 before lunch — customer pickup at 2pm.',
+            body_preview='Prioritize WO-2024-0042 before lunch - customer pickup at 2pm.',
             work_order_erp_id='WO-2024-0042',
             priority='HIGH',
             recipient_user_ids=[42],

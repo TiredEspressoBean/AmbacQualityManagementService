@@ -18,7 +18,7 @@ class NotificationFeedTests(TenantTestCase):
             username='other', email='other@example.com', password='x', tenant=self.tenant_a)
 
         self._seq = 0
-        self.mine_unread = self._row(self.user_a, "First piece waiting — Final Test")
+        self.mine_unread = self._row(self.user_a, "First piece waiting - Final Test")
         self.mine_read = self._row(self.user_a, "CAPA assigned", read=True)
         self._row(self.user_a, "Held work order", channel="email")   # wrong channel
         self._row(self.other, "Someone else's notification")          # wrong user
@@ -47,13 +47,13 @@ class NotificationFeedTests(TenantTestCase):
         body = response.json()
         rows = body.get('results', body)
         subjects = {r['rendered_subject'] for r in rows}
-        self.assertEqual(subjects, {"First piece waiting — Final Test", "CAPA assigned"})
+        self.assertEqual(subjects, {"First piece waiting - Final Test", "CAPA assigned"})
 
     def test_unread_filter_and_count(self):
         response = self.client.get('/api/notifications/feed/?unread=true')
         rows = response.json().get('results', response.json())
         self.assertEqual([r['rendered_subject'] for r in rows],
-                         ["First piece waiting — Final Test"])
+                         ["First piece waiting - Final Test"])
 
         count = self.client.get('/api/notifications/feed/unread-count/')
         self.assertEqual(count.json(), {'unread': 1})

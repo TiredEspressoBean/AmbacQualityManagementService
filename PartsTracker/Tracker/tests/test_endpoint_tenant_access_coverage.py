@@ -121,7 +121,7 @@ class EndpointTenantAccessCoverageTests(SimpleTestCase):
             self.fail(
                 "DRF endpoints serving tenant-scoped data without the tenant "
                 "membership backstop (TenantAccessPermission). These trust the "
-                "X-Tenant-ID header from token clients unconditionally — a "
+                "X-Tenant-ID header from token clients unconditionally - a "
                 "cross-tenant leak.\n\n"
                 "Fix: add TenantAccessPermission to the view's permission_classes "
                 "(or stop overriding permission_classes so it inherits the global "
@@ -137,6 +137,6 @@ class EndpointTenantAccessCoverageTests(SimpleTestCase):
         stale = ALLOWLISTED_VIEWS - discovered
         if stale:
             self.fail(
-                "ALLOWLISTED_VIEWS entries no longer match any endpoint — "
+                "ALLOWLISTED_VIEWS entries no longer match any endpoint - "
                 "remove them:\n  " + "\n  ".join(sorted(stale))
             )

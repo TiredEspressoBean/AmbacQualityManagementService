@@ -65,12 +65,12 @@ class SystemRulesSeederTests(TenantContextMixin, VectorTestCase):
             rules = NotificationRule.objects.filter(
                 tenant=self.tenant, event_code=spec['event_code'],
             )
-            # Only the explicit rule; no auto-synthesized "— default recipients" sibling.
+            # Only the explicit rule; no auto-synthesized "- default recipients" sibling.
             names = set(rules.values_list('name', flat=True))
             self.assertIn(spec['name'], names)
             for name in names:
                 self.assertFalse(
-                    name.endswith('— default recipients'),
+                    name.endswith('- default recipients'),
                     f'unexpected fallback rule {name!r} alongside explicit STARTER_RULES entry',
                 )
 

@@ -9,7 +9,7 @@ MANIFEST = {
     'long_description': (
         'Connect your HubSpot CRM to automatically sync deals as orders, '
         'contacts as portal users, and companies. Pipeline stage changes '
-        'sync bidirectionally — update a stage in either system and the '
+        'sync bidirectionally - update a stage in either system and the '
         'other stays in sync.'
     ),
     'version': '1.0.0',
@@ -61,8 +61,8 @@ MANIFEST = {
     # Limitations
     'limitations': [
         'Attachments and notes are not synced',
-        'Companies are matched by name — duplicates possible if naming differs',
-        'Portal users receive placeholder passwords — configure SSO for customer access',
+        'Companies are matched by name - duplicates possible if naming differs',
+        'Portal users receive placeholder passwords - configure SSO for customer access',
     ],
 
     # Internal wiring

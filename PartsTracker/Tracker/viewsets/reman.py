@@ -130,7 +130,7 @@ class CoreViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
                 "errors": serializers.ListField(child=serializers.DictField(), required=False),
             }),
         },
-        description="Create N cores from a shipment. All-or-nothing — any row error rolls back the batch.",
+        description="Create N cores from a shipment. All-or-nothing - any row error rolls back the batch.",
     )
     @action(detail=False, methods=['post'], url_path='bulk_create')
     def bulk_create(self, request):

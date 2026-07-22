@@ -190,7 +190,7 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
                 tenant=self.tenant,
                 name=role_data['name'],
                 defaults={
-                    'description': f"{role_data['name']} — required-competency profile.",
+                    'description': f"{role_data['name']} - required-competency profile.",
                     'active': True,
                 },
             )

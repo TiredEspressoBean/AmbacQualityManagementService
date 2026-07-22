@@ -103,7 +103,7 @@ class CalibrationCertificateAdapterCrossTenantTests(TestCase):
         # Create a minimal equipment record owned by Tenant B
         cls.equipment_b = Equipments.objects.create(
             tenant=cls.tenant_b,
-            name="Test Gauge — Tenant B",
+            name="Test Gauge - Tenant B",
             serial_number="SN-TEST-B-001",
         )
 

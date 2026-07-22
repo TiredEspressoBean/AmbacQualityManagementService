@@ -53,7 +53,7 @@ class CreateNewMilestoneTemplateVersionTestCase(TenantTestCase):
         v2 = create_new_milestone_template_version(
             self.template,
             user=self.user_a,
-            change_description='Rev B — add design review gate',
+            change_description='Rev B - add design review gate',
         )
         self.assertEqual(v2.version, 2)
         self.assertEqual(v2.previous_version_id, self.template.pk)
@@ -151,7 +151,7 @@ class MilestoneCopyTestCase(TenantTestCase):
         v2 = create_new_milestone_template_version(
             self.template,
             user=self.user_a,
-            change_description='Rev B — restructure milestones',
+            change_description='Rev B - restructure milestones',
         )
         v2_milestones = list(v2.milestones.order_by('display_order'))
         self.assertEqual(len(v2_milestones), 3)
@@ -163,7 +163,7 @@ class MilestoneCopyTestCase(TenantTestCase):
         v2 = create_new_milestone_template_version(
             self.template,
             user=self.user_a,
-            change_description='Rev B — display order check',
+            change_description='Rev B - display order check',
         )
         v2_orders = list(v2.milestones.order_by('display_order').values_list('display_order', flat=True))
         self.assertEqual(v2_orders, [10, 20, 30])
@@ -172,7 +172,7 @@ class MilestoneCopyTestCase(TenantTestCase):
         v2 = create_new_milestone_template_version(
             self.template,
             user=self.user_a,
-            change_description='Rev B — is_active check',
+            change_description='Rev B - is_active check',
         )
         v2_milestones = {m.display_order: m for m in v2.milestones.all()}
         self.assertTrue(v2_milestones[10].is_active)
@@ -223,7 +223,7 @@ class OrdersPinningTestCase(TenantTestCase):
         v2 = create_new_milestone_template_version(
             self.template,
             user=self.user_a,
-            change_description='Rev B — add new gate',
+            change_description='Rev B - add new gate',
         )
 
         self.order.refresh_from_db()

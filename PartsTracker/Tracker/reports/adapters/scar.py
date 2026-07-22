@@ -89,7 +89,7 @@ class ScarReportAdapter(ReportAdapter):
         scar_number = capa.capa_number.replace("CAPA-SU-", "SCAR-").replace("CAPA-", "SCAR-")
         return ScarContext(
             scar_number=scar_number,
-            supplier_name=capa.supplier.name if capa.supplier_id else "—",
+            supplier_name=capa.supplier.name if capa.supplier_id else "-",
             issued_by_org=capa.tenant.name,
             issued_by_person=_user_name(capa.initiated_by),
             issued_date=capa.initiated_date,

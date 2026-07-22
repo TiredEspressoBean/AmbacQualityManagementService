@@ -66,10 +66,10 @@ class DemoSupplierQualitySeeder(BaseSeeder):
             )
             return c
 
-        precision = supplier("Precision Castings Inc", "Castings supplier — qualification expiring soon.")
-        forge = supplier("Midwest Forge Works", "Forgings supplier — conditionally approved.")
-        apex = supplier("Apex Plating Co", "Plating subcontractor — qualification lapsed.")
-        bargain = supplier("Bargain Bolts LLC", "Fasteners supplier — not yet qualified (held on receipt).")
+        precision = supplier("Precision Castings Inc", "Castings supplier - qualification expiring soon.")
+        forge = supplier("Midwest Forge Works", "Forgings supplier - conditionally approved.")
+        apex = supplier("Apex Plating Co", "Plating subcontractor - qualification lapsed.")
+        bargain = supplier("Bargain Bolts LLC", "Fasteners supplier - not yet qualified (held on receipt).")
 
         # --- ASL: SupplierQualification across the lifecycle ---
         def ensure_qual(supp, *, status, expiry_days, basis="AUDIT"):

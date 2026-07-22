@@ -2205,7 +2205,7 @@ class StepFilterSet(django_filters.FilterSet):
                 description=(
                     "Process version the edit is scoped to. When supplied, "
                     "the resulting new Step version is junctioned into "
-                    "that process's ProcessStep row only — the original "
+                    "that process's ProcessStep row only - the original "
                     "Step row stays attached to every other process "
                     "version that references it. Used by the PCR-DRAFT "
                     "editing flow to keep concurrent PCRs isolated."
@@ -2446,7 +2446,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         if not (authorizer and authorizer.is_active and authorizer.check_password(password)):
             cache.set(throttle_key, (cache.get(throttle_key) or 0) + 1, 900)
             return cache_and_return((None, (
-                'Supervisor authorization failed — check the email and password.',
+                'Supervisor authorization failed - check the email and password.',
                 'override_auth_failed', status.HTTP_403_FORBIDDEN)))
 
         if authorizer.id == request.user.id:
@@ -2729,7 +2729,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 ),
                 'override_password': serializers.CharField(
                     required=False,
-                    help_text="Authorizing supervisor's password — verified, never stored.",
+                    help_text="Authorizing supervisor's password - verified, never stored.",
                 ),
                 'override_reason': serializers.CharField(
                     required=False,
@@ -2804,7 +2804,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
                 )),
             },
         )},
-        description="Per-part training authorization for the current user — the "
+        description="Per-part training authorization for the current user - the "
                     "Start-Work pre-flight gate (so unqualified parts can be marked "
                     "before launch, not just blocked on click).",
     )

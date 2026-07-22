@@ -167,7 +167,7 @@ class FireScheduleTests(TenantContextMixin, TestCase):
             'Tracker.services.core.notifications.scheduled_content.customer_active_orders.'
             'CustomerActiveOrdersProvider.build_content',
             return_value=RenderedContent(
-                subject='Order Update — May 19, 2026',
+                subject='Order Update - May 19, 2026',
                 html='<p>One active order: ACM-001.</p>',
                 text='One active order: ACM-001.',
             ),
@@ -199,7 +199,7 @@ class FireScheduleTests(TenantContextMixin, TestCase):
         row = rows[0]
         self.assertEqual(row.user_id, self.user.id)
         self.assertEqual(row.channel, 'email')
-        self.assertEqual(row.rendered_subject, 'Order Update — May 19, 2026')
+        self.assertEqual(row.rendered_subject, 'Order Update - May 19, 2026')
         self.assertIn('ACM-001', row.rendered_body_html)
 
     def test_fire_advances_last_fired_at(self):

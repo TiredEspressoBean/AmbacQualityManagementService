@@ -2534,7 +2534,7 @@ class WorkOrder(SecureModel):
 
     notes = models.TextField(null=True, blank=True)
     """Optional notes or remarks logged during execution or review.
-    Length-uncapped — CSV imports append new lines, so the field grows
+    Length-uncapped - CSV imports append new lines, so the field grows
     monotonically over a WO's lifetime (with de-dupe on identical re-imports)."""
 
     parent_workorder = models.ForeignKey(

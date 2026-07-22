@@ -195,7 +195,7 @@ class Substep(SecureModel):
     )
     """If True, the SubstepCompletion row must carry signature_data when the
     operator marks the substep complete. Inline signature gates inside the
-    substep body use SubstepGateCompletion (Phase 2) — different storage,
+    substep body use SubstepGateCompletion (Phase 2) - different storage,
     different intent."""
 
     is_inspection_point = models.BooleanField(
@@ -212,7 +212,7 @@ class Substep(SecureModel):
         ),
     )
     """Promotes routine inline measurement captures into binding inspection
-    records. See architectural decision #21 — established MES/QMS systems
+    records. See architectural decision #21 - established MES/QMS systems
     (Plex, SAP QM, Aegis FactoryLogix) separate process data from inspection
     records as first-class concepts. Routine captures stay process-data-only
     (no auto-quarantine, no NCR spam); inspection-point substeps fire the
@@ -231,16 +231,16 @@ class Substep(SecureModel):
         choices=SubstepScope.choices,
         default=SubstepScope.SAMPLED,
         help_text=(
-            "Whether the substep runs per part (SAMPLED, default — uses "
+            "Whether the substep runs per part (SAMPLED, default - uses "
             "sampling_rule for cadence, null rule = 100%) or once for the "
-            "whole batch (BATCH — oven cycles, wash tanks, plating baths). "
+            "whole batch (BATCH - oven cycles, wash tanks, plating baths). "
             "BATCH substeps write captures against a `BatchExecution` "
             "shared by every part in the batch, instead of per-part "
             "`StepExecution`."
         ),
     )
     """Scope of the substep relative to a batch of parts. See `SubstepScope`
-    for the semantics. SAMPLED is the right default — every shop has way
+    for the semantics. SAMPLED is the right default - every shop has way
     more per-part work than per-batch cycle work."""
 
     sampling_rule = models.ForeignKey(
@@ -289,7 +289,7 @@ class Substep(SecureModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.step_id}#{self.order} — {self.title}"
+        return f"{self.step_id}#{self.order} - {self.title}"
 
     @property
     def is_editable(self) -> bool:
@@ -805,7 +805,7 @@ class SubstepGateCompletion(SecureModel):
             "UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks "
             "(minted client-side per decision #18). Stable across the "
             "substep's lifetime as long as the engineer doesn't cut-paste "
-            "the node — see src/lib/dwi/node-id.ts."
+            "the node - see src/lib/dwi/node-id.ts."
         ),
     )
 
@@ -1106,7 +1106,7 @@ class SamplingDecision(SecureModel):
     outcome = models.CharField(
         max_length=12,
         choices=SamplingOutcome.choices,
-        help_text="What the rule decided — SELECTED, DESELECTED, or PENDING.",
+        help_text="What the rule decided - SELECTED, DESELECTED, or PENDING.",
     )
 
     ruleset_version = models.PositiveIntegerField(

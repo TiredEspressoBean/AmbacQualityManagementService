@@ -68,7 +68,7 @@ def contain_failed_batch(report) -> None:
         batch_execution=batch,
         step=batch.step,
         description=(
-            f"Batch cycle failed at {step_name} — {len(members)} parts in the load"
+            f"Batch cycle failed at {step_name} - {len(members)} parts in the load"
             f" ({len(held)} held, {len(members) - len(held)} already past this step)."
         ),
     )
@@ -97,7 +97,7 @@ def _emit_batch_ncr_opened(report, batch, *, held_count: int, load_size: int) ->
         severity=report.status,
         description=(
             report.description
-            or f"Batch cycle failure — {held_count} of {load_size} parts held"
+            or f"Batch cycle failure - {held_count} of {load_size} parts held"
         ),
         opened_by_id=report.detected_by_id,
         opened_by_name=(

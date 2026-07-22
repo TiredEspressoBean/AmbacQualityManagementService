@@ -299,7 +299,7 @@ def _sync_stages_for_pipeline(client, integration, pipeline_id, active_prefix):
         customer_display = ''
         if active_prefix and stage.label.startswith(active_prefix):
             import re
-            stripped = re.sub(rf'^{re.escape(active_prefix)}\s+\w+\s*[-–—]\s*', '', stage.label)
+            stripped = re.sub(rf'^{re.escape(active_prefix)}\s+\w+\s*[-–-]\s*', '', stage.label)
             if stripped != stage.label:
                 customer_display = stripped
 

@@ -1347,7 +1347,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
         designated = fpi.designated_part
         if designated is None:
             return Response(
-                {"detail": "No first piece has reached this step yet — nothing to inspect."},
+                {"detail": "No first piece has reached this step yet - nothing to inspect."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1366,7 +1366,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
         remaining = [b for b in blockers if not b.startswith("First Piece Inspection required")]
         if remaining:
             return Response(
-                {"detail": "First piece inspection incomplete — finish the step's captures first.",
+                {"detail": "First piece inspection incomplete - finish the step's captures first.",
                  "blockers": remaining},
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1457,7 +1457,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
-        description="Acknowledge a pending FPI (QA is on it). Idempotent — the "
+        description="Acknowledge a pending FPI (QA is on it). Idempotent - the "
                     "first acknowledgment wins; the operator surface shows 'Seen by X'.",
         request=None,
         responses={200: dict}

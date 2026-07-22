@@ -496,7 +496,7 @@ class TenantScopingLintTests(SimpleTestCase):
                 "Defining a custom manager that inherits from models.Manager "
                 "(instead of\n"
                 "SecureManager) silently replaces the inherited tenant "
-                "scoping — so\n"
+                "scoping - so\n"
                 "Model.objects.all() will return cross-tenant data without "
                 "warning.\n"
                 "\n"

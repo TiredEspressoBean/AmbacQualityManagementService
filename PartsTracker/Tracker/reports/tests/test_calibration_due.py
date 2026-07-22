@@ -106,7 +106,7 @@ class CalibrationDueFixtureShapeTests(SimpleTestCase):
             self.assertIn(
                 expected,
                 statuses,
-                f"fixture is missing a {expected!r} item — "
+                f"fixture is missing a {expected!r} item - "
                 "all three status branches must be exercised",
             )
 

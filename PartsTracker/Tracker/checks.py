@@ -132,7 +132,7 @@ def check_secure_model_save_self_pk(app_configs, **kwargs):
             warnings.append(Warning(
                 f"{model.__module__}.{model.__name__}.save() uses `self.pk` "
                 f"to detect a new row, but SecureModel assigns uuid7 PKs at "
-                f"instantiation time — `self.pk` is ALWAYS populated. This "
+                f"instantiation time - `self.pk` is ALWAYS populated. This "
                 f"check is silently wrong (either always True or always "
                 f"False depending on variant).",
                 hint=(

@@ -66,7 +66,7 @@ def create_standalone_receiving_plan(part_type, name="", user=None):
         tenant=part_type.tenant,
         part_type=part_type,
         step_type="RECEIVING",
-        name=name or f"Receiving — {part_type.name}",
+        name=name or f"Receiving - {part_type.name}",
         description="Incoming inspection plan for purchased material.",
     )
 

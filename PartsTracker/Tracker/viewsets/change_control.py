@@ -174,7 +174,7 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                     "artifact_number": serializers.CharField(),
                 },
             ),
-            400: {"description": "Target process is not in APPROVED status — only approved processes can be forked into a PCR draft."},
+            400: {"description": "Target process is not in APPROVED status - only approved processes can be forked into a PCR draft."},
         },
         description=(
             "Start a PCR by forking a DRAFT process version up-front. "

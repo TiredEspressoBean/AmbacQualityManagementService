@@ -52,9 +52,9 @@ RECIPIENT_STRATEGY_FROM_PAYLOAD = "from_payload"
 RECIPIENT_STRATEGY_UNION = "union"
 
 RECIPIENT_STRATEGY_CHOICES = [
-    (RECIPIENT_STRATEGY_STATIC, "Static — recipients from this rule only"),
-    (RECIPIENT_STRATEGY_FROM_PAYLOAD, "From event — recipients from the event payload"),
-    (RECIPIENT_STRATEGY_UNION, "Union — combine event-payload recipients with this rule's"),
+    (RECIPIENT_STRATEGY_STATIC, "Static - recipients from this rule only"),
+    (RECIPIENT_STRATEGY_FROM_PAYLOAD, "From event - recipients from the event payload"),
+    (RECIPIENT_STRATEGY_UNION, "Union - combine event-payload recipients with this rule's"),
 ]
 
 

@@ -43,12 +43,12 @@ def _recommend(sc, active_statuses: list[str]) -> tuple[str, str]:
     # Breach: scorecard C while the supplier is still approved for something.
     if sc.rating == 'C' and has_approved:
         if sc.open_scar_count > 0 or sc.reject_rate >= 0.10:
-            return ACTION_REVIEW_SUSPEND, f"Scorecard C — {sc.rating_reason}. Recommend suspension review."
-        return ACTION_REVIEW_CONDITIONAL, f"Scorecard C — {sc.rating_reason}. Recommend conditional-status review."
+            return ACTION_REVIEW_SUSPEND, f"Scorecard C - {sc.rating_reason}. Recommend suspension review."
+        return ACTION_REVIEW_CONDITIONAL, f"Scorecard C - {sc.rating_reason}. Recommend conditional-status review."
 
     # Recovery: metrics back to A but standing is still CONDITIONAL (not all APPROVED).
     if sc.rating == 'A' and active_statuses and not all_approved:
-        return ACTION_REVIEW_RESTORE, f"Scorecard A — {sc.rating_reason}. Recommend restoring full approval."
+        return ACTION_REVIEW_RESTORE, f"Scorecard A - {sc.rating_reason}. Recommend restoring full approval."
 
     return ACTION_NONE, sc.rating_reason or "Standing within thresholds."
 

@@ -207,7 +207,7 @@ class NestedEscalationSerializerTests(TenantContextMixin, TestCase):
                  'recipient_groups': [self.group.id]},
                 {'order': 1, 'delay_seconds': 1800,
                  'recipient_users': [self.user.id],
-                 'subject_override': 'ESCALATED — 30 min unack'},
+                 'subject_override': 'ESCALATED - 30 min unack'},
             ],
         })
         ser = TenantRuleSerializer(
@@ -222,7 +222,7 @@ class NestedEscalationSerializerTests(TenantContextMixin, TestCase):
         self.assertEqual(len(steps), 2)
         self.assertEqual(steps[0].delay_seconds, 600)
         self.assertIn(self.group, steps[0].recipient_groups.all())
-        self.assertEqual(steps[1].subject_override, 'ESCALATED — 30 min unack')
+        self.assertEqual(steps[1].subject_override, 'ESCALATED - 30 min unack')
         self.assertIn(self.user, steps[1].recipient_users.all())
 
     def test_create_without_escalation_leaves_no_policy(self):

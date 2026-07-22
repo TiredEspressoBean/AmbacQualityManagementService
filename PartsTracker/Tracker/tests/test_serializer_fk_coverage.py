@@ -113,7 +113,7 @@ class SerializerFKTenantScopingTests(SimpleTestCase):
             )
         if fixed_but_baselined:
             msgs.append(
-                "These are now scoped (or gone) — remove them from "
+                "These are now scoped (or gone) - remove them from "
                 "KNOWN_UNSCOPED_FK:\n  "
                 + "\n  ".join(f"{s}.{f}" for s, f in sorted(fixed_but_baselined))
             )

@@ -78,7 +78,7 @@ def split_part_from_lot(
         if not has_inspection:
             raise ValidationError(
                 f"Rework target step '{rework_target_step.name}' has no inspection "
-                "substep — reworked parts must be re-inspected before they can advance."
+                "substep - reworked parts must be re-inspected before they can advance."
             )
 
     with transaction.atomic():

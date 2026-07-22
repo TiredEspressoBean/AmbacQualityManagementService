@@ -182,7 +182,7 @@ def _evaluate_and_advance(
             status='blocked',
             reason='manual_decision_required',
             blockers_by_part={
-                str(p.id): ['Manual decision required — a manager/lead must choose the routing branch']
+                str(p.id): ['Manual decision required - a manager/lead must choose the routing branch']
                 for p in parts_at_step
             },
         )

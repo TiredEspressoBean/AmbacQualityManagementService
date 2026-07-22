@@ -190,11 +190,11 @@ def _interpret_cpk(cp: Optional[float], cpk: Optional[float]) -> str:
     if cpk >= 1.33:
         text = "Process is capable and well-centered."
     elif cpk >= 1.0:
-        text = "Process is marginally capable — monitor closely."
+        text = "Process is marginally capable - monitor closely."
     elif cpk >= 0.67:
-        text = "Process needs improvement — high defect risk."
+        text = "Process needs improvement - high defect risk."
     else:
-        text = "Process is not capable — immediate action required."
+        text = "Process is not capable - immediate action required."
     if cp is not None and cp > cpk + 0.2:
         text += " Process is not centered (Cp > Cpk)."
     return text

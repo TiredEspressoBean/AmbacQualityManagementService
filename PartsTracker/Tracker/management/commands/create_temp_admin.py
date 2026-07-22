@@ -161,7 +161,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(
                     'No Tenant rows exist yet. The middleware will auto-create '
-                    'one on first HTTP request — re-run this command after that '
+                    'one on first HTTP request - re-run this command after that '
                     'to attach the admin, or use `setup_tenant` to bootstrap explicitly.'
                 )
             )

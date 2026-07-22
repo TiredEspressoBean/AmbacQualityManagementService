@@ -131,7 +131,7 @@ class SubstepSerializer(SecureModelMixin):
         if scope == 'batch' and step is not None and step.requires_first_piece_inspection:
             raise serializers.ValidationError({
                 'scope': "Cannot set BATCH scope on a substep of a first-piece-inspection "
-                         "step — FPI and batch are mutually exclusive.",
+                         "step - FPI and batch are mutually exclusive.",
             })
         return attrs
 

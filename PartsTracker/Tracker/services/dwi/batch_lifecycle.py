@@ -175,7 +175,7 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
                 )
             )
             logger.info(
-                "Batch %s seal: %d-part cohort — advancement dispatched async.",
+                "Batch %s seal: %d-part cohort - advancement dispatched async.",
                 batch.id, len(parts),
             )
         else:

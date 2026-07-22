@@ -15,6 +15,6 @@ class TestPartIdLabelBatchAdapter(ReportAdapterTestMixin, SimpleTestCase):
             "Cross-tenant isolation is enforced by the tenant filter in "
             "PartIdLabelBatchParamsSerializer.validate() (part_ids / "
             "work_order_id re-verified against the tenant) and the ORM query "
-            "in build_context(). Full probe requires DB state — see "
+            "in build_context(). Full probe requires DB state - see "
             "integration tests."
         )

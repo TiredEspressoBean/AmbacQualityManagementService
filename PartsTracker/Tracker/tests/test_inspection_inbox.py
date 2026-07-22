@@ -23,7 +23,7 @@ class InspectionInboxTests(TenantTestCase):
         self.part_type = PartTypes.objects.create(tenant=self.tenant_a, name="Nozzle")
         # Standalone RECEIVING step (a RIP) for the part type → plan + severity resolve.
         self.receiving_step = Steps.objects.create(
-            tenant=self.tenant_a, name="Receiving — Nozzle",
+            tenant=self.tenant_a, name="Receiving - Nozzle",
             part_type=self.part_type, step_type="RECEIVING")
         self.ruleset = SamplingRuleSet.objects.create(
             tenant=self.tenant_a, part_type=self.part_type, step=self.receiving_step,

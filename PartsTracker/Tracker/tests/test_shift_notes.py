@@ -122,7 +122,7 @@ class ShiftNoteApiTests(TenantTestCase):
         self.authenticate_as(self.lead, self.tenant_a)
         resp = self.client.post(
             "/api/ShiftNotes/",
-            {"body": "Gauge #7 out of cal — do not use.", "audience_roles": [],
+            {"body": "Gauge #7 out of cal - do not use.", "audience_roles": [],
              "acknowledgment_required": True},
             format="json",
         )

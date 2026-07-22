@@ -621,12 +621,12 @@ class TenantViewSet(viewsets.ModelViewSet):
                     "message": serializers.CharField(),
                 },
             ),
-            403: {"description": "Refused — slug is not 'demo'."},
+            403: {"description": "Refused - slug is not 'demo'."},
         },
         description=(
             "Hard-destructive: wipe the demo tenant's data and reseed from the "
             "seed_demo command's preset state. Refuses on any tenant whose "
-            "slug isn't 'demo' — defense in depth both here and in the "
+            "slug isn't 'demo' - defense in depth both here and in the "
             "service layer. Tenant admins only. Async via Celery; poll "
             "/regenerate-demo-status/{task_id}/ for completion."
         ),

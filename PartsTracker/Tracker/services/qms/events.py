@@ -373,7 +373,7 @@ class SupplierStandingReviewPayload:
             supplier_name='Great Lakes Diesel',
             rating='C',
             recommended_action='REVIEW_SUSPEND',
-            reason='Scorecard C — 1 open SCAR(s). Recommend suspension review.',
+            reason='Scorecard C - 1 open SCAR(s). Recommend suspension review.',
         )
 
 
@@ -387,7 +387,7 @@ register_event(EventType(
     default_on=True,
     transactional=False,
     description=('A supplier scorecard crossed a threshold; review its qualification '
-                 'standing. Recommend-only — no automatic status change.'),
+                 'standing. Recommend-only - no automatic status change.'),
     external_routable=False,
 ))
 
@@ -537,7 +537,7 @@ register_event(EventType(
     default_on=True,
     transactional=False,
     description=('Z1.4 tightened inspection ran 5 consecutive lots without returning to '
-                 'normal — stop accepting this supplier for the step and drive corrective '
+                 'normal - stop accepting this supplier for the step and drive corrective '
                  'action. Recommendation, not an automatic suspension.'),
     external_routable=False,
 ))
@@ -586,7 +586,7 @@ register_event(EventType(
     default_recipient_groups=['QA Inspector', 'QA Manager'],
     default_on=True,
     transactional=False,
-    description='A first piece is waiting for inspection — a machine and operator may be idle behind it.',
+    description='A first piece is waiting for inspection - a machine and operator may be idle behind it.',
     external_routable=False,
 ))
 
@@ -629,7 +629,7 @@ register_event(EventType(
     default_recipient_groups=['Production Manager'],
     default_on=True,
     transactional=False,
-    description='A first-piece inspection was decided (passed / failed / waived) — the run can proceed or needs setup attention.',
+    description='A first-piece inspection was decided (passed / failed / waived) - the run can proceed or needs setup attention.',
     external_routable=False,
 ))
 
@@ -672,7 +672,7 @@ class TrainingExpiringSoonPayload:
             training_type_id='00000000-0000-0000-0000-0000000000c2',
             training_type_name='CMM Operation',
             level=3,
-            level_display='Level 3 — Qualified (independent)',
+            level_display='Level 3 - Qualified (independent)',
             expires_date='2026-09-01',
             days_to_expiry=28,
             reminder_window=30,
@@ -689,7 +689,7 @@ register_event(EventType(
     default_recipient_groups=['QA Manager', 'Production Manager'],
     default_on=True,
     transactional=False,
-    description="An operator's training/certification is approaching expiry — schedule requalification before it lapses.",
+    description="An operator's training/certification is approaching expiry - schedule requalification before it lapses.",
     external_routable=False,
 ))
 
@@ -726,7 +726,7 @@ class TrainingExpiredPayload:
             training_type_id='00000000-0000-0000-0000-0000000000c2',
             training_type_name='CMM Operation',
             level=3,
-            level_display='Level 3 — Qualified (independent)',
+            level_display='Level 3 - Qualified (independent)',
             expires_date='2026-07-14',
             recipient_user_ids=[42],
         )
@@ -741,6 +741,6 @@ register_event(EventType(
     default_recipient_groups=['QA Manager', 'Production Manager'],
     default_on=True,
     transactional=False,
-    description="An operator's training/certification has lapsed — they are no longer qualified for work requiring it.",
+    description="An operator's training/certification has lapsed - they are no longer qualified for work requiring it.",
     external_routable=False,
 ))

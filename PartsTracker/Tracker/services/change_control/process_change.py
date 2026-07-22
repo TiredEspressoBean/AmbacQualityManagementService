@@ -159,7 +159,7 @@ def submit_pcr(
             content_object=pcr,
             template=template,
             requested_by=user,
-            reason=f"PCR Submission: {pcr.artifact_number} — {pcr.title}",
+            reason=f"PCR Submission: {pcr.artifact_number} - {pcr.title}",
         )
 
     return approval_request
@@ -845,7 +845,7 @@ def _default_notice_content(
 ) -> str:
     return (
         f"Notice of approved process change.\n\n"
-        f"Source PCR: {pcr.artifact_number} — {pcr.title}\n"
+        f"Source PCR: {pcr.artifact_number} - {pcr.title}\n"
         f"Authorizing PCO: {pco.artifact_number}\n"
         f"Effective: {pco.effective_date or 'on release'}\n\n"
         f"Summary of change:\n{pcr.proposed_change}"

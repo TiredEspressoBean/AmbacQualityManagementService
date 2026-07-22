@@ -236,7 +236,7 @@ class TenantMiddleware:
             sole = existing[0]
             logger.warning(
                 "DEFAULT_TENANT_SLUG=%r doesn't match the sole tenant in the DB "
-                "(slug=%r). Falling back to that tenant — update the env to "
+                "(slug=%r). Falling back to that tenant - update the env to "
                 "match so cold-start auto-create doesn't fork the data later.",
                 slug, sole.slug,
             )

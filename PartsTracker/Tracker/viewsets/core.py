@@ -591,7 +591,7 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
             )
 
         detail = ("Invitation sent successfully" if email_sent
-                  else "Invitation created — email could not be sent, share the link directly")
+                  else "Invitation created - email could not be sent, share the link directly")
         return Response({"detail": detail, "invitation_id": invitation.id,
                          "user_email": user_to_invite.email, "expires_at": invitation.expires_at,
                          "invitation_url": f"{settings.FRONTEND_URL}/signup?token={invitation.token}",
@@ -771,9 +771,9 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         responses={200: {"type": "string", "format": "binary", "description": "XLSX workbook"}},
         description=(
             "Download a multi-sheet Excel template for bulk-reconcile. "
-            "Sheets: Data (editable rows — parsed on import), Instructions, "
-            "Groups (tenant-scoped names — drives Group dropdown), Statuses "
-            "(Active/Inactive — drives Status dropdown). Pass populate=true "
+            "Sheets: Data (editable rows - parsed on import), Instructions, "
+            "Groups (tenant-scoped names - drives Group dropdown), Statuses "
+            "(Active/Inactive - drives Status dropdown). Pass populate=true "
             "to pre-fill the Data sheet with current users."
         ),
         tags=["Users"],
@@ -879,7 +879,7 @@ class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
         # via the qualification lifecycle). Surfaced as a badge on the scorecard.
         "recommended_action": serializers.CharField(),  # NONE | REVIEW_CONDITIONAL | REVIEW_SUSPEND | REVIEW_RESTORE
         "recommendation_reason": serializers.CharField(),
-    })}, description="Supplier quality scorecard — receiving acceptance/reject rates, "
+    })}, description="Supplier quality scorecard - receiving acceptance/reject rates, "
                      "CoC compliance, on-time delivery, open SCAR count, and the "
                      "recommend-only standing review.")
     @action(detail=True, methods=['get'])

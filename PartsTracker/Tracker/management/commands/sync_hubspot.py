@@ -44,7 +44,7 @@ class Command(BaseCommand):
             "--sync",
             action="store_true",
             help="Run synchronously (blocking) instead of enqueuing a task. "
-                 "Useful for debugging — errors surface in the terminal.",
+                 "Useful for debugging - errors surface in the terminal.",
         )
 
     def handle(self, *args, **options):

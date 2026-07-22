@@ -346,7 +346,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         part_type = process.part_type if (process and process.part_type) else None
 
         part_number = part_type.ERP_id if part_type else ""
-        part_name = part_type.name if part_type else "—"
+        part_name = part_type.name if part_type else "-"
         revision: Optional[str] = None
         if part_type and getattr(part_type, "version", None):
             revision = f"Rev {part_type.version}"
@@ -411,7 +411,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             wo_number=wo.ERP_id,
             part_number=part_number,
             part_name=part_name,
-            process_name=process.name if process else "—",
+            process_name=process.name if process else "-",
             revision=revision,
             serial=(target_part.ERP_id if target_part else None),
             drawing_number=drawing_number,

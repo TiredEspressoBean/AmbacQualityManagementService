@@ -54,7 +54,7 @@ class TypstGeneratorSmokeTests(SimpleTestCase):
         second = generate_typst_pdf(self.HELLO_TEMPLATE, ctx)
         self.assertEqual(
             first, second,
-            "Typst compile is not deterministic — same inputs produced "
+            "Typst compile is not deterministic - same inputs produced "
             "different PDF bytes",
         )
 
@@ -64,7 +64,7 @@ class TypstGeneratorSmokeTests(SimpleTestCase):
         b = generate_typst_pdf(self.HELLO_TEMPLATE, {"name": "Bob", "number": 2})
         self.assertNotEqual(
             a, b,
-            "Context does not reach the template — PDFs for different "
+            "Context does not reach the template - PDFs for different "
             "inputs were byte-identical",
         )
 

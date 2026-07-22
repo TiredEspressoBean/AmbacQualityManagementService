@@ -14,6 +14,6 @@ class TestScarReportAdapter(ReportAdapterTestMixin, SimpleTestCase):
         self.skipTest(
             "Cross-tenant isolation is enforced by the tenant filter in "
             "ScarParamsSerializer.validate_id() (the CAPA lookup) and the ORM "
-            "query in build_context(). Full probe requires DB state — see "
+            "query in build_context(). Full probe requires DB state - see "
             "integration tests."
         )

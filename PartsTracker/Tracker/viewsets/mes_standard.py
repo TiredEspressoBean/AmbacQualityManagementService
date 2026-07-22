@@ -380,7 +380,7 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
         })},
         description="Run the lot-acceptance evaluation over the recorded inspection "
                     "results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) "
-                    "and return the current verdict. Server-authoritative — the DWI "
+                    "and return the current verdict. Server-authoritative - the DWI "
                     "unit-by-unit runtime reads this to show ACCEPT/REJECT before the "
                     "operator commits.",
     )
@@ -423,7 +423,7 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
                 "errors": serializers.ListField(child=serializers.DictField(), required=False),
             }),
         },
-        description="Receive N lots from a shipment (paste-grid). All-or-nothing — any row error rolls back.",
+        description="Receive N lots from a shipment (paste-grid). All-or-nothing - any row error rolls back.",
     )
     @action(detail=False, methods=['post'], url_path='bulk_create')
     def bulk_create(self, request):
@@ -495,7 +495,7 @@ class InspectionInboxViewSet(viewsets.ViewSet):
     @extend_schema(
         responses=InspectionInboxRowSerializer(many=True),
         description="The inspector's flat task inbox: FPI first, then by urgency "
-                    "tone, then age. Derive type-count chips (with oldest-age — "
+                    "tone, then age. Derive type-count chips (with oldest-age - "
                     "counts alone hide rot) from the rows.",
     )
     def list(self, request):

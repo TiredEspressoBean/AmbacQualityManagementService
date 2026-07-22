@@ -526,7 +526,7 @@ class WorkOrderCSVImportSerializer(BaseCSVImportSerializer):
         )
         for key in list(data.keys()):
             if key not in allowed_transport_keys:
-                self.warnings.append(f"Unknown column '{key}' — ignored")
+                self.warnings.append(f"Unknown column '{key}' - ignored")
 
         result = super().transform_data(data)
         # `part_type_erp_id` is a transport-only key; remove from result so

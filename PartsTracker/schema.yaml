@@ -2984,7 +2984,7 @@ paths:
     get:
       operationId: api_CalibrationRecords_my_gauge_nag_retrieve
       description: Gauges the current user recently used whose calibration is due
-        soon or overdue — the personal pre-empt for the point-of-use calibration gate.
+        soon or overdue - the personal pre-empt for the point-of-use calibration gate.
       parameters:
       - in: query
         name: due_within
@@ -4191,7 +4191,7 @@ paths:
   /api/Companies/{id}/scorecard/:
     get:
       operationId: api_Companies_scorecard_retrieve
-      description: Supplier quality scorecard — receiving acceptance/reject rates,
+      description: Supplier quality scorecard - receiving acceptance/reject rates,
         CoC compliance, on-time delivery, open SCAR count, and the recommend-only
         standing review.
       parameters:
@@ -4265,7 +4265,7 @@ paths:
     get:
       operationId: api_CompetenceMatrix_retrieve
       description: Operators x training-types competency matrix with per-skill coverage
-        counts. HR / quality view — requires view_training_matrix.
+        counts. HR / quality view - requires view_training_matrix.
       tags:
       - api
       security:
@@ -4778,7 +4778,7 @@ paths:
   /api/Cores/bulk_create/:
     post:
       operationId: api_Cores_bulk_create_create
-      description: Create N cores from a shipment. All-or-nothing — any row error
+      description: Create N cores from a shipment. All-or-nothing - any row error
         rolls back the batch.
       tags:
       - api
@@ -7988,7 +7988,7 @@ paths:
   /api/FPIRecords/{id}/acknowledge/:
     post:
       operationId: api_FPIRecords_acknowledge_create
-      description: Acknowledge a pending FPI (QA is on it). Idempotent — the first
+      description: Acknowledge a pending FPI (QA is on it). Idempotent - the first
         acknowledgment wins; the operator surface shows 'Seen by X'.
       parameters:
       - in: path
@@ -9358,7 +9358,7 @@ paths:
     get:
       operationId: api_InspectionInbox_list
       description: 'The inspector''s flat task inbox: FPI first, then by urgency tone,
-        then age. Derive type-count chips (with oldest-age — counts alone hide rot)
+        then age. Derive type-count chips (with oldest-age - counts alone hide rot)
         from the rows.'
       tags:
       - api
@@ -9846,7 +9846,7 @@ paths:
       operationId: api_MaterialLots_evaluate_receiving_retrieve
       description: Run the lot-acceptance evaluation over the recorded inspection
         results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return
-        the current verdict. Server-authoritative — the DWI unit-by-unit runtime reads
+        the current verdict. Server-authoritative - the DWI unit-by-unit runtime reads
         this to show ACCEPT/REJECT before the operator commits.
       parameters:
       - in: path
@@ -10113,7 +10113,7 @@ paths:
   /api/MaterialLots/bulk_create/:
     post:
       operationId: api_MaterialLots_bulk_create_create
-      description: Receive N lots from a shipment (paste-grid). All-or-nothing — any
+      description: Receive N lots from a shipment (paste-grid). All-or-nothing - any
         row error rolls back.
       tags:
       - api
@@ -17523,7 +17523,7 @@ paths:
           - pending
           - selected
         description: |-
-          What the rule decided — SELECTED, DESELECTED, or PENDING.
+          What the rule decided - SELECTED, DESELECTED, or PENDING.
 
           * `selected` - Selected
           * `deselected` - Deselected
@@ -19587,7 +19587,7 @@ paths:
   /api/StepExecutions/work_authorization/:
     get:
       operationId: api_StepExecutions_work_authorization_retrieve
-      description: Per-part training authorization for the current user — the Start-Work
+      description: Per-part training authorization for the current user - the Start-Work
         pre-flight gate (so unqualified parts can be marked before launch, not just
         blocked on click).
       parameters:
@@ -20270,7 +20270,7 @@ paths:
           format: uuid
         description: Process version the edit is scoped to. When supplied, the resulting
           new Step version is junctioned into that process's ProcessStep row only
-          — the original Step row stays attached to every other process version that
+          - the original Step row stays attached to every other process version that
           references it. Used by the PCR-DRAFT editing flow to keep concurrent PCRs
           isolated.
       tags:
@@ -23595,7 +23595,7 @@ paths:
       operationId: api_Tenants_regenerate_demo_data_create
       description: 'Hard-destructive: wipe the demo tenant''s data and reseed from
         the seed_demo command''s preset state. Refuses on any tenant whose slug isn''t
-        ''demo'' — defense in depth both here and in the service layer. Tenant admins
+        ''demo'' - defense in depth both here and in the service layer. Tenant admins
         only. Async via Celery; poll /regenerate-demo-status/{task_id}/ for completion.'
       parameters:
       - in: path
@@ -23620,7 +23620,7 @@ paths:
           content:
             application/json:
               schema:
-                description: Refused — slug is not 'demo'.
+                description: Refused - slug is not 'demo'.
           description: ''
   /api/Tenants/{slug}/regenerate-demo-status/{task_id}/:
     get:
@@ -24427,12 +24427,12 @@ paths:
           - 3
           - 4
         description: |-
-          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
 
-          * `1` - Level 1 — Trainee (supervised)
-          * `2` - Level 2 — Assisted (output checked)
-          * `3` - Level 3 — Qualified (independent)
-          * `4` - Level 4 — Expert (can train/sign off others)
+          * `1` - Level 1 - Trainee (supervised)
+          * `2` - Level 2 - Assisted (output checked)
+          * `3` - Level 3 - Qualified (independent)
+          * `4` - Level 4 - Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24643,12 +24643,12 @@ paths:
           - 3
           - 4
         description: |-
-          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
 
-          * `1` - Level 1 — Trainee (supervised)
-          * `2` - Level 2 — Assisted (output checked)
-          * `3` - Level 3 — Qualified (independent)
-          * `4` - Level 4 — Expert (can train/sign off others)
+          * `1` - Level 1 - Trainee (supervised)
+          * `2` - Level 2 - Assisted (output checked)
+          * `3` - Level 3 - Qualified (independent)
+          * `4` - Level 4 - Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24719,12 +24719,12 @@ paths:
           - 3
           - 4
         description: |-
-          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
 
-          * `1` - Level 1 — Trainee (supervised)
-          * `2` - Level 2 — Assisted (output checked)
-          * `3` - Level 3 — Qualified (independent)
-          * `4` - Level 4 — Expert (can train/sign off others)
+          * `1` - Level 1 - Trainee (supervised)
+          * `2` - Level 2 - Assisted (output checked)
+          * `3` - Level 3 - Qualified (independent)
+          * `4` - Level 4 - Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24836,12 +24836,12 @@ paths:
           - 3
           - 4
         description: |-
-          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+          Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
 
-          * `1` - Level 1 — Trainee (supervised)
-          * `2` - Level 2 — Assisted (output checked)
-          * `3` - Level 3 — Qualified (independent)
-          * `4` - Level 4 — Expert (can train/sign off others)
+          * `1` - Level 1 - Trainee (supervised)
+          * `2` - Level 2 - Assisted (output checked)
+          * `3` - Level 3 - Qualified (independent)
+          * `4` - Level 4 - Expert (can train/sign off others)
       - name: limit
         required: false
         in: query
@@ -24940,10 +24940,10 @@ paths:
         description: |-
           Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
 
-          * `1` - Level 1 — Trainee (supervised)
-          * `2` - Level 2 — Assisted (output checked)
-          * `3` - Level 3 — Qualified (independent)
-          * `4` - Level 4 — Expert (can train/sign off others)
+          * `1` - Level 1 - Trainee (supervised)
+          * `2` - Level 2 - Assisted (output checked)
+          * `3` - Level 3 - Qualified (independent)
+          * `4` - Level 4 - Expert (can train/sign off others)
       - name: offset
         required: false
         in: query
@@ -25191,10 +25191,10 @@ paths:
         description: |-
           Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
 
-          * `1` - Level 1 — Trainee (supervised)
-          * `2` - Level 2 — Assisted (output checked)
-          * `3` - Level 3 — Qualified (independent)
-          * `4` - Level 4 — Expert (can train/sign off others)
+          * `1` - Level 1 - Trainee (supervised)
+          * `2` - Level 2 - Assisted (output checked)
+          * `3` - Level 3 - Qualified (independent)
+          * `4` - Level 4 - Expert (can train/sign off others)
       - name: offset
         required: false
         in: query
@@ -25279,10 +25279,10 @@ paths:
         description: |-
           Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
 
-          * `1` - Level 1 — Trainee (supervised)
-          * `2` - Level 2 — Assisted (output checked)
-          * `3` - Level 3 — Qualified (independent)
-          * `4` - Level 4 — Expert (can train/sign off others)
+          * `1` - Level 1 - Trainee (supervised)
+          * `2` - Level 2 - Assisted (output checked)
+          * `3` - Level 3 - Qualified (independent)
+          * `4` - Level 4 - Expert (can train/sign off others)
       - name: offset
         required: false
         in: query
@@ -25941,8 +25941,8 @@ paths:
     get:
       operationId: api_User_bulk_reconcile_template_retrieve
       description: 'Download a multi-sheet Excel template for bulk-reconcile. Sheets:
-        Data (editable rows — parsed on import), Instructions, Groups (tenant-scoped
-        names — drives Group dropdown), Statuses (Active/Inactive — drives Status
+        Data (editable rows - parsed on import), Instructions, Groups (tenant-scoped
+        names - drives Group dropdown), Statuses (Active/Inactive - drives Status
         dropdown). Pass populate=true to pre-fill the Data sheet with current users.'
       parameters:
       - in: query
@@ -31987,7 +31987,7 @@ paths:
           content:
             application/json:
               schema:
-                description: Target process is not in APPROVED status — only approved
+                description: Target process is not in APPROVED status - only approved
                   processes can be forked into a PCR draft.
           description: ''
   /api/reports/download/:
@@ -36013,7 +36013,7 @@ components:
         override_password:
           type: string
           minLength: 1
-          description: Authorizing supervisor's password — verified, never stored.
+          description: Authorizing supervisor's password - verified, never stored.
         override_reason:
           type: string
           minLength: 1
@@ -36152,10 +36152,10 @@ components:
       - 4
       type: integer
       description: |-
-        * `1` - Level 1 — Trainee (supervised)
-        * `2` - Level 2 — Assisted (output checked)
-        * `3` - Level 3 — Qualified (independent)
-        * `4` - Level 4 — Expert (can train/sign off others)
+        * `1` - Level 1 - Trainee (supervised)
+        * `2` - Level 2 - Assisted (output checked)
+        * `3` - Level 3 - Qualified (independent)
+        * `4` - Level 4 - Expert (can train/sign off others)
     CompleteStepResponse:
       type: object
       properties:
@@ -36842,9 +36842,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_Escalation'
@@ -36922,9 +36922,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_EscalationRequest'
@@ -45417,9 +45417,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_EscalationRequest'
@@ -46458,9 +46458,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_EscalationRequest'
@@ -46762,7 +46762,7 @@ components:
           type: array
           items:
             type: integer
-          description: DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat.
         sampling_method:
           type: string
           minLength: 1
@@ -46789,11 +46789,11 @@ components:
         detected_by:
           type: integer
           nullable: true
-          description: DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat.
         verified_by:
           type: integer
           nullable: true
-          description: DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat.
         is_first_piece:
           type: boolean
           description: If True, this inspection is a First Piece Inspection (FPI)
@@ -46835,7 +46835,7 @@ components:
           type: string
           format: date
           nullable: true
-          description: Target resolution date — drives the due dot on quality inboxes
+          description: Target resolution date - drives the due dot on quality inboxes
         description:
           type: string
         resolution_notes:
@@ -47673,7 +47673,7 @@ components:
           minLength: 1
           description: 'UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks
             (minted client-side per decision #18). Stable across the substep''s lifetime
-            as long as the engineer doesn''t cut-paste the node — see src/lib/dwi/node-id.ts.'
+            as long as the engineer doesn''t cut-paste the node - see src/lib/dwi/node-id.ts.'
           maxLength: 64
         completed_by:
           type: integer
@@ -47767,7 +47767,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/ScopeEnum'
           description: |-
-            Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+            Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
 
             * `sampled` - Per part (sampling)
             * `batch` - Per batch
@@ -48131,9 +48131,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_EscalationRequest'
@@ -48336,12 +48336,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/CompetencyLevelEnum'
           description: |-
-            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
 
-            * `1` - Level 1 — Trainee (supervised)
-            * `2` - Level 2 — Assisted (output checked)
-            * `3` - Level 3 — Qualified (independent)
-            * `4` - Level 4 — Expert (can train/sign off others)
+            * `1` - Level 1 - Trainee (supervised)
+            * `2` - Level 2 - Assisted (output checked)
+            * `3` - Level 3 - Qualified (independent)
+            * `4` - Level 4 - Expert (can train/sign off others)
           minimum: 0
           maximum: 32767
         expires_date:
@@ -48374,10 +48374,10 @@ components:
           description: |-
             Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
 
-            * `1` - Level 1 — Trainee (supervised)
-            * `2` - Level 2 — Assisted (output checked)
-            * `3` - Level 3 — Qualified (independent)
-            * `4` - Level 4 — Expert (can train/sign off others)
+            * `1` - Level 1 - Trainee (supervised)
+            * `2` - Level 2 - Assisted (output checked)
+            * `3` - Level 3 - Qualified (independent)
+            * `4` - Level 4 - Expert (can train/sign off others)
           minimum: 0
           maximum: 32767
         step:
@@ -48518,7 +48518,7 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Primary job role / position — drives the required-competency
+          description: Primary job role / position - drives the required-competency
             profile.
     PatchedWorkCenterRequest:
       type: object
@@ -48670,9 +48670,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_Escalation'
@@ -48740,9 +48740,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_EscalationRequest'
@@ -50250,7 +50250,7 @@ components:
           type: array
           items:
             type: integer
-          description: DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat.
         sampling_method:
           type: string
           maxLength: 50
@@ -50289,7 +50289,7 @@ components:
         detected_by:
           type: integer
           nullable: true
-          description: DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat.
         detected_by_info:
           type: object
           additionalProperties: {}
@@ -50298,7 +50298,7 @@ components:
         verified_by:
           type: integer
           nullable: true
-          description: DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat.
         verified_by_info:
           type: object
           additionalProperties: {}
@@ -50359,7 +50359,7 @@ components:
           nullable: true
           description: The batch whose capture produced this report, for BATCH-scope
             inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive
-            with step_execution — a report is per-part OR per-batch, never both.
+            with step_execution - a report is per-part OR per-batch, never both.
         equipment_links:
           type: array
           items:
@@ -50451,7 +50451,7 @@ components:
           type: array
           items:
             type: integer
-          description: DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat.
         sampling_method:
           type: string
           minLength: 1
@@ -50478,11 +50478,11 @@ components:
         detected_by:
           type: integer
           nullable: true
-          description: DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat.
         verified_by:
           type: integer
           nullable: true
-          description: DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
+          description: DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat.
         is_first_piece:
           type: boolean
           description: If True, this inspection is a First Piece Inspection (FPI)
@@ -50536,7 +50536,7 @@ components:
           type: string
           format: date
           nullable: true
-          description: Target resolution date — drives the due dot on quality inboxes
+          description: Target resolution date - drives the due dot on quality inboxes
         description:
           type: string
         resolution_notes:
@@ -50715,7 +50715,7 @@ components:
           type: string
           format: date
           nullable: true
-          description: Target resolution date — drives the due dot on quality inboxes
+          description: Target resolution date - drives the due dot on quality inboxes
         description:
           type: string
         resolution_notes:
@@ -51177,9 +51177,9 @@ components:
       - union
       type: string
       description: |-
-        * `static` - Static — recipients from this rule only
-        * `from_payload` - From event — recipients from the event payload
-        * `union` - Union — combine event-payload recipients with this rule's
+        * `static` - Static - recipients from this rule only
+        * `from_payload` - From event - recipients from the event payload
+        * `union` - Union - combine event-payload recipients with this rule's
     RecordBulkRequestRequest:
       type: object
       description: 'Request body for bulk/attribute capture: defectives found across
@@ -52124,7 +52124,7 @@ components:
           - $ref: '#/components/schemas/OutcomeEnum'
           readOnly: true
           description: |-
-            What the rule decided — SELECTED, DESELECTED, or PENDING.
+            What the rule decided - SELECTED, DESELECTED, or PENDING.
 
             * `selected` - Selected
             * `deselected` - Deselected
@@ -54812,7 +54812,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/ScopeEnum'
           description: |-
-            Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+            Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
 
             * `sampled` - Per part (sampling)
             * `batch` - Per batch
@@ -55024,7 +55024,7 @@ components:
           type: string
           description: 'UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks
             (minted client-side per decision #18). Stable across the substep''s lifetime
-            as long as the engineer doesn''t cut-paste the node — see src/lib/dwi/node-id.ts.'
+            as long as the engineer doesn''t cut-paste the node - see src/lib/dwi/node-id.ts.'
           maxLength: 64
         completed_by:
           type: integer
@@ -55101,7 +55101,7 @@ components:
           minLength: 1
           description: 'UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks
             (minted client-side per decision #18). Stable across the substep''s lifetime
-            as long as the engineer doesn''t cut-paste the node — see src/lib/dwi/node-id.ts.'
+            as long as the engineer doesn''t cut-paste the node - see src/lib/dwi/node-id.ts.'
           maxLength: 64
         completed_by:
           type: integer
@@ -55200,7 +55200,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/ScopeEnum'
           description: |-
-            Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+            Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
 
             * `sampled` - Per part (sampling)
             * `batch` - Per batch
@@ -56510,9 +56510,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_Escalation'
@@ -56578,9 +56578,9 @@ components:
           description: |-
             Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
 
-            * `static` - Static — recipients from this rule only
-            * `from_payload` - From event — recipients from the event payload
-            * `union` - Union — combine event-payload recipients with this rule's
+            * `static` - Static - recipients from this rule only
+            * `from_payload` - From event - recipients from the event payload
+            * `union` - Union - combine event-payload recipients with this rule's
         escalation:
           allOf:
           - $ref: '#/components/schemas/_EscalationRequest'
@@ -57380,12 +57380,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/CompetencyLevelEnum'
           description: |-
-            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
 
-            * `1` - Level 1 — Trainee (supervised)
-            * `2` - Level 2 — Assisted (output checked)
-            * `3` - Level 3 — Qualified (independent)
-            * `4` - Level 4 — Expert (can train/sign off others)
+            * `1` - Level 1 - Trainee (supervised)
+            * `2` - Level 2 - Assisted (output checked)
+            * `3` - Level 3 - Qualified (independent)
+            * `4` - Level 4 - Expert (can train/sign off others)
           minimum: 0
           maximum: 32767
         level_display:
@@ -57456,12 +57456,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/CompetencyLevelEnum'
           description: |-
-            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+            Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
 
-            * `1` - Level 1 — Trainee (supervised)
-            * `2` - Level 2 — Assisted (output checked)
-            * `3` - Level 3 — Qualified (independent)
-            * `4` - Level 4 — Expert (can train/sign off others)
+            * `1` - Level 1 - Trainee (supervised)
+            * `2` - Level 2 - Assisted (output checked)
+            * `3` - Level 3 - Qualified (independent)
+            * `4` - Level 4 - Expert (can train/sign off others)
           minimum: 0
           maximum: 32767
         expires_date:
@@ -57507,10 +57507,10 @@ components:
           description: |-
             Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
 
-            * `1` - Level 1 — Trainee (supervised)
-            * `2` - Level 2 — Assisted (output checked)
-            * `3` - Level 3 — Qualified (independent)
-            * `4` - Level 4 — Expert (can train/sign off others)
+            * `1` - Level 1 - Trainee (supervised)
+            * `2` - Level 2 - Assisted (output checked)
+            * `3` - Level 3 - Qualified (independent)
+            * `4` - Level 4 - Expert (can train/sign off others)
           minimum: 0
           maximum: 32767
         min_level_display:
@@ -57603,10 +57603,10 @@ components:
           description: |-
             Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
 
-            * `1` - Level 1 — Trainee (supervised)
-            * `2` - Level 2 — Assisted (output checked)
-            * `3` - Level 3 — Qualified (independent)
-            * `4` - Level 4 — Expert (can train/sign off others)
+            * `1` - Level 1 - Trainee (supervised)
+            * `2` - Level 2 - Assisted (output checked)
+            * `3` - Level 3 - Qualified (independent)
+            * `4` - Level 4 - Expert (can train/sign off others)
           minimum: 0
           maximum: 32767
         step:
@@ -58155,7 +58155,7 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Primary job role / position — drives the required-competency
+          description: Primary job role / position - drives the required-competency
             profile.
         job_role_name:
           type: string
@@ -58392,7 +58392,7 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Primary job role / position — drives the required-competency
+          description: Primary job role / position - drives the required-competency
             profile.
       required:
       - username

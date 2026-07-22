@@ -270,9 +270,9 @@ class DemoDwiSeeder(BaseSeeder):
                     "Nozzle inspection points",
                     model_id,
                     [
-                        _callout_point("Nozzle Inspection", 1, -0.286, -0.134, 1.042, "Nozzle tip — check for scoring/erosion"),
-                        _callout_point("Nozzle Inspection", 2, 0.471, -0.308, 0.595, "Spray-hole bank — verify all holes clear"),
-                        _callout_point("Nozzle Inspection", 3, 0.300, -0.184, 0.616, "Seat face — inspect for pitting"),
+                        _callout_point("Nozzle Inspection", 1, -0.286, -0.134, 1.042, "Nozzle tip - check for scoring/erosion"),
+                        _callout_point("Nozzle Inspection", 2, 0.471, -0.308, 0.595, "Spray-hole bank - verify all holes clear"),
+                        _callout_point("Nozzle Inspection", 3, 0.300, -0.184, 0.616, "Seat face - inspect for pitting"),
                     ],
                 )
             ]
@@ -288,7 +288,7 @@ class DemoDwiSeeder(BaseSeeder):
                     "is_inspection_point": True,
                     "body": _doc(
                         _para("Receive the incoming core, scan its identity band, and log its arrival condition."),
-                        _callout("note", "Cores arrive as-is from the field — record what you see, don't clean yet."),
+                        _callout("note", "Cores arrive as-is from the field - record what you see, don't clean yet."),
                         _scan("Core Receiving", "core-serial", "Scan core serial / identity band"),
                         _photo("Core Receiving", "arrival-photo", "Photograph the core as received", required=False),
                         _quality_status("Core Receiving", "arrival-condition", "Arrival condition"),
@@ -304,7 +304,7 @@ class DemoDwiSeeder(BaseSeeder):
                     "body": _doc(
                         _heading("Grade each harvested component"),
                         _para("Assess each component against the grading criteria and sort into reuse / rework / scrap."),
-                        _callout("caution", "When in doubt, grade down — a reused-but-marginal component fails downstream."),
+                        _callout("caution", "When in doubt, grade down - a reused-but-marginal component fails downstream."),
                         _quality_status("Component Grading", "grade-result", "Grade decision"),
                         _error_types("Component Grading", "grade-defects", "Defects driving the grade", min_rows=0),
                         _inspection_signatures("Component Grading", "grade-signoff", require_detected=True),
@@ -343,7 +343,7 @@ class DemoDwiSeeder(BaseSeeder):
                     # batch-scoped QualityReport (PASS/FAIL on the whole load).
                     "is_inspection_point": True,
                     "body": _doc(
-                        _heading("Ultrasonic clean — whole load"),
+                        _heading("Ultrasonic clean - whole load"),
                         _callout("note", "One cycle cleans the entire basket; the result applies to every part in the load."),
                         # Cycle-level reading: bath temp is measured once for the
                         # load. Binds to the BatchExecution (StepExecutionMeasurement
@@ -364,7 +364,7 @@ class DemoDwiSeeder(BaseSeeder):
                     "is_inspection_point": True,
                     "body": _doc(
                         _heading("Inspect the nozzle"),
-                        _callout("caution", "Handle the nozzle tip with lint-free gloves — fingerprints etch the seat."),
+                        _callout("caution", "Handle the nozzle tip with lint-free gloves - fingerprints etch the seat."),
                         *callout_block,
                         _part_annotation("Nozzle Inspection", "defects", "Mark any defects you find on the model", model_id),
                         # QualityReport capture bundle (status already present above):
@@ -411,7 +411,7 @@ class DemoDwiSeeder(BaseSeeder):
                     "is_critical": True,
                     "body": _doc(
                         _para("Reassemble the injector with new seals, then torque the retaining nut to spec."),
-                        _callout("caution", "Torque is safety-critical — use the calibrated wrench and the recorded value."),
+                        _callout("caution", "Torque is safety-critical - use the calibrated wrench and the recorded value."),
                         *maybe_measure("Assembly", "torque", "Assembly Torque", characteristic="A-01"),
                         _attest_confirm(
                             "Assembly",
@@ -471,7 +471,7 @@ class DemoDwiSeeder(BaseSeeder):
                     "body": _doc(
                         _heading("Inspect returned subcontract work"),
                         _para("Verify the coating on the returned parts and record the measured thickness."),
-                        _callout("caution", "Reject the shipment if thickness is out of tolerance — it routes to disposition."),
+                        _callout("caution", "Reject the shipment if thickness is out of tolerance - it routes to disposition."),
                         *step_measures(osp_step, osp_step.name, characteristic="OSP-01"),
                         _photo(osp_step.name, "coating-photo", "Photograph the coated surface", required=False),
                         _quality_status(osp_step.name, "osp-result", "Return inspection result"),

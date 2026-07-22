@@ -190,7 +190,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
 
     @extend_schema(
         description="Gauges the current user recently used whose calibration is "
-                    "due soon or overdue — the personal pre-empt for the "
+                    "due soon or overdue - the personal pre-empt for the "
                     "point-of-use calibration gate.",
         parameters=[
             OpenApiParameter(name='used_within', description='Lookback window for usage (days)',

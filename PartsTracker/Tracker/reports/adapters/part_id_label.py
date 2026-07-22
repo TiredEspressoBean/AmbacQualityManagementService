@@ -151,7 +151,7 @@ def build_part_id_label_context(part, tenant) -> PartIdLabelContext:
     Caller is responsible for tenant filtering on the Parts query.
     """
     serial = part.ERP_id or ""
-    part_number = part.part_type.name if part.part_type else "—"
+    part_number = part.part_type.name if part.part_type else "-"
     work_order_number = part.work_order.ERP_id if part.work_order else None
 
     revision: Optional[str] = None

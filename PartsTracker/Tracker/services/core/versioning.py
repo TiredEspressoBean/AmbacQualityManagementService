@@ -106,7 +106,7 @@ def raise_not_versioned(self, **_):
     raise NotImplementedError(
         f"{type(self).__name__} is not a versioned model. "
         f"SecureModel's `create_new_version` is inherited but should not "
-        f"be called on this aggregate — it records transactional or "
+        f"be called on this aggregate - it records transactional or "
         f"operational data, not controlled specifications. If you need "
         f"to modify this row, edit it directly and rely on "
         f"django-auditlog for change history."

@@ -108,7 +108,7 @@ class DispatchListFixtureShapeTests(SimpleTestCase):
         has_null = any(item["due_date"] is None for item in all_items)
         self.assertTrue(
             has_null,
-            "fixture has no item with null due_date — null branch in template not exercised",
+            "fixture has no item with null due_date - null branch in template not exercised",
         )
 
     def test_fixture_has_multiple_groups(self):

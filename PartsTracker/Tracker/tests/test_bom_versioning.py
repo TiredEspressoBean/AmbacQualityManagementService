@@ -220,7 +220,7 @@ class BOMVersioningSignalTestCase(TenantTestCase):
 
     def test_revision_created_signal_fires_with_correct_kwargs(self):
         v2 = create_new_bom_version(
-            self.bom, user=self.user_a, change_description='Rev B — safety update',
+            self.bom, user=self.user_a, change_description='Rev B - safety update',
         )
         self.received.assert_called_once()
         kwargs = self.received.call_args.kwargs
@@ -228,7 +228,7 @@ class BOMVersioningSignalTestCase(TenantTestCase):
         self.assertEqual(kwargs['old_version'].pk, self.bom.pk)
         self.assertEqual(kwargs['new_version'].pk, v2.pk)
         self.assertEqual(kwargs['user'], self.user_a)
-        self.assertEqual(kwargs['change_description'], 'Rev B — safety update')
+        self.assertEqual(kwargs['change_description'], 'Rev B - safety update')
 
 
 class UniqueConstraintPartialTestCase(TenantTestCase):

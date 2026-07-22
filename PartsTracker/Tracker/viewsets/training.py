@@ -361,7 +361,7 @@ class CompetenceMatrixView(APIView):
 
     @extend_schema(
         description="Operators x training-types competency matrix with per-skill "
-                    "coverage counts. HR / quality view — requires view_training_matrix.",
+                    "coverage counts. HR / quality view - requires view_training_matrix.",
         responses={200: TrainingMatrixSerializer},
     )
     def get(self, request):

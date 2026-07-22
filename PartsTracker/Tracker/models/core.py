@@ -1310,7 +1310,7 @@ class SecureModel(models.Model):
                 f"SecureModel's `create_new_version` requires opt-in via "
                 f"`_is_versioned = True` on the class. This row records "
                 f"transactional or operational data, not a controlled "
-                f"specification — edit in place and rely on django-auditlog "
+                f"specification - edit in place and rely on django-auditlog "
                 f"for change history."
             )
 
@@ -1680,7 +1680,7 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name='users',
-        help_text="Primary job role / position — drives the required-competency profile.",
+        help_text="Primary job role / position - drives the required-competency profile.",
     )
 
     first_name = models.CharField(max_length=150, blank=True, null=True)

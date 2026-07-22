@@ -68,7 +68,7 @@ Opened by:  {{ payload.opened_by_name }}
 
 View the NCR: {{ action_url }}
 
-— {{ branding.company_name|default:'UQMES' }}""",
+- {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="Nonconformance Opened",
             body="""<p style="margin: 0 0 16px;">A nonconformance has been opened against part <strong>{{ payload.part_number }}</strong>.</p>
@@ -105,7 +105,7 @@ Work Order: {{ payload.work_order_number|default:'(none)' }}
 
 Review the part: {{ action_url }}
 
-— {{ branding.company_name|default:'UQMES' }}""",
+- {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="Part Failed at Step",
             body="""<p style="margin: 0 0 16px;">A part has failed quality inspection at a process step.</p>
@@ -145,7 +145,7 @@ Problem statement:
 
 Open the CAPA: {{ action_url }}
 
-— {{ branding.company_name|default:'UQMES' }}""",
+- {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="CAPA Assigned",
             body="""<p style="margin: 0 0 16px;">{% if payload.is_reassignment %}A CAPA has been reassigned to <strong>{{ payload.assigned_to_name }}</strong>.{% else %}A CAPA has been assigned to <strong>{{ payload.assigned_to_name }}</strong>.{% endif %}</p>
@@ -185,7 +185,7 @@ Assignee:   {{ payload.assigned_to_name }}
 
 Open the CAPA: {{ action_url }}
 
-— {{ branding.company_name|default:'UQMES' }}""",
+- {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="CAPA Assigned",
             body="""<p style="margin: 0 0 16px;">A CAPA has been assigned to <strong>{{ payload.assigned_to_name }}</strong>.</p>
@@ -221,7 +221,7 @@ Requested:   {{ payload.requested_at }}
 
 Approve or reject: {{ action_url }}
 
-— {{ branding.company_name|default:'UQMES' }}""",
+- {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="Approval Requested",
             body="""<p style="margin: 0 0 16px;"><strong>{{ payload.requested_by_name }}</strong> has routed a document for your approval.</p>
@@ -247,20 +247,20 @@ Approve or reject: {{ action_url }}
 ORDER_SHIPPED = {
     "event_code": "order.shipped",
     "email": {
-        "subject": "Shipment Notification — Order {{ payload.order_number }}",
+        "subject": "Shipment Notification - Order {{ payload.order_number }}",
         "body_text": """Your order has shipped.
 
 Order number:   {{ payload.order_number }}
 Shipped on:     {{ payload.shipped_at }}
-Carrier:        {{ payload.carrier|default:'—' }}
-Tracking:       {{ payload.tracking_number|default:'—' }}
-Expected:       {{ payload.expected_delivery|default:'—' }}
+Carrier:        {{ payload.carrier|default:'-' }}
+Tracking:       {{ payload.tracking_number|default:'-' }}
+Expected:       {{ payload.expected_delivery|default:'-' }}
 
 Track this shipment: {{ action_url }}
 
 Thank you for your business.
 
-— {{ branding.company_name|default:'UQMES' }}
+- {{ branding.company_name|default:'UQMES' }}
 {% if branding.support_email %}Questions? Contact {{ branding.support_email }}{% endif %}""",
         "body_html": _html(
             title="Shipment Notification",
@@ -268,9 +268,9 @@ Thank you for your business.
       <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; margin: 16px 0; width: 100%; font-size: 14px;">
         <tr><td style="color: #666; padding: 4px 12px 4px 0; white-space: nowrap;">Order</td><td><strong>{{ payload.order_number }}</strong></td></tr>
         <tr><td style="color: #666; padding: 4px 12px 4px 0;">Shipped on</td><td>{{ payload.shipped_at }}</td></tr>
-        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Carrier</td><td>{{ payload.carrier|default:'—' }}</td></tr>
-        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Tracking</td><td>{{ payload.tracking_number|default:'—' }}</td></tr>
-        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Expected delivery</td><td>{{ payload.expected_delivery|default:'—' }}</td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Carrier</td><td>{{ payload.carrier|default:'-' }}</td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Tracking</td><td>{{ payload.tracking_number|default:'-' }}</td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Expected delivery</td><td>{{ payload.expected_delivery|default:'-' }}</td></tr>
       </table>
       <p style="margin: 16px 0;">Thank you for your business.</p>""",
             action_label="Track shipment",
@@ -303,7 +303,7 @@ This equipment should be removed from service until calibration is completed.
 
 Open the calibration record: {{ action_url }}
 
-— {{ branding.company_name|default:'UQMES' }}""",
+- {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="Calibration Overdue",
             body="""<p style="margin: 0 0 16px;"><strong>{{ payload.gage_id }}</strong> is <strong style="color: #b91c1c;">{{ payload.days_overdue }} days</strong> past its calibration due date.</p>
@@ -343,7 +343,7 @@ WILDCARD_GENERIC = {
 {% endif %}{% endfor %}
 {% if action_url %}View: {{ action_url }}{% endif %}
 
-— {{ branding.company_name|default:'UQMES' }}""",
+- {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="{{ event.label }}",
             body="""<p style="margin: 0 0 16px; color: #666;">{{ event.domain }} event</p>

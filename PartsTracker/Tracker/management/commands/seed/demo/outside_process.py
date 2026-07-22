@@ -55,7 +55,7 @@ class DemoOutsideProcessSeeder(BaseSeeder):
         # Plating subcontractor as the default vendor (ties to the SQM seeder's Apex).
         vendor, _ = Companies.objects.update_or_create(
             tenant=self.tenant, name="Apex Plating Co",
-            defaults={"description": "Plating subcontractor — outside-process vendor."},
+            defaults={"description": "Plating subcontractor - outside-process vendor."},
         )
 
         # --- OSP step: a subcontract node with a default vendor ---

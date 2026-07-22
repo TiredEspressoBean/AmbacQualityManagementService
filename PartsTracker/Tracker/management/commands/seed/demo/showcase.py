@@ -38,7 +38,7 @@ from Tracker.services.mes.processes import duplicate_process
 from ..base import BaseSeeder
 
 
-AUTHORING_DRAFT_NAME = "Injector Reman — Authoring Draft (SHOWCASE)"
+AUTHORING_DRAFT_NAME = "Injector Reman - Authoring Draft (SHOWCASE)"
 
 
 class DemoShowcaseSeeder(BaseSeeder):
@@ -55,12 +55,12 @@ class DemoShowcaseSeeder(BaseSeeder):
         # --- Resolve dependencies from the already-seeded data -------------
         process = self._injector_reman_process(manufacturing)
         if not process:
-            self.log("  Injector Reman process not found — skipping SHOWCASE seeding", warning=True)
+            self.log("  Injector Reman process not found - skipping SHOWCASE seeding", warning=True)
             return {}
 
         nozzle_step = Steps.objects.filter(tenant=self.tenant, name="Nozzle Inspection").first()
         if not nozzle_step:
-            self.log("  'Nozzle Inspection' step not found — skipping SHOWCASE seeding", warning=True)
+            self.log("  'Nozzle Inspection' step not found - skipping SHOWCASE seeding", warning=True)
             return {}
 
         part_type = self._part_type(manufacturing)
@@ -154,7 +154,7 @@ class DemoShowcaseSeeder(BaseSeeder):
             return existing
 
         draft = duplicate_process(
-            process, user=admin_user, name_suffix=" — Authoring Draft (SHOWCASE)"
+            process, user=admin_user, name_suffix=" - Authoring Draft (SHOWCASE)"
         )
         self.log(f"  Created authoring draft process: {draft.name} ({draft.status})")
         return draft
@@ -164,7 +164,7 @@ class DemoShowcaseSeeder(BaseSeeder):
             tenant=self.tenant,
             order_number="ORD-SHOWCASE",
             defaults={
-                "name": "SHOWCASE Demo Order — Injector Reman",
+                "name": "SHOWCASE Demo Order - Injector Reman",
                 "company": None,
                 "customer": None,
                 "customer_note": None,
@@ -190,7 +190,7 @@ class DemoShowcaseSeeder(BaseSeeder):
                 "priority": WorkOrderPriority.HIGH,
                 "expected_completion": (self.today + timedelta(days=5)).date(),
                 "quantity": 1,
-                "notes": "SHOWCASE demo work order — hero injector INJ-SHOWCASE-001.",
+                "notes": "SHOWCASE demo work order - hero injector INJ-SHOWCASE-001.",
                 "expected_duration": None,
                 "true_completion": None,
                 "true_duration": None,
@@ -265,7 +265,7 @@ class DemoShowcaseSeeder(BaseSeeder):
                 "part": hero_part,
                 "step": nozzle_step,
                 "status": "FAIL",
-                "description": "Nozzle tip scoring found during visual inspection — 3D annotation required.",
+                "description": "Nozzle tip scoring found during visual inspection - 3D annotation required.",
                 "detected_by": inspector_user,
                 "verified_by": None,
                 "sampling_method": "manual",
@@ -279,7 +279,7 @@ class DemoShowcaseSeeder(BaseSeeder):
             qr.errors.set([error_type])
         else:
             self.log(
-                "  No requires_3d_annotation ErrorType found — QR created without a defect link",
+                "  No requires_3d_annotation ErrorType found - QR created without a defect link",
                 warning=True,
             )
 
@@ -290,7 +290,7 @@ class DemoShowcaseSeeder(BaseSeeder):
         injector part type so the WO traveler resolves a real drawing number +
         revision (instead of "—"). Idempotent by (file_name, part type)."""
         if part_type is None:
-            self.log("  No injector part type — skipping SHOWCASE drawing", warning=True)
+            self.log("  No injector part type - skipping SHOWCASE drawing", warning=True)
             return None
 
         from django.contrib.contenttypes.models import ContentType
@@ -434,7 +434,7 @@ class DemoShowcaseSeeder(BaseSeeder):
         component part types it references. Un-orphans bom_report and gives the
         BOM panel + pick_list real content. Idempotent."""
         if part_type is None:
-            self.log("  No injector part type — skipping SHOWCASE BOM", warning=True)
+            self.log("  No injector part type - skipping SHOWCASE BOM", warning=True)
             return None
 
         from decimal import Decimal

@@ -14,6 +14,6 @@ class TestSpcAdapter(ReportAdapterTestMixin, SimpleTestCase):
         self.skipTest(
             "Cross-tenant isolation is enforced by the tenant filter in "
             "SpcReportParamsSerializer.validate_measurement_id() and the ORM "
-            "queries in build_context(). Full probe requires DB state — see "
+            "queries in build_context(). Full probe requires DB state - see "
             "integration tests."
         )

@@ -269,7 +269,7 @@ class RevisionSignalTestCase(TenantTestCase):
         v2 = create_new_approval_template_version(
             self.template,
             user=self.user_a,
-            change_description='Signal test — escalation policy update',
+            change_description='Signal test - escalation policy update',
         )
         self.received.assert_called_once()
         kwargs = self.received.call_args.kwargs
@@ -279,7 +279,7 @@ class RevisionSignalTestCase(TenantTestCase):
         self.assertEqual(kwargs['user'], self.user_a)
         self.assertEqual(
             kwargs['change_description'],
-            'Signal test — escalation policy update',
+            'Signal test - escalation policy update',
         )
 
 

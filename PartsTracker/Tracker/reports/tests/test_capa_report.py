@@ -143,7 +143,7 @@ class CapaReportAdapterCrossTenantTests(TestCase):
             capa_type="CORRECTIVE",
             severity="MINOR",
             status="OPEN",
-            problem_statement="Cross-tenant test CAPA — do not close.",
+            problem_statement="Cross-tenant test CAPA - do not close.",
             initiated_date=datetime.date.today(),
         )
 

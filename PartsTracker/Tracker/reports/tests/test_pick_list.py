@@ -30,7 +30,7 @@ class TestPickListAdapter(ReportAdapterTestMixin, SimpleTestCase):
         self.skipTest(
             "Cross-tenant isolation is enforced by the tenant= filter in "
             "PickListParamsSerializer.validate_id() and the ORM query in "
-            "build_context(). Full probe requires DB state — see integration tests."
+            "build_context(). Full probe requires DB state - see integration tests."
         )
 
 
@@ -71,7 +71,7 @@ class PickListFixtureShapeTests(SimpleTestCase):
         self.assertGreater(
             len(optional_items),
             0,
-            "fixture has no optional items — the OPT badge branch is not exercised",
+            "fixture has no optional items - the OPT badge branch is not exercised",
         )
 
     def test_fixture_has_at_least_one_required_item(self):
@@ -80,7 +80,7 @@ class PickListFixtureShapeTests(SimpleTestCase):
         self.assertGreater(
             len(required_items),
             0,
-            "fixture has no required items — all items are optional",
+            "fixture has no required items - all items are optional",
         )
 
     def test_fixture_has_multi_qty_line(self):
@@ -92,7 +92,7 @@ class PickListFixtureShapeTests(SimpleTestCase):
         self.assertGreater(
             len(multi),
             0,
-            "fixture has no multi-qty lines — qty_required multiplication is not exercised",
+            "fixture has no multi-qty lines - qty_required multiplication is not exercised",
         )
 
     def test_context_model_validates_cleanly(self):

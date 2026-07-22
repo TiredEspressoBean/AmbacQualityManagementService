@@ -304,25 +304,25 @@ class QualityReports(SecureModel):
         User, on_delete=models.PROTECT,
         null=True, blank=False,  # Nullable for migration, but required in forms
         related_name='defects_detected',
-        help_text="DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.",
+        help_text="DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat.",
     )
-    """DEPRECATED — superseded by `personnel` M2M with `role=DETECTED_BY`."""
+    """DEPRECATED - superseded by `personnel` M2M with `role=DETECTED_BY`."""
 
     operators = models.ManyToManyField(
         User,
         blank=True,
         related_name='defects_during_operation',
-        help_text="DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.",
+        help_text="DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat.",
     )
-    """DEPRECATED — superseded by `personnel` M2M with `role=OPERATOR`."""
+    """DEPRECATED - superseded by `personnel` M2M with `role=OPERATOR`."""
 
     verified_by = models.ForeignKey(
         User, on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='defects_verified',
-        help_text="DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.",
+        help_text="DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat.",
     )
-    """DEPRECATED — superseded by `personnel` M2M with `role=VERIFIED_BY`."""
+    """DEPRECATED - superseded by `personnel` M2M with `role=VERIFIED_BY`."""
 
     personnel = models.ManyToManyField(
         User,
@@ -376,7 +376,7 @@ class QualityReports(SecureModel):
         help_text="Set when this report is a receiving inspection of an incoming lot (mutually exclusive with `part`).",
     )
     """The incoming material lot this report inspects (receiving inspection). At most one of
-    `part` / `material_lot` / `osp_shipment` is set — enforced by a CheckConstraint."""
+    `part` / `material_lot` / `osp_shipment` is set - enforced by a CheckConstraint."""
 
     sample_size = models.PositiveIntegerField(null=True, blank=True,
         help_text="Acceptance-sampling sample size (n) snapshot at inspection time.")
@@ -433,7 +433,7 @@ class QualityReports(SecureModel):
         related_name='quality_reports',
         help_text="The batch whose capture produced this report, for BATCH-scope "
                   "inspection substeps (wash/heat-treat/plating cycles). Mutually "
-                  "exclusive with step_execution — a report is per-part OR per-batch, "
+                  "exclusive with step_execution - a report is per-part OR per-batch, "
                   "never both.",
     )
 
@@ -766,7 +766,7 @@ class QuarantineDisposition(SecureModel):
                                     blank=True)
     due_date = models.DateField(
         null=True, blank=True,
-        help_text="Target resolution date — drives the due dot on quality inboxes")
+        help_text="Target resolution date - drives the due dot on quality inboxes")
     description = models.TextField(blank=True)
     resolution_notes = models.TextField(blank=True)
 
@@ -1109,7 +1109,7 @@ class SupplierQualification(SecureModel):
         ]
 
     def __str__(self):
-        return f"{self.qualification_number} — {self.supplier.name} [{self.status}]"
+        return f"{self.qualification_number} - {self.supplier.name} [{self.status}]"
 
     @property
     def scope_display(self):
@@ -1198,9 +1198,9 @@ class PartApproval(SecureModel):
         ]
 
     def __str__(self):
-        pt = self.part_type.name if self.part_type_id else '—'
-        sup = self.supplier.name if self.supplier_id else '—'
-        return f"{self.approval_number} — {pt} / {sup} [{self.status}]"
+        pt = self.part_type.name if self.part_type_id else '-'
+        sup = self.supplier.name if self.supplier_id else '-'
+        return f"{self.approval_number} - {pt} / {sup} [{self.status}]"
 
     def save(self, *args, **kwargs):
         if not self.approval_number:
@@ -2190,10 +2190,10 @@ class CompetencyLevel(models.IntegerChoices):
     Higher value = more competent, so authorization is a simple `held >= min`.
     """
 
-    TRAINEE = 1, 'Level 1 — Trainee (supervised)'
-    ASSISTED = 2, 'Level 2 — Assisted (output checked)'
-    QUALIFIED = 3, 'Level 3 — Qualified (independent)'
-    EXPERT = 4, 'Level 4 — Expert (can train/sign off others)'
+    TRAINEE = 1, 'Level 1 - Trainee (supervised)'
+    ASSISTED = 2, 'Level 2 - Assisted (output checked)'
+    QUALIFIED = 3, 'Level 3 - Qualified (independent)'
+    EXPERT = 4, 'Level 4 - Expert (can train/sign off others)'
 
 
 class JobRole(SecureModel):
@@ -2287,7 +2287,7 @@ class TrainingRecord(SecureModel):
         choices=CompetencyLevel.choices,
         default=CompetencyLevel.QUALIFIED,
         help_text="Assessed competency level reached by this record (1-4). "
-                  "This is the assessed result, not mere attendance — clause 7.2 evidence.",
+                  "This is the assessed result, not mere attendance - clause 7.2 evidence.",
     )
     """Competency level demonstrated. A user may hold several records for one
     training type over time (renewals / progression); the current competency
