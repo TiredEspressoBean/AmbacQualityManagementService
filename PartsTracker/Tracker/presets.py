@@ -651,6 +651,29 @@ GROUP_PRESETS = {
     },
 
     # -------------------------------------------------------------------------
+    # PURCHASING - Supplier / procurement seat
+    # -------------------------------------------------------------------------
+    # Owns supplier relationships: raises supplier qualifications, receives
+    # material lots, adds supplier companies. Same shape as Operator/Engineering
+    # structurally — base view + broad operational write + full tenant
+    # visibility — with NO authoring (they don't write processes/BOMs/specs),
+    # NO SoD approve verbs (`approve_supplierqualification` stays with QA),
+    # NO delete (retention is manager tier), NO shop-floor supervisor grants
+    # (FPI / training-override / shift-note authoring). If a permission isn't
+    # compliance-shaped, they have it via the base bundles.
+    'purchasing': {
+        'name': 'Purchasing',
+        'description': 'Procurement / supplier management: supplier qualification, receiving, PO records',
+        'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            # Full tenant visibility (sees all data, not just relationship-filtered)
+            'full_tenant_access',
+        ],
+    },
+
+    # -------------------------------------------------------------------------
     # AUDITOR - Read-only, audit independence
     # -------------------------------------------------------------------------
     # View base only: auditors must not mutate what they audit, and don't get

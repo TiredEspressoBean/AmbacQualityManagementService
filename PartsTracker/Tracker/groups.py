@@ -24,6 +24,7 @@ class Groups:
     PRODUCTION_MANAGER = 'Production_Manager'
     PRODUCTION_OPERATOR = 'Production_Operator'
     DOCUMENT_CONTROLLER = 'Document_Controller'
+    PURCHASING = 'Purchasing'
 
     # External roles
     CUSTOMER = 'Customer'
@@ -36,6 +37,7 @@ class Groups:
         PRODUCTION_MANAGER,
         PRODUCTION_OPERATOR,
         DOCUMENT_CONTROLLER,
+        PURCHASING,
         CUSTOMER,
     }
 
@@ -47,6 +49,7 @@ class Groups:
         PRODUCTION_MANAGER,
         PRODUCTION_OPERATOR,
         DOCUMENT_CONTROLLER,
+        PURCHASING,
     }
 
     # External groups
