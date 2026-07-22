@@ -641,7 +641,11 @@ register_event(EventType(
 @dataclass(frozen=True)
 class TrainingExpiringSoonPayload:
     """Payload for `training.expiring_soon` — an operator's training/certification
-    is approaching its expiry date (fired at the 60/30-day reminder marks)."""
+    is approaching its expiry date (fired at the 60/30-day reminder marks).
+
+    `recipient_user_ids` carries `[user_id]` so a `from_payload`/`union` starter
+    rule can notify the operator themselves alongside the manager groups.
+    """
 
     id: str                        # TrainingRecord id; satisfies correlation_id contract
     tenant_id: str
@@ -655,6 +659,7 @@ class TrainingExpiringSoonPayload:
     expires_date: str              # ISO date
     days_to_expiry: int
     reminder_window: int           # 60 or 30
+    recipient_user_ids: list[int]  # [user_id] — for from_payload/union routing
 
     @classmethod
     def sample(cls) -> 'TrainingExpiringSoonPayload':
@@ -671,6 +676,7 @@ class TrainingExpiringSoonPayload:
             expires_date='2026-09-01',
             days_to_expiry=28,
             reminder_window=30,
+            recipient_user_ids=[42],
         )
 
 
@@ -691,7 +697,11 @@ register_event(EventType(
 @dataclass(frozen=True)
 class TrainingExpiredPayload:
     """Payload for `training.expired` — an operator's training/certification has
-    lapsed; they are no longer qualified for work requiring it."""
+    lapsed; they are no longer qualified for work requiring it.
+
+    `recipient_user_ids` carries `[user_id]` so a `from_payload`/`union` starter
+    rule can notify the operator themselves alongside the manager groups.
+    """
 
     id: str
     tenant_id: str
@@ -703,6 +713,7 @@ class TrainingExpiredPayload:
     level: int
     level_display: str
     expires_date: str              # ISO date
+    recipient_user_ids: list[int]  # [user_id] — for from_payload/union routing
 
     @classmethod
     def sample(cls) -> 'TrainingExpiredPayload':
@@ -717,6 +728,7 @@ class TrainingExpiredPayload:
             level=3,
             level_display='Level 3 — Qualified (independent)',
             expires_date='2026-07-14',
+            recipient_user_ids=[42],
         )
 
 

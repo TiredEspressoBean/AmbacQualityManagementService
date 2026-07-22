@@ -95,6 +95,27 @@ STARTER_RULES = [
         "channels": ["in_app"],
         "min_gap_seconds": 0,
     },
+    # ---- Training expiry -------------------------------------------------
+    # Union routing: the manager groups (static) AND the operator whose cert is
+    # expiring/expired (from payload.recipient_user_ids). One rule per event.
+    {
+        "event_code": "training.expiring_soon",
+        "name": "Training expiring soon — route to QA, Production, and the operator",
+        "description": "Default starter rule. QA Manager and Production Manager get the reminder; the operator whose cert is expiring is also notified.",
+        "recipient_strategy": "union",
+        "recipient_group_names": ["QA Manager", "Production Manager"],
+        "channels": ["in_app", "email"],
+        "min_gap_seconds": 0,
+    },
+    {
+        "event_code": "training.expired",
+        "name": "Training expired — route to QA, Production, and the operator",
+        "description": "Default starter rule. QA Manager and Production Manager get the lapse alert; the operator whose cert lapsed is also notified.",
+        "recipient_strategy": "union",
+        "recipient_group_names": ["QA Manager", "Production Manager"],
+        "channels": ["in_app", "email"],
+        "min_gap_seconds": 0,
+    },
     {
         "event_code": "shift_note.published",
         "name": "Shift notes — alert the audience",

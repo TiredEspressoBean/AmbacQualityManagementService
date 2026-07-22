@@ -601,6 +601,30 @@ class TrainingExpiryNotificationTests(TrainingModuleTestCase):
             tenant=self.tenant,
         )
 
+    def test_expiring_payload_carries_operator_for_from_payload_routing(self):
+        # The union starter rule notifies managers (static) AND the operator
+        # themselves (from_payload → payload.recipient_user_ids).
+        rec = self._record(20)
+        with patch('Tracker.services.training._emit_training_expiring_soon') as soon:
+            self.assertTrue(notify_expiring_training(rec))
+            # Emit helper is called with the record; construct the payload the
+            # helper builds to prove the operator id lands in recipient_user_ids.
+            from Tracker.services.qms.events import TrainingExpiringSoonPayload
+            soon.assert_called_once()
+        from Tracker.services.training import _emit_training_expiring_soon
+        with patch('Tracker.services.core.notifications.emit') as em:
+            _emit_training_expiring_soon(rec, days_to_expiry=20, window=30)
+            payload = em.call_args.kwargs['payload']
+            self.assertEqual(payload.recipient_user_ids, [self.operator.id])
+
+    def test_expired_payload_carries_operator_for_from_payload_routing(self):
+        rec = self._record(-3)
+        from Tracker.services.training import _emit_training_expired
+        with patch('Tracker.services.core.notifications.emit') as em:
+            _emit_training_expired(rec)
+            payload = em.call_args.kwargs['payload']
+            self.assertEqual(payload.recipient_user_ids, [self.operator.id])
+
     def test_within_30_day_window_emits_expiring_soon(self):
         rec = self._record(20)
         with patch('Tracker.services.training._emit_training_expiring_soon') as soon, \

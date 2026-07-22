@@ -489,6 +489,9 @@ def _emit_training_expiring_soon(record, *, days_to_expiry: int, window: int) ->
         expires_date=record.expires_date.isoformat(),
         days_to_expiry=days_to_expiry,
         reminder_window=window,
+        # Operator-self routing: the from_payload half of the starter rule's
+        # `union` strategy delivers to the subject user alongside the groups.
+        recipient_user_ids=[record.user_id] if record.user_id else [],
     )
     emit(
         "training.expiring_soon",
@@ -516,6 +519,8 @@ def _emit_training_expired(record) -> None:
         level=record.level,
         level_display=record.get_level_display(),
         expires_date=record.expires_date.isoformat(),
+        # Operator-self routing: from_payload half of the starter rule's union.
+        recipient_user_ids=[record.user_id] if record.user_id else [],
     )
     emit(
         "training.expired",
