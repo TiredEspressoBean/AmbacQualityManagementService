@@ -9,9 +9,11 @@
  *           (my open StepExecutions via /api/StepExecutions/my_workload/;
  *           Resume → the operator runtime for that run) · clock cluster
  *           (TimeEntry clock_in/out; Break/Lunch pause labor as BREAK/LUNCH entries) ·
- *           Notifications (the in-app feed; "Got it" = mark-read).
- *  PREVIEW: every dimmed tile — UP NEXT hero, THEN queue, station scope (need
- *           the queue aggregate endpoint, the keystone);
+ *           Notifications (the in-app feed; "Got it" = mark-read) · Shift notes ·
+ *           UP NEXT + THEN (server-ranked WO×step rows from /api/WorkQueue/;
+ *           Start navigates to WO detail — the operator work surface).
+ *  PREVIEW: dimmed tiles — station-scope combobox (work-centers still unmapped;
+ *           design doc rung 3);
  *           Report a problem / Can't run this (need the blocker aggregate);
  *           clock state / Break / Clock out (TimeEntry has clock_in/out but no
  *           clean "am I clocked in" read yet). Each renders its prototype mock
@@ -44,23 +46,13 @@ import { useAuthUser, type AuthUser } from "@/hooks/useAuthUser";
 import { ScanBox } from "@/components/home/home-blocks";
 import { useNotificationFeed, useMarkNotificationRead } from "@/hooks/notificationFeed";
 import { useActiveShiftNotes, useAcknowledgeShiftNote, type ShiftNote } from "@/hooks/shiftNotes";
+import { useWorkQueue, type WorkQueueRow } from "@/hooks/workQueue";
 
 // ---------------------------------------------------------------------------
 // MOCK — drives the PREVIEW (dimmed) tiles so the planned layout is legible.
 // Shapes are the wishlist for the real backing (queue aggregate, blocker model,
 // shift-notes model). LIVE tiles below don't touch this.
 // ---------------------------------------------------------------------------
-
-type QueueOp = {
-    id: string; area: string; wo: string; step: string; partType: string;
-    qty: number; due: string; priority: "high" | "normal";
-    estMinutes: number; done: number; of: number;
-    certified: boolean; cert?: string;
-    /** Time since this op became ready — the KDS aging clock (no scheduler needed). */
-    readyFor: string; aging?: "amber" | "red";
-    /** Other ready ops sharing this setup/fixture — the batching hint. */
-    sameSetup?: number;
-};
 
 type MyFlag = {
     id: string; label: string; wo: string; owner: string;
@@ -77,14 +69,6 @@ const AREAS = [
     { id: "clean", label: "Cleaning Bay", count: 34 },
     { id: "recv", label: "Core Receiving", count: 15 },
 ] as const;
-
-const INITIAL_QUEUE: QueueOp[] = [
-    { id: "op1", area: "inspect", wo: "WO-2024-0042-A", step: "Nozzle Inspection", partType: "Common Rail Injector", qty: 6, due: "Jul 11", priority: "high", estMinutes: 12, done: 2, of: 8, certified: true, readyFor: "3h", sameSetup: 2 },
-    { id: "op2", area: "asm", wo: "WO-2024-0042-A", step: "Assembly", partType: "Common Rail Injector", qty: 4, due: "Jul 11", priority: "high", estMinutes: 9, done: 0, of: 8, certified: true, readyFor: "6h", aging: "amber" },
-    { id: "op3", area: "flow", wo: "WO-SHOWCASE-01", step: "Flow Testing", partType: "Common Rail Injector", qty: 1, due: "Jul 12", priority: "high", estMinutes: 20, done: 0, of: 1, certified: false, cert: "Flow Test Level 2", readyFor: "30m" },
-    { id: "op4", area: "clean", wo: "WO-2024-0048", step: "Cleaning", partType: "Injector Body", qty: 12, due: "Jul 18", priority: "normal", estMinutes: 6, done: 4, of: 16, certified: true, readyFor: "2d", aging: "red" },
-    { id: "op5", area: "recv", wo: "WO-2024-0051", step: "Core Receiving", partType: "Common Rail Injector", qty: 8, due: "Jul 21", priority: "normal", estMinutes: 5, done: 0, of: 8, certified: true, readyFor: "1h" },
-];
 
 const MOCK = {
     // The visible first-piece loop: sent → seen → (approve/reject arrives as a state change).
@@ -107,16 +91,6 @@ const BLOCK_REASONS = [
 ] as const;
 
 const MACHINE_REASONS = ["Machine down / fault", "Needs maintenance", "Setup / changeover issue", "Other"] as const;
-
-const PRIORITY_TONE: Record<string, string> = {
-    high: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-};
-
-// KDS-style aging edge: urgency lives on the artifact, read by peripheral vision.
-const AGING_EDGE: Record<string, string> = {
-    amber: "border-l-4 border-l-amber-400",
-    red: "border-l-4 border-l-red-500",
-};
 
 const say = (msg: string) => toast.info(msg, { description: "Preview — this tile isn't wired to live data yet." });
 
@@ -223,6 +197,23 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // LIVE — human-authored shift notes active for this operator; "Got it" acks.
     const { data: shiftNotes = [] } = useActiveShiftNotes();
     const ackShiftNote = useAcknowledgeShiftNote();
+
+    // LIVE — the work queue. UP NEXT = first ready row; THEN = next few; the
+    // "N blocked" caption counts is_held rows. Rank is server-side (priority →
+    // due → aging), so we just consume in order.
+    const { data: queueRows = [] } = useWorkQueue({ limit: 20 });
+    const readyRows = queueRows.filter((r) => r.readiness === "ready");
+    const heroRow: WorkQueueRow | undefined = readyRows[0];
+    const thenRows = readyRows.slice(1, 7);
+    const blockedRows = queueRows.filter((r) => r.readiness === "blocked");
+    // WorkOrder.priority is IntegerChoices (1=Urgent, 2=High, 3=Normal, 4=Low —
+    // the number IS the sort rank).
+    const priorityLabel = (n: number | null | undefined) =>
+        n === 1 ? "urgent" : n === 2 ? "high" : n === 3 ? "normal" : n === 4 ? "low" : null;
+    const priorityTone = (n: number | null | undefined) =>
+        n === 1 ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+            : n === 2 ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                : null;
     const mustAckNotes = shiftNotes.filter((n) => n.acknowledgment_required);
     const infoNotes = shiftNotes.filter((n) => !n.acknowledgment_required);
     const noteRow = (n: ShiftNote) => (
@@ -247,36 +238,23 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     );
 
     // PREVIEW state — drives the dimmed tiles so the layout is legible.
-    const [queue, setQueue] = useState<QueueOp[]>(INITIAL_QUEUE);
-    const [blockedCount, setBlockedCount] = useState(2); // pre-existing blocked jobs (global)
-    const [flags, setFlags] = useState<MyFlag[]>(MOCK.myFlags);
+    const [flags] = useState<MyFlag[]>(MOCK.myFlags);
     const [blockOpen, setBlockOpen] = useState(false);
     const [problemOpen, setProblemOpen] = useState(false);
     const [problemBranch, setProblemBranch] = useState<"machine" | "job" | null>(null);
     const [area, setArea] = useState<string>("all");
     const [areaOpen, setAreaOpen] = useState(false);
-
-    const scoped = area === "all" ? queue : queue.filter((o) => o.area === area);
-    const upNext = scoped[0];
-    const rest = scoped.slice(1);
     const areaLabel = AREAS.find((a) => a.id === area);
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-    /** The deviation flow: two taps → blocker born owned → hero swaps to next. */
+    /** The deviation flow — Preview. The dialog + toast are wired; actually
+     *  writing a blocker needs the blocker aggregate that doesn't exist yet. */
     const blockUpNext = (reason: (typeof BLOCK_REASONS)[number]) => {
-        if (!upNext) return;
         setBlockOpen(false);
-        setQueue((q) => q.filter((o) => o.id !== upNext.id));
-        setBlockedCount((n) => n + 1);
-        setFlags((f) => [
-            ...f,
-            { id: upNext.id, label: reason.label, wo: upNext.wo, owner: reason.owner, elapsed: "just now", seenBy: null },
-        ]);
-        const next = scoped[1];
-        toast.success(`${upNext.step} flagged — ${reason.owner} notified.`, {
-            description: next ? `Up next: ${next.step} (${next.wo}).` : "Queue is clear.",
+        toast.info(`Would flag ${heroRow?.step_name ?? "this step"} — ${reason.owner} notified.`, {
+            description: "Preview — the blocker aggregate isn't wired yet.",
         });
     };
 
@@ -360,8 +338,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Orient the viewer: what's real vs. planned. */}
             <p className="text-xs text-muted-foreground">
-                Preview build — <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, and the <b className="text-foreground">clock</b> (in/out/break/lunch) are live.
-                Dimmed tiles show the planned layout; they light up as the queue service and blocker model land.
+                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, and the <b className="text-foreground">clock</b> (in/out/break/lunch) are live.
+                Dimmed tiles show the planned layout; they light up as the blocker model, station-scope work-centers, and other pieces land.
             </p>
 
             {/* FIRST-PIECE loop — needs the FPI operator-side read. */}
@@ -377,71 +355,66 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Tile grid — Up Next dominates (2×2); everything else is one tile. */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                {/* UP NEXT — the hero. Needs the queue aggregate endpoint (ranked
-                    readiness). Preview until then. */}
-                <PreviewLock className="md:col-span-2 md:row-span-2">
-                    <Tile className="h-full border-2 border-primary/40 flex flex-col">
-                        {upNext ? (
-                            <>
-                                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                    Up next
-                                    {PRIORITY_TONE[upNext.priority] && <Badge className={PRIORITY_TONE[upNext.priority]}>{upNext.priority}</Badge>}
-                                    <span className="ml-auto">ready {upNext.readyFor} · due {upNext.due}</span>
-                                </div>
-                                <div className="mt-3 flex-1">
-                                    <div className="text-3xl font-semibold leading-tight">{upNext.step}</div>
-                                    <div className="mt-1 text-sm text-muted-foreground">
-                                        {upNext.partType} · <span className="font-mono">{upNext.wo}</span>
-                                    </div>
-                                    {upNext.sameSetup && (
-                                        <button
-                                            className="mt-1.5 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
-                                            onClick={() => say(`Would show the ${upNext.sameSetup} other ready jobs sharing this setup`)}
-                                        >
-                                            +{upNext.sameSetup} more with this setup
-                                        </button>
-                                    )}
-                                    <div className="mt-2 text-sm text-muted-foreground">
-                                        <b className="text-foreground">{upNext.qty}</b> pcs waiting · ~{upNext.estMinutes} min each
-                                    </div>
-                                    <div className="mt-3">
-                                        <div className="h-2 overflow-hidden rounded-full bg-muted">
-                                            <div className="h-full rounded-full bg-primary" style={{ width: (upNext.done / upNext.of) * 100 + "%" }} />
-                                        </div>
-                                        <div className="mt-1 text-xs text-muted-foreground">{upNext.done} of {upNext.of} done on this order</div>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex gap-2">
-                                    <Button size="lg" className="h-16 flex-1 text-lg" onClick={() => say(`Would start SETUP at ${upNext.step} — run begins after the first-piece check`)}>
-                                        <PlayCircle className="mr-2 h-6 w-6" /> Start
-                                    </Button>
-                                    <Button size="lg" variant="outline" className="h-16" onClick={() => say("Would open the work instructions for this step")}>
-                                        <BookOpen className="mr-2 h-5 w-5" /> Instructions
-                                    </Button>
-                                </div>
-                                <button
-                                    className="mt-2 self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
-                                    onClick={() => setBlockOpen(true)}
-                                >
-                                    Can't run this?
-                                </button>
-                            </>
-                        ) : (
-                            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-                                <Wrench className="h-8 w-8" />
-                                <p className="text-sm font-medium text-foreground">
-                                    Nothing ready{area !== "all" ? " at this work center" : ""}
-                                </p>
-                                <p className="max-w-xs text-xs">
-                                    2 jobs on the way: WO-2024-0042 at Nozzle Inspection (started 25m ago) · WO-2024-0048 in Cleaning
-                                </p>
-                                {area !== "all" && (
-                                    <Button variant="outline" size="sm" onClick={() => setArea("all")}>Widen scope</Button>
+                {/* UP NEXT — LIVE: the server-ranked top ready row from the
+                    work queue. Start navigates to the WO detail page (design
+                    doc §8: Start-Work + traveler live there). "Can't run this?"
+                    stays Preview — the blocker aggregate isn't built yet. */}
+                <Tile className="md:col-span-2 md:row-span-2 h-full border-2 border-primary/40 flex flex-col">
+                    {heroRow ? (
+                        <>
+                            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Up next
+                                {priorityTone(heroRow.priority) && (
+                                    <Badge className={priorityTone(heroRow.priority) ?? ""}>
+                                        {priorityLabel(heroRow.priority)}
+                                    </Badge>
                                 )}
+                                <span className="ml-auto">
+                                    {heroRow.earliest_entered_at ? `ready ${formatDistanceToNow(new Date(heroRow.earliest_entered_at))}` : ""}
+                                    {heroRow.expected_completion ? ` · due ${heroRow.expected_completion}` : ""}
+                                </span>
                             </div>
-                        )}
-                    </Tile>
-                </PreviewLock>
+                            <div className="mt-3 flex-1">
+                                <div className="text-3xl font-semibold leading-tight">{heroRow.step_name}</div>
+                                <div className="mt-1 text-sm text-muted-foreground">
+                                    {heroRow.part_type_name ? <>{heroRow.part_type_name} · </> : null}
+                                    <span className="font-mono">{heroRow.work_order_erp_id}</span>
+                                </div>
+                                <div className="mt-2 text-sm text-muted-foreground">
+                                    <b className="text-foreground">{heroRow.qty_ready}</b> pc{heroRow.qty_ready === 1 ? "" : "s"} waiting
+                                </div>
+                            </div>
+                            <div className="mt-4 flex gap-2">
+                                <Button size="lg" className="h-16 flex-1 text-lg"
+                                    onClick={() => navigate({
+                                        to: "/workorder/$workOrderId",
+                                        params: { workOrderId: String(heroRow.work_order) },
+                                    })}>
+                                    <PlayCircle className="mr-2 h-6 w-6" /> Start
+                                </Button>
+                                <Button size="lg" variant="outline" className="h-16" onClick={() => say("Would open the work instructions for this step")}>
+                                    <BookOpen className="mr-2 h-5 w-5" /> Instructions
+                                </Button>
+                            </div>
+                            <button
+                                className="mt-2 self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
+                                onClick={() => setBlockOpen(true)}
+                            >
+                                Can't run this?
+                            </button>
+                        </>
+                    ) : (
+                        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+                            <Wrench className="h-8 w-8" />
+                            <p className="text-sm font-medium text-foreground">Nothing ready right now</p>
+                            {blockedRows.length > 0 && (
+                                <p className="max-w-xs text-xs">
+                                    {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked — waiting on holds to clear.
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </Tile>
 
                 {/* RESUME — LIVE: my open StepExecution(s). */}
                 <Tile className="flex flex-col justify-between">
@@ -561,53 +534,55 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                     )}
                 </Tile>
 
-                {/* THEN — the rest of the queue. Needs the queue aggregate. Preview. */}
-                <PreviewLock className="md:col-span-2">
-                    <Tile className="h-full">
-                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Then</div>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                            {rest.map((q, i) => (
-                                <button
-                                    key={q.id}
-                                    onClick={() =>
-                                        q.certified
-                                            ? say(`Would start ${q.step} on ${q.wo} (top pick passed — noted quietly)`)
-                                            : say(`Needs ${q.cert} — would send a sign-off request to your lead`)
-                                    }
-                                    className={`rounded-lg border p-3 text-left transition-colors hover:bg-accent ${q.certified ? "" : "opacity-60"} ${q.aging ? AGING_EDGE[q.aging] : ""}`}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-semibold">{i + 2}</span>
-                                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{q.step}</span>
-                                        {!q.certified && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                                        {PRIORITY_TONE[q.priority] && (
-                                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRIORITY_TONE[q.priority]}`}>{q.priority}</span>
-                                        )}
-                                    </div>
-                                    <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                                        {q.wo} · {q.qty} pcs · waiting {q.readyFor}{q.certified ? "" : ` · needs ${q.cert}`}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                        <div className="mt-2 flex items-center gap-4">
-                            {blockedCount > 0 && (
-                                <button
-                                    className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-                                    onClick={() => say("Would open the queue's Blocked bucket")}
-                                >
-                                    {blockedCount} job{blockedCount === 1 ? "" : "s"} blocked — owners notified
-                                </button>
-                            )}
+                {/* THEN — LIVE: the next ranked ready rows from the work queue.
+                    Blocked count is a real aggregate (is_held rows). */}
+                <Tile className="md:col-span-2 h-full">
+                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Then</div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                        {thenRows.length === 0 && (
+                            <p className="col-span-2 text-xs text-muted-foreground">
+                                {heroRow ? "Nothing else queued behind this." : "Queue is empty."}
+                            </p>
+                        )}
+                        {thenRows.map((row, i) => (
                             <button
-                                className="ml-auto text-xs text-muted-foreground underline-offset-4 hover:underline"
-                                onClick={() => say("Would open the full ready queue (the work-queue list)")}
+                                key={`${row.work_order}-${row.step}`}
+                                onClick={() => navigate({
+                                    to: "/workorder/$workOrderId",
+                                    params: { workOrderId: String(row.work_order) },
+                                })}
+                                className="rounded-lg border p-3 text-left transition-colors hover:bg-accent"
                             >
-                                See everything ready (23)
+                                <div className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-semibold">{i + 2}</span>
+                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.step_name}</span>
+                                    {priorityTone(row.priority) && (
+                                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${priorityTone(row.priority)}`}>
+                                            {priorityLabel(row.priority)}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                                    {row.work_order_erp_id} · {row.qty_ready} pc{row.qty_ready === 1 ? "" : "s"}
+                                    {row.earliest_entered_at ? ` · waiting ${formatDistanceToNow(new Date(row.earliest_entered_at))}` : ""}
+                                </div>
                             </button>
-                        </div>
-                    </Tile>
-                </PreviewLock>
+                        ))}
+                    </div>
+                    <div className="mt-2 flex items-center gap-4">
+                        {blockedRows.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                                {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked — waiting on holds
+                            </span>
+                        )}
+                        <button
+                            className="ml-auto text-xs text-muted-foreground underline-offset-4 hover:underline"
+                            onClick={() => say("Would open the full ready queue (the work-queue list)")}
+                        >
+                            See everything ready ({readyRows.length})
+                        </button>
+                    </div>
+                </Tile>
 
                 {/* PROBLEM + LEAD — need the blocker aggregate + downtime dialog. Preview. */}
                 <PreviewLock>
@@ -678,7 +653,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
             <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Can't run {upNext?.step}?</DialogTitle>
+                        <DialogTitle>Can't run {heroRow?.step_name ?? "this step"}?</DialogTitle>
                         <DialogDescription>
                             Pick why. It routes straight to the owner, leaves your queue, and your next job appears immediately.
                         </DialogDescription>

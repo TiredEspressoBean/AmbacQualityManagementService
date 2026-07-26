@@ -932,7 +932,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Gauges the current user recently used whose calibration is due soon or overdue — the personal pre-empt for the point-of-use calibration gate. */
+        /** @description Gauges the current user recently used whose calibration is due soon or overdue - the personal pre-empt for the point-of-use calibration gate. */
         get: operations["api_CalibrationRecords_my_gauge_nag_retrieve"];
         put?: never;
         post?: never;
@@ -1305,7 +1305,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, open SCAR count, and the recommend-only standing review. */
+        /** @description Supplier quality scorecard - receiving acceptance/reject rates, CoC compliance, on-time delivery, open SCAR count, and the recommend-only standing review. */
         get: operations["api_Companies_scorecard_retrieve"];
         put?: never;
         post?: never;
@@ -1356,7 +1356,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Operators x training-types competency matrix with per-skill coverage counts. HR / quality view — requires view_training_matrix. */
+        /** @description Operators x training-types competency matrix with per-skill coverage counts. HR / quality view - requires view_training_matrix. */
         get: operations["api_CompetenceMatrix_retrieve"];
         put?: never;
         post?: never;
@@ -1558,7 +1558,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Create N cores from a shipment. All-or-nothing — any row error rolls back the batch. */
+        /** @description Create N cores from a shipment. All-or-nothing - any row error rolls back the batch. */
         post: operations["api_Cores_bulk_create_create"];
         delete?: never;
         options?: never;
@@ -3045,7 +3045,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Acknowledge a pending FPI (QA is on it). Idempotent — the first acknowledgment wins; the operator surface shows 'Seen by X'. */
+        /** @description Acknowledge a pending FPI (QA is on it). Idempotent - the first acknowledgment wins; the operator surface shows 'Seen by X'. */
         post: operations["api_FPIRecords_acknowledge_create"];
         delete?: never;
         options?: never;
@@ -3540,7 +3540,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The inspector's flat task inbox: FPI first, then by urgency tone, then age. Derive type-count chips (with oldest-age — counts alone hide rot) from the rows. */
+        /** @description The inspector's flat task inbox: FPI first, then by urgency tone, then age. Derive type-count chips (with oldest-age - counts alone hide rot) from the rows. */
         get: operations["api_InspectionInbox_list"];
         put?: never;
         post?: never;
@@ -3684,7 +3684,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Run the lot-acceptance evaluation over the recorded inspection results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return the current verdict. Server-authoritative — the DWI unit-by-unit runtime reads this to show ACCEPT/REJECT before the operator commits. */
+        /** @description Run the lot-acceptance evaluation over the recorded inspection results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return the current verdict. Server-authoritative - the DWI unit-by-unit runtime reads this to show ACCEPT/REJECT before the operator commits. */
         get: operations["api_MaterialLots_evaluate_receiving_retrieve"];
         put?: never;
         post?: never;
@@ -3839,7 +3839,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Receive N lots from a shipment (paste-grid). All-or-nothing — any row error rolls back. */
+        /** @description Receive N lots from a shipment (paste-grid). All-or-nothing - any row error rolls back. */
         post: operations["api_MaterialLots_bulk_create_create"];
         delete?: never;
         options?: never;
@@ -7961,7 +7961,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Per-part training authorization for the current user — the Start-Work pre-flight gate (so unqualified parts can be marked before launch, not just blocked on click). */
+        /** @description Per-part training authorization for the current user - the Start-Work pre-flight gate (so unqualified parts can be marked before launch, not just blocked on click). */
         get: operations["api_StepExecutions_work_authorization_retrieve"];
         put?: never;
         post?: never;
@@ -9506,7 +9506,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Hard-destructive: wipe the demo tenant's data and reseed from the seed_demo command's preset state. Refuses on any tenant whose slug isn't 'demo' — defense in depth both here and in the service layer. Tenant admins only. Async via Celery; poll /regenerate-demo-status/{task_id}/ for completion. */
+        /** @description Hard-destructive: wipe the demo tenant's data and reseed from the seed_demo command's preset state. Refuses on any tenant whose slug isn't 'demo' - defense in depth both here and in the service layer. Tenant admins only. Async via Celery; poll /regenerate-demo-status/{task_id}/ for completion. */
         post: operations["api_Tenants_regenerate_demo_data_create"];
         delete?: never;
         options?: never;
@@ -10256,7 +10256,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Download a multi-sheet Excel template for bulk-reconcile. Sheets: Data (editable rows — parsed on import), Instructions, Groups (tenant-scoped names — drives Group dropdown), Statuses (Active/Inactive — drives Status dropdown). Pass populate=true to pre-fill the Data sheet with current users. */
+        /** @description Download a multi-sheet Excel template for bulk-reconcile. Sheets: Data (editable rows - parsed on import), Instructions, Groups (tenant-scoped names - drives Group dropdown), Statuses (Active/Inactive - drives Status dropdown). Pass populate=true to pre-fill the Data sheet with current users. */
         get: operations["api_User_bulk_reconcile_template_retrieve"];
         put?: never;
         post?: never;
@@ -11000,6 +11000,32 @@ export interface paths {
         };
         /** @description Return searchable/filterable/orderable field information with filter options. */
         get: operations["api_WorkOrders_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkQueue/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Ranked ready-or-blocked work rows on the floor.
+         *
+         *     Read-only; permissioned on `view_workorder` (already granted broadly — the
+         *     row is a view onto WorkOrder work, not a first-class model). Filters:
+         *       - `readiness=ready|blocked` (default: both, blocked sunk last)
+         *       - `wo=<uuid>` — rows for a single WO
+         *       - `search=<term>` — matches WO ERP id or step name
+         *       - standard `?limit=&offset=` pagination
+         */
+        get: operations["api_WorkQueue_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -15360,7 +15386,7 @@ export interface components {
         ClaimStepInputRequest: {
             /** @description Authorizing supervisor's login email (second-person override). */
             override_email?: string;
-            /** @description Authorizing supervisor's password — verified, never stored. */
+            /** @description Authorizing supervisor's password - verified, never stored. */
             override_password?: string;
             /** @description Required when overriding. Logged on the execution. */
             override_reason?: string;
@@ -15432,10 +15458,10 @@ export interface components {
             archived?: boolean;
         };
         /**
-         * @description * `1` - Level 1 — Trainee (supervised)
-         *     * `2` - Level 2 — Assisted (output checked)
-         *     * `3` - Level 3 — Qualified (independent)
-         *     * `4` - Level 4 — Expert (can train/sign off others)
+         * @description * `1` - Level 1 - Trainee (supervised)
+         *     * `2` - Level 2 - Assisted (output checked)
+         *     * `3` - Level 3 - Qualified (independent)
+         *     * `4` - Level 4 - Expert (can train/sign off others)
          * @enum {integer}
          */
         CompetencyLevelEnum: 1 | 2 | 3 | 4;
@@ -15788,9 +15814,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_Escalation"] | null;
@@ -15825,9 +15851,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_EscalationRequest"] | null;
@@ -19633,6 +19659,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["WorkOrderList"][];
         };
+        PaginatedWorkQueueRowList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["WorkQueueRow"][];
+        };
         /**
          * @description Base serializer for SecureModel instances.
          *
@@ -20329,9 +20370,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_EscalationRequest"] | null;
@@ -20933,9 +20974,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_EscalationRequest"] | null;
@@ -21126,7 +21167,7 @@ export interface components {
             part?: string | null;
             /** Format: uuid */
             production_equipment?: string | null;
-            /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
             status?: components["schemas"]["QualityReportStatusEnum"];
@@ -21139,9 +21180,9 @@ export interface components {
              * @description Links to the sampling decision that triggered this inspection
              */
             sampling_audit_log?: string | null;
-            /** @description DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat. */
             detected_by?: number | null;
-            /** @description DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
             verified_by?: number | null;
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
@@ -21172,7 +21213,7 @@ export interface components {
             assigned_to?: number | null;
             /**
              * Format: date
-             * @description Target resolution date — drives the due dot on quality inboxes
+             * @description Target resolution date - drives the due dot on quality inboxes
              */
             due_date?: string | null;
             description?: string;
@@ -21714,7 +21755,7 @@ export interface components {
              * @description The substep the gate node lives in.
              */
             substep?: string;
-            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts. */
+            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts. */
             node_id?: string;
             /** @description Operator who confirmed/signed the gate. */
             completed_by?: number;
@@ -21770,7 +21811,7 @@ export interface components {
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
-             * @description Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+             * @description Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
              *
              *     * `sampled` - Per part (sampling)
              *     * `batch` - Per batch
@@ -22019,9 +22060,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_EscalationRequest"] | null;
@@ -22132,12 +22173,12 @@ export interface components {
             /** Format: date */
             completed_date?: string;
             /**
-             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
              *
-             *     * `1` - Level 1 — Trainee (supervised)
-             *     * `2` - Level 2 — Assisted (output checked)
-             *     * `3` - Level 3 — Qualified (independent)
-             *     * `4` - Level 4 — Expert (can train/sign off others)
+             *     * `1` - Level 1 - Trainee (supervised)
+             *     * `2` - Level 2 - Assisted (output checked)
+             *     * `3` - Level 3 - Qualified (independent)
+             *     * `4` - Level 4 - Expert (can train/sign off others)
              */
             level?: components["schemas"]["CompetencyLevelEnum"];
             /**
@@ -22162,10 +22203,10 @@ export interface components {
             /**
              * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
              *
-             *     * `1` - Level 1 — Trainee (supervised)
-             *     * `2` - Level 2 — Assisted (output checked)
-             *     * `3` - Level 3 — Qualified (independent)
-             *     * `4` - Level 4 — Expert (can train/sign off others)
+             *     * `1` - Level 1 - Trainee (supervised)
+             *     * `2` - Level 2 - Assisted (output checked)
+             *     * `3` - Level 3 - Qualified (independent)
+             *     * `4` - Level 4 - Expert (can train/sign off others)
              */
             min_level?: components["schemas"]["CompetencyLevelEnum"];
             /** Format: uuid */
@@ -22254,7 +22295,7 @@ export interface components {
             parent_company_id?: string | null;
             /**
              * Format: uuid
-             * @description Primary job role / position — drives the required-competency profile.
+             * @description Primary job role / position - drives the required-competency profile.
              */
             job_role?: string | null;
         };
@@ -22339,9 +22380,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_Escalation"] | null;
@@ -22376,9 +22417,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_EscalationRequest"] | null;
@@ -23136,7 +23177,7 @@ export interface components {
             step?: string | null;
             /** Format: uuid */
             part?: string | null;
-            /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
             status: components["schemas"]["QualityReportStatusEnum"];
@@ -23153,12 +23194,12 @@ export interface components {
              * @description Links to the sampling decision that triggered this inspection
              */
             sampling_audit_log?: string | null;
-            /** @description DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat. */
             detected_by?: number | null;
             readonly detected_by_info: {
                 [key: string]: unknown;
             } | null;
-            /** @description DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
             verified_by?: number | null;
             readonly verified_by_info: {
                 [key: string]: unknown;
@@ -23193,7 +23234,7 @@ export interface components {
             readonly substep: string | null;
             /**
              * Format: uuid
-             * @description The batch whose capture produced this report, for BATCH-scope inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive with step_execution — a report is per-part OR per-batch, never both.
+             * @description The batch whose capture produced this report, for BATCH-scope inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive with step_execution - a report is per-part OR per-batch, never both.
              */
             readonly batch_execution: string | null;
             readonly equipment_links: components["schemas"]["QualityReportEquipment"][];
@@ -23223,7 +23264,7 @@ export interface components {
             part?: string | null;
             /** Format: uuid */
             production_equipment?: string | null;
-            /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
             status: components["schemas"]["QualityReportStatusEnum"];
@@ -23236,9 +23277,9 @@ export interface components {
              * @description Links to the sampling decision that triggered this inspection
              */
             sampling_audit_log?: string | null;
-            /** @description DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat. */
             detected_by?: number | null;
-            /** @description DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
+            /** @description DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
             verified_by?: number | null;
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
@@ -23273,7 +23314,7 @@ export interface components {
             assigned_to?: number | null;
             /**
              * Format: date
-             * @description Target resolution date — drives the due dot on quality inboxes
+             * @description Target resolution date - drives the due dot on quality inboxes
              */
             due_date?: string | null;
             description?: string;
@@ -23357,7 +23398,7 @@ export interface components {
             assigned_to?: number | null;
             /**
              * Format: date
-             * @description Target resolution date — drives the due dot on quality inboxes
+             * @description Target resolution date - drives the due dot on quality inboxes
              */
             due_date?: string | null;
             description?: string;
@@ -23553,9 +23594,9 @@ export interface components {
             readings: number;
         };
         /**
-         * @description * `static` - Static — recipients from this rule only
-         *     * `from_payload` - From event — recipients from the event payload
-         *     * `union` - Union — combine event-payload recipients with this rule's
+         * @description * `static` - Static - recipients from this rule only
+         *     * `from_payload` - From event - recipients from the event payload
+         *     * `union` - Union - combine event-payload recipients with this rule's
          * @enum {string}
          */
         RecipientStrategyEnum: "static" | "from_payload" | "union";
@@ -24073,7 +24114,7 @@ export interface components {
              */
             readonly substep: string;
             /**
-             * @description What the rule decided — SELECTED, DESELECTED, or PENDING.
+             * @description What the rule decided - SELECTED, DESELECTED, or PENDING.
              *
              *     * `selected` - Selected
              *     * `deselected` - Deselected
@@ -25507,7 +25548,7 @@ export interface components {
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
-             * @description Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+             * @description Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
              *
              *     * `sampled` - Per part (sampling)
              *     * `batch` - Per batch
@@ -25632,7 +25673,7 @@ export interface components {
              * @description The substep the gate node lives in.
              */
             substep: string;
-            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts. */
+            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts. */
             node_id: string;
             /** @description Operator who confirmed/signed the gate. */
             completed_by: number;
@@ -25678,7 +25719,7 @@ export interface components {
              * @description The substep the gate node lives in.
              */
             substep: string;
-            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts. */
+            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts. */
             node_id: string;
             /** @description Operator who confirmed/signed the gate. */
             completed_by: number;
@@ -25734,7 +25775,7 @@ export interface components {
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
-             * @description Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+             * @description Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
              *
              *     * `sampled` - Per part (sampling)
              *     * `batch` - Per batch
@@ -26443,9 +26484,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_Escalation"] | null;
@@ -26473,9 +26514,9 @@ export interface components {
             /**
              * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
              *
-             *     * `static` - Static — recipients from this rule only
-             *     * `from_payload` - From event — recipients from the event payload
-             *     * `union` - Union — combine event-payload recipients with this rule's
+             *     * `static` - Static - recipients from this rule only
+             *     * `from_payload` - From event - recipients from the event payload
+             *     * `union` - Union - combine event-payload recipients with this rule's
              */
             recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
             escalation?: components["schemas"]["_EscalationRequest"] | null;
@@ -26845,12 +26886,12 @@ export interface components {
             /** Format: date */
             completed_date: string;
             /**
-             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
              *
-             *     * `1` - Level 1 — Trainee (supervised)
-             *     * `2` - Level 2 — Assisted (output checked)
-             *     * `3` - Level 3 — Qualified (independent)
-             *     * `4` - Level 4 — Expert (can train/sign off others)
+             *     * `1` - Level 1 - Trainee (supervised)
+             *     * `2` - Level 2 - Assisted (output checked)
+             *     * `3` - Level 3 - Qualified (independent)
+             *     * `4` - Level 4 - Expert (can train/sign off others)
              */
             level?: components["schemas"]["CompetencyLevelEnum"];
             readonly level_display: string;
@@ -26886,12 +26927,12 @@ export interface components {
             /** Format: date */
             completed_date: string;
             /**
-             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+             * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
              *
-             *     * `1` - Level 1 — Trainee (supervised)
-             *     * `2` - Level 2 — Assisted (output checked)
-             *     * `3` - Level 3 — Qualified (independent)
-             *     * `4` - Level 4 — Expert (can train/sign off others)
+             *     * `1` - Level 1 - Trainee (supervised)
+             *     * `2` - Level 2 - Assisted (output checked)
+             *     * `3` - Level 3 - Qualified (independent)
+             *     * `4` - Level 4 - Expert (can train/sign off others)
              */
             level?: components["schemas"]["CompetencyLevelEnum"];
             /**
@@ -26921,10 +26962,10 @@ export interface components {
             /**
              * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
              *
-             *     * `1` - Level 1 — Trainee (supervised)
-             *     * `2` - Level 2 — Assisted (output checked)
-             *     * `3` - Level 3 — Qualified (independent)
-             *     * `4` - Level 4 — Expert (can train/sign off others)
+             *     * `1` - Level 1 - Trainee (supervised)
+             *     * `2` - Level 2 - Assisted (output checked)
+             *     * `3` - Level 3 - Qualified (independent)
+             *     * `4` - Level 4 - Expert (can train/sign off others)
              */
             min_level?: components["schemas"]["CompetencyLevelEnum"];
             readonly min_level_display: string;
@@ -26973,10 +27014,10 @@ export interface components {
             /**
              * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
              *
-             *     * `1` - Level 1 — Trainee (supervised)
-             *     * `2` - Level 2 — Assisted (output checked)
-             *     * `3` - Level 3 — Qualified (independent)
-             *     * `4` - Level 4 — Expert (can train/sign off others)
+             *     * `1` - Level 1 - Trainee (supervised)
+             *     * `2` - Level 2 - Assisted (output checked)
+             *     * `3` - Level 3 - Qualified (independent)
+             *     * `4` - Level 4 - Expert (can train/sign off others)
              */
             min_level?: components["schemas"]["CompetencyLevelEnum"];
             /** Format: uuid */
@@ -27224,7 +27265,7 @@ export interface components {
             readonly tenant_membership_status: components["schemas"]["TenantMembershipStatusEnum"];
             /**
              * Format: uuid
-             * @description Primary job role / position — drives the required-competency profile.
+             * @description Primary job role / position - drives the required-competency profile.
              */
             job_role?: string | null;
             readonly job_role_name: string | null;
@@ -27334,7 +27375,7 @@ export interface components {
             parent_company_id?: string | null;
             /**
              * Format: uuid
-             * @description Primary job role / position — drives the required-competency profile.
+             * @description Primary job role / position - drives the required-competency profile.
              */
             job_role?: string | null;
         };
@@ -27725,6 +27766,27 @@ export interface components {
             steps: {
                 [key: string]: unknown;
             }[];
+        };
+        /** @description One ready-or-blocked row on the floor. All fields are read-only projections. */
+        WorkQueueRow: {
+            /** Format: uuid */
+            work_order: string;
+            work_order_erp_id: string | null;
+            /** Format: uuid */
+            step: string;
+            step_name: string | null;
+            part_type_name: string | null;
+            priority: number | null;
+            /** Format: date */
+            expected_completion: string | null;
+            qty_ready: number;
+            /** Format: date-time */
+            earliest_entered_at: string | null;
+            /** Format: uuid */
+            work_center: string | null;
+            work_center_kind: string | null;
+            readiness: string;
+            is_held: boolean;
         };
         /**
          * @description Nested policy + steps. Replace-all semantics on update: writing a
@@ -40045,7 +40107,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 /**
-                 * @description What the rule decided — SELECTED, DESELECTED, or PENDING.
+                 * @description What the rule decided - SELECTED, DESELECTED, or PENDING.
                  *
                  *     * `selected` - Selected
                  *     * `deselected` - Deselected
@@ -41053,6 +41115,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part?: string;
+                part__isnull?: boolean;
                 /** @description A search term. */
                 search?: string;
                 /**
@@ -41069,6 +41132,19 @@ export interface operations {
                 status__in?: string[];
                 step?: string;
                 step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
                 visit_number?: number;
                 visit_number__gte?: number;
                 visit_number__lte?: number;
@@ -41291,6 +41367,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part?: string;
+                part__isnull?: boolean;
                 /** @description A search term. */
                 search?: string;
                 /**
@@ -41307,6 +41384,19 @@ export interface operations {
                 status__in?: string[];
                 step?: string;
                 step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
                 visit_number?: number;
                 visit_number__gte?: number;
                 visit_number__lte?: number;
@@ -41339,6 +41429,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part?: string;
+                part__isnull?: boolean;
                 /** @description A search term. */
                 search?: string;
                 /**
@@ -41355,6 +41446,19 @@ export interface operations {
                 status__in?: string[];
                 step?: string;
                 step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
                 visit_number?: number;
                 visit_number__gte?: number;
                 visit_number__lte?: number;
@@ -41387,6 +41491,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part?: string;
+                part__isnull?: boolean;
                 /** @description A search term. */
                 search?: string;
                 /**
@@ -41403,6 +41508,19 @@ export interface operations {
                 status__in?: string[];
                 step?: string;
                 step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
                 visit_number?: number;
                 visit_number__gte?: number;
                 visit_number__lte?: number;
@@ -41435,6 +41553,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part?: string;
+                part__isnull?: boolean;
                 /** @description A search term. */
                 search?: string;
                 /**
@@ -41451,6 +41570,19 @@ export interface operations {
                 status__in?: string[];
                 step?: string;
                 step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
                 visit_number?: number;
                 visit_number__gte?: number;
                 visit_number__lte?: number;
@@ -41920,7 +42052,7 @@ export interface operations {
             query?: {
                 /** @description Filter steps by process's part type UUID */
                 part_type?: string;
-                /** @description Process version the edit is scoped to. When supplied, the resulting new Step version is junctioned into that process's ProcessStep row only — the original Step row stays attached to every other process version that references it. Used by the PCR-DRAFT editing flow to keep concurrent PCRs isolated. */
+                /** @description Process version the edit is scoped to. When supplied, the resulting new Step version is junctioned into that process's ProcessStep row only - the original Step row stays attached to every other process version that references it. Used by the PCR-DRAFT editing flow to keep concurrent PCRs isolated. */
                 process?: string;
             };
             header?: never;
@@ -44935,12 +45067,12 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
                  *
-                 *     * `1` - Level 1 — Trainee (supervised)
-                 *     * `2` - Level 2 — Assisted (output checked)
-                 *     * `3` - Level 3 — Qualified (independent)
-                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 *     * `1` - Level 1 - Trainee (supervised)
+                 *     * `2` - Level 2 - Assisted (output checked)
+                 *     * `3` - Level 3 - Qualified (independent)
+                 *     * `4` - Level 4 - Expert (can train/sign off others)
                  */
                 level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
@@ -45104,12 +45236,12 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
                  *
-                 *     * `1` - Level 1 — Trainee (supervised)
-                 *     * `2` - Level 2 — Assisted (output checked)
-                 *     * `3` - Level 3 — Qualified (independent)
-                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 *     * `1` - Level 1 - Trainee (supervised)
+                 *     * `2` - Level 2 - Assisted (output checked)
+                 *     * `3` - Level 3 - Qualified (independent)
+                 *     * `4` - Level 4 - Expert (can train/sign off others)
                  */
                 level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
@@ -45146,12 +45278,12 @@ export interface operations {
                 /** @description Days until expiration */
                 days?: number;
                 /**
-                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
                  *
-                 *     * `1` - Level 1 — Trainee (supervised)
-                 *     * `2` - Level 2 — Assisted (output checked)
-                 *     * `3` - Level 3 — Qualified (independent)
-                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 *     * `1` - Level 1 - Trainee (supervised)
+                 *     * `2` - Level 2 - Assisted (output checked)
+                 *     * `3` - Level 3 - Qualified (independent)
+                 *     * `4` - Level 4 - Expert (can train/sign off others)
                  */
                 level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
@@ -45229,12 +45361,12 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+                 * @description Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
                  *
-                 *     * `1` - Level 1 — Trainee (supervised)
-                 *     * `2` - Level 2 — Assisted (output checked)
-                 *     * `3` - Level 3 — Qualified (independent)
-                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 *     * `1` - Level 1 - Trainee (supervised)
+                 *     * `2` - Level 2 - Assisted (output checked)
+                 *     * `3` - Level 3 - Qualified (independent)
+                 *     * `4` - Level 4 - Expert (can train/sign off others)
                  */
                 level?: 1 | 2 | 3 | 4;
                 /** @description Number of results to return per page. */
@@ -45295,10 +45427,10 @@ export interface operations {
                 /**
                  * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
                  *
-                 *     * `1` - Level 1 — Trainee (supervised)
-                 *     * `2` - Level 2 — Assisted (output checked)
-                 *     * `3` - Level 3 — Qualified (independent)
-                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 *     * `1` - Level 1 - Trainee (supervised)
+                 *     * `2` - Level 2 - Assisted (output checked)
+                 *     * `3` - Level 3 - Qualified (independent)
+                 *     * `4` - Level 4 - Expert (can train/sign off others)
                  */
                 min_level?: 1 | 2 | 3 | 4;
                 /** @description The initial index from which to return the results. */
@@ -45488,10 +45620,10 @@ export interface operations {
                 /**
                  * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
                  *
-                 *     * `1` - Level 1 — Trainee (supervised)
-                 *     * `2` - Level 2 — Assisted (output checked)
-                 *     * `3` - Level 3 — Qualified (independent)
-                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 *     * `1` - Level 1 - Trainee (supervised)
+                 *     * `2` - Level 2 - Assisted (output checked)
+                 *     * `3` - Level 3 - Qualified (independent)
+                 *     * `4` - Level 4 - Expert (can train/sign off others)
                  */
                 min_level?: 1 | 2 | 3 | 4;
                 /** @description The initial index from which to return the results. */
@@ -45532,10 +45664,10 @@ export interface operations {
                 /**
                  * @description Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
                  *
-                 *     * `1` - Level 1 — Trainee (supervised)
-                 *     * `2` - Level 2 — Assisted (output checked)
-                 *     * `3` - Level 3 — Qualified (independent)
-                 *     * `4` - Level 4 — Expert (can train/sign off others)
+                 *     * `1` - Level 1 - Trainee (supervised)
+                 *     * `2` - Level 2 - Assisted (output checked)
+                 *     * `3` - Level 3 - Qualified (independent)
+                 *     * `4` - Level 4 - Expert (can train/sign off others)
                  */
                 min_level?: 1 | 2 | 3 | 4;
                 /** @description The initial index from which to return the results. */
@@ -47270,6 +47402,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_WorkQueue_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWorkQueueRowList"];
                 };
             };
         };

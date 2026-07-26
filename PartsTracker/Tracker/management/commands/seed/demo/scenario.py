@@ -118,6 +118,11 @@ class DemoScenario(BaseSeeder):
         result['outside_process'] = self._seed_outside_process(
             result['companies'], result['users'], result['manufacturing'], result['orders'])
 
+        # Phase 3c: WorkCenters — runs AFTER all step-creating seeders so it can
+        # back-fill Step.work_center by (step_type, is_outside_process).
+        self.log("\n--- Phase 3c: Work Centers ---")
+        result['work_centers'] = self._seed_work_centers()
+
         # Phase 4: Quality Events
         self.log("\n--- Phase 4: Quality Events ---")
         result['quality'] = self._seed_quality_events(result['orders'], result['users'], result['manufacturing'])
@@ -230,6 +235,15 @@ class DemoScenario(BaseSeeder):
         seeder = DemoOutsideProcessSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         seeder._verbose = self._verbose
         return seeder.seed(companies, users, manufacturing, orders)
+
+    def _seed_work_centers(self):
+        """Seed the 4 demo work-centers + map Step.work_center by
+        (step_type, is_outside_process) + create User↔WC memberships.
+        See Documents/WORK_CENTER_DESIGN.md."""
+        from .work_centers import DemoWorkCenterSeeder
+        seeder = DemoWorkCenterSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed()
 
     def _seed_reman(self, companies, users, manufacturing):
         """

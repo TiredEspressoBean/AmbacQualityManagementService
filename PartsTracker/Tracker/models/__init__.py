@@ -169,6 +169,8 @@ from .mes_standard import (
 
     # Work center and scheduling (Standard tier)
     WorkCenter,
+    WorkCenterKind,
+    UserWorkCenterMembership,
     Shift,
     ScheduleSlot,
     DowntimeEvent,
@@ -469,6 +471,8 @@ __all__ = [
     'BOMLine',
     'AssemblyUsage',
     'WorkCenter',
+    'WorkCenterKind',
+    'UserWorkCenterMembership',
     'Shift',
     'ScheduleSlot',
     'DowntimeEvent',

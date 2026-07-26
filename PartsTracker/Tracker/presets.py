@@ -82,7 +82,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_calibrationrecord',
     # Scheduling
     'view_workcenter', 'view_shift', 'view_scheduleslot', 'view_downtimeevent',
-    'view_timeentry',
+    'view_timeentry', 'view_userworkcentermembership',
     # Milestones & life tracking
     'view_milestone', 'view_milestonetemplate',
     'view_lifelimitdefinition', 'view_parttypelifelimit', 'view_lifetracking',
@@ -408,6 +408,11 @@ MANAGER_DELETE_PERMISSIONS = [
 TEAM_ACCESS_ADMIN_PERMISSIONS = [
     'add_userinvitation', 'change_userinvitation', 'delete_userinvitation',
     'add_orderviewer', 'change_orderviewer', 'delete_orderviewer',
+    # Work-center membership = which stations a user is eligible at (ISA-95
+    # PersonnelClass eligibility). Managed by the same tier that handles other
+    # access administration.
+    'add_userworkcentermembership', 'change_userworkcentermembership',
+    'delete_userworkcentermembership',
 ]
 
 # ITAR / export-control declaration + audit-log export. Compliance roles only

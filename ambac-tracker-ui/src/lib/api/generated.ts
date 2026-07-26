@@ -1524,9 +1524,9 @@ export type CustomerRule = {
   recipient_strategy?: /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   RecipientStrategyEnum | undefined;
   escalation?: _Escalation | undefined;
@@ -1539,9 +1539,9 @@ export type CustomerRule = {
 };
 export type RecipientStrategyEnum =
   /**
-   * * `static` - Static — recipients from this rule only
-   * `from_payload` - From event — recipients from the event payload
-   * `union` - Union — combine event-payload recipients with this rule's
+   * * `static` - Static - recipients from this rule only
+   * `from_payload` - From event - recipients from the event payload
+   * `union` - Union - combine event-payload recipients with this rule's
    *
    * @enum static, from_payload, union
    */
@@ -1609,9 +1609,9 @@ export type CustomerRuleRequest = {
   recipient_strategy?: /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   RecipientStrategyEnum | undefined;
   escalation?: _EscalationRequest | undefined;
@@ -4579,9 +4579,9 @@ export type PersonalRule = {
   recipient_strategy?: /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   RecipientStrategyEnum | undefined;
   escalation?: _Escalation | undefined;
@@ -5341,7 +5341,7 @@ export type QualityReports = {
   step?: (string | null) | undefined;
   part?: (string | null) | undefined;
   operators?: /**
-   * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
+   * DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat.
    */
   Array<number> | undefined;
   sampling_method?: /**
@@ -5368,14 +5368,14 @@ export type QualityReports = {
     | undefined;
   detected_by?:
     | /**
-     * DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
+     * DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
   detected_by_info: {};
   verified_by?:
     | /**
-     * DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
+     * DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
@@ -5413,7 +5413,7 @@ export type QualityReports = {
    */
   substep: string | null;
   /**
-   * The batch whose capture produced this report, for BATCH-scope inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive with step_execution — a report is per-part OR per-batch, never both.
+   * The batch whose capture produced this report, for BATCH-scope inspection substeps (wash/heat-treat/plating cycles). Mutually exclusive with step_execution - a report is per-part OR per-batch, never both.
    */
   batch_execution: string | null;
   equipment_links: Array<QualityReportEquipment>;
@@ -5544,7 +5544,7 @@ export type QuarantineDisposition = {
   assigned_to?: (number | null) | undefined;
   due_date?:
     | /**
-     * Target resolution date — drives the due dot on quality inboxes
+     * Target resolution date - drives the due dot on quality inboxes
      */
     (string | null)
     | undefined;
@@ -5799,7 +5799,7 @@ export type SamplingDecision = {
    */
   substep: string;
   /**
-     * What the rule decided — SELECTED, DESELECTED, or PENDING.
+     * What the rule decided - SELECTED, DESELECTED, or PENDING.
     
     * `selected` - Selected
     * `deselected` - Deselected
@@ -6880,7 +6880,7 @@ export type SubstepGateCompletion = {
    */
   substep: string;
   /**
-   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts.
+   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts.
    *
    * @maxLength 64
    */
@@ -7001,7 +7001,7 @@ export type Substep = {
     (string | null)
     | undefined;
   scope?: /**
-     * Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+     * Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
     
     * `sampled` - Per part (sampling)
     * `batch` - Per batch
@@ -7596,9 +7596,9 @@ export type TenantRule = {
   recipient_strategy?: /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   RecipientStrategyEnum | undefined;
   escalation?: _Escalation | undefined;
@@ -7844,12 +7844,12 @@ export type TrainingRecord = {
   training_type_info: {};
   completed_date: string;
   level?: /**
-     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
     
-    * `1` - Level 1 — Trainee (supervised)
-    * `2` - Level 2 — Assisted (output checked)
-    * `3` - Level 3 — Qualified (independent)
-    * `4` - Level 4 — Expert (can train/sign off others)
+    * `1` - Level 1 - Trainee (supervised)
+    * `2` - Level 2 - Assisted (output checked)
+    * `3` - Level 3 - Qualified (independent)
+    * `4` - Level 4 - Expert (can train/sign off others)
      *
      * @minimum 0
      * @maximum 32767
@@ -7878,10 +7878,10 @@ export type TrainingRecord = {
 };
 export type CompetencyLevelEnum =
   /**
-   * * `1` - Level 1 — Trainee (supervised)
-   * `2` - Level 2 — Assisted (output checked)
-   * `3` - Level 3 — Qualified (independent)
-   * `4` - Level 4 — Expert (can train/sign off others)
+   * * `1` - Level 1 - Trainee (supervised)
+   * `2` - Level 2 - Assisted (output checked)
+   * `3` - Level 3 - Qualified (independent)
+   * `4` - Level 4 - Expert (can train/sign off others)
    *
    * @enum 1, 2, 3, 4
    */
@@ -7912,10 +7912,10 @@ export type TrainingRequirement = {
   min_level?: /**
      * Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
     
-    * `1` - Level 1 — Trainee (supervised)
-    * `2` - Level 2 — Assisted (output checked)
-    * `3` - Level 3 — Qualified (independent)
-    * `4` - Level 4 — Expert (can train/sign off others)
+    * `1` - Level 1 - Trainee (supervised)
+    * `2` - Level 2 - Assisted (output checked)
+    * `3` - Level 3 - Qualified (independent)
+    * `4` - Level 4 - Expert (can train/sign off others)
      *
      * @minimum 0
      * @maximum 32767
@@ -8083,7 +8083,7 @@ export type User = {
   tenant_membership_status: TenantMembershipStatusEnum;
   job_role?:
     | /**
-     * Primary job role / position — drives the required-competency profile.
+     * Primary job role / position - drives the required-competency profile.
      */
     (string | null)
     | undefined;
@@ -8334,6 +8334,40 @@ export type SplitReasonEnum =
    * @enum QUANTITY, OPERATION, REWORK
    */
   "QUANTITY" | "OPERATION" | "REWORK";
+export type PaginatedWorkQueueRowList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<WorkQueueRow>;
+};
+export type WorkQueueRow = {
+  work_order: string;
+  work_order_erp_id: string | null;
+  step: string;
+  step_name: string | null;
+  part_type_name: string | null;
+  priority: number | null;
+  expected_completion: string | null;
+  qty_ready: number;
+  earliest_entered_at: string | null;
+  work_center: string | null;
+  work_center_kind: string | null;
+  readiness: string;
+  is_held: boolean;
+};
 export type PartApprovalRequest = {
   part_type: string;
   supplier: string;
@@ -8819,9 +8853,9 @@ export type PatchedCustomerRuleRequest = Partial<{
   /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   recipient_strategy: RecipientStrategyEnum;
   escalation: _EscalationRequest;
@@ -9245,9 +9279,9 @@ export type PatchedPersonalRuleRequest = Partial<{
   /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   recipient_strategy: RecipientStrategyEnum;
   escalation: _EscalationRequest;
@@ -9434,7 +9468,7 @@ export type PatchedQualityReportsRequest = Partial<{
   part: string | null;
   production_equipment: string | null;
   /**
-   * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
+   * DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat.
    */
   operators: Array<number>;
   /**
@@ -9454,11 +9488,11 @@ export type PatchedQualityReportsRequest = Partial<{
    */
   sampling_audit_log: string | null;
   /**
-   * DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
+   * DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat.
    */
   detected_by: number | null;
   /**
-   * DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
+   * DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat.
    */
   verified_by: number | null;
   /**
@@ -9473,7 +9507,7 @@ export type PatchedQuarantineDispositionRequest = Partial<{
   severity: SeverityEnum;
   assigned_to: number | null;
   /**
-   * Target resolution date — drives the due dot on quality inboxes
+   * Target resolution date - drives the due dot on quality inboxes
    */
   due_date: string | null;
   description: string;
@@ -10065,7 +10099,7 @@ export type PatchedSubstepGateCompletionRequest = Partial<{
    */
   substep: string;
   /**
-   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts.
+   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts.
    *
    * @minLength 1
    * @maxLength 64
@@ -10152,7 +10186,7 @@ export type PatchedSubstepRequest = Partial<{
    */
   expected_duration: string | null;
   /**
-     * Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+     * Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
     
     * `sampled` - Per part (sampling)
     * `batch` - Per batch
@@ -10386,9 +10420,9 @@ export type PatchedTenantRuleRequest = Partial<{
   /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   recipient_strategy: RecipientStrategyEnum;
   escalation: _EscalationRequest;
@@ -10497,12 +10531,12 @@ export type PatchedTrainingRecordRequest = Partial<{
   training_type: string;
   completed_date: string;
   /**
-     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
     
-    * `1` - Level 1 — Trainee (supervised)
-    * `2` - Level 2 — Assisted (output checked)
-    * `3` - Level 3 — Qualified (independent)
-    * `4` - Level 4 — Expert (can train/sign off others)
+    * `1` - Level 1 - Trainee (supervised)
+    * `2` - Level 2 - Assisted (output checked)
+    * `3` - Level 3 - Qualified (independent)
+    * `4` - Level 4 - Expert (can train/sign off others)
      *
      * @minimum 0
      * @maximum 32767
@@ -10524,10 +10558,10 @@ export type PatchedTrainingRequirementRequest = Partial<{
   /**
      * Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
     
-    * `1` - Level 1 — Trainee (supervised)
-    * `2` - Level 2 — Assisted (output checked)
-    * `3` - Level 3 — Qualified (independent)
-    * `4` - Level 4 — Expert (can train/sign off others)
+    * `1` - Level 1 - Trainee (supervised)
+    * `2` - Level 2 - Assisted (output checked)
+    * `3` - Level 3 - Qualified (independent)
+    * `4` - Level 4 - Expert (can train/sign off others)
      *
      * @minimum 0
      * @maximum 32767
@@ -10617,9 +10651,9 @@ export type PersonalRuleRequest = {
   recipient_strategy?: /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   RecipientStrategyEnum | undefined;
   escalation?: _EscalationRequest | undefined;
@@ -10888,7 +10922,7 @@ export type QualityReportsRequest = {
   part?: (string | null) | undefined;
   production_equipment?: (string | null) | undefined;
   operators?: /**
-   * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
+   * DEPRECATED - use `personnel` (role=OPERATOR). Kept for back-compat.
    */
   Array<number> | undefined;
   sampling_method?: /**
@@ -10913,13 +10947,13 @@ export type QualityReportsRequest = {
     | undefined;
   detected_by?:
     | /**
-     * DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
+     * DEPRECATED - use `personnel` (role=DETECTED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
   verified_by?:
     | /**
-     * DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
+     * DEPRECATED - use `personnel` (role=VERIFIED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
@@ -10936,7 +10970,7 @@ export type QuarantineDispositionRequest = {
   assigned_to?: (number | null) | undefined;
   due_date?:
     | /**
-     * Target resolution date — drives the due dot on quality inboxes
+     * Target resolution date - drives the due dot on quality inboxes
      */
     (string | null)
     | undefined;
@@ -12084,7 +12118,7 @@ export type SubstepGateCompletionRequest = {
    */
   substep: string;
   /**
-   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts.
+   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts.
    *
    * @minLength 1
    * @maxLength 64
@@ -12181,7 +12215,7 @@ export type SubstepRequest = {
     (string | null)
     | undefined;
   scope?: /**
-     * Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+     * Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
     
     * `sampled` - Per part (sampling)
     * `batch` - Per batch
@@ -12520,9 +12554,9 @@ export type TenantRuleRequest = {
   recipient_strategy?: /**
      * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
     
-    * `static` - Static — recipients from this rule only
-    * `from_payload` - From event — recipients from the event payload
-    * `union` - Union — combine event-payload recipients with this rule's
+    * `static` - Static - recipients from this rule only
+    * `from_payload` - From event - recipients from the event payload
+    * `union` - Union - combine event-payload recipients with this rule's
      */
   RecipientStrategyEnum | undefined;
   escalation?: _EscalationRequest | undefined;
@@ -12641,12 +12675,12 @@ export type TrainingRecordRequest = {
   training_type: string;
   completed_date: string;
   level?: /**
-     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance — clause 7.2 evidence.
+     * Assessed competency level reached by this record (1-4). This is the assessed result, not mere attendance - clause 7.2 evidence.
     
-    * `1` - Level 1 — Trainee (supervised)
-    * `2` - Level 2 — Assisted (output checked)
-    * `3` - Level 3 — Qualified (independent)
-    * `4` - Level 4 — Expert (can train/sign off others)
+    * `1` - Level 1 - Trainee (supervised)
+    * `2` - Level 2 - Assisted (output checked)
+    * `3` - Level 3 - Qualified (independent)
+    * `4` - Level 4 - Expert (can train/sign off others)
      *
      * @minimum 0
      * @maximum 32767
@@ -12672,10 +12706,10 @@ export type TrainingRequirementRequest = {
   min_level?: /**
      * Minimum competency level required to be authorized (1-4). Default Qualified (3) = must be independently qualified.
     
-    * `1` - Level 1 — Trainee (supervised)
-    * `2` - Level 2 — Assisted (output checked)
-    * `3` - Level 3 — Qualified (independent)
-    * `4` - Level 4 — Expert (can train/sign off others)
+    * `1` - Level 1 - Trainee (supervised)
+    * `2` - Level 2 - Assisted (output checked)
+    * `3` - Level 3 - Qualified (independent)
+    * `4` - Level 4 - Expert (can train/sign off others)
      *
      * @minimum 0
      * @maximum 32767
@@ -18425,6 +18459,27 @@ const WorkOrderBulkTransitionInputRequest = z.object({
 const WorkOrderBulkTransitionResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
 });
+const WorkQueueRow = z.object({
+  work_order: z.string().uuid(),
+  work_order_erp_id: z.string().nullable(),
+  step: z.string().uuid(),
+  step_name: z.string().nullable(),
+  part_type_name: z.string().nullable(),
+  priority: z.number().int().nullable(),
+  expected_completion: z.string().nullable(),
+  qty_ready: z.number().int(),
+  earliest_entered_at: z.string().datetime({ offset: true }).nullable(),
+  work_center: z.string().uuid().nullable(),
+  work_center_kind: z.string().nullable(),
+  readiness: z.string(),
+  is_held: z.boolean(),
+});
+const PaginatedWorkQueueRowList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(WorkQueueRow),
+});
 const EmbedQueryRequestRequest = z.object({ query: z.string().min(1) });
 const EmbedQueryResponse = z.object({ embedding: z.array(z.number()) });
 const LLMConfigResponse = z.object({
@@ -20538,6 +20593,8 @@ export const schemas = {
   WorkOrderBulkPlaceOnHoldResponse,
   WorkOrderBulkTransitionInputRequest,
   WorkOrderBulkTransitionResponse,
+  WorkQueueRow,
+  PaginatedWorkQueueRowList,
   EmbedQueryRequestRequest,
   EmbedQueryResponse,
   LLMConfigResponse,
@@ -22602,7 +22659,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "get",
     path: "/api/CalibrationRecords/my-gauge-nag/",
     alias: "api_CalibrationRecords_my_gauge_nag_retrieve",
-    description: `Gauges the current user recently used whose calibration is due soon or overdue — the personal pre-empt for the point-of-use calibration gate.`,
+    description: `Gauges the current user recently used whose calibration is due soon or overdue - the personal pre-empt for the point-of-use calibration gate.`,
     requestFormat: "json",
     parameters: [
       {
@@ -23669,7 +23726,7 @@ Provides list, create, retrieve, update, and delete operations.`,
     method: "get",
     path: "/api/Companies/:id/scorecard/",
     alias: "api_Companies_scorecard_retrieve",
-    description: `Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, open SCAR count, and the recommend-only standing review.`,
+    description: `Supplier quality scorecard - receiving acceptance/reject rates, CoC compliance, on-time delivery, open SCAR count, and the recommend-only standing review.`,
     requestFormat: "json",
     parameters: [
       {
@@ -23712,7 +23769,7 @@ Provides list, create, retrieve, update, and delete operations.`,
     method: "get",
     path: "/api/CompetenceMatrix/",
     alias: "api_CompetenceMatrix_retrieve",
-    description: `Operators x training-types competency matrix with per-skill coverage counts. HR / quality view — requires view_training_matrix.`,
+    description: `Operators x training-types competency matrix with per-skill coverage counts. HR / quality view - requires view_training_matrix.`,
     requestFormat: "json",
     response: TrainingMatrix,
   },
@@ -24069,7 +24126,7 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
     method: "post",
     path: "/api/Cores/bulk_create/",
     alias: "api_Cores_bulk_create_create",
-    description: `Create N cores from a shipment. All-or-nothing — any row error rolls back the batch.`,
+    description: `Create N cores from a shipment. All-or-nothing - any row error rolls back the batch.`,
     requestFormat: "json",
     parameters: [
       {
@@ -27155,7 +27212,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
     method: "post",
     path: "/api/FPIRecords/:id/acknowledge/",
     alias: "api_FPIRecords_acknowledge_create",
-    description: `Acknowledge a pending FPI (QA is on it). Idempotent — the first acknowledgment wins; the operator surface shows &#x27;Seen by X&#x27;.`,
+    description: `Acknowledge a pending FPI (QA is on it). Idempotent - the first acknowledgment wins; the operator surface shows &#x27;Seen by X&#x27;.`,
     requestFormat: "json",
     parameters: [
       {
@@ -27799,7 +27856,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     method: "get",
     path: "/api/InspectionInbox/",
     alias: "api_InspectionInbox_list",
-    description: `The inspector&#x27;s flat task inbox: FPI first, then by urgency tone, then age. Derive type-count chips (with oldest-age — counts alone hide rot) from the rows.`,
+    description: `The inspector&#x27;s flat task inbox: FPI first, then by urgency tone, then age. Derive type-count chips (with oldest-age - counts alone hide rot) from the rows.`,
     requestFormat: "json",
     response: z.array(InspectionInboxRow),
   },
@@ -28365,7 +28422,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
     method: "get",
     path: "/api/MaterialLots/:id/evaluate_receiving/",
     alias: "api_MaterialLots_evaluate_receiving_retrieve",
-    description: `Run the lot-acceptance evaluation over the recorded inspection results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return the current verdict. Server-authoritative — the DWI unit-by-unit runtime reads this to show ACCEPT/REJECT before the operator commits.`,
+    description: `Run the lot-acceptance evaluation over the recorded inspection results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return the current verdict. Server-authoritative - the DWI unit-by-unit runtime reads this to show ACCEPT/REJECT before the operator commits.`,
     requestFormat: "json",
     parameters: [
       {
@@ -28520,7 +28577,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
     method: "post",
     path: "/api/MaterialLots/bulk_create/",
     alias: "api_MaterialLots_bulk_create_create",
-    description: `Receive N lots from a shipment (paste-grid). All-or-nothing — any row error rolls back.`,
+    description: `Receive N lots from a shipment (paste-grid). All-or-nothing - any row error rolls back.`,
     requestFormat: "json",
     parameters: [
       {
@@ -37152,6 +37209,11 @@ Used by the workflow engine for tracking part progression through steps.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "search",
         type: "Query",
         schema: z.string().optional(),
@@ -37185,6 +37247,33 @@ Used by the workflow engine for tracking part progression through steps.`,
         name: "step__process_memberships__process",
         type: "Query",
         schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
       },
       {
         name: "visit_number",
@@ -37419,6 +37508,11 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "search",
         type: "Query",
         schema: z.string().optional(),
@@ -37452,6 +37546,33 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         name: "step__process_memberships__process",
         type: "Query",
         schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
       },
       {
         name: "visit_number",
@@ -37509,6 +37630,11 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "search",
         type: "Query",
         schema: z.string().optional(),
@@ -37542,6 +37668,33 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         name: "step__process_memberships__process",
         type: "Query",
         schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
       },
       {
         name: "visit_number",
@@ -37599,6 +37752,11 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "search",
         type: "Query",
         schema: z.string().optional(),
@@ -37632,6 +37790,33 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         name: "step__process_memberships__process",
         type: "Query",
         schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
       },
       {
         name: "visit_number",
@@ -37689,6 +37874,11 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "search",
         type: "Query",
         schema: z.string().optional(),
@@ -37724,6 +37914,33 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
         name: "visit_number",
         type: "Query",
         schema: z.number().int().optional(),
@@ -37745,7 +37962,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     method: "get",
     path: "/api/StepExecutions/work_authorization/",
     alias: "api_StepExecutions_work_authorization_retrieve",
-    description: `Per-part training authorization for the current user — the Start-Work pre-flight gate (so unqualified parts can be marked before launch, not just blocked on click).`,
+    description: `Per-part training authorization for the current user - the Start-Work pre-flight gate (so unqualified parts can be marked before launch, not just blocked on click).`,
     requestFormat: "json",
     parameters: [
       {
@@ -40545,7 +40762,7 @@ Only available in SaaS mode and requires superuser/staff.`,
     method: "post",
     path: "/api/Tenants/:slug/regenerate-demo-data/",
     alias: "api_Tenants_regenerate_demo_data_create",
-    description: `Hard-destructive: wipe the demo tenant&#x27;s data and reseed from the seed_demo command&#x27;s preset state. Refuses on any tenant whose slug isn&#x27;t &#x27;demo&#x27; — defense in depth both here and in the service layer. Tenant admins only. Async via Celery; poll /regenerate-demo-status/{task_id}/ for completion.`,
+    description: `Hard-destructive: wipe the demo tenant&#x27;s data and reseed from the seed_demo command&#x27;s preset state. Refuses on any tenant whose slug isn&#x27;t &#x27;demo&#x27; - defense in depth both here and in the service layer. Tenant admins only. Async via Celery; poll /regenerate-demo-status/{task_id}/ for completion.`,
     requestFormat: "json",
     parameters: [
       {
@@ -42142,7 +42359,7 @@ untouched. Request/response shape is unchanged.`,
     method: "get",
     path: "/api/User/bulk-reconcile-template/",
     alias: "api_User_bulk_reconcile_template_retrieve",
-    description: `Download a multi-sheet Excel template for bulk-reconcile. Sheets: Data (editable rows — parsed on import), Instructions, Groups (tenant-scoped names — drives Group dropdown), Statuses (Active/Inactive — drives Status dropdown). Pass populate&#x3D;true to pre-fill the Data sheet with current users.`,
+    description: `Download a multi-sheet Excel template for bulk-reconcile. Sheets: Data (editable rows - parsed on import), Instructions, Groups (tenant-scoped names - drives Group dropdown), Statuses (Active/Inactive - drives Status dropdown). Pass populate&#x3D;true to pre-fill the Data sheet with current users.`,
     requestFormat: "json",
     parameters: [
       {
@@ -43199,6 +43416,38 @@ Import/Export endpoints (auto-configured from model):
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkQueue/",
+    alias: "api_WorkQueue_list",
+    description: `Ranked ready-or-blocked work rows on the floor.
+
+Read-only; permissioned on &#x60;view_workorder&#x60; (already granted broadly — the
+row is a view onto WorkOrder work, not a first-class model). Filters:
+  - &#x60;readiness&#x3D;ready|blocked&#x60; (default: both, blocked sunk last)
+  - &#x60;wo&#x3D;&lt;uuid&gt;&#x60; — rows for a single WO
+  - &#x60;search&#x3D;&lt;term&gt;&#x60; — matches WO ERP id or step name
+  - standard &#x60;?limit&#x3D;&amp;offset&#x3D;&#x60; pagination`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedWorkQueueRowList,
   },
   {
     method: "post",

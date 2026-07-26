@@ -30,6 +30,7 @@ from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
 from .dwi import DemoDwiSeeder
+from .work_centers import DemoWorkCenterSeeder
 from .showcase import DemoShowcaseSeeder
 
 __all__ = [

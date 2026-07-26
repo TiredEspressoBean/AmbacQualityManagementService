@@ -18826,6 +18826,10 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -18871,6 +18875,48 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - in: query
         name: visit_number
         schema:
@@ -19200,6 +19246,10 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -19245,6 +19295,48 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - in: query
         name: visit_number
         schema:
@@ -19305,6 +19397,10 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -19350,6 +19446,48 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - in: query
         name: visit_number
         schema:
@@ -19410,6 +19548,10 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -19455,6 +19597,48 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - in: query
         name: visit_number
         schema:
@@ -19515,6 +19699,10 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -19560,6 +19748,48 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - in: query
         name: visit_number
         schema:
@@ -27477,6 +27707,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/WorkQueue/:
+    get:
+      operationId: api_WorkQueue_list
+      description: |-
+        Ranked ready-or-blocked work rows on the floor.
+
+        Read-only; permissioned on `view_workorder` (already granted broadly — the
+        row is a view onto WorkOrder work, not a first-class model). Filters:
+          - `readiness=ready|blocked` (default: both, blocked sunk last)
+          - `wo=<uuid>` — rows for a single WO
+          - `search=<term>` — matches WO ERP id or step name
+          - standard `?limit=&offset=` pagination
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWorkQueueRowList'
           description: ''
   /api/ai/embedding/embed_query/:
     post:
@@ -44062,6 +44335,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WorkOrderList'
+    PaginatedWorkQueueRowList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkQueueRow'
     PartApproval:
       type: object
       description: |-
@@ -59253,6 +59549,64 @@ components:
             additionalProperties: {}
       required:
       - steps
+    WorkQueueRow:
+      type: object
+      description: One ready-or-blocked row on the floor. All fields are read-only
+        projections.
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        work_order_erp_id:
+          type: string
+          nullable: true
+        step:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+          nullable: true
+        part_type_name:
+          type: string
+          nullable: true
+        priority:
+          type: integer
+          nullable: true
+        expected_completion:
+          type: string
+          format: date
+          nullable: true
+        qty_ready:
+          type: integer
+        earliest_entered_at:
+          type: string
+          format: date-time
+          nullable: true
+        work_center:
+          type: string
+          format: uuid
+          nullable: true
+        work_center_kind:
+          type: string
+          nullable: true
+        readiness:
+          type: string
+        is_held:
+          type: boolean
+      required:
+      - earliest_entered_at
+      - expected_completion
+      - is_held
+      - part_type_name
+      - priority
+      - qty_ready
+      - readiness
+      - step
+      - step_name
+      - work_center
+      - work_center_kind
+      - work_order
+      - work_order_erp_id
     _Escalation:
       type: object
       description: |-

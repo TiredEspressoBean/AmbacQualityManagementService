@@ -298,6 +298,9 @@ router.register(r'DowntimeEvents', DowntimeEventViewSet, basename='DowntimeEvent
 # Shift notes (human-authored floor handoff)
 router.register(r'ShiftNotes', ShiftNoteViewSet, basename='ShiftNotes')
 
+# Work queue (aggregate: ranked WO×step ready-or-blocked rows for the operator home)
+router.register(r'WorkQueue', WorkQueueViewSet, basename='WorkQueue')
+
 # Material Lots & Usage
 router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
 router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')

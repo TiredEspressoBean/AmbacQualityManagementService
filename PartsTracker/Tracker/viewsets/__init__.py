@@ -235,10 +235,12 @@ from .change_control import (
 )
 
 from .shift_notes import ShiftNoteViewSet
+from .work_queue import WorkQueueViewSet
 
 
 __all__ = [
     'ShiftNoteViewSet',
+    'WorkQueueViewSet',
     'NotificationEventTypeCatalogView',
     'NotificationFeedViewSet',
     'TenantRuleViewSet',

@@ -2363,9 +2363,12 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
     serializer_class = StepExecutionSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
-        'part': ['exact'],
+        'part': ['exact', 'isnull'],
         'step': ['exact'],
         'step__process_memberships__process': ['exact'],  # Steps are now linked via ProcessStep
+        # Surface routing — see Documents/WORK_CENTER_DESIGN.md.
+        'step__work_center': ['exact', 'in', 'isnull'],
+        'step__work_center__kind': ['exact', 'in'],
         'status': ['exact', 'in'],
         'assigned_to': ['exact', 'isnull'],
         'visit_number': ['exact', 'gte', 'lte'],
@@ -2681,6 +2684,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
             exited_at__isnull=True,
             status__in=['PENDING', 'IN_PROGRESS']
         ).order_by('entered_at')
+        # Run the viewset's filter backends so callers can narrow the surface —
+        # e.g. `?step__work_center__kind=PRODUCTION` for the operator home's
+        # In-progress tile. See Documents/WORK_CENTER_DESIGN.md.
+        queryset = self.filter_queryset(queryset)
 
         page = self.paginate_queryset(queryset)
         if page is not None:

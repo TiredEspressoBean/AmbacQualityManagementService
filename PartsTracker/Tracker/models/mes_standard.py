@@ -16,6 +16,7 @@ Contains full traceability and compliance features:
 """
 
 
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.db.models import Q, CheckConstraint, Index
@@ -812,11 +813,23 @@ class SamplingAnalytics(SecureModel):
 # NEW STRUCTURAL MODELS (Standard Tier)
 # =============================================================================
 
+class WorkCenterKind(models.TextChoices):
+    """The surface a work-center serves. Primary discriminator between the
+    operator queue, QA inbox, receiving inbox, and OSP dispatch. See
+    Documents/WORK_CENTER_DESIGN.md."""
+    PRODUCTION = "PRODUCTION", "Production"
+    INSPECTION = "INSPECTION", "Inspection"
+    RECEIVING = "RECEIVING", "Receiving"
+    OSP = "OSP", "Outside Process"
+
+
 class WorkCenter(SecureModel):
     """
     Grouping of equipment and/or workstations in a production area.
 
     Work centers are used for capacity planning, scheduling, and cost allocation.
+    Additionally, `kind` is the primary discriminator that routes work to the
+    right surface (operator / QA / receiving / OSP).
     """
 
     _is_versioned = True  # engineering judgment — routing master
@@ -824,6 +837,12 @@ class WorkCenter(SecureModel):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20)  # Unique per tenant, not globally
     description = models.TextField(blank=True)
+    # Surface discriminator — see Documents/WORK_CENTER_DESIGN.md.
+    kind = models.CharField(
+        max_length=20,
+        choices=WorkCenterKind.choices,
+        default=WorkCenterKind.PRODUCTION,
+    )
 
     # Capacity info
     capacity_units = models.CharField(
@@ -862,6 +881,48 @@ class WorkCenter(SecureModel):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
+class UserWorkCenterMembership(SecureModel):
+    """Which work-centers a user is eligible to work at.
+
+    ISA-95 PersonnelClass-style eligibility: a user CAN work at these
+    stations; `is_primary` marks their preferred default. Session/kiosk
+    presence layers on top later — this is membership, not presence.
+    See Documents/WORK_CENTER_DESIGN.md.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='work_center_memberships',
+    )
+    work_center = models.ForeignKey(
+        WorkCenter,
+        on_delete=models.CASCADE,
+        related_name='member_memberships',
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="The user's preferred default station (drives the operator home's initial scope).",
+    )
+
+    class Meta:
+        verbose_name = 'Work Center Membership'
+        verbose_name_plural = 'Work Center Memberships'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'work_center'],
+                name='userworkcentermembership_user_wc_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'is_primary']),
+            models.Index(fields=['work_center']),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} @ {self.work_center_id}{' (primary)' if self.is_primary else ''}"
 
 
 class Shift(SecureModel):

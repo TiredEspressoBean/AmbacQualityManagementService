@@ -551,6 +551,20 @@ class Steps(SecureModel):
     part_type = models.ForeignKey(PartTypes, related_name='steps', on_delete=models.PROTECT)
     """Reference to the `PartTypes` this step applies to. Used for filtering and scoping."""
 
+    work_center = models.ForeignKey(
+        'Tracker.WorkCenter',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='steps',
+        help_text=(
+            "The work-center where this step runs. Primary routing signal for "
+            "which surface (operator queue / QA inbox / receiving) the step "
+            "belongs on. Nullable during migration; unmapped steps surface in "
+            "a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md."
+        ),
+    )
+
     # ===== QA & SAMPLING =====
 
     block_on_quarantine = models.BooleanField(default=False)
