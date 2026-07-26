@@ -14664,6 +14664,21 @@ export interface components {
             readonly name: string;
         };
         /**
+         * @description Brief WorkCenter membership embedded in the auth-user payload — the
+         *     stations this user is eligible at. Drives the operator home's station-scope
+         *     combobox. See Documents/WORK_CENTER_DESIGN.md.
+         */
+        AuthUserWorkCenterMembership: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly work_center: string;
+            readonly work_center_name: string;
+            readonly work_center_code: string;
+            readonly work_center_kind: string;
+            readonly is_primary: boolean;
+        };
+        /**
          * @description Bill of Materials serializer.
          *
          *     PATCH semantics: DRAFT BOMs are edited in place via super().update().
@@ -26219,6 +26234,7 @@ export interface components {
             readonly is_superuser: boolean;
             readonly is_active: boolean;
             readonly groups: components["schemas"]["AuthUserTenantGroup"][];
+            readonly work_center_memberships: components["schemas"]["AuthUserWorkCenterMembership"][];
         };
         /**
          * @description dj-rest-auth user-details payload + the fields the frontend needs.

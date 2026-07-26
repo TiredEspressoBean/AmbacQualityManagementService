@@ -10,11 +10,12 @@
  *           Resume → the operator runtime for that run) · clock cluster
  *           (TimeEntry clock_in/out; Break/Lunch pause labor as BREAK/LUNCH entries) ·
  *           Notifications (the in-app feed; "Got it" = mark-read) · Shift notes ·
- *           UP NEXT + THEN (server-ranked WO×step rows from /api/WorkQueue/;
- *           Start navigates to WO detail — the operator work surface).
- *  PREVIEW: dimmed tiles — station-scope combobox (work-centers still unmapped;
- *           design doc rung 3);
- *           Report a problem / Can't run this (need the blocker aggregate);
+ *           UP NEXT + THEN (server-ranked WO×step rows from /api/WorkQueue/,
+ *           filtered by kind=PRODUCTION and the user's WorkCenter memberships;
+ *           Start navigates to WO detail — the operator work surface) ·
+ *           station-scope combobox (memberships → picked station persists
+ *           per-user in localStorage; retires the pre-Phase-2 unscoped calls).
+ *  PREVIEW: dimmed tiles — Report a problem / Can't run this (need the blocker aggregate);
  *           clock state / Break / Clock out (TimeEntry has clock_in/out but no
  *           clean "am I clocked in" read yet). Each renders its prototype mock
  *           content behind a blur+disable via <PreviewLock>, so the planned
@@ -23,7 +24,7 @@
  * As each backend lands (queue aggregate first), swap the matching PreviewLock
  * for real data.
  */
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -58,17 +59,6 @@ type MyFlag = {
     id: string; label: string; wo: string; owner: string;
     elapsed: string; seenBy: string | null;
 };
-
-// Work-center scopes with live ready-counts — at 100+ WOs this is what keeps
-// UP NEXT drawn from YOUR pool. Persisted per user in the real version.
-const AREAS = [
-    { id: "all", label: "All work centers", count: 61 },
-    { id: "inspect", label: "Inspection Bench", count: 12 },
-    { id: "asm", label: "Assembly Line", count: 19 },
-    { id: "flow", label: "Flow Test Bench", count: 7 },
-    { id: "clean", label: "Cleaning Bay", count: 34 },
-    { id: "recv", label: "Core Receiving", count: 15 },
-] as const;
 
 const MOCK = {
     // The visible first-piece loop: sent → seen → (approve/reject arrives as a state change).
@@ -129,10 +119,47 @@ export function OperatorHomeRoute() {
 export function OperatorHomePage({ user }: { user: AuthUser }) {
     const navigate = useNavigate();
 
-    // LIVE — the operator's own open runs (assigned, not yet exited).
+    // Station-scope — the operator's picked work-center, scoped to their
+    // memberships. Persisted client-side keyed by user pk. "all" = "all my
+    // stations" (union of memberships). See Documents/WORK_CENTER_DESIGN.md
+    // Phase 2. Users with no memberships fall through to unscoped by kind only.
+    const memberships = user.work_center_memberships ?? [];
+    const primaryWcId = memberships.find((m) => m.is_primary)?.work_center;
+    const storageKey = `operator.activeWc.${user.pk ?? "anon"}`;
+    const [activeWcId, setActiveWcId] = useState<string>(() => {
+        const stored = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
+        return stored ?? primaryWcId ?? "all";
+    });
+    // If memberships load later and we defaulted before, promote to primary once.
+    useEffect(() => {
+        if (activeWcId === "all" && primaryWcId
+            && typeof window !== "undefined"
+            && !window.localStorage.getItem(storageKey)) {
+            setActiveWcId(primaryWcId);
+        }
+    }, [primaryWcId]);  // eslint-disable-line react-hooks/exhaustive-deps
+    const setActiveWc = (id: string) => {
+        setActiveWcId(id);
+        if (typeof window !== "undefined") window.localStorage.setItem(storageKey, id);
+    };
+    // The WC ids to send as `work_center__in`: [] means "don't filter"; a
+    // single id means "just this station"; multiple = union of my stations.
+    const scopedWcIds = useMemo<string[]>(() => {
+        if (memberships.length === 0) return [];
+        if (activeWcId === "all") return memberships.map((m) => m.work_center);
+        return [activeWcId];
+    }, [memberships, activeWcId]);
+
+    // LIVE — the operator's own open runs, scoped to production surface + station.
     const { data: workload } = useQuery({
-        queryKey: ["step-executions", "my-workload"],
-        queryFn: () => api.api_StepExecutions_my_workload_list({ queries: { limit: 5 } }),
+        queryKey: ["step-executions", "my-workload", "PRODUCTION", scopedWcIds.slice().sort().join(",")],
+        queryFn: () => api.api_StepExecutions_my_workload_list({
+            queries: {
+                limit: 5,
+                step__work_center__kind: "PRODUCTION",
+                ...(scopedWcIds.length ? { step__work_center__in: scopedWcIds } : {}),
+            } as never,
+        }),
     });
     const runs = workload?.results ?? [];
     const activeRun = runs.find((r) => r.status === "IN_PROGRESS") ?? runs[0] ?? null;
@@ -201,7 +228,11 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // LIVE — the work queue. UP NEXT = first ready row; THEN = next few; the
     // "N blocked" caption counts is_held rows. Rank is server-side (priority →
     // due → aging), so we just consume in order.
-    const { data: queueRows = [] } = useWorkQueue({ limit: 20 });
+    const { data: queueRows = [] } = useWorkQueue({
+        kind: "PRODUCTION",
+        workCenterIds: scopedWcIds,
+        limit: 20,
+    });
     const readyRows = queueRows.filter((r) => r.readiness === "ready");
     const heroRow: WorkQueueRow | undefined = readyRows[0];
     const thenRows = readyRows.slice(1, 7);
@@ -242,9 +273,15 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const [blockOpen, setBlockOpen] = useState(false);
     const [problemOpen, setProblemOpen] = useState(false);
     const [problemBranch, setProblemBranch] = useState<"machine" | "job" | null>(null);
-    const [area, setArea] = useState<string>("all");
     const [areaOpen, setAreaOpen] = useState(false);
-    const areaLabel = AREAS.find((a) => a.id === area);
+    // Combobox label — either "All my stations", a specific station, or a
+    // gentle empty state when the user has no memberships yet.
+    const areaLabel = memberships.length === 0
+        ? "No stations assigned"
+        : activeWcId === "all"
+            ? `All my stations (${memberships.length})`
+            : (memberships.find((m) => m.work_center === activeWcId)?.work_center_name
+                ?? "All my stations");
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -266,36 +303,47 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                     {greeting}{user.first_name ? `, ${user.first_name}` : ""}
                 </h1>
                 {/* Station scope — still Preview (needs the queue aggregate's per-scope counts). */}
-                <PreviewLock className="shrink-0">
-                    <Popover open={areaOpen} onOpenChange={setAreaOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" aria-expanded={areaOpen} className="h-12 w-56 justify-between">
-                                <span className="truncate">
-                                    {areaLabel?.label ?? "All work centers"}
-                                    <span className="ml-1.5 text-muted-foreground">({areaLabel?.count ?? 0})</span>
-                                </span>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-0" align="end">
-                            <Command>
-                                <CommandInput placeholder="Work center…" />
-                                <CommandList>
-                                    <CommandEmpty>Nothing matches.</CommandEmpty>
+                {/* Station scope — LIVE: driven by the user's WorkCenter memberships
+                    (see Documents/WORK_CENTER_DESIGN.md Phase 2). Picked station
+                    persists per-user in localStorage. */}
+                <Popover open={areaOpen} onOpenChange={setAreaOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" aria-expanded={areaOpen}
+                            className="h-12 w-56 shrink-0 justify-between"
+                            disabled={memberships.length === 0}>
+                            <span className="truncate">{areaLabel}</span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0" align="end">
+                        <Command>
+                            <CommandInput placeholder="Work center…" />
+                            <CommandList>
+                                <CommandEmpty>Nothing matches.</CommandEmpty>
+                                {memberships.length > 0 && (
                                     <CommandGroup>
-                                        {AREAS.map((a) => (
-                                            <CommandItem key={a.id} value={a.label} onSelect={() => { setArea(a.id); setAreaOpen(false); }}>
-                                                <Check className={`mr-2 h-4 w-4 ${a.id === area ? "opacity-100" : "opacity-0"}`} />
-                                                <span className="min-w-0 flex-1 truncate">{a.label}</span>
-                                                <span className="ml-2 text-xs text-muted-foreground">{a.count}</span>
+                                        <CommandItem value="All my stations" onSelect={() => { setActiveWc("all"); setAreaOpen(false); }}>
+                                            <Check className={`mr-2 h-4 w-4 ${activeWcId === "all" ? "opacity-100" : "opacity-0"}`} />
+                                            <span className="min-w-0 flex-1 truncate">All my stations</span>
+                                            <span className="ml-2 text-xs text-muted-foreground">{memberships.length}</span>
+                                        </CommandItem>
+                                        {memberships.map((m) => (
+                                            <CommandItem
+                                                key={m.work_center}
+                                                value={`${m.work_center_code} ${m.work_center_name}`}
+                                                onSelect={() => { setActiveWc(m.work_center); setAreaOpen(false); }}
+                                            >
+                                                <Check className={`mr-2 h-4 w-4 ${m.work_center === activeWcId ? "opacity-100" : "opacity-0"}`} />
+                                                <span className="min-w-0 flex-1 truncate">{m.work_center_name}</span>
+                                                {m.is_primary && <span className="ml-2 text-[10px] text-muted-foreground">primary</span>}
                                             </CommandItem>
                                         ))}
                                     </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                </PreviewLock>
+                                )}
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
                 {/* Clock cluster — LIVE: TimeEntry clock_in/out; Break/Lunch pause labor. */}
                 <div className="flex shrink-0 items-center gap-3">
                     <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -338,8 +386,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Orient the viewer: what's real vs. planned. */}
             <p className="text-xs text-muted-foreground">
-                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, and the <b className="text-foreground">clock</b> (in/out/break/lunch) are live.
-                Dimmed tiles show the planned layout; they light up as the blocker model, station-scope work-centers, and other pieces land.
+                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) are live.
+                Dimmed tiles show the planned layout; they light up as the blocker model and other pieces land.
             </p>
 
             {/* FIRST-PIECE loop — needs the FPI operator-side read. */}

@@ -34802,6 +34802,40 @@ components:
       required:
       - id
       - name
+    AuthUserWorkCenterMembership:
+      type: object
+      description: |-
+        Brief WorkCenter membership embedded in the auth-user payload — the
+        stations this user is eligible at. Drives the operator home's station-scope
+        combobox. See Documents/WORK_CENTER_DESIGN.md.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        work_center:
+          type: string
+          format: uuid
+          readOnly: true
+        work_center_name:
+          type: string
+          readOnly: true
+        work_center_code:
+          type: string
+          readOnly: true
+        work_center_kind:
+          type: string
+          readOnly: true
+        is_primary:
+          type: boolean
+          readOnly: true
+      required:
+      - id
+      - is_primary
+      - work_center
+      - work_center_code
+      - work_center_kind
+      - work_center_name
     BOM:
       type: object
       description: |-
@@ -56257,6 +56291,11 @@ components:
           items:
             $ref: '#/components/schemas/AuthUserTenantGroup'
           readOnly: true
+        work_center_memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthUserWorkCenterMembership'
+          readOnly: true
       required:
       - email
       - groups
@@ -56265,6 +56304,7 @@ components:
       - is_superuser
       - pk
       - username
+      - work_center_memberships
     TenantAwareUserDetailsRequest:
       type: object
       description: |-

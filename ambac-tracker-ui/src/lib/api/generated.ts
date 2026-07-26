@@ -12347,10 +12347,19 @@ export type TenantAwareUserDetails = {
   is_superuser: boolean;
   is_active: boolean;
   groups: Array<AuthUserTenantGroup>;
+  work_center_memberships: Array<AuthUserWorkCenterMembership>;
 };
 export type AuthUserTenantGroup = {
   id: string;
   name: string;
+};
+export type AuthUserWorkCenterMembership = {
+  id: string;
+  work_center: string;
+  work_center_name: string;
+  work_center_code: string;
+  work_center_kind: string;
+  is_primary: boolean;
 };
 export type TenantCreate = {
   /**
@@ -19912,6 +19921,14 @@ const AuthUserTenantGroup = z.object({
   id: z.string().uuid(),
   name: z.string(),
 });
+const AuthUserWorkCenterMembership = z.object({
+  id: z.string().uuid(),
+  work_center: z.string().uuid(),
+  work_center_name: z.string(),
+  work_center_code: z.string(),
+  work_center_kind: z.string(),
+  is_primary: z.boolean(),
+});
 const TenantAwareUserDetails = z.object({
   pk: z.number().int(),
   username: z
@@ -19925,6 +19942,7 @@ const TenantAwareUserDetails = z.object({
   is_superuser: z.boolean(),
   is_active: z.boolean(),
   groups: z.array(AuthUserTenantGroup),
+  work_center_memberships: z.array(AuthUserWorkCenterMembership),
 });
 const TenantAwareUserDetailsRequest = z.object({
   username: z
@@ -20761,6 +20779,7 @@ export const schemas = {
   ResendEmailVerificationRequest,
   VerifyEmailRequest,
   AuthUserTenantGroup,
+  AuthUserWorkCenterMembership,
   TenantAwareUserDetails,
   TenantAwareUserDetailsRequest,
   PatchedTenantAwareUserDetailsRequest,

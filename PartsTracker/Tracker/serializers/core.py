@@ -200,6 +200,18 @@ class AuthUserTenantGroupSerializer(serializers.Serializer):
     name = serializers.CharField(read_only=True)
 
 
+class AuthUserWorkCenterMembershipSerializer(serializers.Serializer):
+    """Brief WorkCenter membership embedded in the auth-user payload — the
+    stations this user is eligible at. Drives the operator home's station-scope
+    combobox. See Documents/WORK_CENTER_DESIGN.md."""
+    id = serializers.UUIDField(read_only=True)
+    work_center = serializers.UUIDField(read_only=True)
+    work_center_name = serializers.CharField(read_only=True)
+    work_center_code = serializers.CharField(read_only=True)
+    work_center_kind = serializers.CharField(read_only=True)
+    is_primary = serializers.BooleanField(read_only=True)
+
+
 class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
     """dj-rest-auth user-details payload + the fields the frontend needs.
 
@@ -216,13 +228,14 @@ class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
     is_superuser = serializers.BooleanField(read_only=True)
     is_active = serializers.BooleanField(read_only=True)
     groups = serializers.SerializerMethodField()
+    work_center_memberships = serializers.SerializerMethodField()
 
     class Meta(BaseUserDetailsSerializer.Meta):
         fields = BaseUserDetailsSerializer.Meta.fields + (
-            'is_staff', 'is_superuser', 'is_active', 'groups',
+            'is_staff', 'is_superuser', 'is_active', 'groups', 'work_center_memberships',
         )
         read_only_fields = BaseUserDetailsSerializer.Meta.read_only_fields + (
-            'is_staff', 'is_superuser', 'is_active', 'groups',
+            'is_staff', 'is_superuser', 'is_active', 'groups', 'work_center_memberships',
         )
 
     @extend_schema_field(AuthUserTenantGroupSerializer(many=True))
@@ -230,6 +243,39 @@ class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
         """Tenant-scoped groups (UserRole memberships), not Django auth groups."""
         tenant_groups = obj.get_tenant_groups() if hasattr(obj, 'get_tenant_groups') else []
         return [{'id': str(g.id), 'name': g.name} for g in tenant_groups]
+
+    @extend_schema_field(AuthUserWorkCenterMembershipSerializer(many=True))
+    def get_work_center_memberships(self, obj):
+        """The user's WorkCenter eligibility rows in the current tenant.
+        Powers the operator home's station-scope combobox (Phase 2 of
+        Documents/WORK_CENTER_DESIGN.md).
+
+        Tenant resolution: prefer the request's active tenant (the ContextVar
+        set by TenantMiddleware), else fall back to the user's home tenant.
+        The fallback matters because /auth/user/ is on TENANT_EXEMPT_PATHS —
+        the middleware doesn't set the ContextVar there, but the natural scope
+        for a /me-style endpoint is still the user's own tenant."""
+        from Tracker.utils.tenant_context import get_current_tenant_id
+        tenant_id = get_current_tenant_id() or getattr(obj, 'tenant_id', None)
+        if not tenant_id:
+            return []
+        memberships = (
+            obj.work_center_memberships
+            .filter(tenant_id=tenant_id, work_center__is_current_version=True)
+            .select_related('work_center')
+            .order_by('-is_primary', 'work_center__code')
+        )
+        return [
+            {
+                'id': str(m.id),
+                'work_center': str(m.work_center_id),
+                'work_center_name': m.work_center.name,
+                'work_center_code': m.work_center.code,
+                'work_center_kind': m.work_center.kind,
+                'is_primary': m.is_primary,
+            }
+            for m in memberships
+        ]
 
 
 class UserSelectSerializer(serializers.ModelSerializer):
