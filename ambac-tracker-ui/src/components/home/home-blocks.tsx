@@ -83,10 +83,29 @@ function rowsOf<T>(data: unknown): T[] {
 // Documents live there — the operator work surface, per design doc §8).
 // ---------------------------------------------------------------------------
 
-export function ScanBox({ autoFocus = true }: { autoFocus?: boolean } = {}) {
+/**
+ * ScanBox destinations:
+ *  - "work"    → /workorder/$id  (operator surface: Start Work + traveler)
+ *  - "control" → /workorder/$id/control  (lead/manager oversight page — the
+ *                 same page operators reach via the WO detail, but the
+ *                 lead/manager surface with per-part detail and traveler view.
+ *                 Non-doers scan to look up, not to run work.)
+ */
+export function ScanBox({
+    autoFocus = true,
+    dest = "work",
+}: { autoFocus?: boolean; dest?: "work" | "control" } = {}) {
     const navigate = useNavigate();
     const [code, setCode] = useState("");
     const [busy, setBusy] = useState(false);
+
+    const goToWo = (workOrderId: string) => {
+        if (dest === "control") {
+            navigate({ to: "/workorder/$workOrderId/control", params: { workOrderId } });
+        } else {
+            navigate({ to: "/workorder/$workOrderId", params: { workOrderId } });
+        }
+    };
 
     const resolve = async () => {
         const q = code.trim();
@@ -100,7 +119,7 @@ export function ScanBox({ autoFocus = true }: { autoFocus?: boolean } = {}) {
             const wo = (wos.results ?? []).find((w) => (w.ERP_id ?? "").toLowerCase() === q.toLowerCase())
                 ?? ((wos.results?.length ?? 0) === 1 ? wos.results![0] : undefined);
             if (wo) {
-                navigate({ to: "/workorder/$workOrderId", params: { workOrderId: String(wo.id) } });
+                goToWo(String(wo.id));
                 return;
             }
             const parts = (await api.api_Parts_list({ queries: { search: q, limit: 5 } } as never)) as {
@@ -109,7 +128,7 @@ export function ScanBox({ autoFocus = true }: { autoFocus?: boolean } = {}) {
             const part = (parts.results ?? []).find((p) => (p.ERP_id ?? "").toLowerCase() === q.toLowerCase())
                 ?? ((parts.results?.length ?? 0) === 1 ? parts.results![0] : undefined);
             if (part?.work_order) {
-                navigate({ to: "/workorder/$workOrderId", params: { workOrderId: String(part.work_order) } });
+                goToWo(String(part.work_order));
                 return;
             }
             toast.error(`Nothing found for "${q}"`, {
@@ -123,6 +142,10 @@ export function ScanBox({ autoFocus = true }: { autoFocus?: boolean } = {}) {
         }
     };
 
+    const placeholder = dest === "control"
+        ? "Look up a work order or part…"
+        : "Scan or type a work order / part number…";
+
     return (
         <div className="flex items-center gap-2 rounded-lg border bg-card p-3">
             <ScanLine className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -130,12 +153,12 @@ export function ScanBox({ autoFocus = true }: { autoFocus?: boolean } = {}) {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") void resolve(); }}
-                placeholder="Scan or type a work order / part number…"
+                placeholder={placeholder}
                 className="border-0 shadow-none focus-visible:ring-0 text-base"
                 autoFocus={autoFocus}
             />
             <Button onClick={() => void resolve()} disabled={busy || !code.trim()}>
-                {busy ? "Looking up…" : "Go"}
+                {busy ? "Looking up…" : dest === "control" ? "Look up" : "Go"}
             </Button>
         </div>
     );
@@ -321,6 +344,11 @@ function MyQualityActionsBlock({ user }: { user: AuthUser }) {
     const overdue = openTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date()).length;
     const dispositions = dispResp?.results ?? [];
     const total = approvals.length + openTasks.length + dispositions.length;
+
+    // Self-hide when there's nothing assigned — the sidebar /inbox and the
+    // notifications bell already cover the "nothing to do" state; a dead-zero
+    // triple-tile card just adds noise to every landing.
+    if (total === 0) return null;
 
     return (
         <Card>
@@ -1131,7 +1159,18 @@ const EVERYONE = [
 ];
 
 const BLOCKS: BlockDef[] = [
-    { id: "scan", groups: EVERYONE, Component: () => <ScanBox /> },
+    {
+        id: "scan",
+        groups: EVERYONE,
+        // Doers (Operator/Shift Lead) scan to run work → land on the WO detail
+        // (Start Work + traveler). Everyone else scans to look up → land on
+        // /control (per-part detail, traveler view, no run action).
+        Component: ({ user }) => {
+            const names = new Set((user.groups ?? []).map((g) => g.name));
+            const isDoer = names.has("Operator") || names.has("Shift Lead");
+            return <ScanBox dest={isDoer ? "work" : "control"} />;
+        },
+    },
     { id: "needs-attention", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
     { id: "quality-kpis", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <QualityKpisBlock /> },
     { id: "competency-coverage", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <CompetencyCoverageBlock /> },
@@ -1151,10 +1190,10 @@ const BLOCKS: BlockDef[] = [
     { id: "ncr-aging", groups: ["QA Manager", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
     { id: "capa-status", groups: ["QA Manager", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
     { id: "supplier-quals-expiring", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
-    { id: "training-strip", groups: ["QA Manager", "Production Manager", "Shift Lead", "Document Controller", "Tenant Admin"], Component: () => <TrainingStripBlock /> },
-    { id: "approvals-in-flight", groups: ["Document Controller", "QA Manager", "Tenant Admin"], Component: () => <ApprovalsInFlightBlock /> },
+    { id: "training-strip", groups: ["QA Manager", "Shift Lead", "Document Controller", "Tenant Admin"], Component: () => <TrainingStripBlock /> },
+    { id: "approvals-in-flight", groups: ["Document Controller", "QA Manager", "Engineering", "Tenant Admin"], Component: () => <ApprovalsInFlightBlock /> },
     { id: "doc-review-due", groups: ["Document Controller", "QA Manager", "Tenant Admin"], Component: () => <DocReviewDueBlock /> },
-    { id: "documents", groups: ["Document Controller", "Tenant Admin"], Component: () => <DocumentsBlock /> },
+    { id: "documents", groups: ["Document Controller", "Engineering", "Tenant Admin"], Component: () => <DocumentsBlock /> },
     { id: "change-control", groups: ["Engineering", "Tenant Admin"], Component: () => <ChangeControlBlock /> },
     { id: "available-to-claim", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <AvailableToClaimBlock /> },
     { id: "quality-actions", groups: EVERYONE, Component: ({ user }) => <MyQualityActionsBlock user={user} /> },
@@ -1168,11 +1207,11 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "inspection", "doc-review-due", "quality-actions", "scan"] },
-    { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "training-strip", "available-to-claim", "quality-actions", "scan"] },
-    { group: "Shift Lead", order: ["scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "inspection", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
-    { group: "Document Controller", order: ["doc-review-due", "approvals-in-flight", "documents", "training-strip", "quality-actions", "scan"] },
-    { group: "Engineering", order: ["change-control", "quality-actions", "scan"] },
+    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
+    { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "available-to-claim", "quality-actions", "scan"] },
+    { group: "Shift Lead", order: ["scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
+    { group: "Document Controller", order: ["doc-review-due", "approvals-in-flight", "documents", "training-strip", "scan"] },
+    { group: "Engineering", order: ["change-control", "approvals-in-flight", "documents", "scan"] },
     { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
