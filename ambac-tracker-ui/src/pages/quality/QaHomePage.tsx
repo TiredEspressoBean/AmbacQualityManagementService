@@ -25,6 +25,7 @@ import {
     PauseCircle, Ruler, Siren, Truck,
 } from "lucide-react";
 import { useAuthUser, type AuthUser } from "@/hooks/useAuthUser";
+import { PersonaSwitcher } from "@/components/home/PersonaSwitcher";
 import { useAcknowledgeFpi } from "@/hooks/useAcknowledgeFpi";
 import { useClaimApproval } from "@/hooks/useClaimApproval";
 import { useClaimableApprovals } from "@/hooks/useClaimableApprovals";
@@ -412,6 +413,7 @@ export function QaHomePage({ user }: { user: AuthUser }) {
                 <h1 className="min-w-0 flex-1 truncate text-2xl font-semibold tracking-tight">
                     Welcome back{user.first_name ? `, ${user.first_name}` : ""}
                 </h1>
+                <PersonaSwitcher user={user} />
                 <Link to="/production/incoming">
                     <Button variant="outline">
                         Incoming queue <ArrowRight className="ml-1 h-4 w-4" />

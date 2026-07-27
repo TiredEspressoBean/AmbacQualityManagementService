@@ -1,12 +1,10 @@
 import { useAuthUser } from "@/hooks/useAuthUser";
 import Login from "@/components/auth/Login";
 import { resolveHomeBlocks } from "@/components/home/home-blocks";
+import { PersonaSwitcher } from "@/components/home/PersonaSwitcher";
 import { useHomePersona } from "@/hooks/useHomePersona";
 import { QaHomePage } from "@/pages/quality/QaHomePage";
 import { OperatorHomePage } from "@/pages/operator/OperatorHomePage";
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 
 export default function Home() {
     const { data: user, isLoading } = useAuthUser();
@@ -28,7 +26,7 @@ export default function Home() {
 }
 
 function HomeForUser({ user }: { user: NonNullable<ReturnType<typeof useAuthUser>["data"]> }) {
-    const { persona, candidates, choose, canSwitch } = useHomePersona(user);
+    const { persona } = useHomePersona(user);
 
     // QA Inspector lands on the inspection task inbox — a full surface, not a
     // block stack (design doc §6: the inspector landing is a task inbox). The
@@ -77,18 +75,7 @@ function HomeForUser({ user }: { user: NonNullable<ReturnType<typeof useAuthUser
                         {persona ? " · " : ""}Here's what needs you right now.
                     </p>
                 </div>
-                {canSwitch && persona && (
-                    <Select value={persona} onValueChange={choose}>
-                        <SelectTrigger className="h-8 w-[180px] text-xs" aria-label="Switch landing">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {candidates.map((p) => (
-                                <SelectItem key={p} value={p} className="text-sm">{p}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                )}
+                <PersonaSwitcher user={user} />
             </div>
             {blocks.map((b) => (
                 <b.Component key={b.id} user={user} />

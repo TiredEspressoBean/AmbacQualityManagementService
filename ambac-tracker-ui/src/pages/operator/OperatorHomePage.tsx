@@ -44,6 +44,7 @@ import {
 
 import { api } from "@/lib/api/generated";
 import { useAuthUser, type AuthUser } from "@/hooks/useAuthUser";
+import { PersonaSwitcher } from "@/components/home/PersonaSwitcher";
 import { ScanBox } from "@/components/home/home-blocks";
 import { useNotificationFeed, useMarkNotificationRead } from "@/hooks/notificationFeed";
 import { useActiveShiftNotes, useAcknowledgeShiftNote, type ShiftNote } from "@/hooks/shiftNotes";
@@ -302,6 +303,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                 <h1 className="min-w-0 flex-1 truncate text-2xl font-semibold tracking-tight">
                     {greeting}{user.first_name ? `, ${user.first_name}` : ""}
                 </h1>
+                <PersonaSwitcher user={user} />
+
                 {/* Station scope — still Preview (needs the queue aggregate's per-scope counts). */}
                 {/* Station scope — LIVE: driven by the user's WorkCenter memberships
                     (see Documents/WORK_CENTER_DESIGN.md Phase 2). Picked station
