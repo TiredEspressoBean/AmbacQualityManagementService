@@ -434,14 +434,20 @@ function StatTile({
     );
 }
 
-/** Even-fill row of stat tiles: flex-1 tiles stretch to fill the last row, so a
- *  count that doesn't divide the grid never leaves an orphaned empty cell. */
+/** Reference-strip block: a compact row of stat tiles wrapped in the same Card
+ *  chrome as an act-now block so pairs of halves match visually in the landing
+ *  grid. The small-caps title keeps the "quiet reference" feel — the Card
+ *  border anchors the label so it isn't an orphaned floating strip next to a
+ *  full-height Card in the paired cell. flex-1 tiles stretch to fill the last
+ *  row so a count that doesn't divide the grid never leaves an orphaned cell. */
 function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div>
-            <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
-            <div className="flex flex-wrap gap-2">{children}</div>
-        </div>
+        <Card>
+            <CardContent className="space-y-1.5 py-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
+                <div className="flex flex-wrap gap-2">{children}</div>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -1148,6 +1154,12 @@ type BlockDef = {
     id: string;
     /** Tenant-group names (GROUP_PRESETS display names) this block serves. */
     groups: string[];
+    /** Preferred column span in the 2-col landing grid. Defaults to "full".
+     *  Compact reference strips + small stat cards go "half" so they pair up on
+     *  wide screens; act-now worklists that show 5+ rows stay "full" for room.
+     *  On narrow screens (< md) the grid collapses to one column and both spans
+     *  render full-width. */
+    size?: "full" | "half";
     Component: (props: { user: AuthUser }) => React.ReactNode;
 };
 
@@ -1171,11 +1183,14 @@ const BLOCKS: BlockDef[] = [
             return <ScanBox dest={isDoer ? "work" : "control"} />;
         },
     },
-    { id: "needs-attention", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
-    { id: "quality-kpis", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <QualityKpisBlock /> },
-    { id: "competency-coverage", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <CompetencyCoverageBlock /> },
+    // Triage banner — wide, 4 tiles.
+    { id: "needs-attention", size: "full", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
+    // KPI strip — 5 stat tiles; wants the room.
+    { id: "quality-kpis", size: "full", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <QualityKpisBlock /> },
+    { id: "competency-coverage", size: "half", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <CompetencyCoverageBlock /> },
     {
         id: "wo-queue",
+        size: "full",
         groups: ["Operator", "Shift Lead", "Production Manager", "Tenant Admin"],
         Component: ({ user }) => {
             const names = new Set((user.groups ?? []).map((g) => g.name));
@@ -1183,20 +1198,22 @@ const BLOCKS: BlockDef[] = [
             return <WorkOrderQueue variant={isLead ? "lead" : "operator"} />;
         },
     },
-    { id: "inspection", groups: ["QA Inspector", "Shift Lead", "QA Manager", "Tenant Admin"], Component: () => <InspectionQueueBlock /> },
-    { id: "production-osp", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <OutsideProcessingBlock /> },
-    { id: "wos-going-late", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <JobsGoingLateBlock /> },
-    { id: "wos-on-hold", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <WosOnHoldBlock /> },
-    { id: "ncr-aging", groups: ["QA Manager", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
-    { id: "capa-status", groups: ["QA Manager", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
-    { id: "supplier-quals-expiring", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
-    { id: "training-strip", groups: ["QA Manager", "Shift Lead", "Document Controller", "Tenant Admin"], Component: () => <TrainingStripBlock /> },
-    { id: "approvals-in-flight", groups: ["Document Controller", "QA Manager", "Engineering", "Tenant Admin"], Component: () => <ApprovalsInFlightBlock /> },
-    { id: "doc-review-due", groups: ["Document Controller", "QA Manager", "Tenant Admin"], Component: () => <DocReviewDueBlock /> },
-    { id: "documents", groups: ["Document Controller", "Engineering", "Tenant Admin"], Component: () => <DocumentsBlock /> },
-    { id: "change-control", groups: ["Engineering", "Tenant Admin"], Component: () => <ChangeControlBlock /> },
-    { id: "available-to-claim", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <AvailableToClaimBlock /> },
-    { id: "quality-actions", groups: EVERYONE, Component: ({ user }) => <MyQualityActionsBlock user={user} /> },
+    { id: "inspection", size: "full", groups: ["QA Inspector", "Shift Lead", "QA Manager", "Tenant Admin"], Component: () => <InspectionQueueBlock /> },
+    { id: "production-osp", size: "half", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <OutsideProcessingBlock /> },
+    // Worklists with 5+ rows — full width for readability.
+    { id: "wos-going-late", size: "full", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <JobsGoingLateBlock /> },
+    { id: "wos-on-hold", size: "full", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <WosOnHoldBlock /> },
+    { id: "ncr-aging", size: "half", groups: ["QA Manager", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
+    { id: "capa-status", size: "half", groups: ["QA Manager", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
+    { id: "supplier-quals-expiring", size: "half", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
+    { id: "training-strip", size: "half", groups: ["QA Manager", "Shift Lead", "Document Controller", "Tenant Admin"], Component: () => <TrainingStripBlock /> },
+    { id: "approvals-in-flight", size: "half", groups: ["Document Controller", "QA Manager", "Engineering", "Tenant Admin"], Component: () => <ApprovalsInFlightBlock /> },
+    { id: "doc-review-due", size: "half", groups: ["Document Controller", "QA Manager", "Tenant Admin"], Component: () => <DocReviewDueBlock /> },
+    { id: "documents", size: "half", groups: ["Document Controller", "Engineering", "Tenant Admin"], Component: () => <DocumentsBlock /> },
+    // PCR/PCO/PCN pipeline is visually wide — three columns of change artifacts.
+    { id: "change-control", size: "full", groups: ["Engineering", "Tenant Admin"], Component: () => <ChangeControlBlock /> },
+    { id: "available-to-claim", size: "half", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <AvailableToClaimBlock /> },
+    { id: "quality-actions", size: "half", groups: EVERYONE, Component: ({ user }) => <MyQualityActionsBlock user={user} /> },
 ];
 
 /** Per-persona block ordering — the first matched persona wins, so the top

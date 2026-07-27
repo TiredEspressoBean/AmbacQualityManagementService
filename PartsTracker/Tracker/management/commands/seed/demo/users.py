@@ -10,6 +10,8 @@ Users:
     - mike.ops@demo.ambac.com (Mike Rodriguez) - Operator
     - jennifer.mgr@demo.ambac.com (Jennifer Walsh) - Production Manager
     - dave.wilson@demo.ambac.com (Dave Wilson) - Operator (expired training demo)
+    - casey.dual@demo.ambac.com (Casey Cross) - QA Inspector + Shift Lead
+    - lisa.docs@demo.ambac.com (Lisa Park) - Document Controller
     - tom.bradley@midwestfleet.com (Tom Bradley) - Customer Portal
 """
 
@@ -134,6 +136,27 @@ DEMO_USERS = [
         'export_control_verified': True,
         'purpose': 'Training compliance demo - EXPIRED certification blocks work',
     },
+    # === MULTI-ROLE (QA Inspector + Shift Lead) ===
+    # Tests the landing persona picker — a real-world overlap: a Shift Lead who
+    # also inspects. Lands on QA Inspector by default (earlier in PERSONA_ORDER)
+    # with the header switcher exposed for Shift Lead.
+    {
+        'email': 'casey.dual@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Casey',
+        'last_name': 'Cross',
+        'roles': ['QA Inspector', 'Shift Lead'],
+        'user_type': 'INTERNAL',
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'Multi-role persona-picker demo - Inspector by day, Shift Lead when covering',
+    },
     # === DOCUMENT CONTROLLER ===
     {
         'email': 'lisa.docs@demo.ambac.com',
@@ -211,22 +234,23 @@ class DemoUserSeeder(BaseSeeder):
             user = self._create_user(user_data, companies)
             result['by_email'][user.email] = user
 
-            if user_data['role'] == 'Tenant Admin':
+            roles = set(user_data.get('roles') or [user_data['role']])
+            if 'Tenant Admin' in roles:
                 result['admin'] = user
                 result['employees'].append(user)
                 result['managers'].append(user)
-            elif user_data['role'] == 'Customer':
+            elif 'Customer' in roles:
                 result['customers'].append(user)
             else:
                 result['employees'].append(user)
 
-                if user_data['role'] in ('QA Manager', 'QA Inspector'):
+                if roles & {'QA Manager', 'QA Inspector'}:
                     result['qa_staff'].append(user)
-                if user_data['role'] in ('QA Manager',):
+                if 'QA Manager' in roles:
                     result['qa_manager'] = user
-                if user_data['role'] in ('Production Manager',):
+                if 'Production Manager' in roles:
                     result['managers'].append(user)
-                if user_data['role'] in ('Document Controller',):
+                if 'Document Controller' in roles:
                     result['doc_controller'] = user
 
         self.log(f"  Created {len(DEMO_USERS)} demo users")
@@ -268,12 +292,16 @@ class DemoUserSeeder(BaseSeeder):
             user.set_password(user_data['password'])
             user.save(update_fields=['password'])
 
-        # Assign to TenantGroup using update_or_create
-        self._assign_to_group(user, user_data['role'])
+        # Assign to TenantGroup(s) — support `role` (single) or `roles` (list)
+        # for multi-role users (e.g., the persona-picker demo user).
+        role_names = user_data.get('roles') or [user_data['role']]
+        for role_name in role_names:
+            self._assign_to_group(user, role_name)
 
         action = "Created" if created else "Updated"
         if self.verbose:
-            self.log(f"    {action}: {user.first_name} {user.last_name} ({user.email}) - {user_data['role']}")
+            roles_str = ", ".join(role_names)
+            self.log(f"    {action}: {user.first_name} {user.last_name} ({user.email}) - {roles_str}")
 
         return user
 
@@ -285,8 +313,10 @@ class DemoUserSeeder(BaseSeeder):
             'QA Manager': 'QA Manager',
             'QA Inspector': 'QA Inspector',
             'Production Manager': 'Production Manager',
+            'Shift Lead': 'Shift Lead',
             'Operator': 'Operator',
             'Document Controller': 'Document Controller',
+            'Engineering': 'Engineering',
             'Customer': 'Customer',
         }
 

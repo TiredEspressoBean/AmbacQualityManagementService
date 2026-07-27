@@ -169,6 +169,7 @@ class Command(BaseCommand):
         self.stdout.write("    - jennifer.mgr@demo.ambac.com (Jennifer Walsh - Production Manager)")
         self.stdout.write("    - mike.ops@demo.ambac.com (Mike Rodriguez - Operator)")
         self.stdout.write("    - dave.wilson@demo.ambac.com (Dave Wilson - Operator, expired training)")
+        self.stdout.write("    - casey.dual@demo.ambac.com (Casey Cross - QA Inspector + Shift Lead)")
         self.stdout.write("    - lisa.docs@demo.ambac.com (Lisa Park - Document Controller)")
         self.stdout.write("    - tom.bradley@midwestfleet.com (Tom Bradley - Customer)")
         self.stdout.write("\n  Demo Companies:")
@@ -358,6 +359,7 @@ class Command(BaseCommand):
                 'jennifer.mgr@demo.ambac.com',
                 'mike.ops@demo.ambac.com',
                 'dave.wilson@demo.ambac.com',
+                'casey.dual@demo.ambac.com',
                 'lisa.docs@demo.ambac.com',
                 'tom.bradley@midwestfleet.com',
             ]

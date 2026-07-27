@@ -408,7 +408,7 @@ export function QaHomeRoute() {
 
 export function QaHomePage({ user }: { user: AuthUser }) {
     return (
-        <div className="mx-auto max-w-4xl space-y-3 p-4">
+        <div className="mx-auto max-w-5xl space-y-3 p-4">
             <div className="flex items-center gap-3">
                 <h1 className="min-w-0 flex-1 truncate text-2xl font-semibold tracking-tight">
                     Welcome back{user.first_name ? `, ${user.first_name}` : ""}

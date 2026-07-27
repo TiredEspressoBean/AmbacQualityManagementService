@@ -62,9 +62,14 @@ function HomeForUser({ user }: { user: NonNullable<ReturnType<typeof useAuthUser
         );
     }
 
-    // Role-based landing: a stack of task-first blocks, primary job on top.
+    // Role-based landing: a composable 2-col grid on md+. Each BlockDef
+    // declares `size: "full" | "half"` — full blocks span both columns, halves
+    // pair up in a row. Order is preserved (each block owns its slot in the
+    // persona.order sequence); halves that come after a full simply start a
+    // new row. On narrow viewports the grid collapses to a single column and
+    // all blocks render full-width.
     return (
-        <div className="mx-auto max-w-3xl space-y-4 p-4">
+        <div className="mx-auto max-w-5xl space-y-4 p-4">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">
@@ -77,9 +82,20 @@ function HomeForUser({ user }: { user: NonNullable<ReturnType<typeof useAuthUser
                 </div>
                 <PersonaSwitcher user={user} />
             </div>
-            {blocks.map((b) => (
-                <b.Component key={b.id} user={user} />
-            ))}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {blocks.map((b) => (
+                    // `empty:hidden` collapses the wrapper when the block
+                    // returns null (self-hiding at zero). Without it, the
+                    // wrapper still occupies a grid cell and pushes the next
+                    // half into a lone row.
+                    <div
+                        key={b.id}
+                        className={`empty:hidden ${b.size === "half" ? "" : "md:col-span-2"}`}
+                    >
+                        <b.Component user={user} />
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
