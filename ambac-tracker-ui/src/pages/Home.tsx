@@ -1,8 +1,12 @@
 import { useAuthUser } from "@/hooks/useAuthUser";
 import Login from "@/components/auth/Login";
-import { primaryPersona, resolveHomeBlocks } from "@/components/home/home-blocks";
+import { resolveHomeBlocks } from "@/components/home/home-blocks";
+import { useHomePersona } from "@/hooks/useHomePersona";
 import { QaHomePage } from "@/pages/quality/QaHomePage";
 import { OperatorHomePage } from "@/pages/operator/OperatorHomePage";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 export default function Home() {
     const { data: user, isLoading } = useAuthUser();
@@ -20,11 +24,16 @@ export default function Home() {
         return <Login />;
     }
 
+    return <HomeForUser user={user} />;
+}
+
+function HomeForUser({ user }: { user: NonNullable<ReturnType<typeof useAuthUser>["data"]> }) {
+    const { persona, candidates, choose, canSwitch } = useHomePersona(user);
+
     // QA Inspector lands on the inspection task inbox — a full surface, not a
     // block stack (design doc §6: the inspector landing is a task inbox). The
     // QA Manager is an OVERSIGHT role, not a doer — it gets the block stack
     // (triage + KPIs), NOT the inspector's queue.
-    const persona = primaryPersona(user);
     if (persona === "QA Inspector") {
         return <QaHomePage user={user} />;
     }
@@ -36,7 +45,7 @@ export default function Home() {
         return <OperatorHomePage user={user} />;
     }
 
-    const blocks = resolveHomeBlocks(user);
+    const blocks = resolveHomeBlocks(user, persona);
 
     // No role-matched blocks (auditor, engineering, customer, …): keep the
     // simple welcome — those roles navigate by sidebar, not a task queue.
@@ -58,14 +67,28 @@ export default function Home() {
     // Role-based landing: a stack of task-first blocks, primary job on top.
     return (
         <div className="mx-auto max-w-3xl space-y-4 p-4">
-            <div>
-                <h1 className="text-2xl font-semibold tracking-tight">
-                    Welcome back{user.first_name ? `, ${user.first_name}` : ""}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                    {persona ? <span className="font-medium text-foreground">{persona}</span> : null}
-                    {persona ? " · " : ""}Here's what needs you right now.
-                </p>
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                        Welcome back{user.first_name ? `, ${user.first_name}` : ""}
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        {persona ? <span className="font-medium text-foreground">{persona}</span> : null}
+                        {persona ? " · " : ""}Here's what needs you right now.
+                    </p>
+                </div>
+                {canSwitch && persona && (
+                    <Select value={persona} onValueChange={choose}>
+                        <SelectTrigger className="h-8 w-[180px] text-xs" aria-label="Switch landing">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {candidates.map((p) => (
+                                <SelectItem key={p} value={p} className="text-sm">{p}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
             </div>
             {blocks.map((b) => (
                 <b.Component key={b.id} user={user} />

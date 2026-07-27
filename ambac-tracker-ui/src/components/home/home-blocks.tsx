@@ -1223,7 +1223,15 @@ export function primaryPersona(user: AuthUser): string | null {
     return PERSONA_ORDER.find((p) => names.has(p.group))?.group ?? null;
 }
 
-export function resolveHomeBlocks(user: AuthUser): BlockDef[] {
+/** Every persona the user is eligible for, in PERSONA_ORDER sequence. Powers
+ *  the header persona picker for users with multiple group memberships (a
+ *  QA-Manager-also-Engineer chooses which landing to see). */
+export function candidatePersonas(user: AuthUser): string[] {
+    const names = new Set((user.groups ?? []).map((g) => g.name));
+    return PERSONA_ORDER.filter((p) => names.has(p.group)).map((p) => p.group);
+}
+
+export function resolveHomeBlocks(user: AuthUser, overridePersona?: string | null): BlockDef[] {
     // auth/user returns tenant-scoped groups (UserRole memberships) in `groups`
     // (TenantAwareUserDetailsSerializer) — the only group field on the payload.
     const names = new Set((user.groups ?? []).map((g) => g.name));
@@ -1234,8 +1242,22 @@ export function resolveHomeBlocks(user: AuthUser): BlockDef[] {
         ? [...BLOCKS]
         : BLOCKS.filter((b) => b.groups.some((g) => names.has(g)));
 
-    const persona = PERSONA_ORDER.find((p) => names.has(p.group));
-    if (persona) {
+    // Override wins if the user picked one they're eligible for; otherwise
+    // fall back to the deterministic PERSONA_ORDER match.
+    const persona = (overridePersona && names.has(overridePersona))
+        ? PERSONA_ORDER.find((p) => p.group === overridePersona)
+        : PERSONA_ORDER.find((p) => names.has(p.group));
+    if (persona && !seesAll) {
+        // persona.order is authoritative: filter to only those blocks AND order
+        // by their position in the list. A block passing its group gate but
+        // absent from persona.order is intentionally suppressed for that role.
+        const rank = new Map(persona.order.map((id, i) => [id, i]));
+        visible = visible
+            .filter((b) => rank.has(b.id))
+            .sort((a, b) => (rank.get(a.id)! - rank.get(b.id)!));
+    } else if (persona) {
+        // Tenant Admin / staff: sort by persona.order but keep unlisted blocks
+        // at the tail (they get to see everything).
         const rank = (id: string) => {
             const i = persona.order.indexOf(id);
             return i === -1 ? persona.order.length : i;
