@@ -30,12 +30,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-    AlertTriangle, ArrowRight, CalendarClock, CheckSquare, ClipboardCheck, FileCheck,
-    FileText, FileWarning, Gauge, GitBranch, Inbox, Megaphone, PackageSearch, ScanLine,
-    Truck, Wrench,
+    AlertTriangle, ArrowRight, Building2, CalendarClock, CheckSquare, ClipboardCheck,
+    Clock, FileCheck, FileText, FileWarning, Gauge, GitBranch, GraduationCap, Hourglass,
+    Inbox, PackageSearch, PauseCircle, ScanLine, TimerReset, Truck, Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AuthUser } from "@/hooks/useAuthUser";
+import type { Schema } from "@/lib/api/types";
 import { AttentionList } from "@/components/analytics";
 import { useMyCapaTasks } from "@/hooks/useMyCapaTasks";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
@@ -46,6 +47,11 @@ import { useClaimableApprovals } from "@/hooks/useClaimableApprovals";
 import { useClaimApproval } from "@/hooks/useClaimApproval";
 import { useDocumentStats } from "@/hooks/useDocumentStats";
 import { useTrainingMatrix } from "@/hooks/useTrainingMatrix";
+import { useNcrAging } from "@/hooks/useNcrAging";
+import { useCapaStats } from "@/hooks/useCapaStats";
+import { useTrainingStats } from "@/hooks/useTrainingStats";
+import { useApprovalRequests } from "@/hooks/useApprovalRequests";
+import { useListSupplierQualifications } from "@/hooks/useSupplierQualifications";
 import {
     useProcessChangeRequests, useProcessChangeOrders, useProcessChangeNotices,
 } from "@/hooks/useProcessChangeArtifacts";
@@ -58,6 +64,16 @@ function countRows(data: unknown): number {
     if (Array.isArray(data)) return data.length;
     const r = data as { count?: number; results?: unknown[] } | undefined;
     return r?.count ?? r?.results?.length ?? 0;
+}
+
+/** Normalize a list endpoint's envelope to its row array — handles a bare array
+ *  or a paginated `{results}`. Used where the generated type understates the
+ *  shape (untyped change-control hooks; the `many=True` due-for-review action
+ *  that spectacular mistypes as a single object). */
+function rowsOf<T>(data: unknown): T[] {
+    if (Array.isArray(data)) return data as T[];
+    const r = data as { results?: T[] } | undefined;
+    return r?.results ?? [];
 }
 
 // ---------------------------------------------------------------------------
@@ -592,17 +608,124 @@ function DocumentsBlock() {
 }
 
 // ---------------------------------------------------------------------------
-// Change control (Engineering) — the PCR/PCO/PCN pipeline, each a link into
-// the change-control workspace. Counts only for now (the artifact hooks return
-// an untyped envelope); row detail lands when the list surface is typed.
+// Periodic review due (Document Controller) — the controlled-doc review
+// worklist. Research: the most-cited controller widget is a LIST of documents
+// whose periodic review is due (title + version), not a count.
 // ---------------------------------------------------------------------------
+
+type DocRow = Pick<Schema<"Documents">, "id" | "file_name" | "version" | "review_date">;
+
+function DocReviewDueBlock() {
+    const { data } = useQuery({
+        queryKey: ["home", "documents", "due-for-review"],
+        queryFn: () => api.api_Documents_due_for_review_list({ queries: { limit: 10 } } as never),
+        staleTime: 60_000,
+    });
+    const docs = rowsOf<DocRow>(data);
+    if (docs.length === 0) return null;
+
+    const today = new Date().toISOString().slice(0, 10);
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                    Periodic review due
+                    <Badge variant="secondary" className="ml-1">{docs.length}</Badge>
+                    <Link to="/documents/list" className="ml-auto">
+                        <Button size="sm" variant="ghost">All documents <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {docs.slice(0, 6).map((d) => {
+                    const overdue = !!d.review_date && d.review_date < today;
+                    return (
+                        <Link
+                            key={d.id} to="/documents/$id" params={{ id: String(d.id) }}
+                            className="flex items-center gap-3 rounded-md border p-2.5 transition-colors hover:bg-accent"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium">{d.file_name}</div>
+                                <div className="truncate text-xs text-muted-foreground">
+                                    {d.version != null ? `v${d.version}` : ""}
+                                    {d.review_date ? `${d.version != null ? " · " : ""}review due ${d.review_date}` : ""}
+                                </div>
+                            </div>
+                            {overdue && <Badge variant="destructive" className="shrink-0">Overdue</Badge>}
+                        </Link>
+                    );
+                })}
+                {docs.length > 6 && (
+                    <p className="text-xs text-muted-foreground">+{docs.length - 6} more due for review.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Change control (Engineering) — the PCR/PCO/PCN pipeline as a WORKLIST of
+// in-flight changes (research: the change home is a status-grouped pipeline,
+// not counters). Each type has its own status vocabulary, so we filter each to
+// its non-terminal states and list them with a kind + status badge, deep-linked
+// to the artifact's detail page.
+// ---------------------------------------------------------------------------
+
+type PCR = Schema<"ProcessChangeRequest">;
+type PCO = Schema<"ProcessChangeOrder">;
+type PCN = Schema<"ProcessChangeNotice">;
+
+// Terminal (settled) states per type — everything else is "in flight".
+const PCR_TERMINAL = new Set(["APPROVED", "REJECTED", "CANCELLED"]);
+const PCO_TERMINAL = new Set(["IMPLEMENTED", "CANCELLED"]);
+const PCN_TERMINAL = new Set(["CLOSED"]);
+
+const KIND_TONE: Record<string, string> = {
+    PCR: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+    PCO: "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300",
+    PCN: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+};
+
+type ChangeItem = { id: string; kind: "PCR" | "PCO" | "PCN"; number: string; label: string; status: string };
+
+function ChangeItemRow({ item }: { item: ChangeItem }) {
+    const cls = "flex items-center gap-2 rounded-md border p-2.5 transition-colors hover:bg-accent";
+    const inner = (
+        <>
+            <Badge className={`shrink-0 ${KIND_TONE[item.kind]}`}>{item.kind}</Badge>
+            <div className="min-w-0 flex-1 truncate text-sm">
+                <span className="font-mono">{item.number}</span>
+                {item.label ? <span className="text-muted-foreground"> · {item.label}</span> : null}
+            </div>
+            <Badge variant="outline" className="shrink-0 capitalize">{item.status.toLowerCase().replace(/_/g, " ")}</Badge>
+        </>
+    );
+    if (item.kind === "PCR") return <Link to="/quality/change-control/pcrs/$id" params={{ id: item.id }} className={cls}>{inner}</Link>;
+    if (item.kind === "PCO") return <Link to="/quality/change-control/pcos/$id" params={{ id: item.id }} className={cls}>{inner}</Link>;
+    return <Link to="/quality/change-control/pcns/$id" params={{ id: item.id }} className={cls}>{inner}</Link>;
+}
 
 function ChangeControlBlock() {
     const { data: pcrs } = useProcessChangeRequests();
     const { data: pcos } = useProcessChangeOrders();
     const { data: pcns } = useProcessChangeNotices();
-    const r = countRows(pcrs), o = countRows(pcos), n = countRows(pcns);
-    if (r + o + n === 0) {
+
+    const items = useMemo<ChangeItem[]>(() => {
+        const out: ChangeItem[] = [];
+        for (const p of rowsOf<PCR>(pcrs)) {
+            if (!PCR_TERMINAL.has(p.status)) out.push({ id: p.id, kind: "PCR", number: p.artifact_number, label: p.title ?? "", status: p.status });
+        }
+        for (const p of rowsOf<PCO>(pcos)) {
+            if (!PCO_TERMINAL.has(p.status)) out.push({ id: p.id, kind: "PCO", number: p.artifact_number, label: p.request_title || p.target_process_name || "", status: p.status });
+        }
+        for (const p of rowsOf<PCN>(pcns)) {
+            if (!PCN_TERMINAL.has(p.status)) out.push({ id: p.id, kind: "PCN", number: p.artifact_number, label: p.target_process_name ?? "", status: p.status });
+        }
+        return out;
+    }, [pcrs, pcos, pcns]);
+
+    if (items.length === 0) {
         return (
             <EmptyBlock
                 icon={GitBranch} title="Change control"
@@ -611,12 +734,26 @@ function ChangeControlBlock() {
             />
         );
     }
+
     return (
-        <StatSection title="Change control">
-            <StatTile label="Change requests" value={r} icon={GitBranch} link="/quality/change-control" />
-            <StatTile label="Change orders" value={o} icon={FileText} link="/quality/change-control" />
-            <StatTile label="Change notices" value={n} icon={Megaphone} link="/quality/change-control" />
-        </StatSection>
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <GitBranch className="h-4 w-4 text-muted-foreground" />
+                    Change control
+                    <Badge variant="secondary" className="ml-1">{items.length}</Badge>
+                    <Link to="/quality/change-control" className="ml-auto">
+                        <Button size="sm" variant="ghost">All <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {items.slice(0, 6).map((it) => <ChangeItemRow key={`${it.kind}:${it.id}`} item={it} />)}
+                {items.length > 6 && (
+                    <p className="text-xs text-muted-foreground">+{items.length - 6} more in change control.</p>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -635,6 +772,342 @@ function OutsideProcessingBlock() {
         <StatSection title="Outside processing">
             <StatTile label="Out at vendors" value={out} icon={Truck} link="/production/outside-processing" />
             <StatTile label="Ready to ship" value={readyCount} icon={PackageSearch} link="/production/outside-processing" variant={readyCount > 0 ? "warning" : "default"} />
+        </StatSection>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// NCR aging (Quality Manager) — aged-open buckets are the QM oversight
+// primitive (research: AssurX/IntuitionLabs — 30/60/90-day buckets). Hides
+// when there are no open NCRs so it doesn't take space in a clean shop.
+// ---------------------------------------------------------------------------
+
+function NcrAgingBlock() {
+    const { data } = useNcrAging();
+    const buckets = data?.data ?? [];
+    const total = buckets.reduce((n, b) => n + b.count, 0);
+    if (total === 0) return null;
+    const overdue = data?.overdue_count ?? 0;
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <Hourglass className="h-4 w-4 text-muted-foreground" />
+                    NCR aging
+                    <Badge variant="secondary" className="ml-1">{total}</Badge>
+                    {overdue > 0 && <Badge variant="destructive">{overdue} overdue</Badge>}
+                    <Link to="/quality/ncrs" className="ml-auto">
+                        <Button size="sm" variant="ghost">Analyze <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-wrap gap-2">
+                    {buckets.map((b) => (
+                        <div key={b.bucket} className="min-w-[110px] flex-1 rounded-lg border bg-card px-3 py-2">
+                            <div className="truncate text-xs text-muted-foreground">{b.bucket}</div>
+                            <div className={`mt-0.5 text-2xl font-semibold tabular-nums ${b.count === 0 ? "text-muted-foreground/50" : ""}`}>{b.count}</div>
+                        </div>
+                    ))}
+                </div>
+                {data?.avg_age_days != null && (
+                    <p className="mt-2 text-xs text-muted-foreground">Average age: {Math.round(data.avg_age_days)} days.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// CAPA status distribution (Quality Manager) — the workflow-state breakdown
+// that surfaces stalled records at a glance (Open / In-progress / Pending
+// verification / Closed + overdue). Hides when there are no CAPAs.
+// ---------------------------------------------------------------------------
+
+function CapaStatusBlock() {
+    const { data } = useCapaStats();
+    if (!data || data.total === 0) return null;
+    const bs = data.by_status;
+    return (
+        <StatSection title="CAPAs">
+            <StatTile label="Open" value={bs.OPEN} icon={ClipboardCheck} link="/quality/capas" />
+            <StatTile label="In progress" value={bs.IN_PROGRESS} icon={Clock} link="/quality/capas" />
+            <StatTile label="Pending verify" value={bs.PENDING_VERIFICATION} icon={PauseCircle} link="/quality/capas" variant={bs.PENDING_VERIFICATION > 0 ? "warning" : "default"} />
+            <StatTile label="Closed" value={bs.CLOSED} icon={FileCheck} link="/quality/capas" />
+            <StatTile label="Overdue" value={data.overdue} icon={AlertTriangle} link="/quality/capas" variant={data.overdue > 0 ? "danger" : "default"} />
+        </StatSection>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Jobs going late (Production Manager) — work orders due today/tomorrow or
+// already past their expected_completion, sorted by lateness. Complements the
+// WO queue (which is priority-first): this is the "at-risk-schedule" band.
+// ---------------------------------------------------------------------------
+
+const JOBS_LATE_HORIZON_DAYS = 3;
+
+function JobsGoingLateBlock() {
+    const horizonISO = useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + JOBS_LATE_HORIZON_DAYS);
+        return d.toISOString().slice(0, 10);
+    }, []);
+    const { data: wosResp } = useQuery({
+        queryKey: ["home", "wos-going-late", horizonISO],
+        queryFn: () =>
+            api.api_WorkOrders_list({
+                queries: {
+                    workorder_status: "IN_PROGRESS",
+                    expected_completion__lte: horizonISO,
+                    ordering: "expected_completion",
+                    limit: 25,
+                },
+            } as never) as Promise<{ results?: QueueWo[] }>,
+        staleTime: 30_000,
+    });
+    const wos = wosResp?.results ?? [];
+    if (wos.length === 0) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <TimerReset className="h-4 w-4 text-muted-foreground" />
+                    Jobs going late
+                    <Badge variant="secondary" className="ml-1">{wos.length}</Badge>
+                    <Link to="/workorders" className="ml-auto">
+                        <Button size="sm" variant="ghost">Control center <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {wos.slice(0, 6).map((w) => {
+                    const due = (w.expected_completion ?? "").slice(0, 10);
+                    const overdue = due && due < today;
+                    return (
+                        <Link
+                            key={w.id} to="/workorder/$workOrderId/control" params={{ workOrderId: String(w.id) }}
+                            className="flex items-center gap-3 rounded-md border p-2.5 transition-colors hover:bg-accent"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="truncate font-mono text-sm font-medium">{w.ERP_id ?? w.id}</span>
+                                    {w.priority != null && PRIORITY_TONE[w.priority] && (
+                                        <Badge className={PRIORITY_TONE[w.priority]}>{PRIORITY_LABEL[w.priority]}</Badge>
+                                    )}
+                                </div>
+                                <div className="truncate text-xs text-muted-foreground">
+                                    {w.related_order_info?.name ?? "—"}
+                                    {w.quantity != null ? ` · ${w.quantity} pcs` : ""}
+                                    {due ? ` · due ${due}` : ""}
+                                </div>
+                            </div>
+                            {overdue && <Badge variant="destructive" className="shrink-0">Overdue</Badge>}
+                        </Link>
+                    );
+                })}
+                {wos.length > 6 && (
+                    <p className="text-xs text-muted-foreground">+{wos.length - 6} more at risk.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// WOs on hold (Production Manager / Shift Lead) — the held-jobs worklist.
+// Hides when there are no holds so it doesn't clutter a clean shop.
+// ---------------------------------------------------------------------------
+
+function WosOnHoldBlock() {
+    const { data: wosResp } = useQuery({
+        queryKey: ["home", "wos-on-hold"],
+        queryFn: () =>
+            api.api_WorkOrders_list({
+                queries: { workorder_status: "ON_HOLD", ordering: "-updated_at", limit: 25 },
+            } as never) as Promise<{ results?: QueueWo[] }>,
+        staleTime: 30_000,
+    });
+    const wos = wosResp?.results ?? [];
+    if (wos.length === 0) return null;
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <PauseCircle className="h-4 w-4 text-muted-foreground" />
+                    Work orders on hold
+                    <Badge variant="secondary" className="ml-1">{wos.length}</Badge>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {wos.slice(0, 5).map((w) => (
+                    <Link
+                        key={w.id} to="/workorder/$workOrderId/control" params={{ workOrderId: String(w.id) }}
+                        className="flex items-center gap-3 rounded-md border p-2.5 transition-colors hover:bg-accent"
+                    >
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <span className="truncate font-mono text-sm font-medium">{w.ERP_id ?? w.id}</span>
+                                {w.priority != null && PRIORITY_TONE[w.priority] && (
+                                    <Badge className={PRIORITY_TONE[w.priority]}>{PRIORITY_LABEL[w.priority]}</Badge>
+                                )}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                                {w.related_order_info?.name ?? "—"}
+                                {w.expected_completion ? ` · due ${w.expected_completion.slice(0, 10)}` : ""}
+                            </div>
+                        </div>
+                        <Badge variant="outline" className="shrink-0">Held</Badge>
+                    </Link>
+                ))}
+                {wos.length > 5 && (
+                    <p className="text-xs text-muted-foreground">+{wos.length - 5} more on hold.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Approvals in flight (Doc Controller / managers) — the DOMAIN-WIDE pending
+// approvals list (complements the personal `useMyPendingApprovals`). Hides
+// when empty; overdue rows flagged.
+// ---------------------------------------------------------------------------
+
+function ApprovalsInFlightBlock() {
+    const { data } = useApprovalRequests({ status: "PENDING", limit: 10, ordering: "due_date" });
+    const rows = data?.results ?? [];
+    if (rows.length === 0) return null;
+    const overdue = rows.filter((r) => r.is_overdue).length;
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                    Approvals in flight
+                    <Badge variant="secondary" className="ml-1">{rows.length}</Badge>
+                    {overdue > 0 && <Badge variant="destructive">{overdue} overdue</Badge>}
+                    <Link to="/approvals" className="ml-auto">
+                        <Button size="sm" variant="ghost">All <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {rows.slice(0, 5).map((r) => (
+                    <div key={r.id} className="flex items-center gap-3 rounded-md border p-2.5 text-sm">
+                        <div className="min-w-0 flex-1">
+                            <div className="truncate font-mono text-xs">{r.approval_number}</div>
+                            <div className="truncate text-xs text-muted-foreground">
+                                {r.approval_type_display}
+                                {r.due_date ? ` · due ${r.due_date.slice(0, 10)}` : ""}
+                            </div>
+                        </div>
+                        {r.is_overdue ? (
+                            <Badge variant="destructive" className="shrink-0">Overdue</Badge>
+                        ) : (
+                            <Badge variant="outline" className="shrink-0">{r.status_display}</Badge>
+                        )}
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Supplier quals expiring (Quality Manager) — ASL qualifications that have
+// expired or will soon. The buildable slice of a full supplier scorecard
+// (which needs a backend roll-up we don't have). Hides when empty.
+// ---------------------------------------------------------------------------
+
+const SUPPLIER_EXPIRY_HORIZON_DAYS = 60;
+
+function SupplierQualsExpiringBlock() {
+    // Fetch expired + approaching-expiry in parallel and merge. The list
+    // endpoint doesn't take a computed `status` filter, so we scope with the
+    // authoritative status codes and merge client-side.
+    const { data: expiredResp } = useListSupplierQualifications({ status: "EXPIRED", limit: 15 } as never);
+    const { data: activeResp } = useListSupplierQualifications({ status: "APPROVED", limit: 50 } as never);
+
+    const rows = useMemo(() => {
+        const now = new Date();
+        const horizon = new Date();
+        horizon.setDate(now.getDate() + SUPPLIER_EXPIRY_HORIZON_DAYS);
+        type Row = Schema<"SupplierQualification">;
+        const merged: Row[] = [
+            ...rowsOf<Row>(expiredResp),
+            ...rowsOf<Row>(activeResp).filter((q) => {
+                if (!q.expiry_date) return false;
+                const d = new Date(q.expiry_date);
+                return d <= horizon;
+            }),
+        ];
+        merged.sort((a, b) => (a.expiry_date ?? "9999").localeCompare(b.expiry_date ?? "9999"));
+        return merged;
+    }, [expiredResp, activeResp]);
+
+    if (rows.length === 0) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    Supplier qualifications expiring
+                    <Badge variant="secondary" className="ml-1">{rows.length}</Badge>
+                    <Link to="/production/supplier-qualifications" className="ml-auto">
+                        <Button size="sm" variant="ghost">All <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {rows.slice(0, 5).map((q) => {
+                    const expired = !!q.expiry_date && q.expiry_date < today;
+                    return (
+                        <Link
+                            key={q.id} to="/production/supplier-qualifications/$qualId/edit" params={{ qualId: String(q.id) }}
+                            className="flex items-center gap-3 rounded-md border p-2.5 transition-colors hover:bg-accent"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium">{q.supplier_name}</div>
+                                <div className="truncate text-xs text-muted-foreground">
+                                    {q.scope_display}
+                                    {q.expiry_date ? ` · ${expired ? "expired" : "expires"} ${q.expiry_date}` : ""}
+                                </div>
+                            </div>
+                            <Badge variant={expired ? "destructive" : "outline"} className="shrink-0">
+                                {expired ? "Expired" : q.status_display}
+                            </Badge>
+                        </Link>
+                    );
+                })}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Training expiring strip (managers / cross-cutting) — tenant-wide training
+// stats (total / current / expiring soon / expired). Hides when no records.
+// ---------------------------------------------------------------------------
+
+function TrainingStripBlock() {
+    const { data } = useTrainingStats();
+    if (!data || data.total_records === 0) return null;
+    return (
+        <StatSection title="Training">
+            <StatTile label="Current" value={data.current} icon={GraduationCap} link="/quality/training" />
+            <StatTile
+                label="Expiring soon" value={data.expiring_soon} icon={CalendarClock}
+                link="/quality/training"
+                variant={data.expiring_soon > 0 ? "warning" : "default"}
+            />
+            <StatTile
+                label="Expired" value={data.expired} icon={AlertTriangle}
+                link="/quality/training"
+                variant={data.expired > 0 ? "danger" : "default"}
+            />
         </StatSection>
     );
 }
@@ -673,6 +1146,14 @@ const BLOCKS: BlockDef[] = [
     },
     { id: "inspection", groups: ["QA Inspector", "Shift Lead", "QA Manager", "Tenant Admin"], Component: () => <InspectionQueueBlock /> },
     { id: "production-osp", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <OutsideProcessingBlock /> },
+    { id: "wos-going-late", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <JobsGoingLateBlock /> },
+    { id: "wos-on-hold", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <WosOnHoldBlock /> },
+    { id: "ncr-aging", groups: ["QA Manager", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
+    { id: "capa-status", groups: ["QA Manager", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
+    { id: "supplier-quals-expiring", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
+    { id: "training-strip", groups: ["QA Manager", "Production Manager", "Shift Lead", "Document Controller", "Tenant Admin"], Component: () => <TrainingStripBlock /> },
+    { id: "approvals-in-flight", groups: ["Document Controller", "QA Manager", "Tenant Admin"], Component: () => <ApprovalsInFlightBlock /> },
+    { id: "doc-review-due", groups: ["Document Controller", "QA Manager", "Tenant Admin"], Component: () => <DocReviewDueBlock /> },
     { id: "documents", groups: ["Document Controller", "Tenant Admin"], Component: () => <DocumentsBlock /> },
     { id: "change-control", groups: ["Engineering", "Tenant Admin"], Component: () => <ChangeControlBlock /> },
     { id: "available-to-claim", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <AvailableToClaimBlock /> },
@@ -687,12 +1168,12 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "competency-coverage", "available-to-claim", "inspection", "quality-actions", "scan"] },
-    { group: "Production Manager", order: ["needs-attention", "quality-kpis", "competency-coverage", "wo-queue", "production-osp", "available-to-claim", "quality-actions", "scan"] },
-    { group: "Shift Lead", order: ["scan", "wo-queue", "needs-attention", "inspection", "production-osp", "available-to-claim", "quality-actions"] },
-    { group: "Document Controller", order: ["documents", "quality-actions", "scan"] },
+    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "inspection", "doc-review-due", "quality-actions", "scan"] },
+    { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "training-strip", "available-to-claim", "quality-actions", "scan"] },
+    { group: "Shift Lead", order: ["scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "inspection", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
+    { group: "Document Controller", order: ["doc-review-due", "approvals-in-flight", "documents", "training-strip", "quality-actions", "scan"] },
     { group: "Engineering", order: ["change-control", "quality-actions", "scan"] },
-    { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "competency-coverage", "wo-queue", "inspection", "documents", "change-control", "available-to-claim", "production-osp", "quality-actions", "scan"] },
+    { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
 /** The user's primary persona (first PERSONA_ORDER match), or null. Home uses
