@@ -1,12 +1,19 @@
+import { useState } from "react";
 import { useParams, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useRetrieveUser } from "@/hooks/useRetrieveUser";
 import { useTrainingRecords } from "@/hooks/useTrainingRecords";
+import { api } from "@/lib/api/generated";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
     Table,
     TableBody,
@@ -15,8 +22,181 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, User as UserIcon, GraduationCap, Pencil } from "lucide-react";
+import { ArrowLeft, Factory, GraduationCap, Pencil, Plus, Star, User as UserIcon, X } from "lucide-react";
 import { ReportButton } from "@/components/reports/ReportButton";
+
+type Kind = "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
+const KIND_TONE: Record<Kind, string> = {
+    PRODUCTION: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
+    INSPECTION: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200",
+    RECEIVING: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200",
+    OSP: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-200",
+};
+
+function WorkCentersTab({ userId }: { userId: number }) {
+    const qc = useQueryClient();
+    const [addWcId, setAddWcId] = useState<string>("");
+
+    const membersKey = ["userwc-memberships", userId] as const;
+    const { data: page, isLoading } = useQuery({
+        queryKey: membersKey,
+        queryFn: () => api.api_UserWorkCenterMemberships_list({
+            queries: { user: userId, limit: 100 },
+        } as never),
+    });
+    // eslint-disable-next-line local/no-as-any -- generated union is loose; we only read the fields we typed on the serializer
+    const memberships = ((page?.results ?? []) as any[]);
+
+    const { data: wcPage } = useQuery({
+        queryKey: ["work-centers", "for-membership-picker"] as const,
+        queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
+    });
+    // eslint-disable-next-line local/no-as-any -- same as above
+    const workCenters = ((wcPage?.results ?? []) as any[]);
+    const memberWcIds = new Set(memberships.map((m) => m.work_center));
+    const availableWcs = workCenters.filter((wc) => !memberWcIds.has(wc.id));
+
+    const addMut = useMutation({
+        mutationFn: (wcId: string) => api.api_UserWorkCenterMemberships_create({
+            user: userId, work_center: wcId, is_primary: false,
+        } as never),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: membersKey });
+            setAddWcId("");
+            toast.success("Added.");
+        },
+        onError: (e) => toast.error(`Couldn't add: ${(e as Error).message}`),
+    });
+    const removeMut = useMutation({
+        mutationFn: (id: string) => api.api_UserWorkCenterMemberships_destroy(undefined as never, { params: { id } }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: membersKey });
+            toast.success("Removed.");
+        },
+        onError: (e) => toast.error(`Couldn't remove: ${(e as Error).message}`),
+    });
+    const setPrimaryMut = useMutation({
+        mutationFn: (id: string) => api.api_UserWorkCenterMemberships_set_primary_create(
+            undefined as never, { params: { id } },
+        ),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: membersKey });
+            toast.success("Primary station set.");
+        },
+        onError: (e) => toast.error(`Couldn't set primary: ${(e as Error).message}`),
+    });
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Work Center Memberships</CardTitle>
+                        <CardDescription>
+                            The stations this user is eligible to work at. The operator home defaults to
+                            the primary station. See Documents/WORK_CENTER_DESIGN.md.
+                        </CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {/* Add row */}
+                <div className="flex items-center gap-2">
+                    <Select value={addWcId} onValueChange={setAddWcId} disabled={availableWcs.length === 0}>
+                        <SelectTrigger className="max-w-sm">
+                            <SelectValue placeholder={
+                                availableWcs.length === 0
+                                    ? "User is a member of every work center"
+                                    : "Add a work center…"
+                            } />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableWcs.map((wc) => (
+                                <SelectItem key={wc.id} value={wc.id}>
+                                    {wc.code} — {wc.name}
+                                    <span className="ml-2 text-xs text-muted-foreground">{wc.kind}</span>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button
+                        onClick={() => addWcId && addMut.mutate(addWcId)}
+                        disabled={!addWcId || addMut.isPending}
+                    >
+                        <Plus className="mr-1 h-4 w-4" /> Add
+                    </Button>
+                </div>
+
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Code</TableHead>
+                            <TableHead>Work Center</TableHead>
+                            <TableHead>Kind</TableHead>
+                            <TableHead>Primary</TableHead>
+                            <TableHead className="w-32 text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading && (
+                            <TableRow>
+                                <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Loading…</TableCell>
+                            </TableRow>
+                        )}
+                        {!isLoading && memberships.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
+                                    Not a member of any work center yet.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        {memberships.map((m) => (
+                            <TableRow key={m.id}>
+                                <TableCell className="font-mono text-xs">{m.work_center_code}</TableCell>
+                                <TableCell className="font-medium">{m.work_center_name}</TableCell>
+                                <TableCell>
+                                    {m.work_center_kind && (
+                                        <Badge className={KIND_TONE[m.work_center_kind as Kind] ?? ""}>
+                                            {m.work_center_kind}
+                                        </Badge>
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    {m.is_primary ? (
+                                        <Badge className="gap-1 bg-amber-500 text-white hover:bg-amber-500">
+                                            <Star className="h-3 w-3" /> Primary
+                                        </Badge>
+                                    ) : (
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 px-2 text-xs text-muted-foreground"
+                                            disabled={setPrimaryMut.isPending}
+                                            onClick={() => setPrimaryMut.mutate(m.id)}
+                                        >
+                                            Set primary
+                                        </Button>
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 px-2 text-xs text-muted-foreground"
+                                        disabled={removeMut.isPending}
+                                        onClick={() => removeMut.mutate(m.id)}
+                                    >
+                                        <X className="mr-1 h-3.5 w-3.5" /> Remove
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+}
 
 export function UserDetailPage() {
     const { id } = useParams({ from: "/admin/users/$id" });
@@ -119,6 +299,10 @@ export function UserDetailPage() {
                                 {trainingRecords.length}
                             </Badge>
                         )}
+                    </TabsTrigger>
+                    <TabsTrigger value="work-centers" className="gap-2">
+                        <Factory className="h-4 w-4" />
+                        Work Centers
                     </TabsTrigger>
                 </TabsList>
 
@@ -273,6 +457,11 @@ export function UserDetailPage() {
                             </Table>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Work Centers Tab — station eligibility. See Documents/WORK_CENTER_DESIGN.md. */}
+                <TabsContent value="work-centers">
+                    <WorkCentersTab userId={userId} />
                 </TabsContent>
             </Tabs>
         </div>

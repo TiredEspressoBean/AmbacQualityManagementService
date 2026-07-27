@@ -850,11 +850,15 @@ class StepsSerializer(SecureModelMixin):
     """
     part_type_info = serializers.SerializerMethodField()
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
+    work_center_name = serializers.CharField(source="work_center.name", read_only=True, allow_null=True)
 
     # Fields whose edits are metadata-only and should NOT trigger a new version.
     # operation_number is a shop-floor routing label, not process behaviour — a
-    # quick edit shouldn't fork a new Step version.
-    _NON_VERSIONING_FIELDS = frozenset({'archived', 'operation_number'})
+    # quick edit shouldn't fork a new Step version. work_center is routing
+    # metadata (which surface the step lands on), not step behaviour — same
+    # reasoning; a reassignment shouldn't fork the Step (see
+    # Documents/WORK_CENTER_DESIGN.md).
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'operation_number', 'work_center'})
 
     class Meta:
         model = Steps
@@ -864,6 +868,8 @@ class StepsSerializer(SecureModelMixin):
             # First Piece Inspection
             'requires_first_piece_inspection',
             'part_type', 'part_type_info', 'part_type_name',
+            # Work-center routing (Documents/WORK_CENTER_DESIGN.md)
+            'work_center', 'work_center_name',
             # Workflow engine - step type
             'step_type',
             # Outside processing (subcontract op — Flow B)
@@ -882,7 +888,8 @@ class StepsSerializer(SecureModelMixin):
             'version',
         )
         read_only_fields = (
-            'created_at', 'updated_at', 'part_type_info', 'part_type_name', 'version'
+            'created_at', 'updated_at', 'part_type_info', 'part_type_name',
+            'work_center_name', 'version',
         )
 
     def update(self, instance, validated_data):

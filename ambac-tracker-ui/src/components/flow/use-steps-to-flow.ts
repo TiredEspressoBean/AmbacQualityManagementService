@@ -43,6 +43,10 @@ export interface StepData {
   is_outside_process?: boolean;
   outside_supplier?: string | null;
   outside_supplier_name?: string | null;
+  // Routing/surface discriminator (Documents/WORK_CENTER_DESIGN.md). Determines
+  // which operator/QA/receiving/OSP surface this step lands on.
+  work_center?: string | null;
+  work_center_name?: string | null;
   // 4c — live part distribution at this step (work-order runtime overlay).
   liveMetrics?: {
     total: number;

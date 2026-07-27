@@ -103,6 +103,7 @@ const toolsPages = [
 const adminPages = [
     { name: "Settings", url: "/settings", icon: Settings },
     { name: "User Management", url: "/admin/users", icon: Users },
+    { name: "Work Centers", url: "/admin/work-centers", icon: Factory },
     { name: "Data Management", url: "/Edit", icon: Database },
     { name: "Audit Log", url: "/admin/audit-log", icon: History },
 ]

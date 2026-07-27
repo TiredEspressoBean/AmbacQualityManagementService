@@ -21,9 +21,11 @@ from Tracker.models import (
     WorkCenter, Shift, ScheduleSlot, DowntimeEvent,
     MaterialLot, MaterialUsage, TimeEntry,
     BOM, BOMLine, AssemblyUsage,
+    UserWorkCenterMembership,
 )
 from Tracker.serializers.mes_standard import (
     WorkCenterSerializer, WorkCenterSelectSerializer,
+    UserWorkCenterMembershipSerializer,
     ShiftSerializer,
     ScheduleSlotSerializer,
     DowntimeEventSerializer,
@@ -63,6 +65,44 @@ class WorkCenterSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     queryset = WorkCenter.unscoped.all()
     serializer_class = WorkCenterSelectSerializer
     pagination_class = None
+
+
+# ===== USER WORK CENTER MEMBERSHIP VIEWSET =====
+
+class UserWorkCenterMembershipViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """Which stations a user is eligible at — CRUD for the through-table.
+    See Documents/WORK_CENTER_DESIGN.md.
+
+    Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+    PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+    """
+    queryset = UserWorkCenterMembership.unscoped.select_related('user', 'work_center')
+    serializer_class = UserWorkCenterMembershipSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['user', 'work_center', 'is_primary']
+    ordering_fields = ['created_at', 'is_primary']
+    ordering = ['-is_primary', 'work_center__code']
+
+    def perform_create(self, serializer):
+        serializer.save(tenant=self.tenant)
+
+    @extend_schema(
+        request=inline_serializer(name="SetPrimaryInput", fields={}),
+        responses={200: UserWorkCenterMembershipSerializer},
+        description=(
+            "Set this membership as the user's primary station in this tenant. "
+            "Atomically unsets is_primary on any other memberships this user has."
+        ),
+    )
+    @action(detail=True, methods=['post'], url_path='set-primary')
+    def set_primary(self, request, pk=None):
+        from django.db import transaction
+        target = self.get_object()
+        with transaction.atomic():
+            UserWorkCenterMembership.objects.filter(user=target.user).exclude(pk=target.pk).update(is_primary=False)
+            target.is_primary = True
+            target.save(update_fields=['is_primary'])
+        return Response(self.get_serializer(target).data)
 
 
 # ===== SHIFT VIEWSETS =====

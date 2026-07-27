@@ -10471,6 +10471,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/UserWorkCenterMemberships/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Which stations a user is eligible at — CRUD for the through-table.
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         *
+         *     Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+         *     PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+         */
+        get: operations["api_UserWorkCenterMemberships_list"];
+        put?: never;
+        /**
+         * @description Which stations a user is eligible at — CRUD for the through-table.
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         *
+         *     Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+         *     PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+         */
+        post: operations["api_UserWorkCenterMemberships_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/UserWorkCenterMemberships/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Which stations a user is eligible at — CRUD for the through-table.
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         *
+         *     Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+         *     PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+         */
+        get: operations["api_UserWorkCenterMemberships_retrieve"];
+        /**
+         * @description Which stations a user is eligible at — CRUD for the through-table.
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         *
+         *     Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+         *     PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+         */
+        put: operations["api_UserWorkCenterMemberships_update"];
+        post?: never;
+        /**
+         * @description Which stations a user is eligible at — CRUD for the through-table.
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         *
+         *     Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+         *     PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+         */
+        delete: operations["api_UserWorkCenterMemberships_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Which stations a user is eligible at — CRUD for the through-table.
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         *
+         *     Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+         *     PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+         */
+        patch: operations["api_UserWorkCenterMemberships_partial_update"];
+        trace?: never;
+    };
+    "/api/UserWorkCenterMemberships/{id}/set-primary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Set this membership as the user's primary station in this tenant. Atomically unsets is_primary on any other memberships this user has. */
+        post: operations["api_UserWorkCenterMemberships_set_primary_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkCenters/": {
         parameters: {
             query?: never;
@@ -17555,26 +17646,6 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        /**
-         * @description * `text` - Text input
-         *     * `choice` - Choice (radio / select)
-         *     * `photo` - Photo capture
-         *     * `video` - Video capture
-         *     * `scan` - Barcode / QR scan
-         *     * `file` - File upload
-         *     * `timer` - Timer (countdown / stopwatch)
-         *     * `computed` - Computed value (formula)
-         *     * `attestation` - Attestation (confirm / signature)
-         *     * `status` - Quality status (PASS / FAIL / PENDING)
-         *     * `equipment_roles` - Equipment + roles
-         *     * `personnel_roles` - Personnel + roles
-         *     * `signatures` - Inspection signatures (detected / verified)
-         *     * `defects` - Defect findings
-         *     * `annotation` - Part annotation (3D)
-         *     * `harvested_components` - Harvested components (teardown)
-         * @enum {string}
-         */
-        KindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed" | "attestation" | "status" | "equipment_roles" | "personnel_roles" | "signatures" | "defects" | "annotation" | "harvested_components";
         LLMConfigResponse: {
             configured: boolean;
             provider: string;
@@ -19628,6 +19699,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["UserSelect"][];
+        };
+        PaginatedUserWorkCenterMembershipList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["UserWorkCenterMembership"][];
         };
         PaginatedWIPSummaryList: {
             /** @example 123 */
@@ -21686,6 +21772,11 @@ export interface components {
             /** Format: uuid */
             part_type?: string;
             /**
+             * Format: uuid
+             * @description The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
+             */
+            work_center?: string | null;
+            /**
              * @description Visual type for flow editor.
              *
              *     * `TASK` - Task
@@ -21903,7 +21994,7 @@ export interface components {
              *     * `annotation` - Part annotation (3D)
              *     * `harvested_components` - Harvested components (teardown)
              */
-            kind?: components["schemas"]["KindEnum"];
+            kind?: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
             value_text?: string;
             /**
@@ -22315,6 +22406,17 @@ export interface components {
             job_role?: string | null;
         };
         /**
+         * @description Which stations a user is eligible at (ISA-95 PersonnelClass-style).
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         */
+        PatchedUserWorkCenterMembershipRequest: {
+            user?: number;
+            /** Format: uuid */
+            work_center?: string;
+            /** @description The user's preferred default station (drives the operator home's initial scope). */
+            is_primary?: boolean;
+        };
+        /**
          * @description Work center serializer with equipment list.
          *
          *     WorkCenter is a versioned configuration record. Content edits
@@ -22325,6 +22427,7 @@ export interface components {
             name?: string;
             code?: string;
             description?: string;
+            kind?: components["schemas"]["WorkCenterKindEnum"];
             /** @description Unit of measure for capacity (hours, pieces, etc.) */
             capacity_units?: string;
             /**
@@ -25406,6 +25509,12 @@ export interface components {
             } | null;
             readonly part_type_name: string | null;
             /**
+             * Format: uuid
+             * @description The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
+             */
+            work_center?: string | null;
+            readonly work_center_name: string | null;
+            /**
              * @description Visual type for flow editor.
              *
              *     * `TASK` - Task
@@ -25475,6 +25584,11 @@ export interface components {
             requires_first_piece_inspection?: boolean;
             /** Format: uuid */
             part_type: string;
+            /**
+             * Format: uuid
+             * @description The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
+             */
+            work_center?: string | null;
             /**
              * @description Visual type for flow editor.
              *
@@ -25899,7 +26013,7 @@ export interface components {
              *     * `annotation` - Part annotation (3D)
              *     * `harvested_components` - Harvested components (teardown)
              */
-            kind: components["schemas"]["KindEnum"];
+            kind: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
             value_text?: string;
             /**
@@ -25922,6 +26036,26 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /**
+         * @description * `text` - Text input
+         *     * `choice` - Choice (radio / select)
+         *     * `photo` - Photo capture
+         *     * `video` - Video capture
+         *     * `scan` - Barcode / QR scan
+         *     * `file` - File upload
+         *     * `timer` - Timer (countdown / stopwatch)
+         *     * `computed` - Computed value (formula)
+         *     * `attestation` - Attestation (confirm / signature)
+         *     * `status` - Quality status (PASS / FAIL / PENDING)
+         *     * `equipment_roles` - Equipment + roles
+         *     * `personnel_roles` - Personnel + roles
+         *     * `signatures` - Inspection signatures (detected / verified)
+         *     * `defects` - Defect findings
+         *     * `annotation` - Part annotation (3D)
+         *     * `harvested_components` - Harvested components (teardown)
+         * @enum {string}
+         */
+        SubstepResponseKindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed" | "attestation" | "status" | "equipment_roles" | "personnel_roles" | "signatures" | "defects" | "annotation" | "harvested_components";
         /**
          * @description Per-node operator capture rows (text / choice / photo / file /
          *     timer / computed).
@@ -25959,7 +26093,7 @@ export interface components {
              *     * `annotation` - Part annotation (3D)
              *     * `harvested_components` - Harvested components (teardown)
              */
-            kind: components["schemas"]["KindEnum"];
+            kind: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
             value_text?: string;
             /**
@@ -27423,6 +27557,36 @@ export interface components {
             tier: string;
             is_current: boolean;
         };
+        /**
+         * @description Which stations a user is eligible at (ISA-95 PersonnelClass-style).
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         */
+        UserWorkCenterMembership: {
+            /** Format: uuid */
+            readonly id: string;
+            user: number;
+            readonly user_name: string | null;
+            /** Format: uuid */
+            work_center: string;
+            readonly work_center_name: string | null;
+            readonly work_center_code: string | null;
+            readonly work_center_kind: string | null;
+            /** @description The user's preferred default station (drives the operator home's initial scope). */
+            is_primary?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description Which stations a user is eligible at (ISA-95 PersonnelClass-style).
+         *     See Documents/WORK_CENTER_DESIGN.md.
+         */
+        UserWorkCenterMembershipRequest: {
+            user: number;
+            /** Format: uuid */
+            work_center: string;
+            /** @description The user's preferred default station (drives the operator home's initial scope). */
+            is_primary?: boolean;
+        };
         ValidateTokenInputRequest: {
             token: string;
         };
@@ -27507,6 +27671,7 @@ export interface components {
             name: string;
             code: string;
             description?: string;
+            kind?: components["schemas"]["WorkCenterKindEnum"];
             /** @description Unit of measure for capacity (hours, pieces, etc.) */
             capacity_units?: string;
             /**
@@ -27525,6 +27690,14 @@ export interface components {
             readonly version: number;
         };
         /**
+         * @description * `PRODUCTION` - Production
+         *     * `INSPECTION` - Inspection
+         *     * `RECEIVING` - Receiving
+         *     * `OSP` - Outside Process
+         * @enum {string}
+         */
+        WorkCenterKindEnum: "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
+        /**
          * @description Work center serializer with equipment list.
          *
          *     WorkCenter is a versioned configuration record. Content edits
@@ -27535,6 +27708,7 @@ export interface components {
             name: string;
             code: string;
             description?: string;
+            kind?: components["schemas"]["WorkCenterKindEnum"];
             /** @description Unit of measure for capacity (hours, pieces, etc.) */
             capacity_units?: string;
             /**
@@ -46552,6 +46726,181 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidateTokenResponse"];
+                };
+            };
+        };
+    };
+    api_UserWorkCenterMemberships_list: {
+        parameters: {
+            query?: {
+                is_primary?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                user?: number;
+                work_center?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedUserWorkCenterMembershipList"];
+                };
+            };
+        };
+    };
+    api_UserWorkCenterMemberships_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserWorkCenterMembershipRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["UserWorkCenterMembershipRequest"];
+                "multipart/form-data": components["schemas"]["UserWorkCenterMembershipRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserWorkCenterMembership"];
+                };
+            };
+        };
+    };
+    api_UserWorkCenterMemberships_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Center Membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserWorkCenterMembership"];
+                };
+            };
+        };
+    };
+    api_UserWorkCenterMemberships_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Center Membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserWorkCenterMembershipRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["UserWorkCenterMembershipRequest"];
+                "multipart/form-data": components["schemas"]["UserWorkCenterMembershipRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserWorkCenterMembership"];
+                };
+            };
+        };
+    };
+    api_UserWorkCenterMemberships_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Center Membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_UserWorkCenterMemberships_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Center Membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedUserWorkCenterMembershipRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedUserWorkCenterMembershipRequest"];
+                "multipart/form-data": components["schemas"]["PatchedUserWorkCenterMembershipRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserWorkCenterMembership"];
+                };
+            };
+        };
+    };
+    api_UserWorkCenterMemberships_set_primary_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Center Membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserWorkCenterMembership"];
                 };
             };
         };

@@ -163,6 +163,7 @@ from .mes_standard import (
     # Work Centers
     WorkCenterViewSet,
     WorkCenterSelectViewSet,
+    UserWorkCenterMembershipViewSet,
 
     # Shifts & Scheduling
     ShiftViewSet,
@@ -376,6 +377,7 @@ __all__ = [
     # MES Standard - Work Centers
     'WorkCenterViewSet',
     'WorkCenterSelectViewSet',
+    'UserWorkCenterMembershipViewSet',
 
     # MES Standard - Shifts & Scheduling
     'ShiftViewSet',
@@ -528,6 +530,7 @@ def register_viewsets(router):
     # Work Centers
     router.register(r'WorkCenters', WorkCenterViewSet, basename='WorkCenters')
     router.register(r'WorkCenters-Options', WorkCenterSelectViewSet, basename='WorkCenters-Options')
+    router.register(r'UserWorkCenterMemberships', UserWorkCenterMembershipViewSet, basename='UserWorkCenterMemberships')
 
     # Shifts & Scheduling
     router.register(r'Shifts', ShiftViewSet, basename='Shifts')

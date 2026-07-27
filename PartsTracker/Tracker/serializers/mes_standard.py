@@ -35,7 +35,7 @@ class WorkCenterSerializer(SecureModelMixin):
     class Meta:
         model = WorkCenter
         fields = (
-            'id', 'name', 'code', 'description', 'capacity_units',
+            'id', 'name', 'code', 'description', 'kind', 'capacity_units',
             'default_efficiency', 'equipment', 'equipment_names', 'cost_center',
             'created_at', 'updated_at', 'archived', 'version',
         )
@@ -63,6 +63,32 @@ class WorkCenterSelectSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkCenter
         fields = ('id', 'code', 'name')
+
+
+class UserWorkCenterMembershipSerializer(SecureModelMixin):
+    """Which stations a user is eligible at (ISA-95 PersonnelClass-style).
+    See Documents/WORK_CENTER_DESIGN.md."""
+    work_center_name = serializers.CharField(source='work_center.name', read_only=True, allow_null=True)
+    work_center_code = serializers.CharField(source='work_center.code', read_only=True, allow_null=True)
+    work_center_kind = serializers.CharField(source='work_center.kind', read_only=True, allow_null=True)
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        from Tracker.models import UserWorkCenterMembership as _UWCM
+        model = _UWCM
+        fields = (
+            'id', 'user', 'user_name',
+            'work_center', 'work_center_name', 'work_center_code', 'work_center_kind',
+            'is_primary', 'created_at',
+        )
+        read_only_fields = (
+            'id', 'user_name', 'work_center_name', 'work_center_code',
+            'work_center_kind', 'created_at',
+        )
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() or obj.user.email if obj.user_id else None
 
 
 # ===== SHIFT SERIALIZERS =====

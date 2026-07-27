@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { Node } from '@xyflow/react';
+import { api } from '@/lib/api/generated';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +112,14 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   const stepIdIsUuid = !!stepId && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(stepId);
 
   // State for editor dialogs
+  // Work-center list for the routing picker. WCs are stable master data —
+  // long staleTime is fine. See Documents/WORK_CENTER_DESIGN.md.
+  const { data: workCentersPage } = useQuery({
+    queryKey: ['workCenters', 'stepEditor'] as const,
+    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const workCenters = workCentersPage?.results ?? [];
   const [measurementsOpen, setMeasurementsOpen] = useState(false);
   const [samplingOpen, setSamplingOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
@@ -231,6 +241,40 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
           ) : (
             <p className="text-sm text-muted-foreground">
               {data.description || 'No description'}
+            </p>
+          )}
+        </div>
+
+        {/* Work center — primary routing signal (which surface this step lands
+            on). Nullable; unmapped steps drop out of kind-filtered queues.
+            See Documents/WORK_CENTER_DESIGN.md. */}
+        <div className="space-y-1.5">
+          <Label htmlFor="step-work-center">Work center</Label>
+          {editable ? (
+            <Select
+              value={data.work_center ?? '__unset__'}
+              onValueChange={(v) => onUpdate(node.id, {
+                work_center: v === '__unset__' ? null : v,
+              })}
+            >
+              <SelectTrigger id="step-work-center">
+                <SelectValue placeholder="Choose a work center…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__unset__">
+                  <span className="text-muted-foreground">Unassigned</span>
+                </SelectItem>
+                {workCenters.map((wc) => (
+                  <SelectItem key={wc.id} value={wc.id}>
+                    {wc.code} — {wc.name}
+                    <span className="ml-2 text-xs text-muted-foreground">{wc.kind}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {data.work_center_name || 'Unassigned'}
             </p>
           )}
         </div>

@@ -26606,6 +26606,248 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidateTokenResponse'
           description: ''
+  /api/UserWorkCenterMemberships/:
+    get:
+      operationId: api_UserWorkCenterMemberships_list
+      description: |-
+        Which stations a user is eligible at — CRUD for the through-table.
+        See Documents/WORK_CENTER_DESIGN.md.
+
+        Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+        PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+      parameters:
+      - in: query
+        name: is_primary
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: user
+        schema:
+          type: integer
+      - in: query
+        name: work_center
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserWorkCenterMembershipList'
+          description: ''
+    post:
+      operationId: api_UserWorkCenterMemberships_create
+      description: |-
+        Which stations a user is eligible at — CRUD for the through-table.
+        See Documents/WORK_CENTER_DESIGN.md.
+
+        Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+        PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserWorkCenterMembershipRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserWorkCenterMembershipRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserWorkCenterMembershipRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWorkCenterMembership'
+          description: ''
+  /api/UserWorkCenterMemberships/{id}/:
+    get:
+      operationId: api_UserWorkCenterMemberships_retrieve
+      description: |-
+        Which stations a user is eligible at — CRUD for the through-table.
+        See Documents/WORK_CENTER_DESIGN.md.
+
+        Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+        PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Center Membership.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWorkCenterMembership'
+          description: ''
+    put:
+      operationId: api_UserWorkCenterMemberships_update
+      description: |-
+        Which stations a user is eligible at — CRUD for the through-table.
+        See Documents/WORK_CENTER_DESIGN.md.
+
+        Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+        PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Center Membership.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserWorkCenterMembershipRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserWorkCenterMembershipRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserWorkCenterMembershipRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWorkCenterMembership'
+          description: ''
+    patch:
+      operationId: api_UserWorkCenterMemberships_partial_update
+      description: |-
+        Which stations a user is eligible at — CRUD for the through-table.
+        See Documents/WORK_CENTER_DESIGN.md.
+
+        Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+        PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Center Membership.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserWorkCenterMembershipRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserWorkCenterMembershipRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserWorkCenterMembershipRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWorkCenterMembership'
+          description: ''
+    delete:
+      operationId: api_UserWorkCenterMemberships_destroy
+      description: |-
+        Which stations a user is eligible at — CRUD for the through-table.
+        See Documents/WORK_CENTER_DESIGN.md.
+
+        Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+        PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Center Membership.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/UserWorkCenterMemberships/{id}/set-primary/:
+    post:
+      operationId: api_UserWorkCenterMemberships_set_primary_create
+      description: Set this membership as the user's primary station in this tenant.
+        Atomically unsets is_primary on any other memberships this user has.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Center Membership.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWorkCenterMembership'
+          description: ''
   /api/WorkCenters/:
     get:
       operationId: api_WorkCenters_list
@@ -40746,42 +40988,6 @@ components:
       - query
       - results
       - total_results
-    KindEnum:
-      enum:
-      - text
-      - choice
-      - photo
-      - video
-      - scan
-      - file
-      - timer
-      - computed
-      - attestation
-      - status
-      - equipment_roles
-      - personnel_roles
-      - signatures
-      - defects
-      - annotation
-      - harvested_components
-      type: string
-      description: |-
-        * `text` - Text input
-        * `choice` - Choice (radio / select)
-        * `photo` - Photo capture
-        * `video` - Video capture
-        * `scan` - Barcode / QR scan
-        * `file` - File upload
-        * `timer` - Timer (countdown / stopwatch)
-        * `computed` - Computed value (formula)
-        * `attestation` - Attestation (confirm / signature)
-        * `status` - Quality status (PASS / FAIL / PENDING)
-        * `equipment_roles` - Equipment + roles
-        * `personnel_roles` - Personnel + roles
-        * `signatures` - Inspection signatures (detected / verified)
-        * `defects` - Defect findings
-        * `annotation` - Part annotation (3D)
-        * `harvested_components` - Harvested components (teardown)
     LLMConfigResponse:
       type: object
       properties:
@@ -44300,6 +44506,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/UserSelect'
+    PaginatedUserWorkCenterMembershipList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserWorkCenterMembership'
     PaginatedWIPSummaryList:
       type: object
       required:
@@ -47873,6 +48102,14 @@ components:
         part_type:
           type: string
           format: uuid
+        work_center:
+          type: string
+          format: uuid
+          nullable: true
+          description: The work-center where this step runs. Primary routing signal
+            for which surface (operator queue / QA inbox / receiving) the step belongs
+            on. Nullable during migration; unmapped steps surface in a 'no-work-center'
+            bucket. See Documents/WORK_CENTER_DESIGN.md.
         step_type:
           allOf:
           - $ref: '#/components/schemas/StepTypeEnum'
@@ -48177,7 +48414,7 @@ components:
           maxLength: 64
         kind:
           allOf:
-          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/SubstepResponseKindEnum'
           description: |-
             Which kind of capture node produced this response.
 
@@ -48850,6 +49087,21 @@ components:
           nullable: true
           description: Primary job role / position - drives the required-competency
             profile.
+    PatchedUserWorkCenterMembershipRequest:
+      type: object
+      description: |-
+        Which stations a user is eligible at (ISA-95 PersonnelClass-style).
+        See Documents/WORK_CENTER_DESIGN.md.
+      properties:
+        user:
+          type: integer
+        work_center:
+          type: string
+          format: uuid
+        is_primary:
+          type: boolean
+          description: The user's preferred default station (drives the operator home's
+            initial scope).
     PatchedWorkCenterRequest:
       type: object
       description: |-
@@ -48869,6 +49121,8 @@ components:
           maxLength: 20
         description:
           type: string
+        kind:
+          $ref: '#/components/schemas/WorkCenterKindEnum'
         capacity_units:
           type: string
           minLength: 1
@@ -54857,6 +55111,18 @@ components:
           type: string
           readOnly: true
           nullable: true
+        work_center:
+          type: string
+          format: uuid
+          nullable: true
+          description: The work-center where this step runs. Primary routing signal
+            for which surface (operator queue / QA inbox / receiving) the step belongs
+            on. Nullable during migration; unmapped steps surface in a 'no-work-center'
+            bucket. See Documents/WORK_CENTER_DESIGN.md.
+        work_center_name:
+          type: string
+          readOnly: true
+          nullable: true
         step_type:
           allOf:
           - $ref: '#/components/schemas/StepTypeEnum'
@@ -54934,6 +55200,7 @@ components:
       - part_type_name
       - updated_at
       - version
+      - work_center_name
     StepsRequest:
       type: object
       description: |-
@@ -54981,6 +55248,14 @@ components:
         part_type:
           type: string
           format: uuid
+        work_center:
+          type: string
+          format: uuid
+          nullable: true
+          description: The work-center where this step runs. Primary routing signal
+            for which surface (operator queue / QA inbox / receiving) the step belongs
+            on. Nullable during migration; unmapped steps surface in a 'no-work-center'
+            bucket. See Documents/WORK_CENTER_DESIGN.md.
         step_type:
           allOf:
           - $ref: '#/components/schemas/StepTypeEnum'
@@ -55669,7 +55944,7 @@ components:
           maxLength: 64
         kind:
           allOf:
-          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/SubstepResponseKindEnum'
           description: |-
             Which kind of capture node produced this response.
 
@@ -55733,6 +56008,42 @@ components:
       - responded_by_name
       - substep
       - updated_at
+    SubstepResponseKindEnum:
+      enum:
+      - text
+      - choice
+      - photo
+      - video
+      - scan
+      - file
+      - timer
+      - computed
+      - attestation
+      - status
+      - equipment_roles
+      - personnel_roles
+      - signatures
+      - defects
+      - annotation
+      - harvested_components
+      type: string
+      description: |-
+        * `text` - Text input
+        * `choice` - Choice (radio / select)
+        * `photo` - Photo capture
+        * `video` - Video capture
+        * `scan` - Barcode / QR scan
+        * `file` - File upload
+        * `timer` - Timer (countdown / stopwatch)
+        * `computed` - Computed value (formula)
+        * `attestation` - Attestation (confirm / signature)
+        * `status` - Quality status (PASS / FAIL / PENDING)
+        * `equipment_roles` - Equipment + roles
+        * `personnel_roles` - Personnel + roles
+        * `signatures` - Inspection signatures (detected / verified)
+        * `defects` - Defect findings
+        * `annotation` - Part annotation (3D)
+        * `harvested_components` - Harvested components (teardown)
     SubstepResponseRequest:
       type: object
       description: |-
@@ -55757,7 +56068,7 @@ components:
           maxLength: 64
         kind:
           allOf:
-          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/SubstepResponseKindEnum'
           description: |-
             Which kind of capture node produced this response.
 
@@ -58795,6 +59106,72 @@ components:
       - name
       - slug
       - tier
+    UserWorkCenterMembership:
+      type: object
+      description: |-
+        Which stations a user is eligible at (ISA-95 PersonnelClass-style).
+        See Documents/WORK_CENTER_DESIGN.md.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+        user_name:
+          type: string
+          nullable: true
+          readOnly: true
+        work_center:
+          type: string
+          format: uuid
+        work_center_name:
+          type: string
+          readOnly: true
+          nullable: true
+        work_center_code:
+          type: string
+          readOnly: true
+          nullable: true
+        work_center_kind:
+          type: string
+          readOnly: true
+          nullable: true
+        is_primary:
+          type: boolean
+          description: The user's preferred default station (drives the operator home's
+            initial scope).
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - user
+      - user_name
+      - work_center
+      - work_center_code
+      - work_center_kind
+      - work_center_name
+    UserWorkCenterMembershipRequest:
+      type: object
+      description: |-
+        Which stations a user is eligible at (ISA-95 PersonnelClass-style).
+        See Documents/WORK_CENTER_DESIGN.md.
+      properties:
+        user:
+          type: integer
+        work_center:
+          type: string
+          format: uuid
+        is_primary:
+          type: boolean
+          description: The user's preferred default station (drives the operator home's
+            initial scope).
+      required:
+      - user
+      - work_center
     ValidateTokenInputRequest:
       type: object
       properties:
@@ -58965,6 +59342,8 @@ components:
           maxLength: 20
         description:
           type: string
+        kind:
+          $ref: '#/components/schemas/WorkCenterKindEnum'
         capacity_units:
           type: string
           description: Unit of measure for capacity (hours, pieces, etc.)
@@ -59008,6 +59387,18 @@ components:
       - name
       - updated_at
       - version
+    WorkCenterKindEnum:
+      enum:
+      - PRODUCTION
+      - INSPECTION
+      - RECEIVING
+      - OSP
+      type: string
+      description: |-
+        * `PRODUCTION` - Production
+        * `INSPECTION` - Inspection
+        * `RECEIVING` - Receiving
+        * `OSP` - Outside Process
     WorkCenterRequest:
       type: object
       description: |-
@@ -59027,6 +59418,8 @@ components:
           maxLength: 20
         description:
           type: string
+        kind:
+          $ref: '#/components/schemas/WorkCenterKindEnum'
         capacity_units:
           type: string
           minLength: 1

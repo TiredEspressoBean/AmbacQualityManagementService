@@ -6711,6 +6711,13 @@ export type Steps = {
   part_type: string;
   part_type_info: {};
   part_type_name: string | null;
+  work_center?:
+    | /**
+     * The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
+     */
+    (string | null)
+    | undefined;
+  work_center_name: string | null;
   step_type?: /**
      * Visual type for flow editor.
     
@@ -7155,7 +7162,7 @@ export type SubstepResponse = {
     * `annotation` - Part annotation (3D)
     * `harvested_components` - Harvested components (teardown)
      */
-  kind: KindEnum;
+  kind: SubstepResponseKindEnum;
   value_text?: /**
    * Short text capture: text input, choice selection, scan code.
    */
@@ -7182,7 +7189,7 @@ export type SubstepResponse = {
   created_at: string;
   updated_at: string;
 };
-export type KindEnum =
+export type SubstepResponseKindEnum =
   /**
    * * `text` - Text input
    * `choice` - Choice (radio / select)
@@ -8153,6 +8160,39 @@ export type UserSelect = {
    */
   is_active: boolean;
 };
+export type PaginatedUserWorkCenterMembershipList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<UserWorkCenterMembership>;
+};
+export type UserWorkCenterMembership = {
+  id: string;
+  user: number;
+  user_name: string | null;
+  work_center: string;
+  work_center_name: string | null;
+  work_center_code: string | null;
+  work_center_kind: string | null;
+  is_primary?: /**
+   * The user's preferred default station (drives the operator home's initial scope).
+   */
+  boolean | undefined;
+  created_at: string;
+};
 export type PaginatedWIPSummaryList = {
   /**
    * @example 123
@@ -8211,6 +8251,7 @@ export type WorkCenter = {
    */
   code: string;
   description?: string | undefined;
+  kind?: WorkCenterKindEnum | undefined;
   capacity_units?: /**
    * Unit of measure for capacity (hours, pieces, etc.)
    *
@@ -8234,6 +8275,16 @@ export type WorkCenter = {
   archived?: boolean | undefined;
   version: number;
 };
+export type WorkCenterKindEnum =
+  /**
+   * * `PRODUCTION` - Production
+   * `INSPECTION` - Inspection
+   * `RECEIVING` - Receiving
+   * `OSP` - Outside Process
+   *
+   * @enum PRODUCTION, INSPECTION, RECEIVING, OSP
+   */
+  "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
 export type PaginatedWorkOrderListList = {
   /**
    * @example 123
@@ -9995,6 +10046,10 @@ export type PatchedStepsRequest = Partial<{
   requires_first_piece_inspection: boolean;
   part_type: string;
   /**
+   * The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
+   */
+  work_center: string | null;
+  /**
      * Visual type for flow editor.
     
     * `TASK` - Task
@@ -10248,7 +10303,7 @@ export type PatchedSubstepResponseRequest = Partial<{
     * `annotation` - Part annotation (3D)
     * `harvested_components` - Harvested components (teardown)
      */
-  kind: KindEnum;
+  kind: SubstepResponseKindEnum;
   /**
    * Short text capture: text input, choice selection, scan code.
    */
@@ -10578,6 +10633,39 @@ export type PatchedTrainingRequirementRequest = Partial<{
    * Why is this required? e.g., 'Per WI-042' or 'Customer requirement'
    */
   notes: string;
+  archived: boolean;
+}>;
+export type PatchedWorkCenterRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @minLength 1
+   * @maxLength 20
+   */
+  code: string;
+  description: string;
+  kind: WorkCenterKindEnum;
+  /**
+   * Unit of measure for capacity (hours, pieces, etc.)
+   *
+   * @minLength 1
+   * @maxLength 20
+   */
+  capacity_units: string;
+  /**
+   * Default efficiency percentage (100 = 100%)
+   *
+   * @pattern ^-?\d{0,3}(?:\.\d{0,2})?$
+   */
+  default_efficiency: string;
+  equipment: Array<string>;
+  /**
+   * @maxLength 50
+   */
+  cost_center: string;
   archived: boolean;
 }>;
 export type PatchedWorkOrderRequest = Partial<{
@@ -11992,6 +12080,12 @@ export type StepsRequest = {
    */
   boolean | undefined;
   part_type: string;
+  work_center?:
+    | /**
+     * The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
+     */
+    (string | null)
+    | undefined;
   step_type?: /**
      * Visual type for flow editor.
     
@@ -12285,7 +12379,7 @@ export type SubstepResponseRequest = {
     * `annotation` - Part annotation (3D)
     * `harvested_components` - Harvested components (teardown)
      */
-  kind: KindEnum;
+  kind: SubstepResponseKindEnum;
   value_text?: /**
    * Short text capture: text input, choice selection, scan code.
    */
@@ -12785,6 +12879,39 @@ export type WorkAuthorizationRow = {
   step: string | null;
   authorized: boolean;
   missing: Array<{}>;
+};
+export type WorkCenterRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @minLength 1
+   * @maxLength 20
+   */
+  code: string;
+  description?: string | undefined;
+  kind?: WorkCenterKindEnum | undefined;
+  capacity_units?: /**
+   * Unit of measure for capacity (hours, pieces, etc.)
+   *
+   * @minLength 1
+   * @maxLength 20
+   */
+  string | undefined;
+  default_efficiency?: /**
+   * Default efficiency percentage (100 = 100%)
+   *
+   * @pattern ^-?\d{0,3}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  equipment?: Array<string> | undefined;
+  cost_center?: /**
+   * @maxLength 50
+   */
+  string | undefined;
+  archived?: boolean | undefined;
 };
 export type WorkOrder = {
   id: string;
@@ -17028,6 +17155,8 @@ const Steps = z.object({
   part_type: z.string().uuid(),
   part_type_info: z.object({}).partial().passthrough().nullable(),
   part_type_name: z.string().nullable(),
+  work_center: z.string().uuid().nullish(),
+  work_center_name: z.string().nullable(),
   step_type: StepTypeEnum.optional(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
@@ -17062,6 +17191,7 @@ const StepsRequest = z.object({
   pass_threshold: z.number().optional(),
   requires_first_piece_inspection: z.boolean().optional(),
   part_type: z.string().uuid(),
+  work_center: z.string().uuid().nullish(),
   step_type: StepTypeEnum.optional(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
@@ -17088,6 +17218,7 @@ const PatchedStepsRequest = z
     pass_threshold: z.number(),
     requires_first_piece_inspection: z.boolean(),
     part_type: z.string().uuid(),
+    work_center: z.string().uuid().nullable(),
     step_type: StepTypeEnum,
     is_outside_process: z.boolean(),
     outside_supplier: z.string().uuid().nullable(),
@@ -17347,7 +17478,7 @@ const PatchedSubstepResourceRequest = z
     archived: z.boolean(),
   })
   .partial();
-const KindEnum = z.enum([
+const SubstepResponseKindEnum = z.enum([
   "text",
   "choice",
   "photo",
@@ -17370,7 +17501,7 @@ const SubstepResponse = z.object({
   step_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   node_id: z.string().max(64),
-  kind: KindEnum,
+  kind: SubstepResponseKindEnum,
   value_text: z.string().optional(),
   value_document: z.string().uuid().nullish(),
   value_json: z.unknown().nullish(),
@@ -17390,7 +17521,7 @@ const SubstepResponseRequest = z.object({
   step_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   node_id: z.string().min(1).max(64),
-  kind: KindEnum,
+  kind: SubstepResponseKindEnum,
   value_text: z.string().optional(),
   value_document: z.string().uuid().nullish(),
   value_json: z.unknown().nullish(),
@@ -17401,7 +17532,7 @@ const PatchedSubstepResponseRequest = z
     step_execution: z.string().uuid().nullable(),
     substep: z.string().uuid(),
     node_id: z.string().min(1).max(64),
-    kind: KindEnum,
+    kind: SubstepResponseKindEnum,
     value_text: z.string(),
     value_document: z.string().uuid().nullable(),
     value_json: z.unknown().nullable(),
@@ -18227,11 +18358,47 @@ const ValidateTokenResponse = z.object({
   expires_at: z.string().datetime({ offset: true }),
   expired: z.boolean(),
 });
+const UserWorkCenterMembership = z.object({
+  id: z.string().uuid(),
+  user: z.number().int(),
+  user_name: z.string().nullable(),
+  work_center: z.string().uuid(),
+  work_center_name: z.string().nullable(),
+  work_center_code: z.string().nullable(),
+  work_center_kind: z.string().nullable(),
+  is_primary: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+});
+const PaginatedUserWorkCenterMembershipList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(UserWorkCenterMembership),
+});
+const UserWorkCenterMembershipRequest = z.object({
+  user: z.number().int(),
+  work_center: z.string().uuid(),
+  is_primary: z.boolean().optional(),
+});
+const PatchedUserWorkCenterMembershipRequest = z
+  .object({
+    user: z.number().int(),
+    work_center: z.string().uuid(),
+    is_primary: z.boolean(),
+  })
+  .partial();
+const WorkCenterKindEnum = z.enum([
+  "PRODUCTION",
+  "INSPECTION",
+  "RECEIVING",
+  "OSP",
+]);
 const WorkCenter = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
   code: z.string().max(20),
   description: z.string().optional(),
+  kind: WorkCenterKindEnum.optional(),
   capacity_units: z.string().max(20).optional(),
   default_efficiency: z
     .string()
@@ -18255,6 +18422,7 @@ const WorkCenterRequest = z.object({
   name: z.string().min(1).max(100),
   code: z.string().min(1).max(20),
   description: z.string().optional(),
+  kind: WorkCenterKindEnum.optional(),
   capacity_units: z.string().min(1).max(20).optional(),
   default_efficiency: z
     .string()
@@ -18274,6 +18442,7 @@ const PatchedWorkCenterRequest = z
     name: z.string().min(1).max(100),
     code: z.string().min(1).max(20),
     description: z.string(),
+    kind: WorkCenterKindEnum,
     capacity_units: z.string().min(1).max(20),
     default_efficiency: z.string().regex(/^-?\d{0,3}(?:\.\d{0,2})?$/),
     equipment: z.array(z.string().uuid()),
@@ -20487,7 +20656,7 @@ export const schemas = {
   PaginatedSubstepResourceList,
   SubstepResourceRequest,
   PatchedSubstepResourceRequest,
-  KindEnum,
+  SubstepResponseKindEnum,
   SubstepResponse,
   PaginatedSubstepResponseList,
   SubstepResponseRequest,
@@ -20583,6 +20752,11 @@ export const schemas = {
   ResendInvitationInputRequest,
   ValidateTokenInputRequest,
   ValidateTokenResponse,
+  UserWorkCenterMembership,
+  PaginatedUserWorkCenterMembershipList,
+  UserWorkCenterMembershipRequest,
+  PatchedUserWorkCenterMembershipRequest,
+  WorkCenterKindEnum,
   WorkCenter,
   PaginatedWorkCenterList,
   WorkCenterRequest,
@@ -42741,6 +42915,170 @@ Admins can check any user; regular users can only check themselves.`,
 Admins can check any user; regular users can only check themselves.`,
     requestFormat: "json",
     response: EffectivePermissionsResponse,
+  },
+  {
+    method: "get",
+    path: "/api/UserWorkCenterMemberships/",
+    alias: "api_UserWorkCenterMemberships_list",
+    description: `Which stations a user is eligible at — CRUD for the through-table.
+See Documents/WORK_CENTER_DESIGN.md.
+
+Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_primary",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "user",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedUserWorkCenterMembershipList,
+  },
+  {
+    method: "post",
+    path: "/api/UserWorkCenterMemberships/",
+    alias: "api_UserWorkCenterMemberships_create",
+    description: `Which stations a user is eligible at — CRUD for the through-table.
+See Documents/WORK_CENTER_DESIGN.md.
+
+Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: UserWorkCenterMembershipRequest,
+      },
+    ],
+    response: UserWorkCenterMembership,
+  },
+  {
+    method: "get",
+    path: "/api/UserWorkCenterMemberships/:id/",
+    alias: "api_UserWorkCenterMemberships_retrieve",
+    description: `Which stations a user is eligible at — CRUD for the through-table.
+See Documents/WORK_CENTER_DESIGN.md.
+
+Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: UserWorkCenterMembership,
+  },
+  {
+    method: "put",
+    path: "/api/UserWorkCenterMemberships/:id/",
+    alias: "api_UserWorkCenterMemberships_update",
+    description: `Which stations a user is eligible at — CRUD for the through-table.
+See Documents/WORK_CENTER_DESIGN.md.
+
+Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: UserWorkCenterMembershipRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: UserWorkCenterMembership,
+  },
+  {
+    method: "patch",
+    path: "/api/UserWorkCenterMemberships/:id/",
+    alias: "api_UserWorkCenterMemberships_partial_update",
+    description: `Which stations a user is eligible at — CRUD for the through-table.
+See Documents/WORK_CENTER_DESIGN.md.
+
+Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedUserWorkCenterMembershipRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: UserWorkCenterMembership,
+  },
+  {
+    method: "delete",
+    path: "/api/UserWorkCenterMemberships/:id/",
+    alias: "api_UserWorkCenterMemberships_destroy",
+    description: `Which stations a user is eligible at — CRUD for the through-table.
+See Documents/WORK_CENTER_DESIGN.md.
+
+Perms: add/change/delete_userworkcentermembership (TEAM_ACCESS_ADMIN_
+PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/UserWorkCenterMemberships/:id/set-primary/",
+    alias: "api_UserWorkCenterMemberships_set_primary_create",
+    description: `Set this membership as the user&#x27;s primary station in this tenant. Atomically unsets is_primary on any other memberships this user has.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: UserWorkCenterMembership,
   },
   {
     method: "get",

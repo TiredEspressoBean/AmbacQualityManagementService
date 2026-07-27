@@ -287,6 +287,7 @@ router.register("ChatSessions", ChatSessionViewSet, basename="ChatSessions")
 # Work Centers
 router.register(r'WorkCenters', WorkCenterViewSet, basename='WorkCenters')
 router.register(r'WorkCenters-Options', WorkCenterSelectViewSet, basename='WorkCenters-Options')
+router.register(r'UserWorkCenterMemberships', UserWorkCenterMembershipViewSet, basename='UserWorkCenterMemberships')
 
 # Shifts & Scheduling
 router.register(r'Shifts', ShiftViewSet, basename='Shifts')
