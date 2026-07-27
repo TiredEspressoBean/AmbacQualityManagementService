@@ -25497,12 +25497,61 @@ The new version will:
   {
     method: "get",
     path: "/api/Documents/due-for-review/",
-    alias: "api_Documents_due_for_review_retrieve",
+    alias: "api_Documents_due_for_review_list",
     description: `Get documents that are due for periodic review.
 
 Returns documents where review_date &lt;&#x3D; today.`,
     requestFormat: "json",
-    response: Documents,
+    parameters: [
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "document_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "is_image",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum(["APPROVED", "DRAFT", "OBSOLETE", "RELEASED", "UNDER_REVIEW"])
+          .optional(),
+      },
+    ],
+    response: PaginatedDocumentsList,
   },
   {
     method: "get",
@@ -25535,10 +25584,59 @@ Returns documents where review_date &lt;&#x3D; today.`,
   {
     method: "get",
     path: "/api/Documents/my-uploads/",
-    alias: "api_Documents_my_uploads_retrieve",
+    alias: "api_Documents_my_uploads_list",
     description: `Get documents uploaded by the current user`,
     requestFormat: "json",
-    response: Documents,
+    parameters: [
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "document_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "is_image",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum(["APPROVED", "DRAFT", "OBSOLETE", "RELEASED", "UNDER_REVIEW"])
+          .optional(),
+      },
+    ],
+    response: PaginatedDocumentsList,
   },
   {
     method: "get",

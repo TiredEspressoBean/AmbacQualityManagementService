@@ -2004,7 +2004,7 @@ export interface paths {
          *
          *     Returns documents where review_date <= today.
          */
-        get: operations["api_Documents_due_for_review_retrieve"];
+        get: operations["api_Documents_due_for_review_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2055,7 +2055,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Get documents uploaded by the current user */
-        get: operations["api_Documents_my_uploads_retrieve"];
+        get: operations["api_Documents_my_uploads_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32655,9 +32655,32 @@ export interface operations {
             };
         };
     };
-    api_Documents_due_for_review_retrieve: {
+    api_Documents_due_for_review_list: {
         parameters: {
-            query?: never;
+            query?: {
+                content_type?: number;
+                document_type?: string;
+                is_image?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                object_id?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description Document workflow status
+                 *
+                 *     * `DRAFT` - Draft
+                 *     * `UNDER_REVIEW` - Under Review
+                 *     * `APPROVED` - Approved
+                 *     * `RELEASED` - Released
+                 *     * `OBSOLETE` - Obsolete
+                 */
+                status?: "APPROVED" | "DRAFT" | "OBSOLETE" | "RELEASED" | "UNDER_REVIEW";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -32669,7 +32692,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["PaginatedDocumentsList"];
                 };
             };
         };
@@ -32717,9 +32740,32 @@ export interface operations {
             };
         };
     };
-    api_Documents_my_uploads_retrieve: {
+    api_Documents_my_uploads_list: {
         parameters: {
-            query?: never;
+            query?: {
+                content_type?: number;
+                document_type?: string;
+                is_image?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                object_id?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description Document workflow status
+                 *
+                 *     * `DRAFT` - Draft
+                 *     * `UNDER_REVIEW` - Under Review
+                 *     * `APPROVED` - Approved
+                 *     * `RELEASED` - Released
+                 *     * `OBSOLETE` - Obsolete
+                 */
+                status?: "APPROVED" | "DRAFT" | "OBSOLETE" | "RELEASED" | "UNDER_REVIEW";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -32731,7 +32777,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["PaginatedDocumentsList"];
                 };
             };
         };

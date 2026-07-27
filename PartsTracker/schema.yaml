@@ -5985,11 +5985,71 @@ paths:
           description: ''
   /api/Documents/due-for-review/:
     get:
-      operationId: api_Documents_due_for_review_retrieve
+      operationId: api_Documents_due_for_review_list
       description: |-
         Get documents that are due for periodic review.
 
         Returns documents where review_date <= today.
+      parameters:
+      - in: query
+        name: content_type
+        schema:
+          type: integer
+      - in: query
+        name: document_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: is_image
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: object_id
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - DRAFT
+          - OBSOLETE
+          - RELEASED
+          - UNDER_REVIEW
+        description: |-
+          Document workflow status
+
+          * `DRAFT` - Draft
+          * `UNDER_REVIEW` - Under Review
+          * `APPROVED` - Approved
+          * `RELEASED` - Released
+          * `OBSOLETE` - Obsolete
       tags:
       - api
       security:
@@ -6000,7 +6060,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                $ref: '#/components/schemas/PaginatedDocumentsList'
           description: ''
   /api/Documents/export-excel/:
     get:
@@ -6051,8 +6111,68 @@ paths:
           description: ''
   /api/Documents/my-uploads/:
     get:
-      operationId: api_Documents_my_uploads_retrieve
+      operationId: api_Documents_my_uploads_list
       description: Get documents uploaded by the current user
+      parameters:
+      - in: query
+        name: content_type
+        schema:
+          type: integer
+      - in: query
+        name: document_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: is_image
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: object_id
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - DRAFT
+          - OBSOLETE
+          - RELEASED
+          - UNDER_REVIEW
+        description: |-
+          Document workflow status
+
+          * `DRAFT` - Draft
+          * `UNDER_REVIEW` - Under Review
+          * `APPROVED` - Approved
+          * `RELEASED` - Released
+          * `OBSOLETE` - Obsolete
       tags:
       - api
       security:
@@ -6063,7 +6183,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                $ref: '#/components/schemas/PaginatedDocumentsList'
           description: ''
   /api/Documents/recent/:
     get:

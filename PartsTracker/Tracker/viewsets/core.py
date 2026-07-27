@@ -1522,6 +1522,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @extend_schema(responses=DocumentsSerializer(many=True))
     @action(detail=False, methods=['get'], url_path='due-for-review')
     def due_for_review(self, request):
         """
@@ -1629,6 +1630,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
         return Response(stats)
 
+    @extend_schema(responses=DocumentsSerializer(many=True))
     @action(detail=False, methods=['get'], url_path='my-uploads', permission_classes=[IsAuthenticated, TenantAccessPermission])
     def my_uploads(self, request):
         """Get documents uploaded by the current user"""
