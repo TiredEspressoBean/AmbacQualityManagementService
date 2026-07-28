@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import {
     AlertTriangle, ArrowRight, Building2, CalendarClock, CheckSquare, ClipboardCheck,
     Clock, FileCheck, FileText, FileWarning, Gauge, GitBranch, GraduationCap, Hourglass,
-    Inbox, PackageSearch, PauseCircle, ScanLine, TimerReset, Truck, Wrench,
+    Inbox, PackageSearch, PauseCircle, ScanLine, Siren, TimerReset, Truck, Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AuthUser } from "@/hooks/useAuthUser";
@@ -434,17 +434,54 @@ function StatTile({
     );
 }
 
+/** Shared landing-module header — one row that every block on Home uses so
+ *  worklists and reference strips read as one system:
+ *   [icon] Title [count] [extra badges …] ────── [action]
+ *  Mixed-case Title (matches shadcn CardTitle rhythm), muted icon, secondary
+ *  count badge. `extra` slots in a per-block accent (overdue count, held tag).
+ *  `action` is a right-aligned link/button (Analyze, Control center, All →). */
+function BlockHeader({
+    icon: Icon, title, count, extra, action,
+}: {
+    icon: LucideIcon;
+    title: string;
+    count?: number | null;
+    extra?: React.ReactNode;
+    action?: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-center gap-2 text-base font-semibold">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            <span>{title}</span>
+            {count != null && count > 0 && (
+                <Badge variant="secondary" className="ml-1">{count}</Badge>
+            )}
+            {extra}
+            {action && <div className="ml-auto">{action}</div>}
+        </div>
+    );
+}
+
 /** Reference-strip block: a compact row of stat tiles wrapped in the same Card
  *  chrome as an act-now block so pairs of halves match visually in the landing
- *  grid. The small-caps title keeps the "quiet reference" feel — the Card
- *  border anchors the label so it isn't an orphaned floating strip next to a
- *  full-height Card in the paired cell. flex-1 tiles stretch to fill the last
- *  row so a count that doesn't divide the grid never leaves an orphaned cell. */
-function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
+ *  grid. Uses the shared BlockHeader so the strip's title reads exactly like a
+ *  worklist card's title (icon + mixed-case), not a stray small-caps label.
+ *  flex-1 tiles stretch to fill the last row so a count that doesn't divide
+ *  the grid never leaves an orphaned cell. */
+function StatSection({
+    icon, title, action, children,
+}: {
+    icon: LucideIcon;
+    title: string;
+    action?: React.ReactNode;
+    children: React.ReactNode;
+}) {
     return (
         <Card>
-            <CardContent className="space-y-1.5 py-3">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
+            <CardHeader className="pb-3">
+                <BlockHeader icon={icon} title={title} action={action} />
+            </CardHeader>
+            <CardContent>
                 <div className="flex flex-wrap gap-2">{children}</div>
             </CardContent>
         </Card>
@@ -515,7 +552,7 @@ function QualityKpisBlock() {
     const { data } = useDashboardKpis();
     const overdue = data?.overdue_capas ?? 0;
     return (
-        <StatSection title="Quality">
+        <StatSection icon={Gauge} title="Quality">
             <StatTile label="Open NCRs" value={data?.open_ncrs ?? 0} icon={FileWarning} link="/quality/ncrs" />
             <StatTile label="In quarantine" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" />
             <StatTile label="Active CAPAs" value={data?.active_capas ?? 0} icon={ClipboardCheck} link="/quality/capas" />
@@ -543,7 +580,7 @@ function CompetencyCoverageBlock() {
     const expiring = coverage.reduce((n, c) => n + (c.expiring_count ?? 0), 0);
 
     return (
-        <StatSection title="Competency coverage">
+        <StatSection icon={Wrench} title="Competency coverage">
             <StatTile
                 label="Uncovered skills" value={uncovered} icon={AlertTriangle}
                 link="/quality/training/matrix"
@@ -632,7 +669,7 @@ function DocumentsBlock() {
         );
     }
     return (
-        <StatSection title="Documents">
+        <StatSection icon={FileText} title="Documents">
             <StatTile label="Needs my approval" value={needsMe} icon={ClipboardCheck} link="/documents" variant={needsMe > 0 ? "warning" : "default"} />
             <StatTile label="Pending approval" value={pending} icon={FileText} link="/documents" />
             <StatTile label="Due for review" value={dueReview} icon={CalendarClock} link="/documents/list" variant={dueReview > 0 ? "warning" : "default"} />
@@ -803,7 +840,7 @@ function OutsideProcessingBlock() {
     const readyCount = ready.length;
     if (out === 0 && readyCount === 0) return null;
     return (
-        <StatSection title="Outside processing">
+        <StatSection icon={Truck} title="Outside processing">
             <StatTile label="Out at vendors" value={out} icon={Truck} link="/production/outside-processing" />
             <StatTile label="Ready to ship" value={readyCount} icon={PackageSearch} link="/production/outside-processing" variant={readyCount > 0 ? "warning" : "default"} />
         </StatSection>
@@ -863,7 +900,7 @@ function CapaStatusBlock() {
     if (!data || data.total === 0) return null;
     const bs = data.by_status;
     return (
-        <StatSection title="CAPAs">
+        <StatSection icon={ClipboardCheck} title="CAPAs">
             <StatTile label="Open" value={bs.OPEN} icon={ClipboardCheck} link="/quality/capas" />
             <StatTile label="In progress" value={bs.IN_PROGRESS} icon={Clock} link="/quality/capas" />
             <StatTile label="Pending verify" value={bs.PENDING_VERIFICATION} icon={PauseCircle} link="/quality/capas" variant={bs.PENDING_VERIFICATION > 0 ? "warning" : "default"} />
@@ -944,6 +981,78 @@ function JobsGoingLateBlock() {
                 {wos.length > 6 && (
                     <p className="text-xs text-muted-foreground">+{wos.length - 6} more at risk.</p>
                 )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Shift Lead hero — the single biggest fire on the floor right now, rendered
+// operator-hero style (large tile, priority + overdue callout, one-click Open).
+// Answers "what should the lead be walking to right this minute?" — pulls from
+// the same jobs-going-late query but shows only the top row. Hides when
+// nothing is late so the block stack starts with scan on a clean shop.
+// ---------------------------------------------------------------------------
+
+function ShiftLeadHeroBlock() {
+    const horizonISO = useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + JOBS_LATE_HORIZON_DAYS);
+        return d.toISOString().slice(0, 10);
+    }, []);
+    const { data: wosResp } = useQuery({
+        // Same key as JobsGoingLateBlock so both blocks share one fetch.
+        queryKey: ["home", "wos-going-late", horizonISO],
+        queryFn: () =>
+            api.api_WorkOrders_list({
+                queries: {
+                    workorder_status: "IN_PROGRESS",
+                    expected_completion__lte: horizonISO,
+                    ordering: "expected_completion",
+                    limit: 25,
+                },
+            } as never) as Promise<{ results?: QueueWo[] }>,
+        staleTime: 30_000,
+    });
+    const top = wosResp?.results?.[0];
+    if (!top) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const due = (top.expected_completion ?? "").slice(0, 10);
+    const overdue = due && due < today;
+    const daysLate = overdue ? Math.floor((Date.parse(today) - Date.parse(due)) / 86_400_000) : 0;
+    return (
+        <Card className="border-2 border-primary/40">
+            <CardHeader className="pb-3">
+                <BlockHeader
+                    icon={Siren}
+                    title="Biggest fire"
+                    extra={
+                        top.priority != null && PRIORITY_TONE[top.priority] ? (
+                            <Badge className={PRIORITY_TONE[top.priority]}>{PRIORITY_LABEL[top.priority]}</Badge>
+                        ) : undefined
+                    }
+                    action={
+                        overdue ? (
+                            <Badge variant="destructive">{daysLate} day{daysLate === 1 ? "" : "s"} overdue</Badge>
+                        ) : due ? (
+                            <span className="text-xs text-muted-foreground">due {due}</span>
+                        ) : undefined
+                    }
+                />
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div>
+                    <div className="font-mono text-2xl font-semibold leading-tight">{top.ERP_id ?? top.id}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                        {top.related_order_info?.name ?? "—"}
+                        {top.quantity != null ? ` · ${top.quantity} pcs` : ""}
+                    </div>
+                </div>
+                <Link to="/workorder/$workOrderId/control" params={{ workOrderId: String(top.id) }}>
+                    <Button size="lg" className="h-12 w-full text-base">
+                        Open control center <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                </Link>
             </CardContent>
         </Card>
     );
@@ -1130,7 +1239,7 @@ function TrainingStripBlock() {
     const { data } = useTrainingStats();
     if (!data || data.total_records === 0) return null;
     return (
-        <StatSection title="Training">
+        <StatSection icon={GraduationCap} title="Training">
             <StatTile label="Current" value={data.current} icon={GraduationCap} link="/quality/training" />
             <StatTile
                 label="Expiring soon" value={data.expiring_soon} icon={CalendarClock}
@@ -1183,6 +1292,9 @@ const BLOCKS: BlockDef[] = [
             return <ScanBox dest={isDoer ? "work" : "control"} />;
         },
     },
+    // Shift Lead's "one thing to do right now" hero — the single biggest fire.
+    // Full-width so it dominates the top of the stack, operator-hero styled.
+    { id: "shift-lead-hero", size: "full", groups: ["Shift Lead", "Tenant Admin"], Component: () => <ShiftLeadHeroBlock /> },
     // Triage banner — wide, 4 tiles.
     { id: "needs-attention", size: "full", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
     // KPI strip — 5 stat tiles; wants the room.
@@ -1226,7 +1338,7 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
     { group: "QA Manager", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
     { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "available-to-claim", "quality-actions", "scan"] },
-    { group: "Shift Lead", order: ["scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
+    { group: "Shift Lead", order: ["shift-lead-hero", "scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
     { group: "Engineering", order: ["change-control", "approvals-in-flight", "documents", "scan"] },
     { group: "Document Controller", order: ["doc-review-due", "approvals-in-flight", "documents", "training-strip", "scan"] },
     { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
