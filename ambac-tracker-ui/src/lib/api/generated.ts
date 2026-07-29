@@ -12053,6 +12053,7 @@ export type StepSummary = {
   quality_status: TravelerStepQualityStatusEnum | NullEnum | null;
   parts_at_step: number;
   parts_completed: number;
+  parts_reached: number;
   measurement_count: number;
   defect_count: number;
   attachment_count: number;
@@ -18609,6 +18610,7 @@ const StepSummary = z.object({
   quality_status: z.union([TravelerStepQualityStatusEnum, NullEnum]).nullable(),
   parts_at_step: z.number().int(),
   parts_completed: z.number().int(),
+  parts_reached: z.number().int(),
   measurement_count: z.number().int(),
   defect_count: z.number().int(),
   attachment_count: z.number().int(),
@@ -29038,6 +29040,11 @@ Usage:
         name: "step__name",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "step__process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
       },
     ],
     response: PaginatedMeasurementDefinitionList,

@@ -10440,6 +10440,11 @@ paths:
         name: step__name
         schema:
           type: string
+      - in: query
+        name: step__process
+        schema:
+          type: string
+          format: uuid
       tags:
       - api
       security:
@@ -54998,6 +55003,8 @@ components:
           type: integer
         parts_completed:
           type: integer
+        parts_reached:
+          type: integer
         measurement_count:
           type: integer
         defect_count:
@@ -55013,6 +55020,7 @@ components:
       - operator_name
       - parts_at_step
       - parts_completed
+      - parts_reached
       - quality_status
       - started_at
       - status

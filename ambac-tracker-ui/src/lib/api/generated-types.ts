@@ -25396,6 +25396,7 @@ export interface components {
             quality_status: (components["schemas"]["TravelerStepQualityStatusEnum"] | components["schemas"]["NullEnum"]) | null;
             parts_at_step: number;
             parts_completed: number;
+            parts_reached: number;
             measurement_count: number;
             defect_count: number;
             attachment_count: number;
@@ -35762,6 +35763,7 @@ export interface operations {
                 search?: string;
                 step?: string;
                 step__name?: string;
+                step__process?: string;
             };
             header?: never;
             path?: never;
