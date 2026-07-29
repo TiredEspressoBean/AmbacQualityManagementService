@@ -263,11 +263,27 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                                               disableExport = false,
                                                               onDataChange,
                                                           }: ModelEditorProps<T>) {
+    // Deep-linkable list filters. Any `?key=value` query string on the URL
+    // seeds `activeFilters`, so links like `/editor/qualityReports?part=<uuid>`
+    // (from the part-detail page's Latest Inspection link) land pre-filtered.
+    // Reserved keys the editor owns itself (offset/limit/ordering/search) are
+    // excluded so they don't collide with filter names.
+    const initialFilters = useMemo(() => {
+        if (typeof window === "undefined") return {};
+        const params = new URLSearchParams(window.location.search);
+        const filters: Record<string, string> = {};
+        params.forEach((value, key) => {
+            if (["offset", "limit", "ordering", "search"].includes(key)) return;
+            filters[key] = value;
+        });
+        return filters;
+    }, []);
+
     const [offset, setOffset] = useState(0);
     const [limit] = useState(25);
     const [ordering, setOrdering] = useState<string>();
     const [search, setSearch] = useState("");
-    const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+    const [activeFilters, setActiveFilters] = useState<Record<string, string>>(initialFilters);
     const debouncedSearch = useDebounce(search, 500);
     const queryClient = useQueryClient();
 
