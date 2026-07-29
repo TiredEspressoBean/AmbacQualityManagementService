@@ -1,6 +1,7 @@
 # viewsets/qms.py - QMS ViewSets (Quality, Sampling, CAPA, 3D Models, Heatmap Annotations)
 from django.db import models
 from django.utils import timezone
+import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_view, OpenApiParameter
 from rest_framework import viewsets, status, filters, serializers
@@ -374,11 +375,28 @@ class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin
         return qs
 
 
+class MeasurementDefinitionFilter(django_filters.FilterSet):
+    # Traversal filter — measurement definitions belong to a step; scoping to
+    # a whole process's worth of defs (all steps in an Injector Reman routing,
+    # for example) is what the WO Detail measurement widget wants. Steps are
+    # shared across process versions via the ProcessStep junction table, so
+    # the join goes step -> process_memberships -> process; a single step in
+    # multiple processes still resolves cleanly.
+    step__process = django_filters.UUIDFilter(
+        field_name="step__process_memberships__process",
+        distinct=True,
+    )
+
+    class Meta:
+        model = MeasurementDefinition
+        fields = ["step__name", "label", "step"]
+
+
 class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     queryset = MeasurementDefinition.unscoped.all()
     serializer_class = MeasurementDefinitionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
-    filterset_fields = ["step__name", "label", "step"]
+    filterset_class = MeasurementDefinitionFilter
     ordering_fields = ["step__name", "label"]
     ordering = ["label"]
     search_fields = ["label", "step__name", "step"]
