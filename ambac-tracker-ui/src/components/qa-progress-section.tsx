@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, AlertTriangle, Paperclip } from "lucide-react";
-import { MeasurementProgressChart } from "./measurement-progress-chart";
+import { Link } from "@tanstack/react-router";
 import { useWorkOrderStepHistory } from "@/hooks/useWorkOrderStepHistory";
 import { memo } from "react";
 
@@ -22,6 +22,17 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
         p.part_status === 'REWORK_NEEDED' || p.part_status === 'FAILED'
     ).length;
     const progressPercentage = totalParts > 0 ? Math.round((completedParts / totalParts) * 100) : 0;
+
+    // Exception counts — derived from parts already loaded (no extra query).
+    // Same categories as the Control page's status pills at the top of Step
+    // Status ("In quarantine / Rework / Scrap") plus "Awaiting QA" for the
+    // parts sitting in the inspector's queue right now. Everyone sees the
+    // counts; QA gets the click-through into Control's exceptions panel.
+    const quarantinedCount = parts.filter(p => p.part_status === 'QUARANTINED').length;
+    const reworkCount = parts.filter(p => p.part_status === 'REWORK_IN_PROGRESS' || p.part_status === 'REWORK_NEEDED').length;
+    const scrappedCount = parts.filter(p => p.part_status === 'SCRAPPED').length;
+    const awaitingQaCount = parts.filter(p => p.part_status === 'AWAITING_QA').length;
+    const totalExceptions = quarantinedCount + reworkCount + scrappedCount + awaitingQaCount;
 
     // Fetch step history for digital traveler
     const { data: stepHistoryData, isLoading: stepHistoryLoading } = useWorkOrderStepHistory(
@@ -131,8 +142,54 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                 </CardContent>
             </Card>
 
-            {/* Measurement Progress Chart */}
-            <MeasurementProgressChart workOrder={workOrder} />
+            {/* Exceptions — quick counts + link to Control's exceptions panel.
+                Rendered whether or not there are exceptions so the "clean lot"
+                state is visible too. */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Exceptions on this WO
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {totalExceptions === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            No open exceptions — nothing quarantined, in rework, scrapped, or awaiting QA.
+                        </p>
+                    ) : (
+                        <div className="flex flex-wrap gap-2">
+                            {awaitingQaCount > 0 && (
+                                <Badge variant="secondary" className="text-sm">
+                                    Awaiting QA · {awaitingQaCount}
+                                </Badge>
+                            )}
+                            {quarantinedCount > 0 && (
+                                <Badge variant="destructive" className="text-sm">
+                                    Quarantined · {quarantinedCount}
+                                </Badge>
+                            )}
+                            {reworkCount > 0 && (
+                                <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-sm">
+                                    Rework · {reworkCount}
+                                </Badge>
+                            )}
+                            {scrappedCount > 0 && (
+                                <Badge variant="outline" className="text-sm">
+                                    Scrapped · {scrappedCount}
+                                </Badge>
+                            )}
+                        </div>
+                    )}
+                    <Link
+                        to="/workorder/$workOrderId/control"
+                        params={{ workOrderId: workOrder.id }}
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                        View in Control Center →
+                    </Link>
+                </CardContent>
+            </Card>
 
             {/* Digital Traveler - Step History */}
             <Card>
