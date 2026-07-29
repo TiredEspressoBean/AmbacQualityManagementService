@@ -1723,12 +1723,33 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         # Aggregate parts at each step
         parts_by_step = {}
         completed_by_step = {}
+        # Map step_id -> its process order for "reached" computation
+        order_by_step_id = {s.id: o for s, o in ordered_steps}
+        # Count of parts whose *current* position is exactly this order
+        # (COMPLETED parts contribute to a sentinel key that stands in for
+        # "past the end"). We roll this into a running total below.
+        parts_currently_at_order = {}
+        completed_parts_count = 0
         for part in parts:
             if part.step_id:
                 parts_by_step[part.step_id] = parts_by_step.get(part.step_id, 0) + 1
             if part.part_status == 'COMPLETED':
                 # Completed parts count toward all steps they passed
                 completed_by_step['__completed__'] = completed_by_step.get('__completed__', 0) + 1
+                completed_parts_count += 1
+            elif part.step_id and part.step_id in order_by_step_id:
+                o = order_by_step_id[part.step_id]
+                parts_currently_at_order[o] = parts_currently_at_order.get(o, 0) + 1
+
+        # A part has "reached" step S when its current order >= S's order, OR
+        # it's COMPLETED (reached every step). Compute per-order reached
+        # counts once by iterating orders descending and accumulating —
+        # avoids an O(steps * parts) pass at the render site.
+        reached_by_order = {}
+        running = completed_parts_count
+        for _, order in sorted(ordered_steps, key=lambda x: x[1], reverse=True):
+            running += parts_currently_at_order.get(order, 0)
+            reached_by_order[order] = running
 
         # Get step executions for timing data
         executions = StepExecution.objects.filter(
@@ -1839,6 +1860,13 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                 'quality_status': quality_status,
                 'parts_at_step': parts_at,
                 'parts_completed': completed_by_step.get('__completed__', 0) if step_status == 'COMPLETED' else 0,
+                # Parts that have passed through this step (currently here,
+                # further along, or finished the WO). This is the honest
+                # denominator for "how many owe a capture on this step" —
+                # unlike `parts_at_step + parts_completed`, which double-
+                # counts when a step happens to be marked COMPLETED and
+                # under-counts every other step whose parts have moved on.
+                'parts_reached': reached_by_order.get(order, 0),
                 'measurement_count': measurement_map.get(step_id, 0),
                 'defect_count': defect_map.get(step_id, 0),
                 'attachment_count': attachment_map.get(str(step_id), 0),

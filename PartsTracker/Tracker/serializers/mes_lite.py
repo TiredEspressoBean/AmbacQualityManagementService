@@ -696,6 +696,7 @@ class StepSummarySerializer(serializers.Serializer):
     quality_status = serializers.ChoiceField(choices=STEP_QUALITY_STATUSES, allow_null=True)
     parts_at_step = serializers.IntegerField()
     parts_completed = serializers.IntegerField()
+    parts_reached = serializers.IntegerField()
     measurement_count = serializers.IntegerField()
     defect_count = serializers.IntegerField()
     attachment_count = serializers.IntegerField()
