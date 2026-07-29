@@ -3,6 +3,7 @@ import type { FieldsConfig } from './ModelDetailPage';
 import DocumentsSection from './DocumentsSection';
 import AuditTrail from './AuditTrail';
 import { PartLinkedRecordsSection } from './PartLinkedRecordsSection';
+import { QRMeasurementsSection } from './QRMeasurementsSection';
 import { Link } from '@tanstack/react-router';
 
 // List of model types that have detail page configurations
@@ -65,6 +66,7 @@ export const createModelConfig = (config: {
         getUrl: (modelData: any) => string;
         condition?: (modelData: any) => boolean;
     }>;
+    linkedRecordsComponent?: React.FC<{ modelData: any }>;
 }): FieldsConfig => {
     const {
         fields,
@@ -75,6 +77,7 @@ export const createModelConfig = (config: {
         includeAudit = true,
         relatedModels = [],
         actionButtons = [],
+        linkedRecordsComponent,
     } = config;
 
     return {
@@ -93,6 +96,7 @@ export const createModelConfig = (config: {
         subcomponents: {
             ...(includeDocuments && { DocumentsSectionComponent: DocumentsSection }),
             ...(includeAudit && { AuditTrailComponent: AuditTrail }),
+            ...(linkedRecordsComponent && { LinkedRecordsComponent: linkedRecordsComponent }),
         },
     };
 };
@@ -1037,6 +1041,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         condition: (modelData) => modelData.status === 'FAIL',
                     },
                 ],
+                linkedRecordsComponent: QRMeasurementsSection,
             });
 
         case 'documents':

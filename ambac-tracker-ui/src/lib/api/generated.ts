@@ -2956,14 +2956,18 @@ export type MeasurementDefinitionSPC = {
     | undefined;
 };
 export type MeasurementResult = {
+  id: string;
   report: string;
   definition: string;
+  definition_info: {};
   value_numeric?: (number | null) | undefined;
   value_pass_fail?:
     | (ValuePassFailEnum | BlankEnum | NullEnum | null)
     | undefined;
   is_within_spec: boolean;
+  sample_number: number | null;
   created_by: number;
+  created_at: string;
   archived?: boolean | undefined;
 };
 export type ValuePassFailEnum =
@@ -15084,12 +15088,16 @@ const PatchedMaterialLotRequest = z
 const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
 const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
 const MeasurementResult = z.object({
+  id: z.string().uuid(),
   report: z.string(),
   definition: z.string().uuid(),
+  definition_info: z.object({}).partial().passthrough().nullable(),
   value_numeric: z.number().nullish(),
   value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
   is_within_spec: z.boolean(),
+  sample_number: z.number().int().nullable(),
   created_by: z.number().int(),
+  created_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
 });
 const QualityReportEquipmentRoleEnum = z.enum([

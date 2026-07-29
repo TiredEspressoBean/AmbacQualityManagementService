@@ -150,10 +150,15 @@ export default function EditQualityReportFormPage() {
     const updateQualityReport = useUpdateQualityReport();
 
     function onSubmit(values: FormValues) {
-        const submitData = {
-            ...values,
-            measurements: values.measurements || [],
-        };
+        // In edit mode `measurements` is never touched by this form (the DWI
+        // inline-capture path owns those writes). Sending an empty array here
+        // used to clobber the linked MeasurementResults; the backend now
+        // discards the field on update, but keep it out of the payload too so
+        // the intent is legible.
+        const submitData =
+            mode === "edit"
+                ? { ...values, measurements: undefined }
+                : { ...values, measurements: values.measurements || [] };
 
         if (mode === "edit" && qualityReportId) {
             updateQualityReport.mutate(

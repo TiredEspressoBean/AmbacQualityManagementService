@@ -18002,14 +18002,22 @@ export interface components {
          *     before it) an MRO error.
          */
         MeasurementResult: {
+            /** Format: uuid */
+            readonly id: string;
             readonly report: string;
             /** Format: uuid */
             definition: string;
+            readonly definition_info: {
+                [key: string]: unknown;
+            } | null;
             /** Format: double */
             value_numeric?: number | null;
             value_pass_fail?: (components["schemas"]["ValuePassFailEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly is_within_spec: boolean;
+            readonly sample_number: number | null;
             readonly created_by: number;
+            /** Format: date-time */
+            readonly created_at: string;
             archived?: boolean;
         };
         /**

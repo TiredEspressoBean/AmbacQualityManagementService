@@ -126,10 +126,32 @@ class MeasurementResultSerializer(SecureModelMixin):
     report = serializers.CharField(read_only=True)
     is_within_spec = serializers.BooleanField(read_only=True)
     created_by = serializers.IntegerField(read_only=True, source='created_by_id')
+    # Denormalised spec context so a QR view can render a full measurement row
+    # (label, unit, nominal ± tol) without a second round-trip per definition.
+    definition_info = serializers.SerializerMethodField()
+    sample_number = serializers.IntegerField(read_only=True, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = MeasurementResult
-        fields = ["report", "definition", "value_numeric", "value_pass_fail", "is_within_spec", "created_by", "archived"]
+        fields = ["id", "report", "definition", "definition_info", "value_numeric",
+                  "value_pass_fail", "is_within_spec", "sample_number",
+                  "created_by", "created_at", "archived"]
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_definition_info(self, obj):
+        d = obj.definition
+        if not d:
+            return None
+        return {
+            "id": d.id,
+            "label": d.label,
+            "type": d.type,
+            "unit": d.unit,
+            "nominal": str(d.nominal) if d.nominal is not None else None,
+            "upper_tol": str(d.upper_tol) if d.upper_tol is not None else None,
+            "lower_tol": str(d.lower_tol) if d.lower_tol is not None else None,
+        }
 
 
 # ===== QUALITY REPORTS SERIALIZERS =====
@@ -323,6 +345,11 @@ class QualityReportsSerializer(SecureModelMixin):
         # default update apply the rest.
         has_equipment = "production_equipment" in validated_data
         production_equipment = validated_data.pop("production_equipment", None)
+        # Measurements originate from the DWI inline-capture path (Tier 2 writes
+        # via services/qms/inline_capture.py), NOT the manual QR edit form.
+        # Silently discard the field on update so the form can't clobber the
+        # linked MeasurementResult rows by sending an empty array.
+        validated_data.pop("measurements", None)
         instance = super().update(instance, validated_data)
         if has_equipment:
             self._set_production_equipment(instance, production_equipment)

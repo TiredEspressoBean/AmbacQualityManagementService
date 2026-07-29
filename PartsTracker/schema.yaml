@@ -41839,12 +41839,21 @@ components:
         ``serializers.ModelSerializer`` alongside it is redundant and (when listed
         before it) an MRO error.
       properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
         report:
           type: string
           readOnly: true
         definition:
           type: string
           format: uuid
+        definition_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
         value_numeric:
           type: number
           format: double
@@ -41858,16 +41867,28 @@ components:
         is_within_spec:
           type: boolean
           readOnly: true
+        sample_number:
+          type: integer
+          readOnly: true
+          nullable: true
         created_by:
           type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
           readOnly: true
         archived:
           type: boolean
       required:
+      - created_at
       - created_by
       - definition
+      - definition_info
+      - id
       - is_within_spec
       - report
+      - sample_number
     MeasurementResultRequest:
       type: object
       description: |-
