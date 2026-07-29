@@ -420,7 +420,13 @@ export function QaHomePage({ user }: { user: AuthUser }) {
                     </Button>
                 </Link>
             </div>
-            <ScanBox autoFocus={false} />
+            {/* QA inspectors are non-doers: scans should land on the WO
+                Control page (Exceptions panel + per-part step controls +
+                sampling flags) — the actual QA working surface — rather
+                than the WO Detail summary. Matches the block-registry
+                convention in home-blocks.tsx for non-Operator/Shift-Lead
+                users. */}
+            <ScanBox autoFocus={false} dest="control" />
             <FpiBanner />
             <InboxList />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
