@@ -2,6 +2,7 @@ import { api } from '@/lib/api/generated';
 import type { FieldsConfig } from './ModelDetailPage';
 import DocumentsSection from './DocumentsSection';
 import AuditTrail from './AuditTrail';
+import { PartLinkedRecordsSection } from './PartLinkedRecordsSection';
 import { Link } from '@tanstack/react-router';
 
 // List of model types that have detail page configurations
@@ -103,20 +104,27 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
         case 'parts':
             return {
                 fields: {
+                    ERP_id: { label: 'Serial' },
                     part_status: { label: 'Status' },
-                    ERP_id: { label: 'ERP ID' },
-                    order_name: { label: 'Order' },
-                    order: { label: 'Order ID' },
                     part_type_name: { label: 'Part Type' },
-                    part_type: { label: 'Part Type ID' },
-                    step_description: { label: 'Step' },
-                    step: { label: 'Step ID' },
-                    requires_sampling: { label: 'Requires Sampling' },
-                    sampling_rule: { label: 'Sampling Rule ID' },
-                    sampling_ruleset: { label: 'Sampling Ruleset ID' },
-                    work_order: { label: 'Work Order ID' },
-                    work_order_erp_id: { label: 'Work Order ERP ID' },
-                    has_error: { label: 'Has Error' },
+                    order_name: { label: 'Order' },
+                    step_name: { label: 'Current Step' },
+                    work_order_erp_id: { label: 'Work Order' },
+                    quality_info: { label: 'Latest Inspection' },
+                    // Framed by the *action* an inspector would take, not
+                    // the raw model flag. A QUARANTINED part with a FAIL
+                    // reads "Awaiting inspection: No / Inspections signed
+                    // off: No" — technically accurate (the part is out of
+                    // the AWAITING_QA state and hasn't finished the
+                    // routing) instead of the misleading "Needs QA: No" on
+                    // a part that plainly needs a QA *decision* (via
+                    // disposition, tracked elsewhere on this page).
+                    needs_qa: { label: 'Awaiting inspection' },
+                    qa_completed: { label: 'Inspections signed off' },
+                    total_rework_count: { label: 'Rework Passes' },
+                    has_error: { label: 'Has Open Defect' },
+                    requires_sampling: { label: 'Sampling Required' },
+                    sampling_context: { label: 'Sampling Reason' },
                     archived: { label: 'Archived' },
                     created_at: { label: 'Created At' },
                     updated_at: { label: 'Last Updated' },
@@ -127,28 +135,154 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     has_error: commonRenderers.boolean,
                     archived: commonRenderers.boolean,
                     requires_sampling: commonRenderers.boolean,
-                    order: commonRenderers.uuid,
-                    part_type: commonRenderers.uuid,
-                    step: commonRenderers.uuid,
-                    work_order: commonRenderers.uuid,
-                    sampling_rule: commonRenderers.uuid,
-                    sampling_ruleset: commonRenderers.uuid,
+                    needs_qa: commonRenderers.boolean,
+                    qa_completed: commonRenderers.boolean,
+                    // Link the resolved names in the info sections to their
+                    // owning object's detail page — a QA inspector who reads
+                    // "Order: Midwest Fleet Order — 24 Injectors" should be
+                    // able to click through to that order without hunting.
+                    part_type_name: (value, modelData) => {
+                        const label = value || 'Part Type';
+                        const id = modelData?.part_type;
+                        if (!id) return String(label);
+                        return (
+                            <Link
+                                to="/details/$model/$id"
+                                params={{ model: 'PartTypes', id: String(id) }}
+                                className="text-primary hover:underline font-medium"
+                            >
+                                {String(label)}
+                            </Link>
+                        );
+                    },
+                    order_name: (value, modelData) => {
+                        const label = value || 'Order';
+                        const id = modelData?.order;
+                        if (!id) return String(label);
+                        return (
+                            <Link
+                                to="/details/$model/$id"
+                                params={{ model: 'Orders', id: String(id) }}
+                                className="text-primary hover:underline font-medium"
+                            >
+                                {String(label)}
+                            </Link>
+                        );
+                    },
+                    step_name: (value, modelData) => {
+                        const label = value || 'Step';
+                        const id = modelData?.step;
+                        if (!id) return String(label);
+                        return (
+                            <Link
+                                to="/details/$model/$id"
+                                params={{ model: 'Steps', id: String(id) }}
+                                className="text-primary hover:underline font-medium"
+                            >
+                                {String(label)}
+                            </Link>
+                        );
+                    },
+                    // Work Order routes to the CONTROL page (the QA/lead
+                    // working surface with exceptions + per-part step
+                    // controls) rather than the WO detail — the detail page
+                    // is a summary; the control page is where you *do*
+                    // things.
+                    work_order_erp_id: (value, modelData) => {
+                        const label = value || 'Work Order';
+                        const id = modelData?.work_order;
+                        if (!id) return String(label);
+                        return (
+                            <Link
+                                to="/workorder/$workOrderId/control"
+                                params={{ workOrderId: String(id) }}
+                                className="text-primary hover:underline font-medium"
+                            >
+                                {String(label)}
+                            </Link>
+                        );
+                    },
+                    // Latest QR status + open error count, drawn from the
+                    // serializer's `quality_info` object. A QUARANTINED part
+                    // with a FAIL QR reads "FAIL · 1 open defect" instead of
+                    // an unhelpful "Has Error: Yes".
+                    quality_info: (value, modelData) => {
+                        if (!value || typeof value !== 'object') return '—';
+                        const info = value as {
+                            has_errors?: boolean;
+                            latest_status?: string | null;
+                            error_count?: number;
+                        };
+                        const status = info.latest_status ?? '—';
+                        const count = info.error_count ?? 0;
+                        if (status === '—' && count === 0) return '—';
+                        const text = count > 0
+                            ? `${status} · ${count} open defect${count === 1 ? '' : 's'}`
+                            : String(status);
+                        // No stable QR-id on the parts serializer to deep
+                        // link into a single report, but the QRs editor list
+                        // supports a `part` filter — take the trainee to the
+                        // filtered list so they can open the report.
+                        const partId = modelData?.id;
+                        if (!partId) return text;
+                        return (
+                            <Link
+                                to="/editor/qualityReports"
+                                search={{ part: String(partId) } as never}
+                                className="text-primary hover:underline font-medium"
+                            >
+                                {text}
+                            </Link>
+                        );
+                    },
+                    // Human-readable "why is this in the QA queue?" from the
+                    // sampling_context JSON blob. Falls back to '—' when no
+                    // trigger is stored.
+                    sampling_context: (value) => {
+                        if (!value || typeof value !== 'object') return '—';
+                        const ctx = value as { trigger_reason?: string };
+                        const reason = ctx.trigger_reason;
+                        if (!reason) return '—';
+                        // Enum-style keys → readable phrases.
+                        const map: Record<string, string> = {
+                            PERIODIC_SAMPLING: 'Periodic — every N parts',
+                            FIRST_PIECE: 'First piece off the line',
+                            RANDOM: 'Random selection',
+                            RULE_TRIGGERED: 'Rule triggered',
+                        };
+                        return map[reason] ?? reason.replace(/_/g, ' ').toLowerCase();
+                    },
                 },
                 fetcher: (id) => api.api_Parts_retrieve({ params: { id } }),
+                // Show `INJ-0042-017 · Common Rail Injector` in the header
+                // instead of `Parts Detail · ID: 019f6185-…`. Shop floor
+                // reads ERP ids, never UUIDs.
+                getHeader: (part) => ({
+                    title: part.ERP_id || 'Part',
+                    subtitle: part.part_type_name || undefined,
+                }),
                 sections: {
                     header: [],
                     info: [
                         {
                             title: 'General Information',
-                            fields: ['ERP_id', 'part_status', 'part_type_name', 'part_type'],
+                            fields: ['ERP_id', 'part_status', 'part_type_name'],
                         },
                         {
                             title: 'Production Details',
-                            fields: ['order_name', 'order', 'step_description', 'step', 'work_order', 'work_order_erp_id'],
+                            fields: ['order_name', 'step_name', 'work_order_erp_id'],
                         },
                         {
                             title: 'Quality Control',
-                            fields: ['requires_sampling', 'sampling_rule', 'sampling_ruleset', 'has_error'],
+                            fields: [
+                                'quality_info',
+                                'has_error',
+                                'needs_qa',
+                                'qa_completed',
+                                'total_rework_count',
+                                'requires_sampling',
+                                'sampling_context',
+                            ],
                         },
                         createSystemInfoSection(['archived', 'created_at', 'updated_at']),
                     ],
@@ -188,6 +322,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                 subcomponents: {
                     DocumentsSectionComponent: DocumentsSection,
                     AuditTrailComponent: AuditTrail,
+                    LinkedRecordsComponent: PartLinkedRecordsSection,
                 },
             };
 

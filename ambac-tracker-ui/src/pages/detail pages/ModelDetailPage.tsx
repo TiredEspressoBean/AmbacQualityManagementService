@@ -39,6 +39,11 @@ export type FieldsConfig = {
     fields: Record<string, { label: string }>;
     customRenderers?: Record<string, (value: any, modelData?: any) => React.ReactNode>;
     fetcher: (id: string) => Promise<any>;
+    // Optional custom header — return the human-readable title (e.g. an ERP id
+    // or serial) and a short subtitle (e.g. part type name). Without this the
+    // page falls back to "{modelData.name} · ID: {uuid}" which shows raw UUIDs
+    // that shop-floor users can't read or use.
+    getHeader?: (modelData: any) => { title: string; subtitle?: string };
     sections: {
         header: any[];
         info: InfoSection[];
@@ -59,6 +64,10 @@ export type FieldsConfig = {
         }>;
         DocumentsSectionComponent?: React.FC<any>;
         AuditTrailComponent?: React.FC<any>;
+        // Optional related-records section rendered under the info blocks
+        // (before Documents). Used by the part-detail page to show linked
+        // QRs and dispositions inline.
+        LinkedRecordsComponent?: React.FC<{ modelData: any }>;
     };
 };
 
@@ -193,10 +202,19 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
                     <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
                         <div className="flex items-start justify-between gap-2 flex-wrap">
                             <div className="min-w-0 flex-1">
-                                <h1 className="text-xl font-bold tracking-tight truncate">
-                                    {modelData.name || `${modelType} Detail`}
-                                </h1>
-                                <p className="text-sm text-muted-foreground truncate">ID: {modelData.id}</p>
+                                {(() => {
+                                    const header = fieldsConfig.getHeader?.(modelData);
+                                    const title = header?.title ?? modelData.name ?? `${modelType} Detail`;
+                                    const subtitle = header?.subtitle;
+                                    return (
+                                        <>
+                                            <h1 className="text-xl font-bold tracking-tight truncate">{title}</h1>
+                                            {subtitle && (
+                                                <p className="text-sm text-muted-foreground truncate">{subtitle}</p>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </div>
                             {visibleActionButtons.length > 0 && (
                                 <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
@@ -240,6 +258,11 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
                                 {idx < fieldsConfig.sections.info.length - 1 && <Separator className="mt-4" />}
                             </section>
                         ))}
+
+                        {/* Linked records section — QRs, dispositions, etc. — for models that opt in. */}
+                        {fieldsConfig.subcomponents?.LinkedRecordsComponent && (
+                            <fieldsConfig.subcomponents.LinkedRecordsComponent modelData={modelData} />
+                        )}
 
                         {/* Documents section */}
                         {modelType.toLowerCase() !== 'documents' && allDocuments.length > 0 && (

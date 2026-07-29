@@ -168,7 +168,7 @@ export function WorkOrderPartsTable({ workOrderId, onPartSelect, selectedPartId 
 
     const handleViewPart = (partId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        navigate({ to: "/details/$model/$id", params: { model: "Part", id: partId } });
+        navigate({ to: "/details/$model/$id", params: { model: "Parts", id: partId } });
     };
 
     if (isLoading) {
