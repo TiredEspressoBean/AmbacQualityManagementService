@@ -78,12 +78,30 @@ export function NavPagesCollapsible({
 }) {
     const [isOpen, setIsOpen] = useState(defaultOpen)
 
+    // Sum numeric badges from child pages so a collapsed section can still
+    // signal "there's work in here" without the user having to expand it.
+    // Without this a QA inspector with 5 pending approvals sees only the
+    // section header + chevron — no numeric cue that anything is waiting.
+    // When the section is expanded, per-page badges take over and this
+    // aggregate hides (avoids double-counting the same items).
+    const totalBadge = pages.reduce(
+        (acc, p) => acc + (typeof p.badge === "number" ? p.badge : 0),
+        0,
+    )
+
     return (
         <SidebarGroup>
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <CollapsibleTrigger asChild>
                     <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md transition-colors flex items-center justify-between pr-2">
-                        <span>{title}</span>
+                        <span className="flex items-center gap-2">
+                            <span>{title}</span>
+                            {!isOpen && totalBadge > 0 && (
+                                <SidebarMenuBadge className="static ml-0">
+                                    {totalBadge}
+                                </SidebarMenuBadge>
+                            )}
+                        </span>
                         <ChevronDown
                             className={cn(
                                 "h-4 w-4 transition-transform duration-200",
