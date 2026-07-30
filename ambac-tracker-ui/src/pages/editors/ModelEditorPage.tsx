@@ -282,7 +282,10 @@ export function ModelEditorPage<T extends { id: string | number }>({
     const [offset, setOffset] = useState(0);
     const [limit] = useState(25);
     const [ordering, setOrdering] = useState<string>();
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = useState(() => {
+        if (typeof window === "undefined") return "";
+        return new URLSearchParams(window.location.search).get("search") ?? "";
+    });
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>(initialFilters);
     const debouncedSearch = useDebounce(search, 500);
     const queryClient = useQueryClient();
