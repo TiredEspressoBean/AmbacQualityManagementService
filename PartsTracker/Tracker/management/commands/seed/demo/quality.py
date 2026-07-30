@@ -135,6 +135,20 @@ DEMO_QUALITY_REPORTS = [
         'linked_to_capa': False,
         'disposition': 'REWORK',
     },
+    # Journey 6 exhibit: gives INJ-0042-023 (SCRAPPED) a proper trail
+    # to read backwards from — FAIL QR at Final Test → closed SCRAP
+    # disposition (created below in DEMO_DISPOSITIONS).
+    {
+        'id': 'QR-0042-023-FT',
+        'part': 'INJ-0042-023',
+        'step': 'Final Test',
+        'status': 'FAIL',
+        'defect': 'Surface porosity',
+        'description': 'Nozzle tip shows visible porosity at seat face; failed hold pressure at 2450 psi (min 2800). Casting defect, not reworkable.',
+        'days_ago': 6,
+        'linked_to_capa': False,
+        'disposition': 'SCRAP',
+    },
 ]
 
 # Demo dispositions
@@ -181,6 +195,18 @@ DEMO_DISPOSITIONS = [
         'severity': 'CRITICAL',
         'resolution_notes': 'Nozzle damage beyond repair limits. Part scrapped per procedure QP-007.',
         'days_ago': 13,
+    },
+    # Journey 6 exhibit: closed SCRAP for INJ-0042-023. Pairs with the
+    # FAIL QR-0042-023-FT above so a trainer can read the trail backwards
+    # from the SCRAPPED part status.
+    {
+        'quality_report': 'QR-0042-023-FT',
+        'part': 'INJ-0042-023',
+        'disposition_type': 'SCRAP',
+        'current_state': 'CLOSED',
+        'severity': 'CRITICAL',
+        'resolution_notes': 'Casting porosity confirmed at seat face; pressure test failed. Non-reworkable. Scrapped per QP-007.',
+        'days_ago': 5,
     },
 ]
 

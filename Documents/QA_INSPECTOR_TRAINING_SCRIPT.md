@@ -505,19 +505,25 @@ INJ-0042-023 in the list).
 - **Documents**: DWG-CRI-8800 still attached.
 - **Activity History**: in the current seed this reads `No audit
   history.` — the trail (disposition + QR) that led to the scrap isn't
-  wired into this particular record. Trainer: **read the caveat below
-  before class**.
+  wired into this particular record.
 
 ![INJ-0042-023 part detail —
 SCRAPPED terminal record](screenshots/qa_inspector_training/06-part-023-scrap.png)
 
-**Seed caveat (real, worth mentioning to trainer prep):** INJ-0042-023
-in the current seed has *no linked disposition and no linked QR* —
-just the SCRAPPED status. So "read the trail" in 6b below has nothing
-to point at on this specific record. To teach a *rich* scrap example,
-use INJ-0042-019 (Journey 5) as the escalation-staged case, or ask
-whoever owns the seed to attach a terminal SCRAP disposition and its
-originating QR to INJ-0042-023.
+**What INJ-0042-023 shows in the current seed:**
+- `QR-0042-023-FT` — FAIL at **Final Test**, defect: *Surface porosity*.
+  Description: *"Nozzle tip shows visible porosity at seat face; failed
+  hold pressure at 2450 psi (min 2800). Casting defect, not
+  reworkable."* This is the *originating* inspection — the record that
+  caused the SCRAP decision.
+- **CLOSED SCRAP disposition** (`DISP-QR-0042-023-FT`), severity
+  CRITICAL, resolution notes: *"Casting porosity confirmed at seat
+  face; pressure test failed. Non-reworkable. Scrapped per QP-007."*
+  This is the *decision* — signed and closed.
+- One extra IN_PROGRESS disposition also appears on this part with a
+  different type (the auto-created NCR from the FAIL signal, then
+  enriched by the seed's lifecycle pass). Same double-disposition
+  quirk as INJ-0038-010. Read the CLOSED SCRAP one; ignore the other.
 
 ### 6b — Read the trail
 
@@ -528,9 +534,10 @@ being scrapped.
 **Teaching point:**
 - SCRAPPED is **terminal by design**. If a scrapped serial shows up on
   your bench, something's wrong (mislabel, wrong bin). Stop and ask.
-- A scrapped part with **no linked disposition / QR** (like the seed
-  version of INJ-0042-023) is itself a red flag — how did the part
-  reach a terminal state without a paper trail? Ask before touching.
+- A scrapped part with **no linked disposition / QR** is itself a red
+  flag — how did the part reach a terminal state without a paper
+  trail? Ask before touching. (Earlier seeds of INJ-0042-023 exhibited
+  exactly this gap; the current seed has been fixed with a real trail.)
 - The record is still readable — you can see why it was scrapped, who
   decided, and when. That's the audit trail.
 
