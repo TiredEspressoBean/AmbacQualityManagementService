@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import {
     Table,
     TableBody,
@@ -1499,37 +1499,95 @@ export function WorkOrderControlPage() {
             </p>
 
             {/* Summary strip */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Card>
-                    <CardContent className="p-3">
-                        <div className="text-xs text-muted-foreground">Progress</div>
-                        <div className="text-xl font-semibold">{progressPct}%</div>
-                        <div className="text-xs text-muted-foreground">
-                            {completedCount}/{parts.length} complete
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-3">
-                        <div className="text-xs text-muted-foreground">In quarantine</div>
-                        <div className="text-xl font-semibold">{parts.filter((p) => p.status === "QUARANTINED").length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-3">
-                        <div className="text-xs text-muted-foreground">Rework</div>
-                        <div className="text-xl font-semibold">
-                            {parts.filter((p) => p.status === "REWORK_NEEDED" || p.status === "REWORK_IN_PROGRESS").length}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-3">
-                        <div className="text-xs text-muted-foreground">Scrap</div>
-                        <div className="text-xl font-semibold">{parts.filter((p) => p.status === "SCRAPPED").length}</div>
-                    </CardContent>
-                </Card>
-            </div>
+            {(() => {
+                const quarantinedCount = parts.filter((p) => p.status === "QUARANTINED").length;
+                const reworkCount = parts.filter(
+                    (p) => p.status === "REWORK_NEEDED" || p.status === "REWORK_IN_PROGRESS",
+                ).length;
+                const scrapCount = parts.filter((p) => p.status === "SCRAPPED").length;
+                // Dispositions list is scoped by work_order (ModelChoiceFilter on the
+                // Parts endpoint); ModelEditorPage's initialFilters seeds activeFilters
+                // from any non-reserved URL param, so this shows only this WO's parts.
+                const dispositionsSearch = { work_order: wo.id } as const;
+                const linkClass =
+                    "block rounded-xl transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+                return (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <Card>
+                            <CardContent className="p-3">
+                                <div className="text-xs text-muted-foreground">Progress</div>
+                                <div className="text-xl font-semibold">{progressPct}%</div>
+                                <div className="text-xs text-muted-foreground">
+                                    {completedCount}/{parts.length} complete
+                                </div>
+                            </CardContent>
+                        </Card>
+                        {quarantinedCount > 0 ? (
+                            <Link
+                                to="/production/dispositions"
+                                search={dispositionsSearch}
+                                className={linkClass}
+                            >
+                                <Card>
+                                    <CardContent className="p-3">
+                                        <div className="text-xs text-muted-foreground">In quarantine</div>
+                                        <div className="text-xl font-semibold">{quarantinedCount}</div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        ) : (
+                            <Card>
+                                <CardContent className="p-3">
+                                    <div className="text-xs text-muted-foreground">In quarantine</div>
+                                    <div className="text-xl font-semibold">{quarantinedCount}</div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {reworkCount > 0 ? (
+                            <Link
+                                to="/production/dispositions"
+                                search={dispositionsSearch}
+                                className={linkClass}
+                            >
+                                <Card>
+                                    <CardContent className="p-3">
+                                        <div className="text-xs text-muted-foreground">Rework</div>
+                                        <div className="text-xl font-semibold">{reworkCount}</div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        ) : (
+                            <Card>
+                                <CardContent className="p-3">
+                                    <div className="text-xs text-muted-foreground">Rework</div>
+                                    <div className="text-xl font-semibold">{reworkCount}</div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {scrapCount > 0 ? (
+                            <Link
+                                to="/production/dispositions"
+                                search={dispositionsSearch}
+                                className={linkClass}
+                            >
+                                <Card>
+                                    <CardContent className="p-3">
+                                        <div className="text-xs text-muted-foreground">Scrap</div>
+                                        <div className="text-xl font-semibold">{scrapCount}</div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        ) : (
+                            <Card>
+                                <CardContent className="p-3">
+                                    <div className="text-xs text-muted-foreground">Scrap</div>
+                                    <div className="text-xl font-semibold">{scrapCount}</div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                );
+            })()}
 
             <Card>
                 <CardContent className="space-y-2 p-3">
