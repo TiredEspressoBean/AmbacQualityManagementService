@@ -55011,14 +55011,20 @@ components:
           type: integer
         attachment_count:
           type: integer
+        is_outside_process:
+          type: boolean
+        parts_at_supplier:
+          type: integer
       required:
       - attachment_count
       - completed_at
       - defect_count
       - duration_seconds
+      - is_outside_process
       - measurement_count
       - operator_name
       - parts_at_step
+      - parts_at_supplier
       - parts_completed
       - parts_reached
       - quality_status

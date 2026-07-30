@@ -1730,9 +1730,14 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         # "past the end"). We roll this into a running total below.
         parts_currently_at_order = {}
         completed_parts_count = 0
+        # Parts physically out at a subcontract vendor, keyed by their current
+        # step. Accumulated in this same O(parts) pass — no per-step query.
+        at_supplier_by_step = {}
         for part in parts:
             if part.step_id:
                 parts_by_step[part.step_id] = parts_by_step.get(part.step_id, 0) + 1
+                if part.part_status == 'AT_OUTSIDE_PROCESS':
+                    at_supplier_by_step[part.step_id] = at_supplier_by_step.get(part.step_id, 0) + 1
             if part.part_status == 'COMPLETED':
                 # Completed parts count toward all steps they passed
                 completed_by_step['__completed__'] = completed_by_step.get('__completed__', 0) + 1
@@ -1870,6 +1875,10 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                 'measurement_count': measurement_map.get(step_id, 0),
                 'defect_count': defect_map.get(step_id, 0),
                 'attachment_count': attachment_map.get(str(step_id), 0),
+                # OSP steps read as "At supplier" in the traveler rather than
+                # "In Progress" — the parts aren't in the building.
+                'is_outside_process': bool(step.is_outside_process),
+                'parts_at_supplier': at_supplier_by_step.get(step_id, 0),
             })
 
         return Response({

@@ -700,6 +700,8 @@ class StepSummarySerializer(serializers.Serializer):
     measurement_count = serializers.IntegerField()
     defect_count = serializers.IntegerField()
     attachment_count = serializers.IntegerField()
+    is_outside_process = serializers.BooleanField()
+    parts_at_supplier = serializers.IntegerField()
 
 
 class WorkOrderStepHistoryResponseSerializer(serializers.Serializer):

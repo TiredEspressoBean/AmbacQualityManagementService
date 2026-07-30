@@ -12057,6 +12057,8 @@ export type StepSummary = {
   measurement_count: number;
   defect_count: number;
   attachment_count: number;
+  is_outside_process: boolean;
+  parts_at_supplier: number;
 };
 export type StepsRequest = {
   /**
@@ -18614,6 +18616,8 @@ const StepSummary = z.object({
   measurement_count: z.number().int(),
   defect_count: z.number().int(),
   attachment_count: z.number().int(),
+  is_outside_process: z.boolean(),
+  parts_at_supplier: z.number().int(),
 });
 const WorkOrderStepHistoryResponse = z.object({
   work_order_id: z.string().uuid(),

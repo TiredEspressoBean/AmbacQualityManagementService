@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, AlertTriangle, Paperclip } from "lucide-react";
+import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, AlertTriangle, Paperclip, Truck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useWorkOrderStepHistory } from "@/hooks/useWorkOrderStepHistory";
 import { memo } from "react";
@@ -224,6 +224,11 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                     const isCompleted = step.status === 'COMPLETED';
                                     const isInProgress = step.status === 'IN_PROGRESS';
                                     const isSkipped = step.status === 'SKIPPED';
+                                    // Parts on an outside-process step are physically at a
+                                    // vendor — "In Progress" reads as on-the-floor work and
+                                    // misleads operators and QA alike.
+                                    const isAtSupplier =
+                                        step.is_outside_process && step.parts_at_supplier > 0;
 
                                     const hasDefects = step.defect_count > 0;
                                     const hasMeasurements = step.measurement_count > 0;
@@ -247,7 +252,9 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                         <div
                                             key={step.step_id}
                                             className={`p-3 rounded-lg border transition-colors ${
-                                                isInProgress
+                                                isAtSupplier
+                                                    ? 'bg-amber-500/10 border-amber-500/50 dark:bg-amber-500/20 dark:border-amber-500/60'
+                                                    : isInProgress
                                                     ? 'bg-blue-500/10 border-blue-500/50 dark:bg-blue-500/20 dark:border-blue-500/60'
                                                     : isCompleted
                                                     ? 'bg-green-500/10 border-green-500/50 dark:bg-green-500/20 dark:border-green-500/60'
@@ -258,7 +265,9 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div className="flex-shrink-0 mt-0.5">
-                                                    {isCompleted ? (
+                                                    {isAtSupplier ? (
+                                                        <Truck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                                    ) : isCompleted ? (
                                                         <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                                                     ) : isInProgress ? (
                                                         <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -271,7 +280,15 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                                         <p className="font-medium text-sm">
                                                             {step.step_name}
                                                         </p>
-                                                        {isInProgress && (
+                                                        {isAtSupplier ? (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-xs gap-1 border-amber-500/60 text-amber-700 dark:text-amber-300"
+                                                            >
+                                                                <Truck className="h-3 w-3" />
+                                                                At supplier · {step.parts_at_supplier}
+                                                            </Badge>
+                                                        ) : isInProgress && (
                                                             <Badge variant="default" className="text-xs">
                                                                 In Progress
                                                             </Badge>

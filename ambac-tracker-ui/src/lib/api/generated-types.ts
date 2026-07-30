@@ -25400,6 +25400,8 @@ export interface components {
             measurement_count: number;
             defect_count: number;
             attachment_count: number;
+            is_outside_process: boolean;
+            parts_at_supplier: number;
         };
         /**
          * @description * `TASK` - Task
