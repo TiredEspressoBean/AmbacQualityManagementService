@@ -979,7 +979,10 @@ QA Inspector + Shift Lead.
 **Home page blocks:**
 - Scan box — WO or part number, always lands on the parent WO.
 - FPI banner — red alert for pending first-piece inspections. **Start
-  check** button jumps to the WO control page.
+  check** button jumps to the WO control page. Heads-up: Control has
+  no live FPI panel — the actionable `FpiStatusBanner` (Start / Pass /
+  Fail / Waive) surfaces inside the **operator substep runtime** once
+  a part has begun the step. See Journey 8.
 - Inbox with chips — **All / Receiving / OSP returns / In-process**.
   AWAITING_QA parts land as `in-process` rows.
 - MY QUALITY ACTIONS — your approvals, CAPA tasks, dispositions.
@@ -987,14 +990,25 @@ QA Inspector + Shift Lead.
 
 **Where QA work actually lives:**
 - Home page — knowing what's on your plate.
-- **WO Control page (`/workorder/{id}/control`)** — the workhorse. Every
-  quarantine, every in-flight part, all print buttons.
+- **WO Detail (`/workorder/{id}`)** — the day-to-day lens: overview,
+  parts tab, Exceptions badges (click to jump to filtered Parts),
+  Start Work dialog into the operator runtime.
+- **WO Control page (`/workorder/{id}/control`)** — lead / manager
+  oversight: per-step status, in-flight table, print buttons (Pick
+  List, Part Labels, Traveler). KPI cards for quarantine / rework /
+  scrap link out to `/production/dispositions` filtered by WO.
+- **Dispositions list (`/production/dispositions`)** — the *actual*
+  home for open quarantines / rework / scrap dispositions across the
+  shop. Filter by `work_order` in the URL to scope to one WO.
 - Part detail page (`/details/Parts/{id}`) — deep info on one serial,
-  with linked Quality Reports and Dispositions widgets.
+  with linked Quality Reports and Dispositions widgets. Note: **no
+  batch-execution link here** — see Journey 9.
 - Disposition editor (`/dispositions/edit/{id}`) — the decision form.
 - QR editor (`/editor/qualityReports/edit/{id}`) — the inspection
   record.
 - Approvals overview (`/approvals`) — the sign-off queue.
+- Personal Inbox (`/inbox`) — CAPA tasks, approvals, dispositions
+  assigned to *you*, grouped Overdue / This Week / Upcoming.
 
 **Part states you'll see:**
 - `IN_PROGRESS` — production owns it.
@@ -1035,7 +1049,10 @@ QA Inspector + Shift Lead.
   rule says QA looks at it before it moves on." Parked; production
   can't advance it.
 - **Batch execution** — a record for a batch step (like Cleaning)
-  covering multiple parts inspected as a load, not individually.
+  covering multiple parts moving through together as a load. BATCH-
+  scope substep captures (wash cycle, bath temp, dwell) are written
+  against the *batch*, not against any single part's step execution.
+  There is no QA-facing UI to browse batches today — see Journey 9.
 - **CAPA** — Corrective And Preventive Action. Structured investigation
   and fix for recurring/high-severity defects. QA managers own
   authoring; inspectors feed data in.
@@ -1089,9 +1106,11 @@ every item below.
 ### Doing an inspection
 - [ ] Complete a passing inspection through the DWI capture flow.
 - [ ] Complete a failing inspection: out-of-spec value, description,
-      defect type, submit as FAIL.
+      submit as FAIL. (Defect-type tagging is *not* on the QR form —
+      it lives on the 3D annotator / defect record. See Journey 7.)
 - [ ] File a fresh QR through `/editor/qualityReports/create` without a
-      DWI capture.
+      DWI capture, then see the auto-created OPEN disposition on the
+      part detail page and the part flip to QUARANTINED.
 - [ ] Explain in their own words the difference between "measurement in
       spec" and "part passed."
 
@@ -1109,9 +1128,13 @@ every item below.
 - [ ] Describe the correct behavior when a re-inspection also fails.
 
 ### Batch and FPI
-- [ ] Navigate from a part → its batch execution → the other parts in
-      the same batch.
-- [ ] Find an FPI record on a WO and describe what it gates.
+- [ ] Explain what a batch execution *is* and why a Cleaning failure
+      implicates every part in the load. (There is no part→batch UI
+      today — this is a model/awareness check, not a click path. See
+      Journey 9.)
+- [ ] Recognize the FPI banner on the QA home page and the
+      `FpiStatusBanner` inside the operator substep runtime, and
+      describe what each gate blocks.
 - [ ] Explain the difference between a FAILED FPI and a FAILED
       individual-part QR.
 
