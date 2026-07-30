@@ -733,54 +733,80 @@ and a FAILED individual-part QR — specifically that the FPI blocks the
 
 ## Journey 9 — Batch step awareness (Cleaning loads)
 
-**Why:** Cleaning is a batch step — parts are inspected as a *load* (bath
-temperature, cycle time), not per-part. You need to know how to read a
-batch record when a downstream fail traces back to a bad wash.
+**Why:** Cleaning is a batch step — parts move through the wash as a
+*load* and BATCH-scope substeps (ultrasonic wash cycle, bath temp, dwell
+time) are captured **once against the batch**, not once per part. If a
+downstream failure traces back to a wash issue, every part in that batch
+is a suspect — not just one. Understanding batch scope is what lets QA
+scope an investigation correctly.
 
-### 9a — Find a completed part
+### Reality check — this is currently an *awareness* journey, not a click-through
 
-**You go to:** a part on WO-2024-0042-A that has passed Cleaning (any
-COMPLETED serial from the parts table — INJ-0042-001 through -016).
+**There is no QA-facing view of a `BatchExecution` in the UI today.**
+The only surface for batches is the operator-runtime `BatchPanel`,
+which appears while an operator is *running* a batch step — start /
+seal / capture-substeps. From a QA seat, walking backwards from a part
+to "the batch it went through" via UI clicks is not possible in the
+current build.
 
-**You click:** into its detail page.
+The seed also does not populate captured batch measurements. Cleaning
+`SubstepCompletion` rows exist (13 wash-cycle completions on one seed
+batch), but their `notes` fields are empty and no `SubstepResponses`
+are seeded — so there is no on-record "bath temp 71 °C" example to
+find. Earlier drafts of this doc claimed one existed; they were wrong.
 
-### 9b — Reach the batch record
+**Two ways to teach this until the QA batch view is built:**
 
-**You look at:** the Activity History or step history. Cleaning steps
-reference a **batch execution**, not a per-part measurement. Click
-through to the batch record.
+1. **Whiteboard the shape.** Draw one `BatchExecution` node with edges
+   to N `Parts` and one edge to `Step (Cleaning)`. Add a
+   `SubstepCompletion` node hanging off the batch to represent the
+   wash-cycle capture. Emphasise: the captured value belongs to the
+   *batch*, and per-part audits join *through* the batch M2M — they do
+   not query a per-part column.
 
-*(Exact click path depends on how your instance surfaces the batch
-link. Trainer: pin it down on your instance before class.)*
+2. **Show the operator side.** Open any WO with a Cleaning step in the
+   operator runtime; the `BatchPanel` component renders the "Start
+   Batch → capture wash cycle → Seal" flow. Watch a batch get sealed,
+   then re-select the WO and see the sealed batch listed for the
+   (WO, Step) pair. This isn't the QA view, but it teaches the model.
 
-### 9c — Read the batch record
+### The teaching moments (still valid, no click-through needed)
 
-**You see:**
-- Parts included in the load.
-- Started at / sealed at timestamps.
-- Bath temperature reading.
-
-The seed includes one intentionally-hot batch (bath temp 71 °C, out of
-the 55–65 °C range) — find it. Notice: the FAIL applies to the **batch**,
-not any single part in it.
-
-**Teaching moment:**
-- A bad batch flags **every** part in the load. You can't disposition
+- A bad batch flags **every** part in the load. You cannot disposition
   one part in a failed batch as good and the others as bad — they were
-  all in the same tank at the same temperature.
-- Batch records are one-to-many. One reading, N parts.
-- You don't *run* batch steps (production does), but you *do* read them
-  when investigating a downstream anomaly.
+  all in the same tank at the same time.
+- Batch records are one-to-many: one captured measurement, N parts.
+- BATCH-scope substep captures write against the `BatchExecution`, not
+  against any one part's `StepExecution`. The system does that on
+  purpose — attaching wash temp to part 1's execution and then joining
+  it into part 17's audit would be an audit lie.
+- You don't *run* batch steps (operators do), but when a downstream
+  failure has a suspected batch root cause, QA needs the batch's part
+  list to scope the affected set.
 
-**Watch for:**
-- Trainee looks for a per-part cleaning measurement. Point out the
-  measurement lives on the batch, not the part.
+### Watch for
+
+- Trainee asks "what was the wash temp on part 17?" as if it lived on
+  the part. Redirect: the wash temp lives on the batch, and part 17's
+  audit joins through it. If the current build's UI can't show it, the
+  answer is a data query, not a click path.
 - Trainee tries to quietly pass one part out of a failed batch. Not how
   it works — every part in the failed batch needs a disposition.
 
-**Checkpoint:** trainee can navigate from a part → its batch → the
-other parts in the same batch. Cross-batch navigation is the specific
-skill that pays off during a real investigation.
+### Coverage gap worth naming
+
+If the trainee asks "then how do I actually see a batch record as QA?",
+the honest answer is: today, only by asking engineering / running a
+DB query. A read-only QA batch view (parts list, timestamps, captured
+BATCH-scope substep values) is a straight-line build on the existing
+`BatchExecution` + `SubstepCompletion` models — flag it as a real UI
+gap when the trainee raises it.
+
+**Checkpoint:** trainee can explain, without pointing at a screen, why
+a Cleaning failure implicates every part in the load, and can name
+where the wash-cycle capture actually lives in the data model
+(`SubstepCompletion` bound to `BatchExecution`, not to a per-part
+`StepExecution`).
 
 ---
 
