@@ -6,6 +6,14 @@ import { Link } from "@tanstack/react-router";
 import { useWorkOrderStepHistory } from "@/hooks/useWorkOrderStepHistory";
 import { memo } from "react";
 
+// Guard against null / invalid dates so a missing timestamp renders nothing
+// rather than "Invalid Date".
+function formatDate(value: string | null | undefined): string | null {
+    if (!value) return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d.toLocaleDateString();
+}
+
 type QaProgressSectionProps = {
     workOrder: any;
     parts: any[];
@@ -221,6 +229,20 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                     const hasMeasurements = step.measurement_count > 0;
                                     const hasAttachments = step.attachment_count > 0;
 
+                                    // A step only has a real "visit" to show when it's
+                                    // active (completed/in-progress) AND has actual
+                                    // activity — a start time, an operator, or parts.
+                                    // PENDING / never-reached steps render name + status
+                                    // only, no ghost visit block.
+                                    const hasActivity =
+                                        (isCompleted || isInProgress) &&
+                                        (!!step.started_at ||
+                                            !!step.operator_name ||
+                                            step.parts_at_step > 0 ||
+                                            step.parts_completed > 0);
+
+                                    const completedDate = formatDate(step.completed_at);
+
                                     return (
                                         <div
                                             key={step.step_id}
@@ -269,8 +291,8 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                                         )}
                                                     </div>
 
-                                                    {/* Step details for completed/in-progress steps */}
-                                                    {(isCompleted || isInProgress) && (
+                                                    {/* Step details for visited steps only */}
+                                                    {hasActivity && (
                                                         <div className="mt-2 space-y-1">
                                                             {/* Operator & Timing */}
                                                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -280,9 +302,9 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                                                         {step.operator_name}
                                                                     </span>
                                                                 )}
-                                                                {step.completed_at && (
+                                                                {completedDate && (
                                                                     <span>
-                                                                        {new Date(step.completed_at).toLocaleDateString()}
+                                                                        {completedDate}
                                                                     </span>
                                                                 )}
                                                                 {step.duration_seconds && (
