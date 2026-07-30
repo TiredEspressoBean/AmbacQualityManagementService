@@ -671,27 +671,39 @@ buttons](screenshots/qa_inspector_training/09-fpi-banner.png)
 **Two buttons on the banner:**
 - **I'm on it** — tells the operator you've seen it and are heading
   over. The banner then reads "Seen by Sarah."
-- **Start check** — jumps to the WO control page for the FPI.
+- **Start check** — jumps to `/workorder/$workOrderId/control` for the
+  WO.
 
 For the training exercise, click **Start check**.
 
-**You land on:** `/workorder/$workOrderId/control` for WO-2024-0048-A.
+**Heads-up (real behavior worth teaching):** Control doesn't show an FPI
+panel. The FPI record only *surfaces as an actionable panel* — the
+`FpiStatusBanner` — inside the **operator substep runtime**, once the
+designated first part has actually started the step. If the WO hasn't
+been started (as with WO-2024-0048-A in the seed — zero parts at the
+step, no designated part yet), Control will look empty. That's the
+signal to the QA lead: **no operator has begun the run yet**, so the
+FPI is only a *reservation*, not a live inspection.
 
-### 8c — Read what an FPI captures
+### 8c — Read what an FPI holds (via the API or by walking WO-2024-0038-A)
 
-Locate the FPI record on the page (surfaced in a step-controls dropdown
-or dedicated FPI panel — the exact location may vary; teach what's
-there). It includes:
-- Designated part (the specific serial being FPI'd)
-- Equipment used (bench/gauge)
-- Inspector
-- Shift date
-- Status (PENDING → PASSED / FAILED)
-- Result
+**WO-2024-0048-A's FPI has empty designated-part / equipment fields**
+because nobody started the run. To teach the *shape* of a real FPI
+record, use either WO-2024-0042-A (all PASSED) or WO-2024-0038-A
+(includes a FAILED one). Either way the fields on the record are:
+- **Designated part** — the specific serial the first-piece buy-off is
+  made against (populated when the first part enters the step).
+- **Equipment** — the bench / gauge / stand used (setup is
+  bench-specific; a different bench needs a new FPI).
+- **Status** — PENDING → PASSED / FAILED / WAIVED.
+- **Notes** — free text captured at pass/fail/waive time.
+- **Sign-off gate** — server-side `sign_off_fpi` permission. Only users
+  with that group see the Pass / Fail / Waive actions in the runtime
+  banner; everyone else sees "awaiting buy-off."
 
-**Do not actually PASS the FPI.** WO-2024-0048-A stays PENDING so the
-banner is a live training exhibit for the next class. Walk the fields
-aloud instead.
+**Do not actually PASS or FAIL any FPI.** WO-2024-0048-A stays PENDING
+so the banner remains a live training exhibit for the next class; the
+0042/0038 records are historical exhibits that teach shape and outcome.
 
 ### 8d — What a completed FPI looks like
 
