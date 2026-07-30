@@ -927,18 +927,32 @@ row they would need to click **View** on today.
 **Why:** Everyone will scan the wrong thing eventually. Prove to them
 the software doesn't punish it.
 
-**You do, in order:**
+**Where the scan box lives:** the QA home page. **It is not on the WO
+detail or WO Control pages** — once you've navigated somewhere the box
+is gone until you return home. Teach the trainee that "scan again" is
+always "go home, then scan."
+
+**You do, in order (from the QA home page each time):**
 
 1. **Scan a label from a different WO** (any WO-2024-0038-* from your
    spare pile). You land on WO-2024-0038-A instead of 0042-A. Not an
-   error — just not where you meant to go. Back up and rescan.
-2. **Scan gibberish** (type `NOT-A-REAL-ID` and press Enter). Toast:
-   *"Nothing found for NOT-A-REAL-ID"*. No harm done.
-3. **Scan the same part twice while it's already open.** No duplicate
-   work — you just re-land on the same page.
-4. **Complete a capture with a value outside spec.** Inline validation
-   flags it before submit. If you force it through, you generate a FAIL
-   — which is the correct outcome, not a submit error.
+   error — just not where you meant to go. Back to home, rescan.
+2. **Scan gibberish** (type `NOT-A-REAL-ID` and press Enter). A red
+   toast appears in the bottom-right: **"Nothing found for
+   \"NOT-A-REAL-ID\""** with the description *"Scan or type a work
+   order or part number (ERP id)."* The scan box also clears itself
+   after every submit (success or fail) — so you never end up
+   accidentally re-submitting the same string.
+3. **Scan the same part twice.** Second submit from home re-navigates
+   to the same WO. No duplicate work, no state change.
+4. **Scan a part number instead of a WO** (e.g. `INJ-0042-001`). It
+   *always* resolves to the parent WO (`/workorder/$parentWoId`), not
+   to a part detail page. That's by design — the traveler lives on the
+   WO. If you actually want the part detail, use the parts table on
+   the WO Detail page.
+5. **Complete a capture with a value outside spec.** Inline validation
+   flags it before submit. If you force it through, you generate a
+   FAIL — which is the correct outcome, not a submit error.
 
 **Teaching point:** the scan box **never damages anything.** It's a
 lookup, not a commit. Nothing you scan changes state. State only
