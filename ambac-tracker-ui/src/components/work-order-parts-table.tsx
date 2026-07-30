@@ -27,6 +27,8 @@ type Props = {
     workOrderId: string;
     onPartSelect?: (part: any) => void;
     selectedPartId?: string;
+    statusFilter?: string;
+    onStatusFilterChange?: (status: string) => void;
 };
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -129,9 +131,20 @@ function PartStepHistory({ partId }: { partId: string }) {
     );
 }
 
-export function WorkOrderPartsTable({ workOrderId, onPartSelect, selectedPartId }: Props) {
+export function WorkOrderPartsTable({
+    workOrderId,
+    onPartSelect,
+    selectedPartId,
+    statusFilter: statusFilterProp,
+    onStatusFilterChange,
+}: Props) {
     const navigate = useNavigate();
-    const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [internalStatusFilter, setInternalStatusFilter] = useState<string>("all");
+    const statusFilter = statusFilterProp ?? internalStatusFilter;
+    const setStatusFilter = (v: string) => {
+        if (onStatusFilterChange) onStatusFilterChange(v);
+        else setInternalStatusFilter(v);
+    };
     const [expandedPartId, setExpandedPartId] = useState<string | null>(null);
 
     // Fetch all parts for this work order

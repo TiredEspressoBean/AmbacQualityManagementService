@@ -30,6 +30,15 @@ export function WorkOrderDetailPage() {
     const { workOrderId } = useParams({ from: "/workorder/$workOrderId" });
     const [activeTab, setActiveTab] = useState("overview");
     const [selectedPart, setSelectedPart] = useState<any | null>(null);
+    const [partsStatusFilter, setPartsStatusFilter] = useState<string>("all");
+
+    // Jump from an Exceptions badge into the Parts tab pre-filtered to that
+    // status. Non-lead QA reaches the actionable Awaiting QA queue with one
+    // click instead of hunting through the Control Center.
+    const handleJumpToStatus = (status: string) => {
+        setPartsStatusFilter(status);
+        setActiveTab("parts");
+    };
 
     // Fetch work order details
     const {
@@ -185,6 +194,7 @@ export function WorkOrderDetailPage() {
                                 workOrder={workOrder}
                                 parts={allParts}
                                 isLoadingParts={isLoadingAllParts}
+                                onJumpToStatus={handleJumpToStatus}
                             />
                         </TabsContent>
 
@@ -193,6 +203,8 @@ export function WorkOrderDetailPage() {
                                 workOrderId={workOrderId}
                                 onPartSelect={setSelectedPart}
                                 selectedPartId={selectedPart?.id}
+                                statusFilter={partsStatusFilter}
+                                onStatusFilterChange={setPartsStatusFilter}
                             />
                         </TabsContent>
                     </Tabs>

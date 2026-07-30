@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, AlertTriangle, Paperclip, Truck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useWorkOrderStepHistory } from "@/hooks/useWorkOrderStepHistory";
+import { OspShipmentsCard } from "@/components/workorder/OspShipmentsCard";
 import { memo } from "react";
 
 // Guard against null / invalid dates so a missing timestamp renders nothing
@@ -18,9 +19,10 @@ type QaProgressSectionProps = {
     workOrder: any;
     parts: any[];
     isLoadingParts: boolean;
+    onJumpToStatus?: (status: string) => void;
 };
 
-export const QaProgressSection = memo(function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgressSectionProps) {
+export const QaProgressSection = memo(function QaProgressSection({ workOrder, parts, isLoadingParts, onJumpToStatus }: QaProgressSectionProps) {
     // Calculate progress stats
     const totalParts = parts.length;
     const completedParts = parts.filter(p =>
@@ -168,24 +170,63 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                     ) : (
                         <div className="flex flex-wrap gap-2">
                             {awaitingQaCount > 0 && (
-                                <Badge variant="secondary" className="text-sm">
-                                    Awaiting QA · {awaitingQaCount}
-                                </Badge>
+                                <button
+                                    type="button"
+                                    onClick={() => onJumpToStatus?.("AWAITING_QA")}
+                                    disabled={!onJumpToStatus}
+                                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                >
+                                    <Badge
+                                        variant="secondary"
+                                        className={`text-sm ${onJumpToStatus ? "cursor-pointer hover:bg-secondary/80" : ""}`}
+                                    >
+                                        Awaiting QA · {awaitingQaCount}
+                                    </Badge>
+                                </button>
                             )}
                             {quarantinedCount > 0 && (
-                                <Badge variant="destructive" className="text-sm">
-                                    Quarantined · {quarantinedCount}
-                                </Badge>
+                                <button
+                                    type="button"
+                                    onClick={() => onJumpToStatus?.("QUARANTINED")}
+                                    disabled={!onJumpToStatus}
+                                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                >
+                                    <Badge
+                                        variant="destructive"
+                                        className={`text-sm ${onJumpToStatus ? "cursor-pointer hover:opacity-90" : ""}`}
+                                    >
+                                        Quarantined · {quarantinedCount}
+                                    </Badge>
+                                </button>
                             )}
                             {reworkCount > 0 && (
-                                <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-sm">
-                                    Rework · {reworkCount}
-                                </Badge>
+                                <button
+                                    type="button"
+                                    onClick={() => onJumpToStatus?.("REWORK_NEEDED")}
+                                    disabled={!onJumpToStatus}
+                                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                >
+                                    <Badge
+                                        className={`bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-sm ${onJumpToStatus ? "cursor-pointer hover:opacity-90" : ""}`}
+                                    >
+                                        Rework · {reworkCount}
+                                    </Badge>
+                                </button>
                             )}
                             {scrappedCount > 0 && (
-                                <Badge variant="outline" className="text-sm">
-                                    Scrapped · {scrappedCount}
-                                </Badge>
+                                <button
+                                    type="button"
+                                    onClick={() => onJumpToStatus?.("SCRAPPED")}
+                                    disabled={!onJumpToStatus}
+                                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                >
+                                    <Badge
+                                        variant="outline"
+                                        className={`text-sm ${onJumpToStatus ? "cursor-pointer hover:bg-accent" : ""}`}
+                                    >
+                                        Scrapped · {scrappedCount}
+                                    </Badge>
+                                </button>
                             )}
                         </div>
                     )}
@@ -198,6 +239,11 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                     </Link>
                 </CardContent>
             </Card>
+
+            {/* OSP shipments — only renders if this WO has any Flow B shipments.
+                Non-lead QA gets the entry point into a returned shipment's
+                return inspection here without touching the Control page. */}
+            <OspShipmentsCard workOrderId={workOrder.id} />
 
             {/* Digital Traveler - Step History */}
             <Card>
