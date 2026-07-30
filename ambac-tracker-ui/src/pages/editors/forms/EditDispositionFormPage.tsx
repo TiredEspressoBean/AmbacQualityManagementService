@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -205,6 +205,34 @@ export default function EditDispositionFormPage() {
     // Collapsible states
     const [containmentOpen, setContainmentOpen] = useState(false)
 
+    // Values derived from loaded disposition (edit mode). Feeding these to
+    // useForm via the `values` prop is what makes shadcn/Radix <Select>s
+    // reflect the loaded value — form.reset() inside a useEffect races with
+    // the controlled Select's initial mount and leaves the trigger stuck on
+    // its placeholder even though RHF state is correct.
+    const editValues = useMemo<FormValues | undefined>(() => {
+        if (mode !== "edit" || !disposition) return undefined
+        return {
+            part: disposition.part ?? null,
+            current_state: disposition.current_state ?? "OPEN",
+            disposition_type: disposition.disposition_type,
+            severity: disposition.severity ?? "MAJOR",
+            assigned_to: disposition.assigned_to,
+            description: disposition.description ?? "",
+            resolution_notes: disposition.resolution_notes ?? "",
+            resolution_completed_by: disposition.resolution_completed_by,
+            resolution_completed_at: disposition.resolution_completed_at ?? new Date().toISOString(),
+            containment_action: disposition.containment_action ?? "",
+            containment_completed_at: disposition.containment_completed_at,
+            containment_completed_by: disposition.containment_completed_by,
+            requires_customer_approval: disposition.requires_customer_approval ?? false,
+            customer_approval_received: disposition.customer_approval_received ?? false,
+            customer_approval_reference: disposition.customer_approval_reference ?? "",
+            customer_approval_date: disposition.customer_approval_date,
+            quality_reports: disposition.quality_reports ?? [],
+        } as FormValues
+    }, [mode, disposition])
+
     // Form setup
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
@@ -228,36 +256,15 @@ export default function EditDispositionFormPage() {
             customer_approval_date: undefined,
             quality_reports: initialQualityReportId ? [initialQualityReportId] : [],
         } as unknown as FormValues,
+        values: editValues,
     })
 
-    // Reset form when disposition data loads in edit mode
+    // Expand containment section for CRITICAL severity once disposition loads
     useEffect(() => {
-        if (mode === "edit" && disposition) {
-            form.reset({
-                part: disposition.part ?? null,
-                current_state: disposition.current_state ?? "OPEN",
-                disposition_type: disposition.disposition_type,
-                severity: disposition.severity ?? "MAJOR",
-                assigned_to: disposition.assigned_to,
-                description: disposition.description ?? "",
-                resolution_notes: disposition.resolution_notes ?? "",
-                resolution_completed_by: disposition.resolution_completed_by,
-                resolution_completed_at: disposition.resolution_completed_at ?? new Date().toISOString(),
-                containment_action: disposition.containment_action ?? "",
-                containment_completed_at: disposition.containment_completed_at,
-                containment_completed_by: disposition.containment_completed_by,
-                requires_customer_approval: disposition.requires_customer_approval ?? false,
-                customer_approval_received: disposition.customer_approval_received ?? false,
-                customer_approval_reference: disposition.customer_approval_reference ?? "",
-                customer_approval_date: disposition.customer_approval_date,
-                quality_reports: disposition.quality_reports ?? [],
-            } as FormValues)
-            // Expand containment section for CRITICAL severity
-            if (disposition.severity === "CRITICAL") {
-                setContainmentOpen(true)
-            }
+        if (mode === "edit" && disposition?.severity === "CRITICAL") {
+            setContainmentOpen(true)
         }
-    }, [mode, disposition, form])
+    }, [mode, disposition])
 
     const { control, handleSubmit, formState: { isSubmitting }, watch } = form
     const watchDispositionType = watch("disposition_type")
@@ -344,7 +351,7 @@ export default function EditDispositionFormPage() {
         <div className="min-h-screen bg-background">
             {/* Header */}
             <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="container flex h-14 items-center gap-4">
+                <div className="container flex h-14 items-center gap-4 px-4 md:px-6">
                     <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/production/dispositions" })}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back
@@ -392,7 +399,7 @@ export default function EditDispositionFormPage() {
             </div>
 
             {/* Main Content - Split Layout */}
-            <div className="container py-8">
+            <div className="container py-8 px-4 md:px-6">
                 <div className="grid gap-8 lg:grid-cols-3">
                     {/* Form Section (2/3 width) */}
                     <div className="lg:col-span-2">
@@ -431,7 +438,7 @@ export default function EditDispositionFormPage() {
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel required={required.current_state}>Current State</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                                        <Select key={field.value ?? "empty"} onValueChange={field.onChange} value={field.value ?? ""}>
                                                             <FormControl>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select state" />
@@ -456,7 +463,7 @@ export default function EditDispositionFormPage() {
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel required={required.disposition_type}>Disposition Type</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={(field.value as string | undefined) ?? ""}>
+                                                        <Select key={(field.value as string | undefined) ?? "empty"} onValueChange={field.onChange} value={(field.value as string | undefined) ?? ""}>
                                                             <FormControl>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select type" />
@@ -483,7 +490,7 @@ export default function EditDispositionFormPage() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel required={required.severity}>Severity</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                                    <Select key={field.value ?? "empty"} onValueChange={field.onChange} value={field.value ?? ""}>
                                                         <FormControl>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Select severity" />
