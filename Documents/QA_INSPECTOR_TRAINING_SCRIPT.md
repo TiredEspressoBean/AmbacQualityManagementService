@@ -419,11 +419,32 @@ depending on where you started. Both are fine.
 ### 5b — Read the history
 
 **On the part detail page you see:**
-- Status: **REWORK_IN_PROGRESS**.
-- Current Step: **Rework**.
-- Quality Reports widget: the original FAIL at Nozzle Inspection.
-- Dispositions widget: **DISP-QR-0042-019-NI · IN_PROGRESS · REWORK ·
-  MAJOR** — the approved rework decision.
+- Header: **INJ-0042-019 · Common Rail Injector**.
+- **General**: Serial, Status **REWORK_IN_PROGRESS**, Part Type.
+- **Production**: Order, Current Step **Rework**, Work Order
+  (`WO-2024-0042-A`).
+- **Quality Control** row of flags:
+  - **Latest Inspection**: `FAIL · 1 open defect` (clickable — jumps
+    into the QR list scoped to this part).
+  - **Has Open Defect**: Yes.
+  - **Awaiting inspection**: No.
+  - **Inspections signed off**: No.
+  - **Rework Passes**: 0 (this counter climbs each time a re-inspection
+    passes — useful history when a part keeps looping).
+  - **Sampling Required** / **Sampling Reason**: No / —.
+- **Quality Reports (1)**: the original **QR-0042-019-NI · FAIL · Nozzle
+  Inspection · 7/24/2026** — click to open the failing report.
+- **Dispositions (2)** — two rows, and this is the teaching moment:
+  1. **DISP-QR-0042-019-NI · IN_PROGRESS · REWORK · MAJOR** — the
+     approved rework decision (what the shop is actively doing).
+  2. **DISP-2026-000007 · OPEN · SCRAP · MAJOR** — an *escalation*
+     disposition already parked in case the rework doesn't hold. This
+     is exactly the state Journey 5d talks about — a scrap path pre-
+     staged behind an in-flight rework. Don't teach it as normal; teach
+     it as "someone already flagged this as a scrap risk."
+- **Documents**: DWG-CRI-8800 (the drawing).
+- **Activity History**: may read "No audit history" in the seed — the
+  trail lives on the linked QR and dispositions in that case.
 
 ![INJ-0042-019 part detail — REWORK_IN_PROGRESS status with linked QR
 and disposition](screenshots/qa_inspector_training/05-part-019-rework.png)
