@@ -494,21 +494,43 @@ INJ-0042-023 in the list).
 
 **You see:**
 - Header: **INJ-0042-023 · Common Rail Injector**.
-- Status: **SCRAPPED**. Current Step: `-`.
-- Dispositions widget: the terminal disposition with type=SCRAP.
-- Quality Reports widget: the QR that led to the decision.
-- Activity History: the trail.
+- **General**: Status **SCRAPPED**. Part Type link still lands on the
+  drawing.
+- **Production**: Order and Work Order still resolve (a scrapped serial
+  keeps its provenance). Current Step renders empty (`Step` label with
+  no value) because the part left the routing when it was scrapped.
+- **Quality Control** flags: every flag reads flat (`Latest Inspection
+  —`, `Has Open Defect No`, `Rework Passes 0`) — terminal parts stop
+  accumulating quality activity.
+- **Documents**: DWG-CRI-8800 still attached.
+- **Activity History**: in the current seed this reads `No audit
+  history.` — the trail (disposition + QR) that led to the scrap isn't
+  wired into this particular record. Trainer: **read the caveat below
+  before class**.
 
-![INJ-0042-023 part detail — SCRAPPED terminal record with linked scrap
-disposition and QR](screenshots/qa_inspector_training/06-part-023-scrap.png)
+![INJ-0042-023 part detail —
+SCRAPPED terminal record](screenshots/qa_inspector_training/06-part-023-scrap.png)
+
+**Seed caveat (real, worth mentioning to trainer prep):** INJ-0042-023
+in the current seed has *no linked disposition and no linked QR* —
+just the SCRAPPED status. So "read the trail" in 6b below has nothing
+to point at on this specific record. To teach a *rich* scrap example,
+use INJ-0042-019 (Journey 5) as the escalation-staged case, or ask
+whoever owns the seed to attach a terminal SCRAP disposition and its
+originating QR to INJ-0042-023.
 
 ### 6b — Read the trail
 
-Walk it end-to-end. Every state change is timestamped and signed.
+Walk it end-to-end when the record has one. Every state change is
+timestamped and signed on parts that were properly dispositioned before
+being scrapped.
 
 **Teaching point:**
 - SCRAPPED is **terminal by design**. If a scrapped serial shows up on
   your bench, something's wrong (mislabel, wrong bin). Stop and ask.
+- A scrapped part with **no linked disposition / QR** (like the seed
+  version of INJ-0042-023) is itself a red flag — how did the part
+  reach a terminal state without a paper trail? Ask before touching.
 - The record is still readable — you can see why it was scrapped, who
   decided, and when. That's the audit trail.
 
