@@ -866,10 +866,14 @@ Upcoming grouping](screenshots/qa_inspector_training/10-inbox.png)
 
 ### 10c — Work an item
 
-**You click:** the **View** link on any row.
-
-**You land on:** the detail page for that item (CAPA detail for a task,
-disposition editor for a disposition, approval detail for an approval).
+**Each row has two actions:**
+- **View** — opens the detail page (CAPA detail for a task, disposition
+  editor for a disposition, approval detail for an approval). This is
+  the correct default — read the item before you decide anything.
+- **Complete** — inline one-click "mark this task done" for CAPA tasks.
+  **Use with care.** It bypasses the detail page entirely, so nothing
+  forces the trainee to read what they're closing. Reserve it for tasks
+  they've already worked and just need to check off.
 
 **You return** to the inbox via the sidebar or browser back to work the
 next one.
@@ -883,6 +887,8 @@ For the aggregate view, navigate directly to `/approvals`. You see:
   `/inbox` is also empty.
 - **By Type** breakdown.
 - **My Submitted Requests** — approvals you've *asked* others for.
+- **Quick Links** panel — shortcuts to Approval History and Approval
+  Templates. Trainer / admin territory; a QA inspector rarely needs it.
 
 This page is worth showing so the trainee knows it exists, but the
 daily driver is `/inbox`.
@@ -901,8 +907,11 @@ requests](screenshots/qa_inspector_training/10-approvals-overview.png)
   visible to whoever else is watching this queue (managers, auditors).
 
 **Watch for:**
-- Trainee bulk-completes CAPA tasks without reading them. Same problem
-  as bulk-approving.
+- Trainee spam-clicks the inline **Complete** button to clear their
+  overdue list. Same problem as bulk-approving — signing without
+  reading is a paper crime whether it's an approval or a CAPA task.
+  Rule: any task older than ~2 days, or any Corrective/Preventive
+  action, gets **View**'d first.
 - Trainee ignores empty Approvals tab thinking "not my problem." Ask:
   "How would you know if one showed up here tomorrow?" (Answer: the
   count badge on the sidebar Inbox link.)
