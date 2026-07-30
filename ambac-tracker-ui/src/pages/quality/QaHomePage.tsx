@@ -420,13 +420,11 @@ export function QaHomePage({ user }: { user: AuthUser }) {
                     </Button>
                 </Link>
             </div>
-            {/* QA inspectors are non-doers: scans should land on the WO
-                Control page (Exceptions panel + per-part step controls +
-                sampling flags) — the actual QA working surface — rather
-                than the WO Detail summary. Matches the block-registry
-                convention in home-blocks.tsx for non-Operator/Shift-Lead
-                users. */}
-            <ScanBox autoFocus={false} dest="control" />
+            {/* QA scans land on the WO Detail page (/workorder/$id) — the
+                shared work surface for both operators and QA, where Start
+                Work and the DWI capture path live. Same destination the
+                operator landing uses (ScanBox's default dest="work"). */}
+            <ScanBox autoFocus={false} />
             <FpiBanner />
             <InboxList />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
