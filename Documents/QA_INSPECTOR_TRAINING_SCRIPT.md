@@ -599,41 +599,54 @@ Quality Report (NCR)**.
 description, detected by,
 FPI checkbox](screenshots/qa_inspector_training/07-qr-create.png)
 
-### 7c — Add the defect type
+### 7c — See the part quarantine and disposition auto-create
 
-**Important:** the QR *create* form has no defect-type picker. The
-defect-type tagging happens on the **edit** page after creation.
-
-**You click:** the pencil/Edit icon on your new QR's row, or navigate to
-`/editor/qualityReports/edit/$id`.
-
-**You add:** a defect type from the picker (Asymmetric spray pattern,
-Flow rate out of spec, Spray angle drift, Hole blockage, Surface
-porosity, etc.). Overusing "Other/Unknown" hides patterns from defect
-analysis.
-
-**You save.**
-
-### 7c — See the disposition auto-create
+**What the system did the moment you submitted a FAIL:**
+- **Part status** flipped to **QUARANTINED**. Go to the part detail page
+  to see it.
+- **A disposition was auto-created** and linked to your QR. Description
+  reads: *"Auto-created for failed quality report: &lt;your description&gt;."*
+  State is **OPEN**, disposition type is empty (you fill it in — same
+  Accept / Rework / Scrap / Use As Is / RTV / Deviation decision as
+  Journey 4b).
+- The disposition is **assigned** to a QA Manager / QA Inspector on the
+  tenant (or falls back to the operator / detector), and a **rework
+  attempt number** is calculated from prior REWORK dispositions on the
+  same part+step.
+- An `ncr.opened` notification fires through the escalation path.
 
 **You go to:** the part detail page for that serial. The Dispositions
-widget now shows a new **OPEN** or **IN_PROGRESS** disposition
-auto-created by the system when the QR was saved as FAIL.
+widget shows the new **OPEN** disposition auto-created by the system.
 
-**Teaching moment:** the system creates the disposition *record* for
-you; the *decision* is still yours. Same as Journey 4.
+**Teaching moment:** the system creates the disposition *record* and
+quarantines the *part* for you. The *decision* — Accept / Rework / Scrap
+/ etc. — is still yours. Same as Journey 4.
+
+**Defect-type tagging (real story):** the QR itself has no defect-type
+field on either the create or edit form. Defect classification happens
+elsewhere — on the **3D annotator** (part-detail → annotations) or via
+the **Defect Analysis** dashboard, where defects are recorded against
+the part with a defect-type taxonomy. If your site relies on defect
+analytics, follow up the QR with an annotation.
 
 **Watch for:**
 - Trainee starts a capture, sees an out-of-spec value, and quietly edits
   the reading to bring it into spec. **This is the single most
   dangerous shortcut a QA inspector can develop.** Zero tolerance. If
   you catch it in training, stop and reset expectations.
-- Trainee files a FAIL without a defect type ("I'll come back to it").
-  No they won't. Insist on the tag now.
+- Trainee expects a defect-type dropdown on the QR form and gets stuck
+  looking for it. There isn't one — teach them the annotator/defect-
+  record path if their workflow requires it.
 
-**Checkpoint:** trainee files a FAIL, sees the auto-created disposition
-on the part detail page, and can navigate back to their own QR from
-that widget.
+**Checkpoint:** trainee files a FAIL, sees the part flip to QUARANTINED,
+sees the auto-created disposition on the part detail page, and can
+navigate back to their own QR from that widget.
+
+**Caveat for material-lot and batch QRs:** the auto-create signal only
+runs for **in-process part** QRs. Receiving-inspection QRs (material
+lots) get a populated disposition from the Reject dialog instead —
+auto-creating one would duplicate it. Batch-cycle QRs open a single
+batch-linked disposition through `contain_failed_batch()`, not per part.
 
 ---
 
