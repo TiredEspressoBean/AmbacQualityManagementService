@@ -324,22 +324,39 @@ widgets](screenshots/qa_inspector_training/04-part-017-quarantined.png)
 ### 4b — Read the disposition
 
 **You see:**
-- Heading: `Disposition #DISP-2026-000015` · state badge · severity
-  badge.
-- **NCR Report** / **Deviation Request** buttons — for escalating out.
-- Form:
-  - **Current State** (dropdown)
-  - **Disposition Type** — the decision (REWORK / USE_AS_IS / SCRAP /
-    REPAIR / RETURN_TO_SUPPLIER)
-  - **Severity** (MINOR / MAJOR / CRITICAL)
-  - **Assigned To** — who owns the decision
-  - **Description** — pre-filled with the auto-created text
-  - **Resolution Notes** — where the trainee writes what they did
-  - **Resolution Completed By** / **at** — signed off when closed
-  - **Related Part** and **Quality Reports** — the linked records
-- Right sidebar: **Part Information** with serial, type, status, order.
-- **Quality Reports (1)** panel — a link to the linked FAIL QR.
-- **3D Annotations** — "All complete" or a link to annotate.
+- Heading: `Disposition #DISP-2026-000015` · state badge (IN PROGRESS) ·
+  severity badge (MINOR).
+- **NCR Report** / **Deviation Request** buttons top-right — for
+  escalating out.
+- **Disposition Details** form (top to bottom):
+  - **Current State** (dropdown) + **Disposition Type** (dropdown)
+    side-by-side. Type is the decision: REWORK / USE_AS_IS / SCRAP /
+    REPAIR / RETURN_TO_SUPPLIER.
+  - **Severity** (MINOR / MAJOR / CRITICAL) with the label "Severity
+    classification of the nonconformance" underneath.
+  - **Assigned To** — who owns the decision (pre-seeded from the
+    auto-create).
+  - **Description** — pre-filled with the auto-created text.
+  - **Containment Action** — collapsible section, auto-expands for
+    CRITICAL severity. Where you record short-term mitigation before
+    the disposition is closed.
+  - **Customer Approval Required** — appears when Disposition Type is
+    USE_AS_IS or REPAIR. Holds Requires Approval / Approval Received
+    checkboxes, Approval Reference (PO#, email ref), Approval Date.
+    A USE_AS_IS with no reference here is the smell you're teaching
+    against.
+  - **Resolution Notes** — where the trainee writes what they did.
+  - **Resolution Completed By** / **at** — signed off when closed.
+  - **Related Part** — the part this disposition binds (currently
+    renders as `Part #{uuid}` rather than the ERP_id; a known UX
+    rough edge).
+  - **Quality Reports** — the linked failing QR(s); listed below the
+    combobox as `#{qr_id} - FAIL`.
+- Right sidebar cards:
+  - **Part Information** — ERP ID (INJ-0042-017), Type, Status
+    (QUARANTINED), Order.
+  - **Quality Reports (1)** — the linked FAIL QR.
+  - **3D Annotations** — "All complete" or a link to annotate.
 
 ### 4c — Walk the three common doors
 
