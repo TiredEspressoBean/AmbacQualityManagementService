@@ -48,6 +48,30 @@ type StartWorkDialogProps = {
     workOrderId: string;
 };
 
+/** Actionability tier for a part's status — 0 = workable right now, 1 = already
+ *  under way, 2 = parked somewhere else (QA, outside process, hold, terminal).
+ *  Role-agnostic: the status is the part's, not the viewer's. */
+const statusRank = (status: string | null | undefined) => {
+    switch (status) {
+        case "PENDING":
+        case "READY_FOR_NEXT_STEP":
+        case "REWORK_NEEDED":
+            return 0;
+        case "IN_PROGRESS":
+        case "REWORK_IN_PROGRESS":
+            return 1;
+        default:
+            return 2;
+    }
+};
+
+/** `step_info` is schema-typed as a loose dict; `order` is the ProcessStep
+ *  order within the WO's process (null when the WO has no locked process). */
+const stepOrderOf = (p: { step_info?: Record<string, unknown> | null }) => {
+    const raw = p.step_info?.order;
+    return typeof raw === "number" ? raw : Number.MAX_SAFE_INTEGER;
+};
+
 export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
@@ -75,8 +99,26 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
             if (existing) existing.parts.push(p);
             else groups.set(key, { stepName: p.step_name, parts: [p] });
         }
-        return Array.from(groups.entries()).sort((a, b) =>
-            a[1].stepName.localeCompare(b[1].stepName),
+        // Order by actionability, not alphabetically. Within a group the most
+        // workable part floats up; a group then inherits its best part's tier,
+        // so groups with parts waiting to be worked come first, earliest
+        // process order first among those (the natural next station), then
+        // groups already under way, then anything parked. Ties fall back to
+        // ERP id / step name so the order is stable across refetches. All
+        // sorts run on arrays this memo built — never on the query result.
+        for (const [, g] of groups) {
+            g.parts.sort(
+                (a, b) =>
+                    statusRank(a.part_status) - statusRank(b.part_status) ||
+                    a.ERP_id.localeCompare(b.ERP_id),
+            );
+        }
+        return Array.from(groups.entries()).sort(
+            ([, a], [, b]) =>
+                statusRank(a.parts[0]?.part_status) -
+                    statusRank(b.parts[0]?.part_status) ||
+                stepOrderOf(a.parts[0]) - stepOrderOf(b.parts[0]) ||
+                a.stepName.localeCompare(b.stepName),
         );
     }, [partsData]);
 
