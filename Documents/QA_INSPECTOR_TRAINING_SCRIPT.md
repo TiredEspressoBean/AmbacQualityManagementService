@@ -299,13 +299,14 @@ disposition.
 
 **Two paths — teach both:**
 
-**Path A — via WO Control:**
-1. **You go to:** `/workorder/$workOrderId/control` for WO-2024-0042-A.
-2. **You see:** the *Exceptions on this WO* panel with three cards. Find
-   the one whose description reads "*Auto-created for failed quality
-   report: Flow rate 98 mL/min - below LSL of 100 mL/min…*" — that's
-   INJ-0042-017.
-3. **You click:** **Open disposition**.
+**Path A — via the Dispositions list (fastest when you're already
+thinking "which quarantined parts do I have?"):**
+1. **You go to:** *Production → Dispositions* in the sidebar →
+   `/production/dispositions`. The page is titled **Quarantined Parts**
+   and it lists every part that has an open or historical disposition.
+2. **You find** the INJ-0042-017 row (Status: Quarantined, Step: Flow
+   Testing).
+3. **You click:** the **Edit Disposition** button on the right.
 
 **Path B — via the part:**
 1. **You open** the part detail page for INJ-0042-017.
