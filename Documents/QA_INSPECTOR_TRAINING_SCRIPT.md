@@ -227,15 +227,40 @@ chevron to expand step history inline — teach both).
 - **Documents**: DWG-CRI-8800 (the drawing for this part type).
 - **Activity History** (may be sparse in the seed — read what's there).
 
-### 3d — Do the inspection
+### 3d — Open the DWI capture
 
 **You do:** run the actual flow test on the bench. Read the value.
 
-**You return to:** UQMES and complete the capture — this happens on the
-WO Control page or via a DWI capture flow triggered from the part row.
-Trainer: **click through the exact path on your instance and pin it down
-before class**, then teach it here. (The exact click depends on your
-tenant's Digital Traveler configuration.)
+**You return to:** UQMES. From the part detail page, click the **Work
+Order** link (`WO-2024-0042-A`) in the Production block. You land on
+`/workorder/$workOrderId` — the Detail page (same destination QA scans
+route to).
+
+**On the Detail header, you click:** **Start Work**.
+
+**A dialog opens:** parts grouped by step, actionability-sorted — the
+group with **unstarted / next-in-line** work floats to the top, so the
+row you want is right there:
+- Group heading: **Flow Testing**.
+- Row: **INJ-0042-021 · Awaiting QA · Sample**.
+
+**You click the row** (or the Select button) and hit **Start**. The
+dialog closes and navigates to `/operator/steps/{stepId}/substeps` — the
+**Operator runtime**. That's the DWI capture surface.
+
+**On the runtime you see:** the substep sequence for this step. Because
+INJ-0042-021 is `AWAITING_QA` at Flow Testing, the sequence is the
+sampled **inspection** substep set (not production instructions). Each
+substep is either an instruction to acknowledge or a measurement to
+capture. The header shows the part (`INJ-0042-021`), the step (`Flow
+Testing`), and the substep count (`X of N`).
+
+**You capture:** for each measurement substep, enter the value you read
+on the bench. Pass/fail is evaluated against the spec attached to that
+substep — you'll see the tolerance right on the substep. Advance with
+**Next**. If a value is out of spec, the runtime surfaces the fail-path
+disposition options at that substep — that's the branch Journey 7 covers
+in more depth.
 
 **Watch for:**
 - Trainee submits a value without confirming which gauge they used and
@@ -243,6 +268,17 @@ tenant's Digital Traveler configuration.)
   every capture.
 - Trainee misreads spec tolerance display. `± 0.5` means the number can
   be nominal + or − that much, not "exactly this."
+- Trainee clicks **Start Work** and gets a dialog that seems empty. That
+  means every part is either already in flight elsewhere or none are
+  claimable by them — check the exceptions chip first (below QA
+  Progress) and the Parts tab filter.
+
+**Alternative click path (from the Exceptions chip):** on Detail, the
+**Exceptions on this WO** card lists a clickable **Awaiting QA · N**
+chip. Click it → the left panel flips to the **Parts** tab, pre-filtered
+to `AWAITING_QA`. Same INJ-0042-021 row, plus any other parts in that
+queue. This is faster than Start Work when you already know which
+queue you're working from.
 
 **Checkpoint:** trainee can explain, in their own words, the difference
 between "measurement in spec" and "part passed." If they conflate the
