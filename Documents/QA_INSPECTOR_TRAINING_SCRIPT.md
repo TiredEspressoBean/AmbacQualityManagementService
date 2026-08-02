@@ -134,48 +134,72 @@ actions, gauges](screenshots/qa_inspector_training/01-qa-home.png)
 ## Journey 2 — Scanner as your GPS
 
 **Why:** The barcode reader is not a data-entry tool; it's a navigator.
-The QA-flavored scanner drops you straight on the working surface — no
-extra clicks to hunt for the exceptions list.
+Every scan resolves to the **parent work order** and drops you on the
+WO Detail page — the shared work surface where Exceptions live and the
+DWI capture path begins.
 
 ### 2a — Scan the traveler header
 
-**You do:** point the reader at the **Code 128 barcode on the header** of
-the WO-2024-0042-A traveler in your hand. Pull the trigger.
+**You do:** point the reader at the **Code 128 barcode on the header**
+of the WO-2024-0042-A traveler in your hand. Pull the trigger.
 
-**You land on:** `/workorder/$workOrderId/control` — the **WO Control**
-page. (Operators scanning the same barcode land on `/workorder/$id`;
-your Home page's ScanBox is configured with `dest="control"` so QA gets
-the inspection surface directly.)
+**You land on:** `/workorder/$workOrderId` — the **WO Detail** page.
+Same landing for QA and operators; the code path is `ScanBox` with the
+default `dest="work"`.
 
 **You see:**
-- Heading: `WO-2024-0042-A` · badges: `In Progress` · `High` priority
-- **Pick List** and **Part Labels** print buttons (top-right).
-- **Outside processing** panel — lots at vendors, with **Inspect** /
-  **Send out** / **Receive back** actions.
-- **Exceptions on this WO** — every open quarantine on this work order,
-  one card each, with an **Open disposition** button. This is where the
-  bulk of QA click-work starts.
-- **Step status** — the shop-floor grid: per-part rows with current
-  step, status, operator, sampling flag, controls.
+- Heading: `WO-2024-0042-A` · `StatusBadge` (In Progress) · priority
+  badge (High).
+- Action bar top-right: **Traveler** print button, **Start Work**
+  dialog trigger, **Hold** and **Cancel** buttons for WO status
+  changes.
+- If any part on the WO is currently at outside processing, a small
+  **"N at outside process"** badge appears next to the header — it
+  links to `/workorder/$id/control`, which is the send-out / receive
+  surface.
+- Two tabs: **Overview** and **Parts**.
+- **Overview** — `QaProgressSection`: exception badges (AWAITING QA /
+  QUARANTINED / REWORK NEEDED / SCRAPPED, each clickable — Journey 5+
+  uses these), OSP shipments card, digital traveler.
+- **Parts** — the shop-floor table: per-part rows with current step,
+  status, controls. Filter by status (default: All). This is your
+  drill-down surface.
 
 ### 2b — Scan a part label
 
 **You do:** scan any INJ-0042-* label. Pull the trigger.
 
-**You land on:** the same page — `/workorder/$workOrderId/control`.
-UQMES resolves the part → its parent work order → drops you on the
-Control page. **Part scans and WO scans both anchor on the WO Control
-page for QA.**
+**You land on:** the same page — `/workorder/$workOrderId`. UQMES
+resolves the part → its parent work order → drops you on WO Detail.
+**Both part and WO scans anchor on WO Detail.** If you want the *part*
+detail (`/details/Parts/$id`), open it from the Parts-tab row's action
+menu on WO Detail.
 
-**Teaching point:** the WO is the anchor. Per-part detail is one click
-away from the Step Status table row.
+### 2c — The Control page (`/workorder/$id/control`) is a separate lens
 
-**Checkpoint:** trainee scans the traveler and, unprompted, identifies
-the Exceptions panel and the Step Status grid.
+Not a scan destination. Reached by:
+- Clicking the **"N at outside process"** badge on WO Detail.
+- Navigating from the sidebar (`WO Control Center` → drill in).
+- Following a KPI-card link on Control's own overview panel.
 
-![WO-2024-0042-A control page — outside processing, exceptions,
-step-status
-grid](screenshots/qa_inspector_training/02-wo-control-page.png)
+Control is the **lead / manager oversight surface**: per-step status,
+in-flight table, print buttons (Pick List, Part Labels), OSP send-out
+/ receive-back actions, KPI cards for quarantine / rework / scrap that
+link out to `/production/dispositions` filtered by WO. Overlaps with
+WO Detail on some data but is optimized for oversight, not for doing
+the next inspection.
+
+**Teaching point:** the WO is the anchor for scans; per-part detail is
+one click away from the Parts tab. Control is a *different* view of
+the same WO, not the default landing.
+
+**Checkpoint:** trainee scans the traveler and, unprompted, points at
+the Exceptions badges on the Overview tab and can name what each one
+filters when clicked.
+
+![WO-2024-0042-A detail page — Overview tab with exception badges,
+OSP card, and traveler
+panel](screenshots/qa_inspector_training/wo-detail-top.png)
 
 ---
 
@@ -233,8 +257,10 @@ chevron to expand step history inline — teach both).
 
 **You return to:** UQMES. From the part detail page, click the **Work
 Order** link (`WO-2024-0042-A`) in the Production block. You land on
-`/workorder/$workOrderId` — the Detail page (same destination QA scans
-route to).
+`/workorder/$workOrderId/control` — the **Control** page. (Detail
+pages hyperlink Work Order → Control by convention; if you want WO
+Detail instead, get there by scanning or by clicking the WO tile from
+your Inbox path.)
 
 **On the Detail header, you click:** **Start Work**.
 
@@ -410,11 +436,22 @@ Learn to read the trail so you know what QA still owes.
 
 ### 5a — Reach the part
 
-**You click:** any INJ-0042-019 entry — Inbox, Exceptions panel on the
-WO Control page, or scan the part label.
+Getting to INJ-0042-019 takes two clicks from most entry points; none
+of them land on the part detail directly.
 
-**You land on:** the part detail page or the disposition editor,
-depending on where you started. Both are fine.
+- **From the Inbox row (WO-2024-0042-A · Flow Testing):** click →
+  `/workorder/$id/control` (Control). Filter the Step Status table by
+  status or search "019", click the row's ExternalLink icon → part
+  detail.
+- **From the Exceptions badges (Overview tab of WO Detail):** click
+  the *Rework · 1* badge → same page, switches to Parts tab filtered
+  to `REWORK_IN_PROGRESS`. Click the row's ExternalLink → part detail.
+- **From a scan of the part label:** → `/workorder/$id` (WO Detail).
+  Parts tab → row → ExternalLink → part detail.
+
+**You land on:** `/details/Parts/$id` — the part detail page. (The
+disposition editor is one more click from there via the Dispositions
+widget's edit action, not a direct landing.)
 
 ### 5b — Read the history
 
@@ -484,13 +521,16 @@ like so you know when to stop looking for a way to save one.
 
 ### 6a — Find it
 
-**You go to:** `/workorder/$workOrderId/control` for WO-2024-0042-A. In
-the Step Status table, filter by status **Scrapped** (or find
-INJ-0042-023 in the list).
+**You go to:** `/workorder/$workOrderId` for WO-2024-0042-A — the WO
+**Detail** page. Switch to the **Parts** tab. Filter by status
+**Scrapped** or type `023` in the search box.
 
-**You click:** the ExternalLink icon on the row.
+**You click:** the **ExternalLink** icon on the INJ-0042-023 row.
 
-**You land on:** the part detail page.
+**You land on:** `/details/Parts/$id` — the part detail page. (The
+Control page has its own per-part table but its rows aren't links —
+serial is plain text, actions are step-controls only. Detail's Parts
+tab is the surface with the click-through to part detail.)
 
 **You see:**
 - Header: **INJ-0042-023 · Common Rail Injector**.
@@ -600,7 +640,11 @@ Quality Report (NCR)**.
 
 **You click:** **Submit**.
 
-**You land on:** the QR list — the new QR is at the top.
+**What happens:** a green **"Quality Report created successfully!"**
+toast appears; the form clears itself and you stay on
+`/editor/qualityReports/create` (no auto-redirect). To see the report
+you just filed, navigate to **Quality Reports** (sidebar → Quality →
+Quality Reports) — the new QR is at the top of the list.
 
 ![Create Quality Report (NCR) form — status, part, step, equipment,
 description, detected by,
