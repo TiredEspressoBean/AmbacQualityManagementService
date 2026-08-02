@@ -356,8 +356,8 @@ widgets](screenshots/qa_inspector_training/04-part-017-quarantined.png)
   escalating out.
 - **Disposition Details** form (top to bottom):
   - **Current State** (dropdown) + **Disposition Type** (dropdown)
-    side-by-side. Type is the decision: REWORK / USE_AS_IS / SCRAP /
-    REPAIR / RETURN_TO_SUPPLIER.
+    side-by-side. Type is the decision — see **4c** below for what
+    each type means.
   - **Severity** (MINOR / MAJOR / CRITICAL) with the label "Severity
     classification of the nonconformance" underneath.
   - **Assigned To** — who owns the decision (pre-seeded from the
@@ -560,10 +560,14 @@ SCRAPPED terminal record](screenshots/qa_inspector_training/06-part-023-scrap.pn
   CRITICAL, resolution notes: *"Casting porosity confirmed at seat
   face; pressure test failed. Non-reworkable. Scrapped per QP-007."*
   This is the *decision* — signed and closed.
-- One extra IN_PROGRESS disposition also appears on this part with a
-  different type (the auto-created NCR from the FAIL signal, then
-  enriched by the seed's lifecycle pass). Same double-disposition
-  quirk as INJ-0038-010. Read the CLOSED SCRAP one; ignore the other.
+- One extra disposition also appears on this part with a different
+  type (e.g. IN_PROGRESS · USE_AS_IS). It's a seed artefact: the
+  `QualityReports` FAIL signal auto-creates a bare NCR, and the demo
+  seeder's `_enrich_auto_dispositions` pass gives every bare NCR a
+  round-robin type + lifecycle so the demo isn't a wall of identical
+  OPEN rows. That tag-along has nothing to do with why 0042-023 was
+  scrapped. **Read the CLOSED SCRAP disposition; ignore the enriched
+  tag-along.**
 
 ### 6b — Read the trail
 
