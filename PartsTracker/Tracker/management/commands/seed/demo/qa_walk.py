@@ -137,10 +137,25 @@ class DemoQaWalkSeeder(BaseSeeder):
             result['parts'] = parts
             part_by_suffix = {p.ERP_id.split('-')[-1]: p for p in parts}
 
-            # 001 — PENDING FPI, first piece complete, awaiting buy-off.
+            # 001 — PENDING FPI at Nozzle Inspection, first piece complete,
+            #       awaiting buy-off.
             fpi = self._create_pending_fpi(work_order, part_by_suffix.get('001'),
                                            step_map.get('Nozzle Inspection'), part_type)
             result['fpi'] = fpi
+
+            # Downstream FPI gates need to already be PASSED so Sections 5, 7
+            # and 8 don't get blocked by a "First Piece Inspection Required"
+            # banner the walker didn't cause. Otherwise entering an out-of-spec
+            # value on part 003 at Flow Testing would FAIL the FPI (halting the
+            # batch), not just log a single-part fail. Designate a filler part
+            # (007 / 008) as the historical first piece for each step.
+            for step_name, designated_key in (
+                ('Flow Testing', '007'),
+                ('Final Test', '008'),
+            ):
+                self._create_passed_fpi(
+                    work_order, part_by_suffix.get(designated_key),
+                    step_map.get(step_name), part_type, approver)
 
             # 004 — original FAIL QR + CLOSED REWORK disposition.
             fail_qr = self._create_fail_qr(part_by_suffix.get('004'),
@@ -268,6 +283,28 @@ class DemoQaWalkSeeder(BaseSeeder):
         )
         FPIRecord.objects.filter(pk=fpi.pk).update(
             created_at=self.today - timedelta(hours=6))
+        return fpi
+
+    def _create_passed_fpi(self, work_order, designated_part, step, part_type, inspector):
+        """PASSED FPI so the substep runtime's FpiStatusBanner shows
+        satisfied (green) and doesn't block the walker with a Start FPI
+        prompt on downstream steps."""
+        if not (work_order and designated_part and step and part_type and inspector):
+            return None
+        fpi, _ = FPIRecord.objects.update_or_create(
+            tenant=self.tenant, work_order=work_order, step=step,
+            defaults={
+                'part_type': part_type,
+                'designated_part': designated_part,
+                'status': FPIStatus.PASSED,
+                'result': 'PASS',
+                'inspected_by': inspector,
+                'inspected_at': self.today - timedelta(days=1, hours=12),
+                'shift_date': (self.today - timedelta(days=1, hours=12)).date(),
+            },
+        )
+        FPIRecord.objects.filter(pk=fpi.pk).update(
+            created_at=self.today - timedelta(days=1, hours=14))
         return fpi
 
     def _create_fail_qr(self, part, step, inspector):
