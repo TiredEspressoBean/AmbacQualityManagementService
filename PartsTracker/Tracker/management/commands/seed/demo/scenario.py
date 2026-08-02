@@ -35,6 +35,7 @@ from .sampling import DemoSamplingSeeder
 from .receiving import DemoReceivingSeeder
 from .supplier_quality import DemoSupplierQualitySeeder
 from .outside_process import DemoOutsideProcessSeeder
+from .qa_walk import DemoQaWalkSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
@@ -150,6 +151,13 @@ class DemoScenario(BaseSeeder):
             result['manufacturing'], result['models_3d'], result['users']
         )
 
+        # Phase 4e: QA Inspector Onboarding Walkthrough exhibit
+        # (needs OSP step from Phase 3b, DWI substeps from Phase 4c;
+        #  runs before CAPAs since it doesn't depend on them.)
+        self.log("\n--- Phase 4e: QA Inspector Onboarding Walkthrough ---")
+        result['qa_walk'] = self._seed_qa_walk(
+            result['companies'], result['users'], result['manufacturing'])
+
         # Phase 5: CAPAs
         self.log("\n--- Phase 5: CAPAs ---")
         result['capas'] = self._seed_capas(result['users'])
@@ -235,6 +243,18 @@ class DemoScenario(BaseSeeder):
         seeder = DemoOutsideProcessSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         seeder._verbose = self._verbose
         return seeder.seed(companies, users, manufacturing, orders)
+
+    def _seed_qa_walk(self, companies, users, manufacturing):
+        """Seed WO-QA-INSPECT-01: a dedicated onboarding walkthrough WO with
+        parts pre-staged in every state the doc walks against (PENDING FPI,
+        sampled AWAITING_QA, in-progress fail-ready, reworked visit-2,
+        RETURNED OSP shipment, bare OPEN disposition).
+
+        See Documents/UQMES_ONBOARDING_WALKTHROUGH.md for the arc."""
+        seeder = DemoQaWalkSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        company_list = companies.get('customers', []) if isinstance(companies, dict) else []
+        return seeder.seed(company_list, users, manufacturing)
 
     def _seed_work_centers(self):
         """Seed the 4 demo work-centers + map Step.work_center by

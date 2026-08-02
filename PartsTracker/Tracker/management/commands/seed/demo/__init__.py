@@ -32,6 +32,7 @@ from .models_3d import DemoThreeDModelSeeder
 from .dwi import DemoDwiSeeder
 from .work_centers import DemoWorkCenterSeeder
 from .showcase import DemoShowcaseSeeder
+from .qa_walk import DemoQaWalkSeeder
 
 __all__ = [
     'DemoScenario',
@@ -53,4 +54,5 @@ __all__ = [
     'DemoThreeDModelSeeder',
     'DemoDwiSeeder',
     'DemoShowcaseSeeder',
+    'DemoQaWalkSeeder',
 ]
