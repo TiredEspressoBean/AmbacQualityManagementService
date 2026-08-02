@@ -325,15 +325,9 @@ class DemoQaWalkSeeder(BaseSeeder):
         )
         disp.quality_reports.add(quality_report)
         QuarantineDisposition.objects.filter(pk=disp.pk).update(created_at=created_at)
-
-        # QuarantineDisposition.save() cascades type→part_status via
-        # apply_disposition_to_part: REWORK maps the part to REWORK_NEEDED.
-        # That's correct when a user actively picks REWORK, but wrong for
-        # backfilling a completed rework arc — we want the part in the
-        # "post-rework, back on the bench, AWAITING_QA" state. Force it
-        # with an explicit .update() that bypasses save() and the cascade.
-        Parts.objects.filter(pk=part.pk).update(
-            part_status=PartsStatus.AWAITING_QA)
+        # apply_disposition_to_part guards loop-back cascades to
+        # QUARANTINED/PENDING parts, so this CLOSED REWORK dispo on an
+        # AWAITING_QA part is treated as a paper record — part stays put.
         return disp
 
     def _stage_returned_shipment(self, part, osp_step, user):

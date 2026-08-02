@@ -125,6 +125,78 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(part.part_status, PartsStatus.IN_PROGRESS)  # not regressed
         self.assertEqual(part.total_rework_count, 1)  # not re-incremented
 
+    def test_rework_disposition_does_not_regress_part_that_has_moved_on(self):
+        """QMS design intent: a REWORK/REPAIR disposition is a *documented
+        decision*, not a routing action. It cascades REWORK_NEEDED only when
+        the part is still held awaiting a decision (QUARANTINED or the
+        initial PENDING). Once the part has moved past that point —
+        AWAITING_QA at visit N, IN_PROGRESS at a step, REWORK_IN_PROGRESS,
+        terminal — the disposition is a paper record and the cascade must
+        not drag the part backwards.
+        """
+        part = self._make_part("P-MOVED-ON")
+        part.part_status = PartsStatus.AWAITING_QA  # already reworked; on visit 2
+        part.save(update_fields=["part_status"])
+
+        # Paper backfill: a REWORK NCR is opened after the fact and closed
+        # once the rework has already been done and re-inspected.
+        QuarantineDisposition.objects.create(
+            tenant=self.tenant, part=part,
+            disposition_type="REWORK", current_state="CLOSED",
+            description="paper record of already-completed rework arc",
+        )
+
+        part.refresh_from_db()
+        self.assertEqual(part.part_status, PartsStatus.AWAITING_QA)  # NOT regressed
+        self.assertEqual(part.total_rework_count, 0)  # no phantom increment
+
+    def test_repair_disposition_also_does_not_regress_moved_part(self):
+        """REPAIR (loop-back, same as REWORK) obeys the same guard."""
+        part = self._make_part("P-MOVED-REP")
+        part.part_status = PartsStatus.IN_PROGRESS
+        part.save(update_fields=["part_status"])
+
+        QuarantineDisposition.objects.create(
+            tenant=self.tenant, part=part,
+            disposition_type="REPAIR", current_state="CLOSED",
+            description="repair authorized and completed",
+        )
+
+        part.refresh_from_db()
+        self.assertEqual(part.part_status, PartsStatus.IN_PROGRESS)
+        self.assertEqual(part.total_rework_count, 0)
+
+    def test_scrap_still_cascades_regardless_of_part_state(self):
+        """Terminal decisions must still cascade even if the part isn't at
+        QUARANTINED — the guard is only for loop-back types. Closing a
+        disposition as SCRAP IS the terminal decision."""
+        part = self._make_part("P-CLOSED-SCR")
+        part.part_status = PartsStatus.AWAITING_QA
+        part.save(update_fields=["part_status"])
+
+        QuarantineDisposition.objects.create(
+            tenant=self.tenant, part=part,
+            disposition_type="SCRAP", current_state="CLOSED",
+            description="scrapped despite the part being on the bench",
+        )
+
+        part.refresh_from_db()
+        self.assertEqual(part.part_status, PartsStatus.SCRAPPED)
+
+    def test_rework_on_quarantined_part_still_routes_it(self):
+        """The core happy path: a QUARANTINED part with a REWORK decision
+        still routes to REWORK_NEEDED. The guard is scoped to already-moved
+        parts, not the primary case."""
+        part = self._make_part("P-QUAR-REW")
+        part.part_status = PartsStatus.QUARANTINED
+        part.save(update_fields=["part_status"])
+
+        self._disposition(part, "REWORK")  # OPEN → IN_PROGRESS → cascade
+
+        part.refresh_from_db()
+        self.assertEqual(part.part_status, PartsStatus.REWORK_NEEDED)
+        self.assertEqual(part.total_rework_count, 1)
+
     def test_type_correction_applies_the_new_decision(self):
         """Changing the disposition_type (e.g. REWORK -> SCRAP) re-applies to the part."""
         part = self._make_part("P-CORRECT")

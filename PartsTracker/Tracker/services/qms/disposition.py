@@ -49,6 +49,23 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         'USE_AS_IS': PartsStatus.READY_FOR_NEXT_STEP,
         'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED,
     }
+
+    # QMS design intent: a disposition is a *documented decision*, not a
+    # routing action. Loop-back decisions (REWORK / REPAIR) only translate
+    # into a part-status change while the part is still held awaiting a
+    # decision — QUARANTINED, or the initial PENDING before it entered
+    # production. Once the part has moved past that point (IN_PROGRESS at
+    # a step, AWAITING_QA at visit N, REWORK_IN_PROGRESS, terminal, etc.)
+    # the disposition is a paper record of what was authorized; the
+    # operator has already routed the part, and cascading REWORK_NEEDED
+    # would drag it backwards.
+    #
+    # Terminal decisions (SCRAP / USE_AS_IS / RETURN_TO_SUPPLIER) keep the
+    # cascade at any state — closing an NCR with SCRAP IS the terminal
+    # decision, and the terminal-precedence guard below still protects
+    # against downgrades.
+    LOOPBACK_TYPES = ('REWORK', 'REPAIR')
+    ROUTABLE_STATUSES = (PartsStatus.QUARANTINED, PartsStatus.PENDING)
     new_status = status_mapping.get(disposition.disposition_type)
     if not new_status:
         return  # unknown type
@@ -82,6 +99,13 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
             return  # idempotent no-op
         if terminal_rank.get(part.part_status, 0) > terminal_rank.get(new_status, 0):
             return  # current terminal status outranks this decision — don't regress it
+        # Loop-back-only guard: REWORK/REPAIR only routes parts that are still
+        # held awaiting a decision. If the part has already moved on
+        # (AWAITING_QA, IN_PROGRESS, REWORK_IN_PROGRESS, READY, etc.), the
+        # disposition is a paper record — someone has already routed the part.
+        if (disposition.disposition_type in LOOPBACK_TYPES
+                and part.part_status not in ROUTABLE_STATUSES):
+            return
 
         part.part_status = new_status
         if disposition.disposition_type in ('REWORK', 'REPAIR'):
