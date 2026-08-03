@@ -168,23 +168,29 @@ def advance_part_step(
     next_step = part.get_next_step(decision_result)
 
     if next_step is None:
-        if part.step.is_terminal:
-            status_map = {
-                'completed': PartsStatus.COMPLETED,
-                'shipped': PartsStatus.SHIPPED,
-                'stock': PartsStatus.IN_STOCK,
-                'scrapped': PartsStatus.SCRAPPED,
-                'returned': PartsStatus.CANCELLED,
-                'awaiting_pickup': PartsStatus.AWAITING_PICKUP,
-                'core_banked': PartsStatus.CORE_BANKED,
-                'rma_closed': PartsStatus.RMA_CLOSED,
-            }
-            part.part_status = status_map.get(
-                part.step.terminal_status,
-                PartsStatus.COMPLETED,
-            )
-        else:
-            part.part_status = PartsStatus.COMPLETED
+        # Preserve HELD statuses at the terminal boundary. A QUARANTINED or
+        # REWORK-in-flight part reaching a terminal step shouldn't be
+        # silently marked COMPLETED/SHIPPED; the terminal marking should
+        # happen only after the hold is resolved (by an explicit
+        # disposition — SCRAP for terminal, REWORK back into flow).
+        if part.part_status not in HELD_PART_STATUSES:
+            if part.step.is_terminal:
+                status_map = {
+                    'completed': PartsStatus.COMPLETED,
+                    'shipped': PartsStatus.SHIPPED,
+                    'stock': PartsStatus.IN_STOCK,
+                    'scrapped': PartsStatus.SCRAPPED,
+                    'returned': PartsStatus.CANCELLED,
+                    'awaiting_pickup': PartsStatus.AWAITING_PICKUP,
+                    'core_banked': PartsStatus.CORE_BANKED,
+                    'rma_closed': PartsStatus.RMA_CLOSED,
+                }
+                part.part_status = status_map.get(
+                    part.step.terminal_status,
+                    PartsStatus.COMPLETED,
+                )
+            else:
+                part.part_status = PartsStatus.COMPLETED
 
         if current_execution:
             current_execution.save()
@@ -218,7 +224,11 @@ def advance_part_step(
         current_execution.save()
 
     if part.work_order and getattr(part.step, 'requires_batch_completion', False):
-        part.part_status = PartsStatus.READY_FOR_NEXT_STEP
+        # Preserve HELD statuses through batch-completion staging. A
+        # QUARANTINED part in a batch shouldn't be marked READY_FOR_NEXT_STEP
+        # — it's on hold pending disposition, not ready to move.
+        if part.part_status not in HELD_PART_STATUSES:
+            part.part_status = PartsStatus.READY_FOR_NEXT_STEP
         part.save()
 
         other_parts_pending = Parts.objects.filter(
@@ -307,7 +317,15 @@ def advance_part_step(
     evaluate_substep_sampling(new_exec)
 
     part.step = next_step
-    part.part_status = PartsStatus.IN_PROGRESS
+    # Preserve HELD statuses through the step transition. A QUARANTINED
+    # or REWORK-in-flight part physically routed to a rework staging area
+    # / next-step position still carries its hold; only an explicit
+    # disposition (via apply_disposition_to_part) or rework-flow transition
+    # should clear it. Overwriting to IN_PROGRESS here silently healed
+    # quarantined parts as they walked through non-quarantine-blocking
+    # steps.
+    if part.part_status not in HELD_PART_STATUSES:
+        part.part_status = PartsStatus.IN_PROGRESS
 
     evaluator = SamplingFallbackApplier(part=part)
     result = evaluator.evaluate()
@@ -516,6 +534,25 @@ TERMINAL_PART_STATUSES = frozenset([
     PartsStatus.AWAITING_PICKUP,
     PartsStatus.CORE_BANKED,
     PartsStatus.RMA_CLOSED,
+])
+
+# Statuses that must survive a step transition intact. `advance_part_step`
+# writes part_status on transition (IN_PROGRESS on the destination step,
+# READY_FOR_NEXT_STEP for batch-completion holds, or a terminal status on the
+# last step). Those writes are correct for a workable part but wrong for one
+# that's on hold — QUARANTINED and REWORK_NEEDED/REWORK_IN_PROGRESS mark
+# lifecycle states set by the disposition cascade / rework routing that
+# should NOT be silently healed by a step change.
+#
+# Practical case: a QUARANTINED part at a step whose block_on_quarantine=False
+# used to advance and get its status flipped to IN_PROGRESS by the transition,
+# undoing the quarantine. The destination step's block_on_quarantine gate then
+# saw part.part_status=IN_PROGRESS and let it advance further. Preserving the
+# held status here keeps the gate honest at every subsequent step.
+HELD_PART_STATUSES = frozenset([
+    PartsStatus.QUARANTINED,
+    PartsStatus.REWORK_NEEDED,
+    PartsStatus.REWORK_IN_PROGRESS,
 ])
 
 
