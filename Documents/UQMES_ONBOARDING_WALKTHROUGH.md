@@ -17,6 +17,17 @@ pre-staged into the state a section walks against so the exhibits are
 always there. Re-run `python manage.py seed_demo` before each demo run
 to reset state.
 
+**Scannable traveler PDF for the walk:**
+[`artifacts/WO-QA-INSPECT-01_traveler.pdf`](artifacts/WO-QA-INSPECT-01_traveler.pdf).
+Print it (or open it on a phone) if you want to physically scan the
+header barcode / QR to open the live WO — the scan resolves to the
+same WO Detail page you'd reach by clicking. The PDF also includes
+the full 12-operation routing table with sign-off blocks, giving the
+walker a paper counterpart to what appears on screen. To regenerate
+after a reseed, open the WO Detail (`/workorder/$id`) → **Traveler**
+button → **Download PDF**; save the new file over the checked-in
+copy so the barcode encodes the current WO id.
+
 **Roles you'll play.** Passwords are `demo123`.
 
 | Email | Name | Role | Where you play it |
