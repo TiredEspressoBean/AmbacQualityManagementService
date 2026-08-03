@@ -461,21 +461,37 @@ def notify_approvers(request: ApprovalRequest):
 def notify_status_change(request: ApprovalRequest, new_status):
     """Notify the requester that a decision has been made.
 
-    No-op when the request has no requester on record (the FK is
-    nullable — e.g. the requesting account was deleted, or the AR was
-    created by a system process). Without this guard the
+    Falls back to the approved object's assignee when there is no
+    requester on record. The FK is nullable for two legitimate reasons —
+    the requesting account was deleted, or a system process opened the
+    request (a tripped quality gate raising a CAPA or a REQUIRE_APPROVAL,
+    where recording the incidental tripping user as requester would be a
+    mis-attribution). Those system-raised requests still have someone
+    accountable for the work: the assignee. Telling nobody the outcome
+    would leave a rejected approval sitting unread on a record its owner
+    is waiting on.
+
+    Still a no-op when neither exists — without that guard the
     NotificationTask insert hits a NOT NULL constraint and the raw DB
     error aborts the approver's response submission.
     """
     from Tracker.services.core.notification import enqueue_decision_notification
 
-    if request.requested_by_id is None:
+    recipient = request.requested_by
+    if recipient is None:
+        # `assigned_to` is the ownership field on the objects that get
+        # system-raised approvals (CAPA); absent on others (e.g.
+        # StepGateFiring), where there is no owner to tell and the
+        # approvers are themselves the actors.
+        recipient = getattr(request.content_object, 'assigned_to', None)
+    if recipient is None:
         logger.info(
-            "Skipping decision notification for AR %s - no requester on record",
+            "Skipping decision notification for AR %s - no requester and no "
+            "assignee on the approved object",
             request.pk,
         )
         return
-    enqueue_decision_notification(request.requested_by, request)
+    enqueue_decision_notification(recipient, request)
 
 
 def escalate_approval(request: ApprovalRequest):

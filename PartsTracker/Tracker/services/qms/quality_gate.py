@@ -311,6 +311,27 @@ def _default_capa_owner(tenant):
 
 
 def _require_approval(ruleset, firing, *, user):
+    """Open the approval a tripped gate demands.
+
+    ``user`` is deliberately NOT recorded as the requester, for the same
+    reason `_raise_capa_or_scar` doesn't record it as the initiator: the
+    gate fired on an aggregate, and the user in scope is merely whoever
+    saved the record that crossed the threshold.
+
+    Here it has a second, sharper consequence. `submit_approval_response`
+    treats ``requested_by == approver`` as self-approval and blocks it
+    unless the template sets ``allow_self_approval`` *and* the approver
+    writes a 10-character justification. With the tripping user recorded
+    as requester, that guard fires on coincidence: if Mike happens to be
+    an approver on this template and happens to be the one who saved the
+    failing report, he's forced through the self-approval path on an
+    approval he did not request. If Sarah had saved it instead, Sarah
+    would be. A conflict-of-interest check that keys on who was standing
+    nearby is worse than no check, because it looks deliberate.
+
+    With no requester there is no self-approval relationship to police —
+    ``can_approve()`` still governs who may respond at all.
+    """
     template = ruleset.gate_approval_template
     if template is None:
         raise ValueError("REQUIRE_APPROVAL needs gate_approval_template set.")
@@ -318,7 +339,7 @@ def _require_approval(ruleset, firing, *, user):
     return create_approval_from_template(
         content_object=firing,
         template=template,
-        requested_by=user,
+        requested_by=None,  # system-raised — see docstring
         reason=f"Quality gate '{ruleset.name}' tripped at step {ruleset.step.name}.",
     )
 
