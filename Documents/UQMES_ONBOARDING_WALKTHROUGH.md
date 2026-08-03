@@ -714,38 +714,74 @@ walks two of them.
 
 ### 9a — Find your CAPA work
 
-From the home page, the **My CAPA tasks** tile (backed by the
-`useMyCapaTasks` hook) counts every task Sarah owns — as the
-primary `assigned_to` on the task, or as a row on
-`CapaTaskAssignee` for a multi-person task.
+On the home page, the **My quality actions** panel holds three
+counters: **Approvals**, **CAPA tasks**, and **My dispositions**.
+The **CAPA tasks** count (backed by `useMyCapaTasks`) covers every
+task Sarah owns — as the primary `assigned_to`, or as a row on
+`CapaTaskAssignee` for a multi-person task. On a fresh seed it
+reads **6**.
 
 Sidebar → **Quality → CAPAs** (`/quality/capas`) opens the full
-list. Filter by *Assigned to me* to narrow. You'll see:
-- **CAPA-2024-002** (PENDING_VERIFICATION, PREVENTIVE, MINOR) —
-  assigned to Sarah; all tasks complete, awaiting verification.
-- **CAPA-2024-003** (IN_PROGRESS, CORRECTIVE, MAJOR) — nozzle
-  batch defects; Sarah owns two multi-assignee tasks.
-- **CAPA-2024-004** (OPEN, CORRECTIVE, MAJOR) — contamination
-  investigation; Sarah has *"Conduct contamination analysis"*
-  (NOT_STARTED).
-- **CAPA-2024-005** (OPEN, CORRECTIVE, MAJOR) — customer return,
-  assigned to Sarah today; no RCA yet.
+list: four stat cards (Active / Pending Verification / Overdue /
+Closed) above a table. The toolbar has **Sort by…**, **New CAPAs**
+and a **Needs My Approval** toggle — there is no "assigned to me"
+filter, so read the *Assigned To* column.
+
+**The Status column is computed, not stored.** `CAPASerializer`
+returns `CAPA.computed_status`, which derives the status from the
+underlying facts — verification confirmed → Closed, all tasks done
++ RCA complete → Pending Verification, any task or RCA started →
+In Progress, nothing yet → Open. So a CAPA that has tasks never
+displays as Open, whatever its stored `status` field says. What
+you'll actually see:
+- **CAPA-2024-002** — Pending Verification, Preventive Action,
+  Minor. Assigned to Sarah, all tasks complete. This is the
+  verification exhibit.
+- **CAPA-2024-003** — In Progress, Corrective Action, Major.
+  Nozzle batch defects; Sarah owns two multi-assignee tasks.
+- **CAPA-2024-004** — In Progress, Corrective Action, Major.
+  Contamination investigation; Sarah has *"Conduct contamination
+  analysis"*, Not Started.
+- **CAPA-2024-005** — In Progress, Corrective Action, Major.
+  Customer return, assigned to Sarah; no RCA yet.
 
 ### 9b — Complete an assigned task (CAPA-2024-004)
 
-1. Open **CAPA-2024-004** from the list.
-2. Header shows: *"Recurring contamination in cleaning process
-   affecting seal integrity"*, MAJOR, OPEN.
-3. Click the **Tasks** tab. Two rows; yours is *"Conduct
-   contamination analysis"* — NOT_STARTED, due in 7 days.
-4. Click into the row. Fill *Completion notes* describing what
-   the analysis found and click **Mark Complete**.
-5. Task status → COMPLETED; `completed_at` and `completed_by`
-   are stamped by the `complete_capa_task` service. The header's
-   completion percentage ticks up.
+**Task completion lives in the Inbox, not on the CAPA page.** The
+CAPA detail **Tasks** tab is read-only apart from **Add Task** — it
+shows each task's number, status, assignee, due date and completion
+mode, but has no per-row action. The only place `useCompleteCapaTask`
+is wired is `/inbox`.
+
+1. Sidebar → **Inbox** (or the **CAPA tasks** counter on the home
+   page). Header reads *"1 overdue, 8 total items"*.
+2. Tabs across the top: **All**, **Tasks**, **Approvals**,
+   **Dispositions**. Cards are grouped by urgency — **Overdue**,
+   **This Week**, **Upcoming**.
+3. Find *"Conduct contamination analysis"* — badged *Corrective
+   Action*, referencing CAPA-2024-004, *assigned to Sarah Chen*,
+   Not Started, *Due in 6 days*. Each card offers **View** and
+   **Complete**.
+4. Click **Complete**. The **Complete Task** dialog opens —
+   *"Mark this task as complete and add any notes about what was
+   done."* Fill **Completion Notes** (placeholder: *"Describe what
+   was done to complete this task…"*). **Attach Evidence** is
+   available if you have a measurement printout or photo.
+5. Click **Complete Task**. `completed_date` and `completed_by` are
+   stamped by the `complete_capa_task` service and the CAPA's
+   progress percentage ticks up.
+
+**A third task you didn't expect.** CAPA-2024-004's Tasks tab shows
+**three** rows, not the two the seed lists: `T001` is
+*"Containment: Increased cleaning solution filtration and
+monitoring"*, auto-created by the `create_initial_containment_task`
+signal from the CAPA's `immediate_action`. Every CAPA with an
+immediate action gets one. Harmless here, but see the note at the
+end of 9c — it used to break the verification exhibit.
 
 **Multi-person tasks (CAPA-2024-003).** Open CAPA-2024-003's Tasks
-tab. Two of Sarah's tasks are multi-person:
+tab (the tab beside it is labelled **Root Cause**, not RCA). Two of
+Sarah's tasks are multi-person:
 - *"Update incoming inspection procedure"* — `completion_mode` =
   `ALL_ASSIGNEES` (Sarah AND Maria both must sign off).
 - *"Implement tightened sampling for nozzles"* — `completion_mode`
@@ -754,34 +790,50 @@ tab. Two of Sarah's tasks are multi-person:
 The `complete_capa_task` service enforces the mode: an
 ALL_ASSIGNEES task stays IN_PROGRESS until every
 `CapaTaskAssignee` row is COMPLETED; ANY_ASSIGNEE closes on the
-first.
+first. The Tasks tab shows the mode per row (*Single Owner* on the
+ordinary ones).
 
 ### 9c — Record verification data (CAPA-2024-002)
 
-CAPA-2024-002 is in PENDING_VERIFICATION — all corrective tasks
-done, someone now has to check whether the correction actually
-worked.
+CAPA-2024-002 shows **Pending Verification** — all tasks done and
+RCA complete, so someone now has to check whether the correction
+actually worked. Progress reads 75%.
 
-1. Open **CAPA-2024-002**.
-2. Click the **Verification** tab.
-3. Fill:
-   - **Verification method** — how you'll measure whether the
-     fix stuck (e.g. "Monitor next 30 days of receiving for
-     missing-doc holds").
-   - **Verification criteria** — the pass/fail bar.
-   - **Verification notes** — what you observed.
-4. Set **Effectiveness result** (CONFIRMED / NOT_CONFIRMED /
-   PARTIAL).
-5. Click **Save Verification**.
+Verification is **two stages**: you write the *plan* (how you'll
+measure it) first, and the outcome is recorded against that plan
+afterwards. You can't record a result for a measurement you never
+defined — which is the point.
+
+1. Open **CAPA-2024-002** and click the **Verification** tab. It's
+   headed *"Effectiveness Verification — Verify that
+   corrective/preventive actions have been effective"*, and on a
+   fresh seed reads *"No verifications have been recorded yet."*
+2. Click **Add Verification**. The **Add Verification Plan** dialog
+   opens — *"Define how you will verify the effectiveness of
+   corrective actions."*
+3. Fill both required fields:
+   - **Verification Method** — *"How will effectiveness be
+     verified? (e.g., process audit, data review, etc.)"* For this
+     CAPA: "Monitor next 30 days of receiving for missing-document
+     holds."
+   - **Success Criteria** — *"What defines success? (e.g., zero
+     defects over 30 days, process capability > 1.33)"* Here: "Zero
+     missing-document holds over a 30-day window."
+4. Click **Create**. (**Create** stays disabled until both fields
+   have content.)
+
+The effectiveness outcome — `effectiveness_result` (CONFIRMED /
+NOT_EFFECTIVE / INCONCLUSIVE) plus notes — is recorded against the
+plan once the monitoring window has actually elapsed. CAPA-2024-001
+is the worked example: open its Verification tab to see a completed
+plan with a CONFIRMED result.
 
 **Segregation of Duties on verification.** Sarah can add and edit
 the verification record (`add_capaverification`,
-`change_capaverification`). She *cannot* click the final **Verify**
-button that closes the CAPA — the `verify_capa` permission is
-gated to the QA Manager. When Sarah saves the record,
-`capa.ready_for_verification` fires and routes to the QA Manager
-group's inbox; Jennifer opens it, reviews the recorded data, and
-signs off (or reopens it).
+`change_capaverification`). She *cannot* perform the final verify
+that closes the CAPA — `verify_capa` is gated to the QA Manager.
+`capa.ready_for_verification` routes to the QA Manager group;
+Jennifer reviews the recorded data and signs off (or reopens it).
 
 **What happens on QA Manager verify.** If CONFIRMED, the
 `verify_capa_effectiveness` service closes the CAPA and logs a
@@ -884,27 +936,31 @@ the QR void flow to walk the reading back.
 ### 10a — Your gauge-nag tile on the home page
 
 The home page has a **Your gauges** tile (`GaugeNagTile`, backed
-by `useGaugeNag`). It counts gauges Sarah has used recently that
-are due-soon or overdue.
+by `useGaugeNag`), sitting beside the **My quality actions** panel.
+It counts gauges Sarah used in the last 7 days whose calibration is
+due within 7 days or already overdue — both windows are
+`DEFAULT_USED_WITHIN_DAYS` / `DEFAULT_DUE_WITHIN_DAYS` in
+`services/qms/gauge_nag.py`.
 
-Empty state reads *"Nothing you've used recently is due for
-calibration."* Populated, the copy is *"N gauges you used recently
-need calibration soon"* with the top 3 listed inline — overdue
-rows render red with "overdue Nd", due-soon rows show "due in Nd".
-The **Review calibrations** button below the tile navigates to
-`/quality/calibrations`.
+Empty state reads *"Nothing you've used in the last 7 days is due
+for calibration."* Populated, it reads *"N gauges you used in the
+last 7 days need calibration within 7 days"* with the top 3 listed
+inline — overdue rows render red as "overdue Nd", due-soon rows as
+"due in Nd". On a fresh seed you'll see exactly one:
+*"Torque Wrench TW-25 — overdue 15d"*. The **Review calibrations**
+button navigates to `/quality/calibrations`.
 
 ### 10b — The calibration dashboard
 
 `/quality/calibrations` (`CalibrationDashboardPage`) is the full
 QA view.
 
-**Top row — five stat cards:**
-- **Equipment** — count of equipment with calibration records.
-- **Current** — count in calibration.
-- **Due Soon** — count due within 30 days.
-- **Overdue** — count past due.
-- **Compliance** — percent in compliance.
+**Top row — five stat cards** (fresh-seed values in brackets):
+- **Equipment** — with calibration records [5].
+- **Current** — in calibration [4].
+- **Due Soon** — within 30 days [2].
+- **Overdue** — past due [1].
+- **Compliance** — percent in compliance [80%].
 
 **Below — three panels:**
 - **Quick Actions** — three links:
@@ -1044,9 +1100,15 @@ surface where you can:
 
 ### 11c — What fires for a QA inspector
 
-Events that come up in this walkthrough and route to a QA
-inspector by default (via seeded starter rules — backfill onto an
-existing tenant with `python manage.py setup_notification_rules`):
+On a fresh seed Sarah's bell shows **2 unread**, both
+`capa.assigned` — *"CAPA CAPA-2024-005 assigned to you / Major
+CAPA, due 2026-08-17"* and the same for CAPA-2024-002. Those are
+the only pre-seeded ones; the rest below fire as you work the
+walkthrough rather than arriving with the seed.
+
+Events that route to a QA inspector by default (via seeded starter
+rules — backfill onto an existing tenant with
+`python manage.py setup_notification_rules`):
 - **`ncr.opened`** (Section 5c) — a FAIL QR just auto-created a
   quarantine disposition. Routes to the disposition assignee (a
   QA Manager or QA Inspector on the tenant).

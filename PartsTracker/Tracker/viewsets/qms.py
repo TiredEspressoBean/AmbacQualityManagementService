@@ -18,7 +18,7 @@ from Tracker.models import (
     # QMS models
     QualityReports, QualityErrorsList, QuarantineDisposition, SupplierQualification,
     PartApproval,
-    CAPA, CapaTasks, RcaRecord, CapaVerification,
+    CAPA, CapaTasks, RcaRecord, CapaVerification, CapaStatus,
     FiveWhys, Fishbone,
     ThreeDModel, HeatMapAnnotations,
     # MES models
@@ -419,6 +419,34 @@ class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelE
 
 # ===== CAPA VIEWSETS =====
 
+class CAPAFilterSet(django_filters.FilterSet):
+    """CAPA filters, with `status` resolved against the computed status.
+
+    `CAPASerializer.get_status` returns `CAPA.computed_status`, so the stored
+    `status` column is not what any client displays. Filtering the stored
+    column while rendering the computed one meant filtering by a visible
+    status returned the wrong rows. This routes `status` through
+    `CAPA.computed_status_annotation()` so the filter and the column agree.
+    """
+    status = django_filters.ChoiceFilter(
+        choices=CapaStatus.choices,
+        method='filter_computed_status',
+        label='Status (computed)',
+    )
+
+    class Meta:
+        model = CAPA
+        fields = ['status', 'capa_type', 'severity', 'assigned_to',
+                  'initiated_by', 'supplier']
+
+    def filter_computed_status(self, queryset, name, value):
+        return (
+            queryset
+            .annotate(_computed_status=CAPA.computed_status_annotation())
+            .filter(_computed_status=value)
+        )
+
+
 @extend_schema_view(
     list=extend_schema(
         description="List CAPAs with filtering and search",
@@ -448,7 +476,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
     queryset = CAPA.unscoped.all()
     serializer_class = CAPASerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'capa_type', 'severity', 'assigned_to', 'initiated_by', 'supplier']
+    filterset_class = CAPAFilterSet
     search_fields = ['capa_number', 'problem_statement', 'immediate_action']
     ordering_fields = ['initiated_date', 'due_date', 'completed_date', 'capa_number', 'severity']
     ordering = ['-initiated_date']

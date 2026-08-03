@@ -321,6 +321,8 @@ class DemoCapaSeeder(BaseSeeder):
                 task = self._create_task(task_data, capa, user_map)
                 result['tasks'].append(task)
 
+            self._reconcile_auto_containment_task(capa, capa_data, user_map)
+
             # Link quality reports if specified
             if capa_data.get('link_quality_reports'):
                 self._link_quality_reports(capa)
@@ -330,6 +332,43 @@ class DemoCapaSeeder(BaseSeeder):
         self.log(f"  Created {len(result['tasks'])} CAPA tasks")
 
         return result
+
+    def _reconcile_auto_containment_task(self, capa, capa_data, user_map):
+        """Complete the signal-created containment task when the preset's
+        intended status says all the work is done.
+
+        `create_initial_containment_task` (Tracker/signals.py) fires on CAPA
+        creation whenever `immediate_action` is set — which every preset here
+        sets — and adds a NOT_STARTED containment task the preset's `tasks`
+        list knows nothing about.
+
+        That silently defeated the CAPA-2024-002 exhibit. The list and detail
+        pages don't show the stored `status` field; `CAPASerializer` returns
+        `CAPA.computed_status`, which derives the status from the underlying
+        facts and only reports PENDING_VERIFICATION when
+        `all_tasks_completed()`. One unstarted tag-along task made that False,
+        so the CAPA the demo uses to practise verification rendered as
+        In Progress with no verification step available — the seed asserted a
+        status it hadn't actually arranged the facts to produce.
+
+        Only reconcile for statuses that mean "work finished"
+        (PENDING_VERIFICATION / CLOSED). An IN_PROGRESS or OPEN preset having
+        an open containment task is realistic, and for those `computed_status`
+        lands on IN_PROGRESS either way.
+        """
+        finished = (CapaStatus.PENDING_VERIFICATION, CapaStatus.CLOSED)
+        if capa_data['status'] not in finished:
+            return
+
+        explicit = {t['description'] for t in capa_data.get('tasks', [])}
+        assignee = user_map.get(capa_data['assigned_to'])
+        for task in capa.tasks.exclude(description__in=explicit):
+            if task.status == CapaTaskStatus.COMPLETED:
+                continue
+            task.status = CapaTaskStatus.COMPLETED
+            task.completed_date = self.today.date()
+            task.completed_by = task.assigned_to or assignee
+            task.save(update_fields=['status', 'completed_date', 'completed_by'])
 
     def _create_capa(self, capa_data, user_map, step_map, wo_map):
         """Create a CAPA.

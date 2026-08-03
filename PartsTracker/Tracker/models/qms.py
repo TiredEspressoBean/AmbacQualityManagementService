@@ -1430,6 +1430,56 @@ class CAPA(SecureModel):
 
         return CapaStatus.OPEN
 
+    @staticmethod
+    def computed_status_annotation():
+        """SQL mirror of `computed_status`, for filtering and ordering.
+
+        `computed_status` is a Python property, so it can't be filtered in the
+        database. Without this, `filterset_fields = ['status', ...]` filtered
+        the *stored* `status` column while the API and table rendered the
+        *computed* one — so filtering by the status you could see returned the
+        wrong rows (filter "In Progress" and you'd get one of the five rows
+        displaying In Progress; filter "Open" and you'd get rows displaying
+        In Progress).
+
+        Deliberately defined next to `computed_status` so the two are edited
+        together, and `test_capa_computed_status_annotation.py` asserts they
+        agree across every branch — a divergence here is exactly the bug this
+        was added to fix.
+
+        One known, accepted difference: `rca_complete()` inspects
+        `rca_records.first()`, while this checks whether *any* RcaRecord has a
+        `root_cause_summary`. They can only disagree on a CAPA with multiple
+        RCA records whose first has no summary; the schema and every writer
+        treat RCA as one-per-CAPA.
+        """
+        from django.db.models import Case, CharField, Exists, OuterRef, Value, When
+
+        # tenant-safe: each subquery is tied to the outer CAPA row via
+        # capa=OuterRef('pk'), and the outer queryset is already scoped
+        confirmed = CapaVerification.objects.filter(
+            capa=OuterRef('pk'), effectiveness_result='CONFIRMED')
+        any_task = CapaTasks.objects.filter(capa=OuterRef('pk'))
+        open_task = CapaTasks.objects.filter(capa=OuterRef('pk')).exclude(
+            status=CapaTaskStatus.COMPLETED)
+        rca_done = RcaRecord.objects.filter(
+            capa=OuterRef('pk'), root_cause_summary__isnull=False)
+        any_rca = RcaRecord.objects.filter(capa=OuterRef('pk'))
+
+        return Case(
+            When(Exists(confirmed), then=Value(CapaStatus.CLOSED)),
+            When(
+                Exists(any_task) & ~Exists(open_task) & Exists(rca_done),
+                then=Value(CapaStatus.PENDING_VERIFICATION),
+            ),
+            When(
+                Exists(any_task) | Exists(any_rca),
+                then=Value(CapaStatus.IN_PROGRESS),
+            ),
+            default=Value(CapaStatus.OPEN),
+            output_field=CharField(),
+        )
+
     def calculate_completion_percentage(self):
         """Calculate overall CAPA completion progress
 

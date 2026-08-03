@@ -15,6 +15,7 @@ from Tracker.models import (
     Orders, OrdersStatus, WorkOrder, WorkOrderStatus, Parts, PartsStatus,
     ProcessStep, QualityReports, QuarantineDisposition, CAPA, CapaStatus,
     CapaType, CapaSeverity, CapaTasks, CapaTaskType, CapaTaskStatus,
+    RcaRecord, RcaReviewStatus, RootCauseVerificationStatus,
 )
 
 from ..base import BaseSeeder
@@ -619,6 +620,7 @@ class TrainingExercisesSeeder(BaseSeeder):
                         completed_by=assigned_user if task_config['completed'] else None,
                     )
 
+            self._ensure_rca_for_verification_ready(capa, capa_config, assigned_user)
             self._capas[capa_config['number']] = capa
 
     # =========================================================================
@@ -808,6 +810,44 @@ class TrainingExercisesSeeder(BaseSeeder):
 
             self._dispositions[disp_config['number']] = disp
 
+    def _ensure_rca_for_verification_ready(self, capa, capa_config, user):
+        """Give a verification-ready preset the RCA record its status implies.
+
+        `CAPASerializer` returns `CAPA.computed_status`, not the stored
+        `status` field, and PENDING_VERIFICATION requires
+        `all_tasks_completed() AND rca_complete()`. `rca_complete()` wants an
+        `RcaRecord` whose `root_cause_summary` is non-null.
+
+        Both of these presets declare PENDING_VERIFICATION and mark every task
+        complete, but never created an RCA — so they computed as In Progress
+        and the Verification tab had nothing to act on. Two exhibits whose
+        stated purpose is "practise the verification and closure workflow"
+        couldn't be used for it.
+
+        Same class of bug as the containment tag-along in
+        seed/demo/capa.py: the seed asserted a status without arranging the
+        facts that produce it.
+        """
+        if capa_config['status'] != CapaStatus.PENDING_VERIFICATION:
+            return
+        RcaRecord.objects.update_or_create(
+            capa=capa,
+            defaults={
+                'tenant': self.tenant,
+                'rca_method': 'FIVE_WHYS',
+                'problem_description': capa_config['problem_statement'][:200],
+                'root_cause_summary': capa_config.get(
+                    'root_cause_summary',
+                    'Root cause identified and addressed; retained for '
+                    'verification practice.',
+                ),
+                'conducted_by': user,
+                'conducted_date': self.today.date() if hasattr(self.today, 'date') else self.today,
+                'rca_review_status': RcaReviewStatus.COMPLETED,
+                'root_cause_verification_status': RootCauseVerificationStatus.VERIFIED,
+            },
+        )
+
     def _create_assessment_capas(self):
         """Create assessment CAPAs with tasks."""
         qa_managers = [u for u in self._users.get('employees', [])
@@ -842,4 +882,5 @@ class TrainingExercisesSeeder(BaseSeeder):
                         completed_by=assigned_user if task_config['completed'] else None,
                     )
 
+            self._ensure_rca_for_verification_ready(capa, capa_config, assigned_user)
             self._capas[capa_config['number']] = capa
