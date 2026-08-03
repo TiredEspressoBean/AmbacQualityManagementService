@@ -452,8 +452,8 @@ You just caused the disposition Section 6 walks against.
 created have full audit trail — `created_by` = Sarah, timestamps
 match your click, the `ncr.opened` event fired live. Seeded records
 (the pre-closed `DISP-QAI-004-REW`, the QR on 004, terminal
-0042-023) don't — see Section 9c for the two seed quirks that show
-up on those.
+0042-023) don't — see Section 10c for the two seed quirks that
+show up on those.
 
 ---
 
@@ -696,14 +696,135 @@ the inspection now recorded.
 
 ---
 
-## 9. Reading the audit trail
+## 9. Working a CAPA task — CAPA-2024-002 and CAPA-2024-004
+
+Real day terms: a disposition handles *this part right now*. A CAPA
+(Corrective And Preventive Action) handles *the pattern* — why is
+this happening again, what will we change so it stops. Sections 5
+through 7 walked one failed part. This section walks the parallel
+system that catches the pattern behind repeated failures.
+
+QA inspectors don't own CAPA *closure* (`verify_capa` is gated to
+the QA Manager), but they do the legwork: work assigned tasks,
+record verification data, and — when a QR reveals a systemic issue
+rather than a one-off — initiate a new CAPA.
+
+Sarah has pre-seeded work across the five demo CAPAs. This section
+walks two of them.
+
+### 9a — Find your CAPA work
+
+From the home page, the **My CAPA tasks** tile (backed by the
+`useMyCapaTasks` hook) counts every task Sarah owns — as the
+primary `assigned_to` on the task, or as a row on
+`CapaTaskAssignee` for a multi-person task.
+
+Sidebar → **Quality → CAPAs** (`/quality/capas`) opens the full
+list. Filter by *Assigned to me* to narrow. You'll see:
+- **CAPA-2024-002** (PENDING_VERIFICATION, PREVENTIVE, MINOR) —
+  assigned to Sarah; all tasks complete, awaiting verification.
+- **CAPA-2024-003** (IN_PROGRESS, CORRECTIVE, MAJOR) — nozzle
+  batch defects; Sarah owns two multi-assignee tasks.
+- **CAPA-2024-004** (OPEN, CORRECTIVE, MAJOR) — contamination
+  investigation; Sarah has *"Conduct contamination analysis"*
+  (NOT_STARTED).
+- **CAPA-2024-005** (OPEN, CORRECTIVE, MAJOR) — customer return,
+  assigned to Sarah today; no RCA yet.
+
+### 9b — Complete an assigned task (CAPA-2024-004)
+
+1. Open **CAPA-2024-004** from the list.
+2. Header shows: *"Recurring contamination in cleaning process
+   affecting seal integrity"*, MAJOR, OPEN.
+3. Click the **Tasks** tab. Two rows; yours is *"Conduct
+   contamination analysis"* — NOT_STARTED, due in 7 days.
+4. Click into the row. Fill *Completion notes* describing what
+   the analysis found and click **Mark Complete**.
+5. Task status → COMPLETED; `completed_at` and `completed_by`
+   are stamped by the `complete_capa_task` service. The header's
+   completion percentage ticks up.
+
+**Multi-person tasks (CAPA-2024-003).** Open CAPA-2024-003's Tasks
+tab. Two of Sarah's tasks are multi-person:
+- *"Update incoming inspection procedure"* — `completion_mode` =
+  `ALL_ASSIGNEES` (Sarah AND Maria both must sign off).
+- *"Implement tightened sampling for nozzles"* — `completion_mode`
+  = `ANY_ASSIGNEE` (Sarah OR Jennifer, whichever gets there first).
+
+The `complete_capa_task` service enforces the mode: an
+ALL_ASSIGNEES task stays IN_PROGRESS until every
+`CapaTaskAssignee` row is COMPLETED; ANY_ASSIGNEE closes on the
+first.
+
+### 9c — Record verification data (CAPA-2024-002)
+
+CAPA-2024-002 is in PENDING_VERIFICATION — all corrective tasks
+done, someone now has to check whether the correction actually
+worked.
+
+1. Open **CAPA-2024-002**.
+2. Click the **Verification** tab.
+3. Fill:
+   - **Verification method** — how you'll measure whether the
+     fix stuck (e.g. "Monitor next 30 days of receiving for
+     missing-doc holds").
+   - **Verification criteria** — the pass/fail bar.
+   - **Verification notes** — what you observed.
+4. Set **Effectiveness result** (CONFIRMED / NOT_CONFIRMED /
+   PARTIAL).
+5. Click **Save Verification**.
+
+**Segregation of Duties on verification.** Sarah can add and edit
+the verification record (`add_capaverification`,
+`change_capaverification`). She *cannot* click the final **Verify**
+button that closes the CAPA — the `verify_capa` permission is
+gated to the QA Manager. When Sarah saves the record,
+`capa.ready_for_verification` fires and routes to the QA Manager
+group's inbox; Jennifer opens it, reviews the recorded data, and
+signs off (or reopens it).
+
+**What happens on QA Manager verify.** If CONFIRMED, the
+`verify_capa_effectiveness` service closes the CAPA and logs a
+`CapaStatusTransition`. If NOT_CONFIRMED, it reopens the CAPA to
+IN_PROGRESS, marks the RCA `for review`, and auto-creates a
+30-day follow-up task. The escalation loop is built in — a
+correction that didn't stick doesn't quietly close.
+
+### 9d — Initiate a CAPA from a failed QR
+
+Sarah has `add_capa` + `initiate_capa`, so she can create new
+CAPAs herself — the right move when a QR reveals a systemic
+issue, not a one-off part defect. From `/quality/capas` click
+**New CAPA**. Required inputs: problem statement, capa_type
+(CORRECTIVE/PREVENTIVE), severity (MINOR/MAJOR/CRITICAL), initial
+`assigned_to`. Optional: linked quality reports (link the failing
+QR you're reacting to), work order, step, part.
+
+On save, `post_save` fires:
+- If severity is MAJOR or CRITICAL → `auto_request_capa_approval`
+  runs, blocking work until an approver signs off.
+- An initial CONTAINMENT task is auto-created.
+- `capa.assigned` event routes a notification to the assignee.
+
+**When to open one.** Don't create a CAPA for every failed QR —
+the disposition already records what to do with *this part*. Open
+a CAPA when there's a pattern: "we've seen this three times in a
+month," "customer complaint traced to a systemic gap,"
+"supplier's process changed and we missed it." Section 5's
+disposition on INJ-QA-INSPECT-003 was a one-off; CAPA-2024-003
+was the right response to the *fifth* nozzle failure in an
+order.
+
+---
+
+## 10. Reading the audit trail
 
 Real day terms: an auditor asks you to reconstruct the history of a
 specific part. Or an operator on the shop floor hands you a physical
 part and asks "what's the story on this one?" You need to be able
 to answer without going into engineering.
 
-### 9a — A rich in-flight arc (INJ-QA-INSPECT-004)
+### 10a — A rich in-flight arc (INJ-QA-INSPECT-004)
 
 Open `/details/Parts/…` for INJ-QA-INSPECT-004. Reading top-to-bottom:
 - **Status** tells you where the part is *right now*.
@@ -722,7 +843,7 @@ For INJ-QA-INSPECT-004 you can narrate: *fail at Flow Testing on
 (link to disposition); reworked (implicit — no operator UI record);
 returned to Flow Testing visit 2; awaiting Sarah's re-inspection*.
 
-### 9b — A closed terminal record (INJ-0042-023)
+### 10b — A closed terminal record (INJ-0042-023)
 
 Open `/details/Parts/…` for `INJ-0042-023` (existing seed, from
 Journey 6 of the training script).
@@ -740,7 +861,7 @@ linked QR or disposition, that itself is a red flag — how did the
 part reach a terminal state without a paper trail? Ask before
 touching.
 
-### 9c — Two seed quirks worth knowing
+### 10c — Two seed quirks worth knowing
 
 **Double disposition on some parts.** When a FAIL QR fires, its
 post-save signal auto-creates a bare OPEN disposition (no type). The
@@ -760,14 +881,16 @@ history.
 
 ---
 
-## 10. Glossary — 15 terms
+## 11. Glossary — 15 terms
 
 - **AWAITING_QA** — part state meaning "an operator finished a step
   but a rule says QA looks at it before it moves on." Parked;
   production can't advance it.
 - **CAPA** — Corrective And Preventive Action. Structured
-  investigation and fix for recurring or high-severity defects. QA
-  managers own authoring; inspectors feed data in.
+  investigation and fix for recurring or high-severity defects.
+  Inspectors can initiate CAPAs and work assigned tasks; the
+  final effectiveness verification (`verify_capa`) is gated to
+  the QA Manager. See Section 9.
 - **CoC** — Certificate of Conformance. Supplier's paperwork stating
   a lot meets the ordered spec. Attached at receiving.
 - **DWI** — Digital Work Instruction. On-screen guided capture the
