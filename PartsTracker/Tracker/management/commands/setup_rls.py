@@ -194,6 +194,17 @@ class Command(BaseCommand):
         # Integrations
         'integrations_config',
         'integrations_processed_webhook',
+
+        # --- Added 2026-08. Models landed after the 2026-06 audit backfill
+        # without an RLS entry; caught by test_rls_coverage.py as new drift
+        # (KNOWN_UNCOVERED was already empty, so these were never baselined).
+        # All four are SecureModel subclasses with a real tenant FK. ---
+
+        # Workforce — shift handoff, station assignment, job roles
+        'Tracker_shiftnote',
+        'Tracker_shiftnoteack',
+        'Tracker_userworkcentermembership',
+        'Tracker_jobrole',
     ]
 
     def add_arguments(self, parser):
