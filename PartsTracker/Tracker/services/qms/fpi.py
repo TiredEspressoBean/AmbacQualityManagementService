@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from django.utils import timezone
 
-from Tracker.models import FPIRecord, FPIResult, FPIStatus
+from Tracker.models import FPIRecord, FPIResult, FPIStatus, QaApproval
 
 
 def acknowledge_fpi(fpi: FPIRecord, user) -> FPIRecord:
@@ -31,8 +31,59 @@ def acknowledge_fpi(fpi: FPIRecord, user) -> FPIRecord:
     return fpi
 
 
+def _reject_self_signoff(fpi: FPIRecord, user) -> None:
+    """Segregation-of-duties: the person who signed the first piece's
+    inspection substeps cannot ALSO buy off / waive the FPI. In QMS/AS9100
+    practice a second qualified inspector must approve. If the substep
+    completions on the designated part's current step-execution include
+    any completed_by == user, block.
+
+    Raises:
+        ValueError: user already signed the first piece's substeps.
+    """
+    from Tracker.models import StepExecution, SubstepCompletion
+    if fpi.designated_part_id is None:
+        return  # nothing to check against yet
+    se = StepExecution.get_current_execution(fpi.designated_part)
+    if se is None:
+        return
+    if SubstepCompletion.objects.filter(step_execution=se, completed_by=user).exists():
+        raise ValueError(
+            "Segregation of duties: this user signed one or more of the first "
+            "piece's inspection substeps. FPI buy-off must be signed by a "
+            "different qualified inspector."
+        )
+
+
+def _ensure_qa_approval(fpi: FPIRecord, user) -> None:
+    """FPI Pass / Waive IS the QA signoff for the first piece. Record it as a
+    QaApproval so `Steps.can_advance_from_step` sees the step-level signoff as
+    satisfied — otherwise the FPI is passed but the WO stays stuck on the
+    "QA signoff required but not received" blocker, since no other runtime
+    path creates QaApproval records.
+    """
+    if fpi.step_id is None or fpi.work_order_id is None or user is None:
+        return
+    QaApproval.objects.update_or_create(
+        tenant=fpi.tenant,
+        step=fpi.step,
+        work_order=fpi.work_order,
+        defaults={'qa_staff': user},
+    )
+
+
 def pass_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
-    """Mark FPI as passed."""
+    """Mark FPI as passed.
+
+    Also creates the step-level QaApproval that `can_advance_from_step`
+    checks — the FPI Pass IS the QA signoff for the first piece run. Blocks
+    self-signoff: whoever signed the first-piece substeps cannot also sign
+    off the FPI.
+
+    Raises:
+        ValueError: user already signed the first piece's substeps.
+    """
+    _reject_self_signoff(fpi, user)
     fpi.status = FPIStatus.PASSED
     fpi.result = FPIResult.PASS
     fpi.inspected_by = user
@@ -40,12 +91,22 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
     if notes:
         fpi.notes = notes
     fpi.save()
+    _ensure_qa_approval(fpi, user)
     notify_fpi_decided(fpi)
     return fpi
 
 
 def fail_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
-    """Mark FPI as failed."""
+    """Mark FPI as failed.
+
+    Blocks self-signoff (same SOD principle as `pass_fpi`). Does NOT create
+    a QaApproval — a failed FPI leaves the batch blocked, and the step-level
+    signoff should not be considered satisfied by a fail.
+
+    Raises:
+        ValueError: user already signed the first piece's substeps.
+    """
+    _reject_self_signoff(fpi, user)
     fpi.status = FPIStatus.FAILED
     fpi.result = FPIResult.FAIL
     fpi.inspected_by = user
@@ -60,16 +121,23 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
 def waive_fpi(fpi: FPIRecord, user, reason: str) -> FPIRecord:
     """Waive the FPI requirement.
 
+    Creates the step-level QaApproval — a documented waive with reason IS
+    the QA signoff for the first piece run. Blocks self-signoff (same SOD
+    principle as `pass_fpi`).
+
     Raises:
-        ValueError: reason shorter than 10 characters.
+        ValueError: reason shorter than 10 characters, or user already
+            signed the first piece's substeps.
     """
     if not reason or len(reason.strip()) < 10:
         raise ValueError("Waive reason must be at least 10 characters")
+    _reject_self_signoff(fpi, user)
     fpi.status = FPIStatus.WAIVED
     fpi.waived = True
     fpi.waived_by = user
     fpi.waive_reason = reason
     fpi.save()
+    _ensure_qa_approval(fpi, user)
     notify_fpi_decided(fpi)
     return fpi
 

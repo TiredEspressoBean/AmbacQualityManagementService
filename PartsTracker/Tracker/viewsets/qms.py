@@ -1376,12 +1376,19 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 {"detail": "The first piece has not started this step's inspection yet."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        # Reuse the canonical advancement gate, but drop the FPI blocker itself —
-        # that one is always present here (we're mid-buy-off) and would make this
-        # circular. What's left tells us whether the first piece actually finished
-        # its substeps / measurements / sampling for this step.
+        # Reuse the canonical advancement gate, but drop the FPI's own blocker
+        # AND the step-level "QA signoff required" blocker — both are circular
+        # here. The FPI blocker is always present (we're mid-buy-off). The
+        # QA-signoff blocker is what THIS Pass creates (via the QaApproval that
+        # `pass_fpi` writes). What's left tells us whether the first piece
+        # actually finished its substeps / measurements / sampling for this
+        # step.
         _, blockers = fpi.step.can_advance_from_step(se, fpi.work_order)
-        remaining = [b for b in blockers if not b.startswith("First Piece Inspection required")]
+        remaining = [
+            b for b in blockers
+            if not b.startswith("First Piece Inspection required")
+            and not b.startswith("QA signoff required")
+        ]
         if remaining:
             return Response(
                 {"detail": "First piece inspection incomplete - finish the step's captures first.",
