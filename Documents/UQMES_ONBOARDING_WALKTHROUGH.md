@@ -452,7 +452,7 @@ You just caused the disposition Section 6 walks against.
 created have full audit trail — `created_by` = Sarah, timestamps
 match your click, the `ncr.opened` event fired live. Seeded records
 (the pre-closed `DISP-QAI-004-REW`, the QR on 004, terminal
-0042-023) don't — see Section 11c for the two seed quirks that
+0042-023) don't — see Section 12c for the two seed quirks that
 show up on those.
 
 ---
@@ -929,14 +929,100 @@ empty on a fresh reseed.
 
 ---
 
-## 11. Reading the audit trail
+## 11. The notification bell and inbox
+
+Real day terms: while you're working on one QR, four other things
+happen around the shop that you should know about. UQMES pushes
+those to two related but distinct surfaces:
+- **Inbox** (`/inbox`, also `/quality/inbox` for QA) — things you
+  *have to do*: assigned tasks, approvals waiting on you,
+  dispositions in your queue.
+- **Notification feed** (bell → `/notifications`) — things you
+  should be *aware of*: events that fired system-wide and your
+  subscriptions routed to you.
+
+The distinction matters. Inbox is your work list; missing something
+there blocks the shop. The bell is your awareness surface;
+missing something there just means you didn't see it.
+
+### 11a — The bell popover
+
+Top-right of the app layout, the **Bell** icon
+(`NotificationBell`) shows an unread count in a small red badge
+(rendered `99+` if you're really behind).
+
+Clicking opens a popover:
+- Header: *"Notifications"* + **Mark all read** button (only when
+  there are unread items).
+- Body: last 7 items. Unread rows have a blue dot on the left and
+  render in normal weight; read rows are muted. Each row shows
+  subject + first line of body + relative time (*"just now"*,
+  *"5m ago"*, *"2h ago"*, *"3d ago"*).
+- Footer: **View all** navigates to `/notifications`.
+
+Clicking a row marks it read *and* navigates to the item's
+`rendered_action_url` — the deep link the event was wired with.
+`ncr.opened` sends you to the disposition. `fpi.decided` sends
+you to the FPI banner on the runtime. `capa.assigned` sends you
+to the CAPA detail. If a row has no action URL, it just marks
+read.
+
+### 11b — The full feed at /notifications
+
+`/notifications` (`NotificationFeedPage`) — same data as the
+popover, up to 100 items, with a persistent **Unread only** filter
+toggle. Header reads *"N unread"* or *"All caught up"* when
+there's nothing to review. Same click-to-open-and-mark-read
+behavior as the bell.
+
+**Preferences** button (top right) navigates to
+`/profile/notifications` (`MyNotificationsPage`) — the personal
+surface where you can:
+- Mute or unmute specific events per channel (in-app, email).
+- Add personal subscriptions (*"ping me when X happens on records
+  I own"*) — a lighter surface than the admin rule editor at
+  `/settings/notifications`.
+- Watch specific records to get every event that fires on them.
+
+### 11c — What fires for a QA inspector
+
+Events that come up in this walkthrough and route to a QA
+inspector by default (via seeded starter rules — backfill onto an
+existing tenant with `python manage.py setup_notification_rules`):
+- **`ncr.opened`** (Section 5c) — a FAIL QR just auto-created a
+  quarantine disposition. Routes to the disposition assignee (a
+  QA Manager or QA Inspector on the tenant).
+- **`fpi.decided`** — an FPI was passed, failed, or waived on a
+  step Sarah covers.
+- **`capa.assigned`** (Section 9a) — a CAPA task was assigned to
+  you. Fires from `post_save(CAPA)`.
+- **`capa.ready_for_verification`** (Section 9c) — routes to the
+  QA Manager group's inbox after an inspector saves verification
+  data.
+
+Non-QA events (production, escalations, receiving) also flow
+through the same pipeline; you'll see them if a personal
+subscription or a watched-records rule routes one to you.
+
+### 11d — Which surface to check when
+
+- Something specific you're supposed to *finish*? → **Inbox** (or
+  the home page tiles, which are the same data grouped).
+- Something changed and you want to know? → **Bell / feed**.
+- No time to look at either right now? → glance at the bell's
+  red badge count. If it's non-zero and stays that way, you're
+  ignoring something.
+
+---
+
+## 12. Reading the audit trail
 
 Real day terms: an auditor asks you to reconstruct the history of a
 specific part. Or an operator on the shop floor hands you a physical
 part and asks "what's the story on this one?" You need to be able
 to answer without going into engineering.
 
-### 11a — A rich in-flight arc (INJ-QA-INSPECT-004)
+### 12a — A rich in-flight arc (INJ-QA-INSPECT-004)
 
 Open `/details/Parts/…` for INJ-QA-INSPECT-004. Reading top-to-bottom:
 - **Status** tells you where the part is *right now*.
@@ -955,7 +1041,7 @@ For INJ-QA-INSPECT-004 you can narrate: *fail at Flow Testing on
 (link to disposition); reworked (implicit — no operator UI record);
 returned to Flow Testing visit 2; awaiting Sarah's re-inspection*.
 
-### 11b — A closed terminal record (INJ-0042-023)
+### 12b — A closed terminal record (INJ-0042-023)
 
 Open `/details/Parts/…` for `INJ-0042-023` (existing seed, from
 Journey 6 of the training script).
@@ -973,7 +1059,7 @@ linked QR or disposition, that itself is a red flag — how did the
 part reach a terminal state without a paper trail? Ask before
 touching.
 
-### 11c — Two seed quirks worth knowing
+### 12c — Two seed quirks worth knowing
 
 **Double disposition on some parts.** When a FAIL QR fires, its
 post-save signal auto-creates a bare OPEN disposition (no type). The
@@ -993,7 +1079,7 @@ history.
 
 ---
 
-## 12. Glossary — 15 terms
+## 13. Glossary — 15 terms
 
 - **AWAITING_QA** — part state meaning "an operator finished a step
   but a rule says QA looks at it before it moves on." Parked;
