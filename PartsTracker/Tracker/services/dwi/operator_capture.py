@@ -419,6 +419,10 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
     equipment = None
     if equipment_id:
         from Tracker.models import Equipments, EquipmentStatus
+        # A gauge id from another tenant resolves to None, so the capture
+        # records no equipment rather than binding a foreign one.
+        # tenant-safe: .objects auto-scopes via the tenant ContextVar (runs
+        # under a request or a tenant_context()-wrapped task)
         equipment = Equipments.objects.filter(pk=equipment_id).first()
         # A measurement recorded against an OUT_OF_SERVICE gauge is
         # retroactively suspect product — refuse the write at the source

@@ -2443,6 +2443,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         part_id = data.get('part')
         if not part_id:
             return None
+        # part_id is request-supplied, so the auto-scoping is also the
+        # protection: another tenant's pk resolves to None and the gate
+        # falls back to step-level requirements.
+        # tenant-safe: .objects auto-scopes via the request tenant ContextVar
         part = Parts.objects.filter(pk=part_id).select_related('work_order__process').first()
         wo = getattr(part, 'work_order', None) if part else None
         return getattr(wo, 'process', None) if wo else None

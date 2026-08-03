@@ -72,6 +72,26 @@ def build_capa_context(task) -> Optional[Dict[str, Any]]:
     }
 
 
+def _requester_name(approval_request) -> str:
+    """Render an ApprovalRequest's requester, tolerating no requester.
+
+    `ApprovalRequest.requested_by` is nullable and legitimately NULL when a
+    system process opened the request — `auto_request_capa_approval` passes
+    `capa.initiated_by`, which is NULL for a quality-gate-raised CAPA — or
+    when the requesting account was deleted. These context builders run at
+    *send* time, so an unguarded dereference here didn't fail the request
+    creation; it killed the notification, and the approvers silently never
+    heard about work waiting on them.
+
+    Matches the 'System' fallback already used by the reminder task and the
+    null-requester guard in `services.core.approval`.
+    """
+    requester = approval_request.requested_by
+    if requester is None:
+        return 'System'
+    return requester.get_full_name() or requester.username
+
+
 def build_approval_request_context(task) -> Optional[Dict[str, Any]]:
     """Build context for approval request notifications."""
     approval_request = task.related_object
@@ -86,7 +106,7 @@ def build_approval_request_context(task) -> Optional[Dict[str, Any]]:
         'recipient': task.recipient,
         'content_type': content_type.title(),
         'content_title': content_title,
-        'requested_by': approval_request.requested_by.get_full_name() or approval_request.requested_by.username,
+        'requested_by': _requester_name(approval_request),
         'due_date': approval_request.due_date,
         'approval_id': approval_request.id,
         'frontend_url': get_frontend_url(),
@@ -134,7 +154,7 @@ def build_approval_escalation_context(task) -> Optional[Dict[str, Any]]:
         'recipient': task.recipient,
         'content_type': content_type.title(),
         'content_title': content_title,
-        'requested_by': approval_request.requested_by.get_full_name() or approval_request.requested_by.username,
+        'requested_by': _requester_name(approval_request),
         'due_date': approval_request.due_date,
         'days_overdue': days_overdue,
         'approval_id': approval_request.id,

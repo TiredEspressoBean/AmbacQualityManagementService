@@ -1764,6 +1764,35 @@ class User(AbstractUser):
         verbose_name_plural = 'Users'
         verbose_name = 'User'
 
+    def get_full_name(self):
+        """First + last name, or '' when neither is set.
+
+        Overrides `AbstractUser.get_full_name`, which builds the name with
+        `"%s %s" % (self.first_name, self.last_name)`. This model declares
+        both fields `null=True` (Django's own are `blank=True` non-null), so
+        the parent renders the literal string ``"None None"`` for a user
+        with no name set — and because that is truthy, the
+        ``get_full_name() or username`` idiom used across ~50 call sites
+        never reaches its fallback.
+
+        That surfaced as "None None" wherever a person is named: the
+        customer- and auditor-facing report PDFs (SCAR, NCR, CAPA report,
+        calibration certificate, deviation request, training record, SPC)
+        all do ``full.strip() or email or username`` and were defeated the
+        same way, as were approval notification emails and several
+        ``__str__`` methods.
+
+        Fixing the accessor rather than the call sites keeps the standard
+        idiom correct everywhere instead of patching each caller.
+        """
+        parts = [part for part in (self.first_name, self.last_name) if part]
+        return ' '.join(parts).strip()
+
+    def get_short_name(self):
+        """First name, or '' when unset — `AbstractUser` returns the raw
+        field, which is None here rather than ''."""
+        return self.first_name or ''
+
     @property
     def display_name(self):
         """Return full name with username fallback for display purposes."""

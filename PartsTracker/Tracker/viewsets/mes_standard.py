@@ -99,6 +99,10 @@ class UserWorkCenterMembershipViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         from django.db import transaction
         target = self.get_object()
         with transaction.atomic():
+            # The scoping is what makes this action's documented contract
+            # ("primary station in this tenant") true — a user with
+            # memberships in several tenants keeps a primary in each.
+            # tenant-safe: .objects auto-scopes via the request tenant ContextVar
             UserWorkCenterMembership.objects.filter(user=target.user).exclude(pk=target.pk).update(is_primary=False)
             target.is_primary = True
             target.save(update_fields=['is_primary'])

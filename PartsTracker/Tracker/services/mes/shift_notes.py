@@ -145,7 +145,13 @@ def active_shift_notes_for_user(user, *, tenant):
     user_groups = list(user.get_tenant_group_names(tenant=tenant))
 
     return list(
-        ShiftNote.objects.filter(is_voided=False)
+        # Scope on the passed `tenant` explicitly rather than leaning on the
+        # ContextVar. `.objects` would auto-scope, but this function takes
+        # `tenant` as a required keyword and already uses it for the group
+        # lookup above — deriving the notes from a different source than the
+        # audience they're matched against is the kind of mismatch that only
+        # shows up when a caller runs outside a request (beat task, command).
+        ShiftNote.objects.filter(tenant=tenant, is_voided=False)
         .filter(Q(effective_from__isnull=True) | Q(effective_from__lte=now))
         .filter(Q(effective_until__isnull=True) | Q(effective_until__gte=now))
         .filter(Q(audience_roles__len=0) | Q(audience_roles__overlap=user_groups))
