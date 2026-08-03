@@ -792,9 +792,17 @@ correction that didn't stick doesn't quietly close.
 
 ### 9d — Initiate a CAPA from a failed QR
 
-Sarah has `add_capa` + `initiate_capa`, so she can create new
-CAPAs herself — the right move when a QR reveals a systemic
-issue, not a one-off part defect. From `/quality/capas` click
+Sarah has `add_capa` (the CRUD gate — every staff role has it)
+plus `initiate_capa` (the business-verb gate that layers on top
+via `CAPAViewSet.action_permissions`). Together those let her
+create new CAPAs. Operators have `add_capa` but *not*
+`initiate_capa`, so they can help edit a CAPA draft someone else
+opened but can't POST a new one — formal CAPA initiation sits
+with QA staff and supervisors, matching the sibling pattern used
+by `close_capa` / `approve_capa` / `verify_capa`.
+
+Initiating is the right move when a QR reveals a systemic issue,
+not a one-off part defect. From `/quality/capas` click
 **New CAPA**. Required inputs: problem statement, capa_type
 (CORRECTIVE/PREVENTIVE), severity (MINOR/MAJOR/CRITICAL), initial
 `assigned_to`. Optional: linked quality reports (link the failing
@@ -934,9 +942,14 @@ empty on a fresh reseed.
 Real day terms: while you're working on one QR, four other things
 happen around the shop that you should know about. UQMES pushes
 those to two related but distinct surfaces:
-- **Inbox** (`/inbox`, also `/quality/inbox` for QA) — things you
-  *have to do*: assigned tasks, approvals waiting on you,
-  dispositions in your queue.
+- **Inbox** — things you *have to do*: assigned tasks, approvals
+  waiting on you, dispositions in your queue. Two related
+  surfaces: `/inbox` (`InboxPage`) is a generic tabbed personal
+  inbox — CAPA tasks, dispositions, approvals — that anyone with
+  commitments can reach; `/quality/inbox` (`QaHomeRoute`) is the
+  QA persona's home page, which is broader than a pure inbox
+  (adds the gauge-nag tile and the My Actions panel alongside
+  the inbox list).
 - **Notification feed** (bell → `/notifications`) — things you
   should be *aware of*: events that fired system-wide and your
   subscriptions routed to you.

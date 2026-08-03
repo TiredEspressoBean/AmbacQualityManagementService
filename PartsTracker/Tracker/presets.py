@@ -221,8 +221,10 @@ STAFF_OPERATIONAL_WRITE = [
     'add_partapproval', 'change_partapproval',
     'add_qualityreportequipment', 'change_qualityreportequipment',
     'add_qualityreportpersonnel', 'change_qualityreportpersonnel',
-    # CAPA & RCA — anyone can raise and work; approval verbs are SoD-gated
-    'add_capa', 'change_capa', 'initiate_capa',
+    # CAPA & RCA — anyone can help fill in a draft (change_capa); raising a
+    # new CAPA (initiate_capa) is granted separately per role. Approval verbs
+    # are SoD-gated.
+    'add_capa', 'change_capa',
     'add_capatasks', 'change_capatasks',
     'add_capataskassignee', 'change_capataskassignee',
     'add_capaverification', 'change_capaverification',
@@ -496,6 +498,8 @@ GROUP_PRESETS = {
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Author shift notes (floor handoff)
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
+            # Formally raise a CAPA
+            'initiate_capa',
         ],
     },
 
@@ -524,6 +528,8 @@ GROUP_PRESETS = {
             *FPI_SIGNOFF_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            # Formally raise a CAPA
+            'initiate_capa',
         ],
     },
 
@@ -545,6 +551,8 @@ GROUP_PRESETS = {
             *FPI_SIGNOFF_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
+            # Formally raise a CAPA
+            'initiate_capa',
         ],
     },
 
@@ -573,6 +581,8 @@ GROUP_PRESETS = {
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
+            # Formally raise a CAPA
+            'initiate_capa',
         ],
     },
 
@@ -614,6 +624,8 @@ GROUP_PRESETS = {
             *FPI_SIGNOFF_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            # Formally raise a CAPA
+            'initiate_capa',
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
