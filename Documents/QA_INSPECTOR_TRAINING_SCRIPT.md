@@ -466,8 +466,12 @@ widget's edit action, not a direct landing.)
   - **Has Open Defect**: Yes.
   - **Awaiting inspection**: No.
   - **Inspections signed off**: No.
-  - **Rework Passes**: 0 (this counter climbs each time a re-inspection
-    passes — useful history when a part keeps looping).
+  - **Rework Passes**: 0 (this counter is really *rework cycles* — it
+    increments when a REWORK disposition is applied via
+    `apply_disposition_to_part`, not when a re-inspection passes. So
+    it tells you "how many times this part has been sent back", not
+    "how many times it survived re-inspection". Named for legacy
+    reasons; the semantic is the count of REWORK/REPAIR decisions.).
   - **Sampling Required** / **Sampling Reason**: No / —.
 - **Quality Reports (1)**: the original **QR-0042-019-NI · FAIL · Nozzle
   Inspection · 7/24/2026** — click to open the failing report.
@@ -755,6 +759,29 @@ record, use either WO-2024-0042-A (all PASSED) or WO-2024-0038-A
 - **Sign-off gate** — server-side `sign_off_fpi` permission. Only users
   with that group see the Pass / Fail / Waive actions in the runtime
   banner; everyone else sees "awaiting buy-off."
+- **UI labels** — the runtime buttons read **Sign off & pass**, **Fail**,
+  **Waive**. Clicking Sign off & pass opens a confirmation dialog
+  ("By signing off you attest that the setup is correct and the first
+  piece … conforms.") with an optional notes field; click **Confirm
+  sign-off**. Toast on success: *"FPI signed off — parts can now
+  proceed."*
+
+**Side effects of Sign off & pass** (or Waive) beyond marking the
+FPIRecord — worth teaching, because they're what makes the step
+advance:
+- Creates a `QaApproval` for (step, WorkOrder, qa_staff=you). The
+  step-level QA-signoff gate reads this; without it, the step stays
+  blocked on *"QA signoff required but not received"* even though the
+  FPI record is PASSED. The FPI Pass IS the step-level QA signoff for
+  the first-piece run — they're the same event.
+- Fires an `fpi.decided` notification through the escalation path.
+- Runs a segregation-of-duties check first: the user who signed any
+  of the first-piece's inspection substeps CANNOT also sign off the
+  FPI. Attempting it returns *400: "Segregation of duties: this user
+  signed one or more of the first piece's inspection substeps. FPI
+  buy-off must be signed by a different qualified inspector."*
+  Practically: the operator who ran the piece can't buy off their
+  own work. QA does the buy-off.
 
 **Do not actually PASS or FAIL any FPI.** WO-2024-0048-A stays PENDING
 so the banner remains a live training exhibit for the next class; the
@@ -794,6 +821,23 @@ time) are captured **once against the batch**, not once per part. If a
 downstream failure traces back to a wash issue, every part in that batch
 is a suspect — not just one. Understanding batch scope is what lets QA
 scope an investigation correctly.
+
+**Advancement modes worth teaching alongside batch scope.** Non-batch
+steps carry a `part_advancement_mode` (`COHORT` by default,
+`PER_PART` for QA-decision steps like Nozzle Inspection, Flow Testing,
+Final Test):
+- **PER_PART** — each part clears the gate individually. A failed
+  part is quarantined; passing parts move on. What you'd expect for
+  a QA-decision step where each unit is inspected on its own merits.
+- **COHORT** — classic lot cohesion, all-or-none. Use for shared-
+  context steps where the whole batch legitimately moves together.
+- **Batch step** (has BATCH-scope substeps like Cleaning) — always
+  per-load. Each sealed batch advances independently regardless of
+  the field's value.
+
+Practical read: if you're at a QA gate and one part in the run fails,
+the failed one goes to disposition and the rest continue. Not the
+whole batch stalling. The mode is set on `Steps.part_advancement_mode`.
 
 ### Reality check — this is currently an *awareness* journey, not a click-through
 

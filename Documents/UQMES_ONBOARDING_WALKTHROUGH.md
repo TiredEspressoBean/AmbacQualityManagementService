@@ -36,10 +36,14 @@ copy so the barcode encodes the current WO id.
 | `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | Section 6 — approve disposition (if requested by a permission gate). |
 | `mike.ops@demo.ambac.com` | Mike Rodriguez | Operator | Section 3 — the seed pre-signs the first-piece substeps as Mike so Sarah (playing QA) can sign off the FPI without hitting the segregation-of-duties gate. You don't log in as Mike; his signatures are already on the seed exhibit. |
 
-Sarah has QA Inspector permissions. A handful of decisions in the walk
-(closing a MAJOR disposition, waiving an FPI) may require a QA
-Manager. Log in as Maria for those; the walk calls it out where
-needed.
+Sarah's QA Inspector role has `sign_off_fpi` (Section 3),
+`close_disposition` (Section 6), and every other permission this walk
+uses — you don't need to switch to Maria for the happy path. Maria's
+row is here for two edge cases: (a) `approve_disposition` is SOD-
+restricted to QA Manager / Tenant Admin, so anything that needs a
+formal approval (e.g. a USE_AS_IS with customer concession routing)
+would need her; (b) if your tenant's role config narrows any of the
+above to QA Manager only, log in as Maria — the walk still works.
 
 **The parts on WO-QA-INSPECT-01, and where each is used:**
 
@@ -101,12 +105,21 @@ For this walk the Inbox shows (among others):
 *My dispositions* (Quarantine dispositions assigned to you). Each
 tile is a link to the surface where you work those items.
 
-The *My dispositions* tile currently reads `3` — that includes the
-pre-existing DISP-QAI-006-OPEN on `INJ-QA-INSPECT-006`, the CLOSED
-DISP-QAI-004-REW on `INJ-QA-INSPECT-004`, plus any others already
-assigned to you across the tenant. The 006-OPEN row is your
-background reminder that a disposition is already sitting in your
-queue — a real-day exhibit; the walk doesn't work it directly.
+The *My dispositions* tile currently reads `3`. The tile filters
+out CLOSED rows client-side (`useMyDispositions.ts:32`), so it only
+shows OPEN + IN_PROGRESS dispositions assigned to you. The three
+you see on a fresh seed:
+- `DISP-QAI-006-OPEN` — OPEN, no type yet, on
+  `INJ-QA-INSPECT-006` (my seed's background exhibit; the walk
+  doesn't drive it).
+- `DISP-2026-000007` — OPEN SCRAP on `INJ-0042-019` (the escalation-
+  staged SCRAP dispo from the older training seed).
+- `DISP-2026-000002` — IN_PROGRESS SCRAP on `INJ-0038-007` (from the
+  completed WO-2024-0038-A storyline).
+
+The 004 rework disposition (`DISP-QAI-004-REW`) is CLOSED and does
+NOT contribute to this count, even though it's assigned to Sarah —
+that's by design; a closed disposition isn't work waiting.
 
 **Your Gauges.** Calibration status on gauges you've used recently.
 Currently reads *"Torque Wrench TW-25 — overdue 15d"*. Real day: a
@@ -190,8 +203,8 @@ Enter a passing value and sign:
 
 Click **Confirm & review**. On the review pane, click **Accept lot**
 (receiving-specific verb; the general operator runtime uses
-"Complete", but receiving shows **Accept lot** / **Reject lot** to
-match the domain).
+"Complete step", but receiving shows **Accept lot** / **Reject lot**
+to match the domain).
 
 **Toast:** *"Lot accepted"* — you land back on the lot detail page,
 which now reflects the completed inspection.
