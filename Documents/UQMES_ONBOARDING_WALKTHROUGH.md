@@ -187,13 +187,18 @@ Enter a passing value and sign:
 - **Incoming inspection result**: click **Pass**.
 - **Sign as detected by**: click to sign.
 
-Click **Confirm & review** (or **Confirm & next** if there are more
-substeps), then **Complete** on the review pane.
+Click **Confirm & review**. On the review pane, click **Accept lot**
+(receiving-specific verb; the general operator runtime uses
+"Complete", but receiving shows **Accept lot** / **Reject lot** to
+match the domain).
+
+**Toast:** *"Lot accepted"* — you land back on the lot detail page,
+which now reflects the completed inspection.
 
 **What happens on the backend:** the lot leaves `AWAITING_INSPECTION`
 and becomes stock available for a work order. The
 `SamplingTriggerManager` records a PASS. The receiving audit log
-appends the completion event.
+appends the acceptance event.
 
 Fail flow: click **Fail** instead of Pass, add a defect (Type +
 Description), then complete. That opens the Reject disposition
@@ -229,11 +234,13 @@ Control page). **The FPI panel itself doesn't render here** — the
 `FpiStatusBanner` component only surfaces inside the operator
 substep runtime.
 
-To reach the runtime, find `INJ-QA-INSPECT-001` in Control's Step
-Status table (Nozzle Inspection · IN_PROGRESS), click into WO Detail
-(`/workorder/$id`) → Parts tab → open the 001 row's runtime, or
-navigate directly:
-`/operator/steps/$stepId/substeps?workOrder=$woId&part=$partId`.
+To reach the runtime, use the **Start Work** dialog from WO Detail
+(`/workorder/$id` → **Start Work** button top-right → check the
+`INJ-QA-INSPECT-001` row under Nozzle Inspection → **Start**). This
+is required — the Start Work flow creates the `StepExecution` that
+lets substep submissions persist. Opening the runtime by direct URL
+(without `?execution=…`) shows the substeps but can't finalize; you'll
+see a "No active StepExecution" toast on Complete step.
 
 **You see** a banner at the top of the runtime reading **"First
 Piece Inspection in progress · Complete the first piece
@@ -260,9 +267,14 @@ review** on the last one. On the review pane, click **Complete**.
 
 ### 3d — Sign off the FPI
 
-Once the inspection substeps are complete, the FpiStatusBanner
-transitions to state 3: **"First piece inspection complete · awaiting
-buy-off"** with **Pass** / **Fail** / **Waive** buttons.
+Once the inspection substeps are complete and the step is submitted
+(toast: *"Step submitted"*), the FpiStatusBanner transitions to state
+3: **"First piece inspection complete · awaiting buy-off"** with
+**Pass** / **Fail** / **Waive** buttons. In practice this transition
+may require reloading the runtime page (or navigating away and back)
+so the client re-fetches the check-status endpoint; the review pane
+you land on right after Complete step may still show the "in progress"
+banner text stale.
 
 Choose:
 - **Pass** — records the FPI as PASSED. The batch is released; other
