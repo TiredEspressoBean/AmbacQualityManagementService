@@ -241,28 +241,26 @@ the operator sees you're on the way. The row updates to read
 
 ### 3b — Reach the runtime
 
-Click **Start check** on your home's FPI banner row.
-
-**You land on:** `/workorder/$id/control` for WO-QA-INSPECT-01 (the
-Control page). **The FPI panel itself doesn't render here** — the
-`FpiStatusBanner` component only surfaces inside the operator
-substep runtime.
-
-To reach the runtime, use the **Start Work** dialog from WO Detail
-(`/workorder/$id` → **Start Work** button top-right → check the
-`INJ-QA-INSPECT-001` row under Nozzle Inspection → **Start**). The
-runtime opens with the operator (Mike) already recorded on the
-step-execution and every inspection substep already **signed by Mike**
-— the seed pre-populates this so the walker (Sarah, playing QA) can
-go straight to the buy-off.
+1. Click **Start check** on your home's FPI banner row. You land on
+   `/workorder/$id/control` — the Control page. **The FPI panel
+   itself doesn't render here**; the `FpiStatusBanner` component only
+   surfaces inside the operator substep runtime.
+2. Go to WO Detail (`/workorder/$id`) and click **Start Work**
+   (top-right).
+3. In the dialog, check the `INJ-QA-INSPECT-001` row under Nozzle
+   Inspection and click **Start**.
+4. The runtime opens with the operator (Mike) already recorded on
+   the step-execution and every inspection substep already **signed
+   by Mike** — the seed pre-populates this so the walker (Sarah,
+   playing QA) can go straight to the buy-off.
 
 **Segregation-of-duties (SOD) note:** the person who signed the
 first-piece substeps cannot also sign off the FPI. That's why the
-seed uses Mike (operator) for the substeps and expects Sarah (QA) for
-the buy-off. If you re-sign any substep yourself, the FPI Pass endpoint
-will return `400: "Segregation of duties: this user signed one or
-more of the first piece's inspection substeps. FPI buy-off must be
-signed by a different qualified inspector."`
+seed uses Mike (operator) for the substeps and expects Sarah (QA)
+for the buy-off. If you re-sign any substep yourself, the FPI Pass
+endpoint will return `400: "Segregation of duties: this user signed
+one or more of the first piece's inspection substeps. FPI buy-off
+must be signed by a different qualified inspector."`
 
 ### 3c — Sign off the FPI
 
@@ -450,6 +448,13 @@ tile (count goes up), and the part's detail page has:
 
 You just caused the disposition Section 6 walks against.
 
+**Contrast with a seed exhibit.** The QR and disposition you just
+created have full audit trail — `created_by` = Sarah, timestamps
+match your click, the `ncr.opened` event fired live. Seeded records
+(the pre-closed `DISP-QAI-004-REW`, the QR on 004, terminal
+0042-023) don't — see Section 9c for the two seed quirks that show
+up on those.
+
 ---
 
 ## 6. Working the disposition
@@ -524,9 +529,12 @@ Click **Update Disposition**. Toast: *"Disposition updated"*.
   conform (AS9100). Same cascade behavior as REWORK.
 - **USE_AS_IS** — accept the non-conformance under a customer
   concession. Requires an approval; do not use as a shortcut.
-- **SCRAP** — terminal. Part status cascades to `SCRAPPED`.
+- **SCRAP** — terminal. Part status cascades to `SCRAPPED` from any
+  state (terminal-rank precedence still applies — a SCRAPPED part
+  can't be pulled back by a later REWORK).
 - **RETURN_TO_SUPPLIER** — return under SCAR to the original
-  supplier. Terminal for internal; part status cascades to `CANCELLED`.
+  supplier. Terminal for internal; part status cascades to
+  `CANCELLED` from any state.
 
 **Design note on the cascade.** REWORK/REPAIR change the part's
 status to REWORK_NEEDED only when the part is at `QUARANTINED` or
@@ -562,6 +570,13 @@ FAIL QR, the CLOSED REWORK disposition, and now this visit-2
 inspection.
 
 ### 7a — Find it
+
+**How this connects to Section 6d.** You just closed the disposition
+on INJ-QA-INSPECT-003. Section 7 walks a *different* part
+(INJ-QA-INSPECT-004) that's already been through that same close in
+the seed — its `DISP-QAI-004-REW` is pre-CLOSED and the rework has
+been done offline. This is what a real re-inspection looks like the
+day the reworked part comes back to your bench.
 
 Two clean paths:
 - From your home Inbox — the WO-QA-INSPECT-01 In-process rows include
