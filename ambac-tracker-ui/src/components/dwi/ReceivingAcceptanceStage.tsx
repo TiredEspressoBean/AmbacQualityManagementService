@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCookie } from "@/lib/utils";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
     useSamplePlan, useAcceptLot, useRejectLot, useRecordBulk, useRaiseScar,
 } from "@/hooks/useReceivingMutations";
@@ -108,6 +109,9 @@ export function ReceivingAcceptanceStage({
     const rejectMut = useRejectLot();
     const recordBulkMut = useRecordBulk();
     const scarMut = useRaiseScar();
+    // A SCAR is a supplier-tagged CAPA; raise_scar is gated by initiate_capa
+    // server-side (MaterialLotViewSet.action_permissions).
+    const canInitiateCapa = usePermissionSet().has("initiate_capa");
 
     // Persist the DWI captures exactly once — _handle_measurement isn't
     // idempotent (each submit creates a new MeasurementResult), so a second
@@ -233,10 +237,17 @@ export function ReceivingAcceptanceStage({
             } catch {
                 dispositionOk = false;
             }
+            // Non-fatal but NOT silent — the reject already committed, so we
+            // don't roll back, but the user asked for a SCAR and needs to know
+            // it didn't happen (e.g. missing initiate_capa → 403).
+            let scarFailed = false;
             if (values.raise_scar && lot?.supplier) {
-                try { await scarMut.mutateAsync({ id: lotId }); } catch { /* non-fatal */ }
+                try { await scarMut.mutateAsync({ id: lotId }); } catch { scarFailed = true; }
             }
             toast.success(dispositionOk ? "Lot rejected · disposition opened" : "Lot rejected (open the disposition manually)");
+            if (scarFailed) {
+                toast.error("Lot rejected, but the SCAR could not be raised — ask QA to raise it.");
+            }
             navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId } });
         } catch {
             toast.error("Could not reject lot");
@@ -380,6 +391,7 @@ export function ReceivingAcceptanceStage({
                 lotNumber={lot?.lot_number ?? lotId}
                 supplierName={lot?.supplier_name}
                 hasSupplier={!!lot?.supplier}
+                canRaiseScar={canInitiateCapa}
                 quantity={Number(lot?.quantity ?? 0)}
                 defectives={isVariables ? undefined : bd}
                 sampleSize={hasPlan ? n : undefined}

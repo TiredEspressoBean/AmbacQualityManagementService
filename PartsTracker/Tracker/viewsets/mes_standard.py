@@ -260,6 +260,11 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
     action_permissions = {
         'accept': ['change_materiallot'],
         'reject': ['change_materiallot'],
+        # raise_scar creates a real CAPA row (SUPPLIER type) via
+        # open_scar_for_lot. Without this it would fall through to the CRUD
+        # gate (POST -> add_materiallot) and become a side door around the
+        # initiate_capa gate on CAPAViewSet.create.
+        'raise_scar': ['initiate_capa'],
     }
 
     def _qr_response(self, report):

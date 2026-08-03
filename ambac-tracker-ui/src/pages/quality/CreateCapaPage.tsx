@@ -30,6 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Link } from "@tanstack/react-router"
 
+import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { useCreateCapa } from "@/hooks/useCreateCapa"
 import { useCreateRcaRecord } from "@/hooks/useCreateRcaRecord"
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers"
@@ -145,7 +146,46 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue
 }
 
+/** Permission backstop for every route into the create form.
+ *
+ *  Formally raising a CAPA requires `initiate_capa`, enforced server-side by
+ *  `CAPAViewSet.action_permissions['create']`. Several pages link straight to
+ *  /quality/capas/new (list page, quality dashboard, SPC page, detail-page
+ *  field configs), so gating here rather than at each call site means a new
+ *  entry point can't reintroduce the "fill in the whole form, eat a 403 on
+ *  submit" path. Individual buttons are hidden too where it's cheap. */
 export function CreateCapaPage() {
+    const { has, isLoading } = usePermissionSet()
+
+    if (isLoading) return null
+    if (!has("initiate_capa")) {
+        return (
+            <div className="container mx-auto max-w-2xl p-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Not authorized</CardTitle>
+                        <CardDescription>
+                            Raising a CAPA requires the <b>initiate_capa</b> permission.
+                            Formal CAPA initiation is limited to QA staff and
+                            supervisors. Ask a QA Manager to raise it, or to grant
+                            you the permission if this is part of your role.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Link to="/quality/capas">
+                            <Button variant="outline" className="gap-2">
+                                <ArrowLeft className="h-4 w-4" /> Back to CAPAs
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
+    return <CreateCapaForm />
+}
+
+function CreateCapaForm() {
     const navigate = useNavigate()
     const searchParams = useSearch({ strict: false }) as CreateCapaSearchParams
 

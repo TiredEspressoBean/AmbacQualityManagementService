@@ -19,6 +19,7 @@ import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualification
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
 import { getCookie } from "@/lib/utils";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { FileText } from "lucide-react";
 
 type Char = NonNullable<Schema<"SamplePlanResponse">["characteristics"]>[number];
@@ -122,6 +123,9 @@ export function ReceivingInspectionPage() {
     const acceptMut = useAcceptLot();
     const rejectMut = useRejectLot();
     const scarMut = useRaiseScar();
+    // A SCAR is a supplier-tagged CAPA; raise_scar is gated by initiate_capa
+    // server-side (MaterialLotViewSet.action_permissions).
+    const canInitiateCapa = usePermissionSet().has("initiate_capa");
 
     const units = useMemo(() => Array.from({ length: n }, (_, i) => i + 1), [n]);
 
@@ -202,10 +206,17 @@ export function ReceivingInspectionPage() {
             } catch {
                 dispositionOk = false;
             }
+            // Non-fatal but NOT silent — the reject already committed, so we
+            // don't roll back, but the user asked for a SCAR and needs to know
+            // it didn't happen (e.g. missing initiate_capa → 403).
+            let scarFailed = false;
             if (values.raise_scar && lot.supplier) {
-                try { await scarMut.mutateAsync({ id: lotId }); } catch { /* non-fatal */ }
+                try { await scarMut.mutateAsync({ id: lotId }); } catch { scarFailed = true; }
             }
             toast.success(dispositionOk ? "Lot rejected · disposition opened" : "Lot rejected (open the disposition manually)");
+            if (scarFailed) {
+                toast.error("Lot rejected, but the SCAR could not be raised — ask QA to raise it.");
+            }
             navigate({ to: "/production/material-lots" });
         } catch {
             toast.error("Could not reject lot");
@@ -441,7 +452,7 @@ export function ReceivingInspectionPage() {
                     {(lot.status === "ACCEPTED" || lot.status === "REJECTED") && (
                         <div className="space-y-3">
                             <p className="text-sm">This lot has been <b>{lot.status.toLowerCase()}</b>.</p>
-                            {lot.status === "REJECTED" && lot.supplier && (
+                            {lot.status === "REJECTED" && lot.supplier && canInitiateCapa && (
                                 <Button variant="outline" disabled={scarMut.isPending}
                                     onClick={() => scarMut.mutate({ id: lotId }, {
                                         onSuccess: (r: { capa_number?: string }) =>
@@ -469,6 +480,7 @@ export function ReceivingInspectionPage() {
                 lotNumber={lot.lot_number ?? String(lot.id)}
                 supplierName={lot.supplier_name}
                 hasSupplier={!!lot.supplier}
+                canRaiseScar={canInitiateCapa}
                 quantity={Number(lot.quantity ?? 0)}
                 defectives={mode === "bulk" ? (parseInt(bulkDefectives) || 0) : defectives}
                 sampleSize={n}

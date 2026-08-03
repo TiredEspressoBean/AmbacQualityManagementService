@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { CapaStatsCards } from "@/components/capa-stats-cards";
 import { Button } from "@/components/ui/button";
 import { FileSignature } from "lucide-react";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
 
 const col = createColumnHelper<Schema<"CAPA">>();
@@ -43,6 +44,7 @@ export function CapaListPage() {
     const navigate = useNavigate();
     const search = useSearch({ strict: false }) as { supplier?: string; capa_type?: string };
     const [needsMyApproval, setNeedsMyApproval] = useState(false);
+    const canInitiateCapa = usePermissionSet().has("initiate_capa");
 
     const filterToolbar = (
         <Button
@@ -133,7 +135,10 @@ export function CapaListPage() {
                 }),
             ]}
             renderActions={(capa) => <EditCapaActionsCell capaId={capa.id} />}
-            onCreate={() => navigate({ to: "/quality/capas/new" })}
+            // Formally raising a CAPA needs initiate_capa (gated server-side on
+            // CAPAViewSet.create). Without the perm we hide the button rather
+            // than let the user fill in the form and eat a 403 on submit.
+            onCreate={canInitiateCapa ? () => navigate({ to: "/quality/capas/new" }) : undefined}
             showDetailsLink={false}
         />
     );

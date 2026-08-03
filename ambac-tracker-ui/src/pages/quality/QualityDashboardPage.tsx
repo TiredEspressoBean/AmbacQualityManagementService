@@ -4,6 +4,7 @@ import { ShieldCheck, ClipboardList, AlertTriangle, CheckCircle2, Loader2, FileS
 import { useCapaStats, capaStatsOptions } from "@/hooks/useCapaStats"
 import { useMyCapaTasks, myCapaTasksOptions, type CapaTask } from "@/hooks/useMyCapaTasks"
 import { useMyPendingApprovals, myPendingApprovalsOptions, type PendingApproval } from "@/hooks/useMyPendingApprovals"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/ui/status-badge"
 import type { QueryClient } from "@tanstack/react-query"
@@ -19,6 +20,7 @@ export function QualityDashboardPage() {
     const { data: stats, isLoading: statsLoading } = useCapaStats()
     const { data: myTasksData, isLoading: tasksLoading } = useMyCapaTasks()
     const { data: approvalsData, isLoading: approvalsLoading } = useMyPendingApprovals()
+    const canInitiateCapa = usePermissionSet().has("initiate_capa")
 
     const myTasks = myTasksData ?? []
     const pendingApprovals = approvalsData ?? []
@@ -98,13 +100,15 @@ export function QualityDashboardPage() {
                             <div className="font-medium">View All CAPAs</div>
                             <div className="text-sm text-muted-foreground">Manage corrective and preventive actions</div>
                         </Link>
-                        <Link
-                            to="/quality/capas/new"
-                            className="block p-3 rounded-lg border hover:bg-accent transition-colors"
-                        >
-                            <div className="font-medium">Create New CAPA</div>
-                            <div className="text-sm text-muted-foreground">Start a new corrective or preventive action</div>
-                        </Link>
+                        {canInitiateCapa && (
+                            <Link
+                                to="/quality/capas/new"
+                                className="block p-3 rounded-lg border hover:bg-accent transition-colors"
+                            >
+                                <div className="font-medium">Create New CAPA</div>
+                                <div className="text-sm text-muted-foreground">Start a new corrective or preventive action</div>
+                            </Link>
+                        )}
                     </CardContent>
                 </Card>
 

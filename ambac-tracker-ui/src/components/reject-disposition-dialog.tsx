@@ -32,7 +32,7 @@ export type RejectDispositionValues = {
 };
 
 export function RejectDispositionDialog({
-    open, onOpenChange, lotNumber, supplierName, hasSupplier, quantity, defectives, sampleSize, acceptNumber,
+    open, onOpenChange, lotNumber, supplierName, hasSupplier, canRaiseScar = true, quantity, defectives, sampleSize, acceptNumber,
     defectBreakdown, submitting, onConfirm,
 }: {
     open: boolean;
@@ -40,6 +40,11 @@ export function RejectDispositionDialog({
     lotNumber: string;
     supplierName?: string | null;
     hasSupplier: boolean;
+    /** Whether the current user holds `initiate_capa`. A SCAR is a
+     *  supplier-tagged CAPA, so raise_scar is gated the same as any other
+     *  CAPA initiation. False → offer the reject without the SCAR option
+     *  rather than let it fail silently server-side. */
+    canRaiseScar?: boolean;
     quantity: number;
     /** Inspection context, used to pre-fill the nonconformance summary. */
     defectives?: number;
@@ -138,14 +143,21 @@ export function RejectDispositionDialog({
                             </p>
                             <label className="flex items-center gap-2 text-sm">
                                 <Checkbox
-                                    checked={raiseScar}
+                                    checked={raiseScar && canRaiseScar}
                                     onCheckedChange={(c) => setRaiseScar(c === true)}
-                                    disabled={!hasSupplier}
+                                    disabled={!hasSupplier || !canRaiseScar}
                                 />
                                 Open a SCAR against the supplier
                             </label>
                             {!hasSupplier && (
                                 <p className="text-xs text-muted-foreground">No supplier on this lot — can't raise a SCAR.</p>
+                            )}
+                            {hasSupplier && !canRaiseScar && (
+                                <p className="text-xs text-muted-foreground">
+                                    You don't have permission to raise a SCAR (needs
+                                    <b> initiate_capa</b>). Reject the lot and ask QA to
+                                    raise it.
+                                </p>
                             )}
                         </div>
                     )}
@@ -163,7 +175,7 @@ export function RejectDispositionDialog({
                                 description,
                                 // Derived from receiving: a sampling reject rejects the whole lot.
                                 quantity_affected: quantity ?? 0,
-                                raise_scar: isRTV && raiseScar && hasSupplier,
+                                raise_scar: isRTV && raiseScar && hasSupplier && canRaiseScar,
                             })
                         }
                     >

@@ -83,3 +83,16 @@ class InitiateCapaGateTests(TenantContextMixin, VectorTestCase):
         resp = self._post_capa()
         self.assertEqual(resp.status_code, 403,
                          f'expected 403, got {resp.status_code}: {resp.content!r}')
+
+    def test_raise_scar_side_door_is_gated(self):
+        """MaterialLotViewSet.raise_scar creates a real CAPA (SUPPLIER type)
+        via open_scar_for_lot. Without an explicit action_permissions entry
+        it would fall through to the CRUD gate (POST -> add_materiallot),
+        becoming a side door around the initiate_capa gate. Verify the gate
+        is declared on that action."""
+        from Tracker.viewsets.mes_standard import MaterialLotViewSet
+        self.assertIn(
+            'initiate_capa',
+            MaterialLotViewSet.action_permissions.get('raise_scar', []),
+            'raise_scar creates a CAPA and must require initiate_capa',
+        )
