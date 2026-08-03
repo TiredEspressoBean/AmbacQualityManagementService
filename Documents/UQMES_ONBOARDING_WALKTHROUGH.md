@@ -452,7 +452,7 @@ You just caused the disposition Section 6 walks against.
 created have full audit trail — `created_by` = Sarah, timestamps
 match your click, the `ncr.opened` event fired live. Seeded records
 (the pre-closed `DISP-QAI-004-REW`, the QR on 004, terminal
-0042-023) don't — see Section 10c for the two seed quirks that
+0042-023) don't — see Section 11c for the two seed quirks that
 show up on those.
 
 ---
@@ -817,14 +817,126 @@ order.
 
 ---
 
-## 10. Reading the audit trail
+## 10. Calibration awareness
+
+Real day terms: every measurement is only as good as the gauge you
+took it with. If the flow bench you used yesterday was drifting
+out of tolerance, everything you signed against it is suspect.
+UQMES tracks calibration state and surfaces it in three places for
+QA inspectors.
+
+**The current enforcement scope.** UQMES *shows* you calibration
+status; it does not currently *block* a measurement recorded on an
+out-of-cal gauge at the point of use. Point-of-use blocking is a
+known gap. Until it lands, the discipline is manual: check the
+gauge-nag tile before starting a run, and use the QR void flow to
+walk a bad reading back after the fact if a gauge turns out to
+have been out of cal.
+
+### 10a — Your gauge-nag tile on the home page
+
+The home page has a **Your gauges** tile (`GaugeNagTile`, backed
+by `useGaugeNag`). It counts gauges Sarah has used recently that
+are due-soon or overdue.
+
+Empty state reads *"Nothing you've used recently is due for
+calibration."* Populated, the copy is *"N gauges you used recently
+need calibration soon"* with the top 3 listed inline — overdue
+rows render red with "overdue Nd", due-soon rows show "due in Nd".
+The **Review calibrations** button below the tile navigates to
+`/quality/calibrations`.
+
+### 10b — The calibration dashboard
+
+`/quality/calibrations` (`CalibrationDashboardPage`) is the full
+QA view.
+
+**Top row — five stat cards:**
+- **Equipment** — count of equipment with calibration records.
+- **Current** — count in calibration.
+- **Due Soon** — count due within 30 days.
+- **Overdue** — count past due.
+- **Compliance** — percent in compliance.
+
+**Below — three panels:**
+- **Quick Actions** — three links:
+  - *View All Calibration Records* → `/quality/calibrations/records`.
+  - *Record New Calibration* → `/CalibrationRecordForm/new`.
+  - *Manage Equipment* → `/editor/equipment`.
+- **Due Soon** — top 5 records due within 30 days.
+- **Overdue** — top 5 records past due, rendered with destructive
+  styling and "N days overdue" counter.
+
+Two reports available from the header: **Calibration Due** and
+**Checking Aids**.
+
+### 10c — Recording a new calibration
+
+*Record New Calibration* opens the `EditCalibrationRecordFormPage`
+in create mode. Fields on `CalibrationRecord`:
+- **equipment** (FK) — which piece of equipment this event is for.
+- **calibration_date** / **due_date** — when it happened, when
+  it's due next.
+- **result** — PASS / FAIL / LIMITED.
+- **calibration_type** — SCHEDULED / INITIAL / AFTER_REPAIR / etc.
+- **performed_by** — user reference.
+- **external_lab** / **certificate_number** — if calibrated
+  outside.
+- **standards_used** — traceability chain.
+- **as_found_in_tolerance** — boolean, whether it was already
+  within spec before adjustment.
+- **adjustments_made** — free-text description.
+- **notes**.
+
+On save, if `result=FAIL`, the `apply_calibration_result_to_equipment`
+signal sets `Equipments.status = OUT_OF_SERVICE` — a paper flag
+you'll see on the equipment detail. It does not block that gauge
+from being selected in the measurement picker today; treat the
+status as an advisory.
+
+### 10d — The gauge picker during measurement
+
+Section 4c walks a measurement substep. On any substep node
+backed by a `MeasurementInput` component, an **Equipment**
+dropdown sits next to the value field, pre-populated from the
+`MeasurementDefinition` on the definition:
+- **Default** equipment (tagged "default" in the picker).
+- **Backup** equipment (tagged "backup"), if one is configured.
+
+The choice rides along with the reading — the response persisted
+to `StepExecutionMeasurement.equipment` is the actual gauge used,
+not the definition's default. That's the audit trail hook: three
+months from now you can trace a measurement back to the specific
+gauge that produced it, and if that gauge later shows a FAIL
+calibration event, you can walk backwards and find every reading
+that rode along with it.
+
+**What happens if you pick a gauge that's out of cal.** Nothing
+blocks. The measurement commits. The gauge-nag tile flags it next
+time you land on the home page. This is the enforcement gap
+referenced at the top of the section — treat it as a discipline
+requirement, not a system guarantee.
+
+### 10e — Seeded records on the QA walk exhibits
+
+The demo seed (`seed/demo/manufacturing.py`) creates real
+`CalibrationRecord` rows for the equipment used by WO-QA-INSPECT-01
+steps (flow bench, torque wrenches, gauges) with dates driven by
+an `EQUIPMENT_SPECS.calibration_days` offset — a negative value
+means the record is intentionally overdue for demo purposes.
+That's why the *Overdue* panel and the gauge-nag tile aren't
+empty on a fresh reseed.
+
+---
+
+## 11. Reading the audit trail
 
 Real day terms: an auditor asks you to reconstruct the history of a
 specific part. Or an operator on the shop floor hands you a physical
 part and asks "what's the story on this one?" You need to be able
 to answer without going into engineering.
 
-### 10a — A rich in-flight arc (INJ-QA-INSPECT-004)
+### 11a — A rich in-flight arc (INJ-QA-INSPECT-004)
 
 Open `/details/Parts/…` for INJ-QA-INSPECT-004. Reading top-to-bottom:
 - **Status** tells you where the part is *right now*.
@@ -843,7 +955,7 @@ For INJ-QA-INSPECT-004 you can narrate: *fail at Flow Testing on
 (link to disposition); reworked (implicit — no operator UI record);
 returned to Flow Testing visit 2; awaiting Sarah's re-inspection*.
 
-### 10b — A closed terminal record (INJ-0042-023)
+### 11b — A closed terminal record (INJ-0042-023)
 
 Open `/details/Parts/…` for `INJ-0042-023` (existing seed, from
 Journey 6 of the training script).
@@ -861,7 +973,7 @@ linked QR or disposition, that itself is a red flag — how did the
 part reach a terminal state without a paper trail? Ask before
 touching.
 
-### 10c — Two seed quirks worth knowing
+### 11c — Two seed quirks worth knowing
 
 **Double disposition on some parts.** When a FAIL QR fires, its
 post-save signal auto-creates a bare OPEN disposition (no type). The
@@ -881,7 +993,7 @@ history.
 
 ---
 
-## 11. Glossary — 15 terms
+## 12. Glossary — 15 terms
 
 - **AWAITING_QA** — part state meaning "an operator finished a step
   but a rule says QA looks at it before it moves on." Parked;
