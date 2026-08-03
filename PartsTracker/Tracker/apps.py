@@ -64,18 +64,18 @@ def setup_defaults(sender, **kwargs):
     Post-migrate signal handler to set up all defaults.
 
     This runs after all migrations complete, ensuring:
-    1. Document types are seeded
-    2. Approval templates are seeded
+    1. System notification templates are loaded (tenant=NULL rows).
+    2. Tenant group permissions are reconciled against presets.py so any
+       perms newly added to (or moved between) presets propagate to existing
+       tenants automatically. Skips custom groups by name.
 
     These can also be managed manually via:
-    - python manage.py setup_document_types
-    - python manage.py setup_approval_templates
     - python manage.py setup_defaults (runs all)
+    - GroupSeeder.sync_permissions() from a shell for perm reconciliation
 
-    Note: tenant group permissions are seeded per-tenant from
-    `Tracker.presets.GROUP_PRESETS` (the tenant-creation signal +
-    `sync_tenant_permissions`), not here — there is no global-group
-    permission step.
+    New tenants still get their groups seeded via the Tenant post_save signal
+    (`sync_tenant_permissions`); this receiver keeps existing tenants aligned
+    after subsequent releases add or move perms.
     """
     # Only run for Tracker app to avoid duplicate runs
     if sender.name != 'Tracker':
@@ -94,6 +94,25 @@ def setup_defaults(sender, **kwargs):
             )
     except Exception as e:
         logger.warning(f"Notification template setup skipped: {e}")
+
+    # 2. Reconcile preset-backed tenant groups so perms newly added to
+    # presets.py auto-attach to existing tenants (or newly removed perms
+    # revoke). Without this, adding a perm to a preset silently fails to
+    # propagate — admin actions 403 with no signal, until a manual
+    # sync_permissions() runs. Defensive: if TenantGroup / Permission tables
+    # don't exist yet (very first migrate), skip cleanly.
+    try:
+        from Tracker.groups import GroupSeeder
+        result = GroupSeeder.sync_permissions()
+        if result['groups_updated']:
+            logger.info(
+                f"Tenant group perms synced from presets: "
+                f"{result['groups_updated']} groups updated, "
+                f"{result['permissions_added']} added, "
+                f"{result['permissions_removed']} removed"
+            )
+    except Exception as e:
+        logger.warning(f"Tenant group perm sync skipped: {e}")
 
     # Note: Document types and approval templates are now tenant-specific only.
     # They are seeded via the Tenant post_save signal in signals.py
