@@ -473,7 +473,7 @@ def _serialize_current_hold(wo):
     hours_open = (timezone.now() - h.placed_at).total_seconds() / 3600.0 if h.placed_at else None
     placed_by_name = None
     if h.placed_by:
-        placed_by_name = (f"{h.placed_by.first_name} {h.placed_by.last_name}".strip()
+        placed_by_name = (h.placed_by.get_full_name().strip()
                           or h.placed_by.username)
     return {
         'id': str(h.id),
@@ -1021,7 +1021,7 @@ class StepExecutionSerializer(SecureModelMixin):
             return {
                 'id': obj.assigned_to.id,
                 'username': obj.assigned_to.username,
-                'full_name': f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}".strip(),
+                'full_name': obj.assigned_to.get_full_name().strip(),
             }
         return None
 
@@ -1031,7 +1031,7 @@ class StepExecutionSerializer(SecureModelMixin):
             return {
                 'id': obj.completed_by.id,
                 'username': obj.completed_by.username,
-                'full_name': f"{obj.completed_by.first_name} {obj.completed_by.last_name}".strip(),
+                'full_name': obj.completed_by.get_full_name().strip(),
             }
         return None
 
@@ -1084,7 +1084,7 @@ class StepExecutionListSerializer(SecureModelMixin):
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_assigned_to_name(self, obj):
         if obj.assigned_to:
-            return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}".strip()
+            return obj.assigned_to.get_full_name().strip()
         return None
 
 

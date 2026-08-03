@@ -2151,8 +2151,17 @@ class User(AbstractUser):
         return user
 
     def __str__(self):
-        """Returns a readable representation of the user with username and full name."""
-        return f"{self.username}: {self.first_name} {self.last_name}"
+        """Username, plus the full name when there is one.
+
+        Interpolating `first_name`/`last_name` directly rendered the literal
+        "gate_op: None None" for a nameless user, because both fields are
+        `null=True` here. The `get_full_name()` override above fixes every
+        caller that goes *through* the accessor, but this method bypassed it
+        — so `str(user)` kept leaking "None None" into admin dropdowns, log
+        lines and assertion messages.
+        """
+        full = self.get_full_name()
+        return f"{self.username}: {full}" if full else self.username
 
 
 class UserInvitation(models.Model):

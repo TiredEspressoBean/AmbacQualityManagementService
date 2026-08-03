@@ -182,7 +182,7 @@ class QualityReportPersonnelSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField())
     def get_full_name(self, obj) -> str:
-        return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username
+        return obj.user.get_full_name().strip() or obj.user.username
 
 
 class QualityReportsSerializer(SecureModelMixin):
@@ -281,7 +281,7 @@ class QualityReportsSerializer(SecureModelMixin):
             {
                 'id': op.id,
                 'username': op.username,
-                'full_name': f"{op.first_name} {op.last_name}".strip() or op.username,
+                'full_name': op.get_full_name().strip() or op.username,
             }
             for op in obj.operators.all()
         ]
@@ -312,7 +312,7 @@ class QualityReportsSerializer(SecureModelMixin):
             return {
                 'id': obj.detected_by.id,
                 'username': obj.detected_by.username,
-                'full_name': f"{obj.detected_by.first_name} {obj.detected_by.last_name}".strip() or obj.detected_by.username,
+                'full_name': obj.detected_by.get_full_name().strip() or obj.detected_by.username,
             }
         return None
 
@@ -322,7 +322,7 @@ class QualityReportsSerializer(SecureModelMixin):
             return {
                 'id': obj.verified_by.id,
                 'username': obj.verified_by.username,
-                'full_name': f"{obj.verified_by.first_name} {obj.verified_by.last_name}".strip() or obj.verified_by.username,
+                'full_name': obj.verified_by.get_full_name().strip() or obj.verified_by.username,
             }
         return None
 
@@ -900,7 +900,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
     def get_assignee_name(self, obj):
         """Get formatted full name or fallback to username"""
         if obj.assigned_to:
-            return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}".strip() or obj.assigned_to.username
+            return obj.assigned_to.get_full_name().strip() or obj.assigned_to.username
         else:
             return ""
 

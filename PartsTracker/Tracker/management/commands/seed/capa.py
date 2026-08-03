@@ -256,7 +256,7 @@ class CapaSeeder(BaseSeeder):
         if operator_failures:
             most_common_op = operator_failures.most_common(1)[0]
             analysis['most_common_operator'] = most_common_op[0]
-            analysis['operator_name'] = f"{most_common_op[0].first_name} {most_common_op[0].last_name}"
+            analysis['operator_name'] = most_common_op[0].get_full_name()
 
         # Determine root cause category
         if analysis['is_equipment_related']:

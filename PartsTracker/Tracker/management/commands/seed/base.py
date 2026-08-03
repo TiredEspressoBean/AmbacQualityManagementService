@@ -173,7 +173,7 @@ class BaseSeeder:
 
         # Identify power users for logging
         power_users = all_employees[:max(1, num_employees // 5)]
-        power_user_names = [f"{u.first_name} {u.last_name}" for u in power_users[:3]]
+        power_user_names = [u.get_full_name() for u in power_users[:3]]
         self.log(f"  User activity: power users = {', '.join(power_user_names)}...")
 
     def get_weighted_employee(self, users):

@@ -126,7 +126,7 @@ class TrainingRecordSerializer(SecureModelMixin):
             return {
                 'id': obj.user.id,
                 'username': obj.user.username,
-                'full_name': f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username,
+                'full_name': obj.user.get_full_name().strip() or obj.user.username,
                 'email': obj.user.email,
             }
         return None
@@ -149,7 +149,7 @@ class TrainingRecordSerializer(SecureModelMixin):
             return {
                 'id': obj.trainer.id,
                 'username': obj.trainer.username,
-                'full_name': f"{obj.trainer.first_name} {obj.trainer.last_name}".strip() or obj.trainer.username,
+                'full_name': obj.trainer.get_full_name().strip() or obj.trainer.username,
             }
         return None
 

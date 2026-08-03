@@ -29,7 +29,7 @@ def add_order_note(
     if not message or not message.strip():
         raise ValueError("Note message cannot be empty")
 
-    user_name = f"{user.first_name} {user.last_name}".strip() if user else "System"
+    user_name = user.get_full_name().strip() if user else "System"
     if not user_name:
         user_name = user.username if user else "System"
 

@@ -430,7 +430,7 @@ class HeatMapAnnotationsSerializer(SecureModelMixin):
     def get_created_by_display(self, obj):
         """Get full name of creator"""
         if obj.created_by:
-            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.email
+            return obj.created_by.get_full_name().strip() or obj.created_by.email
         return None
 
     def create(self, validated_data):

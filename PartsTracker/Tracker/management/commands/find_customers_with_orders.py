@@ -87,7 +87,7 @@ class Command(BaseCommand):
             # Customer info
             company_name = customer.parent_company.name if customer.parent_company else "No Company"
             self.stdout.write(
-                f"\n{customer.first_name} {customer.last_name} ({customer.email})"
+                f"\n{customer.get_full_name() or customer.username} ({customer.email})"
             )
             self.stdout.write(f"  Company: {company_name}")
             self.stdout.write(f"  Orders: {order_count}")

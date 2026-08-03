@@ -174,7 +174,7 @@ class Command(BaseCommand):
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('User setup complete!'))
         self.stdout.write(f'  Email: {user.email}')
-        self.stdout.write(f'  Name: {user.first_name} {user.last_name}'.strip())
+        self.stdout.write(f'  Name: {user.get_full_name() or "(none)"}')
         self.stdout.write(f'  Tenant: {tenant.name}')
         self.stdout.write(f'  Group: {group_name}')
         self.stdout.write(f'  Type: {user.user_type}')

@@ -484,14 +484,14 @@ class UserInvitationSerializer(serializers.ModelSerializer):
     def get_user_name(self, obj):
         """Get formatted user name"""
         if obj.user:
-            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+            return obj.user.get_full_name().strip() or obj.user.email
         return None
 
     @extend_schema_field(serializers.CharField())
     def get_invited_by_name(self, obj):
         """Get formatted invited_by name"""
         if obj.invited_by:
-            return f"{obj.invited_by.first_name} {obj.invited_by.last_name}".strip() or obj.invited_by.email
+            return obj.invited_by.get_full_name().strip() or obj.invited_by.email
         return None
 
     @extend_schema_field(serializers.CharField())

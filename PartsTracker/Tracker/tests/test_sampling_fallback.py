@@ -223,6 +223,33 @@ class QualityGateTestCase(TenantTestCase):
         self.assertEqual(ruleset.gate_metric, '')
 
     def test_defective_count_raises_corrective_capa(self):
+        """End-to-end RAISE_CAPA_SCAR, including *how* the CAPA is recorded.
+
+        The structural assertions (a CAPA exists, of the right type) passed
+        while three real defects lived in this path: the CAPA was attributed
+        to whoever tripped the gate, it had no assignee so nothing emitted
+        `capa.assigned`, and its approval notification crashed at send time.
+        Covering the line was never the problem — nobody asserted the
+        semantics. The attribution/assignment checks below are the ones that
+        would catch a regression here; keeping them on the end-to-end path
+        (not just the direct `_raise_capa_or_scar` unit tests) means a
+        refactor that breaks the chain from `evaluate_step_gate` down still
+        fails.
+        """
+        from Tracker.models import TenantGroup, UserRole
+
+        # A QA Manager for `_default_capa_owner` to find. Created in the test
+        # rather than setUp so the FAIL-QR auto-disposition signal's QA lookup
+        # keeps its current behaviour in the sibling tests.
+        qa_manager = User.objects.create_user(
+            username='gate_qam', email='qam@example.com', password='pw',
+            tenant=self.tenant_a,
+        )
+        UserRole.objects.create(
+            user=qa_manager,
+            group=TenantGroup.objects.get(tenant=self.tenant_a, name='QA Manager'),
+        )
+
         self.primary.gate_metric = 'DEFECTIVE_COUNT'
         self.primary.gate_threshold = 2
         self.primary.gate_actions = ['RAISE_CAPA_SCAR']
@@ -237,7 +264,28 @@ class QualityGateTestCase(TenantTestCase):
         self.assertIsNotNone(firing)
         self.assertEqual(firing.actions_taken, ['RAISE_CAPA_SCAR'])
         self.assertIsNotNone(firing.created_capa)
-        self.assertEqual(firing.created_capa.capa_type, 'CORRECTIVE')
+        capa = firing.created_capa
+        self.assertEqual(capa.capa_type, 'CORRECTIVE')
+
+        # System-initiated: the gate fired on an aggregate, so the user who
+        # saved the threshold-crossing report is not the initiator of record.
+        self.assertIsNone(
+            capa.initiated_by,
+            'gate-raised CAPA must be System-initiated, not attributed to '
+            'whoever tripped it',
+        )
+        self.assertNotEqual(capa.initiated_by_id, self.user.id)
+
+        # Assigned, or `notify_assignment` returns early and the CAPA is
+        # silent — created, unowned, and announced to nobody.
+        self.assertEqual(
+            capa.assigned_to_id, qa_manager.id,
+            'gate-raised CAPA must land in a real queue so capa.assigned fires',
+        )
+
+        # With no initiator, the record has to explain its own origin.
+        self.assertIn('Auto-raised by quality gate', capa.problem_statement)
+        self.assertIn(self.step.name, capa.problem_statement)
 
 
 class AggregateRoutingTestCase(TenantTestCase):

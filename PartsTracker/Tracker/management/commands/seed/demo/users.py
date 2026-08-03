@@ -301,7 +301,7 @@ class DemoUserSeeder(BaseSeeder):
         action = "Created" if created else "Updated"
         if self.verbose:
             roles_str = ", ".join(role_names)
-            self.log(f"    {action}: {user.first_name} {user.last_name} ({user.email}) - {roles_str}")
+            self.log(f"    {action}: {user.get_full_name() or user.username} ({user.email}) - {roles_str}")
 
         return user
 
