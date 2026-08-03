@@ -252,21 +252,26 @@ signed by a different qualified inspector."`
 
 ### 3c — Sign off the FPI
 
-On the runtime, the FpiStatusBanner reads **"First piece inspection
-complete · awaiting buy-off"** with **Pass** / **Fail** / **Waive**
-buttons.
+On the runtime, the FpiStatusBanner shows three action buttons:
+**Sign off & pass** · **Fail** · **Waive**.
 
 Choose:
-- **Pass** — records the FPI as PASSED. The batch is released; other
-  parts can now run through Nozzle Inspection.
+- **Sign off & pass** — records the FPI as PASSED. Opens a
+  confirmation dialog with an optional notes field: *"By signing off
+  you attest that the setup is correct and the first piece
+  (INJ-QA-INSPECT-001) conforms. This is recorded against your name
+  and releases the run."* Click **Confirm sign-off**. The batch is
+  released; other parts can now run through Nozzle Inspection.
 - **Fail** — records FAILED. The batch is blocked pending
   investigation. A FAILED FPI usually indicates a setup problem and
   often triggers a CAPA.
 - **Waive** — records WAIVED with a required reason (≥10 characters).
   Rare; a waived FPI still counts as a documented decision.
 
-For this walk: click **Pass**, add a note like *"Nozzle geometry
-matches drawing rev; spray-hole bank clear."*, submit.
+For this walk: click **Sign off & pass**, optionally add a note like
+*"Nozzle geometry matches drawing rev; spray-hole bank clear."*,
+click **Confirm sign-off**. Toast: *"FPI signed off — parts can now
+proceed."*
 
 **What happens on the backend:**
 1. `FPIRecord.status` → PASSED, `inspected_by` = you, `inspected_at`

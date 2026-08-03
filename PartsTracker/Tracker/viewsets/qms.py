@@ -1690,9 +1690,16 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 wo = WorkOrder.objects.filter(tenant=tenant, id=work_order_id).first()
                 if wo is not None:
                     _, blockers = step.can_advance_from_step(se, wo)
+                    # Match the filter in `pass_inspection` below: FPI Pass
+                    # clears both the FPI blocker AND the step-level QA
+                    # signoff blocker (via the QaApproval it creates). If we
+                    # only filter out the FPI one here, `first_piece_ready`
+                    # stays false and the UI never renders the buy-off
+                    # buttons, even though the Pass API would succeed.
                     first_piece_ready = not [
                         b for b in blockers
                         if not b.startswith("First Piece Inspection required")
+                        and not b.startswith("QA signoff required")
                     ]
 
         return Response({
