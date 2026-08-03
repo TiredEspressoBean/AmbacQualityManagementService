@@ -60,11 +60,16 @@ type Attrs = {
     measurement_type: string;
     /** Preferred + fallback gauge, copied from the linked MeasurementDefinition.
      *  Both nullable — visual checks use no instrument. The operator picks which
-     *  was actually used; the choice is captured on StepExecutionMeasurement. */
+     *  was actually used; the choice is captured on StepExecutionMeasurement.
+     *  Equipment status is snapshotted from the definition at authoring time
+     *  so the operator picker can hide OUT_OF_SERVICE options; the server also
+     *  refuses OUT_OF_SERVICE at write time in case status changed since. */
     default_equipment_id: string | null;
     default_equipment_name: string;
+    default_equipment_status: string | null;
     backup_equipment_id: string | null;
     backup_equipment_name: string;
+    backup_equipment_status: string | null;
 };
 
 type MeasurementDefShape = {
@@ -78,8 +83,10 @@ type MeasurementDefShape = {
     characteristic_number?: string | null;
     default_equipment?: string | null;
     default_equipment_name?: string | null;
+    default_equipment_status?: string | null;
     backup_equipment?: string | null;
     backup_equipment_name?: string | null;
+    backup_equipment_status?: string | null;
 };
 
 /** Operator response shape for a measurement node. Tolerates the legacy
@@ -136,8 +143,10 @@ export function MeasurementInputEditForm({ node, updateAttributes }: NodeViewPro
             characteristic_number: def.characteristic_number ?? "",
             default_equipment_id: def.default_equipment ? String(def.default_equipment) : null,
             default_equipment_name: def.default_equipment_name ?? "",
+            default_equipment_status: def.default_equipment_status ?? null,
             backup_equipment_id: def.backup_equipment ? String(def.backup_equipment) : null,
             backup_equipment_name: def.backup_equipment_name ?? "",
+            backup_equipment_status: def.backup_equipment_status ?? null,
         });
     };
 
@@ -247,17 +256,24 @@ function View(props: NodeViewProps) {
     const rawValue = resp.value;
 
     // Equipment the operator may pick from — the spec's default + backup (both
-    // optional; visual checks have none). Effective selection falls back to the
-    // configured default so an untouched node still records the intended gauge.
-    const equipmentOptions = [
+    // optional; visual checks have none). OUT_OF_SERVICE gear (a FAIL calibration
+    // flips the status via apply_calibration_result_to_equipment) is hidden from
+    // the operator picker; the server also refuses OUT_OF_SERVICE writes in case
+    // status changed since authoring. Authoring still shows both as badges so
+    // engineers can see the spec they wired.
+    const rawEquipmentOptions = [
         a.default_equipment_id
-            ? { id: a.default_equipment_id, name: a.default_equipment_name || "Default", tag: "default" as const }
+            ? { id: a.default_equipment_id, name: a.default_equipment_name || "Default", status: a.default_equipment_status, tag: "default" as const }
             : null,
         a.backup_equipment_id
-            ? { id: a.backup_equipment_id, name: a.backup_equipment_name || "Backup", tag: "backup" as const }
+            ? { id: a.backup_equipment_id, name: a.backup_equipment_name || "Backup", status: a.backup_equipment_status, tag: "backup" as const }
             : null,
-    ].filter((o): o is { id: string; name: string; tag: "default" | "backup" } => o !== null);
-    const selectedEquipmentId = resp.equipment_id ?? a.default_equipment_id ?? null;
+    ].filter((o): o is { id: string; name: string; status: string | null; tag: "default" | "backup" } => o !== null);
+    const equipmentOptions = rawEquipmentOptions.filter((o) => o.status !== "OUT_OF_SERVICE");
+    // If the configured default is OUT_OF_SERVICE, don't fall through to it —
+    // start with no selection so the operator has to pick a live gauge.
+    const defaultIsLive = a.default_equipment_status !== "OUT_OF_SERVICE";
+    const selectedEquipmentId = resp.equipment_id ?? (defaultIsLive ? a.default_equipment_id : null) ?? null;
 
     // Always write the structured {value, equipment_id} shape so the chosen
     // gauge rides along with the reading into StepExecutionMeasurement.
@@ -444,8 +460,10 @@ export const MeasurementInput = Node.create({
             measurement_type: { default: "NUMERIC" },
             default_equipment_id: { default: null },
             default_equipment_name: { default: "" },
+            default_equipment_status: { default: null },
             backup_equipment_id: { default: null },
             backup_equipment_name: { default: "" },
+            backup_equipment_status: { default: null },
         };
     },
     parseHTML() {

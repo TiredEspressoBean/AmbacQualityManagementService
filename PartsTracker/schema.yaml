@@ -41695,12 +41695,20 @@ components:
           type: string
           readOnly: true
           nullable: true
+        default_equipment_status:
+          type: string
+          readOnly: true
+          nullable: true
         backup_equipment:
           type: string
           format: uuid
           nullable: true
           description: Fallback gauge/instrument when the default is unavailable.
         backup_equipment_name:
+          type: string
+          readOnly: true
+          nullable: true
+        backup_equipment_status:
           type: string
           readOnly: true
           nullable: true
@@ -41717,7 +41725,9 @@ components:
           nullable: true
       required:
       - backup_equipment_name
+      - backup_equipment_status
       - default_equipment_name
+      - default_equipment_status
       - id
       - is_current_version
       - label

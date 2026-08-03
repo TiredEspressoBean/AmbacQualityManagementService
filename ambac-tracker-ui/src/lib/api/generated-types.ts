@@ -17922,12 +17922,14 @@ export interface components {
              */
             default_equipment?: string | null;
             readonly default_equipment_name: string | null;
+            readonly default_equipment_status: string | null;
             /**
              * Format: uuid
              * @description Fallback gauge/instrument when the default is unavailable.
              */
             backup_equipment?: string | null;
             readonly backup_equipment_name: string | null;
+            readonly backup_equipment_status: string | null;
             readonly version: number;
             readonly is_current_version: boolean;
             /** Format: uuid */

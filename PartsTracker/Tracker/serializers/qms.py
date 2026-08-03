@@ -84,8 +84,12 @@ class MeasurementDefinitionSerializer(SecureModelMixin):
     step_name = serializers.SerializerMethodField()
     default_equipment_name = serializers.CharField(
         source="default_equipment.name", read_only=True, allow_null=True)
+    default_equipment_status = serializers.CharField(
+        source="default_equipment.status", read_only=True, allow_null=True)
     backup_equipment_name = serializers.CharField(
         source="backup_equipment.name", read_only=True, allow_null=True)
+    backup_equipment_status = serializers.CharField(
+        source="backup_equipment.status", read_only=True, allow_null=True)
 
     # Fields whose edits are soft-delete / metadata only and should NOT
     # trigger a new version.
@@ -97,8 +101,8 @@ class MeasurementDefinitionSerializer(SecureModelMixin):
             "id", "label", "step_name", "unit", "nominal",
             "upper_tol", "lower_tol", "required", "type", "step",
             "spc_enabled", "archived", "characteristic_number",
-            "default_equipment", "default_equipment_name",
-            "backup_equipment", "backup_equipment_name",
+            "default_equipment", "default_equipment_name", "default_equipment_status",
+            "backup_equipment", "backup_equipment_name", "backup_equipment_status",
             "version", "is_current_version", "previous_version",
         ]
         # `step` is writable on create (a measurement must be attached to a

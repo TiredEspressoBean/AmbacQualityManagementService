@@ -418,8 +418,20 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
     equipment_id = cap.get("equipment_id")
     equipment = None
     if equipment_id:
-        from Tracker.models import Equipments
+        from Tracker.models import Equipments, EquipmentStatus
         equipment = Equipments.objects.filter(pk=equipment_id).first()
+        # A measurement recorded against an OUT_OF_SERVICE gauge is
+        # retroactively suspect product — refuse the write at the source
+        # rather than let the reading commit and rely on someone spotting it
+        # via the void-QR flow later. The apply_calibration_result_to_equipment
+        # signal on a FAIL calibration is what sets this status; this is where
+        # that flag becomes load-bearing.
+        if equipment and equipment.status == EquipmentStatus.OUT_OF_SERVICE:
+            from django.core.exceptions import ValidationError
+            raise ValidationError(
+                f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
+                f"missing calibration). Recalibrate or pick a different gauge."
+            )
 
     record_dwi_measurement(
         step_execution=step_execution,

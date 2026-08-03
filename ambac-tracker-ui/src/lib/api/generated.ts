@@ -2849,6 +2849,7 @@ export type MeasurementDefinition = {
     (string | null)
     | undefined;
   default_equipment_name: string | null;
+  default_equipment_status: string | null;
   backup_equipment?:
     | /**
      * Fallback gauge/instrument when the default is unavailable.
@@ -2856,6 +2857,7 @@ export type MeasurementDefinition = {
     (string | null)
     | undefined;
   backup_equipment_name: string | null;
+  backup_equipment_status: string | null;
   version: number;
   is_current_version: boolean;
   previous_version: string | null;
@@ -15314,8 +15316,10 @@ const MeasurementDefinition = z.object({
   characteristic_number: z.string().max(20).nullish(),
   default_equipment: z.string().uuid().nullish(),
   default_equipment_name: z.string().nullable(),
+  default_equipment_status: z.string().nullable(),
   backup_equipment: z.string().uuid().nullish(),
   backup_equipment_name: z.string().nullable(),
+  backup_equipment_status: z.string().nullable(),
   version: z.number().int(),
   is_current_version: z.boolean(),
   previous_version: z.string().uuid().nullable(),

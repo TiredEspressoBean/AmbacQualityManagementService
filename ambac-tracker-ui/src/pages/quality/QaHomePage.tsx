@@ -369,13 +369,13 @@ function GaugeNagTile() {
                 </div>
                 {gauges.length === 0 ? (
                     <div className="mt-2 text-sm text-muted-foreground">
-                        Nothing you've used recently is due for calibration.
+                        Nothing you've used in the last 7 days is due for calibration.
                     </div>
                 ) : (
                     <>
                         <div className="mt-2 text-sm">
-                            <b>{gauges.length} gauge{gauges.length === 1 ? "" : "s"} you used recently</b>
-                            {" "}need{gauges.length === 1 ? "s" : ""} calibration soon.
+                            <b>{gauges.length} gauge{gauges.length === 1 ? "" : "s"} you used in the last 7 days</b>
+                            {" "}need{gauges.length === 1 ? "s" : ""} calibration within 7 days.
                         </div>
                         <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                             {gauges.slice(0, 3).map((g) => (
