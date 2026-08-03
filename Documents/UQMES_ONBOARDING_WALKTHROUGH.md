@@ -833,13 +833,20 @@ out of tolerance, everything you signed against it is suspect.
 UQMES tracks calibration state and surfaces it in three places for
 QA inspectors.
 
-**The current enforcement scope.** UQMES *shows* you calibration
-status; it does not currently *block* a measurement recorded on an
-out-of-cal gauge at the point of use. Point-of-use blocking is a
-known gap. Until it lands, the discipline is manual: check the
-gauge-nag tile before starting a run, and use the QR void flow to
-walk a bad reading back after the fact if a gauge turns out to
-have been out of cal.
+**The current enforcement scope.** UQMES blocks measurements written
+against equipment whose status is `OUT_OF_SERVICE` — the picker hides
+those options, and `_handle_measurement` refuses the write at the
+server (raising `ValidationError` with the equipment name and
+reason) even if a stale client somehow selects one. `OUT_OF_SERVICE`
+is set by `apply_calibration_result_to_equipment` on a FAIL
+calibration.
+
+What's NOT blocked: a measurement written against a gauge that's
+still `IN_SERVICE` but whose calibration is *due-soon* or *overdue*.
+That's a softer signal — the gauge-nag tile flags those on the home
+page as an awareness prompt, but the picker doesn't hide them. If
+you find out after the fact that a gauge you used was overdue, use
+the QR void flow to walk the reading back.
 
 ### 10a — Your gauge-nag tile on the home page
 
@@ -919,11 +926,16 @@ gauge that produced it, and if that gauge later shows a FAIL
 calibration event, you can walk backwards and find every reading
 that rode along with it.
 
-**What happens if you pick a gauge that's out of cal.** Nothing
-blocks. The measurement commits. The gauge-nag tile flags it next
-time you land on the home page. This is the enforcement gap
-referenced at the top of the section — treat it as a discipline
-requirement, not a system guarantee.
+**Out-of-service filtering.** Any option whose equipment is
+`OUT_OF_SERVICE` at authoring time is hidden from the operator
+picker; the configured default falls back to nothing (no auto-
+selection) if that default is itself OUT_OF_SERVICE. On the
+server side, `_handle_measurement` refuses the write with a
+`ValidationError` if `equipment.status == OUT_OF_SERVICE` — so
+even a stale client that offers a bad option gets rejected at
+the source, not silently accepted. Due-soon and overdue gauges
+that are still IN_SERVICE remain selectable and rely on the
+gauge-nag tile for awareness.
 
 ### 10e — Seeded records on the QA walk exhibits
 
@@ -1078,10 +1090,18 @@ touching.
 post-save signal auto-creates a bare OPEN disposition (no type). The
 demo seeder's `_enrich_auto_dispositions` pass then gives those bare
 NCRs a round-robin type and lifecycle so the demo isn't a wall of
-identical OPENs. Result: some parts (INJ-0038-010, INJ-QA-INSPECT-004,
-INJ-0042-023 with our seed fix) have two dispositions — the intended
-one (SCRAP or REWORK) and an unrelated enriched tag-along. Read the
-intended one; ignore the tag-along.
+identical OPENs. QR-to-Disposition is legitimately 1:many in QMS
+practice (a single QR can spawn multiple lines for different
+portions of nonconforming material), so the signal itself is
+correct — the quirk is that the seed leaves both records visible
+without any hint about which is which.
+
+The QA-walk parts (INJ-QA-INSPECT-004) drop the tag-along at seed
+time via `_drop_tag_along_dispositions` in `qa_walk.py`. Older
+seed parts (INJ-0038-010 and similar) still show both; read the
+intended one (has a `disposition_type` and a `resolution_notes`
+paragraph) and ignore the auto-created one (empty type, a
+description prefixed *"Auto-created for failed quality report:"*).
 
 **Sparse Activity History in the seed.** Many seeded parts show *"No
 audit history"* in the Activity History section because the seed

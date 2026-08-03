@@ -423,7 +423,28 @@ class DemoQaWalkSeeder(BaseSeeder):
         # apply_disposition_to_part guards loop-back cascades to
         # QUARANTINED/PENDING parts, so this CLOSED REWORK dispo on an
         # AWAITING_QA part is treated as a paper record — part stays put.
+        self._drop_tag_along_dispositions(disp, quality_report)
         return disp
+
+    def _drop_tag_along_dispositions(self, intentional_disp, quality_report):
+        """The FAIL-QR post_save signal (Tracker/signals.py) auto-creates a
+        bare disposition per FAIL QR. When we author an intentional
+        disposition here and link the same QR to it, the tag-along is
+        redundant paperwork — a walker opening the part detail sees two
+        dispositions where only one is meaningful.
+
+        The QR-to-Disposition relation is legitimately 1:many in QMS
+        practice (a single QR can spawn multiple disposition lines for
+        different portions of nonconforming material), so we do NOT touch
+        the signal itself. This cleanup is scoped to the seed exhibit only:
+        drop tag-alongs on the SAME QR that carry the auto-created
+        description prefix and aren't the intentional record we just
+        authored."""
+        QuarantineDisposition.objects.filter(
+            tenant=self.tenant,
+            quality_reports=quality_report,
+            description__startswith='Auto-created for failed quality report',
+        ).exclude(pk=intentional_disp.pk).delete()
 
     def _stage_returned_shipment(self, part, osp_step, user):
         """Send part out and receive back → RETURNED shipment awaiting return
