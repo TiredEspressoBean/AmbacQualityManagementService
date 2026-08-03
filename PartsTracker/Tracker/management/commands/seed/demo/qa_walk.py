@@ -39,8 +39,8 @@ from django.utils import timezone
 
 from Tracker.models import (
     Companies, FPIRecord, FPIStatus, Orders, OrdersStatus, Parts, PartsStatus,
-    QualityReports, QuarantineDisposition, StepExecution, Steps, Substep,
-    SubstepCompletion, WorkOrder, WorkOrderPriority, WorkOrderStatus,
+    QaApproval, QualityReports, QuarantineDisposition, StepExecution, Steps,
+    Substep, SubstepCompletion, WorkOrder, WorkOrderPriority, WorkOrderStatus,
 )
 from Tracker.services.mes import outside_process
 
@@ -329,7 +329,16 @@ class DemoQaWalkSeeder(BaseSeeder):
     def _create_passed_fpi(self, work_order, designated_part, step, part_type, inspector):
         """PASSED FPI so the substep runtime's FpiStatusBanner shows
         satisfied (green) and doesn't block the walker with a Start FPI
-        prompt on downstream steps."""
+        prompt on downstream steps.
+
+        Real user flow through the FPI Pass viewset (services.qms.fpi.pass_fpi)
+        also creates a `QaApproval` for (step, WO), since the FPI Pass IS the
+        step-level QA signoff for the first-piece run — without that record
+        `can_advance_from_step` raises "QA signoff required but not received".
+        We shortcut through the ORM here (matching the seed's convention of
+        writing state directly), so we must also write the QaApproval or
+        every downstream step-execution would be stuck.
+        """
         if not (work_order and designated_part and step and part_type and inspector):
             return None
         fpi, _ = FPIRecord.objects.update_or_create(
@@ -346,6 +355,14 @@ class DemoQaWalkSeeder(BaseSeeder):
         )
         FPIRecord.objects.filter(pk=fpi.pk).update(
             created_at=self.today - timedelta(days=1, hours=14))
+        # Mirror the pass_fpi service's side effect: create the QaApproval
+        # so `Steps.can_advance_from_step` sees the step-level signoff as
+        # satisfied. Without this the seeded exhibit is inconsistent with
+        # what the real Pass flow would produce.
+        QaApproval.objects.update_or_create(
+            tenant=self.tenant, step=step, work_order=work_order,
+            defaults={'qa_staff': inspector},
+        )
         return fpi
 
     def _create_fail_qr(self, part, step, inspector):

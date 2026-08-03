@@ -647,7 +647,15 @@ Enter a passing value:
 - **Return inspection result**: **Pass**.
 - **Return inspection sign-off**: click to sign.
 
-Click **Confirm & review** → **Complete**.
+Click **Confirm & review**. On the review pane the action buttons are
+**Accept return** / **Reject** (domain-specific — the OSP step uses
+Accept/Reject rather than the generic "Complete step" the operator
+runtime uses on non-OSP steps). Click **Accept return**.
+
+Toast: *"Accepted — parts advanced past the outside-process step."*
+You land on `/production/outside-processing` — the OSP board — and
+the part on the shipment has moved to the next step in the process
+(Final Test).
 
 **What happens.** The shipment's return-inspection execution completes.
 The part's `part_status` transitions from `AT_OUTSIDE_PROCESS` (or
