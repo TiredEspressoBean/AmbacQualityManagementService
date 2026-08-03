@@ -32,8 +32,9 @@ copy so the barcode encodes the current WO id.
 
 | Email | Name | Role | Where you play it |
 |---|---|---|---|
-| `sarah.qa@demo.ambac.com` | Sarah Chen | QA Inspector | Every section |
-| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | Section 6 — approve disposition (if requested by permission gate) |
+| `sarah.qa@demo.ambac.com` | Sarah Chen | QA Inspector | Every section — the walker's identity. |
+| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | Section 6 — approve disposition (if requested by a permission gate). |
+| `mike.ops@demo.ambac.com` | Mike Rodriguez | Operator | Section 3 — the seed pre-signs the first-piece substeps as Mike so Sarah (playing QA) can sign off the FPI without hitting the segregation-of-duties gate. You don't log in as Mike; his signatures are already on the seed exhibit. |
 
 Sarah has QA Inspector permissions. A handful of decisions in the walk
 (closing a MAJOR disposition, waiving an FPI) may require a QA
@@ -292,33 +293,9 @@ proceed."*
 **Permission note.** The Pass / Fail / Waive buttons and the API
 endpoint are gated server-side on the `sign_off_fpi` permission. If
 your instance restricts sign-off to QA Manager only, log out and
-back in as `maria.qa@demo.ambac.com`.
-
-Choose:
-- **Pass** — records the FPI as PASSED. The batch is released; other
-  parts can now run through Nozzle Inspection.
-- **Fail** — records FAILED. The batch is blocked pending
-  investigation. Usually indicates a setup problem; a FAILED FPI
-  often triggers a CAPA.
-- **Waive** — records WAIVED with a required reason (≥10 characters).
-  Use rarely; a waived FPI still counts as a documented decision.
-
-**Permission note.** The Pass / Fail / Waive buttons are gated
-server-side on the `sign_off_fpi` permission. If your instance
-restricts sign-off to QA Manager only, log out and back in as
-`maria.qa@demo.ambac.com`. To Sarah without that permission, the
-banner reads *"awaiting buy-off"* but the buttons don't appear.
-
-For this walk: click **Pass**, add a note like *"Nozzle geometry
-matches drawing rev; spray-hole bank clear."*, submit.
-
-**What happens:** the FPI record transitions PENDING → PASSED,
-`inspected_by` becomes you (or Maria), an `fpi.decided` notification
-fires, and any parts blocked pending the FPI are released to run
-through the step. The FPI row disappears from your home banner. On
-the runtime, the banner now shows green: *"First Piece Inspection
-signed off · Setup verified — all parts can proceed through this
-step."*
+back in as `maria.qa@demo.ambac.com`. To Sarah without that
+permission, the banner reads *"awaiting buy-off"* but the buttons
+don't appear.
 
 ---
 
@@ -379,13 +356,14 @@ The DWI at Nozzle Inspection walks: visual inspection points on the
 3D model (nozzle tip / spray-hole bank / seat face), a pass/fail
 verdict, an equipment field (which visual bench/scope was used), and
 a sign-off. Value the visuals PASS, sign as detected by, and
-**Confirm & next** through to the review pane.
+**Confirm & next** through to the review pane. On the review pane
+click **Complete step**. Toast: *"Step complete — lot advanced (1
+part moved)."*
 
-**Complete** the review.
-
-**What happens:** the part transitions `AWAITING_QA` → next state per
-the process. The sampling rule records this inspection outcome against
-the ruleset for post-repair verification analytics.
+**What happens:** the part transitions `AWAITING_QA` → `IN_PROGRESS`
+on the next step in the process. The sampling rule records this
+inspection outcome against the ruleset for post-repair verification
+analytics.
 
 ---
 
@@ -429,7 +407,15 @@ Enter values to trigger the FAIL:
   98 mL/min - below LSL of 100 mL/min. Awaiting disposition."*
 - Sign as detected by.
 
-Click **Confirm & review** → **Complete**.
+Click **Confirm & review** → **Complete step**.
+
+**Toast:** *"FAIL recorded — part held for disposition"* (red/error
+toast) with the description line listing the specific blockers —
+*"Part is quarantined and step blocks on quarantine; QA signoff
+required but not received; One or more measurements are out of
+specification"*. The system distinguishes hard-fail states from
+awaiting-signoff states in the toast heading, so you can tell at a
+glance a fail was recorded (not a benign timing wait).
 
 ### 5c — Backend effects (what just happened)
 
@@ -501,7 +487,19 @@ For this walk, pick **REWORK**:
 - **Resolution Notes**: *"Retest after cleaning; suspect fouling in
   the seat."*
 
-Click **Update Disposition**.
+Click **Update Disposition**. Toast: *"Disposition updated"*.
+
+**What happens on the backend when you save with type = REWORK:**
+1. The disposition's `current_state` auto-transitions `OPEN` →
+   `IN_PROGRESS` (built into `QuarantineDisposition.save()`).
+2. The cascade fires: `apply_disposition_to_part` sees the part is
+   at `QUARANTINED` (a routable status), so it advances
+   `part.part_status` → `REWORK_NEEDED` and increments
+   `total_rework_count` by 1.
+3. If the part had already moved past `QUARANTINED` (e.g. someone
+   dispositioned an already-reworked part after the fact), the
+   cascade would skip — REWORK is a paper record, not a routing
+   directive.
 
 ### 6c — The doors, briefly
 
@@ -587,14 +585,18 @@ Open the runtime for INJ-QA-INSPECT-004's current step-execution
 - Sign as detected by.
 - No defects.
 
-Click **Confirm & review** → **Complete**.
+Click **Confirm & review** → **Complete step**. Toast: *"Step
+complete — lot advanced (1 part moved)."*
 
 **What happens.** A second QR (PASS) is written for visit 2. The
-part status moves out of AWAITING_QA to the next state in the flow
-(READY_FOR_NEXT_STEP → the process routing continues). The rework
-arc is now paper-complete: FAIL QR → CLOSED REWORK → reworked → PASS
-QR at visit 2. Rework Passes counter increments to 1 (or higher on
-subsequent reworks; the seed starts you at 1).
+part status transitions `AWAITING_QA` → `IN_PROGRESS` on the next
+step in the process (Assembly, per the Flow Testing → Assembly edge).
+The rework arc is now paper-complete: FAIL QR → CLOSED REWORK →
+reworked → PASS QR at visit 2. The **Rework Passes** counter stays
+at `1` — that counter was incremented when the REWORK disposition
+was applied (Section 6), not on this re-inspection pass. It's a
+running tally of *how many rework cycles this part has been through*,
+not of how many re-inspection PASS-es.
 
 ---
 
