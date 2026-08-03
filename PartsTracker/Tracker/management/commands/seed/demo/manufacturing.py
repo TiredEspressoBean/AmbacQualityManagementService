@@ -104,6 +104,7 @@ DEMO_PROCESS = {
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 8, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
             'requires_batch_completion': False,
+            'part_advancement_mode': 'PER_PART',  # per-part QA gate; a failed part doesn't hold the batch
             'max_visits': 2, 'revisit_assignment': 'ROLE', 'revisit_role_name': 'QA Manager',
         },
         {
@@ -115,6 +116,7 @@ DEMO_PROCESS = {
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 8, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
             'requires_batch_completion': False,
+            'part_advancement_mode': 'PER_PART',  # per-part QA gate
             'max_visits': 2, 'revisit_assignment': 'ROLE', 'revisit_role_name': 'QA Manager',
         },
         {
@@ -137,6 +139,7 @@ DEMO_PROCESS = {
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 4, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
             'requires_batch_completion': False,
+            'part_advancement_mode': 'PER_PART',  # per-part QA gate
             'max_visits': 2, 'revisit_assignment': 'ROLE', 'revisit_role_name': 'QA Manager',
         },
         {
@@ -516,6 +519,7 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'undo_window_minutes': step_data.get('undo_window_minutes', 15),
                     'rollback_requires_approval': step_data.get('rollback_requires_approval', True),
                     'requires_batch_completion': step_data.get('requires_batch_completion', False),
+                    'part_advancement_mode': step_data.get('part_advancement_mode', 'COHORT'),
                     # Step Type (visual)
                     'step_type': step_type,
                     # Decision behavior

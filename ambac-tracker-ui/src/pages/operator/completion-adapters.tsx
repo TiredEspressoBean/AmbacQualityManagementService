@@ -273,11 +273,27 @@ async function completePart(ctx: CompletionContext): Promise<void> {
             Object.values(blockers).forEach((list) =>
                 (list as string[]).forEach((r) => reasons.add(r)),
             );
-            toast.warning("Step submitted — lot waiting on cohort", {
-                description: reasons.size > 0
-                    ? [...reasons].slice(0, 3).join("; ")
-                    : "Other parts in the cohort still have work to do.",
-            });
+            // Classify the blocker set: a hard per-part failure (quarantine,
+            // out-of-spec, sampling fail, unauthorized operator) is not the
+            // same UX as "the other cohort parts haven't finished yet." Use
+            // the primary event to pick the toast heading.
+            const reasonList = [...reasons];
+            const hasHardFail = reasonList.some((r) =>
+                /quarantined|out of specification|Sampling inspection failed|not qualified|Manual decision required/i.test(r),
+            );
+            const hasSignoffPending = reasonList.some((r) =>
+                /First Piece Inspection required|QA signoff required|Sampling inspection required/i.test(r),
+            );
+            const description = reasonList.length > 0
+                ? reasonList.slice(0, 3).join("; ")
+                : "Other parts in the cohort still have work to do.";
+            if (hasHardFail) {
+                toast.error("FAIL recorded — part held for disposition", { description });
+            } else if (hasSignoffPending) {
+                toast.warning("Step submitted — awaiting QA sign-off", { description });
+            } else {
+                toast.warning("Step submitted — lot waiting on cohort", { description });
+            }
         } else if (result.status === "halted") {
             toast.error("Lot halted", { description: result.reason ?? "" });
         } else {

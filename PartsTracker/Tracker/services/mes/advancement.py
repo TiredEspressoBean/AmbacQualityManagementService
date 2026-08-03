@@ -209,8 +209,17 @@ def _evaluate_and_advance(
     ).exists()
 
     # ----- Cohort path -----
-    if cohort and step_is_batched:
-        # Per-load: advance every cohort part whose gate clears, independently.
+    # Two "per-part" paths (batch and PER_PART step-mode) share the same shape:
+    # loop per part, advance individually if the gate clears; collect blockers
+    # for parts that don't clear. Extracted to a helper to keep the two branches
+    # in lockstep as advance_part_step evolves.
+    per_part_step_mode = getattr(step, 'part_advancement_mode', 'COHORT') == 'PER_PART'
+
+    if cohort and (step_is_batched or per_part_step_mode):
+        # Per-part / per-load: advance every cohort part whose gate clears,
+        # independently. A failed part doesn't hold up passing parts — the
+        # failed one is dispositioned (routed to Rework) or held in
+        # quarantine; the rest of the cohort moves on.
         for p in cohort:
             se = StepExecution.get_current_execution(p)
             if se is None:
@@ -225,7 +234,7 @@ def _evaluate_and_advance(
                     advance_part_step(p, operator=operator, skip_gate_check=True)
                 result.parts_advanced.append(str(p.id))
             except Exception as exc:  # noqa: BLE001
-                logger.exception("Batch-cohort advance failed for %s: %s", p.id, exc)
+                logger.exception("Per-part advance failed for %s: %s", p.id, exc)
                 result.blockers_by_part[str(p.id)] = [str(exc)]
         if result.parts_advanced:
             result.status = 'advanced'
@@ -233,7 +242,11 @@ def _evaluate_and_advance(
             result.status = 'blocked'
 
     elif cohort:
-        # Non-batch step: classic lot cohesion — all-or-none.
+        # Non-batch, COHORT step: classic lot cohesion — all-or-none. Use
+        # for shared-context steps where the batch legitimately moves
+        # together (a chemical bath cycle, a shared fixture setup). For
+        # individually-inspected QA steps, set part_advancement_mode to
+        # PER_PART on the Step definition instead.
         per_part_blockers: dict[str, list[str]] = {}
         for p in cohort:
             se = StepExecution.get_current_execution(p)

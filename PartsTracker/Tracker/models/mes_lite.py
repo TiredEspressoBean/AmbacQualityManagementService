@@ -592,6 +592,29 @@ class Steps(SecureModel):
 
     # ===== FIRST PIECE INSPECTION =====
 
+    PART_ADVANCEMENT_MODE_CHOICES = [
+        ('COHORT', 'Cohort — all-or-none (all parts must clear before any advance)'),
+        ('PER_PART', 'Per-part — each part advances independently on its own gate'),
+    ]
+    part_advancement_mode = models.CharField(
+        max_length=16,
+        choices=PART_ADVANCEMENT_MODE_CHOICES,
+        default='COHORT',
+        help_text=(
+            "Non-batch steps only. Batch steps are always per-load. "
+            "COHORT: classic lot cohesion — the whole (WO, step) cohort waits "
+            "until every part clears. Use for shared-context steps where the "
+            "batch legitimately moves together. "
+            "PER_PART: each part advances on its own gate — a failed part "
+            "doesn't hold up passing parts. Use for individually-inspected "
+            "QA-decision steps (Nozzle Inspection, Flow Testing, Final Test)."
+        ),
+    )
+    """Non-batch advancement mode. Batch steps (with BATCH-scope substeps) are
+    always per-load; this field is ignored for them. For non-batch steps this
+    picks between all-or-none cohesion (the historical default) and per-part
+    advancement (which better matches per-part QA-decision gates)."""
+
     requires_first_piece_inspection = models.BooleanField(
         default=False,
         help_text="If True, first part of each work order at this step requires FPI before others can proceed"
