@@ -11,7 +11,8 @@ from django.db import transaction
 
 
 def open_scar(*, supplier, problem_statement, severity="MAJOR",
-              quality_report=None, material_lot=None, user=None):
+              quality_report=None, material_lot=None, user=None,
+              assigned_to=None):
     """Open a SCAR (a supplier-tagged CAPA). Returns the CAPA.
 
     Args:
@@ -20,7 +21,14 @@ def open_scar(*, supplier, problem_statement, severity="MAJOR",
         severity: CapaSeverity (CRITICAL/MAJOR/MINOR).
         quality_report: optional triggering receiving QualityReport to link.
         material_lot: optional lot for a default problem statement.
-        user: initiator.
+        user: initiator. Pass None for a machine-raised SCAR so the record
+            reads as System-initiated rather than attributing it to whoever
+            happened to trip an automated gate — see
+            ``services.qms.quality_gate._raise_capa_or_scar``.
+        assigned_to: owner. Callers driven by an explicit human action can
+            leave this None (the initiator is the accountable party);
+            machine-raised SCARs should set it so the record lands in a real
+            queue and emits ``capa.assigned``.
     """
     from Tracker.models import CAPA
 
@@ -36,6 +44,7 @@ def open_scar(*, supplier, problem_statement, severity="MAJOR",
             status="OPEN",
             problem_statement=problem_statement,
             initiated_by=user if (user and getattr(user, "is_authenticated", False)) else None,
+            assigned_to=assigned_to,
         )
         if quality_report is not None:
             capa.quality_reports.add(quality_report)

@@ -823,6 +823,39 @@ disposition on INJ-QA-INSPECT-003 was a one-off; CAPA-2024-003
 was the right response to the *fifth* nozzle failure in an
 order.
 
+### 9e — CAPAs you didn't open (quality gates)
+
+Not every CAPA in your queue was raised by a person. A step can
+carry a **quality gate** (`SamplingRuleSet.gate_metric` +
+`gate_threshold`): when an aggregate signal crosses its threshold
+— say fail rate over a rolling window — the gate fires the actions
+configured in `gate_actions`. One of those is `RAISE_CAPA_SCAR`.
+
+A gate-raised CAPA looks different from one you filed:
+- **Initiated By is empty**, and notification templates render it
+  as *"System"*. That's deliberate — the gate raised it, no human
+  did. The trip is automatic and doesn't depend on anyone holding
+  `initiate_capa`; an operator's permissions can't suppress a
+  quality gate.
+- **The problem statement names the gate and the numbers** —
+  *"Auto-raised by quality gate 'RS-Nozzle' at step Nozzle
+  Inspection: FAIL_RATE_PCT = 25.000 crossed threshold 10.000."*
+  With no initiator to ask, the record has to explain itself.
+- **It's assigned to a QA Manager** (falling back to a QA
+  Inspector), so it lands in a real queue and fires
+  `capa.assigned` rather than sitting unnoticed.
+- **`gate_capa_type='SUPPLIER'` makes it a SCAR** against the
+  lot's supplier instead of an internal CORRECTIVE.
+
+**Reconstructing why it fired.** The `StepGateFiring` row records
+the ruleset, metric, computed value, threshold, actions taken, and
+`triggered_by_report` — the QR that tripped it. That report's
+`detected_by` is the person who was working when the threshold
+crossed. So even with no initiator on the CAPA, the chain
+CAPA ← firing → report → inspector reconstructs the full story.
+Don't read `detected_by` as "the person who caused this" — they
+filed one inspection; the gate fired on the aggregate.
+
 ---
 
 ## 10. Calibration awareness

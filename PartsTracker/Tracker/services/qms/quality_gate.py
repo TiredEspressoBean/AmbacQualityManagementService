@@ -221,8 +221,40 @@ def _hold(ruleset, *, work_order, material_lot):
 
 
 def _raise_capa_or_scar(ruleset, firing, *, material_lot, user):
+    """Auto-raise the CAPA/SCAR a tripped gate calls for.
+
+    ``user`` is deliberately NOT used as the initiator. This path is
+    machine-triggered: the gate fires because a threshold crossed, and the
+    user in scope is merely whoever happened to save the record that tripped
+    it — often an operator who does not hold ``initiate_capa``. Attributing
+    the CAPA to them produces an audit trail that claims an unauthorized user
+    initiated a governance record, and (via
+    ``verify_capa_effectiveness``'s ``user == capa.initiated_by`` check)
+    would silently mark them ineligible to verify unrelated work.
+
+    So ``initiated_by`` stays NULL, which every consumer already treats as
+    "System" (see the ``|default:'System'`` fallback in the capa.opened
+    notification templates, and the ``_user_name(None) -> None`` report
+    adapters).
+
+    The acting user is not lost: ``StepGateFiring.triggered_by_report``
+    links the QualityReport, whose ``detected_by`` is the person who filed
+    it. The trail is CAPA <- firing.created_capa, firing ->
+    triggered_by_report -> detected_by.
+
+    Note this is attribution, not authorization — the gate must still fire
+    regardless of who tripped it. Permission-checking here would let an
+    operator's lack of ``initiate_capa`` suppress a quality gate, which is
+    strictly worse than a mis-attributed record.
+    """
     capa_type = ruleset.gate_capa_type or "CORRECTIVE"
     severity = ruleset.gate_capa_severity or "MAJOR"
+    problem = (
+        f"Auto-raised by quality gate '{ruleset.name}' at step "
+        f"{ruleset.step.name}: {ruleset.gate_metric} = {firing.metric_value} "
+        f"crossed threshold {firing.threshold}."
+    )
+    assignee = _default_capa_owner(ruleset.tenant)
 
     if capa_type == "SUPPLIER":
         supplier = getattr(material_lot, "supplier", None) or ruleset.supplier
@@ -232,8 +264,10 @@ def _raise_capa_or_scar(ruleset, firing, *, material_lot, user):
         report = firing.triggered_by_report
         return open_scar(
             supplier=supplier,
-            problem_statement=f"Quality gate '{ruleset.name}' tripped at step {ruleset.step.name}.",
-            severity=severity, quality_report=report, material_lot=material_lot, user=user,
+            problem_statement=problem,
+            severity=severity, quality_report=report, material_lot=material_lot,
+            user=None,  # system-raised — see docstring
+            assigned_to=assignee,
         )
 
     from Tracker.models import CAPA
@@ -242,9 +276,38 @@ def _raise_capa_or_scar(ruleset, firing, *, material_lot, user):
         capa_type="CORRECTIVE",
         severity=severity,
         status="OPEN",
-        problem_statement=f"Quality gate '{ruleset.name}' tripped at step {ruleset.step.name}.",
-        initiated_by=user if (user and getattr(user, "is_authenticated", False)) else None,
+        problem_statement=problem,
+        initiated_by=None,  # system-raised — see docstring
+        assigned_to=assignee,
     )
+
+
+def _default_capa_owner(tenant):
+    """Pick an owner for a machine-raised CAPA, preferring a QA Manager.
+
+    Without an assignee a gate-raised CAPA is silent: `notify_assignment`
+    returns early when `assigned_to_id` is unset, so nothing emits
+    `capa.assigned`. The only other notification path is
+    `trigger_approval_for_critical_capa`, which fires solely for
+    MAJOR/CRITICAL and then only when the tenant has a current
+    CAPA_APPROVAL ApprovalTemplate. A MINOR gate on a tenant without that
+    template would create the record and tell nobody.
+
+    Mirrors the QA-owner lookup the FAIL-QR auto-disposition signal already
+    uses (Tracker/signals.py), but prefers QA Manager over QA Inspector
+    since closing a CAPA is manager-gated (`verify_capa`). Returns None if
+    the tenant has neither, which leaves the record unassigned rather than
+    blocking the gate — the gate firing must not fail over staffing.
+    """
+    from Tracker.models import User
+    for group_name in ('QA Manager', 'QA Inspector'):
+        owner = User.objects.filter(
+            user_roles__group__name=group_name,
+            user_roles__group__tenant=tenant,
+        ).first()
+        if owner is not None:
+            return owner
+    return None
 
 
 def _require_approval(ruleset, firing, *, user):
