@@ -225,9 +225,9 @@ Click **I'm on it** first — this acknowledges the pending FPI, so
 the operator sees you're on the way. The row updates to read
 *"Seen by Sarah"*.
 
-### 3b — Jump into the operator runtime
+### 3b — Reach the runtime
 
-Click **Start check**.
+Click **Start check** on your home's FPI banner row.
 
 **You land on:** `/workorder/$id/control` for WO-QA-INSPECT-01 (the
 Control page). **The FPI panel itself doesn't render here** — the
@@ -236,45 +236,58 @@ substep runtime.
 
 To reach the runtime, use the **Start Work** dialog from WO Detail
 (`/workorder/$id` → **Start Work** button top-right → check the
-`INJ-QA-INSPECT-001` row under Nozzle Inspection → **Start**). This
-is required — the Start Work flow creates the `StepExecution` that
-lets substep submissions persist. Opening the runtime by direct URL
-(without `?execution=…`) shows the substeps but can't finalize; you'll
-see a "No active StepExecution" toast on Complete step.
+`INJ-QA-INSPECT-001` row under Nozzle Inspection → **Start**). The
+runtime opens with the operator (Mike) already recorded on the
+step-execution and every inspection substep already **signed by Mike**
+— the seed pre-populates this so the walker (Sarah, playing QA) can
+go straight to the buy-off.
 
-**You see** a banner at the top of the runtime reading **"First
-Piece Inspection in progress · Complete the first piece
-INJ-QA-INSPECT-001 inspection below — the run is held until it's
-bought off."** Below the banner is the Nozzle Inspection DWI —
-substeps like *Visual nozzle inspection* with 3D callouts (nozzle tip,
-spray-hole bank, seat face), a *Mark any defects* 3D annotator, an
-equipment field, and sign-off.
+**Segregation-of-duties (SOD) note:** the person who signed the
+first-piece substeps cannot also sign off the FPI. That's why the
+seed uses Mike (operator) for the substeps and expects Sarah (QA) for
+the buy-off. If you re-sign any substep yourself, the FPI Pass endpoint
+will return `400: "Segregation of duties: this user signed one or
+more of the first piece's inspection substeps. FPI buy-off must be
+signed by a different qualified inspector."`
 
-### 3c — Run the DWI on the first piece
+### 3c — Sign off the FPI
 
-In real production, the *operator* runs these substeps and QA only
-does the buy-off. In this walk you play both roles.
+On the runtime, the FpiStatusBanner reads **"First piece inspection
+complete · awaiting buy-off"** with **Pass** / **Fail** / **Waive**
+buttons.
 
-Enter passing values on the visual inspection substeps:
-- **Visual nozzle inspection**: `Pass`.
-- **Equipment used during this inspection**: pick any bench (this
-  field appears blank in the seed; click Add equipment and select).
-- Sign-off: "Sign as detected by" → click to sign.
-- No defects.
+Choose:
+- **Pass** — records the FPI as PASSED. The batch is released; other
+  parts can now run through Nozzle Inspection.
+- **Fail** — records FAILED. The batch is blocked pending
+  investigation. A FAILED FPI usually indicates a setup problem and
+  often triggers a CAPA.
+- **Waive** — records WAIVED with a required reason (≥10 characters).
+  Rare; a waived FPI still counts as a documented decision.
 
-Click **Confirm & next** through each substep, then **Confirm &
-review** on the last one. On the review pane, click **Complete**.
+For this walk: click **Pass**, add a note like *"Nozzle geometry
+matches drawing rev; spray-hole bank clear."*, submit.
 
-### 3d — Sign off the FPI
+**What happens on the backend:**
+1. `FPIRecord.status` → PASSED, `inspected_by` = you, `inspected_at`
+   set, `quality_report` linked to the first piece's QR.
+2. A `QaApproval` is created for (step, work_order, qa_staff = you) —
+   the FPI Pass IS the step-level QA signoff for the first-piece run.
+   Without this, the step would stay blocked on "QA signoff required
+   but not received" (the QaApproval has no other user-facing creation
+   path in the running app).
+3. `fpi.decided` notification fires.
+4. `check-status` for this (WO, step) now returns
+   `satisfied: true`, `message: "FPI passed"`.
+5. The FPI banner disappears from your home page; on the runtime,
+   after a reload, the banner turns green: *"First Piece Inspection
+   signed off · Setup verified — all parts can proceed through this
+   step."*
 
-Once the inspection substeps are complete and the step is submitted
-(toast: *"Step submitted"*), the FpiStatusBanner transitions to state
-3: **"First piece inspection complete · awaiting buy-off"** with
-**Pass** / **Fail** / **Waive** buttons. In practice this transition
-may require reloading the runtime page (or navigating away and back)
-so the client re-fetches the check-status endpoint; the review pane
-you land on right after Complete step may still show the "in progress"
-banner text stale.
+**Permission note.** The Pass / Fail / Waive buttons and the API
+endpoint are gated server-side on the `sign_off_fpi` permission. If
+your instance restricts sign-off to QA Manager only, log out and
+back in as `maria.qa@demo.ambac.com`.
 
 Choose:
 - **Pass** — records the FPI as PASSED. The batch is released; other

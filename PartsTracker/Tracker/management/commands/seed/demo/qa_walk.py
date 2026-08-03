@@ -39,8 +39,8 @@ from django.utils import timezone
 
 from Tracker.models import (
     Companies, FPIRecord, FPIStatus, Orders, OrdersStatus, Parts, PartsStatus,
-    QualityReports, QuarantineDisposition, Steps, WorkOrder,
-    WorkOrderPriority, WorkOrderStatus,
+    QualityReports, QuarantineDisposition, StepExecution, Steps, Substep,
+    SubstepCompletion, WorkOrder, WorkOrderPriority, WorkOrderStatus,
 )
 from Tracker.services.mes import outside_process
 
@@ -138,9 +138,14 @@ class DemoQaWalkSeeder(BaseSeeder):
             part_by_suffix = {p.ERP_id.split('-')[-1]: p for p in parts}
 
             # 001 — PENDING FPI at Nozzle Inspection, first piece complete,
-            #       awaiting buy-off.
-            fpi = self._create_pending_fpi(work_order, part_by_suffix.get('001'),
-                                           step_map.get('Nozzle Inspection'), part_type)
+            #       awaiting buy-off. The operator (Mike) has pre-signed the
+            #       inspection substeps so the walker (Sarah, playing QA) can
+            #       go straight to the buy-off. This mirrors real practice and
+            #       lets the SOD check on pass_fpi succeed: the substep signer
+            #       (Mike) is different from the FPI buy-off signer (Sarah).
+            fpi = self._create_pending_fpi(
+                work_order, part_by_suffix.get('001'),
+                step_map.get('Nozzle Inspection'), part_type, operator)
             result['fpi'] = fpi
 
             # Downstream FPI gates need to already be PASSED so Sections 5, 7
@@ -263,14 +268,22 @@ class DemoQaWalkSeeder(BaseSeeder):
             parts.append(part)
         return parts
 
-    def _create_pending_fpi(self, work_order, part, step, part_type):
-        """PENDING FPI with designated_part set → check_status returns
-        satisfied=False, has_pending=True, designated_part_id set. The
-        FpiStatusBanner surfaces 'awaiting buy-off' when the operator's
-        step-execution is complete; for the seed we just make the FPI
-        pending with a designated part so Sarah sees a banner she can act on.
+    def _create_pending_fpi(self, work_order, part, step, part_type, operator):
+        """PENDING FPI with the first-piece's inspection substeps *already
+        signed by the operator*, so the walker (playing QA) can go straight
+        to the buy-off surface. Sets up:
+
+        - The FPIRecord (PENDING, designated_part = the first piece)
+        - A StepExecution IN_PROGRESS for the first piece at this step
+        - SubstepCompletion rows for every substep on the step, signed by
+          the operator (a user distinct from the walker who plays QA — so
+          the FPI-pass SOD check succeeds)
+
+        Without the pre-signed substeps the walker would have to run the
+        DWI themselves; and if they signed a substep, the SOD check would
+        then block them from passing the FPI on their own work.
         """
-        if not (work_order and part and step):
+        if not (work_order and part and step and operator):
             return None
         fpi, _ = FPIRecord.objects.update_or_create(
             tenant=self.tenant, work_order=work_order, step=step,
@@ -283,6 +296,34 @@ class DemoQaWalkSeeder(BaseSeeder):
         )
         FPIRecord.objects.filter(pk=fpi.pk).update(
             created_at=self.today - timedelta(hours=6))
+
+        # Operator's step-execution on the first piece (unadvanced — the
+        # walker's FPI Pass is what will finalize it in the walk).
+        # training_authorization is set to a bypass-authorized snapshot so
+        # the "Operator ... is not qualified for this step" advancement
+        # blocker is skipped. Real starts go through authorize_start which
+        # checks training records; for a seeded exhibit we stipulate the
+        # operator is qualified without needing a full training seed.
+        se, _ = StepExecution.objects.update_or_create(
+            tenant=self.tenant, part=part, step=step,
+            defaults={
+                'assigned_to': operator, 'visit_number': 1,
+                'status': 'IN_PROGRESS',
+                'training_authorization': {
+                    'authorized': True, 'missing': [], 'verified': [],
+                    '_source': 'demo_seed_bypass',
+                },
+            },
+        )
+        # Sign every substep on the step as the operator so the walker
+        # doesn't have to. Substeps are per-Step; SubstepCompletion is
+        # per-(substep, step_execution).
+        substeps = Substep.objects.filter(tenant=self.tenant, step=step)
+        for ss in substeps:
+            SubstepCompletion.objects.update_or_create(
+                tenant=self.tenant, step_execution=se, substep=ss,
+                defaults={'completed_by': operator},
+            )
         return fpi
 
     def _create_passed_fpi(self, work_order, designated_part, step, part_type, inspector):
