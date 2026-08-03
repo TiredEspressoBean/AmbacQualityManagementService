@@ -129,11 +129,42 @@ def try_advance_lot(
                     operator=operator,
                     _depth=_depth + 1,
                 )
-                if next_result.status == 'advanced':
-                    # Accumulate cascaded advances so the caller sees the full walk.
+                # Merge ALL four collections from every cascade level — advances
+                # and blockers — so the caller sees the full walk. Previously we
+                # only merged `parts_advanced`, silently dropping split-part
+                # advances and any blockers a cascade step reported (e.g. parts
+                # that reached the next step but were then blocked on FPI /
+                # sampling / measurement). That left the caller unable to
+                # explain why a part didn't move further than it did.
+                if next_result.parts_advanced:
                     result.parts_advanced = list(
                         set(result.parts_advanced) | set(next_result.parts_advanced)
                     )
+                if next_result.split_parts_advanced:
+                    result.split_parts_advanced = list(
+                        set(result.split_parts_advanced) | set(next_result.split_parts_advanced)
+                    )
+                if next_result.blockers_by_part:
+                    # Merge dicts; if the same part appears at multiple levels
+                    # (shouldn't happen in practice — a part is at exactly one
+                    # step), the latest cascade level wins.
+                    result.blockers_by_part = {
+                        **result.blockers_by_part, **next_result.blockers_by_part,
+                    }
+                if next_result.split_parts_blocked:
+                    result.split_parts_blocked = {
+                        **result.split_parts_blocked, **next_result.split_parts_blocked,
+                    }
+            # Recompute the top-level status from the merged collections. A
+            # cascade level that only added blockers (no advances) must not
+            # flip the top-level from 'advanced' to 'blocked' — the earlier
+            # levels DID advance parts, so 'advanced' remains correct. But if
+            # nothing advanced at any level (shouldn't happen given the entry
+            # condition, but defensively) and blockers exist, keep 'blocked'.
+            if result.parts_advanced or result.split_parts_advanced:
+                result.status = 'advanced'
+            elif result.blockers_by_part or result.split_parts_blocked:
+                result.status = 'blocked'
         elif result.status == 'advanced' and advanced_ids and _depth >= _MAX_CASCADE_DEPTH:
             # Don't truncate silently: a >cap chain of pass-through steps leaves
             # parts mid-walk until the next event re-fires advancement.
