@@ -42,10 +42,16 @@ User = get_user_model()
 # changes the key format, these tests fail — which is the point.
 THROTTLE_PREFIX = 'tgate_fail'
 FAIL_CAP = 5
+GLOBAL_PREFIX = 'second_person_fail'
+GLOBAL_CAP = 10
 
 
 def throttle_key(tenant, email):
     return f"{THROTTLE_PREFIX}:{tenant.id}:{email.lower()}"
+
+
+def global_key(tenant, email):
+    return f"{GLOBAL_PREFIX}:{tenant.id}:{email.lower()}"
 
 
 class SecondPersonThrottleTests(TenantContextMixin, TestCase):
@@ -139,12 +145,18 @@ class SecondPersonThrottleTests(TenantContextMixin, TestCase):
         return self._client(actor).post("/api/StepExecutions/", body, format="json")
 
     def _bad_password_attempt(self, email="sup@thr.test"):
+        # A failure writes BOTH tiers, so both need cleaning up — the cache is
+        # not rolled back between tests the way the database is.
         self._keys.add(throttle_key(self.tenant, email))
+        self._keys.add(global_key(self.tenant, email))
         return self._start(self.operator, override_email=email,
                            override_password="wrong", override_reason="line-down")
 
     def _counter(self, email="sup@thr.test"):
         return cache.get(throttle_key(self.tenant, email)) or 0
+
+    def _global_counter(self, email="sup@thr.test"):
+        return cache.get(global_key(self.tenant, email)) or 0
 
     # -- the contract -------------------------------------------------------
 
@@ -202,6 +214,7 @@ class SecondPersonThrottleTests(TenantContextMixin, TestCase):
         authentication. Charging it would let a wrong-person mistake lock out
         the right person."""
         self._keys.add(throttle_key(self.tenant, "cow@thr.test"))
+        self._keys.add(global_key(self.tenant, "cow@thr.test"))
         resp = self._start(self.operator, override_email="cow@thr.test",
                            override_password="cowpass", override_reason="ok?")
         self.assertEqual(resp.status_code, 403, resp.content)
@@ -210,6 +223,7 @@ class SecondPersonThrottleTests(TenantContextMixin, TestCase):
 
     def test_self_authorization_does_not_consume_budget(self):
         self._keys.add(throttle_key(self.tenant, "sup@thr.test"))
+        self._keys.add(global_key(self.tenant, "sup@thr.test"))
         resp = self._start(self.supervisor, override_email="sup@thr.test",
                            override_password="suppass", override_reason="me")
         self.assertEqual(resp.status_code, 403, resp.content)
@@ -297,6 +311,7 @@ class SecondPersonMixinMemoTests(TenantContextMixin, TestCase):
         h, req = self._holder(), self._request()
         self._keys.add(f"gate_a_fail:{self.tenant.id}:sup@memo.test")
         self._keys.add(f"gate_b_fail:{self.tenant.id}:sup@memo.test")
+        self._keys.add(global_key(self.tenant, "sup@memo.test"))
 
         # Gate A: the permission this user holds → authorized.
         auth_a, err_a = h.verify_second_person(
@@ -319,6 +334,7 @@ class SecondPersonMixinMemoTests(TenantContextMixin, TestCase):
         h, req = self._holder(), self._request()
         key = f"gate_c_fail:{self.tenant.id}:sup@memo.test"
         self._keys.add(key)
+        self._keys.add(global_key(self.tenant, "sup@memo.test"))
         kwargs = dict(permission='override_training_gate', throttle_prefix='gate_c_fail',
                       code_prefix='c', email_field='e', password_field='p')
         first = h.verify_second_person(req, **kwargs)
@@ -337,7 +353,7 @@ class SecondPersonMixinMemoTests(TenantContextMixin, TestCase):
 
         key_a = f"gate_d_fail:{self.tenant.id}:sup@memo.test"
         key_b = f"gate_e_fail:{self.tenant.id}:sup@memo.test"
-        self._keys.update({key_a, key_b})
+        self._keys.update({key_a, key_b, global_key(self.tenant, "sup@memo.test")})
 
         _, err = h.verify_second_person(
             bad, permission='override_training_gate', throttle_prefix='gate_d_fail',
@@ -346,3 +362,122 @@ class SecondPersonMixinMemoTests(TenantContextMixin, TestCase):
         self.assertEqual(cache.get(key_a) or 0, 1)
         self.assertEqual(cache.get(key_b) or 0, 0,
                          'a failure at one gate charged another gate')
+
+
+class TwoTierThrottleTests(TenantContextMixin, TestCase):
+    """The throttle keeps two counters per authorizer.
+
+    Per-gate keeps gates independent: the counter is keyed on the *authorizer's*
+    email tenant-wide, so a single shared counter would let someone
+    fat-fingering their password at the FPI buy-off get locked out of the
+    training-gate override at every station in the plant.
+
+    Shared bounds the total: per-gate counters alone would hand an attacker
+    ``fail_cap × number_of_gates`` attempts at one password, growing every time
+    a gate is added.
+
+    Driven at the service level — the gates that would exercise both tiers
+    through HTTP don't all exist yet.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Tier T", slug="tier-t")
+        self.set_tenant_context(self.tenant)
+        self.actor = User.objects.create_user(
+            username="tier-actor", email="actor@tier.test", password="x",
+            tenant=self.tenant,
+        )
+        self.sup = User.objects.create_user(
+            username="tier-sup", email="sup@tier.test", password="suppass",
+            tenant=self.tenant,
+        )
+        from django.contrib.auth.models import Permission
+        from Tracker.models import TenantGroup, UserRole
+        grp, _ = TenantGroup.objects.get_or_create(
+            tenant=self.tenant, name="tier-sups", defaults={"is_custom": True},
+        )
+        grp.permissions.add(
+            *Permission.objects.filter(codename__in=["override_training_gate"]))
+        UserRole.objects.get_or_create(user=self.sup, group=grp)
+        self.sup.clear_permission_cache(self.tenant)
+
+        self.email = "sup@tier.test"
+        self._keys = {global_key(self.tenant, self.email)}
+
+    def tearDown(self):
+        for k in self._keys:
+            cache.delete(k)
+        super().tearDown()
+
+    def _verify(self, *, prefix, password, permission='override_training_gate'):
+        from Tracker.services.core.second_person import verify_second_person
+        self._keys.add(f"{prefix}:{self.tenant.id}:{self.email}")
+        return verify_second_person(
+            tenant=self.tenant, actor=self.actor, email=self.email,
+            password=password, permission=permission,
+            throttle_prefix=prefix, code_prefix='x',
+        )
+
+    def _gate_count(self, prefix):
+        return cache.get(f"{prefix}:{self.tenant.id}:{self.email}") or 0
+
+    def _global_count(self):
+        return cache.get(global_key(self.tenant, self.email)) or 0
+
+    def test_failure_charges_both_tiers(self):
+        self._verify(prefix='t_a', password='WRONG')
+        self.assertEqual(self._gate_count('t_a'), 1)
+        self.assertEqual(self._global_count(), 1)
+
+    def test_tripping_one_gate_leaves_another_usable(self):
+        """The whole point. Gate A is locked; gate B still authorizes, because
+        5 failures is under the global cap of 10."""
+        for _ in range(FAIL_CAP):
+            self._verify(prefix='t_b1', password='WRONG')
+        _, err_a = self._verify(prefix='t_b1', password='suppass')
+        self.assertEqual(err_a[1], 'x_throttled', 'gate A should be locked')
+
+        auth_b, err_b = self._verify(prefix='t_b2', password='suppass')
+        self.assertIsNone(err_b, f'gate B was wrongly locked: {err_b}')
+        self.assertEqual(auth_b.id, self.sup.id)
+
+    def test_global_cap_refuses_every_gate(self):
+        """Spread failures across two gates so neither per-gate cap trips, but
+        the shared cap does — that is what bounds the total attempts."""
+        for _ in range(FAIL_CAP):
+            self._verify(prefix='t_c1', password='WRONG')
+        for _ in range(FAIL_CAP):
+            self._verify(prefix='t_c2', password='WRONG')
+        self.assertEqual(self._global_count(), GLOBAL_CAP)
+
+        # A third, previously-untouched gate is refused too.
+        self.assertEqual(self._gate_count('t_c3'), 0)
+        _, err = self._verify(prefix='t_c3', password='suppass')
+        self.assertEqual(err[1], 'x_throttled',
+                         'a fresh gate should still be refused once the global '
+                         'cap is reached')
+
+    def test_success_clears_both_tiers(self):
+        for _ in range(FAIL_CAP - 1):
+            self._verify(prefix='t_d', password='WRONG')
+        self.assertEqual(self._gate_count('t_d'), FAIL_CAP - 1)
+        self.assertEqual(self._global_count(), FAIL_CAP - 1)
+
+        auth, err = self._verify(prefix='t_d', password='suppass')
+        self.assertIsNone(err)
+        self.assertEqual(auth.id, self.sup.id)
+        self.assertEqual(self._gate_count('t_d'), 0)
+        self.assertEqual(self._global_count(), 0,
+                         'success must clear the shared counter too, or an '
+                         'honest typo earlier in the shift keeps costing')
+
+    def test_later_check_failures_charge_neither_tier(self):
+        """A correct password that fails the permission check is not a failed
+        authentication — charging it would let a wrong-person mistake burn the
+        real person's budget."""
+        _, err = self._verify(prefix='t_e', password='suppass',
+                              permission='sign_off_fpi')
+        self.assertEqual(err[1], 'x_not_permitted')
+        self.assertEqual(self._gate_count('t_e'), 0)
+        self.assertEqual(self._global_count(), 0)

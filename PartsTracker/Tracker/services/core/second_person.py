@@ -39,6 +39,9 @@ from django.core.cache import cache
 from rest_framework import status
 
 
+# Shared across every gate — see the two-tier note in `verify_second_person`.
+GLOBAL_THROTTLE_PREFIX = 'second_person_fail'
+
 # Default user-facing copy. Overridable per gate via `messages=` because the
 # training gate's existing wording is already on screen in production and this
 # extraction must not silently reword it.
@@ -61,6 +64,9 @@ def verify_second_person(
     code_prefix: str,
     fail_cap: int = 5,
     fail_ttl: int = 900,
+    global_prefix: str = GLOBAL_THROTTLE_PREFIX,
+    global_cap: int = 10,
+    global_ttl: int = 900,
     messages: dict | None = None,
 ):
     """Authenticate a second person and check they hold ``permission``.
@@ -77,7 +83,11 @@ def verify_second_person(
         code_prefix: prefix for the returned error codes, so each gate can
             keep the codes its frontend already handles (``override_*`` for
             the training gate, ``cosign_*`` for FPI).
-        fail_cap / fail_ttl: failures allowed, and the window in seconds.
+        fail_cap / fail_ttl: per-gate failures allowed, and the window in
+            seconds.
+        global_prefix / global_cap / global_ttl: the shared second tier. Every
+            gate increments this one too, so the total attempts against a
+            password stay bounded no matter how many gates exist.
         messages: optional overrides for the four user-facing strings, keyed
             ``throttled`` / ``auth_failed`` / ``self`` / ``not_permitted``.
             The training gate passes its original wording so extracting this
@@ -97,19 +107,31 @@ def verify_second_person(
 
     tenant_id = getattr(tenant, 'id', 'none')
     throttle_key = f"{throttle_prefix}:{tenant_id}:{email.lower()}"
+    global_key = f"{global_prefix}:{tenant_id}:{email.lower()}"
 
     # Rate-limit the password check so a shared terminal isn't a brute-force
-    # oracle. Only failed *authentication* counts toward the cap. Checked
+    # oracle. Only failed *authentication* counts toward either cap. Checked
     # before authenticating, so a locked account is refused outright.
-    if (cache.get(throttle_key) or 0) >= fail_cap:
-        return (None, (msg['throttled'],
-                       f'{code_prefix}_throttled',
-                       status.HTTP_429_TOO_MANY_REQUESTS))
+    #
+    # Two tiers, because one counter can't satisfy both requirements:
+    #   * per-gate (`fail_cap`) keeps gates independent — the counter is keyed
+    #     on the *authorizer's* email tenant-wide, so a single shared counter
+    #     would let someone fat-fingering their password at the FPI buy-off
+    #     get locked out of the training-gate override at every station;
+    #   * shared (`global_cap`) bounds the total. Per-gate counters alone would
+    #     hand an attacker `fail_cap × number_of_gates` attempts at one
+    #     password, which grows every time a gate is added.
+    for key, cap in ((throttle_key, fail_cap), (global_key, global_cap)):
+        if (cache.get(key) or 0) >= cap:
+            return (None, (msg['throttled'],
+                           f'{code_prefix}_throttled',
+                           status.HTTP_429_TOO_MANY_REQUESTS))
 
     # User's own manager isn't tenant-scoped — filter by tenant explicitly.
     authorizer = User.objects.filter(email__iexact=email, tenant=tenant).first()
     if not (authorizer and authorizer.is_active and authorizer.check_password(password)):
-        cache.set(throttle_key, (cache.get(throttle_key) or 0) + 1, fail_ttl)
+        for key, ttl in ((throttle_key, fail_ttl), (global_key, global_ttl)):
+            cache.set(key, (cache.get(key) or 0) + 1, ttl)
         return (None, (msg['auth_failed'],
                        f'{code_prefix}_auth_failed',
                        status.HTTP_403_FORBIDDEN))
@@ -127,4 +149,5 @@ def verify_second_person(
                        status.HTTP_403_FORBIDDEN))
 
     cache.delete(throttle_key)
+    cache.delete(global_key)
     return (authorizer, None)

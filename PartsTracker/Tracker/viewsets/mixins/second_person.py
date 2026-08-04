@@ -27,6 +27,8 @@ class SecondPersonMixin:
         password_field,
         fail_cap=5,
         fail_ttl=900,
+        global_cap=10,
+        global_ttl=900,
         messages=None,
     ):
         """Verify a second person from `request.data`, memoized per request.
@@ -61,6 +63,8 @@ class SecondPersonMixin:
             code_prefix=code_prefix,
             fail_cap=fail_cap,
             fail_ttl=fail_ttl,
+            global_cap=global_cap,
+            global_ttl=global_ttl,
             messages=messages,
         )
         store[cache_key] = result
