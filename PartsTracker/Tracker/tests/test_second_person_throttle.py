@@ -231,3 +231,118 @@ class SecondPersonThrottleTests(TenantContextMixin, TestCase):
             self._bad_password_attempt()
         self.assertEqual(self._counter(), FAIL_CAP)
         self.assertEqual(cache.get(throttle_key(other, "sup@thr.test")) or 0, 0)
+
+
+class SecondPersonMixinMemoTests(TenantContextMixin, TestCase):
+    """The mixin memoizes per request so one co-signature can satisfy several
+    gates without being charged to the throttle twice. The cache must be keyed
+    by gate, not a single attribute.
+
+    With one attribute, a request that consulted gate A and then gate B would
+    receive A's answer for B — i.e. somebody authorized for one thing would
+    silently pass as authorized for another. This pins that open.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Memo T", slug="memo-t")
+        self.set_tenant_context(self.tenant)
+        self.actor = User.objects.create_user(
+            username="memo-actor", email="actor@memo.test", password="x",
+            tenant=self.tenant,
+        )
+        # Holds override_training_gate but NOT sign_off_fpi — so the two gates
+        # must return different answers for the same credentials.
+        self.sup = User.objects.create_user(
+            username="memo-sup", email="sup@memo.test", password="suppass",
+            tenant=self.tenant,
+        )
+        from django.contrib.auth.models import Permission
+        from Tracker.models import TenantGroup, UserRole
+        grp, _ = TenantGroup.objects.get_or_create(
+            tenant=self.tenant, name="memo-sups", defaults={"is_custom": True},
+        )
+        grp.permissions.add(
+            *Permission.objects.filter(codename__in=["override_training_gate"]))
+        UserRole.objects.get_or_create(user=self.sup, group=grp)
+        self.sup.clear_permission_cache(self.tenant)
+
+        self._keys = set()
+
+    def tearDown(self):
+        for k in self._keys:
+            cache.delete(k)
+        super().tearDown()
+
+    def _holder(self):
+        """A minimal object carrying the mixin, standing in for a viewset."""
+        from Tracker.viewsets.mixins import SecondPersonMixin
+
+        class _Holder(SecondPersonMixin):
+            pass
+
+        h = _Holder()
+        h.tenant = self.tenant
+        return h
+
+    def _request(self):
+        class _Req:
+            pass
+        r = _Req()
+        r.user = self.actor
+        r.data = {"e": "sup@memo.test", "p": "suppass"}
+        return r
+
+    def test_two_gates_in_one_request_do_not_share_the_memo(self):
+        h, req = self._holder(), self._request()
+        self._keys.add(f"gate_a_fail:{self.tenant.id}:sup@memo.test")
+        self._keys.add(f"gate_b_fail:{self.tenant.id}:sup@memo.test")
+
+        # Gate A: the permission this user holds → authorized.
+        auth_a, err_a = h.verify_second_person(
+            req, permission='override_training_gate', throttle_prefix='gate_a_fail',
+            code_prefix='a', email_field='e', password_field='p')
+        self.assertIsNone(err_a)
+        self.assertEqual(auth_a.id, self.sup.id)
+
+        # Gate B: a permission the SAME user lacks → must be refused, not
+        # served gate A's cached success.
+        auth_b, err_b = h.verify_second_person(
+            req, permission='sign_off_fpi', throttle_prefix='gate_b_fail',
+            code_prefix='b', email_field='e', password_field='p')
+        self.assertIsNone(auth_b, 'gate B reused gate A memoized result')
+        self.assertEqual(err_b[1], 'b_not_permitted')
+
+    def test_repeat_call_for_the_same_gate_is_memoized(self):
+        """Same gate twice in one request hits the service once — that is the
+        point of the memo (the throttle must only move once)."""
+        h, req = self._holder(), self._request()
+        key = f"gate_c_fail:{self.tenant.id}:sup@memo.test"
+        self._keys.add(key)
+        kwargs = dict(permission='override_training_gate', throttle_prefix='gate_c_fail',
+                      code_prefix='c', email_field='e', password_field='p')
+        first = h.verify_second_person(req, **kwargs)
+        second = h.verify_second_person(req, **kwargs)
+        self.assertIs(first, second)
+
+    def test_distinct_prefixes_give_distinct_throttle_buckets(self):
+        """A failure at one gate must not consume another gate's budget."""
+        h = self._holder()
+
+        class _Req:
+            pass
+        bad = _Req()
+        bad.user = self.actor
+        bad.data = {"e": "sup@memo.test", "p": "WRONG"}
+
+        key_a = f"gate_d_fail:{self.tenant.id}:sup@memo.test"
+        key_b = f"gate_e_fail:{self.tenant.id}:sup@memo.test"
+        self._keys.update({key_a, key_b})
+
+        _, err = h.verify_second_person(
+            bad, permission='override_training_gate', throttle_prefix='gate_d_fail',
+            code_prefix='d', email_field='e', password_field='p')
+        self.assertEqual(err[1], 'd_auth_failed')
+        self.assertEqual(cache.get(key_a) or 0, 1)
+        self.assertEqual(cache.get(key_b) or 0, 0,
+                         'a failure at one gate charged another gate')

@@ -49,7 +49,7 @@ from Tracker.services.mes import outside_process
 from Tracker.serializers.dms import DocumentsSerializer
 from .core import ExcelExportMixin, ListMetadataMixin, with_int_pk_schema
 from .base import TenantScopedMixin
-from .mixins import CSVImportMixin, DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin
 
 # Note: Most viewsets can now use CSVImportMixin and DataExportMixin for automatic
 # CSV import/export based on model introspection. Just add the mixins to get:
@@ -2384,7 +2384,8 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
 
 # ===== STEP EXECUTION VIEWSET =====
 
-class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
+class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
+                           viewsets.ModelViewSet):
     """
     ViewSet for step execution tracking (workflow engine).
 
@@ -2451,11 +2452,24 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         wo = getattr(part, 'work_order', None) if part else None
         return getattr(wo, 'process', None) if wo else None
 
+    # Wording kept verbatim from before this gate was extracted into
+    # `SecondPersonMixin` — it is already on screen in production, and the
+    # extraction must not silently reword it. Codes stay `override_*` for the
+    # same reason: the frontend handles those.
+    _SUPERVISOR_MESSAGES = {
+        'auth_failed': 'Supervisor authorization failed - check the email and password.',
+        'self': 'The authorizing supervisor must be a different person than the operator.',
+        'not_permitted': 'That user is not authorized to override.',
+    }
+
     def _verify_supervisor(self, request):
         """Verify a second-person supervisor from `override_email`/`override_password`
         WITHOUT logging them in. Shared by the training gate and the reassignment
         check, and memoized per request so one supervisor login clears both (and
         the throttle only decrements once).
+
+        Delegates to `SecondPersonMixin`; behaviour pinned by
+        `Tracker/tests/test_second_person_throttle.py`.
 
         Returns ``(authorizer, error)``:
           - ``(User, None)``  — a *different*, active user who holds
@@ -2463,53 +2477,19 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
           - ``(None, (detail, code, http_status))`` — creds supplied but invalid.
           - ``(None, None)`` — no creds supplied at all.
         """
-        if hasattr(self, '_supervisor_cache'):
-            return self._supervisor_cache
-        from django.core.cache import cache
-        from Tracker.models import User
-
-        def cache_and_return(result):
-            self._supervisor_cache = result
-            return result
-
-        email = (request.data.get('override_email') or '').strip()
-        password = request.data.get('override_password') or ''
-        if not email and not password:
-            return cache_and_return((None, None))
-
-        # Rate-limit the password check so a shared terminal isn't a brute-force
-        # oracle. Only failed *authentication* counts toward the cap.
-        throttle_key = f"tgate_fail:{getattr(self.tenant, 'id', 'none')}:{email.lower()}"
-        if (cache.get(throttle_key) or 0) >= 5:
-            return cache_and_return((None, (
-                'Too many failed authorization attempts. Try again in a few minutes.',
-                'override_throttled', status.HTTP_429_TOO_MANY_REQUESTS)))
-
-        # User's own manager isn't tenant-scoped — filter by tenant explicitly.
-        authorizer = User.objects.filter(email__iexact=email, tenant=self.tenant).first()
-        if not (authorizer and authorizer.is_active and authorizer.check_password(password)):
-            cache.set(throttle_key, (cache.get(throttle_key) or 0) + 1, 900)
-            return cache_and_return((None, (
-                'Supervisor authorization failed - check the email and password.',
-                'override_auth_failed', status.HTTP_403_FORBIDDEN)))
-
-        if authorizer.id == request.user.id:
-            return cache_and_return((None, (
-                'The authorizing supervisor must be a different person than the operator.',
-                'override_self', status.HTTP_403_FORBIDDEN)))
-
-        if not authorizer.has_tenant_perm('override_training_gate', tenant=self.tenant):
-            return cache_and_return((None, (
-                'That user is not authorized to override.',
-                'override_not_permitted', status.HTTP_403_FORBIDDEN)))
-
-        cache.delete(throttle_key)
-        return cache_and_return((authorizer, None))
+        return self.verify_second_person(
+            request,
+            permission='override_training_gate',
+            throttle_prefix='tgate_fail',
+            code_prefix='override',
+            email_field='override_email',
+            password_field='override_password',
+            messages=self._SUPERVISOR_MESSAGES,
+        )
 
     def _supervisor_error_response(self, err):
         """Translate a `_verify_supervisor` failure tuple → Response."""
-        detail, code, http_status = err
-        return Response({'detail': detail, 'code': code}, status=http_status)
+        return self.second_person_error_response(err)
 
     def _start_gate_error_response(self, exc):
         """Translate a work-start domain error (`services/mes/lifecycle`) → Response."""
