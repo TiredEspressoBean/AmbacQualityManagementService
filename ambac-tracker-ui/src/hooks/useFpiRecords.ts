@@ -114,8 +114,16 @@ export function useFpiPass() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
-            api.api_FPIRecords_pass_create({ notes }, {
+        /** `cosign_*` are for the second-person path: when the caller lacks
+         *  `sign_off_fpi`, an authorized QA person authenticates inline and the
+         *  verdict is attributed to *them*. Omit both for a normal sign-off. */
+        mutationFn: ({ id, notes, cosign_email, cosign_password }: {
+            id: string;
+            notes?: string;
+            cosign_email?: string;
+            cosign_password?: string;
+        }) =>
+            api.api_FPIRecords_pass_create({ notes, cosign_email, cosign_password }, {
                 params: { id },
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken") ?? "",

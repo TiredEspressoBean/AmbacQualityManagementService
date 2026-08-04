@@ -35,6 +35,7 @@ import {
     ListChecks,
     Pencil,
     Ban,
+    ShieldAlert,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,8 @@ import { BatchPanel } from "@/components/dwi/BatchPanel";
 import { DecisionResolverPanel } from "@/components/dwi/DecisionResolverPanel";
 import { ReworkLimitBanner } from "@/components/dwi/ReworkLimitBanner";
 import { FpiStatusBanner } from "@/components/fpi-status-banner";
+import { FpiSignOffDialog } from "@/components/fpi-sign-off-dialog";
+import { useFpiCheckStatus } from "@/hooks/useFpiRecords";
 import { useRetrieveParts, useCompleteStep } from "@/hooks/parts";
 import {
     useSamplingDecisionsForExecution,
@@ -248,6 +251,25 @@ export function OperatorSubstepRuntimePage() {
 
     const submit = useSubmitSubstep();
     const completeStep = useCompleteStep();
+
+    // FPI hold state for the review stage. `can_advance_from_step` blocks EVERY
+    // part at a step whose FPI isn't PASSED/WAIVED — including the first piece
+    // itself — so "Complete step" is the point where the operator actually hits
+    // the hold. Surfacing it there (rather than only in the top-of-page banner)
+    // means they walk into it in the flow instead of having to notice a banner.
+    const fpiStatusQuery = useFpiCheckStatus(search.workOrder ?? "", stepId);
+    const fpiHold = useMemo(() => {
+        const s = fpiStatusQuery.data;
+        if (!s?.requires_fpi || s.satisfied || !s.has_pending || !s.pending_fpi_id) {
+            return null;
+        }
+        return {
+            fpiId: s.pending_fpi_id,
+            canSignOff: Boolean(s.can_sign_off),
+            partLabel: s.designated_part_label ?? null,
+            firstPieceReady: Boolean(s.first_piece_ready),
+        };
+    }, [fpiStatusQuery.data]);
 
     // SamplingDecisions for this StepExecution. Called unconditionally to
     // satisfy Rules of Hooks; the query is `enabled` only when an execution
@@ -450,6 +472,7 @@ export function OperatorSubstepRuntimePage() {
                                 onCompleteStep={() => { completion.onComplete?.(completionCtx); }}
                                 completing={submit.isPending || completeStep.isPending}
                                 stepExecutionAvailable={Boolean(search.execution)}
+                                fpiHold={fpiHold}
                                 // Subject-specific ending (part advance / receiving accept / …).
                                 completionFooter={
                                     completion.Footer ? <completion.Footer ctx={completionCtx} /> : undefined
@@ -971,6 +994,7 @@ function ReviewStage({
     completing,
     stepExecutionAvailable,
     completionFooter,
+    fpiHold,
 }: {
     substeps: Substep[];
     responsesBySubstepId: Record<string, OperatorResponses>;
@@ -982,7 +1006,16 @@ function ReviewStage({
     /** Subject-specific completion UI (receiving acceptance, etc.). When set,
      *  it replaces the generic Complete button — see completion-adapters. */
     completionFooter?: ReactNode;
+    /** Non-null when this step's FPI is still pending, which blocks advancing
+     *  any part at the step. Turns Complete into the buy-off. */
+    fpiHold?: {
+        fpiId: string;
+        canSignOff: boolean;
+        partLabel: string | null;
+        firstPieceReady: boolean;
+    } | null;
 }) {
+    const [signOffOpen, setSignOffOpen] = useState(false);
     return (
         <div className="space-y-4">
             <div>
@@ -1096,29 +1129,78 @@ function ReviewStage({
                     );
                 })}
             </div>
-            {completionFooter ? (
+            {/* FPI hold. Not operator-fixable, unlike missing fields — so the
+                affordance is "get QA", not "scroll to the problem". The button
+                stays enabled and opens the buy-off (house style: never silently
+                disable, operators stare at a dead button and don't know why). */}
+            {fpiHold && (
+                <div className="rounded-lg border-2 border-amber-500/50 bg-amber-500/10 p-4">
+                    <div className="flex items-start gap-3">
+                        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                        <div className="space-y-1">
+                            <p className="font-medium">
+                                Held — First Piece Inspection buy-off required
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                {fpiHold.firstPieceReady
+                                    ? `The first piece${fpiHold.partLabel ? ` (${fpiHold.partLabel})` : ""} is inspected and waiting on QA. No part moves past this step until it's bought off.`
+                                    : `The first piece${fpiHold.partLabel ? ` (${fpiHold.partLabel})` : ""} must finish its captures, then QA buys it off. No part moves past this step until then.`}
+                            </p>
+                            {!fpiHold.canSignOff && (
+                                <p className="text-sm text-muted-foreground">
+                                    A QA inspector can sign here at this station —
+                                    you stay logged in.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {completionFooter && !fpiHold ? (
                 completionFooter
             ) : (
                 <div className="flex items-center justify-end gap-3 border-t pt-4">
-                    {!stepExecutionAvailable && (
+                    {!stepExecutionAvailable && !fpiHold && (
                         <span className="text-xs text-amber-600">
                             {"Add `?execution=<id>` to the URL to enable submit."}
                         </span>
                     )}
-                    <Button
-                        size="lg"
-                        className="h-14 min-w-56 text-base font-semibold"
-                        disabled={!stepExecutionAvailable || completing}
-                        onClick={onCompleteStep}
-                    >
-                        {completing ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Check className="mr-2 h-5 w-5" />
-                        )}
-                        Complete step
-                    </Button>
+                    {fpiHold ? (
+                        <Button
+                            size="lg"
+                            className="h-14 min-w-56 text-base font-semibold"
+                            onClick={() => setSignOffOpen(true)}
+                        >
+                            <ShieldAlert className="mr-2 h-5 w-5" />
+                            {fpiHold.canSignOff ? "Sign off first piece" : "Get QA sign-off"}
+                        </Button>
+                    ) : (
+                        <Button
+                            size="lg"
+                            className="h-14 min-w-56 text-base font-semibold"
+                            disabled={!stepExecutionAvailable || completing}
+                            onClick={onCompleteStep}
+                        >
+                            {completing ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Check className="mr-2 h-5 w-5" />
+                            )}
+                            Complete step
+                        </Button>
+                    )}
                 </div>
+            )}
+
+            {fpiHold && (
+                <FpiSignOffDialog
+                    open={signOffOpen}
+                    onOpenChange={setSignOffOpen}
+                    fpiId={fpiHold.fpiId}
+                    canSignOff={fpiHold.canSignOff}
+                    partLabel={fpiHold.partLabel}
+                />
             )}
         </div>
     );
