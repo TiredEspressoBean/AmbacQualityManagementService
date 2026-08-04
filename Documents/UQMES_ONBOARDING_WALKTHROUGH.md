@@ -67,10 +67,11 @@ Log in as `sarah.qa@demo.ambac.com`. You land on `/` — Sarah's QA home.
 button that jumps to `/production/incoming`.
 
 **Scan box.** A single input labeled *"Scan or type a work order /
-part number…"* with a `Go` button. Scans always resolve to the parent
-work order and drop you on WO Detail (`/workorder/$id`) — the shared
-work surface where you can pick up any part on that WO. Part scans
-go to the part's parent WO, not to the part detail.
+part number…"* with a `Go` button (disabled until you type or scan
+something). Scans always resolve to the parent work order and drop
+you on WO Detail (`/workorder/$id`) — the shared work surface where
+you can pick up any part on that WO. Part scans go to the part's
+parent WO, not to the part detail.
 
 **FPI banner block (red border).** Every pending First Piece Inspection
 in your tenant surfaces here as a row: step name, work order, part
@@ -87,23 +88,36 @@ For this walk the FPI banner shows two rows: the pre-existing
 `WO-QA-INSPECT-01 · INJ-QA-INSPECT-001` row. The 001 row is Section 3.
 
 **Inbox with chips.** A flat list of everything QA owes a decision on,
-grouped by filter chips: *All · Receiving · OSP returns · In-process*.
-An *Urgent* chip highlights anything overdue past its own age
-threshold. Rows are clickable — clicking navigates you to the
+grouped by four filter chips: *All · Receiving · OSP returns ·
+In-process*. Each chip carries its row count and the age of its
+oldest item (`Receiving 5 · 3d`), with a tooltip spelling that out
+(*"oldest: 3d"*). Rows are clickable — clicking navigates you to the
 appropriate work surface for that row's type.
+
+**"Urgent" is a badge, not a chip.** A red `Urgent 1` pill sits after
+the four chips, counting anything past its own age threshold. It is
+plain text, not a button — you cannot filter by it, so don't go
+hunting for the click target.
 
 For this walk the Inbox shows (among others):
 - Receiving lots from Great Lakes Diesel and Bargain Bolts (Section 2).
-- OSP-return shipments (some existing, plus the new `OSP-QA-INSPECT-01`
-  from Apex Plating for Section 8).
+- OSP-return shipments from Apex Plating. Yours for Section 8 shows as
+  `OSP-2026-000003` — the UI displays the sequential shipment number,
+  not the seeder's `reference` (see 8a).
 - An in-process row for `WO-QA-INSPECT-01 · Nozzle Inspection · 1 pcs`
   — that's `INJ-QA-INSPECT-002`, the sampled part for Section 4.
 
 **My Quality Actions.** Three tiles counting your assigned items:
 *Approvals* (approvals waiting for your signature), *CAPA tasks*
 (Containment / Corrective / Preventive actions assigned to you), and
-*My dispositions* (Quarantine dispositions assigned to you). Each
-tile is a link to the surface where you work those items.
+*My dispositions* (Quarantine dispositions assigned to you). Where
+each one actually takes you is worth knowing, because two of the
+three share a destination:
+- *Approvals* → `/inbox`
+- *CAPA tasks* → `/inbox`
+- *My dispositions* → `/production/dispositions`, **unfiltered** —
+  the tile counts your 3, but the page it opens lists every
+  quarantined part in the tenant (see 6a).
 
 The *My dispositions* tile currently reads `3`. The tile filters
 out CLOSED rows client-side (`useMyDispositions.ts:32`), so it only
@@ -144,9 +158,24 @@ Either click the **Receiving** chip on your home Inbox (it reads
 `Receiving 5 · 4d` — 5 rows, oldest 4 days), or navigate to
 `/production/receiving-inspection` directly from the URL bar.
 
-**You land on:** `/production/receiving-inspection` — the *Receiving
-Inspection Queue*, a table with columns *Lot # · Material · Supplier
-· Qty · Status · Actions*. Every row has an **Inspect** button.
+**Two queues, and they are not the same page.** Worth getting straight
+before you start, because the home page and this section send you to
+different ones:
+- `/production/receiving-inspection` — the *Receiving Inspection
+  Queue*. **Purchased lots only**; 5 rows on a fresh seed.
+- `/production/incoming` — *Incoming Inspection*, the unified queue:
+  purchased lots **and** parts back from a subcontract vendor, 7 rows,
+  with a *Source* column and *All sources* / *All statuses* filters.
+  This is where the home page's **Incoming queue** button goes, and
+  where Section 8 picks up the OSP return.
+
+Both open the same inspection runtime; the unified one is just a wider
+net. This section uses the receiving-only queue.
+
+**You land on:** `/production/receiving-inspection` — a table with
+columns *Lot # · Material · Supplier · Qty · Status · Actions*. Every
+row has an **Inspect** button, and the header carries **Import** /
+**Export** plus a *Search receiving inspection queue…* box.
 
 Rows include several `RCV-INJ-000#` lots from Great Lakes Diesel in
 `AWAITING_INSPECTION`, and one `RCV-INJ-HOLD` from Bargain Bolts in
@@ -191,8 +220,17 @@ Click **Run Inspection (DWI)**.
 - **Defects found** — "No defects found." with "Add defect" button.
   Only used on FAIL.
 
-The footer bar tells you what's still missing and disables **Confirm
-& next** / **Confirm & review** until you're done.
+Top of the runtime carries stepper navigation — **Jump to substep 1:
+&lt;name&gt;** for each substep plus **Jump to review**. This lot's DWI has
+one substep, so you'll see one of each.
+
+**The footer does not block you.** It names what's outstanding —
+*"3 required fields missing — Outer Diameter, Incoming inspection
+result, …"* — but **Confirm & review stays enabled**. Clicking it with
+fields missing scrolls you to the first one rather than submitting
+(its tooltip reads *"Tap to scroll to: …"*). Only **Back** is disabled,
+because this is the first substep. So an unfilled form doesn't produce
+a dead button; it produces a jump.
 
 ### 2d — Pass the lot
 
@@ -466,11 +504,17 @@ supplier, etc. That decision goes on the disposition record.
 ### 6a — Open the disposition
 
 Two paths, either works:
-- From **My dispositions** tile on your home → `/production/dispositions`
-  filtered to your dispositions → click the OPEN row for
-  INJ-QA-INSPECT-003.
+- From **My dispositions** tile on your home → `/production/dispositions`.
+  Be ready for what this opens: the page is titled **Quarantined
+  Parts** and it is a *parts* list, not a disposition list — ERP ID ·
+  Status · Step · Part Type · Process · Created At · Details ·
+  Actions, with *Archived / Requires Sampling / Needs QA / Exclude
+  Terminal* filters. It is **not** filtered to you despite the tile's
+  count, so search for `INJ-QA-INSPECT-003`. Each row's action is
+  either **Disposition** (no disposition yet — creates one) or
+  **Edit Disposition** (one exists). You want Edit Disposition.
 - From the part detail page → **Dispositions** widget → edit icon on
-  the OPEN row.
+  the OPEN row. Fewer rows to wade through; prefer this one.
 
 **You land on:** `/dispositions/edit/$id` — the disposition editor.
 
