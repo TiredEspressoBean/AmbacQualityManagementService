@@ -747,11 +747,19 @@ you'll actually see:
 
 ### 9b — Complete an assigned task (CAPA-2024-004)
 
-**Task completion lives in the Inbox, not on the CAPA page.** The
-CAPA detail **Tasks** tab is read-only apart from **Add Task** — it
-shows each task's number, status, assignee, due date and completion
-mode, but has no per-row action. The only place `useCompleteCapaTask`
-is wired is `/inbox`.
+**Two places can complete a task**, and they now behave identically:
+- the **Inbox**, which lists only *your* outstanding tasks — the
+  fastest route when you're working your own queue;
+- the CAPA detail **Tasks** tab, which lists *every* task on the
+  CAPA grouped by type, each with a checkbox that opens the same
+  completion dialog. Use this when you're looking at the CAPA as a
+  whole.
+
+Either way completion goes through the `complete-task` endpoint and
+the `complete_capa_task` service, so `completion_mode` and any
+signature requirement apply the same from both.
+
+Walking it from the Inbox:
 
 1. Sidebar → **Inbox** (or the **CAPA tasks** counter on the home
    page). Header reads *"1 overdue, 8 total items"*.
@@ -787,11 +795,18 @@ Sarah's tasks are multi-person:
 - *"Implement tightened sampling for nozzles"* — `completion_mode`
   = `ANY_ASSIGNEE` (Sarah OR Jennifer, whichever gets there first).
 
-The `complete_capa_task` service enforces the mode: an
-ALL_ASSIGNEES task stays IN_PROGRESS until every
-`CapaTaskAssignee` row is COMPLETED; ANY_ASSIGNEE closes on the
-first. The Tasks tab shows the mode per row (*Single Owner* on the
-ordinary ones).
+The `complete_capa_task` service enforces the mode: completing an
+ALL_ASSIGNEES task records *your* `CapaTaskAssignee` row as
+COMPLETED but leaves the task itself open until every assignee has
+done the same; ANY_ASSIGNEE closes on the first. The Tasks tab shows
+the mode per row (*Single Owner* on the ordinary ones), and the
+completion dialog says so up front for an ALL_ASSIGNEES task rather
+than letting you discover it afterwards.
+
+So on T005 *"Update incoming inspection procedure"*: Sarah
+completing it leaves the row **Not Started** with her assignee
+signoff recorded and Maria's still outstanding. That's correct, not
+a failed click.
 
 ### 9c — Record verification data (CAPA-2024-002)
 

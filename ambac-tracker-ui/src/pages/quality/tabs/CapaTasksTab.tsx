@@ -15,6 +15,12 @@ import { Plus, User, Calendar, AlertTriangle, Pencil, Trash2, CheckCircle, Info 
 import { useCreateCapaTask } from "@/hooks/useCreateCapaTask"
 import { useUpdateCapaTask } from "@/hooks/useUpdateCapaTask"
 import { useDeleteCapaTask } from "@/hooks/useDeleteCapaTask"
+import { useCompleteCapaTask } from "@/hooks/useCompleteCapaTask"
+import {
+    SignatureVerification,
+    validateSignatureVerification,
+    type SignatureVerificationData,
+} from "@/components/approval/SignatureVerification"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -58,10 +64,17 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
     const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
     const [completingTask, setCompletingTask] = useState<any>(null)
     const [completionNotes, setCompletionNotes] = useState("")
+    const [signatureVerification, setSignatureVerification] = useState<SignatureVerificationData>({
+        signature_data: "",
+        password: "",
+        confirmed: false,
+    })
+    const [completeError, setCompleteError] = useState<string | null>(null)
 
     const createTaskMutation = useCreateCapaTask()
     const updateTaskMutation = useUpdateCapaTask()
     const deleteTaskMutation = useDeleteCapaTask()
+    const completeTaskMutation = useCompleteCapaTask()
     const queryClient = useQueryClient()
 
     if (!capa) {
@@ -133,27 +146,62 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
     const handleOpenCompleteDialog = (task: any) => {
         setCompletingTask(task)
         setCompletionNotes("")
+        setSignatureVerification({ signature_data: "", password: "", confirmed: false })
+        setCompleteError(null)
         setCompleteDialogOpen(true)
     }
 
+    /** Completion goes through the `complete-task` endpoint, NOT a PATCH.
+     *
+     *  This used to PATCH `status: "COMPLETED"` straight onto the task, which
+     *  bypassed `services/qms/capa.complete_capa_task` and with it every rule
+     *  that makes completion mean something:
+     *    - `completion_mode` — an ALL_ASSIGNEES task was marked complete by
+     *      one person without the other assignee ever signing off, and an
+     *      ANY_ASSIGNEE task never recorded *who* completed it via
+     *      CapaTaskAssignee;
+     *    - `requires_signature` — the e-signature and its password identity
+     *      check were skipped entirely.
+     *  The Inbox always used the service endpoint, so the same task completed
+     *  from two places behaved differently. */
     const handleCompleteTask = async () => {
         if (!completingTask) return
+        setCompleteError(null)
+
+        if (completingTask.requires_signature) {
+            const validationError = validateSignatureVerification(signatureVerification)
+            if (validationError) {
+                setCompleteError(validationError)
+                return
+            }
+        }
+
         try {
-            await updateTaskMutation.mutateAsync({
+            await completeTaskMutation.mutateAsync({
                 id: completingTask.id,
                 data: {
-                    capa: capa?.id,
-                    task_type: completingTask.task_type,
-                    description: completingTask.description,
-                    status: "COMPLETED",
                     completion_notes: completionNotes,
-                }
+                    ...(completingTask.requires_signature
+                        ? {
+                            signature_data: signatureVerification.signature_data,
+                            password: signatureVerification.password,
+                        }
+                        : {}),
+                } as never,
             })
             queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
-            toast.success("Task marked as completed")
+            queryClient.invalidateQueries({ queryKey: ["capa-my-tasks"] })
+            toast.success("Task completed")
             setCompleteDialogOpen(false)
-        } catch (error) {
-            toast.error("Failed to complete task")
+        } catch (error: any) {
+            // Surface the service's own message — completion_mode and
+            // signature failures both come back as a 400 with a reason.
+            const message =
+                error?.response?.data?.error ||
+                error?.response?.data?.detail ||
+                "Failed to complete task"
+            setCompleteError(message)
+            toast.error(message)
             console.error(error)
         }
     }
@@ -357,7 +405,24 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                 <div className="space-y-4 py-4">
                     <div className="p-3 bg-muted/50 rounded-lg">
                         <p className="font-medium">{completingTask?.description}</p>
+                        <p className="text-sm text-muted-foreground font-mono">
+                            {completingTask?.task_number}
+                        </p>
                     </div>
+
+                    {/* Multi-assignee tasks don't complete on one signoff — say so
+                        before they click, rather than letting the 400 explain it. */}
+                    {completingTask?.completion_mode === "ALL_ASSIGNEES" && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg border text-sm">
+                            <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                            <p>
+                                This task needs <b>every</b> assignee to complete it.
+                                Your signoff is recorded now; the task stays open
+                                until the others have done the same.
+                            </p>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label>Completion Notes (optional)</Label>
                         <Textarea
@@ -367,6 +432,20 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                             rows={3}
                         />
                     </div>
+
+                    {completingTask?.requires_signature && (
+                        <div className="space-y-2 border-t pt-4">
+                            <Label>Signature required</Label>
+                            <SignatureVerification
+                                onChange={setSignatureVerification}
+                                error={completeError ?? undefined}
+                            />
+                        </div>
+                    )}
+
+                    {completeError && !completingTask?.requires_signature && (
+                        <p className="text-sm text-destructive">{completeError}</p>
+                    )}
                 </div>
 
                 <DialogFooter>
@@ -375,10 +454,10 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                     </Button>
                     <Button
                         onClick={handleCompleteTask}
-                        disabled={updateTaskMutation.isPending}
+                        disabled={completeTaskMutation.isPending}
                     >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        {updateTaskMutation.isPending ? "Completing..." : "Mark Complete"}
+                        {completeTaskMutation.isPending ? "Completing..." : "Mark Complete"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
