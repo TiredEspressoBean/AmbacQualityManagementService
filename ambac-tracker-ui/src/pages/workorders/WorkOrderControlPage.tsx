@@ -98,6 +98,7 @@ import { useSplitPartFromLot } from "@/hooks/parts";
 import type { PartSplitReason } from "@/hooks/parts";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { PendingDecisionsPanel } from "@/components/dwi/PendingDecisionsPanel";
+import { PendingFpiPanel } from "@/components/workorders/PendingFpiPanel";
 import { OutsideProcessPanel } from "@/components/workorder/OutsideProcessPanel";
 import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
 import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
@@ -1338,6 +1339,11 @@ export function WorkOrderControlPage() {
                 reconciliation panel when LAST_N_PARTS / EXACT_COUNT
                 decisions are outstanding (Flow #11). */}
             {workOrderId && <PendingDecisionsPanel workOrderId={workOrderId} />}
+
+            {/* PENDING first-piece inspections for this WO — QA's own route into
+                a buy-off, without borrowing an operator's work session. Renders
+                nothing when there are none. */}
+            {workOrderId && <PendingFpiPanel workOrderId={workOrderId} />}
 
             {/* Outside-processing (subcontract) send-out + receive-back, per OSP
                 step in this WO's process. Renders nothing when there are none. */}
