@@ -1366,3 +1366,75 @@ history.
   parts through the shop. Print it from WO Detail's Traveler button.
 - **WO** — Work Order. A single production run of a specific
   quantity of one part type for one Order.
+
+---
+
+## Appendix — verification status (2026-08-04)
+
+Maintenance note for whoever picks this document up next. It records
+*how much of this doc has been checked against the running app*, so the
+next pass doesn't re-verify what's done or trust what isn't.
+
+**Method matters, and it's the reason this appendix exists.** Sections
+were originally walked by enumerating on-screen **text**, which is blind
+to icon-only controls — a Radix checkbox renders as a
+`<button role="checkbox">` with no text content, so a text-based sweep
+reported "no completion control" on a tab that had three of them.
+Re-walks enumerate by **ARIA role** instead, reporting both the
+accessible name *and* the visible text, because the two can disagree: a
+filter chip's tooltip masked its own visible label. The MCP
+accessibility snapshot is more reliable than a hand-rolled DOM script —
+it resolves `aria-labelledby` and wrapping `<label>` elements, which a
+naive resolver misses.
+
+**Failures cluster in claims about absence** — "there is no control
+here", "the button is disabled until you finish", "filtered to your
+dispositions", "an Urgent chip". Absence is exactly what a shallow probe
+gets wrong, and it's what documentation states most confidently. Treat
+every absence claim in this document as unverified until it has been
+role-walked.
+
+| Section | Status |
+|---|---|
+| 1 Home · 2 Receiving | role-verified |
+| 3 FPI buy-off | role-walked; blocker found and fixed (`a7ed2b7`) |
+| 4 Sampled part · 5 Failed inspection | **not role-walked** |
+| 6a Open disposition | role-verified |
+| 6b–6d Disposition decision/close | **not role-walked** |
+| 7 Re-inspection | **not role-walked** |
+| 8 OSP · 9 CAPA · 10 Calibration · 11 Notifications | role-verified |
+| 12 Audit trail | not walked (descriptive only) |
+
+**Section 3 was impossible to complete as written.** The seed set
+`StepExecution.assigned_to` to the operator, so QA's Start Work → Start
+returned `409 assigned_to_other` and the runtime — and therefore the
+buy-off — could never be reached. Root cause is a category mismatch:
+`FPIRecord` is keyed on `(work_order, step, part_type, designated_part)`,
+a **step-level** gate, but its only UI lives inside a **part-level
+operator work session**, so QA had to take over the operator's session
+to sign a QA gate. The 409, the `workOrder`-query-param dependency, and
+the seed's `training_authorization` bypass are all symptoms of that one
+mismatch. Being addressed by moving the buy-off to a second-person
+co-signature plus a QA-native pending-FPI panel.
+
+**Known-unverified specifics**
+- 9c stage 2 — recording the effectiveness *outcome* after the plan is
+  created — was never observed; the form would not submit under
+  automation.
+- 9e describes gate-raised CAPAs, but no seeded ruleset configures
+  `RAISE_CAPA_SCAR`, so that path has never run in the app. That is why
+  four bugs accumulated in it unnoticed.
+- The FPI exhibit reads *"0 of 2 confirmed / 3 required fields missing"*
+  because the seed writes `SubstepCompletion` signature rows but no
+  `SubstepResponse` / `StepExecutionMeasurement` values. Mike's
+  signatures are real; they just have no captured values behind them.
+
+**Open items, not blocking the walk**
+- No pattern-based CAPA triggering — repeat NCRs, a trending supplier,
+  the same defect three times in a month all raise nothing. Only a
+  configured quality gate does.
+- RLS policies are registered in `setup_rls.py` but the command has not
+  been run (`ENABLE_RLS` defaults false).
+- Both tenant-isolation guards (the scoping lint and the RLS coverage
+  test) are *detective*, not preventive — they fail after a gap ships.
+  The same models were missed by both, so that has already happened.
