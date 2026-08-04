@@ -718,14 +718,16 @@ On the home page, the **My quality actions** panel holds three
 counters: **Approvals**, **CAPA tasks**, and **My dispositions**.
 The **CAPA tasks** count (backed by `useMyCapaTasks`) covers every
 task Sarah owns — as the primary `assigned_to`, or as a row on
-`CapaTaskAssignee` for a multi-person task. On a fresh seed it
-reads **6**.
+`CapaTaskAssignee` for a multi-person task. Expect five or six on a
+fresh seed; the exact number shifts because due dates are seeded
+relative to today, so don't treat it as a fixed expectation.
 
 Sidebar → **Quality → CAPAs** (`/quality/capas`) opens the full
 list: four stat cards (Active / Pending Verification / Overdue /
-Closed) above a table. The toolbar has **Sort by…**, **New CAPAs**
-and a **Needs My Approval** toggle — there is no "assigned to me"
-filter, so read the *Assigned To* column.
+Closed) above a table. Controls are a **Search capas…** box, a
+**Sort by…** dropdown, **New CAPAs**, a **Needs My Approval**
+toggle, and a **View CAPA** button on each row. There is no
+"assigned to me" filter, so read the *Assigned To* column.
 
 **The Status column is computed, not stored.** `CAPASerializer`
 returns `CAPA.computed_status`, which derives the status from the
@@ -751,9 +753,11 @@ you'll actually see:
 - the **Inbox**, which lists only *your* outstanding tasks — the
   fastest route when you're working your own queue;
 - the CAPA detail **Tasks** tab, which lists *every* task on the
-  CAPA grouped by type, each with a checkbox that opens the same
-  completion dialog. Use this when you're looking at the CAPA as a
-  whole.
+  CAPA grouped by type (Containment / Corrective / Preventive).
+  Each row carries three controls, all icon-only and easy to miss:
+  a **checkbox** on the left that opens the completion dialog, and
+  a **pencil** (edit) and **trash** (delete) at the right. Use this
+  when you're looking at the CAPA as a whole.
 
 Either way completion goes through the `complete-task` endpoint and
 the `complete_capa_task` service, so `completion_mode` and any
@@ -765,7 +769,10 @@ Walking it from the Inbox:
    page). Header reads *"1 overdue, 8 total items"*.
 2. Tabs across the top: **All**, **Tasks**, **Approvals**,
    **Dispositions**. Cards are grouped by urgency — **Overdue**,
-   **This Week**, **Upcoming**.
+   **This Week**, **Upcoming** — and those headings are collapsible
+   buttons, so not every card is on screen at once. If a task you
+   expect is missing, expand the other groups before concluding it
+   isn't there.
 3. Find *"Conduct contamination analysis"* — badged *Corrective
    Action*, referencing CAPA-2024-004, *assigned to Sarah Chen*,
    Not Started, *Due in 6 days*. Each card offers **View** and
@@ -856,6 +863,32 @@ Jennifer reviews the recorded data and signs off (or reopens it).
 IN_PROGRESS, marks the RCA `for review`, and auto-creates a
 30-day follow-up task. The escalation loop is built in — a
 correction that didn't stick doesn't quietly close.
+
+### 9c-bis — The other four tabs
+
+Sections 9b and 9c cover Tasks and Verification. The rest, briefly,
+so nothing on the page is a surprise:
+
+- **Root Cause** — on a CAPA with no RCA yet this reads *"No root
+  cause analysis has been performed yet"* with a **Start RCA**
+  button. Worth knowing that an RCA is not optional decoration: the
+  computed status can't reach Pending Verification without one (see
+  9a), so a CAPA whose tasks are all done but which still shows
+  In Progress is usually missing its RCA.
+- **Approval** — for a MAJOR/CRITICAL CAPA this shows an
+  *"Awaiting Approval — This CAPA is pending management approval.
+  Work cannot begin until approved."* banner plus an Approval
+  History list. Read-only for Sarah; approving is a QA Manager
+  action. A MINOR CAPA shows *Not Required* instead.
+- **Documents** — **Attach Document**: a file picker, a
+  **Classification** dropdown (PUBLIC / INTERNAL / CONFIDENTIAL /
+  RESTRICTED / SECRET, defaulting to INTERNAL) and **Upload**. This
+  is where inspection evidence lives if you didn't attach it from
+  the completion dialog.
+- **History** — *"Timeline of changes and updates to this CAPA."*
+  On the seeded CAPAs this reads *"No audit history."* for the same
+  reason the seeded parts do (see Section 12c): the seeder writes
+  rows directly rather than going through the runtime.
 
 ### 9d — Initiate a CAPA from a failed QR
 
@@ -988,6 +1021,18 @@ QA view.
 
 Two reports available from the header: **Calibration Due** and
 **Checking Aids**.
+
+**The records list** (`/quality/calibrations/records`) is the
+browse view behind that first Quick Action. Columns: *Equipment,
+Result, Status, Calibration Date, Due Date, Type, Certificate #,
+Actions*. It has a **Search calibration records…** box, a
+**Sort by…** dropdown, **New Calibration Records**, and per-row
+**Edit** / **Delete**. On a fresh seed there are five rows — the
+same five gauges as the dashboard's Equipment card, with
+*Torque Wrench TW-25* showing Result *Pass* but Status **Overdue**.
+That pairing is worth pausing on: the gauge passed its *last*
+calibration, it's simply due for the next one. Result and Status
+answer different questions.
 
 ### 10c — Recording a new calibration
 
