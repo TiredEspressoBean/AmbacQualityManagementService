@@ -304,10 +304,22 @@ class DemoQaWalkSeeder(BaseSeeder):
         # blocker is skipped. Real starts go through authorize_start which
         # checks training records; for a seeded exhibit we stipulate the
         # operator is qualified without needing a full training seed.
+        # NOTE: `assigned_to` is deliberately left unset. Setting it to the
+        # operator made the documented walk impossible: `authorize_start`
+        # raises NeedsReassignment when `assigned_to` is another user, so
+        # WO Detail -> Start Work -> check the first piece -> Start returned
+        # 409 "Assigned to Mike Rodriguez. A supervisor must reassign it."
+        # and the walker could never open the runtime to buy off the FPI.
+        #
+        # Segregation of duties does not depend on this field — it is checked
+        # against who signed the SubstepCompletion rows below (see
+        # services/qms/fpi._reject_self_signoff). Mike still signs the
+        # substeps, so a self-signoff by Mike is still refused; Sarah can now
+        # claim the execution and reach the buy-off.
         se, _ = StepExecution.objects.update_or_create(
             tenant=self.tenant, part=part, step=step,
             defaults={
-                'assigned_to': operator, 'visit_number': 1,
+                'visit_number': 1,
                 'status': 'IN_PROGRESS',
                 'training_authorization': {
                     'authorized': True, 'missing': [], 'verified': [],

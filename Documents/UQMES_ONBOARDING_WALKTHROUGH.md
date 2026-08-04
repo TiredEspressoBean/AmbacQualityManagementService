@@ -287,10 +287,28 @@ the operator sees you're on the way. The row updates to read
    (top-right).
 3. In the dialog, check the `INJ-QA-INSPECT-001` row under Nozzle
    Inspection and click **Start**.
-4. The runtime opens with the operator (Mike) already recorded on
-   the step-execution and every inspection substep already **signed
-   by Mike** — the seed pre-populates this so the walker (Sarah,
-   playing QA) can go straight to the buy-off.
+4. The runtime opens. Every inspection substep already carries a
+   `SubstepCompletion` **signed by Mike** — the seed pre-populates
+   those so the walker (Sarah, playing QA) can go straight to the
+   buy-off.
+
+**What the runtime will look like, so it doesn't alarm you.** The
+header reads *"0 of 2 confirmed"* and the footer *"3 required fields
+missing"*, and the measurement fields are empty. That is expected:
+the seed writes the `SubstepCompletion` signature rows but **not**
+the underlying `SubstepResponse` / `StepExecutionMeasurement` values,
+and the runtime recomputes "confirmed" from the responses. Mike's
+signatures are real in the database; they just have no captured
+values behind them. You do not need to fill the form in to buy off
+the FPI — the banner is independent of it.
+
+**If you arrive by pasting a runtime URL, include `workOrder`.** The
+FPI banner is rendered only when the URL carries a `workOrder` query
+param (`OperatorSubstepRuntimePage` gates it on `search.workOrder`).
+Reaching the runtime any other way — a bare
+`/operator/steps/$stepId/substeps?execution=…` — shows the DWI with
+no FPI banner at all and no error explaining why. Going through
+**Start Work** sets the param for you.
 
 **Segregation-of-duties (SOD) note:** the person who signed the
 first-piece substeps cannot also sign off the FPI. That's why the
