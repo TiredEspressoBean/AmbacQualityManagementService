@@ -235,6 +235,36 @@ class TenantModelPermissions(TenantPermission):
         if required and not request.user.has_tenant_perms(required):
             return False
 
+        # Co-signature gate (`view.cosign_actions = {action: permission}`).
+        #
+        # Some acts admit a *second person*: the user at the keyboard may not
+        # hold the permission, but an authorized colleague standing next to
+        # them can authenticate inline to satisfy it — the standard
+        # second-person pattern for a shop-floor buy-off. See
+        # `services.core.second_person`.
+        #
+        # This is a cheap PRE-CHECK, not the authorization itself. It admits
+        # the request when either the caller holds the permission or the caller
+        # supplied co-signature credentials; the view body must then verify
+        # them. Deliberately not verified here, because the body needs the
+        # cosigner's identity for attribution, and because verifying here would
+        # collapse throttled (429), wrong-person and not-permitted into one
+        # indistinguishable PermissionDenied.
+        #
+        # So supplying credentials only buys the right to be *checked*. The
+        # view refuses a caller who sends garbage — meaning both layers refuse
+        # an unauthorized caller, by design.
+        cosign_actions = getattr(view, 'cosign_actions', None) or {}
+        cosign_perm = cosign_actions.get(action)
+        if cosign_perm and not request.user.has_tenant_perm(cosign_perm):
+            data = getattr(request, 'data', None) or {}
+            claims_cosigner = bool(
+                (data.get('cosign_email') or '').strip()
+                and (data.get('cosign_password') or '')
+            )
+            if not claims_cosigner:
+                return False
+
         return True
 
 

@@ -8154,6 +8154,14 @@ paths:
                 notes:
                   type: string
                   description: Required failure notes
+                cosign_email:
+                  type: string
+                  description: Email of an authorized QA person co-signing at this
+                    station (when the caller lacks sign_off_fpi)
+                cosign_password:
+                  type: string
+                  description: That person's password. Verified inline; they are never
+                    logged in, and the verdict is attributed to them.
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -8188,6 +8196,14 @@ paths:
                 notes:
                   type: string
                   description: Optional inspection notes
+                cosign_email:
+                  type: string
+                  description: Email of an authorized QA person co-signing at this
+                    station (when the caller lacks sign_off_fpi)
+                cosign_password:
+                  type: string
+                  description: That person's password. Verified inline; they are never
+                    logged in, and the verdict is attributed to them.
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -8222,6 +8238,14 @@ paths:
                 reason:
                   type: string
                   description: Required waive reason (min 10 chars)
+                cosign_email:
+                  type: string
+                  description: Email of an authorized QA person co-signing at this
+                    station (when the caller lacks sign_off_fpi)
+                cosign_password:
+                  type: string
+                  description: That person's password. Verified inline; they are never
+                    logged in, and the verdict is attributed to them.
       security:
       - cookieAuth: []
       - tokenAuth: []

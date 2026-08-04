@@ -33960,6 +33960,10 @@ export interface operations {
                 "application/json": {
                     /** @description Required failure notes */
                     notes?: string;
+                    /** @description Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi) */
+                    cosign_email?: string;
+                    /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
+                    cosign_password?: string;
                 };
             };
         };
@@ -33991,6 +33995,10 @@ export interface operations {
                 "application/json": {
                     /** @description Optional inspection notes */
                     notes?: string;
+                    /** @description Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi) */
+                    cosign_email?: string;
+                    /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
+                    cosign_password?: string;
                 };
             };
         };
@@ -34022,6 +34030,10 @@ export interface operations {
                 "application/json": {
                     /** @description Required waive reason (min 10 chars) */
                     reason?: string;
+                    /** @description Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi) */
+                    cosign_email?: string;
+                    /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
+                    cosign_password?: string;
                 };
             };
         };

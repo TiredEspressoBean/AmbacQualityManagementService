@@ -38,6 +38,7 @@ from Tracker.serializers.qms import (
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 from .core import ExcelExportMixin, ListMetadataMixin
 from .base import TenantScopedMixin
+from .mixins import SecondPersonMixin
 
 
 # ===== QUALITY VIEWSETS =====
@@ -1299,7 +1300,8 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     create=extend_schema(description="Create a new FPI record"),
     retrieve=extend_schema(description="Retrieve a specific FPI record"),
 )
-class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
+class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
+                       viewsets.ModelViewSet):
     """
     ViewSet for managing First Piece Inspection (FPI) records.
 
@@ -1315,20 +1317,104 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     filterset_fields = ['work_order', 'step', 'status', 'part_type', 'equipment', 'shift_date']
     ordering_fields = ['created_at', 'shift_date', 'inspected_at']
     ordering = ['-created_at']
-    # Buy-off is an independent authority act: passing / failing / waiving an FPI
-    # requires sign_off_fpi (QA / lead / manager), layered on top of the CRUD
-    # gate. Operators can still get-or-create (initiate) the record.
+    # Recording an FPI verdict does not *create* an FPI — the record already
+    # exists, get_or_create made it. Demanding `add_fpirecord` (POST -> add) was
+    # therefore wrong on its own terms, and it was also a second reason an
+    # operator co-signing at their own station got a 403. Same reasoning as
+    # ApprovalRequestViewSet.submit_response; see the crud_exempt_actions note
+    # in Tracker/permissions.py.
+    crud_exempt_actions = {
+        'pass_inspection', 'fail_inspection', 'waive', 'acknowledge',
+    }
+
+    # Buy-off is an independent authority act requiring `sign_off_fpi`
+    # (QA / lead / manager). Operators can still get-or-create (initiate).
+    #
+    # The three verdict actions live in `cosign_actions`, not
+    # `action_permissions`, because they accept a **second person**: the
+    # operator at the station may POST provided an authorized QA person
+    # supplies `cosign_email` / `cosign_password`. `permissions.py` admits the
+    # request when either the caller or a claimed cosigner could hold the perm;
+    # `_resolve_signer` below does the actual verification and decides who the
+    # verdict is attributed to.
+    cosign_actions = {
+        'pass_inspection': 'sign_off_fpi',
+        'fail_inspection': 'sign_off_fpi',
+        'waive': 'sign_off_fpi',
+    }
+
     action_permissions = {
-        'pass_inspection': ['sign_off_fpi'],
-        'fail_inspection': ['sign_off_fpi'],
-        'waive': ['sign_off_fpi'],
-        # Acknowledging ("I'm on it") is a QA act like buy-off, same gate.
+        # Acknowledging ("I'm on it") is a QA act, but it records no verdict and
+        # attests to nothing — no co-signature path, so it stays a plain gate.
         'acknowledge': ['sign_off_fpi'],
     }
 
     def get_serializer_class(self):
         from Tracker.serializers.qms import FPIRecordSerializer
         return FPIRecordSerializer
+
+    def _resolve_signer(self, request):
+        """Who is attesting to this verdict — the caller, or a cosigner?
+
+        Returns ``(signer, error_response)``. Exactly one is non-None.
+
+        Two routes in:
+          * the caller holds `sign_off_fpi` — QA signing from their own session,
+            e.g. the pending-FPI panel on WO Control. No credentials needed.
+          * the caller does not, but an authorized colleague authenticates
+            inline with `cosign_email` / `cosign_password` — QA signing at the
+            operator's station without displacing their session.
+
+        The returned signer is what gets passed to the service, which makes
+        attribution correct for free: `services.qms.fpi` takes the acting user
+        explicitly, so `inspected_by`, the `QaApproval.qa_staff`, and the
+        segregation-of-duties check all follow the *cosigner*, not whoever
+        happened to be logged in.
+        """
+        if request.user.has_tenant_perm('sign_off_fpi'):
+            return request.user, None
+
+        cosigner, err = self.verify_second_person(
+            request,
+            permission='sign_off_fpi',
+            throttle_prefix='fpi_cosign_fail',
+            code_prefix='cosign',
+            email_field='cosign_email',
+            password_field='cosign_password',
+            messages={
+                'auth_failed': 'QA sign-off failed - check the email and password.',
+                'self': 'The QA person signing off must be different from the '
+                        'person logged in.',
+                'not_permitted': 'That user is not authorized to sign off a '
+                                 'First Piece Inspection.',
+            },
+        )
+        if err is not None:
+            return None, self.second_person_error_response(err)
+        if cosigner is None:
+            # No credentials supplied at all. `permissions.py` only lets a
+            # caller without the permission this far when they claimed a
+            # cosigner, so this is the belt-and-braces path.
+            return None, Response(
+                {'detail': 'A QA sign-off is required. Ask an authorized '
+                           'inspector to co-sign.',
+                 'code': 'cosign_required'},
+                status=status.HTTP_403_FORBIDDEN)
+        return cosigner, None
+
+    @staticmethod
+    def _cosign_note(signer, request, notes):
+        """Record whose station a co-signed verdict was taken at.
+
+        `inspected_by` is the cosigner, which is correct — they attested. But
+        losing who was at the keyboard would lose real audit context, and a note
+        line costs no migration.
+        """
+        if signer.id == request.user.id:
+            return notes
+        who = request.user.get_full_name() or request.user.username
+        stamp = f"Co-signed at {who}'s station."
+        return f"{notes}\n{stamp}".strip() if notes else stamp
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1371,7 +1457,9 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     @extend_schema(
         description="Mark FPI as passed",
         request={"application/json": {"type": "object", "properties": {
-            "notes": {"type": "string", "description": "Optional inspection notes"}
+            "notes": {"type": "string", "description": "Optional inspection notes"},
+            "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
         }}},
         responses={200: dict}
     )
@@ -1448,10 +1536,22 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 qr.is_first_piece = True
                 qr.save(update_fields=['is_first_piece'])
 
-        notes = request.data.get('notes', '')
+        signer, err_response = self._resolve_signer(request)
+        if err_response is not None:
+            return err_response
+
+        notes = self._cosign_note(signer, request, request.data.get('notes', ''))
         # Model method persists status/result/inspected_* AND the designated_part
         # / quality_report we set above (it does a full save()).
-        fpi.pass_inspection(request.user, notes)
+        #
+        # ValueError here is the segregation-of-duties refusal from
+        # `_reject_self_signoff` — someone trying to buy off first-piece
+        # substeps they signed themselves. It used to escape as a 500.
+        try:
+            fpi.pass_inspection(signer, notes)
+        except ValueError as e:
+            return Response({"detail": str(e), "code": "fpi_sod_violation"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
             "detail": "FPI passed",
@@ -1464,7 +1564,9 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     @extend_schema(
         description="Mark FPI as failed",
         request={"application/json": {"type": "object", "properties": {
-            "notes": {"type": "string", "description": "Required failure notes"}
+            "notes": {"type": "string", "description": "Required failure notes"},
+            "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
         }}},
         responses={200: dict}
     )
@@ -1480,8 +1582,16 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        notes = request.data.get('notes', '')
-        fpi.fail_inspection(request.user, notes)
+        signer, err_response = self._resolve_signer(request)
+        if err_response is not None:
+            return err_response
+
+        notes = self._cosign_note(signer, request, request.data.get('notes', ''))
+        try:
+            fpi.fail_inspection(signer, notes)
+        except ValueError as e:
+            return Response({"detail": str(e), "code": "fpi_sod_violation"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
             "detail": "FPI failed",
@@ -1492,7 +1602,9 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     @extend_schema(
         description="Waive FPI requirement",
         request={"application/json": {"type": "object", "properties": {
-            "reason": {"type": "string", "description": "Required waive reason (min 10 chars)"}
+            "reason": {"type": "string", "description": "Required waive reason (min 10 chars)"},
+            "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
         }}},
         responses={200: dict}
     )
@@ -1508,9 +1620,17 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        signer, err_response = self._resolve_signer(request)
+        if err_response is not None:
+            return err_response
+
         reason = request.data.get('reason', '')
         try:
-            fpi.waive(request.user, reason)
+            fpi.waive(signer, reason)
+            if signer.id != request.user.id:
+                # waive() doesn't take notes, so record the station separately.
+                fpi.notes = self._cosign_note(signer, request, fpi.notes or '')
+                fpi.save(update_fields=['notes', 'updated_at'])
             return Response({
                 "detail": "FPI waived",
                 "id": str(fpi.id),

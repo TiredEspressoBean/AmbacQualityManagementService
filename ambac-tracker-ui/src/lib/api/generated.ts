@@ -14734,6 +14734,20 @@ const PatchedFPIRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
+const api_FPIRecords_fail_create_Body = z
+  .object({
+    notes: z.string(),
+    cosign_email: z.string(),
+    cosign_password: z.string(),
+  })
+  .partial();
+const api_FPIRecords_waive_create_Body = z
+  .object({
+    reason: z.string(),
+    cosign_email: z.string(),
+    cosign_password: z.string(),
+  })
+  .partial();
 const api_FPIRecords_get_or_create_create_Body = z
   .object({
     work_order: z.string().uuid(),
@@ -20406,6 +20420,8 @@ export const schemas = {
   PaginatedFPIRecordList,
   FPIRecordRequest,
   PatchedFPIRecordRequest,
+  api_FPIRecords_fail_create_Body,
+  api_FPIRecords_waive_create_Body,
   api_FPIRecords_get_or_create_create_Body,
   PaginatedFishboneList,
   FishboneRequest,
@@ -27542,7 +27558,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ notes: z.string() }).partial(),
+        schema: api_FPIRecords_fail_create_Body,
       },
       {
         name: "id",
@@ -27562,7 +27578,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ notes: z.string() }).partial(),
+        schema: api_FPIRecords_fail_create_Body,
       },
       {
         name: "id",
@@ -27582,7 +27598,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string() }).partial(),
+        schema: api_FPIRecords_waive_create_Body,
       },
       {
         name: "id",
