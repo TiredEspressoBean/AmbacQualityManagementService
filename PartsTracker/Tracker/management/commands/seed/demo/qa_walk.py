@@ -341,29 +341,31 @@ class DemoQaWalkSeeder(BaseSeeder):
         # training phase runs) is that Mike is NOT nozzle-qualified, so the
         # truthful snapshot is an explicit supervisor override, phrased the same
         # way the real start-gate override is.
-        from Tracker.services.mes.lifecycle import _person
-        if supervisor is not None:
-            snapshot = {
-                'authorized': False,
-                'missing': [['Nozzle Inspection Certification', 'Level 1, needs Level 3']],
-                'verified': [],
-                'override': {
-                    'worker': operator.id,
-                    'worker_name': _person(operator),
-                    'authorized_by': supervisor.id,
-                    'authorized_by_name': _person(supervisor),
-                    'reason': 'First-piece run authorized pending nozzle re-certification.',
-                    'at': (self.today - timedelta(hours=6)).isoformat(),
-                },
-            }
-        else:
-            # No supervisor in this seed run — record the honest not-qualified
-            # snapshot without an override. Never a fabricated pass.
-            snapshot = {
-                'authorized': False,
-                'missing': [['Nozzle Inspection Certification', 'Level 1, needs Level 3']],
-                'verified': [],
-            }
+        # Build the honest not-qualified result explicitly and route it through
+        # the SAME assembler the live start gate uses (authorization_snapshot),
+        # rather than hand-writing the JSON — this is what keeps the seed's shape
+        # from drifting from production (it had: the old hand-built dict used a
+        # list-of-lists `missing`, while the gate emits list-of-dicts). We build
+        # the result by hand because this seeder runs BEFORE the training phase,
+        # so a live check would see no requirement rows and wrongly say
+        # "qualified".
+        from Tracker.services.training import TrainingAuthorizationResult
+        from Tracker.services.mes.lifecycle import (
+            authorization_snapshot, build_supervisor_override,
+        )
+        result = TrainingAuthorizationResult(
+            authorized=False,
+            missing=[('Nozzle Inspection Certification', 'Level 1, needs Level 3')],
+            verified=[],
+        )
+        override = build_supervisor_override(
+            worker=operator, authorizer=supervisor,
+            reason='First-piece run authorized pending nozzle re-certification.',
+            at=self.today - timedelta(hours=6),
+        ) if supervisor is not None else None
+        # No supervisor in this seed run → honest not-qualified snapshot with no
+        # override. Never a fabricated pass.
+        snapshot = authorization_snapshot(result, override=override)
         se, _ = StepExecution.objects.update_or_create(
             tenant=self.tenant, part=part, step=step,
             defaults={
