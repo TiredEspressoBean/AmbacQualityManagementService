@@ -145,6 +145,22 @@ DEMO_SAMPLING_RULESETS = [
         'active': True,
         'is_fallback': False,
         'fallback_duration': None,
+        # Quality gate: raise a CAPA when defectives accumulate at final test.
+        # This is the ONLY seeded gate whose action is RAISE_CAPA_SCAR — it makes
+        # walkthrough Section 9e (gate-raised CAPAs) demonstrable in the app and
+        # exercises the gate-attribution / assignee / null-requester fixes
+        # (45fb36c, 5a0f089, b3369be) through a real trigger rather than only in
+        # tests. Threshold 2 over the whole work order: a final-test escape is
+        # serious, so two in one WO warrants a formal corrective action. A raw
+        # ORM-seeded failure will NOT fire it (gates fire through the QR service
+        # path); the walker tripping a second failing final-test inspection is
+        # what raises the CAPA.
+        'gate_metric': 'DEFECTIVE_COUNT',
+        'gate_threshold': 2,
+        'gate_window': 'WORK_ORDER',
+        'gate_actions': ['RAISE_CAPA_SCAR'],
+        'gate_capa_type': 'CORRECTIVE',
+        'gate_capa_severity': 'MAJOR',
         'rules': [
             {
                 'rule_type': 'FIRST_N_PARTS',  # UPPERCASE enum value
@@ -277,6 +293,13 @@ class DemoSamplingSeeder(BaseSeeder):
             'gate_metric': rs_data.get('gate_metric', ''),
             'gate_threshold': rs_data.get('gate_threshold', None),
             'gate_actions': rs_data.get('gate_actions', []),
+            # RAISE_CAPA_SCAR gate params — carried so a gate that raises a CAPA
+            # can be seeded (Section 9e), not only a TIGHTEN_SAMPLING one.
+            'gate_window': rs_data.get('gate_window', ''),
+            'gate_window_n': rs_data.get('gate_window_n', None),
+            'gate_min_sample': rs_data.get('gate_min_sample', None),
+            'gate_capa_type': rs_data.get('gate_capa_type', ''),
+            'gate_capa_severity': rs_data.get('gate_capa_severity', ''),
             'supersedes': None,
             'fallback_ruleset': None,
             'created_by': qa_manager,  # QA manager who created the ruleset

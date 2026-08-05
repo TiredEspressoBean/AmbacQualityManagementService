@@ -111,8 +111,14 @@ class DemoQaWalkSeeder(BaseSeeder):
         sarah = self._pick_user(qa_users, email_contains='sarah.qa')
         maria = self._pick_user(qa_users, email_contains='maria.qa')
         mike = self._pick_user(employees, email_contains='mike.ops')
+        managers = users.get('managers', []) if users else []
+        jennifer = self._pick_user(managers, email_contains='jennifer.mgr')
         operator = mike or (employees[0] if employees else None)
         approver = sarah or maria or operator
+        # Supervisor who authorized the operator to run the first piece despite
+        # the lapsing nozzle cert (see _create_pending_fpi). Any manager works;
+        # fall back to the QA approver if the manager seed is absent.
+        supervisor = jennifer or maria or approver
         if approver is None:
             self.log("  Warning: no users available; skipping.", warning=True)
             return result
@@ -145,7 +151,8 @@ class DemoQaWalkSeeder(BaseSeeder):
             #       (Mike) is different from the FPI buy-off signer (Sarah).
             fpi = self._create_pending_fpi(
                 work_order, part_by_suffix.get('001'),
-                step_map.get('Nozzle Inspection'), part_type, operator)
+                step_map.get('Nozzle Inspection'), part_type, operator,
+                supervisor=supervisor)
             result['fpi'] = fpi
 
             # Downstream FPI gates need to already be PASSED so Sections 5, 7
@@ -268,7 +275,8 @@ class DemoQaWalkSeeder(BaseSeeder):
             parts.append(part)
         return parts
 
-    def _create_pending_fpi(self, work_order, part, step, part_type, operator):
+    def _create_pending_fpi(self, work_order, part, step, part_type, operator,
+                            supervisor=None):
         """PENDING FPI with the first-piece's inspection substeps *already
         signed by the operator*, so the walker (playing QA) can go straight
         to the buy-off surface. Sets up:
@@ -299,32 +307,69 @@ class DemoQaWalkSeeder(BaseSeeder):
 
         # Operator's step-execution on the first piece (unadvanced — the
         # walker's FPI Pass is what will finalize it in the walk).
-        # training_authorization is set to a bypass-authorized snapshot so
-        # the "Operator ... is not qualified for this step" advancement
-        # blocker is skipped. Real starts go through authorize_start which
-        # checks training records; for a seeded exhibit we stipulate the
-        # operator is qualified without needing a full training seed.
-        # NOTE: `assigned_to` is deliberately left unset. Setting it to the
-        # operator made the documented walk impossible: `authorize_start`
-        # raises NeedsReassignment when `assigned_to` is another user, so
-        # WO Detail -> Start Work -> check the first piece -> Start returned
-        # 409 "Assigned to Mike Rodriguez. A supervisor must reassign it."
-        # and the walker could never open the runtime to buy off the FPI.
+        #
+        # `training_authorization` carries a REAL supervisor-override snapshot,
+        # not a fabricated one. The demo's own training story makes Mike
+        # deliberately under-qualified for this step (NOZ-CERT level 1, expiring
+        # in 7 days; the step requires level 3 — see training_records.py and
+        # scenario.py's "Mike Rodriguez: NOZ-CERT expiring in 7 days"). So the
+        # honest exhibit is not "pretend Mike is qualified" but "a supervisor
+        # authorized Mike to run the first piece anyway" — exactly the snapshot
+        # `authorize_start` writes when given an authorizer + reason, and the
+        # same shape the real start-gate override produces. This keeps the
+        # competence gate satisfied through legitimate means (the snapshot is
+        # present and trusted at advancement) while preserving the narrative,
+        # and drops the `_source: demo_seed_bypass` tell.
+        #
+        # NOTE: `assigned_to` is deliberately left unset (see a7ed2b7). Setting
+        # it to the operator made the old QA-opens-the-runtime walk impossible:
+        # `start_execution` raises NeedsReassignment when `assigned_to` is
+        # another user. The buy-off now happens via the WO Control pending-FPI
+        # panel (or an inline co-signature), neither of which claims this
+        # execution, so leaving it unset is both safe and unchanged.
         #
         # Segregation of duties does not depend on this field — it is checked
         # against who signed the SubstepCompletion rows below (see
         # services/qms/fpi._reject_self_signoff). Mike still signs the
-        # substeps, so a self-signoff by Mike is still refused; Sarah can now
-        # claim the execution and reach the buy-off.
+        # substeps, so a self-signoff by Mike is still refused; Sarah buys off.
+        # Built to match the shape `services.mes.lifecycle.authorize_start`
+        # writes for an override, but constructed here rather than by calling
+        # it: this seeder runs BEFORE the training phase, so at this point the
+        # NOZ-CERT requirement does not exist yet and authorize_start would see
+        # Mike as trivially qualified — recording an honest-looking but
+        # meaningless `authorized: True`. The demo's finished state (after the
+        # training phase runs) is that Mike is NOT nozzle-qualified, so the
+        # truthful snapshot is an explicit supervisor override, phrased the same
+        # way the real start-gate override is.
+        from Tracker.services.mes.lifecycle import _person
+        if supervisor is not None:
+            snapshot = {
+                'authorized': False,
+                'missing': [['Nozzle Inspection Certification', 'Level 1, needs Level 3']],
+                'verified': [],
+                'override': {
+                    'worker': operator.id,
+                    'worker_name': _person(operator),
+                    'authorized_by': supervisor.id,
+                    'authorized_by_name': _person(supervisor),
+                    'reason': 'First-piece run authorized pending nozzle re-certification.',
+                    'at': (self.today - timedelta(hours=6)).isoformat(),
+                },
+            }
+        else:
+            # No supervisor in this seed run — record the honest not-qualified
+            # snapshot without an override. Never a fabricated pass.
+            snapshot = {
+                'authorized': False,
+                'missing': [['Nozzle Inspection Certification', 'Level 1, needs Level 3']],
+                'verified': [],
+            }
         se, _ = StepExecution.objects.update_or_create(
             tenant=self.tenant, part=part, step=step,
             defaults={
                 'visit_number': 1,
                 'status': 'IN_PROGRESS',
-                'training_authorization': {
-                    'authorized': True, 'missing': [], 'verified': [],
-                    '_source': 'demo_seed_bypass',
-                },
+                'training_authorization': snapshot,
             },
         )
         # Sign every substep on the step as the operator so the walker

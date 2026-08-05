@@ -294,13 +294,15 @@ the operator sees you're on the way. The row updates to read
 
 **What the runtime will look like, so it doesn't alarm you.** The
 header reads *"0 of 2 confirmed"* and the footer *"3 required fields
-missing"*, and the measurement fields are empty. That is expected:
-the seed writes the `SubstepCompletion` signature rows but **not**
-the underlying `SubstepResponse` / `StepExecutionMeasurement` values,
-and the runtime recomputes "confirmed" from the responses. Mike's
-signatures are real in the database; they just have no captured
-values behind them. You do not need to fill the form in to buy off
-the FPI — the banner is independent of it.
+missing"*, and the measurement fields are empty. That is expected and
+**not** a seed gap: the runtime's "confirmed" counter is *fresh-session*
+state — it starts empty and only counts substeps confirmed in the current
+session; it never replays prior `SubstepResponse` rows on load. So it
+would read "0 of 2" even if the seed captured full values, and no seed
+change alters it (making it hydrate stored responses would be a frontend
+feature, out of scope here). Mike's `SubstepCompletion` signatures are
+real in the database. You do not need to fill the form in to buy off the
+FPI — the banner is independent of it.
 
 **If you arrive by pasting a runtime URL, include `workOrder`.** The
 FPI banner is rendered only when the URL carries a `workOrder` query
@@ -1414,20 +1416,39 @@ a **step-level** gate, but its only UI lives inside a **part-level
 operator work session**, so QA had to take over the operator's session
 to sign a QA gate. The 409, the `workOrder`-query-param dependency, and
 the seed's `training_authorization` bypass are all symptoms of that one
-mismatch. Being addressed by moving the buy-off to a second-person
-co-signature plus a QA-native pending-FPI panel.
+mismatch. **Resolved:** the buy-off now takes a second-person
+co-signature (operator's station) and there is a QA-native pending-FPI
+panel on WO Control; the seed's fabricated `training_authorization` was
+replaced with a genuine supervisor-override snapshot. See the
+"second-person co-signature rollout" appendix.
 
 **Known-unverified specifics**
 - 9c stage 2 — recording the effectiveness *outcome* after the plan is
   created — was never observed; the form would not submit under
   automation.
-- 9e describes gate-raised CAPAs, but no seeded ruleset configures
-  `RAISE_CAPA_SCAR`, so that path has never run in the app. That is why
-  four bugs accumulated in it unnoticed.
-- The FPI exhibit reads *"0 of 2 confirmed / 3 required fields missing"*
-  because the seed writes `SubstepCompletion` signature rows but no
-  `SubstepResponse` / `StepExecutionMeasurement` values. Mike's
-  signatures are real; they just have no captured values behind them.
+- 9e describes gate-raised CAPAs. **Now demonstrable:** the Final Test
+  sampling ruleset carries a `DEFECTIVE_COUNT ≥ 2` gate (whole work order)
+  whose action is `RAISE_CAPA_SCAR` (CORRECTIVE / MAJOR) — the only seeded
+  gate that raises a CAPA. A raw ORM-seeded failure does *not* fire it
+  (gates fire through the QR service path); tripping a second failing
+  final-test inspection in the app is what raises the CAPA. This is also
+  the first time the four gate fixes (`45fb36c`, `5a0f089`, `b3369be`)
+  run through a real trigger rather than only in tests.
+- The FPI exhibit reads *"0 of 2 confirmed / 3 required fields missing"*.
+  **This is not missing seed data** — it was investigated during the
+  co-sign work and found to be the operator runtime's *fresh-session*
+  counter: `confirmedIds` and `responsesBySubstepId` both start empty and
+  are only filled by in-session captures; the runtime never hydrates prior
+  `SubstepResponse` rows. So no seed change alters that display — the only
+  fix would be a frontend feature (replay stored responses into the
+  session on load), which is out of scope. Mike's `SubstepCompletion`
+  signatures are real; the counter simply doesn't reflect them.
+- The first-piece `StepExecution` no longer carries a fabricated
+  `training_authorization` (the old `_source: demo_seed_bypass` tell is
+  gone). Mike is genuinely not nozzle-qualified in the demo narrative
+  (NOZ-CERT level 1, needs level 3), so the honest snapshot is an explicit
+  **supervisor override** by Jennifer Walsh — the same shape the real
+  start-gate override writes — rather than a pretend pass.
 
 **Open items, not blocking the walk**
 - No pattern-based CAPA triggering — repeat NCRs, a trending supplier,
