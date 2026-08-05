@@ -1469,9 +1469,15 @@ replaced with a genuine supervisor-override snapshot. See the
 "second-person co-signature rollout" appendix.
 
 **Known-unverified specifics**
-- 9c stage 2 — recording the effectiveness *outcome* after the plan is
-  created — was never observed; the form would not submit under
-  automation.
+- 9c — the "form wouldn't submit under automation" note turned out to be a
+  real bug, not a harness quirk. Driving the **Add Verification Plan**
+  dialog live, the POST `/api/CapaVerifications/` was silently rejected by
+  the generated zod request client — `effectiveness_result` was marked
+  **required**, but that's the *stage-2 outcome* the plan-create leaves
+  unset. Browser-only (no error toast), invisible to backend tests and
+  tsc. **Fixed 2026-08-05** (`effectiveness_result` → `required=False`;
+  schema + FE regen; `test_capa_verification_plan`). Stage 1 (plan) now
+  creates; the outcome defaults to INCONCLUSIVE until stage 2 records it.
 - 9e describes gate-raised CAPAs. **Now demonstrable:** the Final Test
   sampling ruleset carries a `DEFECTIVE_COUNT ≥ 2` gate (whole work order)
   whose action is `RAISE_CAPA_SCAR` (CORRECTIVE / MAJOR) — the only seeded
