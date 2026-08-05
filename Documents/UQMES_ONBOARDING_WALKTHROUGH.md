@@ -1397,11 +1397,35 @@ history.
 
 ---
 
-## Appendix — verification status (2026-08-04)
+## Appendix — verification status (2026-08-04, updated 2026-08-05)
 
 Maintenance note for whoever picks this document up next. It records
 *how much of this doc has been checked against the running app*, so the
 next pass doesn't re-verify what's done or trust what isn't.
+
+**Bugs surfaced by driving this walkthrough (all fixed 2026-08-05 unless
+noted).** Reading the doc against the running app found more than doc
+drift — each of these was a real defect the walk exposed:
+- **FPI buy-off was impossible to complete** (Section 3) — a step-level QA
+  gate whose only UI lived in a part-level operator session. Fixed with a
+  second-person co-signature + a QA-native pending-FPI panel (`a7ed2b7`,
+  `5caf4c9`, co-sign rollout below).
+- **Disposition close bypassed its blockers** (6d) — the editor's plain
+  PATCH to `CLOSED` skipped the containment/decision checks and left
+  `resolution_completed=False`. Converged on the close service (`e5f7a7a`).
+- **CAPA verification plan couldn't be created** (9c) — the zod request
+  client rejected it because `effectiveness_result` (the stage-2 outcome)
+  was marked required. Made optional (`255364b`).
+- **Double disposition** (12c) — the FAIL-QR signal re-fired after a
+  disposition closed, and the seed's enrich pass dressed the tag-along
+  into a contradiction. Guarded the signal + drop the redundant tag-along
+  in seed (`b42446f`).
+- **Co-signature attribution wasn't queryable** — added
+  `FPIRecord.performed_by` and `StepTransitionLog.authorized_by`
+  (`9b02ac0`, `3ae977c`).
+
+Everything else the walk found was doc drift, corrected inline in the
+relevant section.
 
 **Method matters, and it's the reason this appendix exists.** Sections
 were originally walked by enumerating on-screen **text**, which is blind
@@ -1434,7 +1458,7 @@ role-walked.
 | 8 OSP | role-verified |
 | 9 CAPA | **driven live (2026-08-05)**: 9c plan-create bug found+fixed; 9e gate-raised CAPA driven end to end |
 | 10 Calibration · 11 Notifications | role-verified; 10b/11a/11c re-checked live (2026-08-05) |
-| 12 Audit trail | not walked (descriptive only) |
+| 12 Audit trail | **driven live (2026-08-05)**: 12b verified (SCRAPPED + single SCRAP disposition); double-disposition quirk found + fixed (12c) |
 
 **Sections 4–7 role-walk (2026-08-05).** No new blockers. All absence /
 structural claims held exactly:
@@ -1453,15 +1477,14 @@ structural claims held exactly:
   Action); the five doors are exactly Rework / Repair (AS9100) / Scrap /
   Use As Is / Return to Supplier; Current State offers Open / In Progress /
   Closed; the submit is **Update Disposition**.
-- **5b / 7** — verified structurally rather than by driving mutations: the
-  Flow-test substep defines barcode-scan + Flow Rate + calibration
-  attestation (all required) and routes `QA_RESULT` DEFAULT→Assembly /
-  ALTERNATE→Rework; part 004 sits in the reworked-awaiting-reinspection arc
-  (AWAITING_QA, rework_count 1, one OPEN + one CLOSED REWORK disposition,
-  a FAIL QR). The live FAIL (5c) and live re-inspection were not driven —
-  part 003 has no StepExecution until Start Work creates it — but that
-  backend chain is the most heavily tested path and is present on seed
-  exhibits (006 QUARANTINED, 004's FAIL QR + auto disposition).
+- **5b / 7** — first checked structurally (Flow-test substep = barcode-scan
+  + Flow Rate + calibration attestation, routing `QA_RESULT`
+  DEFAULT→Assembly / ALTERNATE→Rework), then **subsequently driven live**
+  (see the Section 5 and 7 rows above): the FAIL→quarantine→disposition
+  chain (5c) and the reworked-part re-inspection→advance (7) were both
+  executed end to end. Driving 5b also corrected the doc — the Flow-test
+  verdict is measurement-driven (no manual Pass/Fail button), unlike Final
+  Test which does carry one.
 
 **Section 3 was impossible to complete as written.** The seed set
 `StepExecution.assigned_to` to the operator, so QA's Start Work → Start
@@ -1478,7 +1501,7 @@ panel on WO Control; the seed's fabricated `training_authorization` was
 replaced with a genuine supervisor-override snapshot. See the
 "second-person co-signature rollout" appendix.
 
-**Known-unverified specifics**
+**Specifics driven / resolved while walking (2026-08-05)**
 - 9c — the "form wouldn't submit under automation" note turned out to be a
   real bug, not a harness quirk. Driving the **Add Verification Plan**
   dialog live, the POST `/api/CapaVerifications/` was silently rejected by
