@@ -1425,6 +1425,20 @@ class CapaTasksSerializer(SecureModelMixin):
 
 class CapaVerificationSerializer(SecureModelMixin):
     """CAPA verification serializer"""
+    # Effectiveness verification is TWO stages: the *plan* (method + success
+    # criteria) is created first; the *outcome* (effectiveness_result) is
+    # recorded later, once the monitoring window elapses. So the outcome must
+    # NOT be required at create — the model defaults it to INCONCLUSIVE ("not
+    # yet decided", paired with a null effectiveness_decided_at). Without
+    # required=False, DRF marks the field required and the generated zod REQUEST
+    # client rejects the plan-create POST ("effectiveness_result is required"),
+    # silently — a browser-only break of the documented two-stage flow,
+    # invisible to backend tests and tsc (the request-side twin of the
+    # SerializerMethodField/allow_null hazard in CLAUDE.md).
+    effectiveness_result = serializers.ChoiceField(
+        choices=CapaVerification._meta.get_field('effectiveness_result').choices,
+        required=False,
+    )
     effectiveness_result_display = serializers.CharField(source='get_effectiveness_result_display', read_only=True)
     capa_info = serializers.SerializerMethodField()
     verified_by_info = serializers.SerializerMethodField()
