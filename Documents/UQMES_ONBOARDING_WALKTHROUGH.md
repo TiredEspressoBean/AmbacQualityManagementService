@@ -1438,3 +1438,60 @@ co-signature plus a QA-native pending-FPI panel.
 - Both tenant-isolation guards (the scoping lint and the RLS coverage
   test) are *detective*, not preventive — they fail after a gap ships.
   The same models were missed by both, so that has already happened.
+
+---
+
+## Appendix — second-person co-signature rollout (2026-08-05)
+
+Section 3's blocker turned out to be an instance of a general pattern, so
+the fix generalised into a mechanism. The shape, wherever it applies:
+
+> The person at the keyboard has physically arrived at a step they lack
+> the authority to complete. An authorized colleague authenticates
+> **inline** at that same terminal, is never logged in, and the act is
+> attributed to *them*.
+
+This is the standard DWI / 21 CFR Part 11 second-person pattern, and the
+repo already had one instance of it (the training-gate override). It now
+lives in `services/core/second_person.verify_second_person`, reached by
+viewsets through `SecondPersonMixin` and admitted through the permission
+layer by a `cosign_actions` dict.
+
+**Gates converted**
+
+| Gate | Permission | Where the operator meets it |
+|---|---|---|
+| Training-gate override | `override_training_gate` | pre-existing; source of the extracted helper |
+| FPI buy-off | `sign_off_fpi` | review stage of the operator runtime |
+| MANUAL decision point | `resolve_step_decision` | `DecisionResolverPanel` in the runtime |
+
+Both new conversions also gained a surface for the *authorized* role to
+work their own queue without borrowing anyone's session — the pending-FPI
+panel on WO Control being the FPI half.
+
+**Two things worth knowing before converting a fourth.**
+
+*Distinct throttle prefixes are not optional, and neither is the shared
+tier.* The failure counter is keyed on the **authorizer's** email,
+tenant-wide. With one shared prefix, a QA lead mistyping their password
+five times at one station would 429 them out of every gate at every
+station in the tenant for 15 minutes. With per-gate prefixes alone, N
+gates on separate 5-caps hand an attacker 5×N attempts at one password.
+Hence two tiers: a per-gate cap of 5 and a shared cap of 10.
+
+*Authority and labor come apart.* `advance_part_step`'s `operator`
+argument served two roles simultaneously — the transition's actor, and
+(on a `revisit_assignment='same'` step) the next `StepExecution`'s
+`assigned_to`. Under a co-signature those are different people, and
+passing the cosigner would have handed a lead who merely walked past a
+station the operator's next job. Any gate whose service takes a single
+"who did this" argument needs the same audit before conversion.
+
+**Not converted, and why.** The plan named three further targets that do
+not survive contact with the code: `approve_disposition` and
+`verify_capa` are group-eligibility *markers* consumed by approval
+template binding, not action gates (there is no viewset action gated on
+either), and OSP `accept`/`reject` are gated on
+`change_outsideprocessshipment`, a plain CRUD permission with no
+second-person concept. Reading permission *names* is not the same as
+finding the gates — see the three-paradigm note in `CLAUDE.md`.
