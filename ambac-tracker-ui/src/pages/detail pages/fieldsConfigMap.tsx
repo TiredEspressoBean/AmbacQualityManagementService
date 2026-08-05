@@ -11,7 +11,8 @@ export const SUPPORTED_MODELS = [
     'Parts', 'Orders', 'PartTypes', 'Processes', 'Steps', 'WorkOrders',
     'Equipments', 'SamplingRules', 'SamplingRuleSets', 'Customers',
     'MeasurementDefinitions', 'ErrorTypes', 'EquipmentTypes', 'Companies',
-    'Users', 'TrackerOrders', 'QualityReports', 'Documents', 'AuditLog'
+    'Users', 'TrackerOrders', 'QualityReports', 'QuarantineDisposition',
+    'Documents', 'AuditLog'
 ];
 
 // Helper functions for common field renderers
@@ -45,6 +46,7 @@ export const createSystemInfoSection = (fields: string[] = ['created_at', 'updat
 export const createModelConfig = (config: {
     modelType: string;
     fields: Record<string, { label: string }>;
+    getHeader?: (modelData: any) => { title: string; subtitle?: string };
     customRenderers?: Record<string, (value: any, data?: any) => React.ReactNode>;
     sections: Array<{
         title: string;
@@ -70,6 +72,7 @@ export const createModelConfig = (config: {
 }): FieldsConfig => {
     const {
         fields,
+        getHeader,
         customRenderers = {},
         sections,
         apiPath,
@@ -82,6 +85,7 @@ export const createModelConfig = (config: {
 
     return {
         fields,
+        ...(getHeader && { getHeader }),
         customRenderers,
         // eslint-disable-next-line local/no-as-any -- dynamic API method dispatch by string key; no index signature on the generated api object
         fetcher: (id) => (api as any)[apiPath]({ params: { id } }),
@@ -947,6 +951,13 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
         case 'qualityreports':
             return createModelConfig({
                 modelType: 'qualityreports',
+                // Header reads "QR-2026-000015 · Nozzle Inspection" instead of
+                // the generic "QualityReports Detail" — inspectors identify a
+                // report by its number, not a UUID.
+                getHeader: (qr) => ({
+                    title: qr.report_number || 'Quality Report',
+                    subtitle: qr.step_info?.name || undefined,
+                }),
                 fields: {
                     id: { label: 'Report ID' },
                     status_display: { label: 'Status' },
@@ -1042,6 +1053,145 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     },
                 ],
                 linkedRecordsComponent: QRMeasurementsSection,
+            });
+
+        case 'quarantinedisposition':
+            return createModelConfig({
+                modelType: 'quarantinedisposition',
+                // "DISP-2026-000016 · REWORK · IN_PROGRESS" beats a UUID header.
+                getHeader: (d) => ({
+                    title: d.disposition_number || 'Disposition',
+                    subtitle: [d.disposition_type, d.current_state].filter(Boolean).join(' · ') || undefined,
+                }),
+                fields: {
+                    disposition_number: { label: 'Disposition #' },
+                    current_state: { label: 'State' },
+                    disposition_type: { label: 'Type' },
+                    severity_display: { label: 'Severity' },
+                    assignee_name: { label: 'Assigned To' },
+                    due_date: { label: 'Due' },
+                    part: { label: 'Part' },
+                    step_info: { label: 'Step' },
+                    work_order_erp_id: { label: 'Work Order' },
+                    description: { label: 'Description' },
+                    containment_action: { label: 'Containment Action' },
+                    resolution_notes: { label: 'Resolution Notes' },
+                    resolution_completed: { label: 'Resolution Complete' },
+                    resolution_completed_by_name: { label: 'Completed By' },
+                    resolution_completed_at: { label: 'Completed At' },
+                    quality_reports: { label: 'Quality Reports' },
+                    archived: { label: 'Archived' },
+                },
+                customRenderers: {
+                    due_date: commonRenderers.date,
+                    resolution_completed_at: commonRenderers.datetime,
+                    resolution_completed: commonRenderers.boolean,
+                    archived: commonRenderers.boolean,
+                    // An OPEN disposition legitimately has no type yet.
+                    disposition_type: (value) => value || '— (undecided)',
+                    part: (value, d) => {
+                        const id = value || d?.part;
+                        if (!id) return '—';
+                        return (
+                            <Link
+                                to="/details/$model/$id"
+                                params={{ model: 'Parts', id: String(id) }}
+                                className="text-primary hover:underline font-medium"
+                            >
+                                View part
+                            </Link>
+                        );
+                    },
+                    step_info: (info) => {
+                        if (!info) return '—';
+                        if (info.id) {
+                            return (
+                                <Link
+                                    to="/details/$model/$id"
+                                    params={{ model: 'Steps', id: String(info.id) }}
+                                    className="text-primary hover:underline font-medium"
+                                >
+                                    {info.name || 'Step'}
+                                </Link>
+                            );
+                        }
+                        return info.name || '—';
+                    },
+                    // WO routes to Control (the working surface), mirroring the
+                    // Parts config.
+                    work_order_erp_id: (value, d) => {
+                        const label = value || 'Work Order';
+                        const id = d?.work_order_id;
+                        if (!id) return String(label);
+                        return (
+                            <Link
+                                to="/workorder/$workOrderId/control"
+                                params={{ workOrderId: String(id) }}
+                                className="text-primary hover:underline font-medium"
+                            >
+                                {String(label)}
+                            </Link>
+                        );
+                    },
+                    quality_reports: (value) => {
+                        if (!Array.isArray(value) || value.length === 0) return '—';
+                        return (
+                            <div className="flex flex-col gap-1">
+                                {value.map((id: string, i: number) => (
+                                    <Link
+                                        key={id}
+                                        to="/details/$model/$id"
+                                        params={{ model: 'QualityReports', id: String(id) }}
+                                        className="text-primary hover:underline text-sm"
+                                    >
+                                        {value.length > 1 ? `View report ${i + 1}` : 'View report'}
+                                    </Link>
+                                ))}
+                            </div>
+                        );
+                    },
+                },
+                sections: [
+                    {
+                        title: 'Disposition',
+                        fields: ['disposition_number', 'current_state', 'disposition_type', 'severity_display'],
+                    },
+                    {
+                        title: 'Assignment',
+                        fields: ['assignee_name', 'due_date'],
+                    },
+                    {
+                        title: 'Context',
+                        fields: ['part', 'step_info', 'work_order_erp_id'],
+                    },
+                    {
+                        title: 'Containment & Resolution',
+                        fields: ['containment_action', 'resolution_notes', 'resolution_completed',
+                            'resolution_completed_by_name', 'resolution_completed_at'],
+                    },
+                    {
+                        title: 'Quality Reports',
+                        fields: ['quality_reports'],
+                    },
+                    {
+                        title: 'System',
+                        fields: ['archived'],
+                        auditLog: true,
+                    },
+                ],
+                apiPath: 'api_QuarantineDispositions_retrieve',
+                relatedModels: [
+                    { modelType: 'parts', fieldName: 'part', label: 'Part Documents' },
+                    { modelType: 'steps', fieldName: 'step', label: 'Step Documents' },
+                ],
+                // Detail is read-only; jumping to the editor is the action.
+                actionButtons: [
+                    {
+                        label: 'Edit Disposition',
+                        variant: 'default',
+                        getUrl: (d) => `/dispositions/edit/${d.id}`,
+                    },
+                ],
             });
 
         case 'documents':

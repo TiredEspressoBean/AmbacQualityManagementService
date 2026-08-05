@@ -1093,8 +1093,8 @@ export default function EditDispositionFormPage() {
                                         return (
                                             <Link
                                                 key={qrId}
-                                                to="/editor/qualityReports/edit/$id"
-                                                params={{ id: qrId }}
+                                                to="/details/$model/$id"
+                                                params={{ model: "QualityReports", id: qrId }}
                                                 className="flex justify-between items-center gap-2 rounded-md border p-2 text-sm hover:bg-muted/50"
                                             >
                                                 <span className="flex items-center gap-1.5 font-mono text-primary">

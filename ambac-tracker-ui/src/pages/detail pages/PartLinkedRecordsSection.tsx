@@ -62,8 +62,8 @@ export function PartLinkedRecordsSection({ modelData }: { modelData: { id?: stri
                             return (
                                 <Link
                                     key={id}
-                                    to="/editor/qualityReports/edit/$id"
-                                    params={{ id }}
+                                    to="/details/$model/$id"
+                                    params={{ model: "QualityReports", id }}
                                     className="flex items-center gap-3 rounded-md border p-2 text-sm hover:bg-muted/50"
                                 >
                                     <span className="font-mono text-primary">{reportNumber}</span>
@@ -103,8 +103,8 @@ export function PartLinkedRecordsSection({ modelData }: { modelData: { id?: stri
                                 return (
                                     <Link
                                         key={id}
-                                        to="/dispositions/edit/$id"
-                                        params={{ id }}
+                                        to="/details/$model/$id"
+                                        params={{ model: "QuarantineDisposition", id }}
                                         className="flex items-center gap-3 rounded-md border p-2 text-sm hover:bg-muted/50"
                                     >
                                         <span className="font-mono text-primary">{dispNumber}</span>
