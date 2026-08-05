@@ -417,17 +417,18 @@ gates the whole step, and you'll see *"First Piece Inspection in
 progress"* on part 002's runtime too, blocking your sampled
 inspection.
 
-From the part detail, or from the Control Step Status row's runtime
-launch, open the operator substep runtime for this part's current
-step-execution.
+Open the runtime the same way as Section 5a: from **WO Detail**
+(`/workorder/$id`) click **Start Work** in the header, tick this part,
+and **Start**. (The Control page's Step Status rows carry step-routing
+controls — send to QA, reassign, previous step — *not* a runtime
+launcher, and the part-detail page doesn't launch the runtime either;
+Start Work on WO Detail is the entry point.)
 
 The DWI at Nozzle Inspection walks: visual inspection points on the
-3D model (nozzle tip / spray-hole bank / seat face), a pass/fail
-verdict, an equipment field (which visual bench/scope was used), and
-a sign-off. Value the visuals PASS, sign as detected by, and
-**Confirm & next** through to the review pane. On the review pane
-click **Complete step**. Toast: *"Step complete — lot advanced (1
-part moved)."*
+3D model (nozzle tip / spray-hole bank / seat face), a spray-angle
+measurement, and an inspector sign-off. Work through the captures and
+**Confirm & next** to the review pane, then click **Complete step**.
+Toast: *"Step complete — lot advanced (1 part moved)."*
 
 **What happens:** the part transitions `AWAITING_QA` → `IN_PROGRESS`
 on the next step in the process. The sampling rule records this
@@ -445,46 +446,47 @@ FAIL and immediately quarantines the part.
 ### 5a — Reach the runtime
 
 From your Inbox, click any WO-QA-INSPECT-01 row (or use the scan box
-with `WO-QA-INSPECT-01`) to reach the WO Detail. Parts tab → find
-INJ-QA-INSPECT-003 (Flow Testing · IN_PROGRESS). Open its runtime
-via the **Start Work** button, or via the ExternalLink icon → runtime
-from part detail.
+with `WO-QA-INSPECT-01`) to reach the WO Detail. In the header click
+**Start Work**, tick **INJ-QA-INSPECT-003** (grouped under Flow
+Testing), and **Start** — this creates the step-execution and opens its
+runtime. (Start Work lives on the WO Detail header, not the Parts tab.)
 
 ### 5b — Enter an out-of-spec value
+
+The verdict here is **measurement-driven**: you record the flow reading,
+and the FAIL is *derived* from it being out of spec — there is no manual
+Pass/Fail button and no separate defect form on this substep. (The DWI
+vocabulary does support an explicit pass/fail node that writes straight
+to the report, but this step isn't authored with one.)
 
 You see the *Flow test* substep with, top-to-bottom:
 - A green **"First Piece Inspection signed off · Setup verified"**
   banner (seeded PASSED FPI on this step, so you're not blocked).
-- **Rework attempt 0 of 2** counter — this WO's rework escalation
-  threshold.
+- **Rework attempt N of 2** counter — this WO's rework escalation
+  threshold (N reflects the part's prior rework count).
 - Decision point notice: *"Auto · QA result — routes automatically
   from the inspection result when you complete the step — pass takes
   Assembly, fail takes Rework."*
 - **Scan the part barcode** — required (Barcode / QR).
 - **Flow Rate** (`F-04`) — required, spec `120 +20 −20 mL/min` (i.e.
   LSL 100, USL 140).
-- **Flow bench in-calibration** confirmation — required checkbox.
-- **Flow test result** — required, Pass / Fail / Pending buttons.
-- Sign-off + defect fields.
+- **Flow bench in-calibration** — required confirmation checkbox.
 
 Enter values to trigger the FAIL:
 - **Scan the part barcode**: any string like `INJ-QA-INSPECT-003`.
 - **Flow Rate**: `98`. Inline validation flags red — below LSL.
 - **Flow bench in-calibration**: check the confirmation.
-- **Flow test result**: click **Fail**.
-- Add a defect: Type `Flow rate out of spec`, Description *"Flow rate
-  98 mL/min - below LSL of 100 mL/min. Awaiting disposition."*
-- Sign as detected by.
 
-Click **Confirm & review** → **Complete step**.
+Click **Confirm & review** → **Complete step**. The out-of-spec flow
+rate resolves the report to FAIL automatically.
 
 **Toast:** *"FAIL recorded — part held for disposition"* (red/error
 toast) with the description line listing the specific blockers —
-*"Part is quarantined and step blocks on quarantine; QA signoff
-required but not received; One or more measurements are out of
-specification"*. The system distinguishes hard-fail states from
-awaiting-signoff states in the toast heading, so you can tell at a
-glance a fail was recorded (not a benign timing wait).
+*"Part is quarantined and step blocks on quarantine; One or more
+measurements are out of specification; No active StepExecution"* (the
+exact blocker list varies with state). The system distinguishes
+hard-fail states from awaiting-signoff states in the toast heading, so
+you can tell at a glance a fail was recorded (not a benign timing wait).
 
 ### 5c — Backend effects (what just happened)
 
@@ -610,18 +612,26 @@ systems separate "paper decision" from "physical routing".
 
 ### 6d — Close the disposition
 
-After you click Update, the disposition transitions to `IN_PROGRESS`.
-Once the rework has been done and re-inspected (Section 7 walks
-that), the disposition is closed via a second edit:
-- Fill **Resolution Notes** if not already filled.
-- Set **Current State** to `CLOSED`.
-- Click **Update Disposition**.
+After you click Update with a type set, the disposition transitions to
+`IN_PROGRESS`. Once the rework has been done and re-inspected (Section 7
+walks that), it should be closed through the **dedicated close action**
+(`POST /close`, gated by `close_disposition`), which runs
+`complete_disposition_resolution`: it locks the row, checks the
+completion blockers (`containment_action` present for MAJOR/CRITICAL, a
+disposition decision selected, no pending 3D annotations), and on success
+sets `resolution_completed=True` with `resolution_completed_by/at`.
 
-**What happens on close.** The `complete_disposition_resolution`
-service runs. Blocker checks include: containment_action must be
-present for MAJOR/CRITICAL; any pending 3D annotations must be
-resolved. If clear, the disposition closes with `resolution_completed`
-and stamped `resolution_completed_by/at`.
+> **Verified caveat (2026-08-05).** Do **not** close by simply setting
+> **Current State → `CLOSED`** in the editor and clicking Update. That is
+> a plain field PATCH: `save()` guards only against *pending annotations*,
+> so it **skips the containment / decision blocker checks** and leaves
+> `resolution_completed=False` / `resolution_completed_by=None` — a record
+> that reads CLOSED but was never resolution-completed. Driving it live
+> produced exactly that (`current_state=CLOSED`, `resolution_completed=False`).
+> The editor exposing `CLOSED` in its state dropdown is a gap: the real
+> close path is the close action, not the editor's Update. Treat this as a
+> known issue until the editor either routes close through that action or
+> `save()` enforces the full blocker set.
 
 ---
 
