@@ -826,6 +826,10 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             # Computed
             'assignee_name', 'choices_data', 'annotation_status',
             'can_be_completed', 'completion_blockers',
+            # SecureModel timestamps — a disposition's whole job is tracking a
+            # decision over time, so "opened at" / "last touched" are core, not
+            # incidental. Read-only (auto-managed by SecureModel.save).
+            'created_at', 'updated_at',
             'archived',
         )
 
@@ -834,6 +838,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'annotation_status', 'can_be_completed', 'completion_blockers',
             'severity_display', 'containment_completed_by_name', 'scrap_verified_by_name',
             'work_order_id', 'work_order_erp_id', 'affected_parts',
+            'created_at', 'updated_at',
         )
 
     @extend_schema_field(DispositionAffectedPartSerializer(many=True))

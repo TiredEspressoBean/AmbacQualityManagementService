@@ -23500,6 +23500,10 @@ export interface components {
             };
             readonly can_be_completed: boolean;
             readonly completion_blockers: string[];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
             archived?: boolean;
         };
         /**

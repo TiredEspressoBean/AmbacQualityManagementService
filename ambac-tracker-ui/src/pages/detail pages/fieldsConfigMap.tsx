@@ -1140,10 +1140,14 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     scrap_verification_method: { label: 'Verification Method' },
                     scrap_verified_by_name: { label: 'Verified By' },
                     scrap_verified_at: { label: 'Verified At' },
+                    created_at: { label: 'Opened At' },
+                    updated_at: { label: 'Last Updated' },
                     archived: { label: 'Archived' },
                 },
                 customRenderers: {
                     due_date: commonRenderers.date,
+                    created_at: commonRenderers.datetime,
+                    updated_at: commonRenderers.datetime,
                     resolution_completed_at: commonRenderers.datetime,
                     resolution_completed: commonRenderers.boolean,
                     containment_completed_at: commonRenderers.datetime,
@@ -1298,7 +1302,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     },
                     {
                         title: 'System',
-                        fields: ['archived'],
+                        fields: ['created_at', 'updated_at', 'archived'],
                         auditLog: true,
                     },
                 ],

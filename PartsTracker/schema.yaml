@@ -51425,6 +51425,14 @@ components:
           items:
             type: string
           readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
         archived:
           type: boolean
       required:
@@ -51435,6 +51443,7 @@ components:
       - choices_data
       - completion_blockers
       - containment_completed_by_name
+      - created_at
       - disposition_number
       - id
       - quality_reports
@@ -51443,6 +51452,7 @@ components:
       - scrap_verified_by_name
       - severity_display
       - step_info
+      - updated_at
       - work_order_erp_id
       - work_order_id
     QuarantineDispositionRequest:

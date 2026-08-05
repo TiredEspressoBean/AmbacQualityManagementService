@@ -5610,6 +5610,8 @@ export type QuarantineDisposition = {
   annotation_status: {};
   can_be_completed: boolean;
   completion_blockers: Array<string>;
+  created_at: string;
+  updated_at: string;
   archived?: boolean | undefined;
 };
 export type CurrentStateEnum =
@@ -16388,6 +16390,8 @@ const QuarantineDisposition = z.object({
   annotation_status: z.object({}).partial().passthrough(),
   can_be_completed: z.boolean(),
   completion_blockers: z.array(z.string()),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
 });
 const PaginatedQuarantineDispositionList = z.object({
