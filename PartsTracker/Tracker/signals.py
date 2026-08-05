@@ -64,8 +64,17 @@ def auto_create_disposition(sender, instance, created, **kwargs):
             from Tracker.services.qms.batch_disposition import contain_failed_batch
             contain_failed_batch(instance)
             return
-        # Check if disposition already exists for this quality report
-        if not instance.dispositions.filter(current_state__in=['OPEN', 'IN_PROGRESS']).exists():
+        # Auto-create at most ONE disposition per report. The guard used to
+        # scope to current_state IN (OPEN, IN_PROGRESS), which re-fired on any
+        # later save of a still-FAIL QR whose disposition had since been CLOSED
+        # — resurrecting an orphan bare NCR (the double-disposition seen on some
+        # exhibits). QuarantineDisposition has no CANCELLED state, so there's no
+        # "voided, re-open a fresh one" case to preserve: if this report already
+        # produced a disposition (any state), don't make another. A genuinely
+        # new failure is a NEW QR with its own (empty) `dispositions`, so it
+        # still gets one; and a human can add further dispositions deliberately
+        # (QR->disposition is legitimately 1:many).
+        if not instance.dispositions.exists():
             # Find a QA user to assign to (or use the operator)
             qa_user = User.objects.filter(
                 user_roles__group__name__in=['QA Manager', 'QA Inspector'],

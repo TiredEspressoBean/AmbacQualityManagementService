@@ -389,9 +389,19 @@ class DemoQualitySeeder(BaseSeeder):
         defect_links = self._create_defect_links(qr_map, result['error_lists'])
         result['defect_links'] = defect_links
 
-        # Give the auto-created NCRs (bare OPEN, no type — created by the
-        # QR-FAIL signal) a realistic lifecycle spread instead of leaving them
-        # all stuck at OPEN.
+        # First drop redundant tag-alongs: where the seed authored an explicit
+        # scenario disposition (e.g. a SCRAP record) for a FAIL QR, the QR-FAIL
+        # signal also opened a bare auto one on the same QR. Left in, the enrich
+        # pass below would dress it up into a contradictory decision (a
+        # USE_AS_IS tag-along on a scrapped part). Mirrors qa_walk's
+        # _drop_tag_along_dispositions, across the older exhibits.
+        dropped = self._drop_redundant_auto_dispositions()
+        if dropped:
+            self.log(f"  Dropped {dropped} redundant auto-created tag-along dispositions")
+
+        # Give the REMAINING auto-created NCRs (bare OPEN, no type — created by
+        # the QR-FAIL signal, and the only disposition on their QR) a realistic
+        # lifecycle spread instead of leaving them all stuck at OPEN.
         enriched = self._enrich_auto_dispositions(qa_users, operators)
         self.log(f"  Enriched {enriched} auto-created dispositions with lifecycle data")
 
@@ -560,6 +570,47 @@ class DemoQualitySeeder(BaseSeeder):
         'RETURN_TO_SUPPLIER': 'Returned to supplier under SCAR; replacement requested.',
         'REPAIR': 'Repaired per approved repair traveler (AS9100); verified.',
     }
+
+    def _drop_redundant_auto_dispositions(self):
+        """Drop FAIL-QR auto-created tag-alongs on QRs that ALSO carry an
+        explicitly-authored disposition.
+
+        The QR-FAIL signal opens a bare disposition per FAIL QR. When the seed
+        separately authors a scenario disposition for the same QR (a SCRAP
+        record on a scrapped part, say), the auto one is a redundant double —
+        and `_enrich_auto_dispositions` would otherwise turn it into a
+        nonsensical decision (a USE_AS_IS/IN_PROGRESS tag-along on a part that's
+        already SCRAP/CLOSED). Same intent as qa_walk's
+        `_drop_tag_along_dispositions`, applied across the demo's older
+        exhibits. The signal and the legitimate QR->disposition 1:many are left
+        untouched; only the redundant *auto* record is removed.
+        """
+        from Tracker.models import QuarantineDisposition
+
+        autos = list(
+            QuarantineDisposition.objects.filter(
+                tenant=self.tenant,
+                description__startswith='Auto-created for failed quality report',
+            ).prefetch_related('quality_reports')
+        )
+        dropped = 0
+        for auto in autos:
+            qr_ids = list(auto.quality_reports.values_list('pk', flat=True))
+            if not qr_ids:
+                continue
+            # An explicitly-authored sibling = a disposition on the same QR that
+            # is NOT itself auto-created.
+            has_explicit = (
+                QuarantineDisposition.objects
+                .filter(tenant=self.tenant, quality_reports__in=qr_ids)
+                .exclude(pk=auto.pk)
+                .exclude(description__startswith='Auto-created for failed quality report')
+                .exists()
+            )
+            if has_explicit:
+                auto.delete()
+                dropped += 1
+        return dropped
 
     def _enrich_auto_dispositions(self, qa_users, operators):
         """Advance the bare auto-created NCRs through a realistic lifecycle.
