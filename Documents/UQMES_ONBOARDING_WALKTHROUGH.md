@@ -1423,7 +1423,9 @@ role-walked.
 | 6a Open disposition | role-verified |
 | 6b–6d Disposition decision/close | role-verified (2026-08-05) |
 | 7 Re-inspection | **fully driven live** (2026-08-05): re-inspect PASS → advance to Assembly, arc paper-complete |
-| 8 OSP · 9 CAPA · 10 Calibration · 11 Notifications | role-verified |
+| 8 OSP | role-verified |
+| 9 CAPA | **driven live (2026-08-05)**: 9c plan-create bug found+fixed; 9e gate-raised CAPA driven end to end |
+| 10 Calibration · 11 Notifications | role-verified; 10b/11a/11c re-checked live (2026-08-05) |
 | 12 Audit trail | not walked (descriptive only) |
 
 **Sections 4–7 role-walk (2026-08-05).** No new blockers. All absence /
@@ -1478,14 +1480,22 @@ replaced with a genuine supervisor-override snapshot. See the
   tsc. **Fixed 2026-08-05** (`effectiveness_result` → `required=False`;
   schema + FE regen; `test_capa_verification_plan`). Stage 1 (plan) now
   creates; the outcome defaults to INCONCLUSIVE until stage 2 records it.
-- 9e describes gate-raised CAPAs. **Now demonstrable:** the Final Test
-  sampling ruleset carries a `DEFECTIVE_COUNT ≥ 2` gate (whole work order)
-  whose action is `RAISE_CAPA_SCAR` (CORRECTIVE / MAJOR) — the only seeded
-  gate that raises a CAPA. A raw ORM-seeded failure does *not* fire it
-  (gates fire through the QR service path); tripping a second failing
-  final-test inspection in the app is what raises the CAPA. This is also
-  the first time the four gate fixes (`45fb36c`, `5a0f089`, `b3369be`)
-  run through a real trigger rather than only in tests.
+- 9e gate-raised CAPAs — **driven live (2026-08-05).** The Final Test
+  sampling ruleset carries a `DEFECTIVE_COUNT ≥ 2` gate (whole work order),
+  action `RAISE_CAPA_SCAR` (CORRECTIVE / MAJOR) — the only seeded gate that
+  raises a CAPA. Failing two Final-Test inspections in WO-TRAIN-BOTTLE
+  tripped it: **CAPA-CA-2026-001** was raised with `initiated_by=null`
+  (renders "System"), assigned to a QA Manager (Maria Santos), problem
+  statement *"Auto-raised by quality gate 'Standard Inspection - Final
+  Test' … DEFECTIVE_COUNT = 2 crossed threshold"*, and a `StepGateFiring`
+  row recorded value 2.000 / actions `['RAISE_CAPA_SCAR']`. First time the
+  four gate fixes (`45fb36c`, `5a0f089`, `b3369be`) ran through a real
+  in-app trigger, not just tests. (Note: Section 9e's prose uses a
+  hypothetical FAIL_RATE_PCT/nozzle example; the actual seeded gate is the
+  DEFECTIVE_COUNT one above.)
+  Also learned driving it: unlike Flow Testing (Section 5b, pure
+  measurement-driven), the **Final Test** substep DOES carry an explicit
+  Pass/Fail/Pending result field plus a required Release sign-off signature.
 - The FPI exhibit reads *"0 of 2 confirmed / 3 required fields missing"*.
   **This is not missing seed data** — it was investigated during the
   co-sign work and found to be the operator runtime's *fresh-session*
