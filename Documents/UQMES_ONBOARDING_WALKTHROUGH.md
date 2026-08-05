@@ -1400,12 +1400,40 @@ role-walked.
 |---|---|
 | 1 Home · 2 Receiving | role-verified |
 | 3 FPI buy-off | role-walked; blocker found and fixed (`a7ed2b7`) |
-| 4 Sampled part · 5 Failed inspection | **not role-walked** |
+| 4 Sampled part | role-verified (2026-08-05) |
+| 5 Failed inspection | 5b fields + decision routing verified; 5c chain via tests/seed, live FAIL not driven |
 | 6a Open disposition | role-verified |
-| 6b–6d Disposition decision/close | **not role-walked** |
-| 7 Re-inspection | **not role-walked** |
+| 6b–6d Disposition decision/close | role-verified (2026-08-05) |
+| 7 Re-inspection | precondition arc verified (2026-08-05); live re-inspect not driven |
 | 8 OSP · 9 CAPA · 10 Calibration · 11 Notifications | role-verified |
 | 12 Audit trail | not walked (descriptive only) |
+
+**Sections 4–7 role-walk (2026-08-05).** No new blockers. All absence /
+structural claims held exactly:
+- **4a** — "In-process" chip present (alongside All / Receiving / OSP
+  returns / **Urgent**); the sampled row lands on `/workorder/$id/control`,
+  where the part reads Awaiting QA · **Sample** · Rework ×1.
+- **4b** — confirmed the absence claim: on Control the serial renders in a
+  bare `<td>` with no link ancestor (Control does not link to part detail).
+  Part detail shows Sampling Required Yes, Sampling Reason *post repair
+  verification* (lowercased enum), Rework Passes 1.
+- **6a** — `/production/dispositions` is titled **Quarantined Parts**, is a
+  parts list with the documented 8 columns and 4 filters, and returned 25
+  rows — confirming it is **not** filtered to the signed-in QA despite the
+  home tile's count.
+- **6b–6d** — editor carries every documented field (incl. Containment
+  Action); the five doors are exactly Rework / Repair (AS9100) / Scrap /
+  Use As Is / Return to Supplier; Current State offers Open / In Progress /
+  Closed; the submit is **Update Disposition**.
+- **5b / 7** — verified structurally rather than by driving mutations: the
+  Flow-test substep defines barcode-scan + Flow Rate + calibration
+  attestation (all required) and routes `QA_RESULT` DEFAULT→Assembly /
+  ALTERNATE→Rework; part 004 sits in the reworked-awaiting-reinspection arc
+  (AWAITING_QA, rework_count 1, one OPEN + one CLOSED REWORK disposition,
+  a FAIL QR). The live FAIL (5c) and live re-inspection were not driven —
+  part 003 has no StepExecution until Start Work creates it — but that
+  backend chain is the most heavily tested path and is present on seed
+  exhibits (006 QUARANTINED, 004's FAIL QR + auto disposition).
 
 **Section 3 was impossible to complete as written.** The seed set
 `StepExecution.assigned_to` to the operator, so QA's Start Work → Start
