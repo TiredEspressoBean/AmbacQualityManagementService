@@ -621,17 +621,22 @@ completion blockers (`containment_action` present for MAJOR/CRITICAL, a
 disposition decision selected, no pending 3D annotations), and on success
 sets `resolution_completed=True` with `resolution_completed_by/at`.
 
-> **Verified caveat (2026-08-05).** Do **not** close by simply setting
-> **Current State → `CLOSED`** in the editor and clicking Update. That is
-> a plain field PATCH: `save()` guards only against *pending annotations*,
-> so it **skips the containment / decision blocker checks** and leaves
-> `resolution_completed=False` / `resolution_completed_by=None` — a record
-> that reads CLOSED but was never resolution-completed. Driving it live
-> produced exactly that (`current_state=CLOSED`, `resolution_completed=False`).
-> The editor exposing `CLOSED` in its state dropdown is a gap: the real
-> close path is the close action, not the editor's Update. Treat this as a
-> known issue until the editor either routes close through that action or
-> `save()` enforces the full blocker set.
+**Closing from the editor is fine too — it now runs the same guarded
+path.** Setting **Current State → `CLOSED`** and clicking Update no longer
+does a bare field write; `QuarantineDispositionSerializer.update` detects
+the transition and routes it through `complete_disposition_resolution`
+(the same service the close action uses). So the completion blockers are
+enforced either way, and `resolution_completed` / `_by` / `_at` are
+recorded. If a blocker is unmet (e.g. a MAJOR with no containment) the
+Update returns a **400** with the blocker and the disposition stays
+active — and any other field edits in that submit (containment text,
+notes) are saved, so you fix the blocker and retry.
+
+> **History (fixed 2026-08-05).** This used to be a bypass: the editor's
+> plain PATCH reached CLOSED through a `save()` that guarded only pending
+> annotations, skipping the containment/decision blockers and leaving
+> `resolution_completed=False`. Found by driving it live; fixed by
+> converging both doors on the one service.
 
 ---
 
