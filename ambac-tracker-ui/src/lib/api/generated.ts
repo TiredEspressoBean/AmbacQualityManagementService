@@ -2198,6 +2198,11 @@ export type FPIRecord = {
    */
   inspected_at: string | null;
   /**
+   * Operator at whose station a QA person co-signed this buy-off (distinct from inspected_by, the attester). Null for a direct QA sign-off.
+   */
+  performed_by: number | null;
+  performed_by_info: {};
+  /**
    * Whether FPI requirement was waived
    */
   waived: boolean;
@@ -14698,6 +14703,8 @@ const FPIRecord = z.object({
   inspected_by: z.number().int().nullable(),
   inspected_by_info: z.object({}).partial().passthrough().nullable(),
   inspected_at: z.string().datetime({ offset: true }).nullable(),
+  performed_by: z.number().int().nullable(),
+  performed_by_info: z.object({}).partial().passthrough().nullable(),
   waived: z.boolean(),
   waived_by: z.number().int().nullable(),
   waived_by_info: z.object({}).partial().passthrough().nullable(),

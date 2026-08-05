@@ -72,13 +72,17 @@ def _ensure_qa_approval(fpi: FPIRecord, user) -> None:
     )
 
 
-def pass_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
+def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRecord:
     """Mark FPI as passed.
 
     Also creates the step-level QaApproval that `can_advance_from_step`
     checks — the FPI Pass IS the QA signoff for the first piece run. Blocks
     self-signoff: whoever signed the first-piece substeps cannot also sign
     off the FPI.
+
+    `user` is the attester (recorded as `inspected_by` and on the QaApproval).
+    `performed_by` is the operator at whose station a co-signature happened;
+    pass it only on the co-sign path, leave None for a direct QA sign-off.
 
     Raises:
         ValueError: user already signed the first piece's substeps.
@@ -88,6 +92,7 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
     fpi.result = FPIResult.PASS
     fpi.inspected_by = user
     fpi.inspected_at = timezone.now()
+    fpi.performed_by = performed_by
     if notes:
         fpi.notes = notes
     fpi.save()
@@ -96,12 +101,13 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
     return fpi
 
 
-def fail_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
+def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRecord:
     """Mark FPI as failed.
 
     Blocks self-signoff (same SOD principle as `pass_fpi`). Does NOT create
     a QaApproval — a failed FPI leaves the batch blocked, and the step-level
-    signoff should not be considered satisfied by a fail.
+    signoff should not be considered satisfied by a fail. See `pass_fpi` for
+    the `user` / `performed_by` distinction.
 
     Raises:
         ValueError: user already signed the first piece's substeps.
@@ -111,6 +117,7 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
     fpi.result = FPIResult.FAIL
     fpi.inspected_by = user
     fpi.inspected_at = timezone.now()
+    fpi.performed_by = performed_by
     if notes:
         fpi.notes = notes
     fpi.save()
@@ -118,12 +125,13 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
     return fpi
 
 
-def waive_fpi(fpi: FPIRecord, user, reason: str) -> FPIRecord:
+def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None) -> FPIRecord:
     """Waive the FPI requirement.
 
     Creates the step-level QaApproval — a documented waive with reason IS
     the QA signoff for the first piece run. Blocks self-signoff (same SOD
-    principle as `pass_fpi`).
+    principle as `pass_fpi`). See `pass_fpi` for the `user` / `performed_by`
+    distinction (`waived_by` is the attester here).
 
     Raises:
         ValueError: reason shorter than 10 characters, or user already
@@ -136,6 +144,7 @@ def waive_fpi(fpi: FPIRecord, user, reason: str) -> FPIRecord:
     fpi.waived = True
     fpi.waived_by = user
     fpi.waive_reason = reason
+    fpi.performed_by = performed_by
     fpi.save()
     _ensure_qa_approval(fpi, user)
     notify_fpi_decided(fpi)

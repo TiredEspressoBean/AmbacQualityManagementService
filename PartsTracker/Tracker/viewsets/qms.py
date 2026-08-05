@@ -1408,13 +1408,26 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
 
         `inspected_by` is the cosigner, which is correct — they attested. But
         losing who was at the keyboard would lose real audit context, and a note
-        line costs no migration.
+        line costs no migration. (The same fact is now also stored structurally
+        via `_performed_by` → `FPIRecord.performed_by`; this note keeps it inline
+        and human-readable in the audit trail.)
         """
         if signer.id == request.user.id:
             return notes
         who = request.user.get_full_name() or request.user.username
         stamp = f"Co-signed at {who}'s station."
         return f"{notes}\n{stamp}".strip() if notes else stamp
+
+    @staticmethod
+    def _performed_by(signer, request):
+        """The operator at whose station a co-signature happened, or None.
+
+        On a direct QA sign-off (signer is the caller) there is no separate
+        station, so this is None and only `inspected_by` is recorded. On a
+        co-sign the caller is the operator who fetched QA — that's the queryable
+        `performed_by`, distinct from the attesting `inspected_by`.
+        """
+        return None if signer.id == request.user.id else request.user
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1548,7 +1561,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         # `_reject_self_signoff` — someone trying to buy off first-piece
         # substeps they signed themselves. It used to escape as a 500.
         try:
-            fpi.pass_inspection(signer, notes)
+            fpi.pass_inspection(signer, notes, performed_by=self._performed_by(signer, request))
         except ValueError as e:
             return Response({"detail": str(e), "code": "fpi_sod_violation"},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -1588,7 +1601,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
 
         notes = self._cosign_note(signer, request, request.data.get('notes', ''))
         try:
-            fpi.fail_inspection(signer, notes)
+            fpi.fail_inspection(signer, notes, performed_by=self._performed_by(signer, request))
         except ValueError as e:
             return Response({"detail": str(e), "code": "fpi_sod_violation"},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -1626,7 +1639,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
 
         reason = request.data.get('reason', '')
         try:
-            fpi.waive(signer, reason)
+            fpi.waive(signer, reason, performed_by=self._performed_by(signer, request))
             if signer.id != request.user.id:
                 # waive() doesn't take notes, so record the station separately.
                 fpi.notes = self._cosign_note(signer, request, fpi.notes or '')

@@ -39372,6 +39372,17 @@ components:
           readOnly: true
           nullable: true
           description: When inspection was completed
+        performed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Operator at whose station a QA person co-signed this buy-off
+            (distinct from inspected_by, the attester). Null for a direct QA sign-off.
+        performed_by_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
         waived:
           type: boolean
           readOnly: true
@@ -39436,6 +39447,8 @@ components:
       - inspected_by_info
       - part_type
       - part_type_info
+      - performed_by
+      - performed_by_info
       - quality_report
       - result
       - result_display

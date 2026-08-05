@@ -198,6 +198,27 @@ class FpiCosignTests(TenantContextMixin, TestCase):
         self.assertIn("Co-signed at", self.fpi.notes)
         self.assertIn(self.operator.username, self.fpi.notes)
 
+    def test_cosign_sets_performed_by_to_the_operator(self):
+        """The station operator is captured structurally, not only in a note —
+        so co-signature history is queryable. `performed_by` is the operator;
+        `inspected_by` is the attesting QA person; the two differ."""
+        self._pass(self.operator, notes="ok",
+                   cosign_email="qa@cs.test", cosign_password="qapass")
+        self.fpi.refresh_from_db()
+        self.assertEqual(self.fpi.performed_by_id, self.operator.id,
+                         'performed_by is the operator at whose station QA signed')
+        self.assertEqual(self.fpi.inspected_by_id, self.qa.id)
+        self.assertNotEqual(self.fpi.performed_by_id, self.fpi.inspected_by_id)
+
+    def test_direct_qa_signoff_leaves_performed_by_null(self):
+        """No co-signature → no separate station → performed_by stays null,
+        so the field marks *exactly* the co-signed records and nothing else."""
+        resp = self._pass(self.qa, notes="direct")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.fpi.refresh_from_db()
+        self.assertIsNone(self.fpi.performed_by_id)
+        self.assertEqual(self.fpi.inspected_by_id, self.qa.id)
+
     def test_qa_approval_is_created_for_the_cosigner(self):
         """The FPI pass IS the step-level QA signoff; the QaApproval must name
         the QA person, or the step stays blocked on 'QA signoff required'."""

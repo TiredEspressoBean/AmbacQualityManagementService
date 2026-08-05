@@ -16862,6 +16862,11 @@ export interface components {
              * @description When inspection was completed
              */
             readonly inspected_at: string | null;
+            /** @description Operator at whose station a QA person co-signed this buy-off (distinct from inspected_by, the attester). Null for a direct QA sign-off. */
+            readonly performed_by: number | null;
+            readonly performed_by_info: {
+                [key: string]: unknown;
+            } | null;
             /** @description Whether FPI requirement was waived */
             readonly waived: boolean;
             /** @description User who waived the FPI */

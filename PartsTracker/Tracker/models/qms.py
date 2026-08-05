@@ -2867,6 +2867,21 @@ class FPIRecord(SecureModel):
         blank=True,
         help_text='When inspection was completed'
     )
+    # Second-person buy-off: when an operator lacking `sign_off_fpi` fetches QA
+    # to co-sign at their station, `inspected_by` is the QA person who attested
+    # (correct — they own the verdict) and `performed_by` is the operator whose
+    # station it was. Null on a direct QA sign-off (no separate station). Makes
+    # the co-signature relationship queryable instead of only a note string.
+    performed_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        help_text="Operator at whose station a QA person co-signed this buy-off "
+                  "(distinct from inspected_by, the attester). Null for a direct "
+                  "QA sign-off."
+    )
 
     # The visible waiting-state loop: a machine and an operator may be idle
     # behind a pending FPI, so "did QA see this?" must be answerable from the
@@ -2932,20 +2947,20 @@ class FPIRecord(SecureModel):
     def __str__(self):
         return f"FPI for WO-{self.work_order.ERP_id} @ {self.step.name}"
 
-    def pass_inspection(self, user, notes=''):
+    def pass_inspection(self, user, notes='', performed_by=None):
         """Thin wrapper — delegates to `services.qms.fpi.pass_fpi`."""
         from Tracker.services.qms.fpi import pass_fpi
-        return pass_fpi(self, user, notes=notes)
+        return pass_fpi(self, user, notes=notes, performed_by=performed_by)
 
-    def fail_inspection(self, user, notes=''):
+    def fail_inspection(self, user, notes='', performed_by=None):
         """Thin wrapper — delegates to `services.qms.fpi.fail_fpi`."""
         from Tracker.services.qms.fpi import fail_fpi
-        return fail_fpi(self, user, notes=notes)
+        return fail_fpi(self, user, notes=notes, performed_by=performed_by)
 
-    def waive(self, user, reason):
+    def waive(self, user, reason, performed_by=None):
         """Thin wrapper — delegates to `services.qms.fpi.waive_fpi`."""
         from Tracker.services.qms.fpi import waive_fpi
-        return waive_fpi(self, user, reason)
+        return waive_fpi(self, user, reason, performed_by=performed_by)
 
 
 class BlockType(models.TextChoices):
