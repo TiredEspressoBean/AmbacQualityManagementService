@@ -672,34 +672,37 @@ icon). You see:
   Testing`, description *"Flow rate 98 mL/min - below LSL of 100
   mL/min. Reworked and returned for re-inspection."* — click to open
   the failing report.
-- **Dispositions**: 2 rows.
-  1. `DISP-QAI-004-REW · CLOSED · REWORK · MAJOR` — the signed rework
-     decision, with resolution notes describing the nozzle
-     replacement. **This is the record to read.**
-  2. `DISP-…-000### · OPEN · (empty type)` — the bare NCR auto-
-     created by the FAIL QR's post-save signal. It's a seed
-     tag-along; ignore it. (This is the same "double-disposition"
-     quirk as INJ-0038-010 in the older seed.)
+- **Dispositions**: 1 row — `DISP-QAI-004-REW · CLOSED · REWORK ·
+  MAJOR` — the signed rework decision, with resolution notes describing
+  the nozzle replacement. **This is the record to read.** (The FAIL QR's
+  post-save signal also auto-creates a bare OPEN NCR — the old
+  "double-disposition" quirk — but the seed's `_drop_tag_along_dispositions`
+  now **archives** it, and the part detail excludes archived rows, so you
+  see just the one real disposition. Verified live: the API returns count=1
+  for this part.)
 - **Rework Passes**: `1` — the rework counter incremented once, from
   the original REWORK cascade.
 
 ### 7c — Run the re-inspection
 
-Open the runtime for INJ-QA-INSPECT-004's current step-execution
-(visit 2 at Flow Testing). Enter a passing value:
-- **Flow rate**: `121` mL/min.
-- **Flow test result**: **Pass**.
-- Sign as detected by.
-- No defects.
+Open the runtime via **Start Work** on WO Detail (Section 5a), picking
+INJ-QA-INSPECT-004. Enter a **passing** value — like the failing pass in
+5b, the verdict is measurement-driven (no Pass/Fail button):
+- **Scan the part barcode**: `INJ-QA-INSPECT-004`.
+- **Flow Rate**: `121` mL/min (in spec, LSL 100 / USL 140 → PASS derived).
+- **Flow bench in-calibration**: check the confirmation.
 
 Click **Confirm & review** → **Complete step**. Toast: *"Step
 complete — lot advanced (1 part moved)."*
 
-**What happens.** A second QR (PASS) is written for visit 2. The
-part status transitions `AWAITING_QA` → `IN_PROGRESS` on the next
-step in the process (Assembly, per the Flow Testing → Assembly edge).
-The rework arc is now paper-complete: FAIL QR → CLOSED REWORK →
-reworked → PASS QR at visit 2. The **Rework Passes** counter stays
+**What happens (verified live).** A second QR (`QR-2026-…`, **PASS**) is
+written. The part transitions `AWAITING_QA` → `IN_PROGRESS` on the next
+step (Assembly, per the Flow Testing → Assembly edge). The rework arc is
+now paper-complete: FAIL QR → CLOSED REWORK → reworked → PASS QR. (Note
+on visit numbering: the seed's original fail is a *data-only* QR with no
+prior step-execution, so this re-inspection runs as **visit 1**, not
+"visit 2" — the FAIL→PASS arc is the real content, not the visit count.)
+The **Rework Passes** counter stays
 at `1` — that counter was incremented when the REWORK disposition
 was applied (Section 6), not on this re-inspection pass. It's a
 running tally of *how many rework cycles this part has been through*,
@@ -1416,10 +1419,10 @@ role-walked.
 | 1 Home · 2 Receiving | role-verified |
 | 3 FPI buy-off | role-walked; blocker found and fixed (`a7ed2b7`) |
 | 4 Sampled part | role-verified (2026-08-05) |
-| 5 Failed inspection | 5b fields + decision routing verified; 5c chain via tests/seed, live FAIL not driven |
+| 5 Failed inspection | **fully driven live** (2026-08-05): FAIL → QR → auto-quarantine + disposition |
 | 6a Open disposition | role-verified |
 | 6b–6d Disposition decision/close | role-verified (2026-08-05) |
-| 7 Re-inspection | precondition arc verified (2026-08-05); live re-inspect not driven |
+| 7 Re-inspection | **fully driven live** (2026-08-05): re-inspect PASS → advance to Assembly, arc paper-complete |
 | 8 OSP · 9 CAPA · 10 Calibration · 11 Notifications | role-verified |
 | 12 Audit trail | not walked (descriptive only) |
 
