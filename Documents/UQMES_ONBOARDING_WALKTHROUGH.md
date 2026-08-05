@@ -1314,7 +1314,9 @@ visible porosity at seat face; failed hold pressure at 2450 psi (min
 2800). Casting defect, not reworkable."* **Dispositions** has the
 CLOSED SCRAP row (`DISP-QR-0042-023-FT`, severity CRITICAL,
 resolution notes citing QP-007). Together those three records ARE
-the audit trail: cause, decision, terminal state.
+the audit trail: cause, decision, terminal state. (Verified live
+2026-08-05 — this part used to also carry a contradictory auto
+tag-along; it's now archived out, see 12c.)
 
 If a scrapped part ever shows a status of `SCRAPPED` with **no**
 linked QR or disposition, that itself is a red flag — how did the
@@ -1323,22 +1325,28 @@ touching.
 
 ### 12c — Two seed quirks worth knowing
 
-**Double disposition on some parts.** When a FAIL QR fires, its
-post-save signal auto-creates a bare OPEN disposition (no type). The
-demo seeder's `_enrich_auto_dispositions` pass then gives those bare
-NCRs a round-robin type and lifecycle so the demo isn't a wall of
-identical OPENs. QR-to-Disposition is legitimately 1:many in QMS
-practice (a single QR can spawn multiple lines for different
-portions of nonconforming material), so the signal itself is
-correct — the quirk is that the seed leaves both records visible
-without any hint about which is which.
+**Double disposition — fixed 2026-08-05.** When a FAIL QR fires, its
+post-save signal auto-creates a bare disposition. Some exhibits used to
+show **two** — the real authored record *plus* this auto tag-along, which
+the `_enrich_auto_dispositions` seed pass then dressed into a
+contradictory decision (a `USE_AS_IS · IN_PROGRESS` tag-along sitting on a
+`SCRAPPED` part). Root cause was two things, both now fixed:
+- **Signal (product):** the dedup guard only checked `OPEN`/`IN_PROGRESS`,
+  so once a QR's disposition was `CLOSED`, re-saving the still-FAIL QR
+  re-fired and minted a fresh orphan NCR. It now skips if the report
+  already produced *any* disposition (`QuarantineDisposition` has no
+  CANCELLED state, so there's no re-open case to keep).
+- **Seed:** `quality.py` now runs `_drop_redundant_auto_dispositions`
+  (mirroring qa_walk's `_drop_tag_along_dispositions`) to archive the auto
+  tag-along wherever an explicit scenario disposition exists for the same
+  QR — so INJ-0042-023 / INJ-0038-010 show a single disposition.
 
-The QA-walk parts (INJ-QA-INSPECT-004) drop the tag-along at seed
-time via `_drop_tag_along_dispositions` in `qa_walk.py`. Older
-seed parts (INJ-0038-010 and similar) still show both; read the
-intended one (has a `disposition_type` and a `resolution_notes`
-paragraph) and ignore the auto-created one (empty type, a
-description prefixed *"Auto-created for failed quality report:"*).
+QR→disposition is still legitimately 1:many (a human can add lines
+deliberately for different portions of nonconforming material); what's
+gone is the *accidental* duplicate. If you ever do see two, the
+auto-created one is identified by its description prefix
+*"Auto-created for failed quality report:"* — not by an empty type (the
+enrich pass gives survivors a type).
 
 **Sparse Activity History in the seed.** Many seeded parts show *"No
 audit history"* in the Activity History section because the seed
