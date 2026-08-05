@@ -25,6 +25,7 @@ import { FpiSignOffDialog } from "@/components/fpi-sign-off-dialog";
 import { useFpiRecords } from "@/hooks/useFpiRecords";
 import { useAcknowledgeFpi } from "@/hooks/useAcknowledgeFpi";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { useReportActivity } from "@/hooks/useReportActivity";
 
 type FpiRow = {
     id: string;
@@ -35,7 +36,10 @@ type FpiRow = {
     acknowledged_at?: string | null;
 };
 
-export function PendingFpiPanel({ workOrderId }: { workOrderId: string }) {
+export function PendingFpiPanel({ workOrderId, onActivity }: {
+    workOrderId: string;
+    onActivity?: (active: boolean) => void;
+}) {
     // WO-scoped, unlike `usePendingFpis` which is tenant-wide. `work_order` is
     // already in FPIRecordViewSet.filterset_fields, so no new endpoint.
     const { data, isLoading } = useFpiRecords({
@@ -49,6 +53,7 @@ export function PendingFpiPanel({ workOrderId }: { workOrderId: string }) {
     // The `*_info` fields are declared DictField in the serializer, so the
     // generated client types them as loose records — narrow them here.
     const rows: FpiRow[] = (data as unknown as { results?: FpiRow[] } | undefined)?.results ?? [];
+    useReportActivity(rows.length > 0, onActivity);
 
     if (isLoading) {
         return (

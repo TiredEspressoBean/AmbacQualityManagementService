@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useReportActivity } from "@/hooks/useReportActivity";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
@@ -90,13 +91,16 @@ function useReconcilePendingDecisions() {
 
 export function PendingDecisionsPanel({
     workOrderId,
+    onActivity,
 }: {
     workOrderId: string;
+    onActivity?: (active: boolean) => void;
 }) {
     const { data, isLoading } = usePendingDecisionsForWorkOrder(workOrderId);
     const reconcile = useReconcilePendingDecisions();
 
     const pending = data?.results ?? [];
+    useReportActivity(pending.length > 0, onActivity);
 
     if (isLoading) {
         return (

@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useRetrieveParts } from "@/hooks/parts";
 import { useRetrieveProcessWithSteps } from "@/hooks/useRetrieveProcessWithSteps";
 import { useListOSPShipments, useReceiveBack } from "@/hooks/useOutsideProcess";
+import { useReportActivity } from "@/hooks/useReportActivity";
 import { SendPartsOutDialog } from "@/components/workorder/SendPartsOutDialog";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
@@ -28,18 +29,22 @@ import type { components } from "@/lib/api/generated-types";
 type Step = components["schemas"]["Step"];
 type PartRow = components["schemas"]["Parts"];
 
-// Statuses that mean a part is no longer a live send-out candidate.
-const NOT_SHIPPABLE = new Set([
-    "AT_OUTSIDE_PROCESS", "SCRAPPED", "CANCELLED", "SHIPPED", "COMPLETED",
-    "IN_STOCK", "AWAITING_PICKUP", "CORE_BANKED", "RMA_CLOSED",
-]);
+// A part is "ready to ship" only while it's actively AT the OSP step having
+// arrived from the upstream step — i.e. IN_PROGRESS. This mirrors the shipper
+// board's server-side rule (`_READY_TO_SHIP_STATUSES = {"IN_PROGRESS"}`); the
+// two surfaces MUST agree on what's dispatchable. A prior blocklist here let
+// PENDING / REWORK / already-returned (READY_FOR_NEXT_STEP, AWAITING_QA) parts
+// count as ready, so the WO panel offered parts for send-out the board wouldn't.
+const READY_TO_SHIP_STATUS = "IN_PROGRESS";
 
 export function OutsideProcessPanel({
     workOrderId,
     processId,
+    onActivity,
 }: {
     workOrderId: string;
     processId: string | null;
+    onActivity?: (active: boolean) => void;
 }) {
     const { data: proc } = useRetrieveProcessWithSteps(
         { params: { id: processId ?? "" } },
@@ -63,7 +68,7 @@ export function OutsideProcessPanel({
         const m = new Map<string, PartRow[]>();
         for (const p of (partsData?.results ?? []) as PartRow[]) {
             if (!p.step) continue;
-            if (NOT_SHIPPABLE.has(String(p.part_status))) continue;
+            if (String(p.part_status) !== READY_TO_SHIP_STATUS) continue;
             const arr = m.get(String(p.step)) ?? [];
             arr.push(p);
             m.set(String(p.step), arr);
@@ -77,8 +82,18 @@ export function OutsideProcessPanel({
 
     const [dialogStep, setDialogStep] = useState<Step | null>(null);
 
-    // Nothing to show if this process has no OSP steps and no live shipments.
-    if (ospSteps.length === 0 && sentShipments.length === 0 && returnedShipments.length === 0) return null;
+    // Show only when there's actual OSP work: parts ready to dispatch, or
+    // shipments out / awaiting return inspection. Keying on `ospSteps.length`
+    // (does the process merely CONTAIN an OSP step?) rendered a near-empty
+    // "Outside processing" header on every OSP-capable WO — noise, and it made
+    // the "Needs attention" group light up with nothing actionable in it.
+    // Only parts staged at THIS process's OSP steps count — readyByStep is
+    // keyed by every step (the render reads it per-OSP-step via .get), so
+    // summing the whole map would fold in parts sitting at non-OSP steps.
+    const readyTotal = ospSteps.reduce((n, step) => n + (readyByStep.get(step.id)?.length ?? 0), 0);
+    const hasActivity = readyTotal > 0 || sentShipments.length > 0 || returnedShipments.length > 0;
+    useReportActivity(hasActivity, onActivity);
+    if (!hasActivity) return null;
 
     return (
         <div className="rounded-lg border bg-card">

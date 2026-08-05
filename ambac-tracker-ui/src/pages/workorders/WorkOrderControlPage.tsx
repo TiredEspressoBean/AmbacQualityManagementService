@@ -1157,6 +1157,14 @@ export function WorkOrderControlPage() {
     const completedCount = parts.filter((p) => p.status === "COMPLETED").length;
     const progressPct = parts.length > 0 ? Math.round((completedCount / parts.length) * 100) : 0;
 
+    // Which of the pending-work panels currently have content — each reports up
+    // via onActivity so the shared "Needs attention" heading (and its count)
+    // shows only when at least one is active, instead of leaving three stacked
+    // cards / an empty heading. Panels stay the source of truth for their own
+    // emptiness; they always mount so they can report.
+    const [attention, setAttention] = useState({ sampling: false, fpi: false, osp: false });
+    const attentionCount = Number(attention.sampling) + Number(attention.fpi) + Number(attention.osp);
+
     const { data: exceptionsData, resolveException: resolveExceptionMutation } = useExceptions();
     const [resolvedExceptionIds, setResolvedExceptionIds] = useState<Set<string>>(new Set());
     const [draftWoExceptions, setDraftWoExceptions] = useState<ExceptionItem[]>([]);
@@ -1334,20 +1342,37 @@ export function WorkOrderControlPage() {
                 </div>
             )}
 
-            {/* Surfaces live PENDING SamplingDecisions for this WO. Renders
-                empty-state when there are none; renders an actionable
-                reconciliation panel when LAST_N_PARTS / EXACT_COUNT
-                decisions are outstanding (Flow #11). */}
-            {workOrderId && <PendingDecisionsPanel workOrderId={workOrderId} />}
-
-            {/* PENDING first-piece inspections for this WO — QA's own route into
-                a buy-off, without borrowing an operator's work session. Renders
-                nothing when there are none. */}
-            {workOrderId && <PendingFpiPanel workOrderId={workOrderId} />}
-
-            {/* Outside-processing (subcontract) send-out + receive-back, per OSP
-                step in this WO's process. Renders nothing when there are none. */}
-            {workOrderId && <OutsideProcessPanel workOrderId={workOrderId} processId={processId} />}
+            {/* One "Needs attention" group over the pending-work panels —
+                sampling reconciliation, first-piece buy-offs, outside processing.
+                Each panel self-hides when empty and reports its state via
+                onActivity; the heading (with a count) shows only when at least
+                one has something, so a clear WO shows nothing here at all
+                instead of three stacked cards. The panels always mount so they
+                can fetch + report. */}
+            {workOrderId && (
+                <div className="space-y-3">
+                    {attentionCount > 0 && (
+                        <div className="flex items-center gap-2 pt-1">
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            <span className="text-sm font-semibold">Needs attention</span>
+                            <Badge variant="secondary">{attentionCount}</Badge>
+                        </div>
+                    )}
+                    <PendingDecisionsPanel
+                        workOrderId={workOrderId}
+                        onActivity={(a) => setAttention((s) => ({ ...s, sampling: a }))}
+                    />
+                    <PendingFpiPanel
+                        workOrderId={workOrderId}
+                        onActivity={(a) => setAttention((s) => ({ ...s, fpi: a }))}
+                    />
+                    <OutsideProcessPanel
+                        workOrderId={workOrderId}
+                        processId={processId}
+                        onActivity={(a) => setAttention((s) => ({ ...s, osp: a }))}
+                    />
+                </div>
+            )}
 
             {/* The working surface — parts and their per-step controls. Lifted
                 above the hold / summary / exceptions cards so a lead reaches the
