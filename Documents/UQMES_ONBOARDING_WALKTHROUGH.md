@@ -765,16 +765,26 @@ Accept/Reject rather than the generic "Complete step" the operator
 runtime uses on non-OSP steps). Click **Accept return**.
 
 Toast: *"Accepted — parts advanced past the outside-process step."*
-You land on `/production/outside-processing` — the OSP board — and
-the part on the shipment has moved to the next step in the process
-(Final Test).
+You land on `/production/outside-processing` — the OSP board.
 
-**What happens.** The shipment's return-inspection execution completes.
-The part's `part_status` transitions from `AT_OUTSIDE_PROCESS` (or
-`AWAITING_QA`, depending on how `receive_parts_back` set it) into
-the next step of the process — Final Test, per the routing seeded
-by the OSP seeder. The shipment record stays as `RETURNED` with
-the inspection now recorded.
+**What happens (verified live 2026-08-05).** The return-inspection
+execution completes (`StepExecution` → `COMPLETED`) and `accept_return`
+runs. Two things the toast's wording overstates:
+- The part becomes **`READY_FOR_NEXT_STEP`** and **stays at the Nitride
+  Coating (OSP) step** — it is *cleared to advance*, not moved to Final
+  Test in the same click. A subsequent advance (the advance engine / lot
+  cohesion) carries it onward. So "advanced past the outside-process step"
+  is the *intent* (the OSP op is done, the part is unblocked), not an
+  immediate step change.
+- The shipment transitions **`RETURNED → CLOSED`** (the OSP cycle is
+  finished), not "stays RETURNED".
+
+A `READY_FOR_NEXT_STEP` part at an OSP step is deliberately **not**
+re-listed on the shipper board's "ready to send out" — that queue is
+`IN_PROGRESS`-only (`_READY_TO_SHIP_STATUSES`), so a returned/accepted
+part can't be re-dispatched by mistake. (The board's standing "ready to
+send" count is a *different*, never-shipped exhibit — OSP-DEMO-001/002 on
+WO-2024-0042-A.)
 
 ---
 
@@ -1455,7 +1465,7 @@ role-walked.
 | 6a Open disposition | role-verified |
 | 6b–6d Disposition decision/close | role-verified (2026-08-05) |
 | 7 Re-inspection | **fully driven live** (2026-08-05): re-inspect PASS → advance to Assembly, arc paper-complete |
-| 8 OSP | role-verified |
+| 8 OSP | **fully driven live (2026-08-05)**: return inspection → Accept return; corrected the "What happens" (part → READY_FOR_NEXT_STEP, shipment → CLOSED) |
 | 9 CAPA | **driven live (2026-08-05)**: 9c plan-create bug found+fixed; 9e gate-raised CAPA driven end to end |
 | 10 Calibration · 11 Notifications | role-verified; 10b/11a/11c re-checked live (2026-08-05) |
 | 12 Audit trail | **driven live (2026-08-05)**: 12b verified (SCRAPPED + single SCRAP disposition); double-disposition quirk found + fixed (12c) |
