@@ -6,8 +6,11 @@
  *     only; the operator completes the step normally and the engine picks the
  *     branch from the inspection result.
  *   - MANUAL → a manager/lead picks the routing branch (DEFAULT/ALTERNATE).
- *     Gated server-side by `resolve_step_decision`; the buttons are hidden
- *     for users without it.
+ *     Gated server-side by `resolve_step_decision`. An operator without it sees
+ *     the same two branch buttons; choosing one opens a co-signature dialog
+ *     where a lead authenticates inline at that station. Previously this
+ *     rendered a sentence and no affordance, which stopped the part dead
+ *     until someone found a lead with their own terminal.
  *
  * Branch labels come from the resolved StepEdges so the operator sees real
  * target step names ("Pass → Final Test" / "Fail → Rework").
@@ -19,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useDecisionOptions, useResolveDecision } from "@/hooks/parts";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog";
 
 export function DecisionResolverPanel({
     partId,
@@ -31,6 +35,9 @@ export function DecisionResolverPanel({
     const { has } = usePermissionSet();
     const resolve = useResolveDecision();
     const [pending, setPending] = useState<"DEFAULT" | "ALTERNATE" | null>(null);
+    /** Which branch is awaiting a lead's co-signature, if any. */
+    const [cosignFor, setCosignFor] = useState<"DEFAULT" | "ALTERNATE" | null>(null);
+    const [cosignError, setCosignError] = useState<string | null>(null);
 
     if (!data?.is_decision_point) return null;
 
@@ -72,24 +79,46 @@ export function DecisionResolverPanel({
     // ---- MANUAL: manager/lead picks the branch ----
     const canResolve = has("resolve_step_decision");
 
-    const choose = (decision: "DEFAULT" | "ALTERNATE") => {
+    const choose = (
+        decision: "DEFAULT" | "ALTERNATE",
+        cosign?: { email: string; password: string },
+    ) => {
         setPending(decision);
+        setCosignError(null);
         resolve.mutate(
-            { partId, decision },
+            {
+                partId,
+                decision,
+                ...(cosign
+                    ? { cosign_email: cosign.email, cosign_password: cosign.password }
+                    : {}),
+            },
             {
                 onSuccess: (r) => {
-                    toast.success(`Routed to ${r.new_step_name ?? "the next step"}.`);
+                    const by = cosign && r.decided_by ? ` — resolved by ${r.decided_by}` : "";
+                    toast.success(`Routed to ${r.new_step_name ?? "the next step"}${by}.`);
+                    setCosignFor(null);
                     onResolved?.();
                 },
                 onError: (err: unknown) => {
                     const detail = (err as { response?: { data?: { detail?: string } } })
                         ?.response?.data?.detail;
-                    toast.error(detail ?? "Couldn't resolve the decision.");
+                    const msg = detail ?? "Couldn't resolve the decision.";
+                    // Keep the dialog open on a co-sign failure so the lead can
+                    // retype, and show the server's reason there rather than
+                    // only in a toast that vanishes.
+                    if (cosign) setCosignError(msg);
+                    toast.error(msg);
                 },
                 onSettled: () => setPending(null),
             },
         );
     };
+
+    // Without the permission, picking a branch opens the co-sign dialog instead
+    // of posting directly.
+    const pick = (decision: "DEFAULT" | "ALTERNATE") =>
+        canResolve ? choose(decision) : setCosignFor(decision);
 
     return (
         <div className="rounded-lg border border-amber-500/40 bg-amber-50/50 p-3 dark:bg-amber-950/20">
@@ -99,42 +128,69 @@ export function DecisionResolverPanel({
                 <Badge variant="secondary" className="text-[10px]">Manual</Badge>
             </div>
 
-            {!canResolve ? (
+            {!canResolve && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                    A manager or lead must resolve this decision — you don't have permission to
-                    pick the routing branch.
+                    A manager or lead must resolve this decision. Pick the branch and they can
+                    sign here — no need to log you out.
                 </p>
-            ) : (
-                <div className="mt-2 flex flex-wrap gap-2">
-                    <Button
-                        size="sm"
-                        variant="default"
-                        disabled={pending !== null || !def}
-                        onClick={() => choose("DEFAULT")}
-                        title={def ? `Route to ${def.step_name}` : "No pass branch configured"}
-                    >
-                        {pending === "DEFAULT" ? (
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                            <ArrowRight className="mr-1 h-3 w-3" />
-                        )}
-                        Pass → {def?.step_name ?? "—"}
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={pending !== null || !alt}
-                        onClick={() => choose("ALTERNATE")}
-                        title={alt ? `Route to ${alt.step_name}` : "No fail/rework branch configured"}
-                    >
-                        {pending === "ALTERNATE" ? (
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                            <ArrowRight className="mr-1 h-3 w-3" />
-                        )}
-                        Fail / rework → {alt?.step_name ?? "—"}
-                    </Button>
-                </div>
+            )}
+
+            <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                    size="sm"
+                    variant="default"
+                    disabled={pending !== null || !def}
+                    onClick={() => pick("DEFAULT")}
+                    title={def ? `Route to ${def.step_name}` : "No pass branch configured"}
+                >
+                    {pending === "DEFAULT" ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                        <ArrowRight className="mr-1 h-3 w-3" />
+                    )}
+                    Pass → {def?.step_name ?? "—"}
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending !== null || !alt}
+                    onClick={() => pick("ALTERNATE")}
+                    title={alt ? `Route to ${alt.step_name}` : "No fail/rework branch configured"}
+                >
+                    {pending === "ALTERNATE" ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                        <ArrowRight className="mr-1 h-3 w-3" />
+                    )}
+                    Fail / rework → {alt?.step_name ?? "—"}
+                </Button>
+            </div>
+
+            {cosignFor && (
+                <SecondPersonCosignDialog
+                    open
+                    onOpenChange={(v) => {
+                        if (!v) {
+                            setCosignFor(null);
+                            setCosignError(null);
+                        }
+                    }}
+                    title="Manager sign-off — routing decision"
+                    description={
+                        `By signing you choose the ${cosignFor === "DEFAULT" ? "pass" : "fail / rework"} ` +
+                        `branch${(cosignFor === "DEFAULT" ? def?.step_name : alt?.step_name)
+                            ? ` (→ ${cosignFor === "DEFAULT" ? def?.step_name : alt?.step_name})` : ""}` +
+                        ". The routing is recorded against your name, not the person logged in."
+                    }
+                    emailLabel="Manager or lead email"
+                    confirmationText="I confirm this is my signature and I am authorized to resolve this routing decision."
+                    confirmLabel="Confirm routing"
+                    error={cosignError}
+                    pending={pending !== null}
+                    onConfirm={({ email, password }) =>
+                        choose(cosignFor, { email, password })
+                    }
+                />
             )}
         </div>
     );

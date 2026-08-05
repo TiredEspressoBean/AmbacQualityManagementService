@@ -5365,8 +5365,9 @@ export interface paths {
         put?: never;
         /**
          * @description 4a — manager/lead resolves a MANUAL decision-point step by choosing
-         *     the routing branch. Gated by `resolve_step_decision`. QA_RESULT points
-         *     route automatically from the QualityReport and don't use this.
+         *     the routing branch. Gated by `resolve_step_decision`, which an operator
+         *     at the station may satisfy by having a lead co-sign inline. QA_RESULT
+         *     points route automatically from the QualityReport and don't use this.
          */
         post: operations["api_Parts_resolve_decision_create"];
         delete?: never;
@@ -23781,6 +23782,10 @@ export interface components {
         ResolveDecisionInputRequest: {
             /** @description Branch to route along: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'. */
             decision: string;
+            /** @description Email of an authorized lead resolving this at the operator's station (when the caller lacks resolve_step_decision). */
+            cosign_email?: string;
+            /** @description That person's password. Verified inline; they are never logged in, and the routing choice is attributed to them. */
+            cosign_password?: string;
         };
         RestAuthDetail: {
             readonly detail: string;

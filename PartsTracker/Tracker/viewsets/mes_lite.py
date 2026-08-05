@@ -234,7 +234,8 @@ class PartsByOrderView(ListAPIView):
     OpenApiParameter(name='status__in', description='Filter by multiple status values.', required=False,
                      type={'type': 'array', 'items': {'type': 'string'}},
                      style='form', explode=True, )])
-class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                   SecondPersonMixin, viewsets.ModelViewSet):
     """
     Parts CRUD with CSV import/export support.
 
@@ -255,8 +256,21 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
     # 4a — resolving a MANUAL decision-point branch is manager/lead-gated, and
     # isn't "creating a part" (so it's CRUD-exempt; the action perm is the gate).
     crud_exempt_actions = {'resolve_decision'}
-    action_permissions = {
-        'resolve_decision': ['resolve_step_decision'],
+
+    # `resolve_step_decision` lives in `cosign_actions`, not
+    # `action_permissions`, for the same reason FPI buy-off does: an operator
+    # meets a MANUAL decision point *at their station*, mid-run, with the part
+    # physically stopped there — and lacks the perm. Before this, the runtime's
+    # DecisionResolverPanel rendered them a sentence ("a manager or lead must
+    # resolve this") and no affordance, so the only way forward was to find a
+    # lead with their own terminal. A lead can now authenticate inline instead.
+    #
+    # This gate deserves the care more than most: `resolve_decision` calls
+    # `advance_part_step(skip_gate_check=True)`, so the permission is the *only*
+    # control on the routing choice. Attribution therefore has to follow the
+    # lead who chose the branch, not the operator who was logged in.
+    cosign_actions = {
+        'resolve_decision': 'resolve_step_decision',
     }
 
     def get_queryset(self):
@@ -413,20 +427,75 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "escalation_step_name": escalation_step_name,
         })
 
+    def _resolve_decider(self, request):
+        """Who is choosing the routing branch — the caller, or a cosigner?
+
+        Returns ``(decider, error_response)``; exactly one is non-None. Mirrors
+        `FPIRecordViewSet._resolve_signer`. Two routes in: the caller holds
+        `resolve_step_decision` (a lead on their own terminal, e.g. from WO
+        Control), or an authorized lead authenticates inline with
+        `cosign_email` / `cosign_password` at the operator's station.
+        """
+        if request.user.has_tenant_perm('resolve_step_decision'):
+            return request.user, None
+
+        cosigner, err = self.verify_second_person(
+            request,
+            permission='resolve_step_decision',
+            throttle_prefix='decision_cosign_fail',
+            code_prefix='cosign',
+            email_field='cosign_email',
+            password_field='cosign_password',
+            messages={
+                'auth_failed': 'Sign-off failed - check the email and password.',
+                'self': 'The person resolving the decision must be different '
+                        'from the person logged in.',
+                'not_permitted': 'That user is not authorized to resolve a '
+                                 'routing decision.',
+            },
+        )
+        if err is not None:
+            return None, self.second_person_error_response(err)
+        if cosigner is None:
+            # No credentials at all. `permissions.py` only admits a caller
+            # without the perm this far when they claimed a cosigner, so this is
+            # the belt-and-braces path.
+            return None, Response(
+                {'detail': 'A manager or lead must resolve this decision. Ask '
+                           'one to sign here.',
+                 'code': 'cosign_required'},
+                status=status.HTTP_403_FORBIDDEN)
+        return cosigner, None
+
     @extend_schema(
         request=inline_serializer(
             name="ResolveDecisionInput",
-            fields={"decision": serializers.CharField(
-                help_text="Branch to route along: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'."
-            )},
+            fields={
+                "decision": serializers.CharField(
+                    help_text="Branch to route along: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'."
+                ),
+                "cosign_email": serializers.CharField(
+                    required=False, allow_blank=True,
+                    help_text="Email of an authorized lead resolving this at the "
+                              "operator's station (when the caller lacks "
+                              "resolve_step_decision).",
+                ),
+                "cosign_password": serializers.CharField(
+                    required=False, allow_blank=True,
+                    help_text="That person's password. Verified inline; they are "
+                              "never logged in, and the routing choice is "
+                              "attributed to them.",
+                ),
+            },
         ),
         responses={200: dict},
     )
     @action(detail=True, methods=["post"], url_path="resolve_decision")
     def resolve_decision(self, request, pk=None):
         """4a — manager/lead resolves a MANUAL decision-point step by choosing
-        the routing branch. Gated by `resolve_step_decision`. QA_RESULT points
-        route automatically from the QualityReport and don't use this."""
+        the routing branch. Gated by `resolve_step_decision`, which an operator
+        at the station may satisfy by having a lead co-sign inline. QA_RESULT
+        points route automatically from the QualityReport and don't use this."""
         from django.core.exceptions import ValidationError as DjangoValidationError
         from Tracker.services.mes.parts import advance_part_step
 
@@ -449,6 +518,13 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 {"detail": "decision must be 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # After the cheap validation, so a mistyped branch name can't burn a
+        # co-sign throttle slot, and before any mutation.
+        decider, err = self._resolve_decider(request)
+        if err is not None:
+            return err
+
         try:
             # The manual decision is authoritative — a manager/lead has explicitly
             # chosen the branch, so bypass the per-part advancement gate. Otherwise
@@ -461,6 +537,12 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             with transaction.atomic():
                 result = advance_part_step(
                     part, operator=request.user, decision_result=decision, skip_gate_check=True,
+                    # Authority and labor separate under a co-signature: the
+                    # transition log names the lead who chose the branch, while
+                    # `operator` (the person at the station) is who a
+                    # revisit_assignment='same' next step inherits as assignee.
+                    # Identical to before when nobody co-signed.
+                    decided_by=decider,
                 )
         except (ValueError, DjangoValidationError) as e:
             msg = "; ".join(e.messages) if isinstance(e, DjangoValidationError) else str(e)
@@ -470,6 +552,10 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "new_step_id": str(part.step.id) if part.step else None,
             "new_step_name": part.step.name if part.step else None,
             "part_status": part.part_status,
+            # Echo the authorizer so a co-signed resolution can be confirmed on
+            # screen ("Routed to Rework — resolved by Tom Barnes"). Equals the
+            # caller on the ordinary path.
+            "decided_by": decider.get_full_name() or decider.username,
         })
 
     @extend_schema(

@@ -424,19 +424,29 @@ export function useDecisionOptions(partId: string | null | undefined, options?: 
 }
 
 /** Resolve a MANUAL decision point by choosing the routing branch (4a).
- *  Manager/lead-gated server-side (`resolve_step_decision`). */
+ *  Manager/lead-gated server-side (`resolve_step_decision`) — which an operator
+ *  at the station may satisfy by having a lead co-sign inline. */
 export type ResolveDecisionResult = {
     result: string;
     new_step_id: string | null;
     new_step_name: string | null;
     part_status: string;
+    /** Who authorized the routing — the caller, or the lead who co-signed. */
+    decided_by?: string;
 };
 export const useResolveDecision = () => {
     const queryClient = useQueryClient();
-    return useMutation<ResolveDecisionResult, unknown, { partId: string; decision: "DEFAULT" | "ALTERNATE" }>({
-        mutationFn: ({ partId, decision }) =>
+    return useMutation<ResolveDecisionResult, unknown, {
+        partId: string;
+        decision: "DEFAULT" | "ALTERNATE";
+        /** Supplied only when the caller lacks `resolve_step_decision` and a
+         *  lead is authenticating at their station. */
+        cosign_email?: string;
+        cosign_password?: string;
+    }>({
+        mutationFn: ({ partId, decision, cosign_email, cosign_password }) =>
             api.api_Parts_resolve_decision_create(
-                { decision } as never,
+                { decision, ...(cosign_email ? { cosign_email, cosign_password } : {}) } as never,
                 { params: { id: partId }, headers: { "X-CSRFToken": getCookie("csrftoken") } },
             ) as Promise<ResolveDecisionResult>,
         onSuccess: () => invalidateAllParts(queryClient),

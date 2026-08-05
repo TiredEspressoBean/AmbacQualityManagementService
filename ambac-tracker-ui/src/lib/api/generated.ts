@@ -15917,7 +15917,11 @@ const DecisionOptionsResponse = z.object({
 const PartIncrementInputRequest = z
   .object({ decision: z.string().min(1) })
   .partial();
-const ResolveDecisionInputRequest = z.object({ decision: z.string().min(1) });
+const ResolveDecisionInputRequest = z.object({
+  decision: z.string().min(1),
+  cosign_email: z.string().optional(),
+  cosign_password: z.string().optional(),
+});
 const ReworkStatusResponse = z.object({
   total_rework_count: z.number().int(),
   current_step_name: z.string().nullable(),
@@ -31976,14 +31980,15 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
     path: "/api/Parts/:id/resolve_decision/",
     alias: "api_Parts_resolve_decision_create",
     description: `4a — manager/lead resolves a MANUAL decision-point step by choosing
-the routing branch. Gated by &#x60;resolve_step_decision&#x60;. QA_RESULT points
-route automatically from the QualityReport and don&#x27;t use this.`,
+the routing branch. Gated by &#x60;resolve_step_decision&#x60;, which an operator
+at the station may satisfy by having a lead co-sign inline. QA_RESULT
+points route automatically from the QualityReport and don&#x27;t use this.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: z.object({ decision: z.string().min(1) }),
+        schema: ResolveDecisionInputRequest,
       },
       {
         name: "id",
