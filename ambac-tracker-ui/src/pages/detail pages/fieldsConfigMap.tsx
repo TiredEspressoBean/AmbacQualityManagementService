@@ -956,48 +956,74 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                 // report by its number, not a UUID.
                 getHeader: (qr) => ({
                     title: qr.report_number || 'Quality Report',
-                    subtitle: qr.step_info?.name || undefined,
+                    subtitle: qr.step_info?.name
+                        ? (qr.step_info.process_name
+                            ? `${qr.step_info.process_name} › ${qr.step_info.name}`
+                            : qr.step_info.name)
+                        : undefined,
                 }),
                 fields: {
-                    id: { label: 'Report ID' },
-                    status_display: { label: 'Status' },
+                    report_number: { label: 'Report #' },
+                    status_display: { label: 'Result' },
+                    is_first_piece: { label: 'First Piece Inspection' },
                     description: { label: 'Description' },
-                    sampling_method: { label: 'Sampling Method' },
                     part_info: { label: 'Part' },
                     step_info: { label: 'Process Step' },
                     machine_info: { label: 'Machine' },
-                    operator_info: { label: 'Operators' },
-                    errors_info: { label: 'Error Types' },
+                    sampling_method: { label: 'Sampling Method' },
+                    detected_by_info: { label: 'Detected By' },
+                    verified_by_info: { label: 'Verified By' },
+                    operators_info: { label: 'Operators' },
+                    errors_info: { label: 'Defect / Error Types' },
+                    sample_size: { label: 'Sample Size' },
+                    accept_number: { label: 'Accept (Ac)' },
+                    reject_number: { label: 'Reject (Re)' },
                     file_info: { label: 'Attached File' },
                     created_at: { label: 'Created At' },
                 },
                 customRenderers: {
                     created_at: commonRenderers.datetime,
+                    is_first_piece: commonRenderers.boolean,
+                    // Colored pass/fail chip — scannable at a glance, the way a
+                    // QA person triages a queue of reports.
                     status_display: (value: string, data: Record<string, unknown>) => {
-                        const status = (data?.status as string | undefined) || value;
-                        const statusColors: Record<string, string> = {
-                            PASS: '🟢 Pass',
-                            FAIL: '🔴 Fail',
-                            PENDING: '🟡 Pending',
-                        };
-                        return statusColors[status] || value || '—';
+                        const status = String((data?.status as string) || value || '').toUpperCase();
+                        if (!status) return '—';
+                        const tone = status === 'PASS'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                            : status === 'FAIL'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+                        return <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${tone}`}>{value || status}</span>;
                     },
                     part_info: (info) => {
                         if (!info) return '—';
-                        return info.erp_id || `#${info.id}`;
+                        const label = info.erp_id || `#${info.id}`;
+                        const suffix = info.status ? ` · ${info.status}` : '';
+                        if (!info.id) return `${label}${suffix}`;
+                        return (
+                            <Link to="/details/$model/$id" params={{ model: 'Parts', id: String(info.id) }} className="text-primary hover:underline font-medium">
+                                {label}{suffix}
+                            </Link>
+                        );
                     },
                     step_info: (info) => {
                         if (!info) return '—';
-                        if (info.process_name) {
-                            return `${info.process_name} > ${info.name}`;
-                        }
-                        return info.name;
+                        const text = info.process_name ? `${info.process_name} › ${info.name}` : info.name;
+                        if (!info.id) return text;
+                        return (
+                            <Link to="/details/$model/$id" params={{ model: 'Steps', id: String(info.id) }} className="text-primary hover:underline font-medium">
+                                {text}
+                            </Link>
+                        );
                     },
                     machine_info: (info) => {
                         if (!info) return '—';
-                        return info.name;
+                        return info.type ? `${info.name} (${info.type})` : info.name;
                     },
-                    operator_info: (operators) => {
+                    detected_by_info: (info) => info ? (info.full_name || info.username) : '—',
+                    verified_by_info: (info) => info ? (info.full_name || info.username) : '—',
+                    operators_info: (operators) => {
                         if (!operators || !Array.isArray(operators) || operators.length === 0) return '—';
                         return operators.map(op => op.full_name || op.username).join(', ');
                     },
@@ -1005,23 +1031,40 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         if (!errors || !Array.isArray(errors) || errors.length === 0) return '—';
                         return errors.map(err => err.name).join(', ');
                     },
+                    // Link the attachment to its document detail so the drawing
+                    // / cert / photo is one click away.
                     file_info: (info) => {
                         if (!info) return '—';
-                        return info.file_name;
+                        if (!info.id) return info.file_name || '—';
+                        return (
+                            <Link to="/details/$model/$id" params={{ model: 'Documents', id: String(info.id) }} className="text-primary hover:underline font-medium">
+                                {info.file_name || 'Attachment'}
+                            </Link>
+                        );
                     },
                 },
                 sections: [
                     {
-                        title: 'Report Information',
-                        fields: ['id', 'status_display', 'description'],
+                        title: 'Report',
+                        fields: ['report_number', 'status_display', 'is_first_piece', 'description'],
                     },
                     {
-                        title: 'Inspection Details',
+                        title: 'Inspection',
                         fields: ['part_info', 'step_info', 'machine_info', 'sampling_method'],
                     },
                     {
-                        title: 'Personnel & Findings',
-                        fields: ['operator_info', 'errors_info'],
+                        title: 'Personnel',
+                        fields: ['detected_by_info', 'verified_by_info', 'operators_info'],
+                    },
+                    {
+                        title: 'Findings',
+                        fields: ['errors_info'],
+                    },
+                    // Populated for receiving / OSP acceptance-sampling reports;
+                    // blank for ordinary in-process inspections.
+                    {
+                        title: 'Acceptance Sampling',
+                        fields: ['sample_size', 'accept_number', 'reject_number'],
                     },
                     {
                         title: 'Attachments',
@@ -1051,6 +1094,11 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         getUrl: (modelData) => `/quality/capas/new?quality_reports=${modelData.id}`,
                         condition: (modelData) => modelData.status === 'FAIL',
                     },
+                    {
+                        label: 'Edit Report',
+                        variant: 'outline',
+                        getUrl: (modelData) => `/editor/qualityReports/edit/${modelData.id}`,
+                    },
                 ],
                 linkedRecordsComponent: QRMeasurementsSection,
             });
@@ -1068,27 +1116,87 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     current_state: { label: 'State' },
                     disposition_type: { label: 'Type' },
                     severity_display: { label: 'Severity' },
+                    completion_blockers: { label: 'Closure Status' },
+                    rework_limit_exceeded: { label: 'Rework Limit' },
                     assignee_name: { label: 'Assigned To' },
                     due_date: { label: 'Due' },
                     part: { label: 'Part' },
                     step_info: { label: 'Step' },
                     work_order_erp_id: { label: 'Work Order' },
                     description: { label: 'Description' },
+                    quality_reports: { label: 'Quality Reports' },
                     containment_action: { label: 'Containment Action' },
+                    containment_completed_by_name: { label: 'Containment Completed By' },
+                    containment_completed_at: { label: 'Containment Completed At' },
                     resolution_notes: { label: 'Resolution Notes' },
                     resolution_completed: { label: 'Resolution Complete' },
                     resolution_completed_by_name: { label: 'Completed By' },
                     resolution_completed_at: { label: 'Completed At' },
-                    quality_reports: { label: 'Quality Reports' },
+                    requires_customer_approval: { label: 'Customer Approval Required' },
+                    customer_approval_received: { label: 'Approval Received' },
+                    customer_approval_reference: { label: 'Approval Reference' },
+                    customer_approval_date: { label: 'Approval Date' },
+                    scrap_verified: { label: 'Scrap Verified' },
+                    scrap_verification_method: { label: 'Verification Method' },
+                    scrap_verified_by_name: { label: 'Verified By' },
+                    scrap_verified_at: { label: 'Verified At' },
                     archived: { label: 'Archived' },
                 },
                 customRenderers: {
                     due_date: commonRenderers.date,
                     resolution_completed_at: commonRenderers.datetime,
                     resolution_completed: commonRenderers.boolean,
+                    containment_completed_at: commonRenderers.datetime,
+                    customer_approval_date: commonRenderers.date,
+                    customer_approval_received: commonRenderers.boolean,
+                    requires_customer_approval: commonRenderers.boolean,
+                    scrap_verified: commonRenderers.boolean,
+                    scrap_verified_at: commonRenderers.datetime,
                     archived: commonRenderers.boolean,
                     // An OPEN disposition legitimately has no type yet.
                     disposition_type: (value) => value || '— (undecided)',
+                    // Colored state chip — OPEN amber, IN_PROGRESS blue, CLOSED
+                    // green, CANCELLED grey. The at-a-glance triage signal.
+                    current_state: (value) => {
+                        const s = String(value || '').toUpperCase();
+                        if (!s) return '—';
+                        const tone = s === 'CLOSED' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                            : s === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                            : s === 'CANCELLED' ? 'bg-muted text-muted-foreground'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+                        return <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${tone}`}>{s.replace(/_/g, ' ')}</span>;
+                    },
+                    // Severity chip — CRITICAL red, MAJOR orange, MINOR yellow.
+                    severity_display: (value, d) => {
+                        if (!value) return '—';
+                        const sev = String(d?.severity || '').toUpperCase();
+                        const tone = sev === 'CRITICAL' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                            : sev === 'MAJOR' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
+                        return <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${tone}`}>{String(value)}</span>;
+                    },
+                    // The money field for QA: can I close this, and if not, why?
+                    // Server computes the blocker list; render it plainly so the
+                    // inspector doesn't have to guess (or hit Save to find out).
+                    completion_blockers: (value, d) => {
+                        const blockers = Array.isArray(value) ? value.filter(Boolean) : [];
+                        if (blockers.length === 0) {
+                            if (String(d?.current_state).toUpperCase() === 'CLOSED') {
+                                return <span className="text-muted-foreground">Closed</span>;
+                            }
+                            return d?.can_be_completed
+                                ? <span className="font-medium text-green-600 dark:text-green-400">Ready to close</span>
+                                : '—';
+                        }
+                        return (
+                            <ul className="list-disc space-y-0.5 pl-4 text-destructive">
+                                {blockers.map((b: string, i: number) => <li key={i}>{b}</li>)}
+                            </ul>
+                        );
+                    },
+                    rework_limit_exceeded: (value) => value
+                        ? <span className="font-medium text-destructive">Exceeded — escalate</span>
+                        : <span className="text-muted-foreground">Within limit</span>,
                     part: (value, d) => {
                         const id = value || d?.part;
                         if (!id) return '—';
@@ -1157,21 +1265,36 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         fields: ['disposition_number', 'current_state', 'disposition_type', 'severity_display'],
                     },
                     {
+                        title: 'Closure',
+                        fields: ['completion_blockers', 'rework_limit_exceeded'],
+                    },
+                    {
                         title: 'Assignment',
                         fields: ['assignee_name', 'due_date'],
                     },
                     {
                         title: 'Context',
-                        fields: ['part', 'step_info', 'work_order_erp_id'],
+                        fields: ['part', 'step_info', 'work_order_erp_id', 'quality_reports'],
                     },
                     {
-                        title: 'Containment & Resolution',
-                        fields: ['containment_action', 'resolution_notes', 'resolution_completed',
+                        title: 'Containment',
+                        fields: ['containment_action', 'containment_completed_by_name', 'containment_completed_at'],
+                    },
+                    {
+                        title: 'Resolution',
+                        fields: ['description', 'resolution_notes', 'resolution_completed',
                             'resolution_completed_by_name', 'resolution_completed_at'],
                     },
+                    // USE_AS_IS / concession dispositions only; blank otherwise.
                     {
-                        title: 'Quality Reports',
-                        fields: ['quality_reports'],
+                        title: 'Customer Approval',
+                        fields: ['requires_customer_approval', 'customer_approval_received',
+                            'customer_approval_reference', 'customer_approval_date'],
+                    },
+                    // SCRAP dispositions only; blank otherwise.
+                    {
+                        title: 'Scrap Verification',
+                        fields: ['scrap_verified', 'scrap_verification_method', 'scrap_verified_by_name', 'scrap_verified_at'],
                     },
                     {
                         title: 'System',
