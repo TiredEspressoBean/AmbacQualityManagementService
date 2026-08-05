@@ -878,8 +878,39 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         return instance
 
     def update(self, instance, validated_data):
+        # Closing is a GUARDED transition, not a bare field write. If this PATCH
+        # would move the disposition to CLOSED, route it through the same
+        # service the dedicated close action uses
+        # (`complete_disposition_resolution`) so the completion blockers are
+        # enforced and `resolution_completed` / `_by` / `_at` are recorded —
+        # instead of letting a plain field save reach a terminal state that
+        # skips both (the bug this fixes). The other field edits are saved
+        # FIRST, so e.g. a `containment_action` typed in the same submit is
+        # present when the blocker check runs; `current_state` is popped so a
+        # bare CLOSED is never written on its own (the service flips
+        # IN_PROGRESS -> CLOSED itself, and it treats an already-CLOSED row as a
+        # blocker).
+        closing = (
+            validated_data.get('current_state') == 'CLOSED'
+            and instance.current_state != 'CLOSED'
+        )
+        if closing:
+            validated_data.pop('current_state', None)
+
         instance = super().update(instance, validated_data)
         self._route_if_rework(instance)
+
+        if closing:
+            request = self.context.get('request')
+            user = getattr(request, 'user', None)
+            from Tracker.services.qms.disposition import complete_disposition_resolution
+            try:
+                # Unlike `_route_if_rework` (best-effort), a blocked close MUST
+                # fail the request — surface the blocker as a 400, not a 500.
+                instance = complete_disposition_resolution(instance, user)
+            except ValueError as e:
+                raise serializers.ValidationError({'current_state': [str(e)]})
+
         return instance
 
     def _route_if_rework(self, instance):
