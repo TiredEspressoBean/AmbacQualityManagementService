@@ -107,13 +107,11 @@ export function PendingDecisionsPanel({
         );
     }
 
+    // Self-hide when there's nothing pending (like the FPI / OSP panels), rather
+    // than occupying the Control page with a persistent "nothing here" card. The
+    // "lot is clear" reassurance isn't worth a permanent card on a busy surface.
     if (pending.length === 0) {
-        return (
-            <div className="rounded border bg-card p-4 text-sm text-muted-foreground">
-                No PENDING sampling decisions on this work order. The lot is
-                clear of cohort-close reconciliation.
-            </div>
-        );
+        return null;
     }
 
     const handleReconcile = () => {

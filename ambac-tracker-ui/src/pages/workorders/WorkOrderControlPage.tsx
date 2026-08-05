@@ -1349,6 +1349,19 @@ export function WorkOrderControlPage() {
                 step in this WO's process. Renders nothing when there are none. */}
             {workOrderId && <OutsideProcessPanel workOrderId={workOrderId} processId={processId} />}
 
+            {/* The working surface — parts and their per-step controls. Lifted
+                above the hold / summary / exceptions cards so a lead reaches the
+                actual work without scrolling past status context. */}
+            <StepStatusList
+                steps={wo.steps}
+                edges={wo.edges}
+                parts={parts}
+                activeStepFilter={stepFilter}
+                onFilterStep={setStepFilter}
+                onAdvanceReady={advanceReadyAtStep}
+                onShowFlow={() => setFlowDrawerOpen(true)}
+            />
+
             {currentHold && (
                 <Card className="border-amber-500/50">
                     <CardContent className="flex items-start gap-3 p-3">
@@ -1687,16 +1700,6 @@ export function WorkOrderControlPage() {
                     )}
                 </CardContent>
             </Card>
-
-            <StepStatusList
-                steps={wo.steps}
-                edges={wo.edges}
-                parts={parts}
-                activeStepFilter={stepFilter}
-                onFilterStep={setStepFilter}
-                onAdvanceReady={advanceReadyAtStep}
-                onShowFlow={() => setFlowDrawerOpen(true)}
-            />
 
             <Sheet open={flowDrawerOpen} onOpenChange={setFlowDrawerOpen}>
                 <SheetContent side="right" className="w-[min(900px,90vw)] sm:max-w-none">
