@@ -31,7 +31,12 @@ export function OutsideProcessingBoardPage() {
 
     const readyGroups = groups ?? [];
     const sent = shipmentsData?.results ?? [];
+    // Both header counts are in the SAME unit — parts. "Ready to ship" sums the
+    // per-group part counts; "At vendor" sums parts across shipments (NOT the
+    // shipment count, which read as a different unit and made two distinct
+    // pairs of parts at the same step+vendor look like one batch shown twice).
     const readyTotal = readyGroups.reduce((n, g) => n + g.ready_count, 0);
+    const sentTotal = sent.reduce((n, s) => n + (Number(s.quantity) || 0), 0);
 
     return (
         <div className="space-y-4 p-6">
@@ -51,7 +56,7 @@ export function OutsideProcessingBoardPage() {
                 </Button>
                 <Button size="sm" variant={lens === "at-vendor" ? "secondary" : "ghost"}
                     onClick={() => setLens("at-vendor")}>
-                    At vendor{sent.length > 0 ? ` (${sent.length})` : ""}
+                    At vendor{sentTotal > 0 ? ` (${sentTotal})` : ""}
                 </Button>
             </div>
 
