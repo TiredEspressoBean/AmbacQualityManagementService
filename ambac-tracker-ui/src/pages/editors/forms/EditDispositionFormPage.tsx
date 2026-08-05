@@ -1085,15 +1085,28 @@ export default function EditDispositionFormPage() {
                                 <CardContent className="space-y-2">
                                     {disposition.quality_reports.map((qrId: string) => {
                                         const qr = qualityReports.find((r) => r.id === qrId)
+                                        // Prefer the human report number (QR-2026-…) over the raw
+                                        // UUID; the UUID is all we have if the QR isn't in the
+                                        // currently-loaded (search-limited) list, but we can still
+                                        // link by id.
+                                        const label = qr?.report_number ?? `#${qrId}`
                                         return (
-                                            <div key={qrId} className="flex justify-between items-center text-sm">
-                                                <span className="font-mono">#{qrId}</span>
+                                            <Link
+                                                key={qrId}
+                                                to="/editor/qualityReports/edit/$id"
+                                                params={{ id: qrId }}
+                                                className="flex justify-between items-center gap-2 rounded-md border p-2 text-sm hover:bg-muted/50"
+                                            >
+                                                <span className="flex items-center gap-1.5 font-mono text-primary">
+                                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                                    {label}
+                                                </span>
                                                 {qr && (
                                                     <Badge variant={qr.status === "FAIL" ? "destructive" : "default"}>
                                                         {qr.status}
                                                     </Badge>
                                                 )}
-                                            </div>
+                                            </Link>
                                         )
                                     })}
                                 </CardContent>
