@@ -207,13 +207,18 @@ class DecisionCosignTests(TenantContextMixin, TestCase):
 
     # -- authority vs. labor ------------------------------------------------
 
-    def test_transition_log_names_the_lead_who_authorized_it(self):
+    def test_transition_log_splits_performer_from_authorizer(self):
+        """On a co-signed routing decision the log records the operator who
+        performed the move as `operator` (keeping that field's documented
+        meaning) and the co-signing lead as `authorized_by`."""
         self._resolve(self.operator, **self._cosign())
         log = StepTransitionLog.objects.filter(
             part=self.part, step=self.fail_step).first()
         self.assertIsNotNone(log)
-        self.assertEqual(log.operator_id, self.lead.id,
-                         'the routing choice belongs to whoever authorized it')
+        self.assertEqual(log.operator_id, self.operator.id,
+                         'operator is the person who performed the transition')
+        self.assertEqual(log.authorized_by_id, self.lead.id,
+                         'authorized_by is the lead who co-signed the routing')
 
     def test_next_step_stays_assigned_to_the_operator(self):
         """The bug this guards against: passing the cosigner as `operator`
@@ -226,15 +231,17 @@ class DecisionCosignTests(TenantContextMixin, TestCase):
         self.assertEqual(se.assigned_to_id, self.operator.id,
                          'the operator keeps the work they are doing')
 
-    def test_uncosigned_path_attributes_both_to_the_caller(self):
-        """`decided_by` defaults to `operator`, so a lead resolving from their
-        own terminal behaves exactly as before the change."""
+    def test_uncosigned_path_leaves_authorized_by_null(self):
+        """A lead resolving from their own terminal is a single actor: they are
+        the operator, and there is no separate authorizer — so authorized_by is
+        null (identical to any ordinary, non-co-signed transition)."""
         self._resolve(self.lead)
         log = StepTransitionLog.objects.filter(
             part=self.part, step=self.fail_step).first()
         se = StepExecution.objects.filter(
             part=self.part, step=self.fail_step).first()
         self.assertEqual(log.operator_id, self.lead.id)
+        self.assertIsNone(log.authorized_by_id)
         self.assertEqual(se.assigned_to_id, self.lead.id)
 
     def test_response_echoes_the_authorizer(self):

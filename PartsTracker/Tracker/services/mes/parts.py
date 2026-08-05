@@ -132,14 +132,14 @@ def advance_part_step(
             ALREADY gated this part — avoids re-running the gate, the dominant
             cost when advancing a large cohort (3d). Direct callers leave False.
         decided_by: Who *authorized* the transition, when that differs from who
-            was at the keyboard. `operator` serves two roles — it is logged as
-            the transition's actor AND, on a `revisit_assignment='same'` step,
-            inherited as the next StepExecution's `assigned_to`. Those come
-            apart under a co-signature: a lead resolving a MANUAL decision at
-            an operator's station authorized the routing, but the *operator*
-            keeps the work. Pass the authorizer here and the operator as
-            `operator`. Defaults to `operator`, so single-actor callers are
-            unaffected.
+            was at the keyboard. Under a co-signature — a lead resolving a
+            MANUAL decision at an operator's station — the authorizer chose the
+            branch but the *operator* performed the move and keeps the work.
+            Pass the authorizer here and the operator as `operator`: the
+            transition log records `operator` as the performer (consistent with
+            its documented meaning) and `authorized_by` as the lead, while the
+            next StepExecution stays assigned to `operator`. Defaults to None,
+            so single-actor callers log `authorized_by=None` and are unaffected.
 
     Returns:
         "completed"    — terminal/final step reached
@@ -155,9 +155,11 @@ def advance_part_step(
     if not part.step or not part.part_type:
         raise ValueError("Current step or part type is missing.")
 
-    # The actor recorded against the transition itself. Same as `operator`
-    # unless a second person authorized it — see the `decided_by` arg note.
-    transition_actor = decided_by or operator
+    # The transition log records the *performer* as `operator` (consistent
+    # meaning) and the co-signing authorizer, if any, as `authorized_by`. When
+    # nobody co-signed (decided_by is None, or the authorizer IS the operator),
+    # authorized_by is null — identical to the pre-co-sign behaviour.
+    authorizer = decided_by if (decided_by is not None and decided_by != operator) else None
 
     # 2e: remember whether the part is leaving a rework step, so a successful
     # advance (rework + re-inspection passed) can auto-close its open disposition.
@@ -279,7 +281,7 @@ def advance_part_step(
             p.sampling_ruleset = result.get("ruleset")
             p.sampling_context = result.get("context", {})
 
-            transition_logs.append(StepTransitionLog(part=p, step=next_step, operator=transition_actor))
+            transition_logs.append(StepTransitionLog(part=p, step=next_step, operator=operator, authorized_by=authorizer))
 
             # Lock the target step's executions for this part while assigning the
             # visit number — two advances converging on the same step (e.g. from
@@ -349,7 +351,7 @@ def advance_part_step(
     part.sampling_context = result.get("context", {})
     part.save()
 
-    StepTransitionLog.objects.create(part=part, step=next_step, operator=transition_actor)
+    StepTransitionLog.objects.create(part=part, step=next_step, operator=operator, authorized_by=authorizer)
 
     if leaving_rework_step:
         _close_open_rework_disposition(part, operator)

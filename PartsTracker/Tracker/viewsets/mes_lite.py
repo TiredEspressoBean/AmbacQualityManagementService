@@ -538,10 +538,10 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 result = advance_part_step(
                     part, operator=request.user, decision_result=decision, skip_gate_check=True,
                     # Authority and labor separate under a co-signature: the
-                    # transition log names the lead who chose the branch, while
-                    # `operator` (the person at the station) is who a
-                    # revisit_assignment='same' next step inherits as assignee.
-                    # Identical to before when nobody co-signed.
+                    # operator (request.user) performed the move and keeps the
+                    # work; the transition log records them as `operator` and
+                    # the co-signing lead as `authorized_by`. Identical to
+                    # before when nobody co-signed (authorized_by is null).
                     decided_by=decider,
                 )
         except (ValueError, DjangoValidationError) as e:

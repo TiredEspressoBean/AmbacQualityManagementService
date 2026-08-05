@@ -689,6 +689,18 @@ class StepTransitionLog(SecureModel):
                                  help_text="The user (operator) who performed the step transition.")
     """ForeignKey to the `User` who executed the step transition."""
 
+    # Second-person routing: a MANUAL decision point can be resolved by a lead
+    # co-signing at an operator's station. `operator` stays the person who
+    # performed the move (so it keeps its documented meaning consistently);
+    # `authorized_by` names the lead who authorized the routing when that's a
+    # different person, else null. Symmetric with FPIRecord.inspected_by /
+    # performed_by.
+    authorized_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='+',
+                                      help_text="User who authorized the transition when different from "
+                                                "the operator who performed it (co-signed routing). Null otherwise.")
+    """ForeignKey to the `User` who authorized a co-signed transition (else null)."""
+
     timestamp = models.DateTimeField(auto_now_add=True,
                                      help_text="Timestamp automatically recorded at the time of transition.")
     """Datetime when the step transition occurred (auto-generated)."""
