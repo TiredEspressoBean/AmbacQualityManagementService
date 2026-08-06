@@ -417,7 +417,11 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                                                     </Badge>
                                                 )}
                                             </div>
-                                            {!verification.effectiveness_result && (
+                                            {/* Undecided = no result yet OR the INCONCLUSIVE sentinel the
+                                                model defaults a plan to. Gating on `!effectiveness_result`
+                                                alone hid this button forever (the plan is never empty). */}
+                                            {(!verification.effectiveness_result
+                                                || verification.effectiveness_result === "INCONCLUSIVE") && (
                                                 <Button size="sm" onClick={() => handleOpenCompleteDialog(verification)}>
                                                     <CheckCircle className="h-4 w-4 mr-2" />
                                                     Complete Verification
