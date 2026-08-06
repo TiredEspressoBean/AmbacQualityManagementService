@@ -416,7 +416,7 @@ function StepStatusList({
     const totalActive = rows.filter((r) => r.parts.length > 0).length;
 
     return (
-        <Card>
+        <Card className="py-0">
             <CardContent className="p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                     <div className="text-xs">
@@ -1299,7 +1299,7 @@ export function WorkOrderControlPage() {
     // and demoted to a slim "None open · Report…" footer when the WO is clear
     // (so the clear state stays decluttered).
     const exceptionsCard = (
-        <Card>
+        <Card className="py-0">
             <CardContent className="space-y-2 p-3">
                 <div className="flex items-center gap-2 text-sm">
                     <CircleAlert
