@@ -384,7 +384,7 @@ function StepStatusList({
                     <div className="text-xs">
                         <span className="font-medium">Step status</span>
                         <span className="ml-1.5 text-muted-foreground">
-                            {parts.length} parts · {totalActive} active
+                            {parts.length} part{parts.length === 1 ? "" : "s"} · {totalActive} active
                         </span>
                     </div>
                     <div className="ml-auto flex items-center gap-1">
@@ -662,10 +662,20 @@ function StepStrip({
                                 <span className="text-[10px] text-muted-foreground">{row.step.order}.</span>
                                 <span className="truncate text-xs font-medium">{row.step.name}</span>
                                 {row.step.node_type === "DECISION" && (
-                                    <span className="text-[10px] text-muted-foreground">◆</span>
+                                    <span
+                                        className="text-[10px] text-muted-foreground"
+                                        title="Decision step — routing branches from here"
+                                    >
+                                        ◆
+                                    </span>
                                 )}
                                 {row.step.node_type === "REWORK" && (
-                                    <span className="text-[10px] text-destructive">↺</span>
+                                    <span
+                                        className="text-[10px] text-destructive"
+                                        title="Rework step"
+                                    >
+                                        ↺
+                                    </span>
                                 )}
                             </div>
                             <span className="text-sm font-semibold tabular-nums">{row.parts.length}</span>
@@ -1163,7 +1173,6 @@ export function WorkOrderControlPage() {
     // cards / an empty heading. Panels stay the source of truth for their own
     // emptiness; they always mount so they can report.
     const [attention, setAttention] = useState({ sampling: false, fpi: false, osp: false });
-    const attentionCount = Number(attention.sampling) + Number(attention.fpi) + Number(attention.osp);
 
     const { data: exceptionsData, resolveException: resolveExceptionMutation } = useExceptions();
     const [resolvedExceptionIds, setResolvedExceptionIds] = useState<Set<string>>(new Set());
@@ -1178,6 +1187,18 @@ export function WorkOrderControlPage() {
             return wo ? e.work_order_ids.includes(wo.id) : false;
         });
     }, [exceptionsData, draftWoExceptions, resolvedExceptionIds, wo]);
+
+    // Open exceptions (quarantine / downtime / CAPA) are the most urgent thing on
+    // a WO, so they belong in the same "Needs attention" gate as the pending-work
+    // panels — otherwise a WO with an open Major quarantine would present as clear
+    // while a red HIGH exception sits below the fold. Counted as one area, like
+    // each panel, and rendered first (an open disposition outranks a buy-off).
+    const hasOpenExceptions = woExceptions.length > 0;
+    const attentionCount =
+        Number(attention.sampling) +
+        Number(attention.fpi) +
+        Number(attention.osp) +
+        Number(hasOpenExceptions);
 
     function resolveException(id: string) {
         const e = [...draftWoExceptions, ...exceptionsData].find((x) => x.id === id);
@@ -1235,6 +1256,105 @@ export function WorkOrderControlPage() {
             </div>
         );
     }
+
+    // The WO exceptions surface (downtime / quarantine / CAPA), rendered once and
+    // placed adaptively: hoisted into "Needs attention" when something is open,
+    // and demoted to a slim "None open · Report…" footer when the WO is clear
+    // (so the clear state stays decluttered).
+    const exceptionsCard = (
+        <Card>
+            <CardContent className="space-y-2 p-3">
+                <div className="flex items-center gap-2 text-sm">
+                    <CircleAlert
+                        className={cn("h-4 w-4", woExceptions.length > 0 ? "text-destructive" : "text-muted-foreground")}
+                    />
+                    <span className="font-medium">Exceptions on this WO</span>
+                    {woExceptions.length > 0 ? (
+                        <Badge variant="destructive" className="text-[10px]">
+                            {woExceptions.length} open
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline" className="text-[10px]">
+                            None open
+                        </Badge>
+                    )}
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                        Unified · Downtime + Quarantine + CAPA
+                    </span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setReportOpen(true)}>
+                        <CircleAlert className="mr-1 h-3 w-3" />
+                        Report…
+                    </Button>
+                </div>
+                {woExceptions.length > 0 && (
+                    <div className="divide-y rounded-md border">
+                        {woExceptions.map((e) => {
+                            const KindIcon =
+                                e.kind === "DOWNTIME" ? Wrench : e.kind === "QUARANTINE" ? ShieldAlert : CircleAlert;
+                            return (
+                                <div key={e.id} className="flex items-center gap-3 p-2 text-sm">
+                                    <KindIcon className="h-4 w-4 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {e.kind}
+                                            </Badge>
+                                            <Badge
+                                                variant={
+                                                    e.severity === "CRITICAL" || e.severity === "HIGH"
+                                                        ? "destructive"
+                                                        : "secondary"
+                                                }
+                                                className="text-[10px]"
+                                            >
+                                                {e.severity}
+                                            </Badge>
+                                            <span className="truncate font-medium">{e.title}</span>
+                                        </div>
+                                        <div className="truncate text-xs text-muted-foreground">{e.description}</div>
+                                    </div>
+                                    <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+                                        {hoursSince(e.opened_at)}h · {e.reported_by}
+                                    </span>
+                                    {e.kind === "DOWNTIME" && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-7 text-xs"
+                                            onClick={() => resolveException(e.id)}
+                                        >
+                                            <Wrench className="mr-1 h-3 w-3" />
+                                            Resolve
+                                        </Button>
+                                    )}
+                                    {e.kind === "QUARANTINE" && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-7 text-xs"
+                                            onClick={() => navigate({ to: `/dispositions/edit/${e.id}` })}
+                                        >
+                                            Open disposition
+                                        </Button>
+                                    )}
+                                    {e.kind === "CAPA" && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-7 text-xs"
+                                            onClick={() => navigate({ to: `/quality/capas/${e.id}` })}
+                                        >
+                                            Open CAPA
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
 
     return (
         <div className="space-y-4 p-6 pb-24">
@@ -1311,6 +1431,16 @@ export function WorkOrderControlPage() {
                 </div>
             </div>
 
+            {/* WO identity/context under the title. Empty fields (a bare "—") and
+                exact-duplicate bits are dropped so the line reads clean. */}
+            <p className="text-sm text-muted-foreground">
+                {[wo.process_name, wo.customer, wo.part_type]
+                    .map((s) => (s ?? "").trim())
+                    .filter((s, i, a) => Boolean(s) && s !== "—" && s !== "-" && a.indexOf(s) === i)
+                    .join(" · ")}
+                {wo.expected_completion ? ` · Due ${wo.expected_completion}` : ""}
+            </p>
+
             {partsTruncated && (
                 <div className="flex items-center gap-2 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -1355,9 +1485,15 @@ export function WorkOrderControlPage() {
                         <div className="flex items-center gap-2 pt-1">
                             <AlertTriangle className="h-4 w-4 text-amber-500" />
                             <span className="text-sm font-semibold">Needs attention</span>
-                            <Badge variant="secondary">{attentionCount}</Badge>
+                            <Badge
+                                variant="outline"
+                                className="border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            >
+                                {attentionCount}
+                            </Badge>
                         </div>
                     )}
+                    {hasOpenExceptions && exceptionsCard}
                     <PendingDecisionsPanel
                         workOrderId={workOrderId}
                         onActivity={(a) => setAttention((s) => ({ ...s, sampling: a }))}
@@ -1538,10 +1674,6 @@ export function WorkOrderControlPage() {
                 </Card>
             )}
 
-            <p className="text-sm text-muted-foreground">
-                {wo.process_name} · {wo.customer} · {wo.part_type} · Due {wo.expected_completion}
-            </p>
-
             {/* Summary strip */}
             {(() => {
                 const quarantinedCount = parts.filter((p) => p.status === "QUARANTINED").length;
@@ -1575,7 +1707,7 @@ export function WorkOrderControlPage() {
                                 <Card>
                                     <CardContent className="p-3">
                                         <div className="text-xs text-muted-foreground">In quarantine</div>
-                                        <div className="text-xl font-semibold">{quarantinedCount}</div>
+                                        <div className="text-xl font-semibold text-amber-600 dark:text-amber-500">{quarantinedCount}</div>
                                     </CardContent>
                                 </Card>
                             </Link>
@@ -1583,7 +1715,7 @@ export function WorkOrderControlPage() {
                             <Card>
                                 <CardContent className="p-3">
                                     <div className="text-xs text-muted-foreground">In quarantine</div>
-                                    <div className="text-xl font-semibold">{quarantinedCount}</div>
+                                    <div className="text-xl font-semibold text-muted-foreground">{quarantinedCount}</div>
                                 </CardContent>
                             </Card>
                         )}
@@ -1596,7 +1728,7 @@ export function WorkOrderControlPage() {
                                 <Card>
                                     <CardContent className="p-3">
                                         <div className="text-xs text-muted-foreground">Rework</div>
-                                        <div className="text-xl font-semibold">{reworkCount}</div>
+                                        <div className="text-xl font-semibold text-amber-600 dark:text-amber-500">{reworkCount}</div>
                                     </CardContent>
                                 </Card>
                             </Link>
@@ -1604,7 +1736,7 @@ export function WorkOrderControlPage() {
                             <Card>
                                 <CardContent className="p-3">
                                     <div className="text-xs text-muted-foreground">Rework</div>
-                                    <div className="text-xl font-semibold">{reworkCount}</div>
+                                    <div className="text-xl font-semibold text-muted-foreground">{reworkCount}</div>
                                 </CardContent>
                             </Card>
                         )}
@@ -1617,7 +1749,7 @@ export function WorkOrderControlPage() {
                                 <Card>
                                     <CardContent className="p-3">
                                         <div className="text-xs text-muted-foreground">Scrap</div>
-                                        <div className="text-xl font-semibold">{scrapCount}</div>
+                                        <div className="text-xl font-semibold text-destructive">{scrapCount}</div>
                                     </CardContent>
                                 </Card>
                             </Link>
@@ -1625,7 +1757,7 @@ export function WorkOrderControlPage() {
                             <Card>
                                 <CardContent className="p-3">
                                     <div className="text-xs text-muted-foreground">Scrap</div>
-                                    <div className="text-xl font-semibold">{scrapCount}</div>
+                                    <div className="text-xl font-semibold text-muted-foreground">{scrapCount}</div>
                                 </CardContent>
                             </Card>
                         )}
@@ -1633,98 +1765,10 @@ export function WorkOrderControlPage() {
                 );
             })()}
 
-            <Card>
-                <CardContent className="space-y-2 p-3">
-                    <div className="flex items-center gap-2 text-sm">
-                        <CircleAlert
-                            className={cn("h-4 w-4", woExceptions.length > 0 ? "text-destructive" : "text-muted-foreground")}
-                        />
-                        <span className="font-medium">Exceptions on this WO</span>
-                        {woExceptions.length > 0 ? (
-                            <Badge variant="destructive" className="text-[10px]">
-                                {woExceptions.length} open
-                            </Badge>
-                        ) : (
-                            <Badge variant="outline" className="text-[10px]">
-                                None open
-                            </Badge>
-                        )}
-                        <span className="ml-auto text-[11px] text-muted-foreground">
-                            Unified · Downtime + Quarantine + CAPA
-                        </span>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setReportOpen(true)}>
-                            <CircleAlert className="mr-1 h-3 w-3" />
-                            Report…
-                        </Button>
-                    </div>
-                    {woExceptions.length > 0 && (
-                        <div className="divide-y rounded-md border">
-                            {woExceptions.map((e) => {
-                                const KindIcon =
-                                    e.kind === "DOWNTIME" ? Wrench : e.kind === "QUARANTINE" ? ShieldAlert : CircleAlert;
-                                return (
-                                    <div key={e.id} className="flex items-center gap-3 p-2 text-sm">
-                                        <KindIcon className="h-4 w-4 text-muted-foreground" />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="text-[10px]">
-                                                    {e.kind}
-                                                </Badge>
-                                                <Badge
-                                                    variant={
-                                                        e.severity === "CRITICAL" || e.severity === "HIGH"
-                                                            ? "destructive"
-                                                            : "secondary"
-                                                    }
-                                                    className="text-[10px]"
-                                                >
-                                                    {e.severity}
-                                                </Badge>
-                                                <span className="truncate font-medium">{e.title}</span>
-                                            </div>
-                                            <div className="truncate text-xs text-muted-foreground">{e.description}</div>
-                                        </div>
-                                        <span className="whitespace-nowrap text-[11px] text-muted-foreground">
-                                            {hoursSince(e.opened_at)}h · {e.reported_by}
-                                        </span>
-                                        {e.kind === "DOWNTIME" && (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs"
-                                                onClick={() => resolveException(e.id)}
-                                            >
-                                                <Wrench className="mr-1 h-3 w-3" />
-                                                Resolve
-                                            </Button>
-                                        )}
-                                        {e.kind === "QUARANTINE" && (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs"
-                                                onClick={() => navigate({ to: `/dispositions/edit/${e.id}` })}
-                                            >
-                                                Open disposition
-                                            </Button>
-                                        )}
-                                        {e.kind === "CAPA" && (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs"
-                                                onClick={() => navigate({ to: `/quality/capas/${e.id}` })}
-                                            >
-                                                Open CAPA
-                                            </Button>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            {/* When exceptions are open the card is hoisted into "Needs attention"
+                above; here it stays only as the calm "None open · Report…" footer,
+                so the Report entry point persists without cluttering a clear WO. */}
+            {!hasOpenExceptions && exceptionsCard}
 
             <Sheet open={flowDrawerOpen} onOpenChange={setFlowDrawerOpen}>
                 <SheetContent side="right" className="w-[min(900px,90vw)] sm:max-w-none">
