@@ -15,6 +15,10 @@ import { useCreateCapaVerification } from "@/hooks/useCreateCapaVerification"
 import { useUpdateCapaVerification } from "@/hooks/useUpdateCapaVerification"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { api } from "@/lib/api/generated"
+import { getCookie } from "@/lib/utils"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
+import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
 
 type CapaVerificationTabProps = {
     capa: any
@@ -53,6 +57,26 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
     const createVerificationMutation = useCreateCapaVerification()
     const updateVerificationMutation = useUpdateCapaVerification()
     const queryClient = useQueryClient()
+
+    // Recording the effectiveness outcome is an authorized act (verify_capa). A
+    // holder verifies directly; a non-holder collects a second-person co-signature.
+    const canVerifyCapa = usePermissionSet().has("verify_capa")
+    const [cosignOpen, setCosignOpen] = useState(false)
+    const [cosignError, setCosignError] = useState<string | null>(null)
+    const [cosignPending, setCosignPending] = useState(false)
+
+    // The `verify` action records the outcome via the service (closes/reopens the
+    // CAPA + runs the self-verification SoD check); the outcome fields are
+    // read-only on the serializer, so this is the only path that sets them.
+    const runVerify = (verificationId: string, cosign?: { email: string; password: string }) =>
+        api.api_CapaVerifications_verify_create({
+            effectiveness_result: formData.effectiveness_result as "CONFIRMED" | "NOT_EFFECTIVE",
+            notes: formData.verification_notes || undefined,
+            ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
+        } as never, {
+            params: { id: verificationId },
+            headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+        })
 
     if (!capa) {
         return null
@@ -120,24 +144,40 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
             toast.error("Please select an effectiveness result")
             return
         }
+        // Can't authorize it yourself → collect a co-signature (the completing
+        // verification + chosen result/notes stay in state for the confirm).
+        if (!canVerifyCapa) {
+            setCosignError(null)
+            setCompleteDialogOpen(false)
+            setCosignOpen(true)
+            return
+        }
         try {
-            await updateVerificationMutation.mutateAsync({
-                id: completingVerification.id,
-                data: {
-                    capa: capa?.id,
-                    verification_method: completingVerification.verification_method,
-                    verification_criteria: completingVerification.verification_criteria,
-                    verification_date: formData.verification_date,
-                    effectiveness_result: formData.effectiveness_result,
-                    verification_notes: formData.verification_notes,
-                }
-            })
+            await runVerify(completingVerification.id)
             queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
             toast.success("Verification completed successfully")
             setCompleteDialogOpen(false)
-        } catch (error) {
-            toast.error("Failed to complete verification")
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || "Failed to complete verification")
             console.error(error)
+        }
+    }
+
+    const handleCosignConfirm = async (creds: { email: string; password: string }) => {
+        if (!completingVerification) return
+        setCosignPending(true)
+        setCosignError(null)
+        try {
+            await runVerify(completingVerification.id, creds)
+            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
+            toast.success("Verification completed")
+            setCosignOpen(false)
+        } catch (error: any) {
+            // Surface the server's own co-sign error verbatim (throttled / wrong
+            // person / not permitted / self-verification).
+            setCosignError(error?.response?.data?.detail || "Verification failed.")
+        } finally {
+            setCosignPending(false)
         }
     }
 
@@ -180,45 +220,11 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                     </div>
 
                     {editingVerification && (
-                        <>
-                            <div className="space-y-2">
-                                <Label>Verification Date</Label>
-                                <Input
-                                    type="date"
-                                    value={formData.verification_date}
-                                    onChange={(e) => updateField("verification_date", e.target.value)}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Effectiveness Result</Label>
-                                <Select
-                                    value={formData.effectiveness_result}
-                                    onValueChange={(v) => updateField("effectiveness_result", v)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select result..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {schemas.EffectivenessResultEnum.options.map((result) => (
-                                            <SelectItem key={result} value={result}>
-                                                {effectivenessLabels[result] ?? result}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Verification Notes</Label>
-                                <Textarea
-                                    value={formData.verification_notes}
-                                    onChange={(e) => updateField("verification_notes", e.target.value)}
-                                    placeholder="Notes about the verification process and findings..."
-                                    rows={3}
-                                />
-                            </div>
-                        </>
+                        <p className="text-xs text-muted-foreground">
+                            The effectiveness outcome is recorded separately via
+                            "Complete Verification", which requires verification authority
+                            (verify_capa) or a co-signature.
+                        </p>
                     )}
                 </div>
 
@@ -281,7 +287,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                                 <SelectValue placeholder="Select result..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {schemas.EffectivenessResultEnum.options.map((result) => {
+                                {schemas.EffectivenessResultEnum.options.filter((r) => r !== "INCONCLUSIVE").map((result) => {
                                     const Icon = getStatusIcon(result)
                                     const iconColor = result === "CONFIRMED" ? "text-green-600"
                                         : result === "NOT_EFFECTIVE" ? "text-red-600"
@@ -437,6 +443,21 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
             </Card>
             <VerificationDialog />
             <CompleteVerificationDialog />
+            <SecondPersonCosignDialog
+                open={cosignOpen}
+                onOpenChange={(v) => {
+                    setCosignOpen(v)
+                    if (!v) setCosignError(null)
+                }}
+                title="Authorize effectiveness verification"
+                description={`Recording a "${effectivenessLabels[formData.effectiveness_result] ?? formData.effectiveness_result}" outcome needs verification authority. An authorized colleague can co-sign here; the verification is recorded under their name.`}
+                emailLabel="Verifier email"
+                confirmationText="I verify this CAPA's effectiveness as recorded."
+                confirmLabel="Verify"
+                error={cosignError}
+                pending={cosignPending}
+                onConfirm={handleCosignConfirm}
+            />
         </>
     )
 }

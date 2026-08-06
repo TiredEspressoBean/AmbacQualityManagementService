@@ -1446,18 +1446,16 @@ class CapaTasksSerializer(SecureModelMixin):
 class CapaVerificationSerializer(SecureModelMixin):
     """CAPA verification serializer"""
     # Effectiveness verification is TWO stages: the *plan* (method + success
-    # criteria) is created first; the *outcome* (effectiveness_result) is
-    # recorded later, once the monitoring window elapses. So the outcome must
-    # NOT be required at create — the model defaults it to INCONCLUSIVE ("not
-    # yet decided", paired with a null effectiveness_decided_at). Without
-    # required=False, DRF marks the field required and the generated zod REQUEST
-    # client rejects the plan-create POST ("effectiveness_result is required"),
-    # silently — a browser-only break of the documented two-stage flow,
-    # invisible to backend tests and tsc (the request-side twin of the
-    # SerializerMethodField/allow_null hazard in CLAUDE.md).
+    # criteria) is created via normal CRUD; the *outcome* is recorded only through
+    # the co-signable `verify` action, which runs the self-verification SoD check
+    # and closes/reopens the CAPA (services.qms.capa.verify_capa_effectiveness).
+    # So the outcome fields — effectiveness_result and verified_by (and the
+    # service-stamped verification_date) — are read-only here: a bare PATCH can
+    # neither record the outcome nor bypass the gate, and (being excluded from the
+    # request) the plan-create POST no longer trips the zod "required" rejection.
     effectiveness_result = serializers.ChoiceField(
         choices=CapaVerification._meta.get_field('effectiveness_result').choices,
-        required=False,
+        read_only=True,
     )
     effectiveness_result_display = serializers.CharField(source='get_effectiveness_result_display', read_only=True)
     capa_info = serializers.SerializerMethodField()
@@ -1474,7 +1472,10 @@ class CapaVerificationSerializer(SecureModelMixin):
             'self_verified',
             'created_at', 'updated_at', 'archived'
         )
-        read_only_fields = ('effectiveness_decided_at', 'created_at', 'updated_at', 'self_verified')
+        read_only_fields = ('effectiveness_decided_at', 'created_at', 'updated_at', 'self_verified',
+                            # Outcome + attribution are recorded only by the `verify`
+                            # action's service, never by a direct write.
+                            'verified_by', 'verification_date')
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_capa_info(self, obj):

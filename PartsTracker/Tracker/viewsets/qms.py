@@ -999,11 +999,18 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
     partial_update=extend_schema(description="Partially update a CAPA verification"),
     destroy=extend_schema(description="Soft delete a CAPA verification")
 )
-class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
+                              SecondPersonMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing CAPA verifications.
 
     Tracks verification of CAPA effectiveness with findings and evidence.
+
+    Two stages: the *plan* (method + success criteria) is normal CRUD; the
+    *outcome* (recording effectiveness) is the authorized act and goes through
+    the co-signable `verify` action — which runs the self-verification SoD check
+    and closes/reopens the CAPA. The outcome fields are read-only on the
+    serializer, so a bare PATCH can neither record the outcome nor bypass the gate.
     """
     queryset = CapaVerification.unscoped.all()
     serializer_class = CapaVerificationSerializer
@@ -1011,6 +1018,12 @@ class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     filterset_fields = ['capa', 'effectiveness_result', 'verified_by']
     ordering_fields = ['verification_date']
     ordering = ['-verification_date']
+
+    # Recording effectiveness is gated by `verify_capa` and co-signable: a verifier
+    # who lacks the perm can commit when an authorized colleague supplies
+    # cosign_email / cosign_password. `_resolve_signer` verifies and attributes.
+    crud_exempt_actions = {'verify'}
+    cosign_actions = {'verify': 'verify_capa'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1021,6 +1034,81 @@ class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
         return qs.select_related(
             'capa', 'verified_by'
         )
+
+    def _resolve_signer(self, request):
+        """Who is verifying effectiveness — the caller, or a cosigner? Mirrors the
+        disposition/FPI pattern: a `verify_capa` holder verifies directly; otherwise
+        an authorized colleague authenticates inline. The returned signer is passed
+        to the service, so `verified_by` and the self-verification check follow the
+        actual verifier, not merely whoever is logged in."""
+        if request.user.has_tenant_perm('verify_capa'):
+            return request.user, None
+
+        cosigner, err = self.verify_second_person(
+            request,
+            permission='verify_capa',
+            throttle_prefix='capa_verify_fail',
+            code_prefix='cosign',
+            email_field='cosign_email',
+            password_field='cosign_password',
+            messages={
+                'auth_failed': 'CAPA verification failed - check the email and password.',
+                'self': 'The person verifying effectiveness must be different from the '
+                        'person logged in.',
+                'not_permitted': 'That user is not authorized to verify CAPA effectiveness.',
+            },
+        )
+        if err is not None:
+            return None, self.second_person_error_response(err)
+        if cosigner is None:
+            return None, Response(
+                {'detail': 'CAPA effectiveness verification must be authorized. Ask someone '
+                           'with verification authority to co-sign.',
+                 'code': 'cosign_required'},
+                status=status.HTTP_403_FORBIDDEN)
+        return cosigner, None
+
+    @extend_schema(
+        description="Record the effectiveness verification outcome. Closes the CAPA on "
+                    "CONFIRMED, or reopens it and spawns a follow-up on NOT_EFFECTIVE. "
+                    "Gated by verify_capa, co-signable.",
+        request={"application/json": {"type": "object", "properties": {
+            "effectiveness_result": {"type": "string", "enum": ["CONFIRMED", "NOT_EFFECTIVE"]},
+            "notes": {"type": "string", "description": "Findings / justification. Required (>=10 chars) for self-verification."},
+            "cosign_email": {"type": "string", "description": "Email of an authorized verifier co-signing (when the caller lacks verify_capa)"},
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verification is attributed to them."},
+        }, "required": ["effectiveness_result"]}},
+        responses={200: dict},
+    )
+    @action(detail=True, methods=['post'], url_path='verify')
+    def verify(self, request, pk=None):
+        """Record the effectiveness outcome via the service (which closes/reopens
+        the CAPA and enforces the self-verification SoD rule), attributed to the
+        resolved signer. The outcome is not writable via PATCH."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.qms.capa import verify_capa_effectiveness
+        verification = self.get_object()
+
+        result = request.data.get('effectiveness_result')
+        if result not in ('CONFIRMED', 'NOT_EFFECTIVE'):
+            return Response(
+                {'detail': "effectiveness_result must be CONFIRMED or NOT_EFFECTIVE.",
+                 'code': 'verify_result_required'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        signer, err_response = self._resolve_signer(request)
+        if err_response is not None:
+            return err_response
+
+        try:
+            verify_capa_effectiveness(
+                verification, signer, result == 'CONFIRMED', request.data.get('notes', ''),
+            )
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages), 'code': 'verify_invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(self.get_serializer(verification).data)
 
 
 # ===== RCA DETAIL VIEWSETS (FiveWhys & Fishbone) =====

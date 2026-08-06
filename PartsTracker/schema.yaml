@@ -3693,6 +3693,58 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/CapaVerifications/{id}/verify/:
+    post:
+      operationId: api_CapaVerifications_verify_create
+      description: Record the effectiveness verification outcome. Closes the CAPA
+        on CONFIRMED, or reopens it and spawns a follow-up on NOT_EFFECTIVE. Gated
+        by verify_capa, co-signable.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this CAPA Verification.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                effectiveness_result:
+                  type: string
+                  enum:
+                  - CONFIRMED
+                  - NOT_EFFECTIVE
+                notes:
+                  type: string
+                  description: Findings / justification. Required (>=10 chars) for
+                    self-verification.
+                cosign_email:
+                  type: string
+                  description: Email of an authorized verifier co-signing (when the
+                    caller lacks verify_capa)
+                cosign_password:
+                  type: string
+                  description: That person's password. Verified inline; they are never
+                    logged in, and the verification is attributed to them.
+              required:
+              - effectiveness_result
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/CapaVerifications/export-excel/:
     get:
       operationId: api_CapaVerifications_export_excel_retrieve
@@ -36609,9 +36661,11 @@ components:
         verification_date:
           type: string
           format: date
+          readOnly: true
           nullable: true
         verified_by:
           type: integer
+          readOnly: true
           nullable: true
         verified_by_info:
           type: object
@@ -36619,7 +36673,9 @@ components:
           nullable: true
           readOnly: true
         effectiveness_result:
-          $ref: '#/components/schemas/EffectivenessResultEnum'
+          allOf:
+          - $ref: '#/components/schemas/EffectivenessResultEnum'
+          readOnly: true
         effectiveness_result_display:
           type: string
           readOnly: true
@@ -36650,12 +36706,15 @@ components:
       - capa_info
       - created_at
       - effectiveness_decided_at
+      - effectiveness_result
       - effectiveness_result_display
       - id
       - self_verified
       - updated_at
       - verification_criteria
+      - verification_date
       - verification_method
+      - verified_by
       - verified_by_info
     CapaVerificationRequest:
       type: object
@@ -36672,15 +36731,6 @@ components:
           type: string
           minLength: 1
           description: What defines success
-        verification_date:
-          type: string
-          format: date
-          nullable: true
-        verified_by:
-          type: integer
-          nullable: true
-        effectiveness_result:
-          $ref: '#/components/schemas/EffectivenessResultEnum'
         verification_notes:
           type: string
           nullable: true
@@ -46077,15 +46127,6 @@ components:
           type: string
           minLength: 1
           description: What defines success
-        verification_date:
-          type: string
-          format: date
-          nullable: true
-        verified_by:
-          type: integer
-          nullable: true
-        effectiveness_result:
-          $ref: '#/components/schemas/EffectivenessResultEnum'
         verification_notes:
           type: string
           nullable: true

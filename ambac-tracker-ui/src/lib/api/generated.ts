@@ -982,10 +982,10 @@ export type CapaVerification = {
    * What defines success
    */
   verification_criteria: string;
-  verification_date?: (string | null) | undefined;
-  verified_by?: (number | null) | undefined;
+  verification_date: string | null;
+  verified_by: number | null;
   verified_by_info: {};
-  effectiveness_result?: EffectivenessResultEnum | undefined;
+  effectiveness_result: EffectivenessResultEnum;
   effectiveness_result_display: string;
   effectiveness_decided_at: string | null;
   verification_notes?: (string | null) | undefined;
@@ -1198,26 +1198,6 @@ export type CapaTasksRequest = {
   boolean | undefined;
   status?: CapaTaskStatusEnum | undefined;
   completion_notes?: (string | null) | undefined;
-  archived?: boolean | undefined;
-};
-export type CapaVerificationRequest = {
-  capa: string;
-  /**
-   * How effectiveness was verified
-   *
-   * @minLength 1
-   */
-  verification_method: string;
-  /**
-   * What defines success
-   *
-   * @minLength 1
-   */
-  verification_criteria: string;
-  verification_date?: (string | null) | undefined;
-  verified_by?: (number | null) | undefined;
-  effectiveness_result?: EffectivenessResultEnum | undefined;
-  verification_notes?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
 export type ClockInRequest = {
@@ -8805,26 +8785,6 @@ export type PatchedCapaTasksRequest = Partial<{
   completion_notes: string | null;
   archived: boolean;
 }>;
-export type PatchedCapaVerificationRequest = Partial<{
-  capa: string;
-  /**
-   * How effectiveness was verified
-   *
-   * @minLength 1
-   */
-  verification_method: string;
-  /**
-   * What defines success
-   *
-   * @minLength 1
-   */
-  verification_criteria: string;
-  verification_date: string | null;
-  verified_by: number | null;
-  effectiveness_result: EffectivenessResultEnum;
-  verification_notes: string | null;
-  archived: boolean;
-}>;
 export type PatchedCoreRequest = Partial<{
   /**
    * Unique identifier for this core unit (unique per tenant)
@@ -13682,10 +13642,10 @@ const CapaVerification = z.object({
   capa_info: z.object({}).partial().passthrough().nullable(),
   verification_method: z.string(),
   verification_criteria: z.string(),
-  verification_date: z.string().nullish(),
-  verified_by: z.number().int().nullish(),
+  verification_date: z.string().nullable(),
+  verified_by: z.number().int().nullable(),
   verified_by_info: z.object({}).partial().passthrough().nullable(),
-  effectiveness_result: EffectivenessResultEnum.optional(),
+  effectiveness_result: EffectivenessResultEnum,
   effectiveness_result_display: z.string(),
   effectiveness_decided_at: z.string().datetime({ offset: true }).nullable(),
   verification_notes: z.string().nullish(),
@@ -13899,9 +13859,6 @@ const CapaVerificationRequest = z.object({
   capa: z.string().uuid(),
   verification_method: z.string().min(1),
   verification_criteria: z.string().min(1),
-  verification_date: z.string().nullish(),
-  verified_by: z.number().int().nullish(),
-  effectiveness_result: EffectivenessResultEnum.optional(),
   verification_notes: z.string().nullish(),
   archived: z.boolean().optional(),
 });
@@ -13910,13 +13867,16 @@ const PatchedCapaVerificationRequest = z
     capa: z.string().uuid(),
     verification_method: z.string().min(1),
     verification_criteria: z.string().min(1),
-    verification_date: z.string().nullable(),
-    verified_by: z.number().int().nullable(),
-    effectiveness_result: EffectivenessResultEnum,
     verification_notes: z.string().nullable(),
     archived: z.boolean(),
   })
   .partial();
+const api_CapaVerifications_verify_create_Body = z.object({
+  effectiveness_result: z.enum(["CONFIRMED", "NOT_EFFECTIVE"]),
+  notes: z.string().optional(),
+  cosign_email: z.string().optional(),
+  cosign_password: z.string().optional(),
+});
 const ChatSession = z.object({
   id: z.number().int(),
   langgraph_thread_id: z.string().max(255),
@@ -20375,6 +20335,7 @@ export const schemas = {
   PaginatedCapaVerificationList,
   CapaVerificationRequest,
   PatchedCapaVerificationRequest,
+  api_CapaVerifications_verify_create_Body,
   ChatSession,
   PaginatedChatSessionList,
   ChatSessionRequest,
@@ -23668,6 +23629,26 @@ If task.requires_signature is True, signature_data and password are required.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/CapaVerifications/:id/verify/",
+    alias: "api_CapaVerifications_verify_create",
+    description: `Record the effectiveness verification outcome. Closes the CAPA on CONFIRMED, or reopens it and spawns a follow-up on NOT_EFFECTIVE. Gated by verify_capa, co-signable.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CapaVerifications_verify_create_Body,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "get",

@@ -1124,6 +1124,23 @@ export interface paths {
         patch: operations["api_CapaVerifications_partial_update"];
         trace?: never;
     };
+    "/api/CapaVerifications/{id}/verify/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record the effectiveness verification outcome. Closes the CAPA on CONFIRMED, or reopens it and spawns a follow-up on NOT_EFFECTIVE. Gated by verify_capa, co-signable. */
+        post: operations["api_CapaVerifications_verify_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/CapaVerifications/export-excel/": {
         parameters: {
             query?: never;
@@ -15436,12 +15453,12 @@ export interface components {
             /** @description What defines success */
             verification_criteria: string;
             /** Format: date */
-            verification_date?: string | null;
-            verified_by?: number | null;
+            readonly verification_date: string | null;
+            readonly verified_by: number | null;
             readonly verified_by_info: {
                 [key: string]: unknown;
             } | null;
-            effectiveness_result?: components["schemas"]["EffectivenessResultEnum"];
+            readonly effectiveness_result: components["schemas"]["EffectivenessResultEnum"];
             readonly effectiveness_result_display: string;
             /** Format: date-time */
             readonly effectiveness_decided_at: string | null;
@@ -15462,10 +15479,6 @@ export interface components {
             verification_method: string;
             /** @description What defines success */
             verification_criteria: string;
-            /** Format: date */
-            verification_date?: string | null;
-            verified_by?: number | null;
-            effectiveness_result?: components["schemas"]["EffectivenessResultEnum"];
             verification_notes?: string | null;
             archived?: boolean;
         };
@@ -20411,10 +20424,6 @@ export interface components {
             verification_method?: string;
             /** @description What defines success */
             verification_criteria?: string;
-            /** Format: date */
-            verification_date?: string | null;
-            verified_by?: number | null;
-            effectiveness_result?: components["schemas"]["EffectivenessResultEnum"];
             verification_notes?: string | null;
             archived?: boolean;
         };
@@ -30895,6 +30904,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CapaVerification"];
+                };
+            };
+        };
+    };
+    api_CapaVerifications_verify_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this CAPA Verification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    effectiveness_result: "CONFIRMED" | "NOT_EFFECTIVE";
+                    /** @description Findings / justification. Required (>=10 chars) for self-verification. */
+                    notes?: string;
+                    /** @description Email of an authorized verifier co-signing (when the caller lacks verify_capa) */
+                    cosign_email?: string;
+                    /** @description That person's password. Verified inline; they are never logged in, and the verification is attributed to them. */
+                    cosign_password?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
