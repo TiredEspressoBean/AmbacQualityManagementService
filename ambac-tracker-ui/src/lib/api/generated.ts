@@ -5565,6 +5565,9 @@ export type QuarantineDisposition = {
   resolution_completed_by?: (number | null) | undefined;
   resolution_completed_by_name: string;
   resolution_completed_at?: (string | null) | undefined;
+  decision_authorized_by: number | null;
+  decision_authorized_at: string | null;
+  decision_authorized_by_name: string;
   containment_action?: /**
    * Immediate action taken to prevent escape
    */
@@ -16364,6 +16367,9 @@ const QuarantineDisposition = z.object({
   resolution_completed_by: z.number().int().nullish(),
   resolution_completed_by_name: z.string(),
   resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
+  decision_authorized_by: z.number().int().nullable(),
+  decision_authorized_at: z.string().datetime({ offset: true }).nullable(),
+  decision_authorized_by_name: z.string(),
   containment_action: z.string().optional(),
   containment_completed_at: z.string().datetime({ offset: true }).nullish(),
   containment_completed_by: z.number().int().nullish(),
@@ -16472,6 +16478,20 @@ const PatchedQuarantineDispositionRequest = z
     archived: z.boolean(),
   })
   .partial();
+const api_QuarantineDispositions_decide_create_Body = z.object({
+  disposition_type: z.enum([
+    "REWORK",
+    "REPAIR",
+    "SCRAP",
+    "USE_AS_IS",
+    "RETURN_TO_SUPPLIER",
+  ]),
+  notes: z.string().optional(),
+  customer_approval_reference: z.string().optional(),
+  customer_approval_date: z.string().optional(),
+  cosign_email: z.string().optional(),
+  cosign_password: z.string().optional(),
+});
 const PaginatedRcaRecordList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -20623,6 +20643,7 @@ export const schemas = {
   PaginatedQuarantineDispositionList,
   QuarantineDispositionRequest,
   PatchedQuarantineDispositionRequest,
+  api_QuarantineDispositions_decide_create_Body,
   PaginatedRcaRecordList,
   FiveWhysNestedRequest,
   FishboneNestedRequest,
@@ -35134,6 +35155,26 @@ the completion blockers.`,
       },
     ],
     response: QuarantineDisposition,
+  },
+  {
+    method: "post",
+    path: "/api/QuarantineDispositions/:id/decide/",
+    alias: "api_QuarantineDispositions_decide_create",
+    description: `Authorize a disposition decision (set the disposition_type). Gated by approve_disposition, co-signable. USE_AS_IS / REPAIR require a customer/design-approval reference.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_QuarantineDispositions_decide_create_Body,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "get",

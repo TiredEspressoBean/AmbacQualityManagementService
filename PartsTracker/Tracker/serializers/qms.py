@@ -797,6 +797,17 @@ class QuarantineDispositionSerializer(SecureModelMixin):
     scrap_verified_by_name = serializers.SerializerMethodField()
     work_order_id = serializers.SerializerMethodField()
     work_order_erp_id = serializers.SerializerMethodField()
+    decision_authorized_by_name = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The disposition decision (`disposition_type`) is an authorized act that
+        # must go through the co-signable `decide` action, not a bare PATCH — so
+        # it is writable only on create (the "opened with an initial disposition"
+        # path, e.g. receiving RTV). On update it is read-only; DRF drops it from
+        # input, and a type change must use POST .../decide/.
+        if self.instance is not None:
+            self.fields['disposition_type'].read_only = True
 
     class Meta:
         model = QuarantineDisposition
@@ -807,6 +818,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             # Resolution tracking
             'resolution_completed', 'resolution_completed_by', 'resolution_completed_by_name',
             'resolution_completed_at',
+            # Decision authorization (who authorized the disposition_type decision)
+            'decision_authorized_by', 'decision_authorized_at', 'decision_authorized_by_name',
             # Containment tracking
             'containment_action', 'containment_completed_at', 'containment_completed_by',
             'containment_completed_by_name',
@@ -838,6 +851,9 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'annotation_status', 'can_be_completed', 'completion_blockers',
             'severity_display', 'containment_completed_by_name', 'scrap_verified_by_name',
             'work_order_id', 'work_order_erp_id', 'affected_parts',
+            # Decision authority is recorded by the `decide` service, never by a
+            # direct write.
+            'decision_authorized_by', 'decision_authorized_at', 'decision_authorized_by_name',
             'created_at', 'updated_at',
         )
 
@@ -943,6 +959,10 @@ class QuarantineDispositionSerializer(SecureModelMixin):
     @extend_schema_field(serializers.CharField())
     def get_resolution_completed_by_name(self, obj):
         return obj.resolution_completed_by.display_name if obj.resolution_completed_by else ""
+
+    @extend_schema_field(serializers.CharField())
+    def get_decision_authorized_by_name(self, obj):
+        return obj.decision_authorized_by.display_name if obj.decision_authorized_by else ""
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_choices_data(self, obj):

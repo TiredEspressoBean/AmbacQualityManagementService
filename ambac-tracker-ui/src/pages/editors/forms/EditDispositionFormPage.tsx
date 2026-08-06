@@ -47,6 +47,8 @@ import {
 } from "lucide-react"
 
 import { ReportButton } from "@/components/reports/ReportButton"
+import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
 import { useRetrievePart } from "@/hooks/parts"
 import { useRetrieveParts } from "@/hooks/parts"
@@ -303,6 +305,38 @@ export default function EditDispositionFormPage() {
         empLabel(emp).toLowerCase().includes(containmentBySearch.toLowerCase())
     )
 
+    // Changing the disposition_type on an existing disposition is an AUTHORIZED
+    // decision (AS9100/ISO 8.7, 21 CFR 820.90) — it goes through the co-signable
+    // `decide` action, not a bare PATCH (the field is read-only on update). A
+    // caller who holds approve_disposition authorizes directly; otherwise they
+    // collect a second-person co-signature.
+    const canApproveDisposition = usePermissionSet().has("approve_disposition")
+    const [cosignOpen, setCosignOpen] = useState(false)
+    const [cosignError, setCosignError] = useState<string | null>(null)
+    const [cosignPending, setCosignPending] = useState(false)
+    const [pendingDecision, setPendingDecision] = useState<FormValues | null>(null)
+
+    const csrf = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" })
+    const extractError = (err: any, m: "edit" | "create") =>
+        err?.response?.data?.detail || err?.response?.data?.message || err?.message
+        || (m === "edit" ? "Failed to update disposition" : "Failed to create disposition")
+
+    // Everything except the decision — disposition_type is read-only on update.
+    const savePatch = (values: FormValues) =>
+        api.api_QuarantineDispositions_partial_update(values as never, {
+            params: { id: dispositionId! },
+            headers: csrf(),
+        })
+
+    // Authorize the disposition_type decision via the co-signable `decide` action.
+    const authorizeDecision = (values: FormValues, cosign?: { email: string; password: string }) =>
+        api.api_QuarantineDispositions_decide_create({
+            disposition_type: values.disposition_type,
+            customer_approval_reference: values.customer_approval_reference || undefined,
+            customer_approval_date: values.customer_approval_date || undefined,
+            ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
+        } as never, { params: { id: dispositionId! }, headers: csrf() })
+
     // Form submission
     const onSubmit = async (values: FormValues) => {
         // Client-side validation for closing with pending annotations
@@ -311,17 +345,27 @@ export default function EditDispositionFormPage() {
             return
         }
 
+        const typeChanged =
+            mode === "edit" && !!values.disposition_type
+            && values.disposition_type !== disposition?.disposition_type
+
+        // Can't authorize it yourself → collect a co-signature, then replay.
+        if (typeChanged && !canApproveDisposition) {
+            setPendingDecision(values)
+            setCosignError(null)
+            setCosignOpen(true)
+            return
+        }
+
         try {
             if (mode === "edit" && dispositionId) {
-                await api.api_QuarantineDispositions_partial_update(values as never, {
-                    params: { id: dispositionId },
-                    headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
-                })
+                if (typeChanged) await authorizeDecision(values)
+                await savePatch(values)
                 toast.success("Disposition updated")
                 queryClient.invalidateQueries({ queryKey: ["disposition", dispositionId] })
             } else {
                 const result = await api.api_QuarantineDispositions_create(values as never, {
-                    headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+                    headers: csrf(),
                 })
                 toast.success("Disposition created")
                 // Navigate to edit page for the new disposition
@@ -329,11 +373,29 @@ export default function EditDispositionFormPage() {
             }
         } catch (err: any) {
             console.error("API Error:", err)
-            const errorMessage = err?.response?.data?.detail
-                || err?.response?.data?.message
-                || err?.message
-                || (mode === "edit" ? "Failed to update disposition" : "Failed to create disposition")
-            toast.error(errorMessage)
+            toast.error(extractError(err, mode))
+        }
+    }
+
+    // A co-signer authorized the decision → run decide with their credentials,
+    // then save the rest of the form.
+    const handleCosignConfirm = async (creds: { email: string; password: string }) => {
+        if (!pendingDecision || !dispositionId) return
+        setCosignPending(true)
+        setCosignError(null)
+        try {
+            await authorizeDecision(pendingDecision, creds)
+            await savePatch(pendingDecision)
+            setCosignOpen(false)
+            setPendingDecision(null)
+            toast.success("Disposition updated")
+            queryClient.invalidateQueries({ queryKey: ["disposition", dispositionId] })
+        } catch (err: any) {
+            // Surface the server's own co-sign error (throttled / wrong person /
+            // not permitted / missing concession) verbatim.
+            setCosignError(extractError(err, "edit"))
+        } finally {
+            setCosignPending(false)
         }
     }
 
@@ -1173,6 +1235,26 @@ export default function EditDispositionFormPage() {
                     </div>
                 </div>
             </div>
+
+            <SecondPersonCosignDialog
+                open={cosignOpen}
+                onOpenChange={(v) => {
+                    setCosignOpen(v)
+                    if (!v) { setCosignError(null); setPendingDecision(null) }
+                }}
+                title="Authorize disposition decision"
+                description={
+                    pendingDecision?.disposition_type
+                        ? `Recording a "${dispositionTypeLabels[pendingDecision.disposition_type] ?? pendingDecision.disposition_type}" disposition needs approval authority. An authorized colleague can co-sign here; the decision is recorded under their name.`
+                        : "This disposition decision needs approval authority."
+                }
+                emailLabel="Approver email"
+                confirmationText="I authorize this disposition decision."
+                confirmLabel="Authorize"
+                error={cosignError}
+                pending={cosignPending}
+                onConfirm={handleCosignConfirm}
+            />
         </div>
     )
 }

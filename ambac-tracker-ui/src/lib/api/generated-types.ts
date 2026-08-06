@@ -6653,6 +6653,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/QuarantineDispositions/{id}/decide/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Authorize a disposition decision (set the disposition_type). Gated by approve_disposition, co-signable. USE_AS_IS / REPAIR require a customer/design-approval reference. */
+        post: operations["api_QuarantineDispositions_decide_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/QuarantineDispositions/export-excel/": {
         parameters: {
             query?: never;
@@ -23458,6 +23475,10 @@ export interface components {
             readonly resolution_completed_by_name: string;
             /** Format: date-time */
             resolution_completed_at?: string | null;
+            readonly decision_authorized_by: number | null;
+            /** Format: date-time */
+            readonly decision_authorized_at: string | null;
+            readonly decision_authorized_by_name: string;
             /** @description Immediate action taken to prevent escape */
             containment_action?: string;
             /** Format: date-time */
@@ -39661,6 +39682,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuarantineDisposition"];
+                };
+            };
+        };
+    };
+    api_QuarantineDispositions_decide_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Disposition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    disposition_type: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+                    /** @description Optional decision rationale */
+                    notes?: string;
+                    /** @description Required for USE_AS_IS / REPAIR — the concession/deviation reference */
+                    customer_approval_reference?: string;
+                    /**
+                     * Format: date
+                     * @description Optional approval date (defaults to today)
+                     */
+                    customer_approval_date?: string;
+                    /** @description Email of an authorized approver co-signing (when the caller lacks approve_disposition) */
+                    cosign_email?: string;
+                    /** @description That person's password. Verified inline; they are never logged in, and the decision is attributed to them. */
+                    cosign_password?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

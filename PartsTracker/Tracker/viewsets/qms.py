@@ -88,7 +88,8 @@ class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
         return qs
 
 
-class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
+                                   SecondPersonMixin, viewsets.ModelViewSet):
     queryset = QuarantineDisposition.unscoped.all()
     serializer_class = QuarantineDispositionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -114,12 +115,25 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
 
     # Closing a disposition is a deliberate, permission-gated action (not just a
     # CRUD PATCH). `close_disposition` is the declared marker perm; enforced here.
-    # `close` is CRUD-exempt so it's gated solely by `close_disposition` — a
-    # closer shouldn't also need `add_quarantinedisposition` (POST -> add).
+    # `close`/`decide` are CRUD-exempt so they're gated solely by their own perm —
+    # a closer/authorizer shouldn't also need `add_quarantinedisposition`.
     action_permissions = {
         'close': ['close_disposition'],
     }
-    crud_exempt_actions = {'close'}
+    crud_exempt_actions = {'close', 'decide'}
+
+    # The disposition DECISION (choosing the disposition_type) is the authorized
+    # act under AS9100/ISO 9001 8.7 & 21 CFR 820.90 — the record must carry the
+    # signature of the individual authorizing it. `decide` lives in cosign_actions
+    # (not action_permissions) because it admits a **second person**: an inspector
+    # at the keyboard may POST provided an authorized colleague supplies
+    # `cosign_email` / `cosign_password`. `permissions.py` admits the request when
+    # either could hold `approve_disposition`; `_resolve_signer` does the actual
+    # verification and decides who the decision is attributed to. (The serializer
+    # makes disposition_type read-only on update, so a plain PATCH can't bypass.)
+    cosign_actions = {
+        'decide': 'approve_disposition',
+    }
 
     def get_queryset(self):
         """Apply tenant scoping first, then SecureModel filtering for user-specific access"""
@@ -145,6 +159,95 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
             complete_disposition_resolution(disposition, request.user)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(disposition).data)
+
+    def _resolve_signer(self, request):
+        """Who is authorizing this disposition decision — the caller, or a cosigner?
+
+        Returns ``(signer, error_response)``; exactly one is non-None. Mirrors
+        ``FPIRecordViewSet._resolve_signer``: the caller authorizes directly when
+        they hold ``approve_disposition`` (e.g. a QA Manager working the
+        Dispositions surface); otherwise an authorized colleague authenticates
+        inline with ``cosign_email`` / ``cosign_password`` (the standard
+        second-person path — the person at the keyboard need not hold the perm).
+        The returned signer is attributed as ``decision_authorized_by``.
+        """
+        if request.user.has_tenant_perm('approve_disposition'):
+            return request.user, None
+
+        cosigner, err = self.verify_second_person(
+            request,
+            permission='approve_disposition',
+            throttle_prefix='disposition_decide_fail',
+            code_prefix='cosign',
+            email_field='cosign_email',
+            password_field='cosign_password',
+            messages={
+                'auth_failed': 'Disposition authorization failed - check the email and password.',
+                'self': 'The person authorizing the disposition must be different from the '
+                        'person logged in.',
+                'not_permitted': 'That user is not authorized to approve disposition decisions.',
+            },
+        )
+        if err is not None:
+            return None, self.second_person_error_response(err)
+        if cosigner is None:
+            return None, Response(
+                {'detail': 'A disposition decision must be authorized. Ask someone with '
+                           'disposition-approval authority to co-sign.',
+                 'code': 'cosign_required'},
+                status=status.HTTP_403_FORBIDDEN)
+        return cosigner, None
+
+    @extend_schema(
+        description="Authorize a disposition decision (set the disposition_type). "
+                    "Gated by approve_disposition, co-signable. USE_AS_IS / REPAIR "
+                    "require a customer/design-approval reference.",
+        request={"application/json": {"type": "object", "properties": {
+            "disposition_type": {"type": "string", "enum": [c[0] for c in QuarantineDisposition.DISPOSITION_TYPES]},
+            "notes": {"type": "string", "description": "Optional decision rationale"},
+            "customer_approval_reference": {"type": "string", "description": "Required for USE_AS_IS / REPAIR — the concession/deviation reference"},
+            "customer_approval_date": {"type": "string", "format": "date", "description": "Optional approval date (defaults to today)"},
+            "cosign_email": {"type": "string", "description": "Email of an authorized approver co-signing (when the caller lacks approve_disposition)"},
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the decision is attributed to them."},
+        }, "required": ["disposition_type"]}},
+        responses={200: dict},
+    )
+    @action(detail=True, methods=['post'], url_path='decide')
+    def decide(self, request, pk=None):
+        """Authorize and record the disposition decision (the disposition_type).
+
+        The disposition_type is not writable via PATCH (the serializer makes it
+        read-only on update); this is the one authorized path to set/change it.
+        Delegates to `decide_disposition`, attributing the decision to the
+        resolved signer (caller or inline co-signer)."""
+        from Tracker.services.qms.disposition import decide_disposition
+        disposition = self.get_object()
+
+        disposition_type = request.data.get('disposition_type')
+        if not disposition_type:
+            return Response({'detail': "disposition_type is required.", 'code': 'decide_type_required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        signer, err_response = self._resolve_signer(request)
+        if err_response is not None:
+            return err_response
+
+        try:
+            decide_disposition(
+                disposition,
+                disposition_type=disposition_type,
+                authorized_by=signer,
+                notes=request.data.get('notes', ''),
+                customer_approval={
+                    'reference': request.data.get('customer_approval_reference'),
+                    'date': request.data.get('customer_approval_date') or None,
+                },
+            )
+        except ValueError as e:
+            return Response({'detail': str(e), 'code': 'decide_invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         return Response(self.get_serializer(disposition).data)
 
 

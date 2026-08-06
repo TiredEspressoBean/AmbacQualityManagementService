@@ -16465,6 +16465,68 @@ paths:
               schema:
                 $ref: '#/components/schemas/QuarantineDisposition'
           description: ''
+  /api/QuarantineDispositions/{id}/decide/:
+    post:
+      operationId: api_QuarantineDispositions_decide_create
+      description: Authorize a disposition decision (set the disposition_type). Gated
+        by approve_disposition, co-signable. USE_AS_IS / REPAIR require a customer/design-approval
+        reference.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Disposition.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                disposition_type:
+                  type: string
+                  enum:
+                  - REWORK
+                  - REPAIR
+                  - SCRAP
+                  - USE_AS_IS
+                  - RETURN_TO_SUPPLIER
+                notes:
+                  type: string
+                  description: Optional decision rationale
+                customer_approval_reference:
+                  type: string
+                  description: Required for USE_AS_IS / REPAIR — the concession/deviation
+                    reference
+                customer_approval_date:
+                  type: string
+                  format: date
+                  description: Optional approval date (defaults to today)
+                cosign_email:
+                  type: string
+                  description: Email of an authorized approver co-signing (when the
+                    caller lacks approve_disposition)
+                cosign_password:
+                  type: string
+                  description: That person's password. Verified inline; they are never
+                    logged in, and the decision is attributed to them.
+              required:
+              - disposition_type
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/QuarantineDispositions/export-excel/:
     get:
       operationId: api_QuarantineDispositions_export_excel_retrieve
@@ -51331,6 +51393,18 @@ components:
           type: string
           format: date-time
           nullable: true
+        decision_authorized_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        decision_authorized_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        decision_authorized_by_name:
+          type: string
+          readOnly: true
         containment_action:
           type: string
           description: Immediate action taken to prevent escape
@@ -51457,6 +51531,9 @@ components:
       - completion_blockers
       - containment_completed_by_name
       - created_at
+      - decision_authorized_at
+      - decision_authorized_by
+      - decision_authorized_by_name
       - disposition_number
       - id
       - quality_reports

@@ -817,6 +817,17 @@ class QuarantineDisposition(SecureModel):
         related_name='completed_dispositions')
     resolution_completed_at = models.DateTimeField(null=True, blank=True)
 
+    # Decision authorization. The disposition decision (choosing the
+    # disposition_type) is the authorized act, per AS9100/ISO 9001 8.7 and
+    # 21 CFR 820.90: the record must carry the signature of the individual
+    # authorizing the disposition. Set by `services.qms.disposition.decide_disposition`
+    # (which is co-signable via `approve_disposition`); USE_AS_IS / REPAIR
+    # additionally require recorded customer approval before the decision is taken.
+    decision_authorized_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='authorized_dispositions')
+    decision_authorized_at = models.DateTimeField(null=True, blank=True)
+
     # Relationships
     part = models.ForeignKey('Parts', on_delete=models.PROTECT, null=True, blank=True)
     batch_execution = models.ForeignKey(

@@ -113,6 +113,70 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         part.save(update_fields=['part_status', 'total_rework_count'])
 
 
+# USE_AS_IS and REPAIR accept known-nonconforming product, so the standard treats
+# them as the highest-authority decisions — requiring recorded customer / design
+# approval (a concession or deviation) before the disposition is authorized.
+_APPROVAL_REQUIRED_TYPES = {'USE_AS_IS', 'REPAIR'}
+
+
+def decide_disposition(
+    disposition: QuarantineDisposition,
+    *,
+    disposition_type: str,
+    authorized_by,
+    notes: str = '',
+    customer_approval: dict | None = None,
+) -> QuarantineDisposition:
+    """Authorize and record a disposition decision (its ``disposition_type``).
+
+    Choosing rework / repair / scrap / use-as-is / return-to-supplier is the
+    authorized act under AS9100 & ISO 9001 8.7 and 21 CFR 820.90: the record must
+    carry who authorized it, captured here as ``decision_authorized_by`` /
+    ``_at``. Setting the type drives the existing cascade in
+    ``QuarantineDisposition.save()`` — OPEN -> IN_PROGRESS and the part-status
+    update via ``apply_disposition_to_part``.
+
+    ``authorized_by`` is whoever the viewset resolved as the authority: the
+    caller when they hold ``approve_disposition``, or an inline co-signer.
+
+    Raises:
+        ValueError: unknown type; a decision on a closed record; or a
+            USE_AS_IS / REPAIR decision without a customer/design-approval
+            reference (these accept nonconforming product and need a concession).
+    """
+    valid = dict(QuarantineDisposition.DISPOSITION_TYPES)
+    if disposition_type not in valid:
+        raise ValueError(f"Unknown disposition type: {disposition_type!r}.")
+
+    if disposition.current_state == 'CLOSED':
+        raise ValueError("This disposition is closed; its decision can no longer be changed.")
+
+    if disposition_type in _APPROVAL_REQUIRED_TYPES:
+        reference = str((customer_approval or {}).get('reference') or '').strip()
+        if not reference:
+            raise ValueError(
+                f"A '{valid[disposition_type]}' decision accepts nonconforming product and "
+                "requires recorded customer/design approval — provide an approval reference."
+            )
+        disposition.requires_customer_approval = True
+        disposition.customer_approval_received = True
+        disposition.customer_approval_reference = reference
+        disposition.customer_approval_date = (
+            (customer_approval or {}).get('date') or timezone.now().date()
+        )
+
+    disposition.disposition_type = disposition_type
+    disposition.decision_authorized_by = authorized_by
+    disposition.decision_authorized_at = timezone.now()
+    if notes:
+        existing = disposition.resolution_notes or ''
+        disposition.resolution_notes = f"{existing}\n{notes}".strip() if existing else notes
+
+    disposition.save()
+    disposition.refresh_from_db()
+    return disposition
+
+
 def complete_disposition_resolution(
     disposition: QuarantineDisposition,
     user,
