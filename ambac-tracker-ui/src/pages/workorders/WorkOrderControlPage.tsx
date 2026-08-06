@@ -48,7 +48,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { StatusBadge as WoStatusBadge } from "@/components/flow/overlays/StatusBadge";
-import { StatusBadge as PartStatusBadge } from "@/components/ui/status-badge";
+import { StatusBadge as PartStatusBadge, getStatusColors, STATUS_COLORS } from "@/components/ui/status-badge";
 import {
     AlertTriangle,
     ArrowLeft,
@@ -259,6 +259,44 @@ const STEP_BAR_BUCKETS: { key: MockPartStatus[]; className: string; label: strin
     { key: ["QUARANTINED"], className: STATUS_BAR_FILL.QUARANTINED, label: "Quarantined" },
     { key: ["SCRAPPED"], className: STATUS_BAR_FILL.SCRAPPED, label: "Scrapped" },
 ];
+
+/** Compact KPI chip for the Control summary strip. A non-zero count gets the
+ *  shared status colour (so it matches the part-status badges in the table);
+ *  zero stays muted. Links to the WO's dispositions when a target is given. */
+function KpiChip({
+    count,
+    status,
+    label,
+    to,
+    search,
+}: {
+    count: number;
+    status: string;
+    label: string;
+    to?: string;
+    search?: Record<string, unknown>;
+}) {
+    if (count === 0) {
+        return <span className="text-xs text-muted-foreground">0 {label}</span>;
+    }
+    const chip = (
+        <span
+            className={cn(
+                "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium",
+                getStatusColors(status),
+            )}
+        >
+            <span className="tabular-nums">{count}</span> {label}
+        </span>
+    );
+    return to ? (
+        <Link to={to} search={search as never} className="transition-opacity hover:opacity-80">
+            {chip}
+        </Link>
+    ) : (
+        chip
+    );
+}
 
 function StepDistributionBar({ parts }: { parts: MockPart[] }) {
     if (parts.length === 0) {
@@ -1172,7 +1210,7 @@ export function WorkOrderControlPage() {
     // shows only when at least one is active, instead of leaving three stacked
     // cards / an empty heading. Panels stay the source of truth for their own
     // emptiness; they always mount so they can report.
-    const [attention, setAttention] = useState({ sampling: false, fpi: false, osp: false });
+    const [attention, setAttention] = useState({ sampling: false, fpi: false });
 
     const { data: exceptionsData, resolveException: resolveExceptionMutation } = useExceptions();
     const [resolvedExceptionIds, setResolvedExceptionIds] = useState<Set<string>>(new Set());
@@ -1193,12 +1231,11 @@ export function WorkOrderControlPage() {
     // panels — otherwise a WO with an open Major quarantine would present as clear
     // while a red HIGH exception sits below the fold. Counted as one area, like
     // each panel, and rendered first (an open disposition outranks a buy-off).
+    // Outside processing is deliberately NOT here — it's a shipping/materials job,
+    // demoted to its own section below the parts table.
     const hasOpenExceptions = woExceptions.length > 0;
     const attentionCount =
-        Number(attention.sampling) +
-        Number(attention.fpi) +
-        Number(attention.osp) +
-        Number(hasOpenExceptions);
+        Number(attention.sampling) + Number(attention.fpi) + Number(hasOpenExceptions);
 
     function resolveException(id: string) {
         const e = [...draftWoExceptions, ...exceptionsData].find((x) => x.id === id);
@@ -1299,16 +1336,7 @@ export function WorkOrderControlPage() {
                                             <Badge variant="outline" className="text-[10px]">
                                                 {e.kind}
                                             </Badge>
-                                            <Badge
-                                                variant={
-                                                    e.severity === "CRITICAL" || e.severity === "HIGH"
-                                                        ? "destructive"
-                                                        : "secondary"
-                                                }
-                                                className="text-[10px]"
-                                            >
-                                                {e.severity}
-                                            </Badge>
+                                            <PartStatusBadge status={e.severity} showIcon={false} size="sm" />
                                             <span className="truncate font-medium">{e.title}</span>
                                         </div>
                                         <div className="truncate text-xs text-muted-foreground">{e.description}</div>
@@ -1485,10 +1513,7 @@ export function WorkOrderControlPage() {
                         <div className="flex items-center gap-2 pt-1">
                             <AlertTriangle className="h-4 w-4 text-amber-500" />
                             <span className="text-sm font-semibold">Needs attention</span>
-                            <Badge
-                                variant="outline"
-                                className="border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                            >
+                            <Badge variant="outline" className={STATUS_COLORS.warningLight}>
                                 {attentionCount}
                             </Badge>
                         </div>
@@ -1502,13 +1527,54 @@ export function WorkOrderControlPage() {
                         workOrderId={workOrderId}
                         onActivity={(a) => setAttention((s) => ({ ...s, fpi: a }))}
                     />
-                    <OutsideProcessPanel
-                        workOrderId={workOrderId}
-                        processId={processId}
-                        onActivity={(a) => setAttention((s) => ({ ...s, osp: a }))}
-                    />
                 </div>
             )}
+
+            {/* Compact KPI strip — replaces four oversized stat cards. Progress plus
+                colour-coded exception counts (shared status colours, so the chips
+                match the part-status badges in the table). Kept above the step
+                strip and parts table as a one-line status read. */}
+            {(() => {
+                const quarantinedCount = parts.filter((p) => p.status === "QUARANTINED").length;
+                const reworkCount = parts.filter(
+                    (p) => p.status === "REWORK_NEEDED" || p.status === "REWORK_IN_PROGRESS",
+                ).length;
+                const scrapCount = parts.filter((p) => p.status === "SCRAPPED").length;
+                const dispositionsSearch = { work_order: wo.id } as const;
+                return (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border bg-card px-4 py-2.5 text-sm">
+                        <span className="text-muted-foreground">
+                            Progress{" "}
+                            <span className="font-semibold text-foreground tabular-nums">{progressPct}%</span>
+                            <span className="ml-1 text-xs">
+                                ({completedCount}/{parts.length} complete)
+                            </span>
+                        </span>
+                        <span className="h-4 w-px bg-border" aria-hidden />
+                        <KpiChip
+                            count={quarantinedCount}
+                            status="QUARANTINED"
+                            label="quarantined"
+                            to="/production/dispositions"
+                            search={dispositionsSearch}
+                        />
+                        <KpiChip
+                            count={reworkCount}
+                            status="REWORK_NEEDED"
+                            label="rework"
+                            to="/production/dispositions"
+                            search={dispositionsSearch}
+                        />
+                        <KpiChip
+                            count={scrapCount}
+                            status="SCRAPPED"
+                            label="scrap"
+                            to="/production/dispositions"
+                            search={dispositionsSearch}
+                        />
+                    </div>
+                );
+            })()}
 
             {/* The working surface — parts and their per-step controls. Lifted
                 above the hold / summary / exceptions cards so a lead reaches the
@@ -1673,102 +1739,6 @@ export function WorkOrderControlPage() {
                     </CardContent>
                 </Card>
             )}
-
-            {/* Summary strip */}
-            {(() => {
-                const quarantinedCount = parts.filter((p) => p.status === "QUARANTINED").length;
-                const reworkCount = parts.filter(
-                    (p) => p.status === "REWORK_NEEDED" || p.status === "REWORK_IN_PROGRESS",
-                ).length;
-                const scrapCount = parts.filter((p) => p.status === "SCRAPPED").length;
-                // Dispositions list is scoped by work_order (ModelChoiceFilter on the
-                // Parts endpoint); ModelEditorPage's initialFilters seeds activeFilters
-                // from any non-reserved URL param, so this shows only this WO's parts.
-                const dispositionsSearch = { work_order: wo.id } as const;
-                const linkClass =
-                    "block rounded-xl transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-                return (
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <Card>
-                            <CardContent className="p-3">
-                                <div className="text-xs text-muted-foreground">Progress</div>
-                                <div className="text-xl font-semibold">{progressPct}%</div>
-                                <div className="text-xs text-muted-foreground">
-                                    {completedCount}/{parts.length} complete
-                                </div>
-                            </CardContent>
-                        </Card>
-                        {quarantinedCount > 0 ? (
-                            <Link
-                                to="/production/dispositions"
-                                search={dispositionsSearch}
-                                className={linkClass}
-                            >
-                                <Card>
-                                    <CardContent className="p-3">
-                                        <div className="text-xs text-muted-foreground">In quarantine</div>
-                                        <div className="text-xl font-semibold text-amber-600 dark:text-amber-500">{quarantinedCount}</div>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ) : (
-                            <Card>
-                                <CardContent className="p-3">
-                                    <div className="text-xs text-muted-foreground">In quarantine</div>
-                                    <div className="text-xl font-semibold text-muted-foreground">{quarantinedCount}</div>
-                                </CardContent>
-                            </Card>
-                        )}
-                        {reworkCount > 0 ? (
-                            <Link
-                                to="/production/dispositions"
-                                search={dispositionsSearch}
-                                className={linkClass}
-                            >
-                                <Card>
-                                    <CardContent className="p-3">
-                                        <div className="text-xs text-muted-foreground">Rework</div>
-                                        <div className="text-xl font-semibold text-amber-600 dark:text-amber-500">{reworkCount}</div>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ) : (
-                            <Card>
-                                <CardContent className="p-3">
-                                    <div className="text-xs text-muted-foreground">Rework</div>
-                                    <div className="text-xl font-semibold text-muted-foreground">{reworkCount}</div>
-                                </CardContent>
-                            </Card>
-                        )}
-                        {scrapCount > 0 ? (
-                            <Link
-                                to="/production/dispositions"
-                                search={dispositionsSearch}
-                                className={linkClass}
-                            >
-                                <Card>
-                                    <CardContent className="p-3">
-                                        <div className="text-xs text-muted-foreground">Scrap</div>
-                                        <div className="text-xl font-semibold text-destructive">{scrapCount}</div>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ) : (
-                            <Card>
-                                <CardContent className="p-3">
-                                    <div className="text-xs text-muted-foreground">Scrap</div>
-                                    <div className="text-xl font-semibold text-muted-foreground">{scrapCount}</div>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
-                );
-            })()}
-
-            {/* When exceptions are open the card is hoisted into "Needs attention"
-                above; here it stays only as the calm "None open · Report…" footer,
-                so the Report entry point persists without cluttering a clear WO. */}
-            {!hasOpenExceptions && exceptionsCard}
 
             <Sheet open={flowDrawerOpen} onOpenChange={setFlowDrawerOpen}>
                 <SheetContent side="right" className="w-[min(900px,90vw)] sm:max-w-none">
@@ -2106,6 +2076,16 @@ export function WorkOrderControlPage() {
                     </Card>
                 </div>
             )}
+
+            {/* Secondary surface, below the working table. Outside processing is a
+                shipping/materials job — not a QA-lead action — so it sits here
+                rather than in "Needs attention" and self-hides when there's nothing
+                to ship or receive. (Could graduate to its own tab once there's more
+                supply-side content to pair with it.) The exceptions "None open"
+                footer keeps the Report entry point on a clear WO; open exceptions
+                are hoisted up into "Needs attention" instead. */}
+            {workOrderId && <OutsideProcessPanel workOrderId={workOrderId} processId={processId} />}
+            {!hasOpenExceptions && exceptionsCard}
 
             <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
                 <DialogContent>
