@@ -27,6 +27,51 @@ points that matter.
   flagged where they occur — §3 (buy-off), §6 (disposition), §9 (CAPA) — and
   **§13 walks them end to end from the manager's chair.**
 
+## Getting around — the sidebar
+
+You land on the home page (§1); the collapsible **sidebar rail** on the left
+is how you reach everything else. Two things to know before the walk sends you
+into it:
+
+- **It's permission-gated.** You only see the sections your role can use, so
+  an inspector's rail is shorter than a manager's, and a manager's is shorter
+  than a tenant admin's. If this guide names a section you don't see, your
+  role doesn't have it — that's expected, not a bug.
+- **Two sections start expanded** — Production and Quality, a QA person's home
+  turf. The rest (Supply, Approvals, Remanufacturing, Admin) start collapsed;
+  click the section header to open one.
+
+Here's the whole rail a QA user sees, top to bottom:
+
+| Sidebar section | Entries you'll use | Why you open it |
+|---|---|---|
+| *(top, everyone)* | **Help & Docs** (`/docs`), **Tracker** (`/tracker`) | Docs, and the customer-facing tracker map. Not your daily driver. |
+| **Personal** | **Inbox** (`/inbox`) | Your assigned CAPA tasks + approvals, with a live count badge. Two of the home page's "My quality actions" tiles land here. |
+| **Production** *(open)* | **Work Orders** (`/production/work-orders`), **WO Control Center** (`/workorders`), **Processes** (`/editor/processes`) | The shop-floor work orders and the process authoring surface. |
+| **Supply** | **Incoming Inspection** (`/production/incoming`), **Outside Processing** (`/production/outside-processing`), **Materials** (`/production/material-lots`), + supplier & plan surfaces | Receiving (§2) and OSP returns (§8) live here. |
+| **Quality** *(open)* | **Dashboard** (`/quality`), **CAPAs** (`/quality/capas`), **Quality Reports** (`/editor/qualityReports`), **Change Control**, **Dispositions** (`/production/dispositions`), **Training**, **Calibrations** (`/quality/calibrations`), **Heat Map** | Your home turf — CAPAs (§9), dispositions (§6), calibration (§10). |
+| **Approvals** | **Overview** (`/approvals`), **History** | The approvals center (§13a), badge-counted. Mostly a manager's surface. |
+| **Tools** | **Documents**, **Analytics**, **AI Chat** | Standalone utilities. |
+| **Admin** | Settings, User Management, Work Centers, Data Management, Audit Log | **Tenant admins only** — a QA inspector won't see this section at all. |
+| **Remanufacturing** | Cores, Components | Reman shops only; skip it if you aren't one. |
+
+**Four label/URL mismatches worth knowing before they trip you:**
+
+- **"Dispositions" sits under *Quality* but its URL is `/production/dispositions`**,
+  and it opens **unfiltered** — every quarantined part in the tenant, not just
+  yours (the home tile opens the same page; see §6a).
+- **There are two work-order surfaces.** *Work Orders* (`/production/work-orders`)
+  is the list; *WO Control Center* (`/workorders`) is the multi-WO dashboard.
+  The per-WO **Control** page you buy off FPIs and dispositions from (§3, §4,
+  §6) is `/workorder/$id/control` — reached by clicking a WO or a home-inbox
+  row, not from the rail directly.
+- **A couple of authoring surfaces live under `/editor/`** — *Quality Reports*
+  (`/editor/qualityReports`) and *Processes* (`/editor/processes`). That's the
+  CRUD/authoring domain, not a stray path.
+- **Two different badges.** The *Inbox* badge counts tasks **and** approvals
+  together; *Approvals → Overview* counts only the approvals awaiting your
+  signature (§13a).
+
 ## Contents
 
 1. Your home page — orient yourself
@@ -175,7 +220,9 @@ gauge overdue for calibration should not be used until re-calibrated;
 a link to `/quality/calibrations` sits here to check status.
 
 You will return to this home page repeatedly through the walk. It's
-your dashboard.
+your dashboard. The home page is where you *land*; the left **sidebar
+rail** — mapped in *Getting around* in the front matter — is how you
+reach every other surface this walk names.
 
 ---
 
