@@ -10,18 +10,23 @@ in the Demo Company tenant.
 |---|---|
 | `UQMES_ONBOARDING_WALKTHROUGH.md` | The spine — a self-serve, first-person walkthrough that takes a QA inspector (Sarah) through a demo work order end to end (§1–§12), flags the QA **manager's** gates, and adds a manager section (§13), a process/DWI authoring section (§14), a Quality Reports section (§15), a glossary (§16), and a sidebar-reference appendix. Effective for a lone inspector or a lone manager. |
 | `WO-QA-INSPECT-01_reference.md` | The work-order reference: WO-QA-INSPECT-01's identity, its 12-operation routing with QA gates, and the exact pre-staged state of all 8 parts mapped to the walkthrough sections they drive. Plus demo logins and reset instructions. |
-| `QA_INSPECTOR_TRAINING_SCRIPT.md` | The existing trainer-facing script — role-play, checkpoints, and gotcha essays. The walkthrough deliberately stays lighter than this and points to it for the pedagogy. |
 | `artifacts/WO-QA-INSPECT-01_traveler.pdf` | Scannable traveler PDF for the walk — the paper counterpart to the routing table, with the header barcode/QR and per-operation sign-off blocks. |
 
 ## How they fit together
 
 - The **walkthrough** is the narrative. It references the **traveler PDF**
-  (relative link `artifacts/…`) and the **training script** (relative link) —
-  both are in this directory, so those links resolve within the packet.
+  (relative link `artifacts/…`), which is in this directory.
 - The **WO reference** is the fact sheet the walkthrough runs against: read it
   to know what each part is staged for before following a section.
-- The **training script** is the instructor's companion if the packet is
-  taught live rather than self-served.
+
+> **Deliberately not included — the existing trainer script.** The walkthrough's
+> "What this is not" points to `QA_INSPECTOR_TRAINING_SCRIPT.md`, a separate
+> instructor runbook. It's left out on purpose: it's a valid, browser-verified
+> curriculum, but built on a **different demo work order** — WO-2024-0042-A
+> (serials `INJ-0042-###`) — not the WO-QA-INSPECT-01 scenario everything in
+> this packet uses. It still lives in `Documents/` if you want it as a
+> structural reference; just don't teach the two side by side. (It also predates
+> the disposition co-sign gate this packet's walkthrough covers in §6b.)
 
 ## Demo setup
 
