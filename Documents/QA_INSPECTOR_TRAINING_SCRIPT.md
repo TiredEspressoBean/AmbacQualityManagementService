@@ -81,6 +81,30 @@ All demo logins use password **`demo123`**.
 
 ---
 
+## At a glance — the arc and its pacing
+
+Eleven inspector journeys, ~50 min; the manager block is separate and optional.
+Rough budget:
+
+| # | Journey | Min | The one thing they leave with |
+|---|---|---:|---|
+| 1 | Read the home page | 5 | which chip is today's queue |
+| 2 | The scanner is your GPS | 3 | a scan anchors on the parent WO |
+| 3 | Receiving inspection | 6 | accept a lot through the DWI |
+| 4 | FPI buy-off | 6 | the buy-off is a batch gate (and SoD) |
+| 5 | Sampled inspection | 5 | "why this part?" = the Sample flag |
+| 6 | Live fail + disposition | 9 | derived FAIL → quarantine → co-signed decision |
+| 7 | Re-inspection | 4 | read the history before re-inspecting |
+| 8 | OSP return inspection | 4 | inspect it before it rejoins the flow |
+| 9 | CAPA task | 5 | disposition (this part) vs CAPA (the pattern) |
+| 10 | Calibration & notifications | 3 | check the gauge's cal before use |
+| 11 | Reading finished records | 4 | narrate a record backward |
+
+If you're short on time, **Journey 6 is the one to protect** — it's the core of
+the job and the only gate that needs a second person.
+
+---
+
 ## What you'll teach against
 
 One demo work order, **WO-QA-INSPECT-01** (order *QA Inspector Onboarding
@@ -268,8 +292,12 @@ Start** (the Control table's rows route steps, they don't launch the runtime).
 Work the Nozzle Inspection DWI — the visual points and the measurement — sign,
 **Confirm & next** → **Complete step**. The part advances.
 
-**Watch for:** trainee submits a measurement without confirming the gauge and
-its cal state. Habit-build: "Which gauge? Is it in cal?" before every capture.
+**Watch for:**
+- Trainee submits a measurement without confirming the gauge and its cal state.
+  Habit-build: "Which gauge? Is it in cal?" before every capture.
+- The classic new-inspector error — conflating "measurement in spec" with "the
+  part passed." One in-tolerance reading is one characteristic; the verdict is
+  the whole inspection. If they blur the two, walk it again.
 
 **Checkpoint:** trainee can answer "why this part?" by pointing at the Sample
 flag and the sampling reason.
