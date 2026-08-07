@@ -24,7 +24,8 @@ points that matter.
   disposition decisions, verify whether a CAPA actually worked, approve
   major CAPAs before work can start, and co-sign at an inspector's
   station when they lack the authority themselves. Those hinge points are
-  flagged where they occur — §3 (buy-off), §6 (disposition), §9 (CAPA).
+  flagged where they occur — §3 (buy-off), §6 (disposition), §9 (CAPA) — and
+  **§13 walks them end to end from the manager's chair.**
 
 ## Contents
 
@@ -40,7 +41,8 @@ points that matter.
 10. Calibration awareness
 11. The notification bell and inbox
 12. Reading the audit trail
-13. Glossary
+13. The manager's side — Maria
+14. Glossary
 
 **What this is not.** A training curriculum for a trainer to teach
 with (see `QA_INSPECTOR_TRAINING_SCRIPT.md` for that — it carries the
@@ -66,7 +68,7 @@ what's on screen.
 | Email | Name | Role | Where you play it |
 |---|---|---|---|
 | `sarah.qa@demo.ambac.com` | Sarah Chen | QA Inspector | Every section — the walker's identity. |
-| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | Section 6 — approve disposition (if requested by a permission gate). |
+| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | §13 (the manager's whole side), and the gates in §3/§6/§9 when Sarah hands one up. |
 | `mike.ops@demo.ambac.com` | Mike Rodriguez | Operator | Section 3 — the seed pre-signs the first-piece substeps as Mike so Sarah (playing QA) can sign off the FPI without hitting the segregation-of-duties gate. You don't log in as Mike; his signatures are already on the seed exhibit. |
 
 Sarah's QA Inspector role has `sign_off_fpi` (Section 3),
@@ -378,6 +380,10 @@ person authenticates inline at that same station (`cosign_email` /
 **them**. QA can also work their own queue without touching the operator's
 session via the pending-FPI panel on WO Control (Section 4 lands there).
 
+> **Manager's side.** Co-signing at Sarah's station is the *inline* half of
+> your authority; §13e contrasts it with the *async* half — requests that land
+> in your own `/approvals` queue. §13 walks the manager's whole day.
+
 ---
 
 ## 4. A sampled part comes to you — INJ-QA-INSPECT-002
@@ -581,6 +587,11 @@ Once authorized, the disposition moves to `IN_PROGRESS`, and — because the
 part is still quarantined — REWORK sends it back for rework (status →
 `REWORK_NEEDED`, rework count +1). If the part had already moved on, the
 decision is recorded as paper only and the part stays put.
+
+> **Manager's side.** If you hold `approve_disposition`, setting the type
+> commits directly — no co-sign dialog, because the authority is already
+> yours. §13b covers your side, including the customer-reference rule that
+> USE_AS_IS and REPAIR enforce.
 
 ### 6c — The doors, briefly
 
@@ -895,6 +906,11 @@ to In Progress, flags the RCA for review, and auto-creates a 30-day follow-up
 task — a correction that didn't stick doesn't quietly close. The
 initiator/assignee can't verify their own CAPA unless self-verification is
 enabled (with justification).
+
+> **Manager's side.** Recording the outcome is yours (`verify_capa`); §13c
+> walks it. Separately, a MAJOR/CRITICAL CAPA needs your *management approval*
+> before work even starts — a distinct gate that lands in your `/approvals`
+> queue, walked in §13d.
 
 ### 9c-bis — The other four tabs
 
@@ -1266,7 +1282,131 @@ history.
 
 ---
 
-## 13. Glossary
+## 13. The manager's side — Maria
+
+Sections 1–12 walked the floor as Sarah. This one flips to Maria, the QA
+Manager. She doesn't get a different app — **there is no separate manager
+dashboard.** She lands on the same QA home page Sarah does (§1). What differs
+is what routes *to* her: she holds the authority permissions
+(`approve_disposition`, `verify_capa`, CAPA and disposition approval), so the
+gates Sarah hands up land in Maria's queues. A manager's day is the other side
+of the inspector's gates.
+
+Log in as `maria.qa@demo.ambac.com` / `demo123`.
+
+### 13a — Your home base: the same QA home, plus /approvals
+
+Two surfaces carry a manager's work.
+
+**The QA home (§1), "My quality actions" panel.** The same three-tile panel
+Sarah sees — Approvals · CAPA tasks · My dispositions — but the counts are
+yours. The **Approvals** tile links to your inbox. Below it, **"Available to
+claim — your group is eligible, nobody has it"** lists group-routed approvals
+no one has picked up yet, each with an **Accept** button that moves one into
+your queue. That's how a request routed to the *QA Manager group* rather than
+to you by name reaches you.
+
+**The Approvals center — `/approvals`.** The dedicated approvals surface,
+headed **Approvals**. Four stat cards across the top: **Awaiting My Approval**
+(items requiring your action), **Overdue** (past due date), **My Requests
+Pending** (things you asked others to approve), and **Recently Approved**.
+Below them:
+
+- **Awaiting My Approval** — the working list. Each row shows the item, a type
+  badge, who it's from, and a due date (flagged red if overdue). Click a row to
+  open the item itself (a CAPA opens at `/quality/capas/{id}`).
+- **By Type** — the same pending items bucketed by approval type, so you see
+  "3 CAPA approvals, 1 document" at a glance.
+- **My Submitted Requests** — approvals you've asked others for.
+- **Quick Links** — Approval History, and Approval Templates (for the manager
+  who configures the workflows themselves).
+
+The four gates below are what those queues are made of.
+
+### 13b — Authorize a disposition (the other side of §6)
+
+When Sarah picks a disposition type (§6b) she's making an authorized decision
+she may not hold the authority for, so her editor routes it through a co-sign
+dialog. If **you** open that disposition and set its type, it commits directly
+— you hold `approve_disposition`, so there's no dialog. Same editor, same
+**Update Disposition**; the authority is simply already yours.
+
+Two things the standard forces and the app enforces:
+- **USE_AS_IS and REPAIR require a recorded customer/design-approval
+  reference.** They accept known-nonconforming product, so the `decide` action
+  refuses them with no reference. REWORK and SCRAP don't need one.
+- The decision is recorded against **you** as the authorizing signature
+  (`decision_authorized_by`) — that's the AS9100/ISO 9001 8.7 signature, not
+  decoration.
+
+### 13c — Verify a CAPA's effectiveness (the other side of §9c)
+
+Sarah can write a verification *plan*; recording the *outcome* needs
+`verify_capa`, which is yours. Open the CAPA, go to the **Verification** tab,
+and on the plan row click **Complete Verification**. Pick the result —
+**CONFIRMED** or **NOT_EFFECTIVE** — add notes, and submit.
+
+What your verdict does:
+- **CONFIRMED** closes the CAPA.
+- **NOT_EFFECTIVE** reopens it to In Progress, flags the RCA for review, and
+  auto-creates a 30-day follow-up task — a correction that didn't stick doesn't
+  quietly close.
+
+You can't verify a CAPA you initiated or were assigned unless self-verification
+is explicitly enabled with justification — the same segregation of duties that
+keeps Sarah from signing off her own first piece.
+
+### 13d — Approve a major CAPA before work starts (the other side of §9c-bis)
+
+A MAJOR or CRITICAL CAPA can't begin work until management approves it. This is
+the one gate that is purely yours — Sarah only ever sees it read-only (the
+**Approval** tab's *"Awaiting Approval — work cannot begin until approved"*
+banner).
+
+On this seed, **CAPA-2024-005** is a MAJOR CAPA waiting on you. It appears in
+two places at once: your **/approvals** "Awaiting My Approval" list (the
+CAPA-approval item), and the CAPA's own **Approval** tab. From either:
+
+1. Open it and click **Submit Response**. The **Submit Approval Response**
+   dialog opens.
+2. Choose **Approve** (or Reject / Delegate). Reject requires a comment;
+   Delegate hands the request to another user, who becomes the new approver.
+3. For Approve, complete the signature block — draw your signature, tick *"I
+   confirm this is my signature and I am authorized to approve this item,"* and
+   enter your password (`demo123`). That is the 21 CFR Part 11 signed approval.
+4. Click **Submit Approval**.
+
+The CAPA's approval status flips to APPROVED and work can begin. That request
+was created for you automatically when the CAPA was raised at MAJOR/CRITICAL
+severity — you didn't go looking for it; it came to your queue.
+
+### 13e — Two ways authority reaches you: co-sign vs. your queue
+
+A manager authorizes in two distinct ways. They feel similar — both end in
+your signature — but they happen at opposite ends of the room, and it's worth
+keeping them apart.
+
+**Co-signature — inline, at the inspector's station, right now.** Sarah is
+standing at a gate she doesn't hold: an FPI pass (§3c), a disposition decision
+(§6b), a CAPA verification outcome (§9c). Rather than stop and route a request,
+she calls you over and you authenticate *on her screen* — your email and
+password in the co-sign fields. You are never logged in as yourself; the act is
+recorded against you, and Sarah keeps working. Use it when someone is blocked
+at a gate and you're there to clear it on the spot.
+
+**Approval — asynchronous, in your own queue, on your own time.** A request is
+created and *routed* to you (the major-CAPA approval in §13d is the model). It
+lands in **/approvals**, waits with a due date, and you action it later from
+your own screen. Nobody is standing at a station waiting on you keystroke by
+keystroke.
+
+The quick test: **is someone blocked at a gate this second (co-sign), or did a
+request land in my queue to handle when I get to it (approval)?** Both are your
+signature; only one interrupts someone else's flow.
+
+---
+
+## 14. Glossary
 
 - **AWAITING_QA** — part state meaning "an operator finished a step
   but a rule says QA looks at it before it moves on." Parked;
