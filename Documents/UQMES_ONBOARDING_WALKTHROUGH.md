@@ -1,9 +1,46 @@
-# UQMES onboarding walk — a QA inspector's day
+# UQMES QA walkthrough — a primer for inspectors and managers
 
-**Who this is for.** A QA inspector who has just been given UQMES access
-and needs a concrete, click-by-click walk of the actions their day is
-built around. Read it start-to-finish once; refer back by section
-later.
+**Who this is for.** The QA team getting oriented in UQMES — inspectors
+and managers both. It follows one inspector (Sarah) hands-on through a
+demo work order, because a single narrative is the clearest way to learn
+the system; but the decisions she hands up — the first-piece buy-off, the
+disposition, CAPA verification and approval — are the QA **Manager's**
+authority, and the walk names who owns each gate. Read as an inspector,
+it's your day end to end. Read as a manager, watch the gates — they're
+where your sign-off sits. Read it once start-to-finish; refer back by
+section later.
+
+## The shape of a QA day
+
+Two roles, one flow. Work moves through the shop and QA gates it at the
+points that matter.
+
+- **As an inspector**, your day is a queue: check your inbox → buy off
+  first pieces → inspect sampled and failed parts → disposition the
+  failures → re-inspect reworked parts → open or work CAPAs when a
+  pattern emerges. Sections 1–12 walk exactly that, in order.
+- **As a manager**, your day is mostly the *other side of those gates* —
+  the approvals and verifications inspectors send up. You authorize
+  disposition decisions, verify whether a CAPA actually worked, approve
+  major CAPAs before work can start, and co-sign at an inspector's
+  station when they lack the authority themselves. Those hinge points are
+  flagged where they occur — §3 (buy-off), §6 (disposition), §9 (CAPA).
+
+## Contents
+
+1. Your home page — orient yourself
+2. Receiving inspection
+3. First Piece Inspection buy-off
+4. A sampled part comes to you
+5. A part fails your inspection
+6. Working the disposition
+7. Re-inspecting a reworked part
+8. OSP return inspection
+9. Working a CAPA task
+10. Calibration awareness
+11. The notification bell and inbox
+12. Reading the audit trail
+13. Glossary
 
 **What this is not.** A training curriculum for a trainer to teach
 with (see `QA_INSPECTOR_TRAINING_SCRIPT.md` for that — it carries the
