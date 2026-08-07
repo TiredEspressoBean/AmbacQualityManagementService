@@ -1493,62 +1493,109 @@ land on the **process flow** at `/process-flow?id=…`.
 ### 14b — Read the flow
 
 The flow is a canvas of the process's steps as nodes, wired by routing edges.
-The reman process reads left to right — **Receive Core → Disassemble → Clean →
-Inspect → Reassemble → Final Test** — with the quality branches hanging off it:
-**Rework** (carrying a visit counter, `? / 3`), **Scrap Decision**, and the
-terminal **Scrap / Ship / Return to Supplier** nodes. Each edge is labelled
-with the outcome that takes it — **Pass**, **Fail**, **Max Exceeded** (the
-rework limit tripping) — and a decision step like **Inspect** shows its Pass
-and Fail exits on the node itself.
+The injector reman process reads left to right — **Core Receiving →
+Disassembly → Component Grading → Cleaning → Nozzle Inspection → Flow Testing →
+Assembly → Final Test → Packaging → Complete** — with a **Rework** station
+(carrying a visit counter, `? / 3`) that failed parts loop back through, and
+**Nitride Coating** as the outside-processing branch. The QA steps (Component
+Grading, Nozzle Inspection, Flow Testing, Final Test) are decision nodes marked
+**QA Pass/Fail**, showing their **Pass** and **Fail** exits on the node. Each
+edge is labelled with the outcome that takes it — **Pass**, **Fail**, **Max
+Exceeded** (the rework limit tripping) — and **Complete** is the terminal
+`COMPLETED` node. These are the same steps the walk's parts moved through:
+Nozzle Inspection is §3/§4, Flow Testing is §5.
 
-Above the canvas a view selector switches lenses over the same steps —
-**Process Template** (the authoring view), **Work Order Progress**, **Part
-Journey**, **Process Evaluation**, **QA Checkpoints**. Authoring happens on
-Process Template.
+A **Validation Issues** panel flags authoring errors before you can save or
+approve — e.g. *"Decision step 'Component Grading' is missing Fail
+connection"* — so a half-wired branch can't ship.
+
+Above the canvas, a process selector and a part-type selector name what you're
+editing (here **Injector Reman - Authoring Draft (SHOWCASE)** · **Common Rail
+Injector**), and a set of view lenses re-render the same graph as **Process
+Template** (the authoring view), **Work Order Progress**, **Part Journey**,
+**Process Evaluation**, and **QA Checkpoints**. Author on Process Template.
 
 ### 14c — Turn on Edit Mode
 
 The page opens read-only ("Process Flow **Viewer**"). Flip the **Edit Mode**
 switch at the top: the header becomes "Process Flow **Editor**", an **Add
-Step** button appears, and the nodes and edges become editable — you can select
-and move a node, select an edge and delete it to drop a route, and add steps.
+Step** button appears, and the nodes and edges become editable — select and
+move a node, select an edge and delete it to drop a route, and add steps.
 
 ### 14d — Author a step
 
-Click a step node (say **Inspect**) to open the **Step Details** panel. Top to
-bottom:
+Click a step node — say **Nozzle Inspection** (operation 50, "Inspect nozzle
+spray pattern and wear") — to open the **Step Details** panel. Top to bottom:
 
 - **Identity** — Name, Operation number, Description, Work center.
 - **Decision type** — how the step routes: *Based on QA Pass/Fail*, a
   measurement, or a manual decision. **Route rejected items to…** picks the
-  destination the **Fail** edge points at (Rework, Scrap, …).
-- **Configuration** — four editors:
-  - **Measurements** — *Configure measurements* → "Measurements for
-    '<step>'" → **Add Measurement**, which takes a **Label**, **Type**
-    (Numeric or Pass/Fail), **Unit**, **Nominal** + **Upper / Lower
-    Tolerance**, **Characteristic #** (the drawing balloon), a **Default /
-    Backup equipment** (the gauge the operator gets steered to), and
-    **Required**. *This is where the runtime capture fields come from* — the
-    Flow Rate you read in §5, with its lower tolerance of 100, is a measurement
-    authored here, and the FAIL derives from the reading crossing that
-    tolerance.
-  - **Sampling Rules**, **Documents**, **Required Training** — the sampling
-    plan (§4), the attached drawings/specs, and the qualification gate.
-- **Advanced** (under *Substeps*) — the step-behaviour switches whose effects
-  the rest of this guide has been feeling: **Requires QA signoff**, **Sampling
-  required** + min rate %, **Requires first-piece inspection** (the §3 FPI
-  gate), **Max visits (rework limit)** (the §5/§6 rework loop and its "Max
-  Exceeded" edge), Terminal step, Expected duration, Move lot as a unit.
+  destination the **Fail** edge points at — here, **Rework**.
+- **Configuration** — five editors, each showing a count of what's already set:
+  **Measurements**, **Sampling Rules**, **Documents**, **Required Training**,
+  and **Edit substeps**. Measurements and Sampling get their own passes below;
+  Documents attaches drawings/specs, Required Training sets the qualification
+  gate, and **Edit substeps** is where the guided operator steps live — the
+  instruction text and capture nodes (measurement / pass-fail / sign-off) you
+  filled in §2c and §4c. Nozzle Inspection carries 2 measurements, 1 sampling
+  rule, 1 required training, and 2 substeps.
+- **Advanced** — the step-behaviour switches whose effects the rest of this
+  guide has been feeling: **Requires QA signoff**, **Sampling required** + min
+  rate %, **Requires first-piece inspection** (the §3 FPI gate), **Max visits
+  (rework limit)** (the §5/§6 rework loop and its "Max Exceeded" edge),
+  Terminal step, Expected duration, Move lot as a unit.
 
 **Add Step** adds a node; **Delete Step** removes the selected one.
 
-### 14e — Draft, then approve
+### 14e — Measurements
+
+*Configure measurements* opens "Measurements for '<step>'" — the readings taken
+at the step. **Add Measurement** takes:
+
+- **Label** — the field name the operator sees (*Flow Rate*, *Outer Diameter*).
+- **Type** — **Numeric** or **Pass/Fail**.
+- **Unit** — optional (mL/min, mm, …).
+- **Nominal**, **Upper Tolerance**, **Lower Tolerance** — the target and the
+  spec limits. *These derive the verdict at runtime:* the Flow Rate you entered
+  in §5 failed because it crossed the lower tolerance — there's no manual
+  Pass/Fail button on a numeric measurement because the spec is the judge.
+- **Characteristic #** — the balloon number on the drawing, for traceability.
+- **Default / Backup equipment** — the preferred gauge (and a fallback); this
+  is what steers the operator to the right instrument and feeds the
+  point-of-use calibration gate (§10d).
+- **Required** — whether the runtime blocks completion without it.
+
+Each measurement authored here becomes a capture field in the operator runtime.
+Nozzle Inspection carries two; Flow Testing's single measurement is the
+flow-rate reading §5 rode.
+
+### 14f — Sampling
+
+*Configure sampling rules* opens "Sampling — '<step>'". Not every part gets
+inspected; this is where you say which ones. Three parts:
+
+- **Sampling method** — **Per-part streaming** (pick individual parts from the
+  flow — every-Nth, %), **Lot acceptance — attribute** (a C=0/AQL plan like
+  receiving's, §2b), or **Variables (measured)**.
+- **Primary Sampling Rules** — the normal-operation rate (e.g. *every 4th
+  part*, ~25%). **Escalation Rules** — a tighter rate a run of failures
+  triggers: *escalate after 2 failures → 100%*, *return after 15 passes → back
+  to ~25% Normal*. That tightening and relaxing is exactly the **Tightened** /
+  **Reduced** severity badges the inbox shows (§1), and the reason a part like
+  INJ-QA-INSPECT-002 gets pulled for a sampled look (§4).
+- **Quality gate (automatic escalation)** — a **Metric**, **Threshold**, and
+  **Window**, with **Actions when tripped** including **Raise CAPA / SCAR** and
+  **Require approval**. This is the gate behind §9e: when the fail rate over the
+  window crosses the threshold, the step raises a CAPA on its own, with no human
+  initiator.
+
+### 14g — Draft, then approve
 
 You're editing a **Draft** (the SHOWCASE) on purpose — the live **Injector
-Reman** is **Approved**, with work orders running against it. Authoring on a
-draft and approving it into effect is how a process changes without disturbing
-in-flight work; the two rows on the Processes list are the before/after of that
-split.
+Reman** is **Approved**, with work orders running against it. The Validation
+Issues panel (§14b) has to be clear first. Authoring on a draft and approving it
+into effect is how a process changes without disturbing in-flight work; the two
+rows on the Processes list are the before/after of that split.
 
 ---
 
