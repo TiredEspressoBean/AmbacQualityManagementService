@@ -8,8 +8,13 @@ const csrf = () => ({ "X-CSRFToken": getCookie("csrftoken") });
 const invalidateReceiving = (queryClient: ReturnType<typeof useQueryClient>) =>
     queryClient.invalidateQueries({
         // material-lots backs the Materials views + receiving queue; incomingInspection
-        // is the unified QA32-style worklist a lot also appears on.
-        predicate: (q) => q.queryKey[0] === "material-lots" || q.queryKey[0] === "incomingInspection",
+        // is the unified QA32-style worklist a lot also appears on; material-lot
+        // (singular) is the lot-detail query — without it, the detail page keeps
+        // showing AWAITING_INSPECTION + "Run Inspection" after an Accept/Reject.
+        predicate: (q) =>
+            q.queryKey[0] === "material-lots" ||
+            q.queryKey[0] === "incomingInspection" ||
+            q.queryKey[0] === "material-lot",
     });
 
 // ----- Bulk receive lots (paste-grid) -----
