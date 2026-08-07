@@ -28,6 +28,7 @@ section later.
 14. Authoring a DWI — the process flow
 15. Quality Reports
 16. Glossary
+- Appendix — Sidebar reference & label/URL gotchas
 
 ## The shape of a QA day
 
@@ -60,36 +61,10 @@ into it:
   turf. The rest (Supply, Approvals, Remanufacturing, Admin) start collapsed;
   click the section header to open one.
 
-Here's the whole rail a QA user sees, top to bottom:
-
-| Sidebar section | Entries you'll use | Why you open it |
-|---|---|---|
-| *(top, everyone)* | **Help & Docs** (`/docs`), **Tracker** (`/tracker`) | Docs, and the customer-facing tracker map. Not your daily driver. |
-| **Personal** | **Inbox** (`/inbox`) | Your assigned CAPA tasks + approvals, with a live count badge. Two of the home page's "My quality actions" tiles land here. |
-| **Production** *(open)* | **Work Orders** (`/production/work-orders`), **WO Control Center** (`/workorders`), **Processes** (`/editor/processes`) | The shop-floor work orders and the process authoring surface. |
-| **Supply** | **Incoming Inspection** (`/production/incoming`), **Outside Processing** (`/production/outside-processing`), **Materials** (`/production/material-lots`), + supplier & plan surfaces | Receiving (§2) and OSP returns (§8) live here. The receiving-*only* queue (`/production/receiving-inspection`, §2a) has no rail entry — reach it from the home **Receiving** chip. |
-| **Remanufacturing** | Cores, Components | Reman shops only; skip it if you aren't one. |
-| **Quality** *(open)* | **Dashboard** (`/quality`), **CAPAs** (`/quality/capas`), **Quality Reports** (`/editor/qualityReports`), **Change Control**, **Dispositions** (`/production/dispositions`), **Training**, **Calibrations** (`/quality/calibrations`), **Heat Map** | Your home turf — CAPAs (§9), dispositions (§6), calibration (§10). |
-| **Approvals** | **Overview** (`/approvals`), **History** | The approvals center (§13a), badge-counted. Mostly a manager's surface. |
-| **Tools** | **Documents**, **Analytics**, **AI Chat** | Standalone utilities. |
-| **Admin** | Settings, User Management, Work Centers, Data Management, Audit Log | **Tenant admins only** — a QA inspector won't see this section at all. |
-
-**Four label/URL mismatches worth knowing before they trip you:**
-
-- **"Dispositions" sits under *Quality* but its URL is `/production/dispositions`**,
-  and it opens **unfiltered** — every quarantined part in the tenant, not just
-  yours (the home tile opens the same page; see §6a).
-- **There are two work-order surfaces.** *Work Orders* (`/production/work-orders`)
-  is the list; *WO Control Center* (`/workorders`) is the multi-WO dashboard.
-  The per-WO **Control** page you buy off FPIs and dispositions from (§3, §4,
-  §6) is `/workorder/$id/control` — reached by clicking a WO or a home-inbox
-  row, not from the rail directly.
-- **A couple of authoring surfaces live under `/editor/`** — *Quality Reports*
-  (`/editor/qualityReports`) and *Processes* (`/editor/processes`). That's the
-  CRUD/authoring domain, not a stray path.
-- **Two different badges.** The *Inbox* badge counts tasks **and** approvals
-  together; *Approvals → Overview* counts only the approvals awaiting your
-  signature (§13a).
+That's all you need to start. The full rail — every section with its key
+routes, and four label/URL mismatches worth knowing before they trip you — is
+in the **Sidebar reference** appendix at the end; refer back to it whenever a
+surface sends you somewhere unexpected.
 
 **What this is not.** A training curriculum for a trainer to teach
 with (see `QA_INSPECTOR_TRAINING_SCRIPT.md` for that — it carries the
@@ -227,8 +202,8 @@ a link to `/quality/calibrations` sits here to check status.
 
 You will return to this home page repeatedly through the walk. It's
 your dashboard. The home page is where you *land*; the left **sidebar
-rail** — mapped in *Getting around* in the front matter — is how you
-reach every other surface this walk names.
+rail** is how you reach every other surface this walk names — mapped in full
+in the **Sidebar reference** appendix.
 
 ---
 
@@ -1579,28 +1554,21 @@ Each measurement authored here becomes a capture field in the operator runtime.
 Nozzle Inspection carries two; Flow Testing's single measurement is the
 flow-rate reading §5 rode.
 
-**Why define measurements here and *pull them in* — rather than hand-rolling a
-spec on the substep.** A substep's Measurement capture node (§14g) *can* carry
-its own inline nominal and tolerances, but the right move is to point it at a
-measurement defined here at the step. The difference is not cosmetic:
+**Why define measurements here and *pull them in*, rather than typing a spec
+straight onto the substep.** A substep's Measurement node (§14g) *can* carry
+its own inline nominal and tolerances, but a defined measurement is what makes
+the reading useful downstream:
 
-- **SPC and capability.** Control charts and Cpk are keyed on the *measurement
-  definition* — every reading of that one characteristic, across every part and
-  every run, rolls into a single chart. A value typed straight onto a substep
-  trends against nothing; it can never build a baseline.
-- **Traceability.** The **Characteristic #** ties the reading to the balloon on
-  the drawing. The definition carries it once, so every capture inherits it.
-- **Gauge & calibration.** The definition names the gauge, so the runtime
-  steers the operator to the right instrument and the point-of-use calibration
-  gate (§10d) has something to enforce. An ad-hoc field has no gauge behind it.
-- **Routing.** A step's Pass/Fail decision can be conditioned on a defined
-  measurement; a loose inline value can't drive the flow.
-- **Consistency.** Fix the spec once on the definition and every substep that
-  references it moves with it — no drift between two hand-typed copies.
+- **SPC** — control charts and Cpk are keyed on the definition, so every reading
+  of that characteristic rolls into one chart; an inline value trends against
+  nothing.
+- **Traceability & gauge** — the definition carries the **Characteristic #**
+  (the drawing balloon) and the gauge that feeds the §10d calibration gate, and
+  it's what a step's Pass/Fail routing can be conditioned on. An ad-hoc field
+  has none of that.
 
-So: author the spec *once* here, and reference it from the substep. An inline
-one-off is fine for a throwaway note, but it's a dead-end reading — it captures
-a number and nothing downstream can use it.
+Author the spec once here and reference it; an inline one-off is a dead-end
+reading.
 
 ### 14f — Sampling
 
@@ -1760,3 +1728,39 @@ the sampling result.)
   parts through the shop. Print it from WO Detail's Traveler button.
 - **WO** — Work Order. A single production run of a specific
   quantity of one part type for one Order.
+
+---
+
+## Appendix — Sidebar reference & label/URL gotchas
+
+The whole rail a QA user sees, top to bottom (see *Getting around* in the front
+matter for the two things to know before you use it):
+
+| Sidebar section | Entries you'll use | Why you open it |
+|---|---|---|
+| *(top, everyone)* | **Help & Docs** (`/docs`), **Tracker** (`/tracker`) | Docs, and the customer-facing tracker map. Not your daily driver. |
+| **Personal** | **Inbox** (`/inbox`) | Your assigned CAPA tasks + approvals, with a live count badge. Two of the home page's "My quality actions" tiles land here. |
+| **Production** *(open)* | **Work Orders** (`/production/work-orders`), **WO Control Center** (`/workorders`), **Processes** (`/editor/processes`) | The shop-floor work orders and the process authoring surface. |
+| **Supply** | **Incoming Inspection** (`/production/incoming`), **Outside Processing** (`/production/outside-processing`), **Materials** (`/production/material-lots`), + supplier & plan surfaces | Receiving (§2) and OSP returns (§8) live here. The receiving-*only* queue (`/production/receiving-inspection`, §2a) has no rail entry — reach it from the home **Receiving** chip. |
+| **Remanufacturing** | Cores, Components | Reman shops only; skip it if you aren't one. |
+| **Quality** *(open)* | **Dashboard** (`/quality`), **CAPAs** (`/quality/capas`), **Quality Reports** (`/editor/qualityReports`), **Change Control**, **Dispositions** (`/production/dispositions`), **Training**, **Calibrations** (`/quality/calibrations`), **Heat Map** | Your home turf — CAPAs (§9), dispositions (§6), calibration (§10). |
+| **Approvals** | **Overview** (`/approvals`), **History** | The approvals center (§13a), badge-counted. Mostly a manager's surface. |
+| **Tools** | **Documents**, **Analytics**, **AI Chat** | Standalone utilities. |
+| **Admin** | Settings, User Management, Work Centers, Data Management, Audit Log | **Tenant admins only** — a QA inspector won't see this section at all. |
+
+**Four label/URL mismatches worth knowing before they trip you:**
+
+- **"Dispositions" sits under *Quality* but its URL is `/production/dispositions`**,
+  and it opens **unfiltered** — every quarantined part in the tenant, not just
+  yours (the home tile opens the same page; see §6a).
+- **There are two work-order surfaces.** *Work Orders* (`/production/work-orders`)
+  is the list; *WO Control Center* (`/workorders`) is the multi-WO dashboard.
+  The per-WO **Control** page you buy off FPIs and dispositions from (§3, §4,
+  §6) is `/workorder/$id/control` — reached by clicking a WO or a home-inbox
+  row, not from the rail directly.
+- **A couple of authoring surfaces live under `/editor/`** — *Quality Reports*
+  (`/editor/qualityReports`) and *Processes* (`/editor/processes`). That's the
+  CRUD/authoring domain, not a stray path.
+- **Two different badges.** The *Inbox* badge counts tasks **and** approvals
+  together; *Approvals → Overview* counts only the approvals awaiting your
+  signature (§13a).
