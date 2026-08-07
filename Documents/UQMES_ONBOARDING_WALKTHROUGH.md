@@ -66,11 +66,11 @@ Here's the whole rail a QA user sees, top to bottom:
 | **Personal** | **Inbox** (`/inbox`) | Your assigned CAPA tasks + approvals, with a live count badge. Two of the home page's "My quality actions" tiles land here. |
 | **Production** *(open)* | **Work Orders** (`/production/work-orders`), **WO Control Center** (`/workorders`), **Processes** (`/editor/processes`) | The shop-floor work orders and the process authoring surface. |
 | **Supply** | **Incoming Inspection** (`/production/incoming`), **Outside Processing** (`/production/outside-processing`), **Materials** (`/production/material-lots`), + supplier & plan surfaces | Receiving (§2) and OSP returns (§8) live here. The receiving-*only* queue (`/production/receiving-inspection`, §2a) has no rail entry — reach it from the home **Receiving** chip. |
+| **Remanufacturing** | Cores, Components | Reman shops only; skip it if you aren't one. |
 | **Quality** *(open)* | **Dashboard** (`/quality`), **CAPAs** (`/quality/capas`), **Quality Reports** (`/editor/qualityReports`), **Change Control**, **Dispositions** (`/production/dispositions`), **Training**, **Calibrations** (`/quality/calibrations`), **Heat Map** | Your home turf — CAPAs (§9), dispositions (§6), calibration (§10). |
 | **Approvals** | **Overview** (`/approvals`), **History** | The approvals center (§13a), badge-counted. Mostly a manager's surface. |
 | **Tools** | **Documents**, **Analytics**, **AI Chat** | Standalone utilities. |
 | **Admin** | Settings, User Management, Work Centers, Data Management, Audit Log | **Tenant admins only** — a QA inspector won't see this section at all. |
-| **Remanufacturing** | Cores, Components | Reman shops only; skip it if you aren't one. |
 
 **Four label/URL mismatches worth knowing before they trip you:**
 
@@ -199,23 +199,23 @@ three share a destination:
 - *Approvals* → `/inbox`
 - *CAPA tasks* → `/inbox`
 - *My dispositions* → `/production/dispositions`, **unfiltered** —
-  the tile counts your 3, but the page it opens lists every
+  the tile counts your open ones, but the page it opens lists every
   quarantined part in the tenant (see 6a).
 
-The *My dispositions* tile currently reads `3` — it shows only the
-open (not-yet-closed) dispositions assigned to you. The three you see
+The *My dispositions* tile currently reads `2` — it shows only the
+open (not-yet-closed) dispositions assigned to you. The two you see
 on a fresh seed:
 - `DISP-QAI-006-OPEN` — OPEN, no type yet, on
-  `INJ-QA-INSPECT-006` (my seed's background exhibit; the walk
+  `INJ-QA-INSPECT-006` (the seed's background exhibit; the walk
   doesn't drive it).
-- `DISP-2026-000007` — OPEN SCRAP on `INJ-0042-019` (the escalation-
-  staged SCRAP dispo from the older training seed).
-- `DISP-2026-000002` — IN_PROGRESS SCRAP on `INJ-0038-007` (from the
-  completed WO-2024-0038-A storyline).
+- an IN_PROGRESS SCRAP disposition on an older-storyline part —
+  auto-created from a FAIL QR, so its number is auto-assigned
+  (`DISP-2026-0000NN`) and shifts on each reseed; don't key on the
+  exact number.
 
-The 004 rework disposition (`DISP-QAI-004-REW`) is CLOSED and does
-NOT contribute to this count, even though it's assigned to Sarah —
-that's by design; a closed disposition isn't work waiting.
+The `DISP-QAI-004-REW` rework disposition is CLOSED and does NOT
+contribute to this count, even though it's assigned to Sarah — that's
+by design; a closed disposition isn't work waiting.
 
 **Your gauges.** Calibration status on gauges you've used recently.
 Currently reads *"Torque Wrench TW-25 — overdue 15d"*. Real day: a
