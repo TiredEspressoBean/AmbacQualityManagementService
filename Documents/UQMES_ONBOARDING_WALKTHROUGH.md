@@ -10,6 +10,23 @@ it's your day end to end. Read as a manager, watch the gates — they're
 where your sign-off sits. Read it once start-to-finish; refer back by
 section later.
 
+## Contents
+
+1. Your home page — orient yourself
+2. Receiving inspection
+3. First Piece Inspection buy-off
+4. A sampled part comes to you
+5. A part fails your inspection
+6. Working the disposition
+7. Re-inspecting a reworked part
+8. OSP return inspection
+9. Working a CAPA task
+10. Calibration awareness
+11. The notification bell and inbox
+12. Reading the audit trail
+13. The manager's side — Maria
+14. Glossary
+
 ## The shape of a QA day
 
 Two roles, one flow. Work moves through the shop and QA gates it at the
@@ -71,23 +88,6 @@ Here's the whole rail a QA user sees, top to bottom:
 - **Two different badges.** The *Inbox* badge counts tasks **and** approvals
   together; *Approvals → Overview* counts only the approvals awaiting your
   signature (§13a).
-
-## Contents
-
-1. Your home page — orient yourself
-2. Receiving inspection
-3. First Piece Inspection buy-off
-4. A sampled part comes to you
-5. A part fails your inspection
-6. Working the disposition
-7. Re-inspecting a reworked part
-8. OSP return inspection
-9. Working a CAPA task
-10. Calibration awareness
-11. The notification bell and inbox
-12. Reading the audit trail
-13. The manager's side — Maria
-14. Glossary
 
 **What this is not.** A training curriculum for a trainer to teach
 with (see `QA_INSPECTOR_TRAINING_SCRIPT.md` for that — it carries the
