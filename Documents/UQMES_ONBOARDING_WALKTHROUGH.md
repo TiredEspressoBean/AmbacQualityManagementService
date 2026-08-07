@@ -359,12 +359,16 @@ proceed."*
    signed off · Setup verified — all parts can proceed through this
    step."*
 
-**Permission note.** The Pass / Fail / Waive buttons and the API
-endpoint are gated server-side on the `sign_off_fpi` permission. If
-your instance restricts sign-off to QA Manager only, log out and
-back in as `maria.qa@demo.ambac.com`. To Sarah without that
-permission, the banner reads *"awaiting buy-off"* but the buttons
-don't appear.
+**Permission note.** The Pass / Fail / Waive verdicts are gated
+server-side on the `sign_off_fpi` permission. Someone who holds it (Sarah
+in this seed) signs off directly. Someone who *doesn't* is no longer a
+dead end: the banner offers a **second-person co-signature** — an
+authorized QA person authenticates inline at that same station
+(`cosign_email` / `cosign_password`), is never logged in, and the verdict
+is recorded against **them**. (This is the standard buy-off pattern; see
+the co-signature-rollout appendix.) QA can also work their own queue
+without touching the operator's session via the pending-FPI panel on
+WO Control (Section 4 lands there).
 
 ---
 
@@ -573,9 +577,21 @@ For this walk, pick **REWORK**:
 
 Click **Update Disposition**. Toast: *"Disposition updated"*.
 
-**What happens on the backend when you save with type = REWORK:**
-1. The disposition's `current_state` auto-transitions `OPEN` →
-   `IN_PROGRESS` (built into `QuarantineDisposition.save()`).
+**Choosing the disposition type is an authorized decision.** Per
+AS9100/ISO 9001 8.7, the disposition decision is the act that carries a
+signature, so it goes through the co-signable **`decide`** action (gated by
+`approve_disposition`), not a bare field write — `disposition_type` is
+read-only on a plain PATCH. If you hold `approve_disposition` (a QA Manager
+does; Sarah does not in this seed) it commits directly; otherwise the editor
+opens a second-person co-sign dialog for an authorized colleague to authorize
+it inline, and it's recorded against them via `decision_authorized_by`.
+USE_AS_IS and REPAIR additionally require a recorded customer/design-approval
+reference (they accept known-nonconforming product).
+
+**What happens on the backend when the REWORK decision is authorized:**
+1. `decision_authorized_by`/`_at` are stamped, and the disposition's
+   `current_state` auto-transitions `OPEN` → `IN_PROGRESS` (built into
+   `QuarantineDisposition.save()`).
 2. The cascade fires: `apply_disposition_to_part` sees the part is
    at `QUARANTINED` (a routable status), so it advances
    `part.part_status` → `REWORK_NEEDED` and increments
@@ -594,7 +610,9 @@ Click **Update Disposition**. Toast: *"Disposition updated"*.
 - **REPAIR** — accept with repair outside normal spec; may not fully
   conform (AS9100). Same cascade behavior as REWORK.
 - **USE_AS_IS** — accept the non-conformance under a customer
-  concession. Requires an approval; do not use as a shortcut.
+  concession. Requires a recorded customer/design-approval reference,
+  **enforced** at decision time: the `decide` action refuses a USE_AS_IS
+  (or REPAIR) with no reference. Not a shortcut.
 - **SCRAP** — terminal. Part status cascades to `SCRAPPED` from any
   state (terminal-rank precedence still applies — a SCRAPPED part
   can't be pulled back by a later REWORK).
@@ -936,25 +954,36 @@ defined — which is the point.
 4. Click **Create**. (**Create** stays disabled until both fields
    have content.)
 
-The effectiveness outcome — `effectiveness_result` (CONFIRMED /
-NOT_EFFECTIVE / INCONCLUSIVE) plus notes — is recorded against the
-plan once the monitoring window has actually elapsed. CAPA-2024-001
-is the worked example: open its Verification tab to see a completed
-plan with a CONFIRMED result.
+Once the monitoring window has elapsed, record the outcome from the same
+tab: the plan row shows a **Complete Verification** button that opens a
+dialog for `effectiveness_result` (CONFIRMED / NOT_EFFECTIVE) plus notes.
+CAPA-2024-001 is the worked example: open its Verification tab to see a
+completed plan with a CONFIRMED result.
 
-**Segregation of Duties on verification.** Sarah can add and edit
-the verification record (`add_capaverification`,
-`change_capaverification`). She *cannot* perform the final verify
-that closes the CAPA — `verify_capa` is gated to the QA Manager.
-`capa.ready_for_verification` routes to the QA Manager group;
-Jennifer reviews the recorded data and signs off (or reopens it).
+> **Fixed 2026-08-07.** Recording the outcome used to go nowhere — the
+> service that closes/reopens the CAPA (`verify_capa_effectiveness`) existed
+> but nothing called it, and the **Complete Verification** button was even
+> unreachable (gated on an empty `effectiveness_result` while a fresh plan
+> defaults to INCONCLUSIVE). This is what "9c stage 2 never observed" in the
+> verification appendix meant. Recording now goes through a co-signable
+> **`verify`** action (`2ed910d`/`1b15a92`) that actually runs the service.
 
-**What happens on QA Manager verify.** If CONFIRMED, the
-`verify_capa_effectiveness` service closes the CAPA and logs a
-`CapaStatusTransition`. If NOT_CONFIRMED, it reopens the CAPA to
-IN_PROGRESS, marks the RCA `for review`, and auto-creates a
-30-day follow-up task. The escalation loop is built in — a
-correction that didn't stick doesn't quietly close.
+**Segregation of Duties on verification.** Sarah can add and edit the
+verification *plan* (`add_capaverification`, `change_capaverification`), but
+recording the *outcome* is gated on `verify_capa` (a QA Manager holds it).
+Sarah is not blocked, though: `verify` is co-signable — she completes it with
+a QA Manager authenticating inline, and the verification is recorded against
+**them** (`verified_by`). A QA Manager working their own queue records it
+directly. `effectiveness_result` / `verified_by` are read-only on a plain
+PATCH, so the outcome can't bypass the gate.
+
+**What happens on verify.** If CONFIRMED, `verify_capa_effectiveness` closes
+the CAPA and logs a `CapaStatusTransition`. If NOT_EFFECTIVE, it reopens the
+CAPA to IN_PROGRESS, marks the RCA `for review`, and auto-creates a 30-day
+follow-up task. The escalation loop is built in — a correction that didn't
+stick doesn't quietly close. The service's own self-verification rule still
+bites: the initiator/assignee can't verify their own CAPA unless
+`allow_self_verification` is set (with justification).
 
 ### 9c-bis — The other four tabs
 
@@ -1407,7 +1436,7 @@ history.
 
 ---
 
-## Appendix — verification status (2026-08-04, updated 2026-08-05)
+## Appendix — verification status (2026-08-04, updated through 2026-08-07)
 
 Maintenance note for whoever picks this document up next. It records
 *how much of this doc has been checked against the running app*, so the
@@ -1436,6 +1465,19 @@ drift — each of these was a real defect the walk exposed:
 
 Everything else the walk found was doc drift, corrected inline in the
 relevant section.
+
+**Follow-on work (2026-08-06/07), after the walk.** Three items the walk had
+flagged as open were then closed and are reflected inline above:
+- The second-person co-signature was rolled out to two more SoD gates —
+  **disposition decision** (`approve_disposition`, `5b5ef73`) and **CAPA
+  effectiveness verification** (`verify_capa`, `1b15a92`) — each by first giving
+  the dormant marker permission the authorized action the standard requires.
+  OSP acceptance was deliberately left out (see the co-signature appendix).
+- The **FPI exhibit** "0 of 2 confirmed / 3 required fields missing" was fixed
+  server-side (`build_capture_state` + a `capture-state` endpoint the runtime
+  hydrates from; `2ed910d`) — superseding the earlier "out of scope" call.
+- CAPA verification **stage 2** (recording the outcome) was wired + gated; it
+  had been unwired (9c).
 
 **Method matters, and it's the reason this appendix exists.** Sections
 were originally walked by enumerating on-screen **text**, which is blind
@@ -1521,6 +1563,11 @@ replaced with a genuine supervisor-override snapshot. See the
   tsc. **Fixed 2026-08-05** (`effectiveness_result` → `required=False`;
   schema + FE regen; `test_capa_verification_plan`). Stage 1 (plan) now
   creates; the outcome defaults to INCONCLUSIVE until stage 2 records it.
+  **Stage 2 itself was then wired + gated (2026-08-07):** recording the
+  outcome had gone nowhere (the closing service was never called, the
+  "Complete Verification" button unreachable); it now runs through a
+  co-signable `verify` action (`verify_capa`). See Section 9c and the
+  co-signature-rollout appendix.
 - 9e gate-raised CAPAs — **driven live (2026-08-05).** The Final Test
   sampling ruleset carries a `DEFECTIVE_COUNT ≥ 2` gate (whole work order),
   action `RAISE_CAPA_SCAR` (CORRECTIVE / MAJOR) — the only seeded gate that
@@ -1537,15 +1584,18 @@ replaced with a genuine supervisor-override snapshot. See the
   Also learned driving it: unlike Flow Testing (Section 5b, pure
   measurement-driven), the **Final Test** substep DOES carry an explicit
   Pass/Fail/Pending result field plus a required Release sign-off signature.
-- The FPI exhibit reads *"0 of 2 confirmed / 3 required fields missing"*.
-  **This is not missing seed data** — it was investigated during the
-  co-sign work and found to be the operator runtime's *fresh-session*
-  counter: `confirmedIds` and `responsesBySubstepId` both start empty and
-  are only filled by in-session captures; the runtime never hydrates prior
-  `SubstepResponse` rows. So no seed change alters that display — the only
-  fix would be a frontend feature (replay stored responses into the
-  session on load), which is out of scope. Mike's `SubstepCompletion`
-  signatures are real; the counter simply doesn't reflect them.
+- The FPI exhibit used to read *"0 of 2 confirmed / 3 required fields
+  missing"*. Diagnosed correctly (it was **not** missing seed data — the
+  runtime tracked only in-session state and never hydrated prior
+  `SubstepResponse` rows), but the earlier conclusion that the fix was
+  "out of scope" was superseded. **Fixed 2026-08-07 (`2ed910d`), server as
+  source of truth:** `build_capture_state(step_execution)` (the read-side
+  inverse of `submit_substep`) + `GET /StepExecutions/{id}/capture-state/`;
+  the runtime hydrates from it on mount and derives confirmed via the same
+  `findMissingRequired` the live path uses. The seed also now captures the
+  first-piece substeps (via `submit_substep`), so the exhibit reads
+  *"2 of 2 confirmed"* with no missing fields, pre-filled from the server.
+  Round-trip pinned by `test_dwi.BuildCaptureStateTests`.
 - The first-piece `StepExecution` no longer carries a fabricated
   `training_authorization` (the old `_source: demo_seed_bypass` tell is
   gone). Mike is genuinely not nozzle-qualified in the demo narrative
@@ -1565,7 +1615,7 @@ replaced with a genuine supervisor-override snapshot. See the
 
 ---
 
-## Appendix — second-person co-signature rollout (2026-08-05)
+## Appendix — second-person co-signature rollout (2026-08-05, extended 2026-08-07)
 
 Section 3's blocker turned out to be an instance of a general pattern, so
 the fix generalised into a mechanism. The shape, wherever it applies:
@@ -1588,8 +1638,10 @@ layer by a `cosign_actions` dict.
 | Training-gate override | `override_training_gate` | pre-existing; source of the extracted helper |
 | FPI buy-off | `sign_off_fpi` | review stage of the operator runtime |
 | MANUAL decision point | `resolve_step_decision` | `DecisionResolverPanel` in the runtime |
+| Disposition decision | `approve_disposition` | the `decide` action on the disposition editor (2026-08-06) |
+| CAPA effectiveness verification | `verify_capa` | "Complete Verification" on the CAPA Verification tab (2026-08-07) |
 
-Both new conversions also gained a surface for the *authorized* role to
+The FPI and CAPA conversions also gained a surface for the *authorized* role to
 work their own queue without borrowing anyone's session — the pending-FPI
 panel on WO Control being the FPI half.
 
@@ -1611,11 +1663,33 @@ passing the cosigner would have handed a lead who merely walked past a
 station the operator's next job. Any gate whose service takes a single
 "who did this" argument needs the same audit before conversion.
 
-**Not converted, and why.** The plan named three further targets that do
-not survive contact with the code: `approve_disposition` and
-`verify_capa` are group-eligibility *markers* consumed by approval
-template binding, not action gates (there is no viewset action gated on
-either), and OSP `accept`/`reject` are gated on
-`change_outsideprocessshipment`, a plain CRUD permission with no
-second-person concept. Reading permission *names* is not the same as
-finding the gates — see the three-paradigm note in `CLAUDE.md`.
+**Converted after all — disposition and CAPA (2026-08-06/07).** The plan named
+these two, and at first read they looked impossible: `approve_disposition` and
+`verify_capa` were group-eligibility *markers* consumed by approval-template
+binding, gated on **no** viewset action. But the standard (AS9100/ISO 9001 8.7,
+21 CFR 820.90) says the acts they *name* — authorizing a disposition decision,
+verifying CAPA effectiveness — are exactly the acts that must carry a signature.
+The dormant marker wasn't a reason to skip; it was a missing gate. So each was
+made real by adding the authorized action the perm should have gated all along:
+
+- **Disposition decision** — choosing `disposition_type` was an ungated field
+  write. Now a co-signable `decide` action (gated by `approve_disposition`)
+  records the decision + `decision_authorized_by`; `disposition_type` is
+  read-only on a plain PATCH so it can't bypass; USE_AS_IS / REPAIR require a
+  recorded customer/design-approval reference.
+- **CAPA effectiveness verification** — recording the outcome was not merely
+  ungated but **unwired** (`verify_capa_effectiveness` existed, nothing called
+  it; the "Complete Verification" button was even unreachable). Now a
+  co-signable `verify` action (gated by `verify_capa`) runs that service — closes
+  on CONFIRMED, reopens + spawns a follow-up on NOT_EFFECTIVE — and the button
+  works.
+
+**Not converted — OSP return acceptance, by decision.** OSP `accept`/`reject`
+are gated on `change_outsideprocessshipment`, a plain CRUD permission with no
+declared SoD authority to hang a co-signature on; they're a
+receiving/inspection action, not a manager approval. Forcing a co-signature
+there would be over-engineering against the standard, so it was left as-is.
+
+Reading permission *names* is not the same as finding the gates — see the
+three-paradigm note in `CLAUDE.md`. Here two of the three names had no gate yet;
+the fix was to build the gate the standard requires, not to declare them out.
