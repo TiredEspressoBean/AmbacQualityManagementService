@@ -26,7 +26,8 @@ section later.
 12. Reading the audit trail
 13. The manager's side — Maria
 14. Authoring a DWI — the process flow
-15. Glossary
+15. Quality Reports
+16. Glossary
 
 ## The shape of a QA day
 
@@ -36,7 +37,7 @@ points that matter.
 - **As an inspector**, your day is a queue: check your inbox → buy off
   first pieces → inspect sampled and failed parts → disposition the
   failures → re-inspect reworked parts → open or work CAPAs when a
-  pattern emerges. Sections 1–12 walk exactly that, in order.
+  pattern emerges. §1–12 walk exactly that, in order.
 - **As a manager**, your day is mostly the *other side of those gates* —
   the approvals and verifications inspectors send up. You authorize
   disposition decisions, verify whether a CAPA actually worked, approve
@@ -115,16 +116,18 @@ what's on screen.
 |---|---|---|---|
 | `sarah.qa@demo.ambac.com` | Sarah Chen | QA Inspector | Every section — the walker's identity. |
 | `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | §13 (the manager's whole side), and the gates in §3/§6/§9 when Sarah hands one up. |
-| `mike.ops@demo.ambac.com` | Mike Rodriguez | Operator | Section 3 — the seed pre-signs the first-piece substeps as Mike so Sarah (playing QA) can sign off the FPI without hitting the segregation-of-duties gate. You don't log in as Mike; his signatures are already on the seed exhibit. |
+| `mike.ops@demo.ambac.com` | Mike Rodriguez | Operator | §3 — the seed pre-signs the first-piece substeps as Mike so Sarah (playing QA) can sign off the FPI without hitting the segregation-of-duties gate. You don't log in as Mike; his signatures are already on the seed exhibit. |
 
-Sarah's QA Inspector role has `sign_off_fpi` (Section 3),
-`close_disposition` (Section 6), and every other permission this walk
-uses — you don't need to switch to Maria for the happy path. Maria's
-row is here for two edge cases: (a) `approve_disposition` is SOD-
-restricted to QA Manager / Tenant Admin, so anything that needs a
-formal approval (e.g. a USE_AS_IS with customer concession routing)
-would need her; (b) if your tenant's role config narrows any of the
-above to QA Manager only, log in as Maria — the walk still works.
+Sarah's QA Inspector role has `sign_off_fpi` (§3) and `close_disposition`
+(§6d), and covers almost the whole walk on her own. The one gate she can't
+clear solo is the **disposition decision** (§6b): choosing a disposition type —
+*any* type, REWORK included — is gated by `approve_disposition`, which is
+SOD-restricted to QA Manager / Tenant Admin. She isn't blocked, though: the
+editor opens an inline **co-sign** dialog and an authorized colleague (Maria)
+approves it right there, recorded under their name (§6b, §13b). So keep Maria's
+login handy for §6; you don't otherwise switch users. (If your tenant's role
+config narrows other actions to QA Manager too, log in as Maria — the walk
+still works.)
 
 **The parts on WO-QA-INSPECT-01, and where each is used:**
 
@@ -135,17 +138,16 @@ above to QA Manager only, log in as Maria — the walk still works.
 | `INJ-QA-INSPECT-003` | Flow Testing · IN_PROGRESS · fresh, ready for a live FAIL | 5 |
 | `INJ-QA-INSPECT-004` | Flow Testing · AWAITING_QA · visit 2, historical FAIL QR + CLOSED REWORK disposition already on file | 7 |
 | `INJ-QA-INSPECT-005` | Nitride Coating · RETURNED from Apex Plating · awaiting return inspection | 8 |
-| `INJ-QA-INSPECT-006` | Assembly · QUARANTINED · bare OPEN NCR assigned to Sarah | Section 1 (background) |
+| `INJ-QA-INSPECT-006` | Assembly · QUARANTINED · bare OPEN NCR assigned to Sarah | §1 (background) |
 | `INJ-QA-INSPECT-007`, `INJ-QA-INSPECT-008` | Cleaning / Disassembly · IN_PROGRESS | filler, not walked |
 
 ---
 
 ## 1. Your home page — orient yourself
 
-Log in as `sarah.qa@demo.ambac.com`. You land on `/` — Sarah's QA home.
-(For a QA persona `/` renders the QA home surface directly; the same surface
-also answers at the explicit address `/quality/inbox`, the name §11 uses for
-it — distinct again from the generic `/inbox` two of the tiles below link to.)
+Log in as `sarah.qa@demo.ambac.com`. You land on `/` — Sarah's QA home, which
+also answers at `/quality/inbox` (the name §11 uses). The *Approvals* and *CAPA
+tasks* tiles below link to a separate generic `/inbox`.
 
 **Top-left header.** `Welcome back, Sarah` and an `Incoming queue`
 button that jumps to `/production/incoming`.
@@ -157,19 +159,19 @@ you on WO Detail (`/workorder/$id`) — the shared work surface where
 you can pick up any part on that WO. Part scans go to the part's
 parent WO, not to the part detail.
 
-**FPI banner block (red border).** Every pending First Piece Inspection
+**FPI banner (red border, on-screen heading *First piece waiting*).** Every pending First Piece Inspection
 in your tenant surfaces here as a row: step name, work order, part
 (if designated), and how long it's been waiting. Two buttons per row:
 - **I'm on it** — acknowledges the pending FPI so the operator sees
   QA is on the way. After you click it, the row reads *"Seen by
   Sarah"*.
 - **Start check** — opens the work order's Control page, which has a
-  pending first-piece panel you can buy off from directly. (Section 3
+  pending first-piece panel you can buy off from directly. (§3
   also walks the fuller "sign at the operator's station" path.)
 
 For this walk the FPI banner shows two rows: the pre-existing
 `WO-2024-0048-A` row (from a different demo storyline) and your
-`WO-QA-INSPECT-01 · INJ-QA-INSPECT-001` row. The 001 row is Section 3.
+`WO-QA-INSPECT-01 · INJ-QA-INSPECT-001` row. The 001 row is §3.
 
 **Inbox with chips.** A flat list of everything QA owes a decision on,
 grouped by four filter chips: *All · Receiving · OSP returns ·
@@ -184,12 +186,12 @@ plain text, not a button — you cannot filter by it, so don't go
 hunting for the click target.
 
 For this walk the Inbox shows (among others):
-- Receiving lots from Great Lakes Diesel and Bargain Bolts (Section 2).
-- OSP-return shipments from Apex Plating. Yours for Section 8 shows as
+- Receiving lots from Great Lakes Diesel and Bargain Bolts (§2).
+- OSP-return shipments from Apex Plating. Yours for §8 shows as
   `OSP-2026-000003` — the UI displays the sequential shipment number,
   not the seeder's `reference` (see 8a).
 - An in-process row for `WO-QA-INSPECT-01 · Nozzle Inspection · 1 pcs`
-  — that's `INJ-QA-INSPECT-002`, the sampled part for Section 4.
+  — that's `INJ-QA-INSPECT-002`, the sampled part for §4.
 
 **My Quality Actions.** Three tiles counting your assigned items:
 *Approvals* (approvals waiting for your signature), *CAPA tasks*
@@ -253,7 +255,7 @@ different ones:
   5 lots plus the OSP returns awaiting inspection, so a few rows more),
   with a *Source* column and *All sources* / *All statuses* filters.
   This is where the home page's **Incoming queue** button goes, and
-  where Section 8 picks up the OSP return.
+  where §8 picks up the OSP return.
 
 Both open the same inspection runtime; the unified one is just a wider
 net. This section uses the receiving-only queue.
@@ -338,7 +340,7 @@ work order.
 Fail flow: click **Fail** instead of Pass, add a defect (Type +
 Description), then complete. That opens the Reject disposition
 dialog for type + severity + quantity. This walk doesn't drive that
-path here — Sarah's in-process fail path is Section 5.
+path here — Sarah's in-process fail path is §5.
 
 ---
 
@@ -430,7 +432,7 @@ the banner offers a **second-person co-signature** — an authorized QA
 person authenticates inline at that same station (`cosign_email` /
 `cosign_password`), is never logged in, and the verdict is recorded against
 **them**. QA can also work their own queue without touching the operator's
-session via the pending-FPI panel on WO Control. (Section 4 lands on that
+session via the pending-FPI panel on WO Control. (§4 lands on that
 same Control page too — but for a sampled inspection, not an FPI buy-off.)
 
 > **Manager's side.** Co-signing at Sarah's station is the *inline* half of
@@ -481,8 +483,8 @@ icon on the INJ-QA-INSPECT-002 row.
 
 ### 4c — Run the inspection
 
-**Order matters:** Section 3 signed off the Nozzle Inspection FPI.
-If you haven't done Section 3 yet, do it first — the FPI banner
+**Order matters:** §3 signed off the Nozzle Inspection FPI.
+If you haven't done §3 yet, do it first — the FPI banner
 gates the whole step, and you'll see *"First Piece Inspection in
 progress"* on part 002's runtime too, blocking your sampled
 inspection.
@@ -561,14 +563,14 @@ Filing the FAIL kicks off the nonconformance chain:
 - A **Quality Report** (`QR-2026-#####`, FAIL) is created for
   INJ-QA-INSPECT-003 at Flow Testing.
 - A **Quarantine Disposition** is auto-created (OPEN, no type yet) and
-  assigned to a QA Manager / Inspector — the record Section 6 works against.
+  assigned to a QA Manager / Inspector — the record §6 works against.
 - The part is **quarantined**, and a notification fires.
 
 It surfaces immediately: your home *My dispositions* tile count goes up, and
 the part detail shows Latest Inspection `FAIL · 1 open defect`, Has Open
 Defect `Yes`, and the linked QR + disposition rows.
 
-You just caused the disposition Section 6 walks against.
+You just caused the disposition §6 walks against.
 
 ---
 
@@ -626,15 +628,23 @@ For this walk, pick **REWORK**:
 - **Resolution Notes**: *"Retest after cleaning; suspect fouling in
   the seat."*
 
-Click **Update Disposition**. Toast: *"Disposition updated"*.
+Click **Update Disposition**. Signed in as Sarah — who lacks
+`approve_disposition` — the editor doesn't commit yet: it opens the **Authorize
+disposition decision** co-sign dialog (*"Recording a 'Rework' disposition needs
+approval authority. An authorized colleague can co-sign here; the decision is
+recorded under their name."*). Enter an authorized approver's email
+(`maria.qa@demo.ambac.com`), draw the signature, tick *"I authorize this
+disposition decision,"* enter their password (`demo123`), and click
+**Authorize**. Toast: *"Disposition updated"* — the disposition moves to
+`IN_PROGRESS`, recorded under Maria. A QA Manager working it directly holds the
+authority and commits without the dialog (§13b).
 
-**Choosing the disposition type is an authorized decision.** Per
-AS9100/ISO 9001 8.7, the disposition decision carries a signature. If you
-hold disposition-approval authority (a QA Manager does; Sarah does not in
-this seed) it commits directly; otherwise the editor opens a second-person
-co-sign dialog for an authorized colleague to approve it inline, and it's
-recorded against them. USE_AS_IS and REPAIR additionally require a recorded
-customer/design-approval reference (they accept known-nonconforming product).
+**Why the co-sign.** Per AS9100/ISO 9001 8.7 the disposition decision carries a
+signature, and choosing a type — *any* type, not just USE_AS_IS — is that
+authorized act. An inspector without `approve_disposition` co-signs it to an
+authorized colleague inline rather than being blocked. USE_AS_IS and REPAIR
+additionally require a recorded customer/design-approval reference (they accept
+known-nonconforming product).
 
 Once authorized, the disposition moves to `IN_PROGRESS`, and — because the
 part is still quarantined — REWORK sends it back for rework (status →
@@ -666,7 +676,7 @@ decision is recorded as paper only and the part stays put.
 
 ### 6d — Close the disposition
 
-Once the rework has been done and re-inspected (Section 7 walks that),
+Once the rework has been done and re-inspected (§7 walks that),
 close the disposition — either from its **Close** action or by setting
 **Current State → `CLOSED`** in the editor and clicking Update. Both run the
 same checks: closing is gated by the `close_disposition` permission, and it's
@@ -689,8 +699,8 @@ inspection.
 
 ### 7a — Find it
 
-**How this connects to Section 6d.** You just closed the disposition
-on INJ-QA-INSPECT-003. Section 7 walks a *different* part
+**How this connects to §6d.** You just closed the disposition
+on INJ-QA-INSPECT-003. §7 walks a *different* part
 (INJ-QA-INSPECT-004) that's already been through that same close in
 the seed — its `DISP-QAI-004-REW` is pre-CLOSED and the rework has
 been done offline. This is what a real re-inspection looks like the
@@ -719,7 +729,7 @@ icon). You see:
 
 ### 7c — Run the re-inspection
 
-Open the runtime via **Start Work** on WO Detail (Section 5a), picking
+Open the runtime via **Start Work** on WO Detail (§5a), picking
 INJ-QA-INSPECT-004. Enter a **passing** value — like the failing pass in
 5b, the verdict is measurement-driven (no Pass/Fail button):
 - **Scan the part barcode**: `INJ-QA-INSPECT-004`.
@@ -733,7 +743,7 @@ complete — lot advanced (1 part moved)."*
 part advances to the next step (Assembly). The rework arc is now
 paper-complete: FAIL QR → CLOSED REWORK → reworked → PASS QR. The **Rework
 Passes** counter stays at `1` — it counts rework *cycles* (incremented when
-the REWORK disposition was applied in Section 6), not re-inspection passes.
+the REWORK disposition was applied in §6), not re-inspection passes.
 
 ---
 
@@ -806,7 +816,7 @@ immediate step change.)
 
 Real day terms: a disposition handles *this part right now*. A CAPA
 (Corrective And Preventive Action) handles *the pattern* — why is
-this happening again, what will we change so it stops. Sections 5
+this happening again, what will we change so it stops. §5
 through 7 walked one failed part. This section walks the parallel
 system that catches the pattern behind repeated failures.
 
@@ -968,7 +978,7 @@ enabled (with justification).
 
 ### 9c-bis — The other four tabs
 
-Sections 9b and 9c cover Tasks and Verification. The rest, briefly,
+§9b and §9c cover Tasks and Verification. The rest, briefly,
 so nothing on the page is a surprise:
 
 - **Root Cause** — on a CAPA with no RCA yet this reads *"No root
@@ -990,7 +1000,7 @@ so nothing on the page is a surprise:
   the completion dialog.
 - **History** — *"Timeline of changes and updates to this CAPA."*
   On the seeded CAPAs this reads *"No audit history."* for the same
-  reason the seeded parts do (see Section 12c): the seeder writes
+  reason the seeded parts do (see §12c): the seeder writes
   rows directly rather than going through the runtime.
 
 ### 9d — Initiate a CAPA from a failed QR
@@ -1020,7 +1030,7 @@ On save:
 the disposition already records what to do with *this part*. Open
 a CAPA when there's a pattern: "we've seen this three times in a
 month," "customer complaint traced to a systemic gap,"
-"supplier's process changed and we missed it." Section 5's
+"supplier's process changed and we missed it." §5's
 disposition on INJ-QA-INSPECT-003 was a one-off; CAPA-2024-003
 was the right response to the *fifth* nozzle failure in an
 order.
@@ -1153,7 +1163,7 @@ stays selectable — that's the advisory case the gauge-nag tile flags.)
 
 ### 10d — The gauge picker during measurement
 
-Section 4c walks a measurement substep. On any measurement node, an
+§4c walks a measurement substep. On any measurement node, an
 **Equipment** dropdown sits next to the value field, pre-populated from
 the measurement's definition:
 - **Default** equipment (tagged "default" in the picker).
@@ -1250,14 +1260,14 @@ walkthrough rather than arriving with the seed.
 
 Events that route to a QA inspector by default (via the tenant's
 starter notification rules):
-- **`ncr.opened`** (Section 5c) — a FAIL QR just auto-created a
+- **`ncr.opened`** (§5c) — a FAIL QR just auto-created a
   quarantine disposition. Routes to the disposition assignee (a
   QA Manager or QA Inspector on the tenant).
 - **`fpi.decided`** — an FPI was passed, failed, or waived on a
   step Sarah covers.
-- **`capa.assigned`** (Section 9a) — a CAPA task was assigned to
+- **`capa.assigned`** (§9a) — a CAPA task was assigned to
   you.
-- **`capa.ready_for_verification`** (Section 9c) — routes to the
+- **`capa.ready_for_verification`** (§9c) — routes to the
   QA Manager group's inbox after an inspector saves verification
   data.
 
@@ -1339,7 +1349,7 @@ history.
 
 ## 13. The manager's side — Maria
 
-Sections 1–12 walked the floor as Sarah. This one flips to Maria, the QA
+§1–12 walked the floor as Sarah. This one flips to Maria, the QA
 Manager. She doesn't get a different app — **there is no separate manager
 dashboard.** She lands on the same QA home page Sarah does (§1). What differs
 is what routes *to* her: she holds the authority permissions
@@ -1655,7 +1665,68 @@ rows on the Processes list are the before/after of that split.
 
 ---
 
-## 15. Glossary
+## 15. Quality Reports
+
+A **Quality Report (QR)** is the record of one inspection outcome — the
+generated documentation that says *this part, at this step, passed or failed;
+here is the evidence; here is who took and verified the reading*. You've been
+producing and reading QRs the whole walk (§5 wrote one on the fail, §6's
+disposition links back to it, §7 reads the history); this section is the QR
+itself. QRs are **generated, not hand-authored** — the surface exists to hold
+and document them, not to build them the way you build a process (§14).
+
+### 15a — Where a QR comes from
+
+Three origins, in rough order of how often you'll meet them:
+- **Auto, on a failed inspection** — recording an out-of-spec measurement (§5)
+  writes a FAIL QR and fires the `ncr.opened` → auto-quarantine pipeline.
+- **From an inspection-point substep** — a substep flagged *Inspection point*
+  (§14g) turns the operator's captures into a QR as they work.
+- **Manually** — **Quality Reports** (`/editor/qualityReports`) → **New
+  Quality Reports**, for a finding that didn't arrive through a runtime capture
+  (an assessment, an audit observation).
+
+The **Quality Reports** list is the tenant-wide register: *Report # · Status ·
+Part · Step · Detected By · Verified By · Created*, with a status filter,
+Import / Export, and **View** into each. It sits under `/editor/` because it's
+the manage-all-records surface — not your daily queue. Your day's QRs reach you
+through the part and its disposition (§5/§6), not by trawling this list.
+
+### 15b — Reading a QR
+
+**View** opens the report, laid out as a formal record:
+- **Report** — Report #, **Result** (Pass / Fail), whether it was a First Piece
+  Inspection, and a description.
+- **Inspection** — the Part (and its current status), Process, Step, Machine,
+  and the Sampling Method that selected it.
+- **Personnel** — **Detected By** (who took the reading) and **Verified By**
+  (the second set of eyes) — the segregation-of-duties record.
+- **Findings** — the defect / error types recorded on a failure.
+- **Acceptance Sampling** — Sample Size and Accept (Ac) / Reject (Re) when the
+  QR came off a sampling plan (§2b / §14f).
+- **Attachments**, **System Information**, and **Activity History**.
+
+Two actions sit on the report: **Create CAPA** — the §9d path, escalating a
+systemic finding straight from the QR — and **Edit Report**. A QR is a
+controlled record: it's voided, never hard-deleted (§12).
+
+### 15c — Measurements are the evidence on the report
+
+This is the far end of §14e. The measurements you define at a step and pull
+into its inspection-point substeps are the readings that land on the QR: each
+captured value, set against its nominal and tolerances, is the *evidence*
+behind the Pass/Fail — not just the verdict. That's the concrete reason to
+define a measurement once and reference it (§14e) rather than type a loose
+value: the defined measurement carries its spec, its gauge, and its
+characteristic number onto the generated report, and lets the reading roll into
+SPC afterwards. A QR built from ad-hoc inline values documents a number with
+nothing behind it. (A manually-created QR, or one off a step with no defined
+measurements, simply has no readings to show — its record is the finding and
+the sampling result.)
+
+---
+
+## 16. Glossary
 
 - **AWAITING_QA** — part state meaning "an operator finished a step
   but a rule says QA looks at it before it moves on." Parked;
@@ -1664,7 +1735,7 @@ rows on the Processes list are the before/after of that split.
   investigation and fix for recurring or high-severity defects.
   Inspectors can initiate CAPAs and work assigned tasks; the
   final effectiveness verification (`verify_capa`) is gated to
-  the QA Manager. See Section 9.
+  the QA Manager. See §9.
 - **CoC** — Certificate of Conformance. Supplier's paperwork stating
   a lot meets the ordered spec. Attached at receiving.
 - **DWI** — Digital Work Instruction. On-screen guided capture the
