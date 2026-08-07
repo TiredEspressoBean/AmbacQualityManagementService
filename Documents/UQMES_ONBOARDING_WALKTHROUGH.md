@@ -248,7 +248,8 @@ different ones:
 - `/production/receiving-inspection` — the *Receiving Inspection
   Queue*. **Purchased lots only**; 5 rows on a fresh seed.
 - `/production/incoming` — *Incoming Inspection*, the unified queue:
-  purchased lots **and** parts back from a subcontract vendor, 7 rows,
+  purchased lots **and** parts back from a subcontract vendor (the same
+  5 lots plus the OSP returns awaiting inspection, so a few rows more),
   with a *Source* column and *All sources* / *All statuses* filters.
   This is where the home page's **Incoming queue** button goes, and
   where Section 8 picks up the OSP return.
