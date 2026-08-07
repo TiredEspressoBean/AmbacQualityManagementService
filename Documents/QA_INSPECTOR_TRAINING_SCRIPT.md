@@ -6,8 +6,8 @@ shop floor.
 trainee knows *inspection*; they need to learn *this tool*.
 **Runtime:** ~50 min for the inspector journeys (1–11); the manager gates and
 authoring are a separate, optional block.
-**Format:** classroom or 1:1 at a workstation, with a printed traveler and part
-labels in hand and a barcode reader if you have one.
+**Format:** classroom or 1:1 at a workstation, with a printed traveler in hand
+and a barcode reader if you have one.
 **Style:** click-runbook. Each journey tells you which button to press and
 where you'll land. It is the **trainer's companion to
 `UQMES_ONBOARDING_WALKTHROUGH.md`** — same demo work order, same exhibits; the
@@ -44,12 +44,6 @@ Do these ~15 min before the trainee arrives. None survive being done live.
       (`/workorder/$workOrderId`) → **Traveler** button. Verify the header
       barcode scans. (A pre-generated copy lives at
       `artifacts/WO-QA-INSPECT-01_traveler.pdf`.)
-- [ ] Print the **Part Labels**: WO Control (`/workorder/$workOrderId/control`)
-      → **Part Labels** next to *Pick List*. Cut apart the ones you'll teach
-      against: **001, 002, 003, 004, 005, 006**. Also grab **one label from a
-      different work order** (a `WO-2024-0048-A` part) — that's the deliberate
-      "wrong scan" for Journey 10; a leftover WO-QA-INSPECT-01 label (007/008)
-      won't work, since it resolves to this same WO.
 - [ ] Spare barcode reader if you have one — a class stalled on hardware loses
       attention fast.
 - [ ] Optional: a second browser/incognito window logged in as an operator
@@ -167,14 +161,14 @@ and operators).
 / REWORK NEEDED), the OSP card, and the digital traveler; Parts is the
 per-part drill-down.
 
-**Then:** scan any `INJ-QA-INSPECT-###` label — you land on the **same** WO
-Detail (part → parent WO). For the *part* detail (`/details/Parts/$id`), open it
-from the Parts-tab row.
+**Then:** type or scan any `INJ-QA-INSPECT-###` part number in the scan box (its
+label reads *"Scan or type a work order / part number"*) — you land on the
+**same** WO Detail (part → parent WO). For the *part* detail
+(`/details/Parts/$id`), open it from the Parts-tab row.
 
 **Teaching point:** the WO is the anchor for scans; per-part detail is one click
 away. The **Control** page (`/workorder/$id/control`) is a *different* lens —
-lead/manager oversight, per-step status, print buttons, OSP actions — not a scan
-destination.
+lead/manager oversight, per-step status, OSP actions — not a scan destination.
 
 **Checkpoint:** trainee scans the traveler and, unprompted, points at the
 exception badges and says what each filters.
@@ -411,10 +405,9 @@ and a CAPA (the pattern).
 
 ---
 
-## Journey 10 — Calibration, notifications, and the scanner's edges  (walkthrough §10–§11)
+## Journey 10 — Calibration and notifications  (walkthrough §10–§11)
 
-**Why:** The ambient signals — is my gauge in cal, what fired for me — and the
-ways a scan can go sideways.
+**Why:** The ambient signals — is my gauge in cal, and what fired for me.
 
 - **Calibration** (`/quality/calibrations`): the **Calibration Dashboard**
   (Equipment / Current / Due Soon / Overdue / Compliance). The home *Your
@@ -423,10 +416,6 @@ ways a scan can go sideways.
 - **Notifications** (bell popover / `/notifications`): the feed of what fired
   for Sarah — CAPA assignments, `ncr.opened` on a fail, etc. Show *Mark all
   read* and the filters.
-- **Wrong-scan drill:** scan a label from the leftover pile — a part from a
-  *different* WO. It resolves to *that* WO, not this one. Teaching point: the
-  scan always anchors on the scanned item's parent WO; if you land somewhere
-  unexpected, you scanned the wrong label.
 
 **Checkpoint:** trainee checks a gauge's cal state before using it, unprompted.
 
