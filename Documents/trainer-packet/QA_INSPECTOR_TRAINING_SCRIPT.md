@@ -43,7 +43,7 @@ Do these ~15 min before the trainee arrives. None survive being done live.
 - [ ] Print the **Traveler** for **WO-QA-INSPECT-01**: WO Detail
       (`/workorder/$workOrderId`) → **Traveler** button. Verify the header
       barcode scans. (A pre-generated copy lives at
-      `artifacts/WO-QA-INSPECT-01_traveler.pdf`.)
+      `WO-QA-INSPECT-01_traveler.pdf`.)
 - [ ] Spare barcode reader if you have one — a class stalled on hardware loses
       attention fast.
 - [ ] Optional: a second browser/incognito window logged in as an operator

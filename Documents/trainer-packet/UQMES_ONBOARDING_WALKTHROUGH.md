@@ -28,7 +28,7 @@ section later.
 14. Authoring a DWI — the process flow
 15. Quality Reports
 16. Glossary
-- Appendix — Sidebar reference & label/URL gotchas
+- Appendix — Sidebar reference
 
 ## The shape of a QA day
 
@@ -62,9 +62,8 @@ into it:
   click the section header to open one.
 
 That's all you need to start. The full rail — every section with its key
-routes, and four label/URL mismatches worth knowing before they trip you — is
-in the **Sidebar reference** appendix at the end; refer back to it whenever a
-surface sends you somewhere unexpected.
+routes — is in the **Sidebar reference** appendix at the end; refer back to it
+whenever you need to find a surface.
 
 **What this is not.** A training curriculum for a trainer to teach
 with (see `QA_INSPECTOR_TRAINING_SCRIPT.md` for that — it carries the
@@ -78,7 +77,7 @@ pre-staged into the state a section walks against, so the exhibits are
 always there; the demo tenant is reset to this state before each run.
 
 **Scannable traveler PDF for the walk:**
-[`artifacts/WO-QA-INSPECT-01_traveler.pdf`](artifacts/WO-QA-INSPECT-01_traveler.pdf).
+[`WO-QA-INSPECT-01_traveler.pdf`](WO-QA-INSPECT-01_traveler.pdf).
 Print it (or open it on a phone) if you want to physically scan the
 header barcode / QR to open the live WO — the scan resolves to the
 same WO Detail page you'd reach by clicking. It also includes the full
@@ -1734,7 +1733,7 @@ the sampling result.)
 
 ---
 
-## Appendix — Sidebar reference & label/URL gotchas
+## Appendix — Sidebar reference
 
 The whole rail a QA user sees, top to bottom (see *Getting around* in the front
 matter for the two things to know before you use it):
@@ -1750,20 +1749,3 @@ matter for the two things to know before you use it):
 | **Approvals** | **Overview** (`/approvals`), **History** | The approvals center (§13a), badge-counted. Mostly a manager's surface. |
 | **Tools** | **Documents**, **Analytics**, **AI Chat** | Standalone utilities. |
 | **Admin** | Settings, User Management, Work Centers, Data Management, Audit Log | **Tenant admins only** — a QA inspector won't see this section at all. |
-
-**Four label/URL mismatches worth knowing before they trip you:**
-
-- **"Dispositions" sits under *Quality* but its URL is `/production/dispositions`**,
-  and it opens **unfiltered** — every quarantined part in the tenant, not just
-  yours (the home tile opens the same page; see §6a).
-- **There are two work-order surfaces.** *Work Orders* (`/production/work-orders`)
-  is the list; *WO Control Center* (`/workorders`) is the multi-WO dashboard.
-  The per-WO **Control** page you buy off FPIs and dispositions from (§3, §4,
-  §6) is `/workorder/$id/control` — reached by clicking a WO or a home-inbox
-  row, not from the rail directly.
-- **A couple of authoring surfaces live under `/editor/`** — *Quality Reports*
-  (`/editor/qualityReports`) and *Processes* (`/editor/processes`). That's the
-  CRUD/authoring domain, not a stray path.
-- **Two different badges.** The *Inbox* badge counts tasks **and** approvals
-  together; *Approvals → Overview* counts only the approvals awaiting your
-  signature (§13a).

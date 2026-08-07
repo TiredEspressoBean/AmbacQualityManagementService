@@ -11,12 +11,13 @@ in the Demo Company tenant.
 | `UQMES_ONBOARDING_WALKTHROUGH.md` | The spine — a self-serve, first-person walkthrough that takes a QA inspector (Sarah) through a demo work order end to end (§1–§12), flags the QA **manager's** gates, and adds a manager section (§13), a process/DWI authoring section (§14), a Quality Reports section (§15), a glossary (§16), and a sidebar-reference appendix. Effective for a lone inspector or a lone manager. |
 | `WO-QA-INSPECT-01_reference.md` | The work-order reference: WO-QA-INSPECT-01's identity, its 12-operation routing with QA gates, and the exact pre-staged state of all 8 parts mapped to the walkthrough sections they drive. Plus demo logins and reset instructions. |
 | `QA_INSPECTOR_TRAINING_SCRIPT.md` | The trainer's script — the taught, classroom version of the walkthrough. Same WO-QA-INSPECT-01 scenario, turned into eleven inspector "journeys" with trainer prep, per-journey why / steps / checkpoint / watch-for, and an optional manager block. Cross-references the walkthrough by section. |
-| `artifacts/WO-QA-INSPECT-01_traveler.pdf` | Scannable traveler PDF for the walk — the paper counterpart to the routing table, with the header barcode/QR and per-operation sign-off blocks. |
+| `UQMES_ONBOARDING_WALKTHROUGH.pdf` | A print-ready PDF export of the walkthrough (same content), for handouts. Re-export from the markdown whenever the walkthrough changes. |
+| `WO-QA-INSPECT-01_traveler.pdf` | Scannable traveler PDF for the walk — the paper counterpart to the routing table, with the header barcode/QR and per-operation sign-off blocks. |
 
 ## How they fit together
 
-- The **walkthrough** is the narrative. It references the **traveler PDF**
-  (relative link `artifacts/…`), which is in this directory.
+- The **walkthrough** is the narrative. It references the **traveler PDF**,
+  which sits alongside it in this directory.
 - The **WO reference** is the fact sheet the walkthrough runs against: read it
   to know what each part is staged for before following a section.
 - The **training script** is the same content taught, not read: run it at a
@@ -44,5 +45,12 @@ in the Demo Company tenant.
 ## Note on source of truth
 
 These are **copies**, assembled for convenience. The maintained originals live
-in `Documents/` (and `Documents/artifacts/`); edit there, then refresh this
-directory if the packet needs updating.
+in `Documents/` (and the traveler in `Documents/artifacts/`); edit there, then
+refresh this directory if the packet needs updating.
+
+This packet is **flat** — the traveler sits at the top level, not under
+`artifacts/`. So the copies here point at the traveler by its bare filename
+(`WO-QA-INSPECT-01_traveler.pdf`), whereas the `Documents/` sources point at
+`artifacts/…`. When you re-copy a doc from `Documents/`, re-point its traveler
+link to the packet root. The `UQMES_ONBOARDING_WALKTHROUGH.pdf` here is a
+separate export — re-generate it from the markdown when the walkthrough changes.

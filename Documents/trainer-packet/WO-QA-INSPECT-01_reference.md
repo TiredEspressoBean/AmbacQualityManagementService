@@ -7,7 +7,7 @@ each run (`python manage.py seed_demo`), so every exhibit the walk references is
 always present.
 
 There is also a scannable traveler PDF at
-`artifacts/WO-QA-INSPECT-01_traveler.pdf` — the paper counterpart to the routing
+`WO-QA-INSPECT-01_traveler.pdf` — the paper counterpart to the routing
 table below, with the header barcode/QR and per-operation sign-off blocks.
 
 ---
