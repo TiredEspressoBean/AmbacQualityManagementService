@@ -13,20 +13,16 @@ reference: shorter, first-person, with fewer exits into pedagogy.
 **What you'll be walking.** A dedicated demo work order, `WO-QA-INSPECT-01`
 (Midwest Fleet Services · Common Rail Injector · 8 parts), is seeded
 into the Demo Company tenant specifically for this walk. Each part is
-pre-staged into the state a section walks against so the exhibits are
-always there. Re-run `python manage.py seed_demo` before each demo run
-to reset state.
+pre-staged into the state a section walks against, so the exhibits are
+always there; the demo tenant is reset to this state before each run.
 
 **Scannable traveler PDF for the walk:**
 [`artifacts/WO-QA-INSPECT-01_traveler.pdf`](artifacts/WO-QA-INSPECT-01_traveler.pdf).
 Print it (or open it on a phone) if you want to physically scan the
 header barcode / QR to open the live WO — the scan resolves to the
-same WO Detail page you'd reach by clicking. The PDF also includes
-the full 12-operation routing table with sign-off blocks, giving the
-walker a paper counterpart to what appears on screen. To regenerate
-after a reseed, open the WO Detail (`/workorder/$id`) → **Traveler**
-button → **Download PDF**; save the new file over the checked-in
-copy so the barcode encodes the current WO id.
+same WO Detail page you'd reach by clicking. It also includes the full
+12-operation routing table with sign-off blocks, a paper counterpart to
+what's on screen.
 
 **Roles you'll play.** Passwords are `demo123`.
 
@@ -79,9 +75,9 @@ in your tenant surfaces here as a row: step name, work order, part
 - **I'm on it** — acknowledges the pending FPI so the operator sees
   QA is on the way. After you click it, the row reads *"Seen by
   Sarah"*.
-- **Start check** — jumps to `/workorder/$id/control` (the Control
-  page). Note: Control is where you land, but the FPI **sign-off**
-  actually happens inside the operator substep runtime — see Section 3.
+- **Start check** — opens the work order's Control page, which has a
+  pending first-piece panel you can buy off from directly. (Section 3
+  also walks the fuller "sign at the operator's station" path.)
 
 For this walk the FPI banner shows two rows: the pre-existing
 `WO-2024-0048-A` row (from a different demo storyline) and your
@@ -119,10 +115,9 @@ three share a destination:
   the tile counts your 3, but the page it opens lists every
   quarantined part in the tenant (see 6a).
 
-The *My dispositions* tile currently reads `3`. The tile filters
-out CLOSED rows client-side (`useMyDispositions.ts:32`), so it only
-shows OPEN + IN_PROGRESS dispositions assigned to you. The three
-you see on a fresh seed:
+The *My dispositions* tile currently reads `3` — it shows only the
+open (not-yet-closed) dispositions assigned to you. The three you see
+on a fresh seed:
 - `DISP-QAI-006-OPEN` — OPEN, no type yet, on
   `INJ-QA-INSPECT-006` (my seed's background exhibit; the walk
   doesn't drive it).
@@ -155,7 +150,7 @@ inventory.
 ### 2a — Reach the receiving queue
 
 Either click the **Receiving** chip on your home Inbox (it reads
-`Receiving 5 · 4d` — 5 rows, oldest 4 days), or navigate to
+`Receiving 5 · 3d` — 5 rows, oldest 3 days), or navigate to
 `/production/receiving-inspection` directly from the URL bar.
 
 **Two queues, and they are not the same page.** Worth getting straight
@@ -208,8 +203,7 @@ detail page.
 
 Click **Run Inspection (DWI)**.
 
-**You land on:** `/operator/steps/$stepId/substeps?execution=…&material_lot=$lotId&at=0`
-— the operator substep runtime, scoped to this lot.
+**You land on:** the operator substep runtime, scoped to this lot.
 
 **You see** the DWI-guided *Inspect incoming material* form. Fields:
 - **Scan the lot / packing slip** — barcode / QR input, optional.
@@ -277,32 +271,29 @@ the operator sees you're on the way. The row updates to read
 
 ### 3b — Reach the runtime
 
-1. Click **Start check** on your home's FPI banner row. You land on
-   `/workorder/$id/control` — the Control page. **The FPI panel
-   itself doesn't render here**; the `FpiStatusBanner` component only
-   surfaces inside the operator substep runtime.
-2. Go to WO Detail (`/workorder/$id`) and click **Start Work**
-   (top-right).
-3. In the dialog, check the `INJ-QA-INSPECT-001` row under Nozzle
+**Start check** on your home's FPI banner takes you to the work order's
+Control page, which has a **pending first-piece** panel — the quick,
+QA-native way to buy off (the same panel Section 4 uses). This section
+instead walks the fuller path — signing at the operator's station, so you
+see what the operator sees:
+
+1. Go to WO Detail (`/workorder/$id`) and click **Start Work** (top-right).
+2. In the dialog, check the `INJ-QA-INSPECT-001` row under Nozzle
    Inspection and click **Start**.
-4. The runtime opens. Every inspection substep already carries a
-   `SubstepCompletion` **signed by Mike** — the seed pre-populates
-   those so the walker (Sarah, playing QA) can go straight to the
-   buy-off.
+3. The runtime opens. Every inspection substep already carries a completion
+   **signed by Mike** — the seed pre-populates those so you (Sarah, playing
+   QA) can go straight to the buy-off.
 
 **What the runtime looks like.** The runtime hydrates Mike's prior
-first-piece captures from the server, so the header reads *"2 of 2
-confirmed"* and the measurement/inspection fields show his recorded
-values (e.g. Spray Angle 15°). You don't need to enter anything to buy
-off — the FPI banner is independent of the substep form.
+first-piece captures, so the header reads *"2 of 2 confirmed"* and the
+measurement/inspection fields show his recorded values (e.g. Spray Angle
+15°). You don't need to enter anything to buy off — the FPI banner is
+independent of the substep form.
 
-**If you arrive by pasting a runtime URL, include `workOrder`.** The
-FPI banner is rendered only when the URL carries a `workOrder` query
-param (`OperatorSubstepRuntimePage` gates it on `search.workOrder`).
-Reaching the runtime any other way — a bare
-`/operator/steps/$stepId/substeps?execution=…` — shows the DWI with
-no FPI banner at all and no error explaining why. Going through
-**Start Work** sets the param for you.
+**If you paste a runtime URL directly, include `workOrder`.** The FPI banner
+shows only when the URL carries a `workOrder` param; reach the runtime any
+other way and you'll see the DWI with no banner and no explanation. Going
+through **Start Work** sets it for you.
 
 **Segregation-of-duties (SOD) note:** the person who signed the
 first-piece substeps cannot also sign off the FPI. That's why the
@@ -314,7 +305,7 @@ must be signed by a different qualified inspector."`
 
 ### 3c — Sign off the FPI
 
-On the runtime, the FpiStatusBanner shows three action buttons:
+On the runtime, the FPI banner shows three action buttons:
 **Sign off & pass** · **Fail** · **Waive**.
 
 Choose:
@@ -389,9 +380,8 @@ icon on the INJ-QA-INSPECT-002 row.
   `Nozzle Inspection` (link to Steps detail), Work Order
   (`WO-QA-INSPECT-01`, link — this jumps to Control, not Detail).
 - **Quality Control**: `Sampling Required · Yes`,
-  `Sampling Reason · post repair verification` (the UI renders the
-  underlying `POST_REPAIR_VERIFICATION` enum in lowercase). `Rework
-  Passes · 1` reflects an earlier rework cycle at another step.
+  `Sampling Reason · post repair verification`. `Rework Passes · 1`
+  reflects an earlier rework cycle at another step.
 
 ### 4c — Run the inspection
 
@@ -401,9 +391,8 @@ gates the whole step, and you'll see *"First Piece Inspection in
 progress"* on part 002's runtime too, blocking your sampled
 inspection.
 
-Open the runtime the same way as Section 5a: from **WO Detail**
-(`/workorder/$id`) click **Start Work** in the header, tick this part,
-and **Start**. (The Control page's Step Status rows carry step-routing
+Open the runtime from **WO Detail** (`/workorder/$id`): click **Start
+Work** in the header, tick this part, and **Start**. (The Control page's Step Status rows carry step-routing
 controls — send to QA, reassign, previous step — *not* a runtime
 launcher, and the part-detail page doesn't launch the runtime either;
 Start Work on WO Detail is the entry point.)
@@ -678,8 +667,7 @@ with an **Inspect** button.
 
 From either surface, click **Inspect** on the OSP-2026-000003 row.
 
-**You land on:** the operator substep runtime scoped to the
-shipment: `/operator/steps/$stepId/substeps?execution=…&osp_shipment=$shipmentId&at=0`.
+**You land on:** the operator substep runtime, scoped to the shipment.
 
 **You see** the return-inspection DWI, one substep titled *"Return
 inspection (post-coating)"* with:
@@ -733,10 +721,9 @@ walks two of them.
 
 On the home page, the **My quality actions** panel holds three
 counters: **Approvals**, **CAPA tasks**, and **My dispositions**.
-The **CAPA tasks** count (backed by `useMyCapaTasks`) covers every
-task Sarah owns — as the primary `assigned_to`, or as a row on
-`CapaTaskAssignee` for a multi-person task. Expect five or six on a
-fresh seed; the exact number shifts because due dates are seeded
+The **CAPA tasks** count covers every task Sarah owns — as the primary
+assignee, or as one assignee on a multi-person task. Expect five or six
+on a fresh seed; the exact number shifts because due dates are seeded
 relative to today, so don't treat it as a fixed expectation.
 
 Sidebar → **Quality → CAPAs** (`/quality/capas`) opens the full
@@ -746,12 +733,11 @@ Closed) above a table. Controls are a **Search capas…** box, a
 toggle, and a **View CAPA** button on each row. There is no
 "assigned to me" filter, so read the *Assigned To* column.
 
-**The Status column is computed, not stored.** `CAPASerializer`
-returns `CAPA.computed_status`, which derives the status from the
-underlying facts — verification confirmed → Closed, all tasks done
+**The Status column is computed, not stored.** It's derived from the
+CAPA's underlying facts — verification confirmed → Closed, all tasks done
 + RCA complete → Pending Verification, any task or RCA started →
 In Progress, nothing yet → Open. So a CAPA that has tasks never
-displays as Open, whatever its stored `status` field says. What
+displays as Open. What
 you'll actually see:
 - **CAPA-2024-002** — Pending Verification, Preventive Action,
   Minor. Assigned to Sarah, all tasks complete. This is the
@@ -776,9 +762,8 @@ you'll actually see:
   a **pencil** (edit) and **trash** (delete) at the right. Use this
   when you're looking at the CAPA as a whole.
 
-Either way completion goes through the `complete-task` endpoint and
-the `complete_capa_task` service, so `completion_mode` and any
-signature requirement apply the same from both.
+Either way, completion applies the same rules — the assignee mode and
+any signature requirement — from both entry points.
 
 Walking it from the Inbox:
 
@@ -799,9 +784,8 @@ Walking it from the Inbox:
    done."* Fill **Completion Notes** (placeholder: *"Describe what
    was done to complete this task…"*). **Attach Evidence** is
    available if you have a measurement printout or photo.
-5. Click **Complete Task**. `completed_date` and `completed_by` are
-   stamped by the `complete_capa_task` service and the CAPA's
-   progress percentage ticks up.
+5. Click **Complete Task**. The task is stamped with the completion
+   date and your name, and the CAPA's progress percentage ticks up.
 
 **A third task you didn't expect.** CAPA-2024-004's Tasks tab shows
 **three** rows, not the two the seed lists: `T001` is
@@ -812,18 +796,16 @@ CAPA with an immediate action gets one.
 **Multi-person tasks (CAPA-2024-003).** Open CAPA-2024-003's Tasks
 tab (the tab beside it is labelled **Root Cause**, not RCA). Two of
 Sarah's tasks are multi-person:
-- *"Update incoming inspection procedure"* — `completion_mode` =
-  `ALL_ASSIGNEES` (Sarah AND Maria both must sign off).
-- *"Implement tightened sampling for nozzles"* — `completion_mode`
-  = `ANY_ASSIGNEE` (Sarah OR Jennifer, whichever gets there first).
+- *"Update incoming inspection procedure"* — needs **all** assignees
+  (Sarah AND Maria both must sign off).
+- *"Implement tightened sampling for nozzles"* — needs **any** assignee
+  (Sarah OR Jennifer, whichever gets there first).
 
-The `complete_capa_task` service enforces the mode: completing an
-ALL_ASSIGNEES task records *your* `CapaTaskAssignee` row as
-COMPLETED but leaves the task itself open until every assignee has
-done the same; ANY_ASSIGNEE closes on the first. The Tasks tab shows
-the mode per row (*Single Owner* on the ordinary ones), and the
-completion dialog says so up front for an ALL_ASSIGNEES task rather
-than letting you discover it afterwards.
+Completing an all-assignees task records *your* sign-off but leaves the
+task open until every assignee has done the same; an any-assignee task
+closes on the first. The Tasks tab shows the mode per row (*Single Owner*
+on the ordinary ones), and the completion dialog says so up front for an
+all-assignees task rather than letting you discover it afterwards.
 
 So on T005 *"Update incoming inspection procedure"*: Sarah
 completing it leaves the row **Not Started** with her assignee
@@ -905,14 +887,13 @@ so nothing on the page is a surprise:
 
 ### 9d — Initiate a CAPA from a failed QR
 
-Sarah has `add_capa` (the CRUD gate — every staff role has it)
-plus `initiate_capa` (the business-verb gate that layers on top
-via `CAPAViewSet.action_permissions`). Together those let her
-create new CAPAs. Operators have `add_capa` but *not*
-`initiate_capa`, so they can help edit a CAPA draft someone else
-opened but can't POST a new one — formal CAPA initiation sits
-with QA staff and supervisors, matching the sibling pattern used
-by `close_capa` / `approve_capa` / `verify_capa`.
+Sarah has `add_capa` (the basic create permission every staff role has)
+plus `initiate_capa` (the business-verb permission that layers on top).
+Together those let her create new CAPAs. Operators have `add_capa` but
+*not* `initiate_capa`, so they can help edit a CAPA draft someone else
+opened but can't create a new one — formal CAPA initiation sits with QA
+staff and supervisors, matching the sibling `close_capa` / `approve_capa`
+/ `verify_capa` gates.
 
 Initiating is the right move when a QR reveals a systemic issue,
 not a one-off part defect. From `/quality/capas` click
@@ -939,10 +920,9 @@ order.
 ### 9e — CAPAs you didn't open (quality gates)
 
 Not every CAPA in your queue was raised by a person. A step can
-carry a **quality gate** (`SamplingRuleSet.gate_metric` +
-`gate_threshold`): when an aggregate signal crosses its threshold
-— say fail rate over a rolling window — the gate fires the actions
-configured in `gate_actions`. One of those is `RAISE_CAPA_SCAR`.
+carry a **quality gate**: when an aggregate metric crosses a configured
+threshold — say fail rate over a rolling window — the gate fires its
+configured actions. One of those raises a CAPA (a SCAR).
 
 A gate-raised CAPA looks different from one you filed:
 - **Initiated By is empty**, and notification templates render it
@@ -957,17 +937,16 @@ A gate-raised CAPA looks different from one you filed:
 - **It's assigned to a QA Manager** (falling back to a QA
   Inspector), so it lands in a real queue and fires
   `capa.assigned` rather than sitting unnoticed.
-- **`gate_capa_type='SUPPLIER'` makes it a SCAR** against the
-  lot's supplier instead of an internal CORRECTIVE.
+- **A supplier-type gate makes it a SCAR** against the lot's supplier
+  instead of an internal CORRECTIVE.
 
-**Reconstructing why it fired.** The `StepGateFiring` row records
-the ruleset, metric, computed value, threshold, actions taken, and
-`triggered_by_report` — the QR that tripped it. That report's
-`detected_by` is the person who was working when the threshold
+**Reconstructing why it fired.** The gate firing records the ruleset,
+metric, computed value, threshold, actions taken, and the QR that tripped
+it. That QR's *detected-by* is whoever was working when the threshold
 crossed. So even with no initiator on the CAPA, the chain
-CAPA ← firing → report → inspector reconstructs the full story.
-Don't read `detected_by` as "the person who caused this" — they
-filed one inspection; the gate fired on the aggregate.
+CAPA ← firing → report → inspector reconstructs the full story. Don't
+read *detected-by* as "the person who caused this" — they filed one
+inspection; the gate fired on the aggregate.
 
 ---
 
@@ -994,12 +973,9 @@ the QR void flow to walk the reading back.
 
 ### 10a — Your gauge-nag tile on the home page
 
-The home page has a **Your gauges** tile (`GaugeNagTile`, backed
-by `useGaugeNag`), sitting beside the **My quality actions** panel.
-It counts gauges Sarah used in the last 7 days whose calibration is
-due within 7 days or already overdue — both windows are
-`DEFAULT_USED_WITHIN_DAYS` / `DEFAULT_DUE_WITHIN_DAYS` in
-`services/qms/gauge_nag.py`.
+The home page has a **Your gauges** tile beside the **My quality
+actions** panel. It counts gauges Sarah used in the last 7 days whose
+calibration is due within 7 days or already overdue.
 
 Empty state reads *"Nothing you've used in the last 7 days is due
 for calibration."* Populated, it reads *"N gauges you used in the
@@ -1011,8 +987,7 @@ button navigates to `/quality/calibrations`.
 
 ### 10b — The calibration dashboard
 
-`/quality/calibrations` (`CalibrationDashboardPage`) is the full
-QA view.
+`/quality/calibrations` is the full QA view.
 
 **Top row — five stat cards** (fresh-seed values in brackets):
 - **Equipment** — with calibration records [5].
@@ -1047,8 +1022,8 @@ answer different questions.
 
 ### 10c — Recording a new calibration
 
-*Record New Calibration* opens the `EditCalibrationRecordFormPage`
-in create mode. Fields on `CalibrationRecord`:
+*Record New Calibration* opens the calibration-record form in create
+mode. Its fields:
 - **equipment** (FK) — which piece of equipment this event is for.
 - **calibration_date** / **due_date** — when it happened, when
   it's due next.
@@ -1063,23 +1038,22 @@ in create mode. Fields on `CalibrationRecord`:
 - **adjustments_made** — free-text description.
 - **notes**.
 
-On save, a `FAIL` result marks the gauge **OUT_OF_SERVICE** — a paper
-flag you'll see on the equipment detail. It does not block that gauge
-from being selected in the measurement picker today; treat the status
-as advisory.
+On save, a `FAIL` result marks the gauge **OUT_OF_SERVICE** — which the
+measurement picker hides and the server refuses to record against (10a).
+(A gauge that's merely *due-soon* or *overdue* but still `IN_SERVICE`
+stays selectable — that's the advisory case the gauge-nag tile flags.)
 
 ### 10d — The gauge picker during measurement
 
-Section 4c walks a measurement substep. On any substep node
-backed by a `MeasurementInput` component, an **Equipment**
-dropdown sits next to the value field, pre-populated from the
-`MeasurementDefinition` on the definition:
+Section 4c walks a measurement substep. On any measurement node, an
+**Equipment** dropdown sits next to the value field, pre-populated from
+the measurement's definition:
 - **Default** equipment (tagged "default" in the picker).
 - **Backup** equipment (tagged "backup"), if one is configured.
 
-The choice rides along with the reading — the response persisted
-to `StepExecutionMeasurement.equipment` is the actual gauge used,
-not the definition's default. That's the audit trail hook: three
+The choice rides along with the reading — the gauge recorded is the
+actual one used, not the definition's default. That's the audit trail
+hook: three
 months from now you can trace a measurement back to the specific
 gauge that produced it, and if that gauge later shows a FAIL
 calibration event, you can walk backwards and find every reading
@@ -1096,13 +1070,10 @@ selectable and rely on the gauge-nag tile for awareness.
 
 ### 10e — Seeded records on the QA walk exhibits
 
-The demo seed (`seed/demo/manufacturing.py`) creates real
-`CalibrationRecord` rows for the equipment used by WO-QA-INSPECT-01
-steps (flow bench, torque wrenches, gauges) with dates driven by
-an `EQUIPMENT_SPECS.calibration_days` offset — a negative value
-means the record is intentionally overdue for demo purposes.
-That's why the *Overdue* panel and the gauge-nag tile aren't
-empty on a fresh reseed.
+The demo seed creates real calibration records for the equipment used
+by WO-QA-INSPECT-01 steps (flow bench, torque wrenches, gauges); some
+dates are intentionally set overdue for demo purposes. That's why the
+*Overdue* panel and the gauge-nag tile aren't empty on a fresh reseed.
 
 ---
 
@@ -1113,12 +1084,11 @@ happen around the shop that you should know about. UQMES pushes
 those to two related but distinct surfaces:
 - **Inbox** — things you *have to do*: assigned tasks, approvals
   waiting on you, dispositions in your queue. Two related
-  surfaces: `/inbox` (`InboxPage`) is a generic tabbed personal
-  inbox — CAPA tasks, dispositions, approvals — that anyone with
-  commitments can reach; `/quality/inbox` (`QaHomeRoute`) is the
-  QA persona's home page, which is broader than a pure inbox
-  (adds the gauge-nag tile and the My Actions panel alongside
-  the inbox list).
+  surfaces: `/inbox` is a generic tabbed personal inbox — CAPA tasks,
+  dispositions, approvals — that anyone with commitments can reach;
+  `/quality/inbox` is the QA persona's home page, which is broader than
+  a pure inbox (adds the gauge-nag tile and the My Actions panel
+  alongside the inbox list).
 - **Notification feed** (bell → `/notifications`) — things you
   should be *aware of*: events that fired system-wide and your
   subscriptions routed to you.
@@ -1129,9 +1099,8 @@ missing something there just means you didn't see it.
 
 ### 11a — The bell popover
 
-Top-right of the app layout, the **Bell** icon
-(`NotificationBell`) shows an unread count in a small red badge
-(rendered `99+` if you're really behind).
+Top-right of the app layout, the **Bell** icon shows an unread count
+in a small red badge (rendered `99+` if you're really behind).
 
 Clicking opens a popover:
 - Header: *"Notifications"* + **Mark all read** button (only when
@@ -1142,24 +1111,21 @@ Clicking opens a popover:
   *"5m ago"*, *"2h ago"*, *"3d ago"*).
 - Footer: **View all** navigates to `/notifications`.
 
-Clicking a row marks it read *and* navigates to the item's
-`rendered_action_url` — the deep link the event was wired with.
-`ncr.opened` sends you to the disposition. `fpi.decided` sends
-you to the FPI banner on the runtime. `capa.assigned` sends you
-to the CAPA detail. If a row has no action URL, it just marks
-read.
+Clicking a row marks it read *and* follows the item's deep link.
+`ncr.opened` sends you to the disposition. `fpi.decided` sends you to
+the FPI banner on the runtime. `capa.assigned` sends you to the CAPA
+detail. If a row has no link, it just marks read.
 
 ### 11b — The full feed at /notifications
 
-`/notifications` (`NotificationFeedPage`) — same data as the
-popover, up to 100 items, with a persistent **Unread only** filter
+`/notifications` — same data as the popover, up to 100 items, with a
+persistent **Unread only** filter
 toggle. Header reads *"N unread"* or *"All caught up"* when
 there's nothing to review. Same click-to-open-and-mark-read
 behavior as the bell.
 
 **Preferences** button (top right) navigates to
-`/profile/notifications` (`MyNotificationsPage`) — the personal
-surface where you can:
+`/profile/notifications` — the personal surface where you can:
 - Mute or unmute specific events per channel (in-app, email).
 - Add personal subscriptions (*"ping me when X happens on records
   I own"*) — a lighter surface than the admin rule editor at
@@ -1174,9 +1140,8 @@ CAPA, due 2026-08-17"* and the same for CAPA-2024-002. Those are
 the only pre-seeded ones; the rest below fire as you work the
 walkthrough rather than arriving with the seed.
 
-Events that route to a QA inspector by default (via seeded starter
-rules — backfill onto an existing tenant with
-`python manage.py setup_notification_rules`):
+Events that route to a QA inspector by default (via the tenant's
+starter notification rules):
 - **`ncr.opened`** (Section 5c) — a FAIL QR just auto-created a
   quarantine disposition. Routes to the disposition assignee (a
   QA Manager or QA Inspector on the tenant).
@@ -1264,7 +1229,7 @@ history.
 
 ---
 
-## 13. Glossary — 15 terms
+## 13. Glossary
 
 - **AWAITING_QA** — part state meaning "an operator finished a step
   but a rule says QA looks at it before it moves on." Parked;
@@ -1292,9 +1257,6 @@ history.
   disposition is decided.
 - **QR** — Quality Report. The record of a single inspection outcome
   (PASS / FAIL / PENDING).
-- **SamplingTriggerManager** — the service that decides which parts
-  to sample based on the WO's sampling ruleset (AQL, n-of-K,
-  post-repair verification, etc.).
 - **Step execution** — one visit to one step by one part.
   `visit_number > 1` means a rework re-visit.
 - **Traveler** — the printed WO packet that accompanies the physical
