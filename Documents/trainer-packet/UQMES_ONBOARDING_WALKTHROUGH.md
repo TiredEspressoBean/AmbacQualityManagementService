@@ -1740,7 +1740,7 @@ matter for the two things to know before you use it):
 
 | Sidebar section | Entries you'll use | Why you open it |
 |---|---|---|
-| *(top, everyone)* | **Help & Docs** (`/docs`), **Tracker** (`/tracker`) | Docs, and the customer-facing tracker map. Not your daily driver. |
+| *(top, everyone)* | **Home** (`/`), **Help & Docs** (`/docs`), **Tracker** (`/tracker`) | Home is your landing page (§1); then docs and the customer-facing tracker map. |
 | **Personal** | **Inbox** (`/inbox`) | Your assigned CAPA tasks + approvals, with a live count badge. Two of the home page's "My quality actions" tiles land here. |
 | **Production** *(open)* | **Work Orders** (`/production/work-orders`), **WO Control Center** (`/workorders`), **Processes** (`/editor/processes`) | The shop-floor work orders and the process authoring surface. |
 | **Supply** | **Incoming Inspection** (`/production/incoming`), **Outside Processing** (`/production/outside-processing`), **Materials** (`/production/material-lots`), + supplier & plan surfaces | Receiving (§2) and OSP returns (§8) live here. The receiving-*only* queue (`/production/receiving-inspection`, §2a) has no rail entry — reach it from the home **Receiving** chip. |

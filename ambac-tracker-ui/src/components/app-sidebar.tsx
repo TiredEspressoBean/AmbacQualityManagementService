@@ -15,6 +15,7 @@ import {
     Gauge,
     GraduationCap,
     History,
+    Home,
     LayoutDashboard,
     LineChart,
     MapPin,
@@ -46,6 +47,11 @@ import { LoginLink } from "@/components/login-link-sidebar"
 import { useMyCapaTasks } from "@/hooks/useMyCapaTasks"
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
+
+// Home - the landing page (available to all authenticated users, no header)
+const homePages: Page[] = [
+    { name: "Home", url: "/", icon: Home },
+]
 
 // Portal - Customer-facing (available to all users, no header)
 const portalPages: Page[] = [
@@ -166,6 +172,9 @@ export function AppSidebar({
             </SidebarHeader>
             <SidebarContent>
                 <ScrollArea className="h-full">
+                    {/* Home - landing page, available to all authenticated users */}
+                    {isAuthenticated && <NavPages pages={homePages} />}
+
                     {/* Help & Docs - available to all authenticated users */}
                     {isAuthenticated && <NavPages pages={helpPages} />}
 
