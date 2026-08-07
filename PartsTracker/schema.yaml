@@ -19389,6 +19389,33 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/StepExecutions/{id}/capture-state/:
+    get:
+      operationId: api_StepExecutions_capture_state_retrieve
+      description: 'The execution''s stored captures as {substep_id: {node_id: response}}
+        — the read-side inverse of substep submit, so the runtime hydrates prior work
+        from the server (source of truth) instead of starting blank.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/StepExecutions/{id}/claim/:
     post:
       operationId: api_StepExecutions_claim_create

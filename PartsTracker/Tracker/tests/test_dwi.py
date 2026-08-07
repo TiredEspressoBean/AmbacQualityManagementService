@@ -1330,3 +1330,58 @@ class SubstepBodyBlocksNodeIdValidationTest(TestCase):
         }
         with self.assertRaises(drf_serializers.ValidationError):
             self.validate(doc)
+
+
+class BuildCaptureStateTests(DwiPhase1BaseTestCase):
+    """`build_capture_state` reconstructs {substep_id: {node_id: response}} from
+    an execution's stored captures — the read-side inverse of `submit_substep`,
+    so the operator runtime can hydrate prior work from the server (the source
+    of truth) instead of starting blank."""
+
+    def setUp(self):
+        from Tracker.models import MeasurementDefinition
+        set_current_tenant_id(self.tenant.id)
+        self.md = MeasurementDefinition.objects.create(
+            tenant=self.tenant, label="OD", type="NUMERIC", unit="in",
+            nominal=0.5, upper_tol=0.01, lower_tol=0.01, step=self.step,
+        )
+        self.m_node = "11111111-1111-1111-1111-111111111111"
+        self.a_node = "22222222-2222-2222-2222-222222222222"
+        self.s_node = "33333333-3333-3333-3333-333333333333"
+        self.substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="Measure OD",
+            is_inspection_point=True,
+            body_blocks={"type": "doc", "content": [
+                {"type": "measurementInput", "attrs": {
+                    "node_id": self.m_node, "required": True,
+                    "measurement_definition_id": str(self.md.id)}},
+                {"type": "attestationCheckpoint", "attrs": {
+                    "node_id": self.a_node, "kind": "signature", "required": True}},
+                {"type": "qualityStatusField", "attrs": {
+                    "node_id": self.s_node, "required": True}},
+            ]},
+        )
+
+    def test_reconstructs_captured_responses(self):
+        from Tracker.services.dwi.operator_capture import submit_substep, build_capture_state
+        submit_substep(
+            substep=self.substep, step_execution=self.step_execution, user=self.user,
+            captures=[
+                {"node_id": self.m_node, "kind": "measurement",
+                 "measurement_definition_id": str(self.md.id), "value_numeric": 0.5},
+                {"node_id": self.a_node, "kind": "attestation", "confirmed": True},
+                {"node_id": self.s_node, "kind": "status", "status": "PASS"},
+            ],
+        )
+        state = build_capture_state(self.step_execution)
+        node_map = state[str(self.substep.id)]
+        # Measurement → {value: <str>} (checkSatisfied wants a non-empty string).
+        self.assertEqual(float(node_map[self.m_node]["value"]), 0.5)
+        # Status → the bare status string.
+        self.assertEqual(node_map[self.s_node], "PASS")
+        # Signature attestation → the payload object (checkSatisfied wants object).
+        self.assertEqual(node_map[self.a_node], {"confirmed": True})
+
+    def test_empty_execution_returns_empty(self):
+        from Tracker.services.dwi.operator_capture import build_capture_state
+        self.assertEqual(build_capture_state(self.step_execution), {})

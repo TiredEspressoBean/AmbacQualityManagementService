@@ -21,7 +21,7 @@
  *
  * URL: `/operator/steps/$stepId/substeps?part=&workOrder=&execution=&at=`
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -80,6 +80,8 @@ import {
     findMissingRequired,
     summarizeResponses,
 } from "@/lib/dwi/build-captures";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { type CapturedMeasurement } from "@/components/dwi/ReceivingAcceptanceStage";
 import { useSamplePlan } from "@/hooks/useReceivingMutations";
 import {
@@ -205,6 +207,52 @@ export function OperatorSubstepRuntimePage() {
         setResponsesBySubstepId({});
         setConfirmedIds(new Set());
     }, [search.unit, isUnitMode]);
+
+    // Hydrate prior captures from the server (the source of truth). Opening an
+    // execution whose operator already did the work should show their entered
+    // values + a correct "N of M confirmed / K missing" summary, not a blank
+    // form. The server reconstructs {substep_id: {node_id: response}} from its
+    // stored SubstepResponse / StepExecutionMeasurement rows; we drop it straight
+    // into the in-session map and derive confirmed via the SAME findMissingRequired
+    // the live capture path uses. Skipped in receiving unit-mode (each unit is a
+    // deliberately fresh pass).
+    const { data: captureState } = useQuery({
+        queryKey: ["capture-state", search.execution],
+        queryFn: () =>
+            api.api_StepExecutions_capture_state_retrieve({
+                params: { id: search.execution as string },
+            }),
+        enabled: Boolean(search.execution) && !isUnitMode,
+    });
+
+    const hydratedExecutionRef = useRef<string | null>(null);
+    useEffect(() => {
+        const exec = search.execution;
+        if (!exec || isUnitMode || !captureState || sortedForBind.length === 0) return;
+        if (hydratedExecutionRef.current === exec) return; // once per execution
+        const state = captureState as Record<string, Record<string, unknown>>;
+        if (!state || Object.keys(state).length === 0) {
+            hydratedExecutionRef.current = exec;
+            return;
+        }
+        hydratedExecutionRef.current = exec;
+        // Functional guards so a stored state never clobbers in-session edits.
+        setResponsesBySubstepId((prev) => (Object.keys(prev).length ? prev : state));
+        setConfirmedIds((prev) => {
+            if (prev.size) return prev;
+            const next = new Set<string>();
+            for (const s of sortedForBind) {
+                const resp = state[s.id];
+                if (
+                    resp &&
+                    findMissingRequired(s.body_blocks as unknown as object, resp).length === 0
+                ) {
+                    next.add(s.id);
+                }
+            }
+            return next;
+        });
+    }, [captureState, search.execution, isUnitMode, sortedForBind]);
 
     // Eagerly pre-bind a QualityReports row when the operator lands on an
     // inspection-point substep. PartAnnotation (and other QR-aware capture

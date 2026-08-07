@@ -2900,6 +2900,17 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         return Response(serializer.data)
 
     @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+        description="The execution's stored captures as {substep_id: {node_id: response}} "
+                    "— the read-side inverse of substep submit, so the runtime hydrates "
+                    "prior work from the server (source of truth) instead of starting blank.",
+    )
+    @action(detail=True, methods=['get'], url_path='capture-state')
+    def capture_state(self, request, pk=None):
+        from Tracker.services.dwi.operator_capture import build_capture_state
+        return Response(build_capture_state(self.get_object()))
+
+    @extend_schema(
         parameters=[OpenApiParameter(
             'parts', OpenApiTypes.STR,
             description="Comma-separated part ids to check the current user against.",

@@ -656,3 +656,110 @@ def _normalize_kind(raw) -> Optional[SubstepResponseKind]:
     if not isinstance(raw, str):
         return None
     return _KIND_MAP.get(raw)
+
+
+# ---------------------------------------------------------------------------
+# Capture-state hydration — the read-side inverse of submit_substep
+# ---------------------------------------------------------------------------
+#
+# Rebuild an execution's captured state as {substep_id: {node_id: response}} from
+# the persisted SubstepResponse + StepExecutionMeasurement rows, so the operator
+# runtime can hydrate from the server (the source of truth) when it opens an
+# execution whose operator already did the work — instead of starting blank and
+# re-deriving nothing. Response shapes mirror the capture vocabulary the runtime
+# submits (the FE `buildCaptures` contract), so the runtime can drop them
+# straight into its per-substep response map and its existing readiness check.
+
+_CAPTURE_NODE_TYPES = {
+    'textInput', 'choiceInput', 'scanInput', 'photoCapture', 'fileCapture',
+    'timer', 'computedValue', 'attestationCheckpoint', 'measurementInput',
+    'qualityStatusField', 'equipmentRolesField', 'personnelRolesField',
+    'errorTypesField', 'inspectionSignatures', 'partAnnotation',
+}
+
+
+def _collect_capture_nodes(node, out):
+    """Walk a TipTap `body_blocks` doc, collecting (type, attrs) for capture nodes."""
+    if isinstance(node, dict):
+        node_type = node.get('type')
+        attrs = node.get('attrs') or {}
+        if node_type in _CAPTURE_NODE_TYPES and attrs.get('node_id'):
+            out.append((node_type, attrs))
+        for value in node.values():
+            _collect_capture_nodes(value, out)
+    elif isinstance(node, list):
+        for value in node:
+            _collect_capture_nodes(value, out)
+
+
+def _response_from_stored(node_type, attrs, sr):
+    """Reconstruct one node's response from its SubstepResponse row, matching the
+    shape the runtime's input widget writes and its `checkSatisfied` reads."""
+    payload = sr.value_json or {}
+    if node_type in ('textInput', 'choiceInput', 'scanInput'):
+        return sr.value_text or ''
+    if node_type in ('photoCapture', 'fileCapture'):
+        if sr.value_document_id:
+            return {'document_id': str(sr.value_document_id),
+                    'file_name': payload.get('file_name') or ''}
+        return sr.value_text or ''
+    if node_type in ('timer', 'computedValue'):
+        return payload
+    if node_type == 'attestationCheckpoint':
+        # Confirm-mode wants boolean true; signature-mode wants the payload object.
+        return payload if attrs.get('kind') == 'signature' else True
+    if node_type == 'qualityStatusField':
+        return payload.get('status') or sr.value_text or ''
+    if node_type in ('equipmentRolesField', 'personnelRolesField', 'errorTypesField'):
+        return payload.get('rows') or []
+    if node_type == 'inspectionSignatures':
+        return {'detected': payload.get('detected'), 'verified': payload.get('verified')}
+    if node_type == 'partAnnotation':
+        return payload
+    return sr.value_text or payload
+
+
+def build_capture_state(step_execution) -> dict:
+    """Return {substep_id: {node_id: response}} for a step execution's stored
+    captures — the read-side inverse of `submit_substep`."""
+    from Tracker.models import Substep, SubstepResponse, StepExecutionMeasurement
+
+    sr_by_key = {
+        (str(sr.substep_id), str(sr.node_id)): sr
+        for sr in SubstepResponse.objects.filter(step_execution=step_execution)
+    }
+    meas_by_key = {
+        (str(m.substep_id), str(m.measurement_definition_id)): m
+        for m in StepExecutionMeasurement.objects.filter(step_execution=step_execution)
+        if m.substep_id and m.measurement_definition_id
+    }
+
+    out: dict = {}
+    for substep in Substep.objects.filter(step=step_execution.step):
+        nodes: list = []
+        _collect_capture_nodes(substep.body_blocks, nodes)
+        node_map: dict = {}
+        for node_type, attrs in nodes:
+            node_id = attrs.get('node_id')
+            if not node_id:
+                continue
+            if node_type == 'measurementInput':
+                def_id = attrs.get('measurement_definition_id')
+                measurement = meas_by_key.get((str(substep.id), str(def_id))) if def_id else None
+                if measurement is None:
+                    continue
+                value = (str(measurement.value) if measurement.value is not None
+                         else (measurement.string_value or ''))
+                if value == '':
+                    continue
+                node_map[node_id] = (
+                    {'value': value, 'equipment_id': str(measurement.equipment_id)}
+                    if measurement.equipment_id else {'value': value}
+                )
+                continue
+            sr = sr_by_key.get((str(substep.id), str(node_id)))
+            if sr is not None:
+                node_map[node_id] = _response_from_stored(node_type, attrs, sr)
+        if node_map:
+            out[str(substep.id)] = node_map
+    return out

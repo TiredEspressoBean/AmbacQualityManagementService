@@ -7852,6 +7852,23 @@ export interface paths {
         patch: operations["api_StepExecutions_partial_update"];
         trace?: never;
     };
+    "/api/StepExecutions/{id}/capture-state/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The execution's stored captures as {substep_id: {node_id: response}} — the read-side inverse of substep submit, so the runtime hydrates prior work from the server (source of truth) instead of starting blank. */
+        get: operations["api_StepExecutions_capture_state_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepExecutions/{id}/claim/": {
         parameters: {
             query?: never;
@@ -41672,6 +41689,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepExecution"];
+                };
+            };
+        };
+    };
+    api_StepExecutions_capture_state_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

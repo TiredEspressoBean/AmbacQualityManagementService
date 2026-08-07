@@ -37787,6 +37787,21 @@ Used by the workflow engine for tracking part progression through steps.`,
     response: z.void(),
   },
   {
+    method: "get",
+    path: "/api/StepExecutions/:id/capture-state/",
+    alias: "api_StepExecutions_capture_state_retrieve",
+    description: `The execution&#x27;s stored captures as {substep_id: {node_id: response}} — the read-side inverse of substep submit, so the runtime hydrates prior work from the server (source of truth) instead of starting blank.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "post",
     path: "/api/StepExecutions/:id/claim/",
     alias: "api_StepExecutions_claim_create",

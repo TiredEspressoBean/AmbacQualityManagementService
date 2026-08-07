@@ -377,13 +377,81 @@ class DemoQaWalkSeeder(BaseSeeder):
         # Sign every substep on the step as the operator so the walker
         # doesn't have to. Substeps are per-Step; SubstepCompletion is
         # per-(substep, step_execution).
-        substeps = Substep.objects.filter(tenant=self.tenant, step=step)
+        substeps = list(Substep.objects.filter(tenant=self.tenant, step=step))
         for ss in substeps:
             SubstepCompletion.objects.update_or_create(
                 tenant=self.tenant, step_execution=se, substep=ss,
                 defaults={'completed_by': operator},
             )
+        # Capture real values for the first-piece substeps (the operator's
+        # inspection readings), so the FPI exhibit shows measured/attested data
+        # instead of "0 of N confirmed / N required fields missing". Drives the
+        # SAME capture service the operator runtime uses, so the seeded exhibit
+        # can't drift from the production capture shapes.
+        self._capture_first_piece_values(se, substeps, operator)
         return fpi
+
+    def _capture_first_piece_values(self, se, substeps, operator):
+        """Walk each substep's DWI body_blocks and submit a value for every
+        capture node through `submit_substep` — the production path that writes
+        `SubstepResponse` + `StepExecutionMeasurement` (+ the inspection
+        QualityReport). Values are dead-on / passing so the first piece reads as
+        a clean buy-off (no FAIL, so no auto-disposition)."""
+        from Tracker.services.dwi.operator_capture import submit_substep
+        from Tracker.models import EquipmentRole, Equipments
+
+        equipment = Equipments.objects.filter(tenant=self.tenant).first()
+        equip_role = next(iter(EquipmentRole)).value
+
+        def _collect(node, out):
+            if isinstance(node, dict):
+                attrs = node.get('attrs') or {}
+                if node.get('type') and attrs.get('node_id'):
+                    out.append((node['type'], attrs))
+                for v in node.values():
+                    _collect(v, out)
+            elif isinstance(node, list):
+                for v in node:
+                    _collect(v, out)
+
+        for ss in substeps:
+            nodes = []
+            _collect(ss.body_blocks, nodes)
+            caps = []
+            for node_type, attrs in nodes:
+                node_id = attrs['node_id']
+                if node_type == 'measurementInput':
+                    nominal = attrs.get('nominal')
+                    caps.append({
+                        'node_id': node_id, 'kind': 'measurement',
+                        'measurement_definition_id': attrs.get('measurement_definition_id'),
+                        'value_numeric': nominal if nominal is not None else None,
+                        'value_string': '' if nominal is not None else 'PASS',
+                    })
+                elif node_type == 'attestationCheckpoint':
+                    caps.append({
+                        'node_id': node_id, 'kind': 'attestation',
+                        'confirmed': True, 'meaning': attrs.get('label') or 'Confirmed',
+                    })
+                elif node_type == 'qualityStatusField':
+                    caps.append({'node_id': node_id, 'kind': 'status', 'status': 'PASS'})
+                elif node_type == 'equipmentRolesField' and equipment is not None:
+                    caps.append({
+                        'node_id': node_id, 'kind': 'equipment_roles',
+                        'rows': [{'equipment_id': str(equipment.id), 'role': equip_role}],
+                    })
+                elif node_type == 'partAnnotation':
+                    caps.append({'node_id': node_id, 'kind': 'annotation', 'annotations': []})
+                elif node_type == 'inspectionSignatures':
+                    # The operator's detected-by signature (require_detected). The
+                    # verified-by slot is QA's — left for the buy-off.
+                    caps.append({
+                        'node_id': node_id, 'kind': 'signatures',
+                        'detected': {'user_id': str(operator.id),
+                                     'signed_at': self.today.isoformat()},
+                    })
+            if caps:
+                submit_substep(substep=ss, step_execution=se, user=operator, captures=caps)
 
     def _create_passed_fpi(self, work_order, designated_part, step, part_type, inspector):
         """PASSED FPI so the substep runtime's FpiStatusBanner shows
