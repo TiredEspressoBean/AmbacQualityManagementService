@@ -48,7 +48,7 @@ Here's the whole rail a QA user sees, top to bottom:
 | *(top, everyone)* | **Help & Docs** (`/docs`), **Tracker** (`/tracker`) | Docs, and the customer-facing tracker map. Not your daily driver. |
 | **Personal** | **Inbox** (`/inbox`) | Your assigned CAPA tasks + approvals, with a live count badge. Two of the home page's "My quality actions" tiles land here. |
 | **Production** *(open)* | **Work Orders** (`/production/work-orders`), **WO Control Center** (`/workorders`), **Processes** (`/editor/processes`) | The shop-floor work orders and the process authoring surface. |
-| **Supply** | **Incoming Inspection** (`/production/incoming`), **Outside Processing** (`/production/outside-processing`), **Materials** (`/production/material-lots`), + supplier & plan surfaces | Receiving (§2) and OSP returns (§8) live here. |
+| **Supply** | **Incoming Inspection** (`/production/incoming`), **Outside Processing** (`/production/outside-processing`), **Materials** (`/production/material-lots`), + supplier & plan surfaces | Receiving (§2) and OSP returns (§8) live here. The receiving-*only* queue (`/production/receiving-inspection`, §2a) has no rail entry — reach it from the home **Receiving** chip. |
 | **Quality** *(open)* | **Dashboard** (`/quality`), **CAPAs** (`/quality/capas`), **Quality Reports** (`/editor/qualityReports`), **Change Control**, **Dispositions** (`/production/dispositions`), **Training**, **Calibrations** (`/quality/calibrations`), **Heat Map** | Your home turf — CAPAs (§9), dispositions (§6), calibration (§10). |
 | **Approvals** | **Overview** (`/approvals`), **History** | The approvals center (§13a), badge-counted. Mostly a manager's surface. |
 | **Tools** | **Documents**, **Analytics**, **AI Chat** | Standalone utilities. |
@@ -142,6 +142,9 @@ above to QA Manager only, log in as Maria — the walk still works.
 ## 1. Your home page — orient yourself
 
 Log in as `sarah.qa@demo.ambac.com`. You land on `/` — Sarah's QA home.
+(For a QA persona `/` renders the QA home surface directly; the same surface
+also answers at the explicit address `/quality/inbox`, the name §11 uses for
+it — distinct again from the generic `/inbox` two of the tiles below link to.)
 
 **Top-left header.** `Welcome back, Sarah` and an `Incoming queue`
 button that jumps to `/production/incoming`.
@@ -214,7 +217,7 @@ The 004 rework disposition (`DISP-QAI-004-REW`) is CLOSED and does
 NOT contribute to this count, even though it's assigned to Sarah —
 that's by design; a closed disposition isn't work waiting.
 
-**Your Gauges.** Calibration status on gauges you've used recently.
+**Your gauges.** Calibration status on gauges you've used recently.
 Currently reads *"Torque Wrench TW-25 — overdue 15d"*. Real day: a
 gauge overdue for calibration should not be used until re-calibrated;
 a link to `/quality/calibrations` sits here to check status.
@@ -228,7 +231,7 @@ reach every other surface this walk names.
 
 ## 2. Receiving inspection — a lot of injectors arrives
 
-In real day terms: a pallet of Common Rail Injectors from Great Lakes
+Real day terms: a pallet of Common Rail Injectors from Great Lakes
 Diesel has arrived at the receiving dock. You need to sample and
 inspect it against the sampling plan before it becomes available
 inventory.
@@ -359,8 +362,8 @@ the operator sees you're on the way. The row updates to read
 
 **Start check** on your home's FPI banner takes you to the work order's
 Control page, which has a **pending first-piece** panel — the quick,
-QA-native way to buy off (the same panel Section 4 uses). This section
-instead walks the fuller path — signing at the operator's station, so you
+QA-native way to buy off without opening the operator's runtime at all.
+This section instead walks the fuller path — signing at the operator's station, so you
 see what the operator sees:
 
 1. Go to WO Detail (`/workorder/$id`) and click **Start Work** (top-right).
@@ -425,7 +428,8 @@ the banner offers a **second-person co-signature** — an authorized QA
 person authenticates inline at that same station (`cosign_email` /
 `cosign_password`), is never logged in, and the verdict is recorded against
 **them**. QA can also work their own queue without touching the operator's
-session via the pending-FPI panel on WO Control (Section 4 lands there).
+session via the pending-FPI panel on WO Control. (Section 4 lands on that
+same Control page too — but for a sampled inspection, not an FPI buy-off.)
 
 > **Manager's side.** Co-signing at Sarah's station is the *inline* half of
 > your authority; §13e contrasts it with the *async* half — requests that land
@@ -809,8 +813,9 @@ the QA Manager), but they do the legwork: work assigned tasks,
 record verification data, and — when a QR reveals a systemic issue
 rather than a one-off — initiate a new CAPA.
 
-Sarah has pre-seeded work across the five demo CAPAs. This section
-walks two of them.
+Sarah has pre-seeded work across the five demo CAPAs. This section walks
+two of them in depth (CAPA-2024-004, then -002) and uses a third,
+CAPA-2024-003, to show how a multi-person task behaves.
 
 ### 9a — Find your CAPA work
 
@@ -974,7 +979,8 @@ so nothing on the page is a surprise:
   *"Awaiting Approval — This CAPA is pending management approval.
   Work cannot begin until approved."* banner plus an Approval
   History list. Read-only for Sarah; approving is a QA Manager
-  action. A MINOR CAPA shows *Not Required* instead.
+  action, walked from the manager's side in §13d. A MINOR CAPA shows
+  *Not Required* instead.
 - **Documents** — **Attach Document**: a file picker, a
   **Classification** dropdown (PUBLIC / INTERNAL / CONFIDENTIAL /
   RESTRICTED / SECRET, defaulting to INTERNAL) and **Upload**. This
@@ -1374,9 +1380,12 @@ The four gates below are what those queues are made of.
 
 When Sarah picks a disposition type (§6b) she's making an authorized decision
 she may not hold the authority for, so her editor routes it through a co-sign
-dialog. If **you** open that disposition and set its type, it commits directly
-— you hold `approve_disposition`, so there's no dialog. Same editor, same
-**Update Disposition**; the authority is simply already yours.
+dialog. If **you** open that disposition — the INJ-QA-INSPECT-003 NCR from §6 —
+and set its type, it commits directly: you hold `approve_disposition`, so
+there's no dialog. Same editor, same **Update Disposition**; the authority is
+simply already yours. (On a seed you've already walked, §6 authorized that one
+as a co-sign, so read 13b as the manager's *direct* path — what you'd do on any
+disposition you authorize yourself.)
 
 Two things the standard forces and the app enforces:
 - **USE_AS_IS and REPAIR require a recorded customer/design-approval
@@ -1389,8 +1398,9 @@ Two things the standard forces and the app enforces:
 ### 13c — Verify a CAPA's effectiveness (the other side of §9c)
 
 Sarah can write a verification *plan*; recording the *outcome* needs
-`verify_capa`, which is yours. Open the CAPA, go to the **Verification** tab,
-and on the plan row click **Complete Verification**. Pick the result —
+`verify_capa`, which is yours. Open a CAPA that's awaiting a result —
+**CAPA-2024-002** on this seed (the §9c exhibit) — go to the **Verification**
+tab, and on the plan row click **Complete Verification**. Pick the result —
 **CONFIRMED** or **NOT_EFFECTIVE** — add notes, and submit.
 
 What your verdict does:
