@@ -25,7 +25,8 @@ section later.
 11. The notification bell and inbox
 12. Reading the audit trail
 13. The manager's side — Maria
-14. Glossary
+14. Authoring a DWI — the process flow
+15. Glossary
 
 ## The shape of a QA day
 
@@ -1466,7 +1467,92 @@ signature; only one interrupts someone else's flow.
 
 ---
 
-## 14. Glossary
+## 14. Authoring a DWI — the process flow
+
+Everything the walk has run through — the receiving DWI (§2), the FPI gate
+(§3), the sampled inspection (§4), the measurement-driven fail (§5) — is
+*authored* somewhere. This section is that somewhere. It's the one part of this
+guide that isn't a daily inspector task: authoring a process and its work
+instructions is a **QA-manager / process-author** job (it needs process-edit
+permission, which a QA Manager like Maria holds). Read it to see where the
+runtime forms come from and how you'd change one.
+
+### 14a — Reach the process flow
+
+From the sidebar, **Processes** (`/editor/processes`) lists the tenant's
+processes. This walk seeds two, so you can compare:
+- **Injector Reman** — status **Approved**. The live process work orders run
+  against.
+- **Injector Reman - Authoring Draft (SHOWCASE)** — status **Draft**. A
+  sandbox copy staged for exactly this section; edit *this* one.
+
+Each row carries three actions: **View** (read-only detail), **Edit Process**
+(the pencil), and Delete. Click **Edit Process** on the SHOWCASE draft — you
+land on the **process flow** at `/process-flow?id=…`.
+
+### 14b — Read the flow
+
+The flow is a canvas of the process's steps as nodes, wired by routing edges.
+The reman process reads left to right — **Receive Core → Disassemble → Clean →
+Inspect → Reassemble → Final Test** — with the quality branches hanging off it:
+**Rework** (carrying a visit counter, `? / 3`), **Scrap Decision**, and the
+terminal **Scrap / Ship / Return to Supplier** nodes. Each edge is labelled
+with the outcome that takes it — **Pass**, **Fail**, **Max Exceeded** (the
+rework limit tripping) — and a decision step like **Inspect** shows its Pass
+and Fail exits on the node itself.
+
+Above the canvas a view selector switches lenses over the same steps —
+**Process Template** (the authoring view), **Work Order Progress**, **Part
+Journey**, **Process Evaluation**, **QA Checkpoints**. Authoring happens on
+Process Template.
+
+### 14c — Turn on Edit Mode
+
+The page opens read-only ("Process Flow **Viewer**"). Flip the **Edit Mode**
+switch at the top: the header becomes "Process Flow **Editor**", an **Add
+Step** button appears, and the nodes and edges become editable — you can select
+and move a node, select an edge and delete it to drop a route, and add steps.
+
+### 14d — Author a step
+
+Click a step node (say **Inspect**) to open the **Step Details** panel. Top to
+bottom:
+
+- **Identity** — Name, Operation number, Description, Work center.
+- **Decision type** — how the step routes: *Based on QA Pass/Fail*, a
+  measurement, or a manual decision. **Route rejected items to…** picks the
+  destination the **Fail** edge points at (Rework, Scrap, …).
+- **Configuration** — four editors:
+  - **Measurements** — *Configure measurements* → "Measurements for
+    '<step>'" → **Add Measurement**, which takes a **Label**, **Type**
+    (Numeric or Pass/Fail), **Unit**, **Nominal** + **Upper / Lower
+    Tolerance**, **Characteristic #** (the drawing balloon), a **Default /
+    Backup equipment** (the gauge the operator gets steered to), and
+    **Required**. *This is where the runtime capture fields come from* — the
+    Flow Rate you read in §5, with its lower tolerance of 100, is a measurement
+    authored here, and the FAIL derives from the reading crossing that
+    tolerance.
+  - **Sampling Rules**, **Documents**, **Required Training** — the sampling
+    plan (§4), the attached drawings/specs, and the qualification gate.
+- **Advanced** (under *Substeps*) — the step-behaviour switches whose effects
+  the rest of this guide has been feeling: **Requires QA signoff**, **Sampling
+  required** + min rate %, **Requires first-piece inspection** (the §3 FPI
+  gate), **Max visits (rework limit)** (the §5/§6 rework loop and its "Max
+  Exceeded" edge), Terminal step, Expected duration, Move lot as a unit.
+
+**Add Step** adds a node; **Delete Step** removes the selected one.
+
+### 14e — Draft, then approve
+
+You're editing a **Draft** (the SHOWCASE) on purpose — the live **Injector
+Reman** is **Approved**, with work orders running against it. Authoring on a
+draft and approving it into effect is how a process changes without disturbing
+in-flight work; the two rows on the Processes list are the before/after of that
+split.
+
+---
+
+## 15. Glossary
 
 - **AWAITING_QA** — part state meaning "an operator finished a step
   but a rule says QA looks at it before it moves on." Parked;
