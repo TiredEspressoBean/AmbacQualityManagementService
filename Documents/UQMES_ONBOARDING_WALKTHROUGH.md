@@ -292,17 +292,11 @@ the operator sees you're on the way. The row updates to read
    those so the walker (Sarah, playing QA) can go straight to the
    buy-off.
 
-**What the runtime will look like, so it doesn't alarm you.** The
-header reads *"0 of 2 confirmed"* and the footer *"3 required fields
-missing"*, and the measurement fields are empty. That is expected and
-**not** a seed gap: the runtime's "confirmed" counter is *fresh-session*
-state — it starts empty and only counts substeps confirmed in the current
-session; it never replays prior `SubstepResponse` rows on load. So it
-would read "0 of 2" even if the seed captured full values, and no seed
-change alters it (making it hydrate stored responses would be a frontend
-feature, out of scope here). Mike's `SubstepCompletion` signatures are
-real in the database. You do not need to fill the form in to buy off the
-FPI — the banner is independent of it.
+**What the runtime looks like.** The runtime hydrates Mike's prior
+first-piece captures from the server, so the header reads *"2 of 2
+confirmed"* and the measurement/inspection fields show his recorded
+values (e.g. Spray Angle 15°). You don't need to enter anything to buy
+off — the FPI banner is independent of the substep form.
 
 **If you arrive by pasting a runtime URL, include `workOrder`.** The
 FPI banner is rendered only when the URL carries a `workOrder` query
@@ -361,14 +355,12 @@ proceed."*
 
 **Permission note.** The Pass / Fail / Waive verdicts are gated
 server-side on the `sign_off_fpi` permission. Someone who holds it (Sarah
-in this seed) signs off directly. Someone who *doesn't* is no longer a
-dead end: the banner offers a **second-person co-signature** — an
-authorized QA person authenticates inline at that same station
-(`cosign_email` / `cosign_password`), is never logged in, and the verdict
-is recorded against **them**. (This is the standard buy-off pattern; see
-the co-signature-rollout appendix.) QA can also work their own queue
-without touching the operator's session via the pending-FPI panel on
-WO Control (Section 4 lands there).
+in this seed) signs off directly. Someone who *doesn't* isn't a dead end:
+the banner offers a **second-person co-signature** — an authorized QA
+person authenticates inline at that same station (`cosign_email` /
+`cosign_password`), is never logged in, and the verdict is recorded against
+**them**. QA can also work their own queue without touching the operator's
+session via the pending-FPI panel on WO Control (Section 4 lands there).
 
 ---
 
@@ -516,8 +508,7 @@ You just caused the disposition Section 6 walks against.
 created have full audit trail — `created_by` = Sarah, timestamps
 match your click, the `ncr.opened` event fired live. Seeded records
 (the pre-closed `DISP-QAI-004-REW`, the QR on 004, terminal
-0042-023) don't — see Section 12c for the two seed quirks that
-show up on those.
+0042-023) don't — see Section 12c for what to know about those.
 
 ---
 
@@ -639,22 +630,14 @@ completion blockers (`containment_action` present for MAJOR/CRITICAL, a
 disposition decision selected, no pending 3D annotations), and on success
 sets `resolution_completed=True` with `resolution_completed_by/at`.
 
-**Closing from the editor is fine too — it now runs the same guarded
-path.** Setting **Current State → `CLOSED`** and clicking Update no longer
-does a bare field write; `QuarantineDispositionSerializer.update` detects
-the transition and routes it through `complete_disposition_resolution`
-(the same service the close action uses). So the completion blockers are
-enforced either way, and `resolution_completed` / `_by` / `_at` are
-recorded. If a blocker is unmet (e.g. a MAJOR with no containment) the
-Update returns a **400** with the blocker and the disposition stays
-active — and any other field edits in that submit (containment text,
-notes) are saved, so you fix the blocker and retry.
-
-> **History (fixed 2026-08-05).** This used to be a bypass: the editor's
-> plain PATCH reached CLOSED through a `save()` that guarded only pending
-> annotations, skipping the containment/decision blockers and leaving
-> `resolution_completed=False`. Found by driving it live; fixed by
-> converging both doors on the one service.
+**Closing from the editor works too — it runs the same guarded path.**
+Setting **Current State → `CLOSED`** and clicking Update routes through
+`complete_disposition_resolution` (the same service the close action uses),
+so the completion blockers are enforced either way and `resolution_completed`
+/ `_by` / `_at` are recorded. If a blocker is unmet (e.g. a MAJOR with no
+containment) the Update returns a **400** with the blocker and the
+disposition stays active — any other field edits in that submit (containment
+text, notes) are saved, so you fix the blocker and retry.
 
 ---
 
@@ -692,12 +675,7 @@ icon). You see:
   the failing report.
 - **Dispositions**: 1 row — `DISP-QAI-004-REW · CLOSED · REWORK ·
   MAJOR` — the signed rework decision, with resolution notes describing
-  the nozzle replacement. **This is the record to read.** (The FAIL QR's
-  post-save signal also auto-creates a bare OPEN NCR — the old
-  "double-disposition" quirk — but the seed's `_drop_tag_along_dispositions`
-  now **archives** it, and the part detail excludes archived rows, so you
-  see just the one real disposition. Verified live: the API returns count=1
-  for this part.)
+  the nozzle replacement. **This is the record to read.**
 - **Rework Passes**: `1` — the rework counter incremented once, from
   the original REWORK cascade.
 
@@ -713,7 +691,7 @@ INJ-QA-INSPECT-004. Enter a **passing** value — like the failing pass in
 Click **Confirm & review** → **Complete step**. Toast: *"Step
 complete — lot advanced (1 part moved)."*
 
-**What happens (verified live).** A second QR (`QR-2026-…`, **PASS**) is
+**What happens.** A second QR (`QR-2026-…`, **PASS**) is
 written. The part transitions `AWAITING_QA` → `IN_PROGRESS` on the next
 step (Assembly, per the Flow Testing → Assembly edge). The rework arc is
 now paper-complete: FAIL QR → CLOSED REWORK → reworked → PASS QR. (Note
@@ -785,7 +763,7 @@ runtime uses on non-OSP steps). Click **Accept return**.
 Toast: *"Accepted — parts advanced past the outside-process step."*
 You land on `/production/outside-processing` — the OSP board.
 
-**What happens (verified live 2026-08-05).** The return-inspection
+**What happens.** The return-inspection
 execution completes (`StepExecution` → `COMPLETED`) and `accept_return`
 runs. Two things the toast's wording overstates:
 - The part becomes **`READY_FOR_NEXT_STEP`** and **stays at the Nitride
@@ -959,14 +937,6 @@ tab: the plan row shows a **Complete Verification** button that opens a
 dialog for `effectiveness_result` (CONFIRMED / NOT_EFFECTIVE) plus notes.
 CAPA-2024-001 is the worked example: open its Verification tab to see a
 completed plan with a CONFIRMED result.
-
-> **Fixed 2026-08-07.** Recording the outcome used to go nowhere — the
-> service that closes/reopens the CAPA (`verify_capa_effectiveness`) existed
-> but nothing called it, and the **Complete Verification** button was even
-> unreachable (gated on an empty `effectiveness_result` while a fresh plan
-> defaults to INCONCLUSIVE). This is what "9c stage 2 never observed" in the
-> verification appendix meant. Recording now goes through a co-signable
-> **`verify`** action (`2ed910d`/`1b15a92`) that actually runs the service.
 
 **Segregation of Duties on verification.** Sarah can add and edit the
 verification *plan* (`add_capaverification`, `change_capaverification`), but
@@ -1353,39 +1323,20 @@ visible porosity at seat face; failed hold pressure at 2450 psi (min
 2800). Casting defect, not reworkable."* **Dispositions** has the
 CLOSED SCRAP row (`DISP-QR-0042-023-FT`, severity CRITICAL,
 resolution notes citing QP-007). Together those three records ARE
-the audit trail: cause, decision, terminal state. (Verified live
-2026-08-05 — this part used to also carry a contradictory auto
-tag-along; it's now archived out, see 12c.)
+the audit trail: cause, decision, terminal state.
 
 If a scrapped part ever shows a status of `SCRAPPED` with **no**
 linked QR or disposition, that itself is a red flag — how did the
 part reach a terminal state without a paper trail? Ask before
 touching.
 
-### 12c — Two seed quirks worth knowing
+### 12c — Two things worth knowing
 
-**Double disposition — fixed 2026-08-05.** When a FAIL QR fires, its
-post-save signal auto-creates a bare disposition. Some exhibits used to
-show **two** — the real authored record *plus* this auto tag-along, which
-the `_enrich_auto_dispositions` seed pass then dressed into a
-contradictory decision (a `USE_AS_IS · IN_PROGRESS` tag-along sitting on a
-`SCRAPPED` part). Root cause was two things, both now fixed:
-- **Signal (product):** the dedup guard only checked `OPEN`/`IN_PROGRESS`,
-  so once a QR's disposition was `CLOSED`, re-saving the still-FAIL QR
-  re-fired and minted a fresh orphan NCR. It now skips if the report
-  already produced *any* disposition (`QuarantineDisposition` has no
-  CANCELLED state, so there's no re-open case to keep).
-- **Seed:** `quality.py` now runs `_drop_redundant_auto_dispositions`
-  (mirroring qa_walk's `_drop_tag_along_dispositions`) to archive the auto
-  tag-along wherever an explicit scenario disposition exists for the same
-  QR — so INJ-0042-023 / INJ-0038-010 show a single disposition.
-
-QR→disposition is still legitimately 1:many (a human can add lines
-deliberately for different portions of nonconforming material); what's
-gone is the *accidental* duplicate. If you ever do see two, the
-auto-created one is identified by its description prefix
-*"Auto-created for failed quality report:"* — not by an empty type (the
-enrich pass gives survivors a type).
+**Multiple dispositions on one QR.** QR→disposition is legitimately 1:many
+— a human can add lines deliberately for different portions of
+nonconforming material. When a FAIL QR fires, its post-save signal also
+auto-creates a bare disposition; you can spot an auto-created one by its
+description prefix *"Auto-created for failed quality report:"*.
 
 **Sparse Activity History in the seed.** Many seeded parts show *"No
 audit history"* in the Activity History section because the seed
@@ -1433,263 +1384,3 @@ history.
   parts through the shop. Print it from WO Detail's Traveler button.
 - **WO** — Work Order. A single production run of a specific
   quantity of one part type for one Order.
-
----
-
-## Appendix — verification status (2026-08-04, updated through 2026-08-07)
-
-Maintenance note for whoever picks this document up next. It records
-*how much of this doc has been checked against the running app*, so the
-next pass doesn't re-verify what's done or trust what isn't.
-
-**Bugs surfaced by driving this walkthrough (all fixed 2026-08-05 unless
-noted).** Reading the doc against the running app found more than doc
-drift — each of these was a real defect the walk exposed:
-- **FPI buy-off was impossible to complete** (Section 3) — a step-level QA
-  gate whose only UI lived in a part-level operator session. Fixed with a
-  second-person co-signature + a QA-native pending-FPI panel (`a7ed2b7`,
-  `5caf4c9`, co-sign rollout below).
-- **Disposition close bypassed its blockers** (6d) — the editor's plain
-  PATCH to `CLOSED` skipped the containment/decision checks and left
-  `resolution_completed=False`. Converged on the close service (`e5f7a7a`).
-- **CAPA verification plan couldn't be created** (9c) — the zod request
-  client rejected it because `effectiveness_result` (the stage-2 outcome)
-  was marked required. Made optional (`255364b`).
-- **Double disposition** (12c) — the FAIL-QR signal re-fired after a
-  disposition closed, and the seed's enrich pass dressed the tag-along
-  into a contradiction. Guarded the signal + drop the redundant tag-along
-  in seed (`b42446f`).
-- **Co-signature attribution wasn't queryable** — added
-  `FPIRecord.performed_by` and `StepTransitionLog.authorized_by`
-  (`9b02ac0`, `3ae977c`).
-
-Everything else the walk found was doc drift, corrected inline in the
-relevant section.
-
-**Follow-on work (2026-08-06/07), after the walk.** Three items the walk had
-flagged as open were then closed and are reflected inline above:
-- The second-person co-signature was rolled out to two more SoD gates —
-  **disposition decision** (`approve_disposition`, `5b5ef73`) and **CAPA
-  effectiveness verification** (`verify_capa`, `1b15a92`) — each by first giving
-  the dormant marker permission the authorized action the standard requires.
-  OSP acceptance was deliberately left out (see the co-signature appendix).
-- The **FPI exhibit** "0 of 2 confirmed / 3 required fields missing" was fixed
-  server-side (`build_capture_state` + a `capture-state` endpoint the runtime
-  hydrates from; `2ed910d`) — superseding the earlier "out of scope" call.
-- CAPA verification **stage 2** (recording the outcome) was wired + gated; it
-  had been unwired (9c).
-
-**Method matters, and it's the reason this appendix exists.** Sections
-were originally walked by enumerating on-screen **text**, which is blind
-to icon-only controls — a Radix checkbox renders as a
-`<button role="checkbox">` with no text content, so a text-based sweep
-reported "no completion control" on a tab that had three of them.
-Re-walks enumerate by **ARIA role** instead, reporting both the
-accessible name *and* the visible text, because the two can disagree: a
-filter chip's tooltip masked its own visible label. The MCP
-accessibility snapshot is more reliable than a hand-rolled DOM script —
-it resolves `aria-labelledby` and wrapping `<label>` elements, which a
-naive resolver misses.
-
-**Failures cluster in claims about absence** — "there is no control
-here", "the button is disabled until you finish", "filtered to your
-dispositions", "an Urgent chip". Absence is exactly what a shallow probe
-gets wrong, and it's what documentation states most confidently. Treat
-every absence claim in this document as unverified until it has been
-role-walked.
-
-| Section | Status |
-|---|---|
-| 1 Home · 2 Receiving | role-verified |
-| 3 FPI buy-off | role-walked; blocker found and fixed (`a7ed2b7`) |
-| 4 Sampled part | role-verified (2026-08-05) |
-| 5 Failed inspection | **fully driven live** (2026-08-05): FAIL → QR → auto-quarantine + disposition |
-| 6a Open disposition | role-verified |
-| 6b–6d Disposition decision/close | role-verified (2026-08-05) |
-| 7 Re-inspection | **fully driven live** (2026-08-05): re-inspect PASS → advance to Assembly, arc paper-complete |
-| 8 OSP | **fully driven live (2026-08-05)**: return inspection → Accept return; corrected the "What happens" (part → READY_FOR_NEXT_STEP, shipment → CLOSED) |
-| 9 CAPA | **driven live (2026-08-05)**: 9c plan-create bug found+fixed; 9e gate-raised CAPA driven end to end |
-| 10 Calibration · 11 Notifications | role-verified; 10b/11a/11c re-checked live (2026-08-05) |
-| 12 Audit trail | **driven live (2026-08-05)**: 12b verified (SCRAPPED + single SCRAP disposition); double-disposition quirk found + fixed (12c) |
-
-**Sections 4–7 role-walk (2026-08-05).** No new blockers. All absence /
-structural claims held exactly:
-- **4a** — "In-process" chip present (alongside All / Receiving / OSP
-  returns / **Urgent**); the sampled row lands on `/workorder/$id/control`,
-  where the part reads Awaiting QA · **Sample** · Rework ×1.
-- **4b** — confirmed the absence claim: on Control the serial renders in a
-  bare `<td>` with no link ancestor (Control does not link to part detail).
-  Part detail shows Sampling Required Yes, Sampling Reason *post repair
-  verification* (lowercased enum), Rework Passes 1.
-- **6a** — `/production/dispositions` is titled **Quarantined Parts**, is a
-  parts list with the documented 8 columns and 4 filters, and returned 25
-  rows — confirming it is **not** filtered to the signed-in QA despite the
-  home tile's count.
-- **6b–6d** — editor carries every documented field (incl. Containment
-  Action); the five doors are exactly Rework / Repair (AS9100) / Scrap /
-  Use As Is / Return to Supplier; Current State offers Open / In Progress /
-  Closed; the submit is **Update Disposition**.
-- **5b / 7** — first checked structurally (Flow-test substep = barcode-scan
-  + Flow Rate + calibration attestation, routing `QA_RESULT`
-  DEFAULT→Assembly / ALTERNATE→Rework), then **subsequently driven live**
-  (see the Section 5 and 7 rows above): the FAIL→quarantine→disposition
-  chain (5c) and the reworked-part re-inspection→advance (7) were both
-  executed end to end. Driving 5b also corrected the doc — the Flow-test
-  verdict is measurement-driven (no manual Pass/Fail button), unlike Final
-  Test which does carry one.
-
-**Section 3 was impossible to complete as written.** The seed set
-`StepExecution.assigned_to` to the operator, so QA's Start Work → Start
-returned `409 assigned_to_other` and the runtime — and therefore the
-buy-off — could never be reached. Root cause is a category mismatch:
-`FPIRecord` is keyed on `(work_order, step, part_type, designated_part)`,
-a **step-level** gate, but its only UI lives inside a **part-level
-operator work session**, so QA had to take over the operator's session
-to sign a QA gate. The 409, the `workOrder`-query-param dependency, and
-the seed's `training_authorization` bypass are all symptoms of that one
-mismatch. **Resolved:** the buy-off now takes a second-person
-co-signature (operator's station) and there is a QA-native pending-FPI
-panel on WO Control; the seed's fabricated `training_authorization` was
-replaced with a genuine supervisor-override snapshot. See the
-"second-person co-signature rollout" appendix.
-
-**Specifics driven / resolved while walking (2026-08-05)**
-- 9c — the "form wouldn't submit under automation" note turned out to be a
-  real bug, not a harness quirk. Driving the **Add Verification Plan**
-  dialog live, the POST `/api/CapaVerifications/` was silently rejected by
-  the generated zod request client — `effectiveness_result` was marked
-  **required**, but that's the *stage-2 outcome* the plan-create leaves
-  unset. Browser-only (no error toast), invisible to backend tests and
-  tsc. **Fixed 2026-08-05** (`effectiveness_result` → `required=False`;
-  schema + FE regen; `test_capa_verification_plan`). Stage 1 (plan) now
-  creates; the outcome defaults to INCONCLUSIVE until stage 2 records it.
-  **Stage 2 itself was then wired + gated (2026-08-07):** recording the
-  outcome had gone nowhere (the closing service was never called, the
-  "Complete Verification" button unreachable); it now runs through a
-  co-signable `verify` action (`verify_capa`). See Section 9c and the
-  co-signature-rollout appendix.
-- 9e gate-raised CAPAs — **driven live (2026-08-05).** The Final Test
-  sampling ruleset carries a `DEFECTIVE_COUNT ≥ 2` gate (whole work order),
-  action `RAISE_CAPA_SCAR` (CORRECTIVE / MAJOR) — the only seeded gate that
-  raises a CAPA. Failing two Final-Test inspections in WO-TRAIN-BOTTLE
-  tripped it: **CAPA-CA-2026-001** was raised with `initiated_by=null`
-  (renders "System"), assigned to a QA Manager (Maria Santos), problem
-  statement *"Auto-raised by quality gate 'Standard Inspection - Final
-  Test' … DEFECTIVE_COUNT = 2 crossed threshold"*, and a `StepGateFiring`
-  row recorded value 2.000 / actions `['RAISE_CAPA_SCAR']`. First time the
-  four gate fixes (`45fb36c`, `5a0f089`, `b3369be`) ran through a real
-  in-app trigger, not just tests. (Note: Section 9e's prose uses a
-  hypothetical FAIL_RATE_PCT/nozzle example; the actual seeded gate is the
-  DEFECTIVE_COUNT one above.)
-  Also learned driving it: unlike Flow Testing (Section 5b, pure
-  measurement-driven), the **Final Test** substep DOES carry an explicit
-  Pass/Fail/Pending result field plus a required Release sign-off signature.
-- The FPI exhibit used to read *"0 of 2 confirmed / 3 required fields
-  missing"*. Diagnosed correctly (it was **not** missing seed data — the
-  runtime tracked only in-session state and never hydrated prior
-  `SubstepResponse` rows), but the earlier conclusion that the fix was
-  "out of scope" was superseded. **Fixed 2026-08-07 (`2ed910d`), server as
-  source of truth:** `build_capture_state(step_execution)` (the read-side
-  inverse of `submit_substep`) + `GET /StepExecutions/{id}/capture-state/`;
-  the runtime hydrates from it on mount and derives confirmed via the same
-  `findMissingRequired` the live path uses. The seed also now captures the
-  first-piece substeps (via `submit_substep`), so the exhibit reads
-  *"2 of 2 confirmed"* with no missing fields, pre-filled from the server.
-  Round-trip pinned by `test_dwi.BuildCaptureStateTests`.
-- The first-piece `StepExecution` no longer carries a fabricated
-  `training_authorization` (the old `_source: demo_seed_bypass` tell is
-  gone). Mike is genuinely not nozzle-qualified in the demo narrative
-  (NOZ-CERT level 1, needs level 3), so the honest snapshot is an explicit
-  **supervisor override** by Jennifer Walsh — the same shape the real
-  start-gate override writes — rather than a pretend pass.
-
-**Open items, not blocking the walk**
-- No pattern-based CAPA triggering — repeat NCRs, a trending supplier,
-  the same defect three times in a month all raise nothing. Only a
-  configured quality gate does.
-- RLS policies are registered in `setup_rls.py` but the command has not
-  been run (`ENABLE_RLS` defaults false).
-- Both tenant-isolation guards (the scoping lint and the RLS coverage
-  test) are *detective*, not preventive — they fail after a gap ships.
-  The same models were missed by both, so that has already happened.
-
----
-
-## Appendix — second-person co-signature rollout (2026-08-05, extended 2026-08-07)
-
-Section 3's blocker turned out to be an instance of a general pattern, so
-the fix generalised into a mechanism. The shape, wherever it applies:
-
-> The person at the keyboard has physically arrived at a step they lack
-> the authority to complete. An authorized colleague authenticates
-> **inline** at that same terminal, is never logged in, and the act is
-> attributed to *them*.
-
-This is the standard DWI / 21 CFR Part 11 second-person pattern, and the
-repo already had one instance of it (the training-gate override). It now
-lives in `services/core/second_person.verify_second_person`, reached by
-viewsets through `SecondPersonMixin` and admitted through the permission
-layer by a `cosign_actions` dict.
-
-**Gates converted**
-
-| Gate | Permission | Where the operator meets it |
-|---|---|---|
-| Training-gate override | `override_training_gate` | pre-existing; source of the extracted helper |
-| FPI buy-off | `sign_off_fpi` | review stage of the operator runtime |
-| MANUAL decision point | `resolve_step_decision` | `DecisionResolverPanel` in the runtime |
-| Disposition decision | `approve_disposition` | the `decide` action on the disposition editor (2026-08-06) |
-| CAPA effectiveness verification | `verify_capa` | "Complete Verification" on the CAPA Verification tab (2026-08-07) |
-
-The FPI and CAPA conversions also gained a surface for the *authorized* role to
-work their own queue without borrowing anyone's session — the pending-FPI
-panel on WO Control being the FPI half.
-
-**Two things worth knowing before converting a fourth.**
-
-*Distinct throttle prefixes are not optional, and neither is the shared
-tier.* The failure counter is keyed on the **authorizer's** email,
-tenant-wide. With one shared prefix, a QA lead mistyping their password
-five times at one station would 429 them out of every gate at every
-station in the tenant for 15 minutes. With per-gate prefixes alone, N
-gates on separate 5-caps hand an attacker 5×N attempts at one password.
-Hence two tiers: a per-gate cap of 5 and a shared cap of 10.
-
-*Authority and labor come apart.* `advance_part_step`'s `operator`
-argument served two roles simultaneously — the transition's actor, and
-(on a `revisit_assignment='same'` step) the next `StepExecution`'s
-`assigned_to`. Under a co-signature those are different people, and
-passing the cosigner would have handed a lead who merely walked past a
-station the operator's next job. Any gate whose service takes a single
-"who did this" argument needs the same audit before conversion.
-
-**Converted after all — disposition and CAPA (2026-08-06/07).** The plan named
-these two, and at first read they looked impossible: `approve_disposition` and
-`verify_capa` were group-eligibility *markers* consumed by approval-template
-binding, gated on **no** viewset action. But the standard (AS9100/ISO 9001 8.7,
-21 CFR 820.90) says the acts they *name* — authorizing a disposition decision,
-verifying CAPA effectiveness — are exactly the acts that must carry a signature.
-The dormant marker wasn't a reason to skip; it was a missing gate. So each was
-made real by adding the authorized action the perm should have gated all along:
-
-- **Disposition decision** — choosing `disposition_type` was an ungated field
-  write. Now a co-signable `decide` action (gated by `approve_disposition`)
-  records the decision + `decision_authorized_by`; `disposition_type` is
-  read-only on a plain PATCH so it can't bypass; USE_AS_IS / REPAIR require a
-  recorded customer/design-approval reference.
-- **CAPA effectiveness verification** — recording the outcome was not merely
-  ungated but **unwired** (`verify_capa_effectiveness` existed, nothing called
-  it; the "Complete Verification" button was even unreachable). Now a
-  co-signable `verify` action (gated by `verify_capa`) runs that service — closes
-  on CONFIRMED, reopens + spawns a follow-up on NOT_EFFECTIVE — and the button
-  works.
-
-**Not converted — OSP return acceptance, by decision.** OSP `accept`/`reject`
-are gated on `change_outsideprocessshipment`, a plain CRUD permission with no
-declared SoD authority to hang a co-signature on; they're a
-receiving/inspection action, not a manager approval. Forcing a co-signature
-there would be over-engineering against the standard, so it was left as-is.
-
-Reading permission *names* is not the same as finding the gates — see the
-three-paradigm note in `CLAUDE.md`. Here two of the three names had no gate yet;
-the fix was to build the gate the standard requires, not to declare them out.
