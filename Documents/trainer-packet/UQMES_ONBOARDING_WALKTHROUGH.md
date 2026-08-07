@@ -90,7 +90,7 @@ what's on screen.
 | Email | Name | Role | Where you play it |
 |---|---|---|---|
 | `sarah.qa@demo.ambac.com` | Sarah Chen | QA Inspector | Every section — the walker's identity. |
-| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | §13 (the manager's whole side), and the gates in §3/§6/§9 when Sarah hands one up. |
+| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | §13 (the manager's whole side); the co-sign/approval gates in §6 (disposition) and §9 (CAPA) when Sarah hands one up; and authoring in §14. |
 | `mike.ops@demo.ambac.com` | Mike Rodriguez | Operator | §3 — the seed pre-signs the first-piece substeps as Mike so Sarah (playing QA) can sign off the FPI without hitting the segregation-of-duties gate. You don't log in as Mike; his signatures are already on the seed exhibit. |
 
 Sarah's QA Inspector role has `sign_off_fpi` (§3) and `close_disposition`
@@ -108,11 +108,11 @@ still works.)
 
 | Part | Where it sits in the seed | Section |
 |---|---|---|
-| `INJ-QA-INSPECT-001` | Nozzle Inspection · PENDING FPI · first piece designated | 3 |
+| `INJ-QA-INSPECT-001` | Nozzle Inspection · IN_PROGRESS · pending FPI, first piece designated | 3 |
 | `INJ-QA-INSPECT-002` | Nozzle Inspection · AWAITING_QA · sampled ("Post-repair verification") | 4 |
 | `INJ-QA-INSPECT-003` | Flow Testing · IN_PROGRESS · fresh, ready for a live FAIL | 5 |
 | `INJ-QA-INSPECT-004` | Flow Testing · AWAITING_QA · visit 2, historical FAIL QR + CLOSED REWORK disposition already on file | 7 |
-| `INJ-QA-INSPECT-005` | Nitride Coating · RETURNED from Apex Plating · awaiting return inspection | 8 |
+| `INJ-QA-INSPECT-005` | Nitride Coating · AWAITING_QA · returned from Apex Plating (OSP shipment RETURNED), awaiting return inspection | 8 |
 | `INJ-QA-INSPECT-006` | Assembly · QUARANTINED · bare OPEN NCR assigned to Sarah | §1 (background) |
 | `INJ-QA-INSPECT-007`, `INJ-QA-INSPECT-008` | Cleaning / Disassembly · IN_PROGRESS | filler, not walked |
 
@@ -1230,10 +1230,11 @@ behavior as the bell.
 ### 11c — What fires for a QA inspector
 
 On a fresh seed Sarah's bell shows **2 unread**, both
-`capa.assigned` — *"CAPA CAPA-2024-005 assigned to you / Major
-CAPA, due 2026-08-17"* and the same for CAPA-2024-002. Those are
-the only pre-seeded ones; the rest below fire as you work the
-walkthrough rather than arriving with the seed.
+`capa.assigned`: one for **CAPA-2024-005** (a Major CAPA) and one for
+**CAPA-2024-002** (a Minor, Preventive one — see §9a). Their due dates are
+seeded relative to the reseed, so don't key on them. Those are the only
+pre-seeded ones; the rest below fire as you work the walkthrough rather than
+arriving with the seed.
 
 Events that route to a QA inspector by default (via the tenant's
 starter notification rules):
@@ -1291,8 +1292,8 @@ returned to Flow Testing visit 2; awaiting Sarah's re-inspection*.
 
 ### 12b — A closed terminal record (INJ-0042-023)
 
-Open `/details/Parts/…` for `INJ-0042-023` (existing seed, from
-Journey 6 of the training script).
+Open `/details/Parts/…` for `INJ-0042-023` (a borrowed exhibit from the older
+WO-2024-0042-A storyline — WO-QA-INSPECT-01 stages no scrapped part of its own).
 
 **Status** is `SCRAPPED`. **Quality Reports** has one row — the
 originating FAIL QR at Final Test with description *"Nozzle tip shows

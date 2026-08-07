@@ -86,7 +86,7 @@ All demo users share the password **`demo123`**.
 | Email | Name | Role | Used for |
 |---|---|---|---|
 | `sarah.qa@demo.ambac.com` | Sarah Chen | QA Inspector | The walker — §1–§12 |
-| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | The gates she hands up — §13; co-signs the disposition decision in §6; authoring in §14 |
+| `maria.qa@demo.ambac.com` | Maria Santos | QA Manager | The gates Sarah hands up — §13 (the manager's whole side); the co-sign/approval gates in §6 (disposition) and §9 (CAPA); and authoring in §14 |
 | `mike.ops@demo.ambac.com` | Mike Rodriguez | Operator | §3 — his signatures are pre-seeded on the first-piece substeps (not logged into) |
 
 ---
@@ -99,7 +99,7 @@ like a real shop rather than a single-WO sandbox.
 | Work order | Where it shows up |
 |---|---|
 | `WO-2024-0048-A` | The *other* pending-FPI row in the home "First piece waiting" banner (§1) |
-| `WO-2024-0042-A` | An in-process Final Test row in the inbox. Two of its parts are borrowed as read-only exhibits where WO-QA-INSPECT-01 stages no equivalent: `INJ-0042-023` (SCRAPPED — the closed-record exhibit, walkthrough §12b) and `INJ-0042-019` (REWORK_IN_PROGRESS — the rework-in-flight exhibit used by the training script's Journey 11). |
+| `WO-2024-0042-A` | An in-process Final Test row in the inbox. Two of its parts are borrowed as read-only exhibits where WO-QA-INSPECT-01 stages no equivalent: `INJ-0042-023` (SCRAPPED — the closed-record exhibit; walkthrough §12b and the training script's Journey 11) and `INJ-0042-019` (REWORK_IN_PROGRESS — the rework-in-flight exhibit; training script Journey 11). |
 | `WO-2024-0038-A` | A completed storyline behind some seeded dispositions (§1 background) |
 
 ---

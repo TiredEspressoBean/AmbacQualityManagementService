@@ -10,7 +10,7 @@ in the Demo Company tenant.
 |---|---|
 | `UQMES_ONBOARDING_WALKTHROUGH.md` | The spine — a self-serve, first-person walkthrough that takes a QA inspector (Sarah) through a demo work order end to end (§1–§12), flags the QA **manager's** gates, and adds a manager section (§13), a process/DWI authoring section (§14), a Quality Reports section (§15), a glossary (§16), and a sidebar-reference appendix. Effective for a lone inspector or a lone manager. |
 | `WO-QA-INSPECT-01_reference.md` | The work-order reference: WO-QA-INSPECT-01's identity, its 12-operation routing with QA gates, and the exact pre-staged state of all 8 parts mapped to the walkthrough sections they drive. Plus demo logins and reset instructions. |
-| `QA_INSPECTOR_TRAINING_SCRIPT.md` | The trainer's script — the taught, classroom version of the walkthrough. Same WO-QA-INSPECT-01 scenario, turned into ~10 inspector "journeys" with trainer prep, per-journey why / steps / checkpoint / watch-for, and an optional manager block. Cross-references the walkthrough by section. |
+| `QA_INSPECTOR_TRAINING_SCRIPT.md` | The trainer's script — the taught, classroom version of the walkthrough. Same WO-QA-INSPECT-01 scenario, turned into eleven inspector "journeys" with trainer prep, per-journey why / steps / checkpoint / watch-for, and an optional manager block. Cross-references the walkthrough by section. |
 | `artifacts/WO-QA-INSPECT-01_traveler.pdf` | Scannable traveler PDF for the walk — the paper counterpart to the routing table, with the header barcode/QR and per-operation sign-off blocks. |
 
 ## How they fit together
