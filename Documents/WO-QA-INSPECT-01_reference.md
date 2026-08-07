@@ -19,7 +19,7 @@ table below, with the header barcode/QR and per-operation sign-off blocks.
 | Work order | **WO-QA-INSPECT-01** |
 | Status | IN_PROGRESS |
 | Quantity | 8 parts |
-| Due | 2026-08-15 |
+| Due | ~8 days out (seeded relative to the reseed date — don't key on a fixed date) |
 | Order | **QA Inspector Onboarding Walkthrough** (`ORD-2024-QA-INSPECT`) |
 | Customer / company | Midwest Fleet Services |
 | Part type | Common Rail Injector |
@@ -99,7 +99,7 @@ like a real shop rather than a single-WO sandbox.
 | Work order | Where it shows up |
 |---|---|
 | `WO-2024-0048-A` | The *other* pending-FPI row in the home "First piece waiting" banner (§1) |
-| `WO-2024-0042-A` | An in-process Final Test row in the inbox; its `INJ-0042-023` is the closed/SCRAPPED audit exhibit (§12b) |
+| `WO-2024-0042-A` | An in-process Final Test row in the inbox. Two of its parts are borrowed as read-only exhibits where WO-QA-INSPECT-01 stages no equivalent: `INJ-0042-023` (SCRAPPED — the closed-record exhibit, walkthrough §12b) and `INJ-0042-019` (REWORK_IN_PROGRESS — the rework-in-flight exhibit used by the training script's Journey 11). |
 | `WO-2024-0038-A` | A completed storyline behind some seeded dispositions (§1 background) |
 
 ---

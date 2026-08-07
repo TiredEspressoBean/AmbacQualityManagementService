@@ -162,9 +162,10 @@ hunting for the click target.
 
 For this walk the Inbox shows (among others):
 - Receiving lots from Great Lakes Diesel and Bargain Bolts (§2).
-- OSP-return shipments from Apex Plating. Yours for §8 shows as
-  `OSP-2026-000003` — the UI displays the sequential shipment number,
-  not the seeder's `reference` (see 8a).
+- OSP-return shipments from Apex Plating. Yours for §8 is the
+  `Nitride Coating · Apex Plating · returned` row — the UI shows a
+  sequential `OSP-2026-####` (often `-000003`) that shifts per reseed, not
+  the seeder's `reference` (see 8a).
 - An in-process row for `WO-QA-INSPECT-01 · Nozzle Inspection · 1 pcs`
   — that's `INJ-QA-INSPECT-002`, the sampled part for §4.
 
@@ -428,7 +429,9 @@ QA-gated step (Nozzle Inspection).
 
 On your home page, click the **In-process** chip (or leave it on
 All). The row *"Nozzle Inspection · 1 pcs · Common Rail Injector ·
-WO-QA-INSPECT-01 · WO due 2026-08-10"* is INJ-QA-INSPECT-002.
+WO-QA-INSPECT-01 · WO due …"* is INJ-QA-INSPECT-002. (The WO due date is
+seeded relative to the reseed, ~a week out — don't match on the date, match on
+the WO and step.)
 
 Click the row.
 
@@ -731,13 +734,12 @@ characteristics — most importantly **Coating Thickness**.
 
 ### 8a — Find the returned shipment
 
-Click the **OSP returns** chip on your home Inbox. The most-recent
-`Nitride Coating · OSP-2026-000003 · Apex Plating Co · returned`
-row is your shipment. (Shipment numbers auto-generate per tenant; the
-demo seeder tags this one with `reference=OSP-QA-INSPECT-01`
-internally, but the UI displays the sequential `OSP-2026-000003`.
-Older seed shipments — `OSP-2026-000001`, `-000002` — are separate
-storylines.)
+Click the **OSP returns** chip on your home Inbox. The
+`Nitride Coating · Apex Plating Co · returned` row is your shipment —
+match on that, not on the number. (Shipment numbers auto-generate and
+**shift on each reseed**: the UI shows a sequential `OSP-2026-####`,
+often `OSP-2026-000003` on a fresh seed, while the seeder tags this one
+`reference=OSP-QA-INSPECT-01` internally. Don't key on the exact number.)
 
 Click the row.
 

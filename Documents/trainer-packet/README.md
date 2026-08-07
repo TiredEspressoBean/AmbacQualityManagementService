@@ -10,6 +10,7 @@ in the Demo Company tenant.
 |---|---|
 | `UQMES_ONBOARDING_WALKTHROUGH.md` | The spine — a self-serve, first-person walkthrough that takes a QA inspector (Sarah) through a demo work order end to end (§1–§12), flags the QA **manager's** gates, and adds a manager section (§13), a process/DWI authoring section (§14), a Quality Reports section (§15), a glossary (§16), and a sidebar-reference appendix. Effective for a lone inspector or a lone manager. |
 | `WO-QA-INSPECT-01_reference.md` | The work-order reference: WO-QA-INSPECT-01's identity, its 12-operation routing with QA gates, and the exact pre-staged state of all 8 parts mapped to the walkthrough sections they drive. Plus demo logins and reset instructions. |
+| `QA_INSPECTOR_TRAINING_SCRIPT.md` | The trainer's script — the taught, classroom version of the walkthrough. Same WO-QA-INSPECT-01 scenario, turned into ~10 inspector "journeys" with trainer prep, per-journey why / steps / checkpoint / watch-for, and an optional manager block. Cross-references the walkthrough by section. |
 | `artifacts/WO-QA-INSPECT-01_traveler.pdf` | Scannable traveler PDF for the walk — the paper counterpart to the routing table, with the header barcode/QR and per-operation sign-off blocks. |
 
 ## How they fit together
@@ -18,15 +19,16 @@ in the Demo Company tenant.
   (relative link `artifacts/…`), which is in this directory.
 - The **WO reference** is the fact sheet the walkthrough runs against: read it
   to know what each part is staged for before following a section.
-
-> **Deliberately not included — the existing trainer script.** The walkthrough's
-> "What this is not" points to `QA_INSPECTOR_TRAINING_SCRIPT.md`, a separate
-> instructor runbook. It's left out on purpose: it's a valid, browser-verified
-> curriculum, but built on a **different demo work order** — WO-2024-0042-A
-> (serials `INJ-0042-###`) — not the WO-QA-INSPECT-01 scenario everything in
-> this packet uses. It still lives in `Documents/` if you want it as a
-> structural reference; just don't teach the two side by side. (It also predates
-> the disposition co-sign gate this packet's walkthrough covers in §6b.)
+- The **training script** is the same content taught, not read: run it at a
+  workstation with the trainee. It shares the walkthrough's scenario, so the
+  two never disagree. Two things a trainer should know going in:
+  - **Journey 6 needs Maria.** The disposition-decision co-sign (§6b) can't be
+    completed on the inspector's login alone — keep the QA Manager's credentials
+    handy. The script calls this out where it happens.
+  - **Screenshots aren't captured yet.** The script was built onto this
+    scenario and its inline screenshot references were removed rather than ship
+    stale ones from the old scenario; teach from the live screen and recapture
+    per the script's *Refreshing screenshots* section when convenient.
 
 ## Demo setup
 
