@@ -1569,6 +1569,29 @@ Each measurement authored here becomes a capture field in the operator runtime.
 Nozzle Inspection carries two; Flow Testing's single measurement is the
 flow-rate reading §5 rode.
 
+**Why define measurements here and *pull them in* — rather than hand-rolling a
+spec on the substep.** A substep's Measurement capture node (§14g) *can* carry
+its own inline nominal and tolerances, but the right move is to point it at a
+measurement defined here at the step. The difference is not cosmetic:
+
+- **SPC and capability.** Control charts and Cpk are keyed on the *measurement
+  definition* — every reading of that one characteristic, across every part and
+  every run, rolls into a single chart. A value typed straight onto a substep
+  trends against nothing; it can never build a baseline.
+- **Traceability.** The **Characteristic #** ties the reading to the balloon on
+  the drawing. The definition carries it once, so every capture inherits it.
+- **Gauge & calibration.** The definition names the gauge, so the runtime
+  steers the operator to the right instrument and the point-of-use calibration
+  gate (§10d) has something to enforce. An ad-hoc field has no gauge behind it.
+- **Routing.** A step's Pass/Fail decision can be conditioned on a defined
+  measurement; a loose inline value can't drive the flow.
+- **Consistency.** Fix the spec once on the definition and every substep that
+  references it moves with it — no drift between two hand-typed copies.
+
+So: author the spec *once* here, and reference it from the substep. An inline
+one-off is fine for a throwaway note, but it's a dead-end reading — it captures
+a number and nothing downstream can use it.
+
 ### 14f — Sampling
 
 *Configure sampling rules* opens "Sampling — '<step>'". Not every part gets
@@ -1589,7 +1612,40 @@ inspected; this is where you say which ones. Three parts:
   window crosses the threshold, the step raises a CAPA on its own, with no human
   initiator.
 
-### 14g — Draft, then approve
+### 14g — Substeps: the DWI itself
+
+The **Substeps** editor — the *Edit substeps* button on the step (§14d) — is
+where the operator-facing work instruction actually lives: the guided steps you
+ran in §2c and §4c. It opens as a full page, **Substep Editor**, with the step's
+substeps listed down the side (Nozzle Inspection's are *"0. Visual nozzle
+inspection"* and *"1. Measure spray angle"*) and **Add substep** / **Add
+inspection substep** to add more. Edits stay local until you click **Save
+draft** (it warns on an unsaved close); **Discard** throws them away.
+
+Each substep has:
+
+- **A title and flags** — *Sign-off* (operator must sign to complete),
+  *Inspection point* (captures here also open a QR + measurement result,
+  firing the out-of-spec → auto-quarantine pipeline you saw in §5), *Batch
+  (once per lot)*, *Critical* (can never be marked N/A), *Allow N/A*.
+- **A body**, written in a rich editor with an insert palette grouped **★
+  Frequent · Text & Layout · Capture · Quality · Roles · 3D & Teardown ·
+  Templates**. Instruction text sits alongside the capture nodes you drop in —
+  **Measurement**, **Photo**, **Sign-off**, **Scan**, **Quality status**,
+  **Callout**, and a **QA inspection bundle** template. Those capture nodes are
+  exactly the fields the operator fills at runtime.
+
+**Pulling a measurement in.** Drop a **Measurement** node and it starts as a
+blank inline field — but link it to a measurement you defined at the step
+(§14e) instead of typing its spec here. The seeded exhibit does exactly that:
+the "Measure spray angle" substep's node is *Spray Angle · characteristic N-12 ·
+15 +3 / −3°*, linked to the step's measurement definition, so its spec, balloon
+number, and gauge all come from that one definition — and every reading rolls
+into SPC for that characteristic. Leave it unlinked and it still captures a
+value, but it's the dead-end reading §14e warns about. Define the measurement
+once at the step; pull it into the substep here.
+
+### 14h — Draft, then approve
 
 You're editing a **Draft** (the SHOWCASE) on purpose — the live **Injector
 Reman** is **Approved**, with work orders running against it. The Validation
