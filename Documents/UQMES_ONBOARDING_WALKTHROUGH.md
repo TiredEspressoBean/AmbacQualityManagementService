@@ -1398,9 +1398,11 @@ Two things the standard forces and the app enforces:
 ### 13c — Verify a CAPA's effectiveness (the other side of §9c)
 
 Sarah can write a verification *plan*; recording the *outcome* needs
-`verify_capa`, which is yours. Open a CAPA that's awaiting a result —
-**CAPA-2024-002** on this seed (the §9c exhibit) — go to the **Verification**
-tab, and on the plan row click **Complete Verification**. Pick the result —
+`verify_capa`, which is yours — but only once a plan exists. On this seed
+**CAPA-2024-002** (the §9c exhibit) starts with *no* plan (its Verification tab
+reads "No verifications have been recorded yet"); §9c has Sarah author one
+first. Once it's there, open the CAPA → **Verification** tab and its plan row
+shows **Complete Verification** — click it and record the result. Pick the result —
 **CONFIRMED** or **NOT_EFFECTIVE** — add notes, and submit.
 
 What your verdict does:
