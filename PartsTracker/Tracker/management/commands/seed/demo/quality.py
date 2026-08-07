@@ -629,8 +629,12 @@ class DemoQualitySeeder(BaseSeeder):
         resolver = (qa_users[1] if len(qa_users) > 1 else None) or approver
         assignees = [u for u in (qa_users + list(operators)) if u] or [approver]
 
+        # active() only — a tag-along the drop pass just soft-deleted is still
+        # bare (OPEN, no type), and `.objects` includes archived rows, so
+        # without this we'd re-enrich a dead record: type it and assign it to a
+        # QA user, leaving a soft-deleted "zombie" disposition on their name.
         bare = list(
-            QuarantineDisposition.objects.filter(
+            QuarantineDisposition.objects.active().filter(
                 tenant=self.tenant, current_state='OPEN', disposition_type=''
             ).order_by('disposition_number')
         )
