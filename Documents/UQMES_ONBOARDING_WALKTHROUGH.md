@@ -247,10 +247,8 @@ to match the domain).
 **Toast:** *"Lot accepted"* — you land back on the lot detail page,
 which now reflects the completed inspection.
 
-**What happens on the backend:** the lot leaves `AWAITING_INSPECTION`
-and becomes stock available for a work order. The
-`SamplingTriggerManager` records a PASS. The receiving audit log
-appends the acceptance event.
+The lot leaves `AWAITING_INSPECTION` and becomes stock available for a
+work order.
 
 Fail flow: click **Fail** instead of Pass, add a defect (Type +
 Description), then complete. That opens the Reject disposition
@@ -337,21 +335,11 @@ For this walk: click **Sign off & pass**, optionally add a note like
 click **Confirm sign-off**. Toast: *"FPI signed off — parts can now
 proceed."*
 
-**What happens on the backend:**
-1. `FPIRecord.status` → PASSED, `inspected_by` = you, `inspected_at`
-   set, `quality_report` linked to the first piece's QR.
-2. A `QaApproval` is created for (step, work_order, qa_staff = you) —
-   the FPI Pass IS the step-level QA signoff for the first-piece run.
-   Without this, the step would stay blocked on "QA signoff required
-   but not received" (the QaApproval has no other user-facing creation
-   path in the running app).
-3. `fpi.decided` notification fires.
-4. `check-status` for this (WO, step) now returns
-   `satisfied: true`, `message: "FPI passed"`.
-5. The FPI banner disappears from your home page; on the runtime,
-   after a reload, the banner turns green: *"First Piece Inspection
-   signed off · Setup verified — all parts can proceed through this
-   step."*
+Recording the pass **is** the step's QA sign-off for the first-piece run
+(recorded against your name), so the step is no longer blocked on it. The
+FPI banner clears from your home page and turns green on the runtime —
+*"First Piece Inspection signed off · Setup verified — all parts can
+proceed through this step."*
 
 **Permission note.** The Pass / Fail / Waive verdicts are gated
 server-side on the `sign_off_fpi` permission. Someone who holds it (Sarah
@@ -426,10 +414,8 @@ measurement, and an inspector sign-off. Work through the captures and
 **Confirm & next** to the review pane, then click **Complete step**.
 Toast: *"Step complete — lot advanced (1 part moved)."*
 
-**What happens:** the part transitions `AWAITING_QA` → `IN_PROGRESS`
-on the next step in the process. The sampling rule records this
-inspection outcome against the ruleset for post-repair verification
-analytics.
+The part advances to the next step in the process (`AWAITING_QA` →
+`IN_PROGRESS`).
 
 ---
 
@@ -484,31 +470,20 @@ exact blocker list varies with state). The system distinguishes
 hard-fail states from awaiting-signoff states in the toast heading, so
 you can tell at a glance a fail was recorded (not a benign timing wait).
 
-### 5c — Backend effects (what just happened)
+### 5c — What this triggers
 
-- A new **Quality Report** (`QR-2026-#####`) is created with
-  `status=FAIL`, linked to INJ-QA-INSPECT-003, at Flow Testing.
-- The QR's `post_save` signal auto-creates a **Quarantine Disposition**
-  in `OPEN` state with no type yet, description
-  *"Auto-created for failed quality report: …"*, assigned to a QA
-  Manager / QA Inspector on the tenant.
-- The part's `part_status` flips to `QUARANTINED`.
-- An `ncr.opened` notification fires through the escalation path.
+Filing the FAIL kicks off the nonconformance chain:
+- A **Quality Report** (`QR-2026-#####`, FAIL) is created for
+  INJ-QA-INSPECT-003 at Flow Testing.
+- A **Quarantine Disposition** is auto-created (OPEN, no type yet) and
+  assigned to a QA Manager / Inspector — the record Section 6 works against.
+- The part is **quarantined**, and a notification fires.
 
-Sarah's home now shows the disposition on the *My dispositions*
-tile (count goes up), and the part's detail page has:
-- Latest Inspection: `FAIL · 1 open defect`.
-- Has Open Defect: `Yes`.
-- Quality Reports: 1 row (`QR-…`) linked to your just-filed FAIL.
-- Dispositions: 1 row (`DISP-…`, OPEN, no type yet) linked to that QR.
+It surfaces immediately: your home *My dispositions* tile count goes up, and
+the part detail shows Latest Inspection `FAIL · 1 open defect`, Has Open
+Defect `Yes`, and the linked QR + disposition rows.
 
 You just caused the disposition Section 6 walks against.
-
-**Contrast with a seed exhibit.** The QR and disposition you just
-created have full audit trail — `created_by` = Sarah, timestamps
-match your click, the `ncr.opened` event fired live. Seeded records
-(the pre-closed `DISP-QAI-004-REW`, the QR on 004, terminal
-0042-023) don't — see Section 12c for what to know about those.
 
 ---
 
@@ -569,35 +544,23 @@ For this walk, pick **REWORK**:
 Click **Update Disposition**. Toast: *"Disposition updated"*.
 
 **Choosing the disposition type is an authorized decision.** Per
-AS9100/ISO 9001 8.7, the disposition decision is the act that carries a
-signature, so it goes through the co-signable **`decide`** action (gated by
-`approve_disposition`), not a bare field write — `disposition_type` is
-read-only on a plain PATCH. If you hold `approve_disposition` (a QA Manager
-does; Sarah does not in this seed) it commits directly; otherwise the editor
-opens a second-person co-sign dialog for an authorized colleague to authorize
-it inline, and it's recorded against them via `decision_authorized_by`.
-USE_AS_IS and REPAIR additionally require a recorded customer/design-approval
-reference (they accept known-nonconforming product).
+AS9100/ISO 9001 8.7, the disposition decision carries a signature. If you
+hold disposition-approval authority (a QA Manager does; Sarah does not in
+this seed) it commits directly; otherwise the editor opens a second-person
+co-sign dialog for an authorized colleague to approve it inline, and it's
+recorded against them. USE_AS_IS and REPAIR additionally require a recorded
+customer/design-approval reference (they accept known-nonconforming product).
 
-**What happens on the backend when the REWORK decision is authorized:**
-1. `decision_authorized_by`/`_at` are stamped, and the disposition's
-   `current_state` auto-transitions `OPEN` → `IN_PROGRESS` (built into
-   `QuarantineDisposition.save()`).
-2. The cascade fires: `apply_disposition_to_part` sees the part is
-   at `QUARANTINED` (a routable status), so it advances
-   `part.part_status` → `REWORK_NEEDED` and increments
-   `total_rework_count` by 1.
-3. If the part had already moved past `QUARANTINED` (e.g. someone
-   dispositioned an already-reworked part after the fact), the
-   cascade would skip — REWORK is a paper record, not a routing
-   directive.
+Once authorized, the disposition moves to `IN_PROGRESS`, and — because the
+part is still quarantined — REWORK sends it back for rework (status →
+`REWORK_NEEDED`, rework count +1). If the part had already moved on, the
+decision is recorded as paper only and the part stays put.
 
 ### 6c — The doors, briefly
 
-- **REWORK** — send back through the rework loop. Most common. Part
-  status cascades to `REWORK_NEEDED` (only if the part is currently
-  QUARANTINED or PENDING — see the design note below). Rework count
-  increments.
+- **REWORK** — send back through the rework loop. Most common. Sends
+  the part to `REWORK_NEEDED` (paper-only if the part has already moved
+  on) and increments the rework count.
 - **REPAIR** — accept with repair outside normal spec; may not fully
   conform (AS9100). Same cascade behavior as REWORK.
 - **USE_AS_IS** — accept the non-conformance under a customer
@@ -611,33 +574,18 @@ reference (they accept known-nonconforming product).
   supplier. Terminal for internal; part status cascades to
   `CANCELLED` from any state.
 
-**Design note on the cascade.** REWORK/REPAIR change the part's
-status to REWORK_NEEDED only when the part is at `QUARANTINED` or
-`PENDING` — states that are "held awaiting a decision". Once an
-operator has moved the part on (AWAITING_QA at visit 2, IN_PROGRESS
-at a step, etc.), the disposition is a documented decision, not a
-routing directive; the part stays put. This matches how QMS/MES
-systems separate "paper decision" from "physical routing".
-
 ### 6d — Close the disposition
 
-After you click Update with a type set, the disposition transitions to
-`IN_PROGRESS`. Once the rework has been done and re-inspected (Section 7
-walks that), it should be closed through the **dedicated close action**
-(`POST /close`, gated by `close_disposition`), which runs
-`complete_disposition_resolution`: it locks the row, checks the
-completion blockers (`containment_action` present for MAJOR/CRITICAL, a
-disposition decision selected, no pending 3D annotations), and on success
-sets `resolution_completed=True` with `resolution_completed_by/at`.
-
-**Closing from the editor works too — it runs the same guarded path.**
-Setting **Current State → `CLOSED`** and clicking Update routes through
-`complete_disposition_resolution` (the same service the close action uses),
-so the completion blockers are enforced either way and `resolution_completed`
-/ `_by` / `_at` are recorded. If a blocker is unmet (e.g. a MAJOR with no
-containment) the Update returns a **400** with the blocker and the
-disposition stays active — any other field edits in that submit (containment
-text, notes) are saved, so you fix the blocker and retry.
+Once the rework has been done and re-inspected (Section 7 walks that),
+close the disposition — either from its **Close** action or by setting
+**Current State → `CLOSED`** in the editor and clicking Update. Both run the
+same checks: closing is gated by the `close_disposition` permission, and it's
+refused unless the completion blockers are clear — containment recorded for
+MAJOR/CRITICAL, a disposition decision selected, and no pending 3D
+annotations. If a blocker is unmet (e.g. a MAJOR with no containment), the
+close is rejected with the blocker and the disposition stays open; any other
+edits in that submit (containment text, notes) are still saved, so you fix
+the blocker and retry.
 
 ---
 
@@ -691,18 +639,11 @@ INJ-QA-INSPECT-004. Enter a **passing** value — like the failing pass in
 Click **Confirm & review** → **Complete step**. Toast: *"Step
 complete — lot advanced (1 part moved)."*
 
-**What happens.** A second QR (`QR-2026-…`, **PASS**) is
-written. The part transitions `AWAITING_QA` → `IN_PROGRESS` on the next
-step (Assembly, per the Flow Testing → Assembly edge). The rework arc is
-now paper-complete: FAIL QR → CLOSED REWORK → reworked → PASS QR. (Note
-on visit numbering: the seed's original fail is a *data-only* QR with no
-prior step-execution, so this re-inspection runs as **visit 1**, not
-"visit 2" — the FAIL→PASS arc is the real content, not the visit count.)
-The **Rework Passes** counter stays
-at `1` — that counter was incremented when the REWORK disposition
-was applied (Section 6), not on this re-inspection pass. It's a
-running tally of *how many rework cycles this part has been through*,
-not of how many re-inspection PASS-es.
+**What happens.** A second QR (`QR-2026-…`, **PASS**) is written and the
+part advances to the next step (Assembly). The rework arc is now
+paper-complete: FAIL QR → CLOSED REWORK → reworked → PASS QR. The **Rework
+Passes** counter stays at `1` — it counts rework *cycles* (incremented when
+the REWORK disposition was applied in Section 6), not re-inspection passes.
 
 ---
 
@@ -763,24 +704,12 @@ runtime uses on non-OSP steps). Click **Accept return**.
 Toast: *"Accepted — parts advanced past the outside-process step."*
 You land on `/production/outside-processing` — the OSP board.
 
-**What happens.** The return-inspection
-execution completes (`StepExecution` → `COMPLETED`) and `accept_return`
-runs. Two things the toast's wording overstates:
-- The part becomes **`READY_FOR_NEXT_STEP`** and **stays at the Nitride
-  Coating (OSP) step** — it is *cleared to advance*, not moved to Final
-  Test in the same click. A subsequent advance (the advance engine / lot
-  cohesion) carries it onward. So "advanced past the outside-process step"
-  is the *intent* (the OSP op is done, the part is unblocked), not an
-  immediate step change.
-- The shipment transitions **`RETURNED → CLOSED`** (the OSP cycle is
-  finished), not "stays RETURNED".
-
-A `READY_FOR_NEXT_STEP` part at an OSP step is deliberately **not**
-re-listed on the shipper board's "ready to send out" — that queue is
-`IN_PROGRESS`-only (`_READY_TO_SHIP_STATUSES`), so a returned/accepted
-part can't be re-dispatched by mistake. (The board's standing "ready to
-send" count is a *different*, never-shipped exhibit — OSP-DEMO-001/002 on
-WO-2024-0042-A.)
+**What happens.** The part becomes **`READY_FOR_NEXT_STEP`** and stays at the
+Nitride Coating (OSP) step — it's *cleared to advance*, not moved to Final
+Test in the same click; a later advance carries it onward. The shipment
+transitions **`RETURNED → CLOSED`** — the OSP cycle is finished. (So the
+toast's "advanced past the outside-process step" is the intent, not an
+immediate step change.)
 
 ---
 
@@ -877,10 +806,8 @@ Walking it from the Inbox:
 **A third task you didn't expect.** CAPA-2024-004's Tasks tab shows
 **three** rows, not the two the seed lists: `T001` is
 *"Containment: Increased cleaning solution filtration and
-monitoring"*, auto-created by the `create_initial_containment_task`
-signal from the CAPA's `immediate_action`. Every CAPA with an
-immediate action gets one. Harmless here, but see the note at the
-end of 9c — it used to break the verification exhibit.
+monitoring"*, auto-created from the CAPA's immediate action. Every
+CAPA with an immediate action gets one.
 
 **Multi-person tasks (CAPA-2024-003).** Open CAPA-2024-003's Tasks
 tab (the tab beside it is labelled **Root Cause**, not RCA). Two of
@@ -938,22 +865,17 @@ dialog for `effectiveness_result` (CONFIRMED / NOT_EFFECTIVE) plus notes.
 CAPA-2024-001 is the worked example: open its Verification tab to see a
 completed plan with a CONFIRMED result.
 
-**Segregation of Duties on verification.** Sarah can add and edit the
-verification *plan* (`add_capaverification`, `change_capaverification`), but
-recording the *outcome* is gated on `verify_capa` (a QA Manager holds it).
-Sarah is not blocked, though: `verify` is co-signable — she completes it with
-a QA Manager authenticating inline, and the verification is recorded against
-**them** (`verified_by`). A QA Manager working their own queue records it
-directly. `effectiveness_result` / `verified_by` are read-only on a plain
-PATCH, so the outcome can't bypass the gate.
+**Who can verify.** Sarah can add and edit the verification *plan*, but
+recording the *outcome* requires verification authority (`verify_capa`, held
+by a QA Manager). She isn't blocked: it's co-signable — she completes it with
+a QA Manager authenticating inline, and it's recorded against them. A QA
+Manager working their own queue records it directly.
 
-**What happens on verify.** If CONFIRMED, `verify_capa_effectiveness` closes
-the CAPA and logs a `CapaStatusTransition`. If NOT_EFFECTIVE, it reopens the
-CAPA to IN_PROGRESS, marks the RCA `for review`, and auto-creates a 30-day
-follow-up task. The escalation loop is built in — a correction that didn't
-stick doesn't quietly close. The service's own self-verification rule still
-bites: the initiator/assignee can't verify their own CAPA unless
-`allow_self_verification` is set (with justification).
+**What verifying does.** CONFIRMED closes the CAPA. NOT_EFFECTIVE reopens it
+to In Progress, flags the RCA for review, and auto-creates a 30-day follow-up
+task — a correction that didn't stick doesn't quietly close. The
+initiator/assignee can't verify their own CAPA unless self-verification is
+enabled (with justification).
 
 ### 9c-bis — The other four tabs
 
@@ -999,11 +921,11 @@ not a one-off part defect. From `/quality/capas` click
 `assigned_to`. Optional: linked quality reports (link the failing
 QR you're reacting to), work order, step, part.
 
-On save, `post_save` fires:
-- If severity is MAJOR or CRITICAL → `auto_request_capa_approval`
-  runs, blocking work until an approver signs off.
+On save:
+- If severity is MAJOR or CRITICAL, the CAPA needs management approval
+  before work can begin.
 - An initial CONTAINMENT task is auto-created.
-- `capa.assigned` event routes a notification to the assignee.
+- The assignee gets a notification.
 
 **When to open one.** Don't create a CAPA for every failed QR —
 the disposition already records what to do with *this part*. Open
@@ -1059,11 +981,9 @@ QA inspectors.
 
 **The current enforcement scope.** UQMES blocks measurements written
 against equipment whose status is `OUT_OF_SERVICE` — the picker hides
-those options, and `_handle_measurement` refuses the write at the
-server (raising `ValidationError` with the equipment name and
-reason) even if a stale client somehow selects one. `OUT_OF_SERVICE`
-is set by `apply_calibration_result_to_equipment` on a FAIL
-calibration.
+those options, and the server refuses the write (with the equipment name
+and reason) even if a stale client somehow selects one. `OUT_OF_SERVICE`
+is set by a FAIL calibration.
 
 What's NOT blocked: a measurement written against a gauge that's
 still `IN_SERVICE` but whose calibration is *due-soon* or *overdue*.
@@ -1143,11 +1063,10 @@ in create mode. Fields on `CalibrationRecord`:
 - **adjustments_made** — free-text description.
 - **notes**.
 
-On save, if `result=FAIL`, the `apply_calibration_result_to_equipment`
-signal sets `Equipments.status = OUT_OF_SERVICE` — a paper flag
-you'll see on the equipment detail. It does not block that gauge
-from being selected in the measurement picker today; treat the
-status as an advisory.
+On save, a `FAIL` result marks the gauge **OUT_OF_SERVICE** — a paper
+flag you'll see on the equipment detail. It does not block that gauge
+from being selected in the measurement picker today; treat the status
+as advisory.
 
 ### 10d — The gauge picker during measurement
 
@@ -1169,13 +1088,11 @@ that rode along with it.
 **Out-of-service filtering.** Any option whose equipment is
 `OUT_OF_SERVICE` at authoring time is hidden from the operator
 picker; the configured default falls back to nothing (no auto-
-selection) if that default is itself OUT_OF_SERVICE. On the
-server side, `_handle_measurement` refuses the write with a
-`ValidationError` if `equipment.status == OUT_OF_SERVICE` — so
-even a stale client that offers a bad option gets rejected at
-the source, not silently accepted. Due-soon and overdue gauges
-that are still IN_SERVICE remain selectable and rely on the
-gauge-nag tile for awareness.
+selection) if that default is itself OUT_OF_SERVICE. The server also
+refuses the write for an OUT_OF_SERVICE gauge — so even a stale client
+that offers a bad option gets rejected at the source, not silently
+accepted. Due-soon and overdue gauges that are still IN_SERVICE remain
+selectable and rely on the gauge-nag tile for awareness.
 
 ### 10e — Seeded records on the QA walk exhibits
 
@@ -1266,7 +1183,7 @@ rules — backfill onto an existing tenant with
 - **`fpi.decided`** — an FPI was passed, failed, or waived on a
   step Sarah covers.
 - **`capa.assigned`** (Section 9a) — a CAPA task was assigned to
-  you. Fires from `post_save(CAPA)`.
+  you.
 - **`capa.ready_for_verification`** (Section 9c) — routes to the
   QA Manager group's inbox after an inspector saves verification
   data.
@@ -1334,9 +1251,9 @@ touching.
 
 **Multiple dispositions on one QR.** QR→disposition is legitimately 1:many
 — a human can add lines deliberately for different portions of
-nonconforming material. When a FAIL QR fires, its post-save signal also
-auto-creates a bare disposition; you can spot an auto-created one by its
-description prefix *"Auto-created for failed quality report:"*.
+nonconforming material. A FAIL QR also auto-creates a bare disposition;
+you can spot an auto-created one by its description prefix
+*"Auto-created for failed quality report:"*.
 
 **Sparse Activity History in the seed.** Many seeded parts show *"No
 audit history"* in the Activity History section because the seed
