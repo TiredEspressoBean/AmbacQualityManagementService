@@ -34,7 +34,12 @@ function isUserAnApprover(
     if (!userId || !approvalRequest) return false;
 
     const uid = String(userId);
-    // Check if user is in required_approvers
+    // The API returns assigned approvers as `required_approvers_info` (user
+    // objects with ids); the bare `required_approvers` id list isn't emitted,
+    // so match against the info objects (with the id list as a fallback).
+    if (approvalRequest.required_approvers_info?.some(a => String(a.id) === uid)) {
+        return true;
+    }
     if (approvalRequest.required_approvers?.some(a => String(a) === uid)) {
         return true;
     }

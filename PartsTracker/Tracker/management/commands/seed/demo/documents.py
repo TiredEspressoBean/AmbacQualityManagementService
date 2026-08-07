@@ -68,6 +68,22 @@ DEMO_APPROVAL_TEMPLATES = [
         'default_threshold': 2,
         'auto_assign_by_role': 'QA_Manager',
     },
+    {
+        # The template `auto_request_capa_approval` looks up for the
+        # MAJOR/CRITICAL-CAPA management-approval gate. Routed to QA_Manager so
+        # a pending request lands in Maria's approvals queue.
+        'template_name': 'CAPA Approval',
+        'approval_type': 'CAPA_APPROVAL',
+        'approval_flow_type': 'ALL_REQUIRED',
+        'delegation_policy': 'OPTIONAL',
+        'approval_sequence': 'PARALLEL',
+        'allow_self_approval': False,
+        'default_due_days': 5,
+        'escalation_days': 3,
+        # Must match the TenantGroup name exactly (the role lookup is by group
+        # name) — it's "QA Manager", not "QA_Manager".
+        'auto_assign_by_role': 'QA Manager',
+    },
 ]
 
 # Demo documents matching DEMO_DATA_SYSTEM.md
@@ -186,12 +202,48 @@ class DemoDocumentsSeeder(BaseSeeder):
                     result['approval_requests'].append(ar)
                     result['approval_responses'].extend(responses)
 
+        # Now that the CAPA_APPROVAL template exists, back-fill the pending
+        # management-approval request for MAJOR/CRITICAL CAPAs that are marked
+        # awaiting approval. The CAPA seeder runs BEFORE this phase, so the
+        # post_save signal that would auto-create the request finds no template
+        # and no-ops — this makes the gate actually actionable in Maria's queue.
+        capa_requests = self._backfill_capa_approval_requests()
+        result['approval_requests'].extend(capa_requests)
+
         self.log(f"  Created {len(result['approval_templates'])} approval templates")
         self.log(f"  Created {len(result['documents'])} documents")
         self.log(f"  Created {len(result['approval_requests'])} approval requests")
         self.log(f"  Created {len(result['approval_responses'])} approval responses")
 
         return result
+
+    def _backfill_capa_approval_requests(self):
+        """Create the pending CAPA management-approval request for MAJOR/CRITICAL
+        CAPAs that are awaiting approval but have none (the CAPA seed runs before
+        the approval template exists, so the auto-request signal no-ops). Idempotent:
+        skips any CAPA that already has a live CAPA_APPROVAL request."""
+        from Tracker.models import CAPA, CapaSeverity
+        from Tracker.services.qms.capa import auto_request_capa_approval
+
+        created = []
+        pending = CAPA.objects.filter(
+            approval_status='PENDING',
+            severity__in=[CapaSeverity.MAJOR, CapaSeverity.CRITICAL],
+        )
+        for capa in pending:
+            already = ApprovalRequest.objects.filter(
+                approval_type=Approval_Type.CAPA_APPROVAL,
+                object_id=str(capa.id),
+                status='PENDING',
+            ).exists()
+            if already:
+                continue
+            req = auto_request_capa_approval(capa)
+            if req is not None:
+                created.append(req)
+        if created:
+            self.log(f"  Back-filled {len(created)} CAPA approval request(s)")
+        return created
 
     def _create_document_types(self):
         """Create document types.
