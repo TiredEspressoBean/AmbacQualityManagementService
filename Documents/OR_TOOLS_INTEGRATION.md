@@ -115,7 +115,134 @@ Every constraint the solver handles maps to one of these:
 | **Secondary Resource** | QA sign-off, shared fixtures, limited tooling | `Fixture` (cumulative constraint) |
 | **Soft Preferences** | Customer batching, machine affinity (dialed-in) | `StepEquipmentAffinity`, objective function terms |
 
-Additional constraint sources: due dates (soft via lateness penalty), no-machine-overlap (implicit), pinned tasks (hard user override), work order HOLD (excluded from model), sampling (probabilistic).
+Additional constraint sources: due dates (soft via lateness penalty), no-machine-overlap (implicit), pinned tasks (hard user override), work order HOLD (excluded from model), sampling (probabilistic), outside processing (consolidation batching + external lead time — see below), discrete material readiness (start-gate when the consumed lot must be on hand).
+
+### Assembly Convergence (Multi-Level BOM)
+
+A seventh constraint class the six above don't cover. When a `BOMLine`'s
+component is **made in-house** (e.g. a holder body installed into an injector),
+the parent WO's assembly step cannot start until the child component's own
+routing/WO is complete **and** the component is staged. This is **inter-WO
+precedence + demand pegging**, not the intra-routing `StepEdge` precedence — it
+turns "N independent job DAGs" into a forest of linked project networks
+(MRP-style pegging: supply linked to demand across BOM levels).
+
+Requires: a **WO→WO peg** (component job → the parent WO's consuming BOMLine /
+assembly step; today `WorkOrder.parent_workorder` exists only for split
+provenance), a decision on **auto-explosion of BOM demand into child WOs
+(MRP-lite) vs manual linkage**, and the solver treating the peg as inter-WO
+precedence while propagating need-dates downward from the parent due date. It
+sits at the intersection of material readiness (supply is *endogenous* — itself
+scheduled) and the reman allocator (which *selects* buy/harvest components but
+does not schedule *making* one). Build tasks tracked in
+`SCHEDULING_IMPLEMENTATION_PLAN.md`.
+
+### Outside-Processing Consolidation
+
+The dual of assembly convergence — cross-WO fan-in onto a shared *external*
+operation rather than a shared parent part. The runtime **already batches this
+way**: `services/mes/outside_process.py` `build_ready_to_ship_groups()` pools
+parts "regardless of WO" by (step, vendor), and `send_parts_out` links many
+parts' `StepExecution`s to **one** `OutsideProcessShipment` (membership is
+`StepExecution.outside_process_shipment`, N:1). Consolidating multiple WOs into
+one shipment/lot to cut cost is a first-class *manual* action today; the solver
+doesn't reason about it.
+
+For the scheduler this is **not** a fixed lead-time window — it's a batching
+decision with economics:
+
+- **When to send** — accumulate to fill a lot (cheaper per part, delays parts
+  already staged) vs send now (faster, more shipments, may miss the vendor
+  minimum). Interacts with due dates and the frozen/slushy fence.
+- **What to group** — which WOs' parts share a shipment ((step, vendor), within a
+  send window).
+- **Vendor economics (no data home yet)** — minimum lot charge (floor → batch
+  incentive) and max batch / furnace-or-tank capacity (ceiling → cumulative
+  constraint on the external resource, like `Fixture`), plus external lead time.
+  None of cost / min-charge / capacity / lead-time exists on the model today; the
+  shipment records actuals only (`quantity` is derived from linked executions).
+- **Shared-fate convergence on return** — all parts return together under one
+  `QualityReports` (AQL lot = shipment quantity); accept advances every
+  contributing WO, **reject quarantines them all at once**. Consolidating a rush
+  part into a large batch raises its exposure to the batch's verdict — a risk
+  correlation the objective should price.
+
+Modeling notes: the *predictive* parameters (lead time, min charge, capacity)
+belong on a per-(step, vendor) OSP config (mirrors `WorkCenterChangeover` as a
+matrix), distinct from the `OutsideProcessShipment` *actual*. The scheduler needs
+a **planned** consolidation group (plan vs actual, like `ScheduledTask` vs
+`StepExecution`), and must read multi-WO membership via `StepExecution` — **not**
+the lossy `OutsideProcessShipment.work_order` FK, which is set to the first part's
+WO only ("usually one" is an assumption consolidation breaks). Build tasks in
+`SCHEDULING_IMPLEMENTATION_PLAN.md`.
+
+---
+
+## Dynamic & Stochastic Behavior (edge-case sweep, 2026-08-12)
+
+A code sweep across reman, splits/rework, quality gating, and change-control
+found that many core MES behaviors make the scheduling problem **dynamic and
+stochastic**, not static. Grouped by the solver assumption each breaks. The
+through-line: a static nightly solve is insufficient — the design must assume
+**continuous invalidation** and rolling re-plan, with the frozen/slushy fence
+absorbing churn. (The plan's `ScheduleResult.is_stale` + signal invalidation is
+the seam; these findings expand the invalidating-event set.)
+
+**1. Schedulable-unit count is not fixed.** `WorkOrder.quantity` is an *input*
+count, not the live count of independently-advancing units at a `(WO, step)`.
+- Reman teardown is **1→N fan-out** — a core yields an unknown count/grade of
+  harvested components, resolved only at operator capture
+  (`dwi/harvested_component_capture.py`). The one forward-looking yield spec,
+  `DisassemblyBOMLine.expected_qty` / `expected_usable_qty`, is **defined but read
+  by nothing** — a free planning signal left on the floor. This is the *divergent*
+  dual of assembly convergence (§Assembly Convergence).
+- Accepted components appear mid-horizon as **orphan `PENDING` parts** with no
+  WO/step/process (`reman/harvested_component.py`), implicitly gating a rebuild WO.
+- Part/WO splits (esp. REWORK) shrink cohorts and re-point parts at a *different*
+  process mid-route (`mes/splits.py`, `mes/work_order.py`); each `(WO, step)`
+  divides into cohort vs solo sub-flows per evaluation (`mes/advancement.py`).
+- Capacity batching splits a lot into N furnace/wash loads whose membership
+  shrinks between start and seal (`dwi/batch_lifecycle.py`).
+
+**2. Routing is dynamic and partly probabilistic.**
+- Rework and rollback re-enter earlier steps (`visit_number+1`) — routing is **not
+  acyclic** in practice (`mes/splits.py`, `mes/parts.py`).
+- Disposition rewrites the remaining route (rework loop / scrap-truncate /
+  use-as-is), dependent on process topology *and* timing — part still held vs
+  already advanced (`qms/disposition.py`).
+- Sampling makes each inspection substep **Bernoulli-present per part** (SELECTED
+  vs DESELECTED); `RANDOM` is non-reproducible; `LAST_N`/`EXACT_COUNT` defer to
+  PENDING when cohort size is unknown (`dwi/sampling_decisions.py`). Inspection
+  load is expected-value, not fixed duration.
+- Aggregate quality gates **reroute** not-yet-advanced parts down ALTERNATE edges
+  when a rolling metric trips (`qms/quality_gate.py`).
+
+**3. Quality events gate / serialize / remove work at data-dependent times.**
+- **FPI is a serialization point:** the first piece's verdict blocks the *entire*
+  cohort — machine + operator idle behind it, unbounded QA request→verdict
+  latency, FAIL re-blocks everyone (`qms/fpi.py`). Model as an explicit
+  cross-resource precedence + QA queue, not a per-part step.
+- A FAIL report **auto-quarantines the part on save** (`qms/quality_report.py`); a
+  batch FAIL quarantines the whole load with status-dependent membership
+  (`qms/batch_disposition.py`) — correlated, all-at-once WIP loss.
+- Sampling PENDING decisions **reconcile at cohort close** and can inject a blocker
+  at the WO's terminal step — a WO-level join barrier (`dwi/sampling_decisions.py`).
+
+**4. Resource availability is event-driven, not one field.**
+- A **failed calibration** flips equipment to `OUT_OF_SERVICE` via signal — abrupt,
+  unplanned — and measurements against it are hard-refused (`mes/work_order.py`,
+  `dwi/operator_capture.py`).
+- Calibration **expiry** flips computed `is_operational` at a *date boundary with
+  no status write or event* — `Equipment.status` reads IN_SERVICE while the machine
+  is effectively down (`mes_standard.py`). A scheduler reading `status`
+  over-counts availability; read `is_operational`.
+- Operator cert expiry gates advancement **asymmetrically** — only for executions
+  with no start-gate snapshot (`mes_lite.py`).
+
+**5. Non-stationary inspection load.** Z1.4 severity switching drifts
+receiving-inspection sample size with lot history (Reduced n ≈ 40% of Normal) and
+can recommend **discontinuing inspection** for a supplier — a material-availability
+cutoff driven by a state machine (`qms/severity_switching.py`).
 
 ---
 

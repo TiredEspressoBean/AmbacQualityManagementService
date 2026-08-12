@@ -7,6 +7,95 @@
 > (OPERATOR_EXPERIENCE_DESIGN §10, rungs 0–3). Don't start phases 2+ before
 > those rungs; landing surfaces must not depend on scheduling until it exists.
 
+## Additions & open decisions (2026-08-10 review)
+
+Grounding the plan against the current models surfaced gaps and structural
+decisions to resolve **before** building. The data-capture foundation the whole
+plan depends on is specified separately in `EXECUTION_ACTUALS_AND_OEE.md` — build
+that first; it is what makes durations and OEE honest.
+
+**Decide-first (structural — they change the model, not just add a field):**
+
+- **#1 `StepExecution` has no machine FK.** The duration-fallback chain and
+  per-machine timing assume execution history is attributable to a machine, but
+  `StepExecution` records operators only. Add `equipment` (FK→Equipments) — the
+  DWI submit already stamps `StepExecution`, so the FK yields machine-attributed
+  coarse cycle time at zero extra capture friction. Reflected in the Phase 0
+  field table below.
+- **#3 `ScheduleSlot` ↔ `ScheduledTask` reconciliation.** A manual `ScheduleSlot`
+  already exists (wired to `cascade_schedule_slots()` on WO completion). The plan
+  introduces solver-output `ScheduledTask` without saying how they relate. Decide:
+  does solver output populate/supersede `ScheduleSlot`, or are they parallel? Two
+  live "schedule" concepts is a data-integrity hazard.
+- **#9 Multi-level BOM / assembly convergence.** When a `BOMLine`'s component is
+  made in-house (holder body → injector), the parent's assembly step can't start
+  until the child's own WO completes and it's staged. This is cross-WO precedence
+  + demand pegging, not intra-routing `StepEdge`. Needs a WO→WO peg (component job
+  → parent BOMLine/consuming step; today `WorkOrder.parent_workorder` exists only
+  for split provenance) and a decision on auto-explosion (MRP-lite) vs manual
+  linkage. Constraint design lives in `OR_TOOLS_INTEGRATION.md`; build tasks land
+  as a phase here once scoped. Highest structural impact of the gaps.
+
+**Domain constraints to fold into the relevant phases** (each modest alone;
+together a real chunk — see the constraint abstractions in `OR_TOOLS_INTEGRATION.md`):
+
+- **Outside processing (OSP)** as a **cross-WO consolidation/batching decision**,
+  not just a fixed lead-time window — the runtime already pools parts into one
+  shipment across WOs to cut cost (`build_ready_to_ship_groups`,
+  `StepExecution.outside_process_shipment` N:1); the solver must reason about
+  *when to send / what to group*, the vendor economics (min charge, batch
+  capacity, lead time — no data home yet), and the shared-fate return verdict.
+  See `OR_TOOLS_INTEGRATION.md` → Outside-Processing Consolidation.
+- **Holiday / shutdown exception calendar** on top of `Shift` (Phase 9 has a
+  calendar *UI* but no exception model).
+- **Operator attendance / presence** as a Layer-2 dispatch input
+  (`UserWorkCenterMembership` is eligibility, not presence).
+- **Discrete material readiness** as a start-gate (`MaterialLot` exists) — distinct
+  from continuous-feed and reman allocation.
+
+**Also missing (mechanical):** a `Planner` permission/group (the plan gates
+`/solve/` on it, but it doesn't exist yet) — wire into the 3-paradigm perm system.
+
+**Edge-case sweep (2026-08-12):** a code sweep surfaced extensive dynamic/
+stochastic behavior — variable unit counts, probabilistic routing, correlated
+quality-driven WIP loss, event-driven resource loss — catalogued in
+`OR_TOOLS_INTEGRATION.md` → *Dynamic & Stochastic Behavior*. Net design
+consequence: assume **continuous re-plan**, not a static nightly solve.
+
+**MES enforcement gaps the scheduler cannot rely on** (surfaced 2026-08-12;
+several are pre-existing correctness bugs independent of scheduling — verify and
+fix before the scheduler treats MES gates as authoritative):
+
+- **`WorkOrder` HOLD is a *soft* control, not a hard interlock** (by design, not a
+  bug). `place_on_hold` flips `workorder_status`, pauses fallback sampling triggers
+  (`_pause_sampling_triggers`), and the work queue flags `is_held` — but
+  `can_advance_from_step` deliberately doesn't block advancement, so in-progress
+  work isn't force-frozen. Scheduler requirement is solver-side only: read `ON_HOLD`
+  and exclude held WOs from *new* planning (the plan already treats HOLD as
+  "excluded from model") — no MES change needed. Only revisit if the product wants
+  *reason-dependent* hard stops (a QUALITY or customer stop-ship hold that must
+  forbid further processing) — a product decision, not a defect.
+- **Life-limit expiry gates nothing.** `LifeTracking.is_blocked` is checked in no
+  advancement path — an expired LLP / shelf-life-blown lot can be worked.
+- **Declared step gates are silent no-ops.** `StepRequirement.is_satisfied`
+  implements only MEASUREMENT / QA_APPROVAL / FPI_PASSED / SIGNOFF; EQUIPMENT_CHECK,
+  CALIBRATION_VALID, TRAINING_VALID, MATERIAL_SCAN, CUSTOM all `return True`.
+- **`MaterialLot` versioning duplicates the balance.** A spec edit copies
+  `quantity_remaining` onto the new PK; consumption decrements one instance —
+  balances diverge across versions.
+- **WO process migration strands parts.** `implement_pco` swaps `WorkOrder.process`
+  but never remaps `Parts.step` — after a MIGRATE that removed/renumbered a step,
+  parts sit at a step that no longer exists.
+- **Shelf-life `cached_status` is stale.** Calendar life status flips live from
+  `now()`, but the indexed `cached_status` only refreshes on `save()` — `.expired()`
+  misses time-expired rows.
+- **No material reservation seam.** On-hand ≠ available-to-promise; two WOs schedule
+  against the same lot, contention invisible until consumption fails.
+- **BOM revisions have no per-WO pin.** A new rev shifts component demand for every
+  in-flight WO of that part type at once (no KEEP_ALL, unlike process change-control).
+- **`StepRollback` executor is unwired** — `executed_at` never set; the void /
+  re-inspection scope is presently indeterminate.
+
 Step-by-step build plan for the OR-Tools scheduling system described in `OR_TOOLS_INTEGRATION.md`. Each phase is dependency-ordered, testable in isolation, and marked as internal or customer-facing.
 
 **Existing models referenced:** `Steps`, `StepEdge`, `StepExecution`, `Parts`, `WorkOrder`, `Processes`, `Equipments`, `WorkCenter`, `Shift`, `ScheduleSlot`, `DowntimeEvent` (in `mes_lite.py` and `mes_standard.py`).
@@ -66,6 +155,7 @@ Tracker/
 |---|---|---|---|
 | `Steps` | `max_continuous_minutes` | IntegerField(null=True) | AlterModel |
 | `StepEdge` | `tech_continuity` | CharField(max_length=10, default='ANY', choices=ANY/SAME/DIFFERENT) | AlterModel |
+| `StepExecution` | `equipment` | ForeignKey(Equipments, null=True) | AlterModel — #1, machine attribution for actuals; see Additions |
 
 ### Files to Create / Modify
 
