@@ -1050,6 +1050,24 @@ class Steps(SecureModel):
             if self.block_on_quarantine:
                 blockers.append("Part is quarantined and step blocks on quarantine")
 
+        # 1.5. Life-limit gate (Parts-only). A life-limited part whose usage has
+        # passed its hard limit is ineligible to advance. Read from the live
+        # `is_blocked` property, NOT the possibly-stale `cached_status`, so
+        # calendar-based (shelf-life) expiries are caught too. NOT clearable by a
+        # StepOverride — the domain-correct release is a formally-approved limit
+        # extension (`LifeTracking.apply_override`), which is audited. Gates on the
+        # part's own tracking; installed-component life (AssemblyUsage) is a later
+        # enhancement.
+        if part is not None:
+            from django.contrib.contenttypes.models import ContentType
+            from .life_tracking import LifeTracking
+            part_ct = ContentType.objects.get_for_model(part)
+            for lt in LifeTracking.objects.filter(
+                content_type=part_ct, object_id=part.pk,
+            ).select_related('definition'):
+                if lt.is_blocked:
+                    blockers.append(f"Life limit exceeded: {lt.definition.name}")
+
         # 2. Check QA signoff requirement
         if self.requires_qa_signoff:
             qa_approval = QaApproval.objects.filter(
