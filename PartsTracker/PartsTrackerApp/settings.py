@@ -799,6 +799,13 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=7, minute=0),
         "options": {"expires": 3600},
     },
+    # Daily refresh of calendar-based (shelf-life) LifeTracking cached_status,
+    # which is wall-clock-derived and otherwise only recomputed on save().
+    "recompute-life-status": {
+        "task": "Tracker.tasks.recompute_life_status",
+        "schedule": crontab(hour=0, minute=30),
+        "options": {"expires": 3600},
+    },
     # Hourly scan for stale WO holds + overdue WOs (emits notification events)
     "scan-work-order-holds-and-overdue": {
         "task": "Tracker.tasks.scan_work_order_holds_and_overdue",

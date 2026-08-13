@@ -1506,6 +1506,39 @@ def scan_work_order_holds_and_overdue():
 
 
 @shared_task
+def recompute_life_status():
+    """Celery Beat task: refresh `cached_status` on calendar-based LifeTracking.
+
+    Calendar (shelf-life) life status is wall-clock-derived, but `cached_status`
+    is only written on save()/increment — so it goes stale as time passes with no
+    write. The `.expired()` / `.warning()` querysets and their API endpoints filter
+    on the cached field, so without this sweep they miss time-expired records.
+    (The advancement gate reads the live `is_blocked`, so it is unaffected; this
+    fixes the cached-field consumers — list endpoints, dashboards, readiness.)
+    Cross-tenant read via `.all_tenants`; each refresh runs in its tenant context.
+    Returns a summary for observability.
+    """
+    from Tracker.models import LifeTracking
+
+    updated = 0
+    stale = (
+        LifeTracking.all_tenants
+        .filter(definition__is_calendar_based=True)
+        .select_related('definition')
+        .iterator()
+    )
+    for lt in stale:
+        live = lt.status
+        if lt.cached_status != live:
+            with tenant_context(str(lt.tenant_id)):
+                LifeTracking.objects.filter(pk=lt.pk).update(cached_status=live)
+            updated += 1
+
+    logger.info("recompute_life_status: updated=%d", updated)
+    return {'status': 'success', 'updated': updated}
+
+
+@shared_task
 def expire_supplier_qualifications():
     """Celery Beat task: flip active SupplierQualifications past their expiry_date
     to EXPIRED. Cross-tenant via `.all_tenants`; each expire runs in its tenant
