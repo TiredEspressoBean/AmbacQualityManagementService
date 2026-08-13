@@ -137,6 +137,26 @@ scheduled) and the reman allocator (which *selects* buy/harvest components but
 does not schedule *making* one). Build tasks tracked in
 `SCHEDULING_IMPLEMENTATION_PLAN.md`.
 
+### Cross-Process Flow (WO→WO Handoffs)
+
+Assembly convergence above is one instance of a broader fact: **a `WorkOrder` is
+bound to exactly one `Process`, and `StepEdge`s never cross a process boundary**,
+so *every* time a part flows into another process it does so as a **new WO** — a
+WO→WO handoff, not an intra-routing edge. There are (at least) three flavors, and
+the scheduler must chain all of them as inter-WO precedence while following a
+part across WO/process boundaries:
+
+- **BOM assembly** — child component WO → parent assembly step (above).
+- **Rework re-route** — a REWORK split re-points parts at a *different*
+  `target_process` in a new WO (`split_work_order`, resets `step=None`), so the
+  part's remaining route is **re-derived from scratch** in the new process.
+- **Reman teardown → rebuild** — a core runs a teardown/disassembly process,
+  yields harvested components, which flow into a separate rebuild process/WO.
+
+Consequence: a part's *schedulable identity spans multiple WOs*. A scheduler that
+plans each WO's routing in isolation misses the handoffs; the WO→WO peg (#9) is
+the same primitive all three need.
+
 ### Outside-Processing Consolidation
 
 The dual of assembly convergence — cross-WO fan-in onto a shared *external*
@@ -243,6 +263,31 @@ count, not the live count of independently-advancing units at a `(WO, step)`.
 receiving-inspection sample size with lot history (Reduced n ≈ 40% of Normal) and
 can recommend **discontinuing inspection** for a supplier — a material-availability
 cutoff driven by a state machine (`qms/severity_switching.py`).
+
+**6. Objective inputs drift, and expedite is coarse-grained.**
+- `WorkOrder.priority` (`WorkOrderPriority` 1–4, mapping the late-penalty tiers)
+  and `expected_completion` are plain live-read fields with **no change signal**.
+  The manual work queue re-ranks live (`priority, expected_completion` ordering),
+  so today's dispatch adapts instantly — but a CP-SAT schedule needs these edits
+  to mark `ScheduleResult.is_stale`. They belong in the invalidation set.
+- **Expedite is WO/cohort-granular, not part-granular.** Splitting an expedited
+  part out of its cohort was deliberately *removed* (EXPEDITE / CUSTOMER_PULL
+  dropped as split reasons, migrations 0060→0061) because re-merging the expedited
+  part with its siblings caused downstream/shipping pain. So the scheduler's unit
+  of expedite is the whole WO (raise priority / penetrate the slushy fence), not a
+  single part — a real constraint on how rush orders are modeled.
+
+**7. Concurrency is data-safe, but machine assignment is unenforced.**
+Advancement serializes concurrent movers (operator complete, batch seal, async
+task, reactive events) via `transaction.atomic()` + `SELECT FOR UPDATE` on part
+rows — no double-advance or duplicate executions (`mes/advancement.py`). Two
+consequences for the scheduler, both *timing/enforcement*, not corruption:
+(a) large cohorts (> async threshold) defer advancement to Celery, so "current
+step" has a variable settle-lag after a batch seal; (b) locking is on *part
+rows*, not machines, and `StepExecution` has no machine FK (#1) — so the MES
+neither reserves a machine nor records which one ran a part. **The scheduler's
+machine assignments are therefore advisory: unenforced and unverifiable** —
+reinforcing why the machine FK (#1) and plan-vs-actual reconciliation (#3) matter.
 
 ---
 

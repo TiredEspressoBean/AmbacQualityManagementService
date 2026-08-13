@@ -80,12 +80,27 @@ fix before the scheduler treats MES gates as authoritative):
 - **Declared step gates are silent no-ops.** `StepRequirement.is_satisfied`
   implements only MEASUREMENT / QA_APPROVAL / FPI_PASSED / SIGNOFF; EQUIPMENT_CHECK,
   CALIBRATION_VALID, TRAINING_VALID, MATERIAL_SCAN, CUSTOM all `return True`.
-- **`MaterialLot` versioning duplicates the balance.** A spec edit copies
-  `quantity_remaining` onto the new PK; consumption decrements one instance —
-  balances diverge across versions.
-- **WO process migration strands parts.** `implement_pco` swaps `WorkOrder.process`
-  but never remaps `Parts.step` — after a MIGRATE that removed/renumbered a step,
-  parts sit at a step that no longer exists.
+- **`MaterialLot` versioning duplicated the balance — RESOLVED (de-versioned, 2026-08-13).**
+  `MaterialLot` is *physical inventory* (a supplier receipt / on-hand lot), **not**
+  BOM data (the BOM is type-level: `BOMLine.component_type` → `PartTypes`). It was
+  flagged `_is_versioned = True`, so a metadata edit minted a new version and
+  **copied `quantity_remaining` forward** → balances diverged across versions. On
+  review the lot never needed versioning: the cert of conformance is a separate
+  controlled `Documents` artifact and metadata corrections are captured by auditlog,
+  so nothing is lost by treating the lot as a plain audited record. **Fix: removed
+  `_is_versioned` from `MaterialLot`** and reverted the serializer's version-routing
+  to a plain in-place update — the balance now lives on one row and cannot fork.
+  Root cause gone; no new table / ledger / shim needed. (Field-by-field, no lot
+  field genuinely needed immutable versioning; the one candidate, `expiration_date`,
+  is really a life-tracking concern — see the shelf-life follow-on below.)
+- **WO process migration strands parts — RESOLVED (2026-08-13).** `implement_pco`
+  now re-points each migrating WO's in-flight parts to the new version by
+  `Steps.identity_id`: parts whose step survives (unchanged or modified) auto-port;
+  parts stranded at a *removed* step require a per-part resolution
+  (RELOCATE / HOLD / SCRAP) or the migration is rejected
+  (`StrandedPartsNeedResolution`). Backend + `classify_parts_for_migration` (for the
+  picker) live in `services/change_control/part_remap.py`; the FE picker UI to
+  present stranded parts and collect resolutions is the follow-on.
 - **Shelf-life `cached_status` is stale.** Calendar life status flips live from
   `now()`, but the indexed `cached_status` only refreshes on `save()` — `.expired()`
   misses time-expired rows.
@@ -95,6 +110,15 @@ fix before the scheduler treats MES gates as authoritative):
   in-flight WO of that part type at once (no KEEP_ALL, unlike process change-control).
 - **`StepRollback` executor is unwired** — `executed_at` never set; the void /
   re-inspection scope is presently indeterminate.
+- **Expired material has no consumption gate (follow-on).** Surfaced while
+  de-versioning `MaterialLot`: nothing reads `expiration_date` to block
+  consumption/acceptance, so expired material can be used — the material analog of
+  the part life-limit gate. Compounded by two unreconciled shelf-life systems
+  (`MaterialLot.expiration_date` raw date vs `LifeTracking` calendar "Shelf Life",
+  which has the gate + controlled evidence-backed extension machinery but is wired
+  to cores/parts, not lots). Direction: unify material shelf-life under
+  `LifeTracking` (single source of truth, extensions with evidence, consumption
+  gate for free).
 
 Step-by-step build plan for the OR-Tools scheduling system described in `OR_TOOLS_INTEGRATION.md`. Each phase is dependency-ordered, testable in isolation, and marked as internal or customer-facing.
 
