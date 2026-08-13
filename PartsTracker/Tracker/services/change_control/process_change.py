@@ -575,6 +575,7 @@ def implement_pco(
     migration_disposition: str,
     migration_reason: str = '',
     selected_workorder_ids: Optional[list[UUID]] = None,
+    stranded_resolutions: Optional[dict] = None,
     mode: str = ChangeControlMode.SIMPLIFIED,
 ) -> ProcessChangeNotice:
     """Implement an approved PCO.
@@ -637,6 +638,7 @@ def implement_pco(
             new_version=new_version,
             disposition=migration_disposition,
             selected_workorder_ids=selected_workorder_ids or [],
+            resolutions=stranded_resolutions,
         )
 
         pco.migration_disposition = migration_disposition
@@ -858,14 +860,24 @@ def _apply_workorder_migrations(
     new_version: Processes,
     disposition: str,
     selected_workorder_ids: list[UUID],
+    resolutions: dict | None = None,
 ) -> list[UUID]:
     """Apply WO process FK migrations per the disposition.
 
-    Returns the list of WO IDs actually migrated. Each migration is a
-    direct FK update with `wo.save()`, which auditlog records as a
-    field change on WorkOrder.process — the per-WO migration audit
-    trail flows through that mechanism.
+    Each migration swaps `WorkOrder.process` to the new version **and** re-points
+    its in-flight parts to the corresponding steps by `Steps.identity_id` — parts
+    whose step survives (unchanged or modified) auto-port; parts stranded at a
+    *removed* step need a resolution in `resolutions` (keyed by `str(part_id)`).
+    If any stranded part lacks a resolution the whole migration is rejected via
+    `StrandedPartsNeedResolution`, and the caller's transaction rolls back so no
+    partial migration commits. Returns the list of WO IDs migrated. Each FK swap
+    is audited via auditlog.
     """
+    from Tracker.services.change_control.part_remap import (
+        StrandedPartsNeedResolution,
+        remap_workorder_parts,
+    )
+
     if disposition == ProcessChangeMigrationDisposition.KEEP_ALL:
         return []
 
@@ -876,10 +888,15 @@ def _apply_workorder_migrations(
         qs = [wo for wo in qs if str(wo.id) in selected_set]
 
     migrated: list[UUID] = []
+    unresolved: list[dict] = []
     for wo in qs:
         wo.process = new_version
         wo.save(update_fields=['process', 'updated_at'])
+        unresolved.extend(remap_workorder_parts(wo, new_version, resolutions))
         migrated.append(wo.id)
+
+    if unresolved:
+        raise StrandedPartsNeedResolution(unresolved)
 
     return migrated
 
