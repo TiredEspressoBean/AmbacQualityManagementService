@@ -1339,7 +1339,22 @@ class StepRequirement(SecureModel):
             # Check if signoff recorded (via step execution completed_by)
             return step_execution.completed_by is not None
 
-        # Default: assume satisfied for unhandled types
+        elif self.requirement_type in (
+            RequirementType.EQUIPMENT_CHECK,
+            RequirementType.MATERIAL_SCAN,
+            RequirementType.TRAINING_VALID,
+            RequirementType.CALIBRATION_VALID,
+        ):
+            # Not implemented as an automated check yet. Fail CLOSED: a declared
+            # *mandatory* resource/safety gate must never silently pass. (Training
+            # is separately enforced by the competence gate in
+            # `can_advance_from_step`, and calibration by the OUT_OF_SERVICE
+            # measurement-write refusal — so wiring these here is a later, possibly
+            # redundant refinement. Until then a mandatory requirement of these
+            # types blocks advancement rather than giving false assurance.)
+            return False
+
+        # Default: DOCUMENT / CUSTOM remain advisory (satisfied out-of-band).
         return True
 
 
