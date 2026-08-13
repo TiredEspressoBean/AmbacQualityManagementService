@@ -185,15 +185,13 @@ class DowntimeEventSerializer(SecureModelMixin):
 # ===== MATERIAL LOT SERIALIZERS =====
 
 class MaterialLotSerializer(SecureModelMixin):
-    """Material lot serializer with hybrid versioning routing.
+    """Material lot serializer.
 
-    Spec/content field edits (supplier, material_type, expiration_date,
-    manufacture_date, supplier_lot_number, material_description, storage_location,
-    certificate_of_conformance, unit_of_measure, lot_number, received_date)
-    route through ``create_new_version``.
-
-    Operational field edits (quantity_remaining, status, archived) use a plain
-    save so every consumption event does not mint a new version row.
+    MaterialLot is physical inventory, not a controlled document (de-versioned —
+    see Documents/SCHEDULING_IMPLEMENTATION_PLAN.md #1), so edits are plain
+    in-place updates; auditlog records field changes and the CoC is a separately
+    controlled Document. ``quantity_remaining`` stays read-only (written only by
+    the consumption/split services).
     """
     material_type_name = serializers.CharField(source='material_type.name', read_only=True, allow_null=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
@@ -212,32 +210,12 @@ class MaterialLotSerializer(SecureModelMixin):
             'status', 'hold_reason', 'manufacture_date', 'expiration_date',
             'certificate_of_conformance', 'storage_location',
             'child_lot_count',
-            'created_at', 'updated_at', 'archived', 'version',
+            'created_at', 'updated_at', 'archived',
         )
         read_only_fields = (
             'created_at', 'updated_at', 'quantity_remaining',
             'parent_lot_number', 'child_lot_count', 'received_by',
-            'version', 'hold_reason',
-        )
-
-    # Fields that do NOT trigger a new version — purely operational state.
-    # Any edit whose keys are a subset of this set goes through a plain save.
-    # If even one key falls outside this set the whole update routes through
-    # create_new_version.
-    _NON_VERSIONING_FIELDS = frozenset({
-        'archived',
-        'quantity_remaining',
-        'status',
-    })
-
-    def update(self, instance, validated_data):
-        """Route spec edits through ``create_new_version``; let operational
-        edits (quantity_remaining, status, archived) through as a plain save."""
-        from Tracker.services.core.versioning import apply_versioned_update
-        return apply_versioned_update(
-            instance, validated_data,
-            non_versioning_fields=self._NON_VERSIONING_FIELDS,
-            default_update=super().update,
+            'hold_reason',
         )
 
     @extend_schema_field(serializers.IntegerField())

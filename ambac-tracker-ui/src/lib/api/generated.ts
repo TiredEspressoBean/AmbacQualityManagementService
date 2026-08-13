@@ -2666,7 +2666,6 @@ export type MaterialLot = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
-  version: number;
 };
 export type MaterialLotStatusEnum =
   /**
@@ -15028,7 +15027,6 @@ const MaterialLot = z.object({
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
-  version: z.number().int(),
 });
 const PaginatedMaterialLotList = z.object({
   count: z.number().int(),

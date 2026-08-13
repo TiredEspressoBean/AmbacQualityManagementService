@@ -1,11 +1,10 @@
 """
 MaterialLot aggregate services.
 
-MaterialLot is HYBRID versioned — spec edits (supplier cert, expiration,
-material type) route via create_new_version; quantity_remaining changes do
-not. This service handles the split flow (pure quantity operation — new lot is
-a child, parent's quantity_remaining decrements). No versioning involved in
-split.
+MaterialLot is physical inventory and is NOT versioned (metadata edits are plain
+audited updates; the CoC is a separate controlled Document). This service handles
+the split flow — a pure quantity operation: the new lot is a child and the
+parent's quantity_remaining decrements.
 """
 from __future__ import annotations
 

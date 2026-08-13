@@ -17724,15 +17724,13 @@ export interface components {
             password: string;
         };
         /**
-         * @description Material lot serializer with hybrid versioning routing.
+         * @description Material lot serializer.
          *
-         *     Spec/content field edits (supplier, material_type, expiration_date,
-         *     manufacture_date, supplier_lot_number, material_description, storage_location,
-         *     certificate_of_conformance, unit_of_measure, lot_number, received_date)
-         *     route through ``create_new_version``.
-         *
-         *     Operational field edits (quantity_remaining, status, archived) use a plain
-         *     save so every consumption event does not mint a new version row.
+         *     MaterialLot is physical inventory, not a controlled document (de-versioned —
+         *     see Documents/SCHEDULING_IMPLEMENTATION_PLAN.md #1), so edits are plain
+         *     in-place updates; auditlog records field changes and the CoC is a separately
+         *     controlled Document. ``quantity_remaining`` stays read-only (written only by
+         *     the consumption/split services).
          */
         MaterialLot: {
             /** Format: uuid */
@@ -17782,7 +17780,6 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             archived?: boolean;
-            readonly version: number;
         };
         MaterialLotBulkCreateError: {
             detail?: string;
@@ -17822,15 +17819,13 @@ export interface components {
             storage_location?: string;
         };
         /**
-         * @description Material lot serializer with hybrid versioning routing.
+         * @description Material lot serializer.
          *
-         *     Spec/content field edits (supplier, material_type, expiration_date,
-         *     manufacture_date, supplier_lot_number, material_description, storage_location,
-         *     certificate_of_conformance, unit_of_measure, lot_number, received_date)
-         *     route through ``create_new_version``.
-         *
-         *     Operational field edits (quantity_remaining, status, archived) use a plain
-         *     save so every consumption event does not mint a new version row.
+         *     MaterialLot is physical inventory, not a controlled document (de-versioned —
+         *     see Documents/SCHEDULING_IMPLEMENTATION_PLAN.md #1), so edits are plain
+         *     in-place updates; auditlog records field changes and the CoC is a separately
+         *     controlled Document. ``quantity_remaining`` stays read-only (written only by
+         *     the consumption/split services).
          */
         MaterialLotRequest: {
             lot_number: string;
@@ -20880,15 +20875,13 @@ export interface components {
             archived?: boolean;
         };
         /**
-         * @description Material lot serializer with hybrid versioning routing.
+         * @description Material lot serializer.
          *
-         *     Spec/content field edits (supplier, material_type, expiration_date,
-         *     manufacture_date, supplier_lot_number, material_description, storage_location,
-         *     certificate_of_conformance, unit_of_measure, lot_number, received_date)
-         *     route through ``create_new_version``.
-         *
-         *     Operational field edits (quantity_remaining, status, archived) use a plain
-         *     save so every consumption event does not mint a new version row.
+         *     MaterialLot is physical inventory, not a controlled document (de-versioned —
+         *     see Documents/SCHEDULING_IMPLEMENTATION_PLAN.md #1), so edits are plain
+         *     in-place updates; auditlog records field changes and the CoC is a separately
+         *     controlled Document. ``quantity_remaining`` stays read-only (written only by
+         *     the consumption/split services).
          */
         PatchedMaterialLotRequest: {
             lot_number?: string;

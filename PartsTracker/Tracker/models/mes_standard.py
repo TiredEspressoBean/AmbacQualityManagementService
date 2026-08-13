@@ -1127,7 +1127,12 @@ class MaterialLot(SecureModel):
     traceability from receipt through consumption.
     """
 
-    _is_versioned = True  # engineering judgment — material lot spec
+    # Physical inventory, NOT a controlled document — the cert of conformance is a
+    # separate versioned Document and metadata corrections are captured by
+    # auditlog. Versioning the lot forked its live balance across versions (the #1
+    # bug in Documents/SCHEDULING_IMPLEMENTATION_PLAN.md), so it is deliberately
+    # not versioned.
+    _is_versioned = False
 
     # CoC, mill/material certs, packing slips, supplier docs attached at receipt.
     documents = GenericRelation('Tracker.Documents')

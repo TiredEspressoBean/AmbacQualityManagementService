@@ -1,10 +1,10 @@
 """
-Tests for MaterialLot split service and hybrid serializer versioning routing.
+Tests for MaterialLot split service and serializer updates.
 
-Covers:
+MaterialLot is de-versioned (physical inventory), so serializer edits are plain
+in-place updates. Covers:
   - split_material_lot: child creation, parent decrement, over-quantity guard
-  - MaterialLotSerializer.update: operational fields use plain save; spec
-    field edits route through create_new_version; mixed payloads version
+  - MaterialLotSerializer.update: spec and operational edits update in place
 """
 from __future__ import annotations
 
@@ -94,9 +94,9 @@ class SplitServiceTestCase(TenantTestCase):
         self.assertTrue(self.lot.is_current_version)
 
 
-class MaterialLotSerializerHybridRoutingTestCase(TenantTestCase):
-    """MaterialLotSerializer.update routes spec edits through versioning;
-    operational edits (quantity_remaining, status, archived) use plain save."""
+class MaterialLotSerializerUpdateTestCase(TenantTestCase):
+    """MaterialLot is de-versioned (physical inventory), so all serializer
+    edits — spec or operational — are plain in-place updates; none version."""
 
     def setUp(self):
         super().setUp()
@@ -143,38 +143,39 @@ class MaterialLotSerializerHybridRoutingTestCase(TenantTestCase):
         self.assertTrue(result.archived)
         self.assertEqual(result.pk, self.lot.pk)
 
-    # -- spec fields: must create a new version ---------------------------
+    # -- spec fields: update in place (no versioning) --------------------
 
-    def test_spec_field_change_creates_new_version(self):
+    def test_spec_field_change_updates_in_place(self):
         s = self._serializer(self.lot, {"storage_location": "Shelf B"})
         s.is_valid(raise_exception=True)
         result = s.save()
 
-        self.assertEqual(result.version, 2)
+        self.assertEqual(result.version, 1)
         self.assertEqual(result.storage_location, "Shelf B")
+        self.assertEqual(result.pk, self.lot.pk)
         self.lot.refresh_from_db()
-        self.assertFalse(self.lot.is_current_version)
+        self.assertTrue(self.lot.is_current_version)
 
-    def test_supplier_lot_number_change_creates_new_version(self):
+    def test_supplier_lot_number_change_updates_in_place(self):
         s = self._serializer(self.lot, {"supplier_lot_number": "SLN-999"})
         s.is_valid(raise_exception=True)
         result = s.save()
 
-        self.assertEqual(result.version, 2)
+        self.assertEqual(result.version, 1)
         self.assertEqual(result.supplier_lot_number, "SLN-999")
 
-    def test_expiration_date_change_creates_new_version(self):
+    def test_expiration_date_change_updates_in_place(self):
         s = self._serializer(self.lot, {"expiration_date": "2025-12-31"})
         s.is_valid(raise_exception=True)
         result = s.save()
 
-        self.assertEqual(result.version, 2)
+        self.assertEqual(result.version, 1)
         self.assertEqual(result.expiration_date, datetime.date(2025, 12, 31))
 
     # -- mixed payloads ---------------------------------------------------
 
-    def test_mixed_quantity_and_spec_creates_new_version(self):
-        """If any spec key is present, the whole update routes through versioning."""
+    def test_mixed_edit_updates_in_place(self):
+        """Mixed spec + operational edit updates in place (no versioning)."""
         s = self._serializer(
             self.lot,
             {"status": "IN_USE", "storage_location": "Shelf C"},
@@ -182,7 +183,7 @@ class MaterialLotSerializerHybridRoutingTestCase(TenantTestCase):
         s.is_valid(raise_exception=True)
         result = s.save()
 
-        self.assertEqual(result.version, 2)
+        self.assertEqual(result.version, 1)
         self.assertEqual(result.storage_location, "Shelf C")
 
     # -- empty payload ----------------------------------------------------
