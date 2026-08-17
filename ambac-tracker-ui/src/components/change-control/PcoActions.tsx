@@ -23,7 +23,7 @@ import {
     type MigrationDisposition,
 } from "@/hooks/useChangeControlActions";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
-import { useAffectedWorkorders, type AffectedWorkorderRow } from "@/hooks/useAffectedWorkorders";
+import { useAffectedWorkorders, type AffectedWorkorderRow, type StrandedPart, type AvailableStep } from "@/hooks/useAffectedWorkorders";
 import { useTenantContext } from "@/components/tenant-provider";
 import { useApprovalRequestsFor } from "@/hooks/useApprovalRequestsFor";
 
@@ -156,13 +156,14 @@ export function PcoActions({ pcoId, status, implementationPlan, effectiveDate }:
                 onOpenChange={setImplementOpen}
                 pcoId={pcoId}
                 pending={implement.isPending}
-                onSubmit={async (disposition, reason, selectedIds) => {
+                onSubmit={async (disposition, reason, selectedIds, resolutions) => {
                     try {
                         await implement.mutateAsync({
                             id: pcoId,
                             migration_disposition: disposition,
                             migration_reason: reason,
                             selected_workorder_ids: disposition === "MIGRATE_SELECTED" ? selectedIds : undefined,
+                            stranded_resolutions: Object.keys(resolutions).length ? resolutions : undefined,
                         });
                         toast.success("PCO implemented");
                         setImplementOpen(false);
@@ -243,6 +244,8 @@ function AuthorPlanDialog({
     );
 }
 
+type Resolution = { action: string; target_step_id?: string };
+
 function ImplementDialog({
     open, onOpenChange, pcoId, pending, onSubmit,
 }: {
@@ -250,21 +253,33 @@ function ImplementDialog({
     onOpenChange: (o: boolean) => void;
     pcoId: string;
     pending: boolean;
-    onSubmit: (disposition: MigrationDisposition, reason: string, selectedIds: string[]) => void;
+    onSubmit: (
+        disposition: MigrationDisposition,
+        reason: string,
+        selectedIds: string[],
+        resolutions: Record<string, Resolution>,
+    ) => void;
 }) {
     const [disposition, setDisposition] = useState<MigrationDisposition>("KEEP_ALL");
     const [reason, setReason] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [resolutions, setResolutions] = useState<Record<string, Resolution>>({});
     useEffect(() => {
         if (open) {
             setDisposition("KEEP_ALL");
             setReason("");
             setSelectedIds(new Set());
+            setResolutions({});
         }
     }, [open]);
 
+    const migrating = disposition === "MIGRATE_ALL" || disposition === "MIGRATE_SELECTED";
     const needsPicker = disposition === "MIGRATE_SELECTED";
-    const { data: affected, isLoading } = useAffectedWorkorders(pcoId, open && needsPicker);
+    // Fetch (and classify) whenever a migration is selected — needed for both the
+    // WO picker and the stranded-parts resolution list.
+    const { data, isLoading } = useAffectedWorkorders(pcoId, open && migrating);
+    const rows = data?.rows;
+    const availableSteps = data?.availableSteps ?? [];
 
     const toggleOne = (id: string) => {
         setSelectedIds((prev) => {
@@ -275,17 +290,31 @@ function ImplementDialog({
         });
     };
     const toggleAll = (checked: boolean) => {
-        if (!affected) return;
-        setSelectedIds(checked ? new Set(affected.map((r) => r.wo_id)) : new Set());
+        if (!rows) return;
+        setSelectedIds(checked ? new Set(rows.map((r) => r.wo_id)) : new Set());
     };
 
-    const canSubmit = !needsPicker || selectedIds.size > 0;
+    // Only the WOs that will actually migrate contribute stranded parts.
+    const migratingRows = (rows ?? []).filter(
+        (r) => disposition === "MIGRATE_ALL" || selectedIds.has(r.wo_id),
+    );
+    const strandedParts = migratingRows.flatMap((r) => r.stranded ?? []);
+
+    const setResolution = (partId: string, patch: Partial<Resolution>) =>
+        setResolutions((prev) => ({ ...prev, [partId]: { ...prev[partId], ...patch } }));
+
+    const strandedResolved = strandedParts.every((p) => {
+        const res = resolutions[p.part_id];
+        if (!res?.action) return false;
+        return res.action !== "RELOCATE" || !!res.target_step_id;
+    });
+    const canSubmit = (!needsPicker || selectedIds.size > 0) && strandedResolved;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 className={
-                    needsPicker
+                    migrating
                         ? "sm:max-w-5xl max-h-[90vh] overflow-y-auto"
                         : "sm:max-w-md max-h-[90vh] overflow-y-auto"
                 }
@@ -311,11 +340,20 @@ function ImplementDialog({
 
                     {needsPicker && (
                         <WorkorderPicker
-                            rows={affected}
+                            rows={rows}
                             isLoading={isLoading}
                             selectedIds={selectedIds}
                             onToggleOne={toggleOne}
                             onToggleAll={toggleAll}
+                        />
+                    )}
+
+                    {migrating && strandedParts.length > 0 && (
+                        <StrandedResolutions
+                            parts={strandedParts}
+                            availableSteps={availableSteps}
+                            resolutions={resolutions}
+                            onSet={setResolution}
                         />
                     )}
 
@@ -328,13 +366,78 @@ function ImplementDialog({
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
                     <Button
                         disabled={pending || !canSubmit}
-                        onClick={() => onSubmit(disposition, reason, Array.from(selectedIds))}
+                        onClick={() => onSubmit(disposition, reason, Array.from(selectedIds), resolutions)}
                     >
                         {pending ? "Implementing…" : needsPicker ? `Implement (${selectedIds.size})` : "Implement"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function StrandedResolutions({
+    parts, availableSteps, resolutions, onSet,
+}: {
+    parts: StrandedPart[];
+    availableSteps: AvailableStep[];
+    resolutions: Record<string, Resolution>;
+    onSet: (partId: string, patch: Partial<Resolution>) => void;
+}) {
+    return (
+        <div className="border rounded-md border-amber-300 dark:border-amber-800 overflow-hidden">
+            <div className="bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">
+                {parts.length} part{parts.length === 1 ? "" : "s"} sit at a step removed in the new version — choose what happens to each before implementing.
+            </div>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Part</TableHead>
+                        <TableHead>Removed step</TableHead>
+                        <TableHead>Resolution</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {parts.map((p) => {
+                        const res = resolutions[p.part_id];
+                        return (
+                            <TableRow key={p.part_id}>
+                                <TableCell className="font-mono text-xs">{p.part_id.slice(0, 8)}</TableCell>
+                                <TableCell className="text-xs">{p.step_name}</TableCell>
+                                <TableCell>
+                                    <div className="flex gap-2">
+                                        <Select
+                                            value={res?.action ?? ""}
+                                            onValueChange={(v) => onSet(p.part_id, { action: v, target_step_id: undefined })}
+                                        >
+                                            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Choose…" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="RELOCATE">Relocate</SelectItem>
+                                                <SelectItem value="HOLD">Hold</SelectItem>
+                                                <SelectItem value="SCRAP">Scrap</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {res?.action === "RELOCATE" && (
+                                            <Select
+                                                value={res?.target_step_id ?? ""}
+                                                onValueChange={(v) => onSet(p.part_id, { target_step_id: v })}
+                                            >
+                                                <SelectTrigger className="w-[170px]"><SelectValue placeholder="To step…" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {availableSteps.map((s) => (
+                                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+            </Table>
+        </div>
     );
 }
 

@@ -136,3 +136,17 @@ class ProcessMigrationRemapTests(TenantContextMixin, TestCase):
             )
         self.assertEqual(len(ctx.exception.stranded), 1)
         self.assertEqual(ctx.exception.stranded[0]["part_id"], str(self.part_r.id))
+
+    def test_impact_analysis_surfaces_portable_and_stranded(self):
+        from Tracker.services.change_control.impact_analysis import (
+            affected_workorders_with_impact,
+        )
+        rows = affected_workorders_with_impact(
+            target_process=self.old_proc,
+            proposed_change_diff={},
+            new_process=self.new_proc,
+        )
+        row = next(r for r in rows if r["wo_id"] == str(self.wo.id))
+        self.assertEqual(row["portable_count"], 2)  # unchanged + modified
+        self.assertEqual(len(row["stranded"]), 1)
+        self.assertEqual(row["stranded"][0]["part_id"], str(self.part_r.id))

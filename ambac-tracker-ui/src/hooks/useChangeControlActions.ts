@@ -157,7 +157,13 @@ export function useImplementPco() {
     return useMutation<
         unknown,
         Error,
-        { id: string; migration_disposition: MigrationDisposition; migration_reason?: string; selected_workorder_ids?: string[] }
+        {
+            id: string;
+            migration_disposition: MigrationDisposition;
+            migration_reason?: string;
+            selected_workorder_ids?: string[];
+            stranded_resolutions?: Record<string, { action: string; target_step_id?: string }>;
+        }
     >({
         mutationFn: ({ id, ...rest }) => post("process-change-orders", id, "implement", rest),
         onSuccess: makeInvalidator(qc),

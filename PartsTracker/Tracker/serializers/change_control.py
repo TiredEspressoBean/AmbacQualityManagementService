@@ -302,6 +302,10 @@ class PcoImplementPayloadSerializer(serializers.Serializer):
         required=False,
         default=list,
     )
+    # {str(part_id): {"action": "RELOCATE"|"HOLD"|"SCRAP", "target_step_id": <id>}}
+    # for parts stranded at a step removed in the new version. See
+    # services/change_control/part_remap.py.
+    stranded_resolutions = serializers.JSONField(required=False, default=dict)
 
 
 class PcoCancelPayloadSerializer(serializers.Serializer):

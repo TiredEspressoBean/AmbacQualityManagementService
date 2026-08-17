@@ -62,6 +62,7 @@ def list_affected_workorders(target_process: Processes) -> Iterable[WorkOrder]:
 def affected_workorders_with_impact(
     target_process: Processes,
     proposed_change_diff: dict | None,
+    new_process: Processes | None = None,
 ) -> list[dict]:
     """Per-WO impact summary for the PCO migration picker.
 
@@ -71,14 +72,20 @@ def affected_workorders_with_impact(
         affected_parts         -- parts currently at a step touched by the diff
                                   (modified or removed)
 
-    "Affected" parts are the ones whose current step is part of the
-    diff's change surface. Parts not yet started, parts past the diff
-    region, and parts at unchanged steps are all "unaffected" — they
-    can be migrated trivially. The split helps the operator decide
-    whether to move a WO across (`MIGRATE_*`) or hold it on the old
-    version (`KEEP_ALL`).
+    When ``new_process`` (the draft version being implemented) is supplied, each
+    row also carries the migration classification the process-flow / picker UI
+    needs to collect resolutions:
+        portable_count         -- parts whose step survives (auto-port on migrate)
+        stranded               -- [{part_id, wo_id, step_id, step_name}] for parts
+                                  at a step REMOVED in the new version; each needs a
+                                  RELOCATE / HOLD / SCRAP resolution at implement.
+
+    Parts not yet started, past the diff region, or at unchanged steps are
+    "unaffected" and migrate trivially. The split helps the operator decide
+    whether to move a WO across (`MIGRATE_*`) or hold it (`KEEP_ALL`).
     """
     from Tracker.models import Parts, PartsStatus
+    from Tracker.services.change_control.part_remap import classify_parts_for_migration
 
     diff = proposed_change_diff or {}
     touched_step_ids: set[str] = set()
@@ -105,7 +112,7 @@ def affected_workorders_with_impact(
             affected_parts = in_flight_parts.filter(step_id__in=touched_step_ids).count()
         else:
             affected_parts = 0
-        rows.append({
+        row = {
             'wo_id': str(wo.id),
             'erp_id': wo.ERP_id,
             'status': wo.workorder_status,
@@ -113,7 +120,12 @@ def affected_workorders_with_impact(
             'quantity': wo.quantity,
             'total_parts': total_parts,
             'affected_parts': affected_parts,
-        })
+        }
+        if new_process is not None:
+            cls = classify_parts_for_migration(wo, new_process)
+            row['portable_count'] = cls['portable_count']
+            row['stranded'] = cls['stranded']
+        rows.append(row)
     return rows
 
 

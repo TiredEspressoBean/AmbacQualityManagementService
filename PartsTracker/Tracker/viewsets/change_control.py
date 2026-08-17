@@ -498,8 +498,17 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         rows = affected_workorders_with_impact(
             target_process=pco.request.target_process,
             proposed_change_diff=diff,
+            new_process=pco.draft_process_version,
         )
-        return Response({'results': rows})
+        # Surviving steps in the new version — the RELOCATE targets the picker
+        # offers for parts stranded at a removed step.
+        draft = pco.draft_process_version
+        available_steps = (
+            [{'id': str(ps.step_id), 'name': ps.step.name}
+             for ps in draft.process_steps.select_related('step').all()]
+            if draft else []
+        )
+        return Response({'results': rows, 'available_steps': available_steps})
 
     @action(detail=True, methods=['post'], url_path='implement')
     def implement(self, request, pk=None):
@@ -507,6 +516,7 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         payload = PcoImplementPayloadSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         mode = _resolve_mode(request)
+        from Tracker.services.change_control.part_remap import StrandedPartsNeedResolution
         try:
             pcn = implement_pco(
                 pco,
@@ -514,8 +524,12 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 migration_disposition=payload.validated_data['migration_disposition'],
                 migration_reason=payload.validated_data.get('migration_reason', ''),
                 selected_workorder_ids=payload.validated_data.get('selected_workorder_ids') or None,
+                stranded_resolutions=payload.validated_data.get('stranded_resolutions') or None,
                 mode=mode,
             )
+        except StrandedPartsNeedResolution as exc:
+            # 400 with the stranded list so the picker can prompt for resolutions.
+            return Response({'detail': str(exc), 'stranded': exc.stranded}, status=400)
         except ValueError as exc:
             return _bad_request(exc)
         pco.refresh_from_db()
