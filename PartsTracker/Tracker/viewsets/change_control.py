@@ -129,6 +129,11 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         'cancel': ['change_processchangerequest'],
     }
 
+    # State transitions on an existing PCR (change_) — skip the base POST→add_
+    # CRUD gate so `action_permissions` is the sole gate. `propose` is NOT exempt:
+    # it genuinely creates a PCR, so add_processchangerequest is the right gate.
+    crud_exempt_actions = {'submit', 'approve', 'reject', 'cancel'}
+
     def perform_create(self, serializer):
         """Auto-generate artifact_number on create."""
         tenant = self.tenant
@@ -391,6 +396,13 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         'affected_workorders': ['view_processchangeorder'],
     }
 
+    # These are POST state-transitions on an *existing* PCO (a change_), not
+    # object creation — so skip the base POST→add_processchangeorder CRUD gate and
+    # let the declared `action_permissions` (change_processchangeorder) be the sole
+    # gate. Without this, a user with change_ but not add_ sees the lifecycle
+    # buttons (FE gates on change_) yet gets a 403 from the action.
+    crud_exempt_actions = {'author', 'approve', 'mark_approved', 'implement', 'cancel'}
+
     # PCOs are created indirectly via PCR approval. POST/PUT/DELETE on
     # the collection or individual rows are blocked; only PATCH (limited
     # field set) and the @action lifecycle endpoints are allowed.
@@ -585,6 +597,10 @@ class ProcessChangeNoticeViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         'release': ['change_processchangenotice'],
         'close': ['change_processchangenotice'],
     }
+
+    # Both are POST state-transitions on an existing PCN (change_), not creation —
+    # skip the base POST→add_ CRUD gate; `action_permissions` is the sole gate.
+    crud_exempt_actions = {'release', 'close'}
 
     def create(self, request, *args, **kwargs):
         return Response(
