@@ -142,9 +142,7 @@ class Command(BaseCommand):
         'Tracker_stepexecutionmeasurement',
         'Tracker_stepoverride',
         'Tracker_steprequirement',
-        'Tracker_steprollback',
         'Tracker_batchexecution',
-        'Tracker_batchrollback',
         'Tracker_artifactsequence',
 
         # Milestones

@@ -47,7 +47,7 @@ from Tracker.models import (
     # Sampling models
     SamplingRuleSet, SamplingRule, SamplingTriggerState, SamplingAuditLog, SamplingAnalytics,
     # Workflow execution models
-    StepExecution, StepExecutionMeasurement, StepRollback, BatchRollback,
+    StepExecution, StepExecutionMeasurement,
     # FPI models
     FPIRecord,
     # CAPA models

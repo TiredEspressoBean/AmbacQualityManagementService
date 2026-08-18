@@ -103,7 +103,7 @@ WITHHELD_PERMS = {
 # delete_ intentionally not granted — these soft-delete / void, or hard-delete
 # is disabled (SecureModel.hard_delete raises). Records are retired, not destroyed.
 SOFT_DELETE_MODELS = {
-    'workorderhold', 'steprollback', 'batchrollback', 'stepoverride',
+    'workorderhold', 'stepoverride',
     'fpirecord', 'qualityreportequipment', 'qualityreportpersonnel',
     'batchexecution', 'steprequirement', 'outsideprocessshipment',
     'milestone', 'milestonetemplate',

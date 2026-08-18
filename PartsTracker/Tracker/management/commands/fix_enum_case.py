@@ -84,8 +84,6 @@ class Command(BaseCommand):
             (tracker_models.FPIRecord, 'result', tracker_models.FPIResult),
             (tracker_models.StepOverride, 'block_type', tracker_models.BlockType),
             (tracker_models.StepOverride, 'override_status', tracker_models.OverrideStatus),
-            (tracker_models.StepRollback, 'reason', tracker_models.RollbackReason),
-            (tracker_models.StepRollback, 'status', tracker_models.RollbackStatus),
         ]
 
         # Process each check

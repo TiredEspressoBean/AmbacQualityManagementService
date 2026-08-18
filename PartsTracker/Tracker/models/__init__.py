@@ -288,10 +288,6 @@ from .qms import (
     # Rollback & Audit
     VoidableModel,
     RecordEdit,
-    RollbackReason,
-    RollbackStatus,
-    StepRollback,
-    BatchRollback,
 )
 
 # SPC models - Statistical Process Control
@@ -551,10 +547,6 @@ __all__ = [
     # Rollback & Audit
     'VoidableModel',
     'RecordEdit',
-    'RollbackReason',
-    'RollbackStatus',
-    'StepRollback',
-    'BatchRollback',
 
     # SPC (Statistical Process Control)
     'SPCBaseline',

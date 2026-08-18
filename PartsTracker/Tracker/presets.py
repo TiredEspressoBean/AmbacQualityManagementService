@@ -68,7 +68,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_substep', 'view_substepcompletion', 'view_substepresource',
     'view_substeptranslation', 'view_substepgatecompletion', 'view_substepresponse',
     # Production exceptions & runtime records
-    'view_workorderhold', 'view_steprollback', 'view_batchrollback',
+    'view_workorderhold',
     'view_stepoverride', 'view_fpirecord', 'view_batchexecution',
     'view_steprequirement',
     # Shift notes (all floor staff read; authoring is a lead grant)
@@ -172,8 +172,6 @@ STAFF_OPERATIONAL_WRITE = [
     # (steptransitionlog is service-written and DB-immutable — view only)
     # Production exceptions
     'add_workorderhold', 'change_workorderhold',
-    'add_steprollback', 'change_steprollback',
-    'add_batchrollback', 'change_batchrollback',
     'add_stepoverride', 'change_stepoverride',
     'add_fpirecord', 'change_fpirecord',
     'add_batchexecution', 'change_batchexecution',
