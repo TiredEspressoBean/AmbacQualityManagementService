@@ -16,25 +16,58 @@ that first; it is what makes durations and OEE honest.
 
 **Decide-first (structural — they change the model, not just add a field):**
 
-- **#1 `StepExecution` has no machine FK.** The duration-fallback chain and
-  per-machine timing assume execution history is attributable to a machine, but
-  `StepExecution` records operators only. Add `equipment` (FK→Equipments) — the
-  DWI submit already stamps `StepExecution`, so the FK yields machine-attributed
-  coarse cycle time at zero extra capture friction. Reflected in the Phase 0
-  field table below.
-- **#3 `ScheduleSlot` ↔ `ScheduledTask` reconciliation.** A manual `ScheduleSlot`
-  already exists (wired to `cascade_schedule_slots()` on WO completion). The plan
-  introduces solver-output `ScheduledTask` without saying how they relate. Decide:
-  does solver output populate/supersede `ScheduleSlot`, or are they parallel? Two
-  live "schedule" concepts is a data-integrity hazard.
-- **#9 Multi-level BOM / assembly convergence.** When a `BOMLine`'s component is
-  made in-house (holder body → injector), the parent's assembly step can't start
-  until the child's own WO completes and it's staged. This is cross-WO precedence
-  + demand pegging, not intra-routing `StepEdge`. Needs a WO→WO peg (component job
-  → parent BOMLine/consuming step; today `WorkOrder.parent_workorder` exists only
-  for split provenance) and a decision on auto-explosion (MRP-lite) vs manual
-  linkage. Constraint design lives in `OR_TOOLS_INTEGRATION.md`; build tasks land
-  as a phase here once scoped. Highest structural impact of the gaps.
+- **#1 `StepExecution` has no machine FK — RESOLVED (design, 2026-08-18).** The
+  duration-fallback chain and per-machine timing assume execution history is
+  attributable to a machine, but `StepExecution` records operators only
+  (`assigned_to`/`completed_by`; no equipment). `Steps` carries
+  `default_equipment`/`backup_equipment`, but the *execution* never captures which
+  machine ran. **Decision:** add `equipment = ForeignKey(Equipments, null=True,
+  blank=True, on_delete=SET_NULL, related_name='step_executions')` to
+  `StepExecution`. Populate at DWI submit from the operator's machine selection,
+  falling back to `step.default_equipment`; nullable so historical rows and
+  no-machine steps are fine. Yields machine-attributed coarse cycle time at zero
+  extra capture friction. Already reflected in the Phase 0 field table below.
+- **#3 `ScheduleSlot` ↔ `ScheduledTask` — RESOLVED (design, 2026-08-18).**
+  Investigation finding: `ScheduleSlot` (`mes_standard.py:968`) is
+  **WO × WorkCenter × Shift** granularity — *no Step FK, no `Equipments` FK* — and
+  is **dormant**: a full CRUD API exists but there is **zero frontend, zero tests,
+  and no code anywhere creates a slot** (only `cascade_schedule_slots()` mutates
+  existing ones on WO completion). It structurally cannot represent the solver's
+  part+step+machine assignment, and since nothing populates it the "two live
+  schedule concepts" hazard is latent, not active. **Decision:** `ScheduledTask`
+  (part+step+machine+start+end) is the single authoritative solver schedule; the
+  solver never writes `ScheduleSlot`. **Retire `ScheduleSlot`** (remove the model +
+  its dormant viewset/serializer/route as dead scaffold) — a deletion, so confirm
+  before executing; slot it as a small cleanup alongside Phase 0. Any future coarse
+  WO/work-center capacity rollup is *derived* from `ScheduledTask`, not a second
+  writable model. Carry `ScheduleSlot`'s good conventions into `ScheduledTask`:
+  planned + actual start/end, the `SCHEDULED/IN_PROGRESS/COMPLETED/CANCELLED` status
+  vocabulary, and the cascade-on-WO-complete pattern.
+- **#9 Multi-level BOM / assembly convergence — RESOLVED (design, 2026-08-18;
+  build is its own later phase).** When a `BOMLine`'s component is made in-house
+  (holder body → injector), the parent's assembly step can't start until the
+  child's own WO completes and is staged. Investigation confirms **nothing exists
+  to build on**: `BOMLine.component_type → PartTypes` (design-level) has no
+  make-vs-buy flag; `AssemblyUsage` is hand-entered Parts→Parts *after the fact*
+  with no completeness/staging gate; `WorkOrder.parent_workorder` is **split
+  provenance only** (same parts, PROTECT, read by split/undo-split — overloading it
+  would corrupt those flows); and there is **no MRP/explosion/pegging/WO→WO
+  precedence anywhere**. **Decision (minimal peg, manual-first):**
+  (1) add a make-vs-buy signal as a field — `BOMLine.source` (`MAKE`/`BUY`, default
+  `BUY`) — so the scheduler knows which lines spawn a child job;
+  (2) add the peg as **new** nullable FKs on `WorkOrder` — `pegged_to_workorder →
+  WorkOrder` (the parent assembly WO) + `pegged_to_bom_line → BOMLine` (the line it
+  fills) — **distinct from `parent_workorder`, which stays split-only**;
+  (3) precedence: the solver reads the peg to add a cross-WO constraint (child
+  finish + staging-buffer ≤ parent assembly-step start); for MVP "staged" = child
+  WO `COMPLETED` plus a staging-buffer parameter (a formal staged location/state is
+  a later enhancement);
+  (4) **manual linkage first** — a planner links a child component WO to a parent
+  BOMLine via the peg fields; **auto-explosion (MRP-lite: walk a released assembly
+  BOM's `MAKE` lines → generate child WOs)** is a scoped follow-on phase, not MVP.
+  The two field additions (`BOMLine.source`, the `WorkOrder` peg FKs) are cheap and
+  can ride Phase 0's migration; the explosion/precedence *logic* is its own later
+  phase. Constraint design lives in `OR_TOOLS_INTEGRATION.md`.
 
 **Domain constraints to fold into the relevant phases** (each modest alone;
 together a real chunk — see the constraint abstractions in `OR_TOOLS_INTEGRATION.md`):
@@ -192,6 +225,9 @@ Tracker/
 | `Steps` | `max_continuous_minutes` | IntegerField(null=True) | AlterModel |
 | `StepEdge` | `tech_continuity` | CharField(max_length=10, default='ANY', choices=ANY/SAME/DIFFERENT) | AlterModel |
 | `StepExecution` | `equipment` | ForeignKey(Equipments, null=True) | AlterModel — #1, machine attribution for actuals; see Additions |
+| `BOMLine` | `source` | CharField(max_length=4, default='BUY', choices=MAKE/BUY) | AlterModel — #9 make-vs-buy signal |
+| `WorkOrder` | `pegged_to_workorder` | ForeignKey(self, null=True, on_delete=SET_NULL, related_name='component_pegs') | AlterModel — #9 assembly-convergence peg (distinct from `parent_workorder`) |
+| `WorkOrder` | `pegged_to_bom_line` | ForeignKey(BOMLine, null=True, on_delete=SET_NULL) | AlterModel — #9 the BOMLine this child WO fills |
 
 ### Files to Create / Modify
 
