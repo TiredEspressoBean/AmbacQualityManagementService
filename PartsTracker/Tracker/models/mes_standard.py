@@ -199,6 +199,15 @@ class Equipments(SecureModel):
     )
     """Current operational status of the equipment."""
 
+    is_schedulable = models.BooleanField(
+        default=False,
+        help_text="Whether the scheduler treats this asset as a finite resource to "
+                  "reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment "
+                  "(calipers) — those are still tracked on step executions, just never "
+                  "scheduled. Capacity for a type = the count of its schedulable units.",
+    )
+    """Scheduler reserves this asset only when True (plan #1). Off ≠ untracked."""
+
     # === LOCATION ===
     location = models.CharField(max_length=100, blank=True)
     """Physical location (e.g., 'QA Lab', 'Machine Shop', 'Tool Crib')."""
@@ -319,17 +328,17 @@ class Equipments(SecureModel):
         """Return parts that used this equipment within the date range.
 
         Critical for impact assessment when equipment is found out of calibration.
-        Unions production touch (`StepExecution.equipment`) and inspection touch
-        (equipment on quality reports) — see plan #1 (EquipmentUsage retired).
+        Unions step-execution touch (`StepExecutionEquipment`, any role) and quality-
+        report touch (`QualityReportEquipment`) — see plan #1.
         """
-        from Tracker.models import Parts, StepExecution
-        from Tracker.models.qms import QualityReportEquipment
+        from Tracker.models import Parts
+        from Tracker.models.qms import QualityReportEquipment, StepExecutionEquipment
 
         part_ids = set(
-            StepExecution.objects.filter(
-                equipment=self, part__isnull=False,
-                entered_at__date__range=(start_date, end_date),
-            ).values_list('part_id', flat=True)
+            StepExecutionEquipment.objects.filter(
+                equipment=self, step_execution__part__isnull=False,
+                step_execution__entered_at__date__range=(start_date, end_date),
+            ).values_list('step_execution__part_id', flat=True)
         )
         part_ids.update(
             QualityReportEquipment.objects.filter(

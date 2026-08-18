@@ -980,13 +980,15 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                     disposition_map[disp.step_id] = []
                 disposition_map[disp.step_id].append(disp)
 
-        # Equipment used for this part, per step: the machine that ran each step
-        # execution (EquipmentUsage retired — see plan #1). Items expose `.equipment`.
-        equipment_map = {}  # step_id -> list of StepExecution (each has .equipment)
-        for ex in StepExecution.objects.filter(
-            part=part, equipment__isnull=False
-        ).select_related('equipment'):
-            equipment_map.setdefault(ex.step_id, []).append(ex)
+        # Equipment used for this part, per step: everything linked to each step
+        # execution (StepExecutionEquipment, all roles — see plan #1). Items expose
+        # `.equipment`.
+        from Tracker.models.qms import StepExecutionEquipment
+        equipment_map = {}  # step_id -> list of StepExecutionEquipment (each has .equipment)
+        for link in StepExecutionEquipment.objects.filter(
+            step_execution__part=part
+        ).select_related('equipment', 'step_execution'):
+            equipment_map.setdefault(link.step_execution.step_id, []).append(link)
 
         # Get material usage for this part
         material_usages = MaterialUsage.objects.filter(

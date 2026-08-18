@@ -161,7 +161,9 @@ class SchedulingModelTests(TenantContextMixin, TestCase):
         )
         self.assertEqual(edge.tech_continuity, "DIFFERENT")
 
-    def test_step_execution_equipment_fk(self):
+    def test_step_execution_equipment_links_and_primary(self):
+        from Tracker.models import StepExecutionEquipment
+        from Tracker.models.qms import EquipmentRole
         wo = WorkOrder.objects.create(
             tenant=self.tenant, ERP_id="WO-SCH-2",
             workorder_status=WorkOrderStatus.IN_PROGRESS, quantity=1, process=self.process,
@@ -170,12 +172,18 @@ class SchedulingModelTests(TenantContextMixin, TestCase):
             tenant=self.tenant, ERP_id="P-SCH-2", part_type=self.pt, work_order=wo, step=self.step1,
         )
         ex = StepExecution.objects.create(
-            tenant=self.tenant, part=part, step=self.step1, visit_number=1,
-            status="IN_PROGRESS", equipment=self.machine,
+            tenant=self.tenant, part=part, step=self.step1, visit_number=1, status="IN_PROGRESS",
         )
-        ex.refresh_from_db()
-        self.assertEqual(ex.equipment, self.machine)
-        self.assertIn(ex, self.machine.step_executions.all())
+        gauge = Equipments.objects.create(tenant=self.tenant, name="Keyence-1")
+        # A step visit records multiple equipment with roles.
+        StepExecutionEquipment.objects.create(
+            step_execution=ex, equipment=self.machine, role=EquipmentRole.PRODUCTION)
+        StepExecutionEquipment.objects.create(
+            step_execution=ex, equipment=gauge, role=EquipmentRole.GAUGE)
+        self.assertEqual(ex.equipment_links.count(), 2)
+        # primary_equipment returns the PRODUCTION-role machine.
+        self.assertEqual(ex.primary_equipment, self.machine)
+        self.assertIn(ex, [l.step_execution for l in self.machine.step_execution_links.all()])
 
     def test_bomline_source_and_workorder_peg(self):
         bom = BOM.objects.create(tenant=self.tenant, part_type=self.pt, bom_type="ASSEMBLY")

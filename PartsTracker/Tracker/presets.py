@@ -90,6 +90,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_qualityreports', 'view_qualityerrorslist', 'view_qualityreportdefect',
     'view_qaapproval', 'view_quarantinedisposition',
     'view_qualityreportequipment', 'view_qualityreportpersonnel',
+    'view_stepexecutionequipment',
     # Supplier quality / part approval / quality gates
     'view_supplierqualification', 'view_partapproval', 'view_stepgatefiring',
     # CAPA & RCA
@@ -216,6 +217,7 @@ STAFF_OPERATIONAL_WRITE = [
     'add_supplierqualification', 'change_supplierqualification',
     'add_partapproval', 'change_partapproval',
     'add_qualityreportequipment', 'change_qualityreportequipment',
+    'add_stepexecutionequipment', 'change_stepexecutionequipment',
     'add_qualityreportpersonnel', 'change_qualityreportpersonnel',
     # CAPA & RCA — anyone can help fill in a draft (change_capa); raising a
     # new CAPA (initiate_capa) is granted separately per role. Approval verbs

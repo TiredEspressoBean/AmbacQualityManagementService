@@ -250,6 +250,49 @@ class QualityReportEquipment(models.Model):
         return f"{self.equipment} ({self.role}) → {self.quality_report}"
 
 
+class StepExecutionEquipment(models.Model):
+    """Through table for StepExecution → Equipments with a per-row role.
+
+    The multi-equipment record of what a part's step visit actually used: the
+    production machine (CNC), measurement instruments (a Keyence, a CMM, a handheld
+    caliper), fixtures, tooling. Mirrors ``QualityReportEquipment`` and reuses
+    ``EquipmentRole``. This is the machine-attribution home for scheduling duration
+    / OEE (PRODUCTION role) and calibration / gauge tracking (GAUGE role).
+
+    *Every* equipment touch is tracked here regardless of whether it is a
+    schedulable resource — the solver reserves only those flagged
+    ``Equipments.is_schedulable`` (so a plentiful handheld is recorded but never
+    scheduled in three places at once). Not a SecureModel — scoping is inherited
+    from the parent StepExecution via cascade.
+    """
+
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution', on_delete=models.CASCADE, related_name='equipment_links',
+    )
+    equipment = models.ForeignKey(
+        'Equipments', on_delete=models.CASCADE, related_name='step_execution_links',
+    )
+    role = models.CharField(
+        max_length=20, choices=EquipmentRole.choices, default=EquipmentRole.PRODUCTION,
+        help_text="What role this equipment played in this step visit.",
+    )
+    notes = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['step_execution', 'equipment', 'role'],
+                name='stepexec_equipment_role_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['equipment', 'role'], name='stepexec_equipment_role_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.equipment} ({self.role}) → {self.step_execution}"
+
+
 class QualityReports(SecureModel):
     """
     Records an instance of a quality issue or operational anomaly identified during part production.

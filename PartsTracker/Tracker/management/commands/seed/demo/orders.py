@@ -574,18 +574,22 @@ class DemoOrdersSeeder(BaseSeeder):
             )
             result['step_transitions'] += 1
 
-        # Attach the machine that ran this step to the StepExecution (equipment
-        # attribution — EquipmentUsage retired, see plan #1). One machine per step.
+        # Record the production machine that ran this step as a StepExecutionEquipment
+        # link (plan #1). One machine per step.
         equipment_names = step_equipment_map.get(step.name, [])
         if equipment_names:
+            from Tracker.models.qms import EquipmentRole, StepExecutionEquipment
             eq_name = equipment_names[0]
             if len(equipment_names) > 1:
                 eq_idx = hash(f"{part.ERP_id}-{step.name}") % len(equipment_names)
                 eq_name = equipment_names[eq_idx]
             equipment_obj = equipment_map.get(eq_name)
-            if equipment_obj and execution.equipment_id != equipment_obj.id:
-                StepExecution.objects.filter(pk=execution.pk).update(equipment=equipment_obj)
-                result['equipment_usage'] += 1
+            if equipment_obj:
+                _, made = StepExecutionEquipment.objects.get_or_create(
+                    step_execution=execution, equipment=equipment_obj,
+                    role=EquipmentRole.PRODUCTION,
+                )
+                result['equipment_usage'] += int(made)
 
         # Return next entry time
         return exited_at if exited_at else started_at

@@ -19,14 +19,26 @@ that first; it is what makes durations and OEE honest.
 - **#1 `StepExecution` has no machine FK — RESOLVED (design, 2026-08-18).** The
   duration-fallback chain and per-machine timing assume execution history is
   attributable to a machine, but `StepExecution` records operators only
-  (`assigned_to`/`completed_by`; no equipment). `Steps` carries
-  `default_equipment`/`backup_equipment`, but the *execution* never captures which
-  machine ran. **Decision:** add `equipment = ForeignKey(Equipments, null=True,
-  blank=True, on_delete=SET_NULL, related_name='step_executions')` to
-  `StepExecution`. Populate at DWI submit from the operator's machine selection,
-  falling back to `step.default_equipment`; nullable so historical rows and
-  no-machine steps are fine. Yields machine-attributed coarse cycle time at zero
-  extra capture friction. Already reflected in the Phase 0 field table below.
+  (`assigned_to`/`completed_by`; no equipment). Correction (2026-08-18): `Steps`
+  has **no** machine FK; `default_equipment`/`backup_equipment` live on
+  `MeasurementDefinition` (the per-measurement *gauge*, e.g. a Keyence — which is
+  itself a schedulable station), and a step's production-machine eligibility is
+  `StepEquipmentAffinity` (Phase 0). A step visit genuinely uses *multiple*
+  equipment (a CNC + a Keyence + a handheld gauge), so a single FK is too narrow.
+  **Decision (revised — multi-equipment with roles):** attribution moves to a
+  **`StepExecutionEquipment` through-table** (StepExecution × Equipments ×
+  `EquipmentRole`, reusing the same `EquipmentRole` as `QualityReportEquipment`:
+  PRODUCTION / GAUGE / FIXTURE / TOOL / OTHER); the single `StepExecution.equipment`
+  FK added in Phase 0 is dropped (migration 0120), replaced by a `primary_equipment`
+  property returning the PRODUCTION-role machine. **Every** equipment touch is
+  recorded (handhelds included, for traceability / calibration recall); the solver
+  reserves only assets flagged the new optional `Equipments.is_schedulable` (CNC,
+  Keyence, CMM) — a plentiful handheld is tracked but never scheduled in three
+  places at once, and capacity for a type = the count of its schedulable units.
+  Capture: the demo seeder writes PRODUCTION links today; the live capture
+  (advancement/DWI — PRODUCTION from the preferred affinity or the solver's
+  `ScheduledTask.machine`, GAUGE from the step's `MeasurementDefinition`s) is the
+  follow-on.
   **Machine-capture landscape (investigated 2026-08-18) — reconciled:** the machine
   is *already* recorded in two other places, and neither substitutes for a
   per-execution FK: (a) `QualityReportEquipment` (`qms.py:203`, through-table with
@@ -281,7 +293,8 @@ Tracker/
 |---|---|---|---|
 | `Steps` | `max_continuous_minutes` | IntegerField(null=True) | AlterModel |
 | `StepEdge` | `tech_continuity` | CharField(max_length=10, default='ANY', choices=ANY/SAME/DIFFERENT) | AlterModel |
-| `StepExecution` | `equipment` | ForeignKey(Equipments, null=True) | AlterModel — #1, machine attribution for actuals; see Additions |
+| `StepExecution` | `equipment` | ForeignKey(Equipments, null=True) | AlterModel — #1. **Superseded (0120): dropped in favor of the `StepExecutionEquipment` through-table** (multi-equipment + roles); `primary_equipment` property replaces it. |
+| `Equipments` | `is_schedulable` | BooleanField(default=False) | AlterModel (0120) — #1, optional: solver reserves only flagged assets (CNC/Keyence/CMM); handhelds tracked but not scheduled |
 | `BOMLine` | `source` | CharField(max_length=4, default='BUY', choices=MAKE/BUY) | AlterModel — #9 make-vs-buy signal |
 | `WorkOrder` | `pegged_to_workorder` | ForeignKey(self, null=True, on_delete=SET_NULL, related_name='component_pegs') | AlterModel — #9 assembly-convergence peg (distinct from `parent_workorder`) |
 | `WorkOrder` | `pegged_to_bom_line` | ForeignKey(BOMLine, null=True, on_delete=SET_NULL) | AlterModel — #9 the BOMLine this child WO fills |

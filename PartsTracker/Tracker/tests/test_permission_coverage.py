@@ -112,6 +112,7 @@ WITHHELD_PERMS = {
 SOFT_DELETE_MODELS = {
     'workorderhold', 'stepoverride',
     'fpirecord', 'qualityreportequipment', 'qualityreportpersonnel',
+    'stepexecutionequipment',
     'batchexecution', 'steprequirement', 'outsideprocessshipment',
     'milestone', 'milestonetemplate',
     'lifelimitdefinition', 'parttypelifelimit', 'lifetracking',

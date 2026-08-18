@@ -1558,14 +1558,6 @@ class StepExecution(SecureModel):
         related_name='assigned_step_executions',
         help_text="Operator assigned to this step execution"
     )
-    equipment = models.ForeignKey(
-        'Tracker.Equipments', null=True, blank=True,
-        on_delete=models.SET_NULL,
-        related_name='step_executions',
-        help_text="Machine that ran this step (machine-attributed timing / OEE). "
-                  "Stamped at DWI submit; falls back to step.default_equipment. "
-                  "Nullable for history and no-machine steps (plan #1).",
-    )
 
     # Exit tracking (set when part leaves step)
     exited_at = models.DateTimeField(null=True, blank=True)
@@ -1729,6 +1721,18 @@ class StepExecution(SecureModel):
         """Time spent at this step, or None if still in progress."""
         if self.exited_at and self.entered_at:
             return self.exited_at - self.entered_at
+        return None
+
+    @property
+    def primary_equipment(self):
+        """The production machine that ran this step visit, or None. Reads the
+        PRODUCTION-role `equipment_links` (StepExecutionEquipment); uses the
+        prefetched set when available."""
+        from Tracker.models.qms import EquipmentRole
+        links = self.equipment_links.all()  # prefetch-friendly
+        for link in links:
+            if link.role == EquipmentRole.PRODUCTION:
+                return link.equipment
         return None
 
     @classmethod
