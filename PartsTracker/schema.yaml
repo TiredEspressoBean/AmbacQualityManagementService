@@ -39257,6 +39257,12 @@ components:
           maxLength: 100
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
+        is_schedulable:
+          type: boolean
+          description: Whether the scheduler treats this asset as a finite resource
+            to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers)
+            — those are still tracked on step executions, just never scheduled. Capacity
+            for a type = the count of its schedulable units.
         notes:
           type: string
         created_at:
@@ -39311,6 +39317,12 @@ components:
           maxLength: 100
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
+        is_schedulable:
+          type: boolean
+          description: Whether the scheduler treats this asset as a finite resource
+            to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers)
+            — those are still tracked on step executions, just never scheduled. Capacity
+            for a type = the count of its schedulable units.
         notes:
           type: string
         archived:
@@ -46720,6 +46732,12 @@ components:
           maxLength: 100
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
+        is_schedulable:
+          type: boolean
+          description: Whether the scheduler treats this asset as a finite resource
+            to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers)
+            — those are still tracked on step executions, just never scheduled. Capacity
+            for a type = the count of its schedulable units.
         notes:
           type: string
         archived:
@@ -58935,6 +58953,8 @@ components:
           format: uuid
         name:
           type: string
+        role:
+          type: string
         calibration_due:
           type: string
           format: date
@@ -58943,6 +58963,7 @@ components:
       - calibration_due
       - id
       - name
+      - role
     TravelerMaterial:
       type: object
       description: Material used at a step

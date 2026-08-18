@@ -2079,6 +2079,10 @@ export type Equipments = {
    */
   string | undefined;
   status?: EquipmentsStatusEnum | undefined;
+  is_schedulable?: /**
+   * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
+   */
+  boolean | undefined;
   notes?: string | undefined;
   created_at: string;
   updated_at: string;
@@ -2124,6 +2128,10 @@ export type EquipmentsRequest = {
    */
   string | undefined;
   status?: EquipmentsStatusEnum | undefined;
+  is_schedulable?: /**
+   * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
+   */
+  boolean | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
@@ -8485,6 +8493,7 @@ export type TravelerApproval = {
 export type TravelerEquipment = {
   id: string;
   name: string;
+  role: string;
   calibration_due: string | null;
 };
 export type TravelerMeasurement = {
@@ -9058,6 +9067,10 @@ export type PatchedEquipmentsRequest = Partial<{
    */
   location: string;
   status: EquipmentsStatusEnum;
+  /**
+   * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
+   */
+  is_schedulable: boolean;
   notes: string;
   archived: boolean;
 }>;
@@ -14509,6 +14522,7 @@ const Equipments = z.object({
   model_number: z.string().max(100).optional(),
   location: z.string().max(100).optional(),
   status: EquipmentsStatusEnum.optional(),
+  is_schedulable: z.boolean().optional(),
   notes: z.string().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -14529,6 +14543,7 @@ const EquipmentsRequest = z.object({
   model_number: z.string().max(100).optional(),
   location: z.string().max(100).optional(),
   status: EquipmentsStatusEnum.optional(),
+  is_schedulable: z.boolean().optional(),
   notes: z.string().optional(),
   archived: z.boolean().optional(),
 });
@@ -14601,6 +14616,7 @@ const PatchedEquipmentsRequest = z
     model_number: z.string().max(100),
     location: z.string().max(100),
     status: EquipmentsStatusEnum,
+    is_schedulable: z.boolean(),
     notes: z.string(),
     archived: z.boolean(),
   })
@@ -15937,6 +15953,7 @@ const TravelerApproval = z.object({
 const TravelerEquipment = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  role: z.string(),
   calibration_due: z.string().nullable(),
 });
 const TravelerMeasurement = z.object({

@@ -1140,6 +1140,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                     equipment_used.append({
                         'id': eu.equipment.id,
                         'name': eu.equipment.name,
+                        'role': eu.role,
                         'calibration_due': eu.equipment.calibration_due if hasattr(eu.equipment, 'calibration_due') else None
                     })
 

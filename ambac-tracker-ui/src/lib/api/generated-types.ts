@@ -16765,6 +16765,8 @@ export interface components {
             model_number?: string;
             location?: string;
             status?: components["schemas"]["EquipmentsStatusEnum"];
+            /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
+            is_schedulable?: boolean;
             notes?: string;
             /** Format: date-time */
             readonly created_at: string;
@@ -16790,6 +16792,8 @@ export interface components {
             model_number?: string;
             location?: string;
             status?: components["schemas"]["EquipmentsStatusEnum"];
+            /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
+            is_schedulable?: boolean;
             notes?: string;
             archived?: boolean;
         };
@@ -20770,6 +20774,8 @@ export interface components {
             model_number?: string;
             location?: string;
             status?: components["schemas"]["EquipmentsStatusEnum"];
+            /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
+            is_schedulable?: boolean;
             notes?: string;
             archived?: boolean;
         };
@@ -27393,6 +27399,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            role: string;
             /** Format: date */
             calibration_due: string | null;
         };

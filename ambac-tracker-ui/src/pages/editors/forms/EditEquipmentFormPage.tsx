@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
     Select,
     SelectContent,
@@ -56,6 +57,7 @@ const formSchema = schemas.EquipmentsRequest.pick({
     model_number: true,
     location: true,
     status: true,
+    is_schedulable: true,
     notes: true,
 });
 
@@ -99,6 +101,7 @@ export default function EquipmentFormPage() {
             model_number: "",
             location: "",
             status: undefined,
+            is_schedulable: false,
             notes: "",
         },
     });
@@ -114,6 +117,7 @@ export default function EquipmentFormPage() {
                 model_number: equipment.model_number ?? "",
                 location: equipment.location ?? "",
                 status: equipment.status ?? undefined,
+                is_schedulable: equipment.is_schedulable ?? false,
                 notes: equipment.notes ?? "",
             });
         }
@@ -131,6 +135,7 @@ export default function EquipmentFormPage() {
             model_number: values.model_number || undefined,
             location: values.location || undefined,
             status: values.status || undefined,
+            is_schedulable: values.is_schedulable,
             notes: values.notes || undefined,
         };
 
@@ -393,6 +398,26 @@ export default function EquipmentFormPage() {
                                     Current operational status of the equipment
                                 </FormDescription>
                                 <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="is_schedulable"
+                        render={({ field }) => (
+                            <FormItem className="flex items-center justify-between rounded-md border p-3">
+                                <div className="space-y-0.5 pr-4">
+                                    <FormLabel>Schedulable resource</FormLabel>
+                                    <FormDescription>
+                                        When on, the scheduler reserves this asset as a finite resource
+                                        (CNC, Keyence, CMM). Leave off for plentiful/handheld gear — it's
+                                        still tracked on step executions, just never scheduled.
+                                    </FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
                             </FormItem>
                         )}
                     />

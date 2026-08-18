@@ -732,6 +732,7 @@ class TravelerEquipmentSerializer(serializers.Serializer):
     """Equipment used at a step"""
     id = serializers.UUIDField()
     name = serializers.CharField()
+    role = serializers.CharField()
     calibration_due = serializers.DateField(allow_null=True)
 
 
@@ -1345,14 +1346,15 @@ class EquipmentsSerializer(SecureModelMixin):
         model = Equipments
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
-            "serial_number", "manufacturer", "model_number", "location", "status", "notes",
+            "serial_number", "manufacturer", "model_number", "location", "status",
+            "is_schedulable", "notes",
             "created_at", "updated_at", "archived", "version",
         ]
         read_only_fields = ("created_at", "updated_at", "version")
 
-    # status is an operational state changed by calibration/maintenance workflows,
-    # not a configuration content change.
-    _NON_VERSIONING_FIELDS = frozenset({'archived', 'status'})
+    # status and is_schedulable are operational states (calibration/maintenance,
+    # scheduling toggle), not configuration content changes.
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'status', 'is_schedulable'})
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let

@@ -183,7 +183,11 @@ function adaptPart(p: PartRow): MockPart {
 
 function adaptTravelerEntry(t: TravelerStepEntry): MockStepVisit {
     const op = (t.operator as { name?: string } | null)?.name ?? null;
-    const eq = (t.equipment_used?.[0] as { name?: string } | undefined)?.name ?? null;
+    // A step can use multiple equipment (production machine + gauges); join them
+    // rather than silently dropping all but the first (multi-equipment model).
+    const eq = t.equipment_used && t.equipment_used.length > 0
+        ? t.equipment_used.map((e) => (e as { name?: string }).name).filter(Boolean).join(", ")
+        : null;
     const qs = t.quality_status;
     return {
         step_order: t.step_order,

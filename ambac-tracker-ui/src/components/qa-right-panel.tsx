@@ -176,6 +176,11 @@ export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart
                                                                         <Badge key={eq.id} variant="outline" className="text-xs">
                                                                             <Wrench className="h-3 w-3 mr-1" />
                                                                             {eq.name}
+                                                                            {eq.role && (
+                                                                                <span className="ml-1 text-muted-foreground">
+                                                                                    · {eq.role.charAt(0) + eq.role.slice(1).toLowerCase()}
+                                                                                </span>
+                                                                            )}
                                                                         </Badge>
                                                                     ))}
                                                                 </div>
