@@ -11,7 +11,7 @@ See `Documents/SCHEDULING_IMPLEMENTATION_PLAN.md` (Phase 1) and
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
@@ -53,6 +53,44 @@ class HorizonData:
     end: datetime
     frozen_end: datetime
     slushy_end: datetime
+
+
+@dataclass(frozen=True)
+class PartData:
+    part_id: UUID
+    current_step_id: UUID | None
+
+
+@dataclass(frozen=True)
+class StepNode:
+    step_id: UUID
+    is_terminal: bool
+
+
+@dataclass(frozen=True)
+class EdgeData:
+    from_step_id: UUID
+    to_step_id: UUID
+
+
+@dataclass(frozen=True)
+class WorkOrderData:
+    wo_id: UUID
+    erp_id: str
+    priority: int
+    expected_completion: date | None
+    quantity: int
+    process_id: UUID
+    parts: tuple  # tuple[PartData, ...]
+    steps: tuple   # tuple[StepNode, ...] — the process routing nodes, ordered
+    edges: tuple   # tuple[EdgeData, ...] — the routing DAG
+
+
+@dataclass(frozen=True)
+class MachineWindow:
+    equipment_id: UUID
+    start: datetime
+    end: datetime
 
 
 # --- Timings (with the duration fallback chain) -----------------------------
@@ -165,3 +203,141 @@ def get_schedule_horizon(tenant, horizon_days: int = 30) -> HorizonData:
         frozen_end=start + timedelta(days=frozen_days),
         slushy_end=start + timedelta(days=frozen_days + slushy_days),
     )
+
+
+# --- Active work orders (the routing graph to schedule) ---------------------
+
+def get_active_workorders(tenant) -> list[WorkOrderData]:
+    """Non-terminal work orders with a process, each carrying its parts (current
+    step) and the process routing graph (steps + edges). The process graph is
+    resolved once per distinct process and shared across its work orders."""
+    from Tracker.models import ProcessStep, StepEdge, WorkOrder, WorkOrderStatus
+
+    terminal = [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]
+    wos = (
+        WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
+        .exclude(workorder_status__in=terminal)
+        .prefetch_related('parts')
+    )
+
+    graph_cache: dict[UUID, tuple] = {}
+
+    def _graph(process_id):
+        if process_id not in graph_cache:
+            steps = tuple(
+                StepNode(step_id=ps.step_id, is_terminal=ps.step.is_terminal)
+                for ps in ProcessStep.objects.filter(process_id=process_id)
+                .select_related('step').order_by('order')
+            )
+            edges = tuple(
+                EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id)
+                for e in StepEdge.objects.filter(process_id=process_id)
+            )
+            graph_cache[process_id] = (steps, edges)
+        return graph_cache[process_id]
+
+    result: list[WorkOrderData] = []
+    for wo in wos:
+        steps, edges = _graph(wo.process_id)
+        parts = tuple(
+            PartData(part_id=p.id, current_step_id=p.step_id) for p in wo.parts.all()
+        )
+        result.append(WorkOrderData(
+            wo_id=wo.id, erp_id=wo.ERP_id, priority=wo.priority,
+            expected_completion=wo.expected_completion, quantity=wo.quantity,
+            process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
+        ))
+    return result
+
+
+# --- Machine availability (shift windows minus downtime) --------------------
+
+def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[MachineWindow]]:
+    """Per equipment: concrete available windows over the horizon = the tenant's
+    active shift calendar expanded to datetimes, minus that machine's downtime.
+    Shifts are tenant-wide (no per-machine shift assignment in the model yet)."""
+    from Tracker.models import DowntimeEvent, Equipments, Shift
+
+    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    base = _expand_shifts(shifts, horizon.start, horizon.end)
+
+    downtime: dict[UUID, list[tuple]] = {}
+    for d in (
+        DowntimeEvent.objects.filter(tenant=tenant, equipment__isnull=False)
+        .filter(start_time__lt=horizon.end)
+        .exclude(end_time__lt=horizon.start)
+    ):
+        downtime.setdefault(d.equipment_id, []).append(
+            (d.start_time, d.end_time or horizon.end)
+        )
+
+    result: dict[UUID, list[MachineWindow]] = {}
+    for eq in Equipments.objects.filter(tenant=tenant):
+        free = _subtract_intervals(base, downtime.get(eq.id, []))
+        result[eq.id] = [MachineWindow(equipment_id=eq.id, start=s, end=e) for s, e in free]
+    return result
+
+
+def _expand_shifts(shifts, start: datetime, end: datetime) -> list[tuple]:
+    """Expand recurring shifts into concrete [start, end] datetime windows over
+    [start, end], clipped to that range. Overnight shifts (end_time <= start_time)
+    roll into the next day. Returned sorted + merged."""
+    windows: list[tuple] = []
+    day = start.date()
+    last = end.date()
+    while day <= last:
+        weekday = day.weekday()  # 0=Monday
+        for sh in shifts:
+            active_days = _parse_days(sh.days_of_week)
+            if active_days and weekday not in active_days:
+                continue
+            w_start = timezone.make_aware(datetime.combine(day, sh.start_time))
+            end_day = day + timedelta(days=1) if sh.end_time <= sh.start_time else day
+            w_end = timezone.make_aware(datetime.combine(end_day, sh.end_time))
+            w_start = max(w_start, start)
+            w_end = min(w_end, end)
+            if w_start < w_end:
+                windows.append((w_start, w_end))
+        day += timedelta(days=1)
+    return _merge_intervals(windows)
+
+
+def _parse_days(raw: str) -> set:
+    if not raw:
+        return set()
+    return {int(x) for x in raw.split(',') if x.strip().isdigit()}
+
+
+def _merge_intervals(intervals: list[tuple]) -> list[tuple]:
+    if not intervals:
+        return []
+    intervals = sorted(intervals)
+    merged = [intervals[0]]
+    for s, e in intervals[1:]:
+        ls, le = merged[-1]
+        if s <= le:
+            merged[-1] = (ls, max(le, e))
+        else:
+            merged.append((s, e))
+    return merged
+
+
+def _subtract_intervals(base: list[tuple], holes: list[tuple]) -> list[tuple]:
+    """Remove `holes` (e.g. downtime) from `base` free windows."""
+    if not holes:
+        return list(base)
+    holes = _merge_intervals(holes)
+    result: list[tuple] = []
+    for b_start, b_end in base:
+        cursor = b_start
+        for h_start, h_end in holes:
+            if h_end <= cursor or h_start >= b_end:
+                continue
+            if h_start > cursor:
+                result.append((cursor, min(h_start, b_end)))
+            cursor = max(cursor, h_end)
+            if cursor >= b_end:
+                break
+        if cursor < b_end:
+            result.append((cursor, b_end))
+    return result
