@@ -290,6 +290,17 @@ class ScheduledTask(SecureModel):
     fence_zone = models.CharField(
         max_length=6, choices=FenceZone.choices, default=FenceZone.LIQUID,
     )
+    # Layer 2 (operator dispatch): filled by `dispatch_operators`, not Layer 1.
+    requires_operator = models.BooleanField(
+        default=True,
+        help_text="Whether this task needs an operator (false for unattended runs).",
+    )
+    assigned_operator = models.ForeignKey(
+        'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='dispatched_tasks',
+        help_text="Layer-2 operator assignment; null on an attended task means "
+                  "the dispatcher could not cover it (no qualified operator free).",
+    )
 
     class Meta:
         verbose_name = 'Scheduled Task'
@@ -299,6 +310,7 @@ class ScheduledTask(SecureModel):
             models.Index(fields=['schedule', 'start_time']),
             models.Index(fields=['machine', 'start_time']),
             models.Index(fields=['part', 'step']),
+            models.Index(fields=['assigned_operator', 'start_time']),
         ]
 
     def __str__(self):

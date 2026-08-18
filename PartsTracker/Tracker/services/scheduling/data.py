@@ -140,6 +140,16 @@ class PreviousScheduleData:
     tasks: tuple  # tuple[PreviousTaskData, ...]
 
 
+@dataclass(frozen=True)
+class OperatorData:
+    """A dispatchable operator (Layer 2). `work_center_ids` is the stations they may
+    work; `primary_work_center_ids` their preferred ones (soft objective)."""
+    user_id: int
+    name: str
+    work_center_ids: frozenset
+    primary_work_center_ids: frozenset
+
+
 # --- Timings (with the duration fallback chain) -----------------------------
 
 def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
@@ -489,3 +499,72 @@ def get_previous_schedule(tenant) -> PreviousScheduleData | None:
         for t in sched.tasks.all()
     )
     return PreviousScheduleData(schedule_id=sched.id, tasks=tasks)
+
+
+# --- Operator dispatch (Layer 2) --------------------------------------------
+
+def get_dispatchable_operators(tenant) -> list[OperatorData]:
+    """Internal, active operators eligible for dispatch, with their work-center
+    memberships. Active = the account is enabled AND the person has an ACTIVE
+    membership in this tenant (User is not tenant-scoped, so we filter explicitly)."""
+    from Tracker.models import TenantMembership, User, UserWorkCenterMembership
+
+    active_ids = set(
+        TenantMembership.objects.filter(tenant=tenant, status='ACTIVE')
+        .values_list('user_id', flat=True)
+    )
+    users = list(
+        User.objects.filter(tenant=tenant, is_active=True, user_type='INTERNAL')
+    )
+
+    wc: dict = {}
+    primary: dict = {}
+    for m in UserWorkCenterMembership.objects.filter(tenant=tenant):
+        wc.setdefault(m.user_id, set()).add(m.work_center_id)
+        if m.is_primary:
+            primary.setdefault(m.user_id, set()).add(m.work_center_id)
+
+    result: list[OperatorData] = []
+    for u in users:
+        if active_ids and u.id not in active_ids:
+            continue  # has memberships configured but not active here
+        name = (f"{u.first_name or ''} {u.last_name or ''}".strip()
+                or u.get_username())
+        result.append(OperatorData(
+            user_id=u.id, name=name,
+            work_center_ids=frozenset(wc.get(u.id, ())),
+            primary_work_center_ids=frozenset(primary.get(u.id, ())),
+        ))
+    return result
+
+
+def get_shift_windows(tenant, horizon: HorizonData) -> list[tuple]:
+    """The tenant's active shift calendar expanded to concrete [start, end] datetime
+    windows over the horizon — the times operators can be on the floor at all. No
+    per-operator roster exists yet, so this is shared across operators."""
+    from Tracker.models import Shift
+
+    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    return _expand_shifts(shifts, horizon.start, horizon.end)
+
+
+def get_operator_unavailability(tenant, horizon: HorizonData,
+                                open_entry_minutes: int = 30) -> dict[int, list[tuple]]:
+    """Per operator, [start, end] datetime intervals they are NOT available to be
+    dispatched — actual clock-out breaks from `TimeEntry` (BREAK / LUNCH) overlapping
+    the horizon. An open entry (no end yet = currently on break) is treated as lasting
+    `open_entry_minutes` from its start, so a re-dispatch mid-shift won't hand work to
+    someone who just clocked out for lunch."""
+    from Tracker.models import TimeEntry
+
+    out: dict[int, list[tuple]] = {}
+    entries = (
+        TimeEntry.objects.filter(tenant=tenant, entry_type__in=['BREAK', 'LUNCH'])
+        .filter(start_time__lt=horizon.end)
+    )
+    for e in entries:
+        end = e.end_time or (e.start_time + timedelta(minutes=open_entry_minutes))
+        if end <= horizon.start:
+            continue
+        out.setdefault(e.user_id, []).append((e.start_time, end))
+    return {uid: _merge_intervals(iv) for uid, iv in out.items()}
