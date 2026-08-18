@@ -254,6 +254,24 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
         self.assertTrue(prev.tasks[0].is_pinned)
         self.assertEqual(prev.tasks[0].machine_id, self.machine.id)
 
+    def test_get_break_windows_expands(self):
+        from datetime import datetime
+        from Tracker.models import Shift
+        from Tracker.services.scheduling.data import HorizonData, get_break_windows
+        Shift.objects.create(
+            tenant=self.tenant, name="Day", code="DAY",
+            start_time=dtime(0, 0), end_time=dtime(23, 59),
+            days_of_week="0,1,2,3,4,5,6", is_active=True,
+            break_windows=[{"start": "12:00", "end": "12:30"}])
+        start = timezone.make_aware(datetime(2026, 8, 17, 0, 0))
+        horizon = HorizonData(start=start, end=start + timedelta(days=1),
+                              frozen_end=start, slushy_end=start)
+        breaks = get_break_windows(self.tenant, horizon)
+        self.assertEqual(len(breaks), 1)
+        bs, be = breaks[0]
+        self.assertEqual((bs - start).total_seconds() / 60, 12 * 60)         # 12:00
+        self.assertEqual((be - start).total_seconds() / 60, 12 * 60 + 30)    # 12:30
+
     def test_downtime_is_subtracted(self):
         self._all_week()
         h = data.get_schedule_horizon(self.tenant, horizon_days=2)

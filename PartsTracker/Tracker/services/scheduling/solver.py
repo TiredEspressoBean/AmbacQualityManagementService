@@ -63,6 +63,17 @@ def _due_minutes(due_date, horizon_start, H) -> int | None:
     return max(-H, minutes)
 
 
+def _to_minutes(intervals, horizon_start, H) -> list[tuple]:
+    """Datetime intervals → clipped integer-minute [start, end] tuples from H0."""
+    out = []
+    for s, e in intervals:
+        ms = max(0, int((s - horizon_start).total_seconds() // 60))
+        me = min(H, int((e - horizon_start).total_seconds() // 60))
+        if ms < me:
+            out.append((ms, me))
+    return out
+
+
 def _window_gaps(windows, horizon_start, H) -> list[tuple]:
     """Unavailable [start, end] minute intervals between a machine's availability
     windows, within [0, H]. Empty when the machine has no windows (treated as
@@ -135,6 +146,12 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         occupancy_steps = set(secondary) | set(fixture_by_step)
 
         model = cp_model.CpModel()
+
+        # Scheduled breaks/lunch: attended (full-attention) work is kept out of them.
+        break_mins = _to_minutes(data.get_break_windows(tenant, horizon), horizon.start, H)
+        break_fixed = [model.NewFixedSizeIntervalVar(bs, be - bs, f"break_{bs}_{be}")
+                       for bs, be in break_mins]
+
         tasks: list[dict] = []
         machine_intervals: dict = defaultdict(list)
         gauge_intervals: dict = defaultdict(list)
@@ -169,14 +186,20 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                         dur = _dur(timing, None)
                         model.NewIntervalVar(start, dur, end, f"i_{key}")
 
-                    # Unconditional occupancy interval for secondary/fixture resources.
-                    if node.step_id in occupancy_steps:
+                    # Unconditional occupancy interval for secondary/fixture resources
+                    # and break avoidance. Attended (full-attention) steps can't run
+                    # during a scheduled break; load_unload steps run unattended.
+                    attended = (timing is None) or (timing.attention_type == 'full')
+                    needs_break = attended and break_fixed
+                    if node.step_id in occupancy_steps or needs_break:
                         size = model.NewIntVar(1, H, f"sz_{key}")
                         occ = model.NewIntervalVar(start, size, end, f"occ_{key}")
                         for gauge_id in secondary.get(node.step_id, ()):
                             gauge_intervals[gauge_id].append(occ)
                         for fixture_id in fixture_by_step.get(node.step_id, ()):
                             fixture_intervals[fixture_id].append(occ)
+                        if needs_break:
+                            model.AddNoOverlap([occ] + break_fixed)
 
                     tasks.append({'part_id': part.part_id, 'step_id': node.step_id,
                                   'start': start, 'end': end, 'choices': choices})

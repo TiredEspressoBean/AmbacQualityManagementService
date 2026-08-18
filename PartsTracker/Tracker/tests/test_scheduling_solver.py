@@ -203,6 +203,23 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertTrue(self._overlaps(s1[0], s1[1]),
                         "quantity-2 fixture allows the two tasks to run concurrently")
 
+    def test_scheduled_breaks_expand_and_solve_stays_feasible(self):
+        from Tracker.models import Shift
+        from Tracker.services.scheduling import data as sdata
+        Shift.objects.create(
+            tenant=self.tenant, name="Day", code="DAY",
+            start_time=dtime(0, 0), end_time=dtime(23, 59),
+            days_of_week="0,1,2,3,4,5,6", is_active=True,
+            break_windows=[{"start": "12:00", "end": "12:30"}])
+        # Lunch expands to a break interval per day across the horizon.
+        breaks = sdata.get_break_windows(self.tenant, sdata.get_schedule_horizon(self.tenant))
+        self.assertTrue(breaks)
+        # The solver adds the attended-task break constraint and stays feasible.
+        self._wo("WO-BR", 1)
+        result = solve_schedule(self.tenant)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        self.assertEqual(result.tasks.count(), 2)
+
     def test_unschedulable_step_still_scheduled_without_capacity(self):
         # A step whose only machine is not is_schedulable gets no capacity link but
         # is still placed (precedence-only) — no crash, task written with null machine.

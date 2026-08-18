@@ -967,6 +967,14 @@ class Shift(SecureModel):
 
     is_active = models.BooleanField(default=True)
 
+    break_windows = models.JSONField(
+        default=list, blank=True,
+        help_text='Scheduled breaks/lunch within the shift, as a list of '
+                  '{"start": "HH:MM", "end": "HH:MM"}. The scheduler keeps attended '
+                  '(full-attention) work out of these windows; actual clock-out/in is '
+                  'captured separately as TimeEntry BREAK/LUNCH entries.',
+    )
+
     class Meta:
         verbose_name = 'Shift'
         verbose_name_plural = 'Shifts'

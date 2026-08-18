@@ -431,6 +431,45 @@ def get_continuous_machines(tenant) -> list[ContinuousMachineData]:
     ]
 
 
+def get_break_windows(tenant, horizon: HorizonData) -> list[tuple]:
+    """Scheduled break/lunch intervals ([start, end] datetimes) over the horizon,
+    expanded from active shifts' `break_windows`. Attended (full-attention) work is
+    kept out of these; actual clock-out/in lives in TimeEntry BREAK/LUNCH."""
+    from Tracker.models import Shift
+
+    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    intervals: list[tuple] = []
+    day = horizon.start.date()
+    last = horizon.end.date()
+    while day <= last:
+        weekday = day.weekday()
+        for sh in shifts:
+            active_days = _parse_days(sh.days_of_week)
+            if active_days and weekday not in active_days:
+                continue
+            for br in (sh.break_windows or []):
+                bs, be = _parse_hhmm(br.get('start')), _parse_hhmm(br.get('end'))
+                if bs is None or be is None:
+                    continue
+                w_start = max(timezone.make_aware(datetime.combine(day, bs)), horizon.start)
+                w_end = min(timezone.make_aware(datetime.combine(day, be)), horizon.end)
+                if w_start < w_end:
+                    intervals.append((w_start, w_end))
+        day += timedelta(days=1)
+    return _merge_intervals(intervals)
+
+
+def _parse_hhmm(raw):
+    from datetime import time as _time
+    if not raw or ':' not in str(raw):
+        return None
+    try:
+        h, m = str(raw).split(':')[:2]
+        return _time(int(h), int(m))
+    except (ValueError, TypeError):
+        return None
+
+
 def get_previous_schedule(tenant) -> PreviousScheduleData | None:
     """The active schedule's tasks — warm-start hints + the pinned tasks the
     solver must keep fixed. None when no active schedule exists yet."""
