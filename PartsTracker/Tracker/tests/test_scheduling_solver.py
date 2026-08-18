@@ -1,13 +1,16 @@
 """Phase 2 CP-SAT solver — minimal slice: precedence, machine capacity (no-overlap
 per machine), makespan objective, and the active-schedule supersede.
 """
-from datetime import date, timedelta as _td
+from datetime import date, time as dtime, timedelta as _td
 from decimal import Decimal
 
 from django.test import TestCase
+from django.utils import timezone
 
 from Tracker.models import (
     Equipments,
+    Fixture,
+    MeasurementDefinition,
     Parts,
     PartTypes,
     Processes,
@@ -134,6 +137,71 @@ class SolverTests(TenantContextMixin, TestCase):
         urg = result.tasks.get(part=urg_part, step=self.step1)
         low = result.tasks.get(part=low_part, step=self.step1)
         self.assertLess(urg.start_time, low.start_time, "urgent work should be scheduled first")
+
+    # ---- shift windows / secondary resources / fixtures ------------------
+
+    def test_window_gaps_helper(self):
+        from Tracker.services.scheduling.solver import _window_gaps
+        from Tracker.services.scheduling.data import MachineWindow
+        start = timezone.now()
+        H = 600
+        w = MachineWindow(equipment_id=self.machine.id,
+                          start=start + _td(minutes=60), end=start + _td(minutes=300))
+        self.assertEqual(_window_gaps([w], start, H), [(0, 60), (300, 600)])
+        self.assertEqual(_window_gaps([], start, H), [])  # no windows → 24/7, no gaps
+
+    def test_shift_constrained_solve_is_feasible(self):
+        from Tracker.models import Shift
+        Shift.objects.create(
+            tenant=self.tenant, name="Day", code="DAY",
+            start_time=dtime(0, 0), end_time=dtime(23, 59),
+            days_of_week="0,1,2,3,4,5,6", is_active=True)
+        self._wo("WO-SH", 1)
+        result = solve_schedule(self.tenant)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        self.assertEqual(result.tasks.count(), 2)
+
+    def test_secondary_gauge_serializes(self):
+        # step1 has two machines (could run in parallel) but shares one gauge → the
+        # two parts' step1 tasks cannot overlap in time.
+        m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.step1, equipment=m2,
+            affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
+        gauge = Equipments.objects.create(tenant=self.tenant, name="Keyence", is_schedulable=True)
+        MeasurementDefinition.objects.create(
+            tenant=self.tenant, step=self.step1, default_equipment=gauge, label="OD", type="NUMERIC")
+        self._wo("WO-G", 2)
+        result = solve_schedule(self.tenant)
+        s1 = list(result.tasks.filter(step=self.step1))
+        self.assertFalse(self._overlaps(s1[0], s1[1]),
+                         "a shared gauge must serialize the two tasks")
+
+    def test_fixture_capacity(self):
+        m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.step1, equipment=m2,
+            affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
+        fx = Fixture.objects.create(tenant=self.tenant, name="Vise", quantity=1)
+        fx.steps.add(self.step1)
+        self._wo("WO-FX", 2)
+        result = solve_schedule(self.tenant)
+        s1 = list(result.tasks.filter(step=self.step1))
+        self.assertFalse(self._overlaps(s1[0], s1[1]),
+                         "quantity-1 fixture must serialize the two tasks")
+
+    def test_fixture_capacity_two_allows_parallel(self):
+        m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.step1, equipment=m2,
+            affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
+        fx = Fixture.objects.create(tenant=self.tenant, name="Vise", quantity=2)
+        fx.steps.add(self.step1)
+        self._wo("WO-FX2", 2)
+        result = solve_schedule(self.tenant)
+        s1 = list(result.tasks.filter(step=self.step1))
+        self.assertTrue(self._overlaps(s1[0], s1[1]),
+                        "quantity-2 fixture allows the two tasks to run concurrently")
 
     def test_unschedulable_step_still_scheduled_without_capacity(self):
         # A step whose only machine is not is_schedulable gets no capacity link but
