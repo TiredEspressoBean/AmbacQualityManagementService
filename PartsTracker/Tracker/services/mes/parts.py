@@ -52,6 +52,35 @@ def _get_operator_for_step(part: Parts, step, previous_operator):
         return None
 
 
+def _stamp_production_equipment(execution) -> None:
+    """Attribute the step's *authored* production machine to a freshly-created
+    execution as a PRODUCTION `StepExecutionEquipment` link (plan #1, wiring #1).
+
+    Source is the highest-priority `StepEquipmentAffinity` (dialed_in > preferred).
+    No-op when the step has no single authored machine (unset, or only *eligible*
+    candidates) — the operator (DWI) or the solver's `ScheduledTask.machine` sets /
+    overrides the PRODUCTION link then. Idempotent via get_or_create; an override
+    replaces the link through the capture flow, not here.
+    """
+    from Tracker.models import StepEquipmentAffinity, StepExecutionEquipment
+    from Tracker.models.qms import EquipmentRole
+
+    aff = StepEquipmentAffinity.Affinity
+    candidates = list(
+        StepEquipmentAffinity.objects.filter(
+            step_id=execution.step_id,
+            affinity__in=[aff.DIALED_IN, aff.PREFERRED],
+        ).select_related('equipment')
+    )
+    if not candidates:
+        return
+    chosen = next((c for c in candidates if c.affinity == aff.DIALED_IN), candidates[0])
+    StepExecutionEquipment.objects.get_or_create(
+        step_execution=execution, equipment=chosen.equipment,
+        role=EquipmentRole.PRODUCTION,
+    )
+
+
 def _cascade_work_order_completion(part: Parts) -> None:
     """Convenience entry point for Parts-side callers — see _cascade_work_order_completion_for_subject."""
     _cascade_work_order_completion_for_subject(part.work_order)
@@ -311,6 +340,7 @@ def advance_part_step(
         from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
         for se in created_execs:
             evaluate_substep_sampling(se)
+            _stamp_production_equipment(se)
 
         return "escalated" if was_escalated else "advanced"
 
@@ -331,6 +361,7 @@ def advance_part_step(
     # Phase 3: write per-substep SamplingDecision rows.
     from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
     evaluate_substep_sampling(new_exec)
+    _stamp_production_equipment(new_exec)
 
     part.step = next_step
     # Preserve HELD statuses through the step transition. A QUARANTINED

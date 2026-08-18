@@ -35,10 +35,16 @@ that first; it is what makes durations and OEE honest.
   reserves only assets flagged the new optional `Equipments.is_schedulable` (CNC,
   Keyence, CMM) — a plentiful handheld is tracked but never scheduled in three
   places at once, and capacity for a type = the count of its schedulable units.
-  Capture: the demo seeder writes PRODUCTION links today; the live capture
-  (advancement/DWI — PRODUCTION from the preferred affinity or the solver's
-  `ScheduledTask.machine`, GAUGE from the step's `MeasurementDefinition`s) is the
-  follow-on.
+  Capture: **wiring #1 is live** — advancement stamps a PRODUCTION link from the
+  step's highest-priority `StepEquipmentAffinity` (dialed_in > preferred;
+  `services/mes/parts.py::_stamp_production_equipment`), null-safe when the step has
+  no single authored machine. This is the *baseline* the other sources supersede,
+  all writing the same PRODUCTION link: the DWI capture screen (operator
+  confirms/overrides at the station) and the solver's `ScheduledTask.machine` both
+  replace it; authoring affinities just gives #1 real data. Remaining follow-ons:
+  the DWI override screen, the solver assignment, and GAUGE capture from the step's
+  `MeasurementDefinition`s (measurement instruments are also recorded on
+  `QualityReportEquipment` today).
   **Machine-capture landscape (investigated 2026-08-18) — reconciled:** the machine
   is *already* recorded in two other places, and neither substitutes for a
   per-execution FK: (a) `QualityReportEquipment` (`qms.py:203`, through-table with
