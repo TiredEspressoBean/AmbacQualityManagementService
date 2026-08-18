@@ -146,6 +146,18 @@ export const useRejectLot = () => {
     });
 };
 
+export const useExtendShelfLife = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; new_expiration_date: string; reason: string }) =>
+            api.api_MaterialLots_extend_shelf_life_create(
+                { new_expiration_date: vars.new_expiration_date, reason: vars.reason } as never,
+                { params: { id: vars.id }, headers: csrf() },
+            ),
+        onSuccess: () => invalidateReceiving(queryClient),
+    });
+};
+
 export const useRaiseScar = () => {
     const queryClient = useQueryClient();
     return useMutation({

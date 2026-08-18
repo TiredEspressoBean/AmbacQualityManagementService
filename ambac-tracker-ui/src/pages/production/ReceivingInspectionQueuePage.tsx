@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Schema } from "@/lib/api/types";
 import { useListMaterialLots } from "@/hooks/useListMaterialLots";
+import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
+
+type Lot = Schema<"MaterialLot">;
+// A lot the operator can re-qualify: held for shelf life, or already flagged EXPIRED.
+const canExtend = (l: Lot) => l.hold_reason === "SHELF_LIFE_EXPIRED" || l.shelf_life_status === "EXPIRED";
 
 const col = createColumnHelper<Schema<"MaterialLot">>();
 
@@ -26,7 +32,9 @@ function useQueueList(params: { offset: number; limit: number; ordering?: string
 
 export function ReceivingInspectionQueuePage() {
     const navigate = useNavigate();
+    const [extendLot, setExtendLot] = useState<Lot | null>(null);
     return (
+        <>
         <ModelEditorPage
             title="Receiving Inspection Queue"
             modelName="MaterialLots"
@@ -52,14 +60,31 @@ export function ReceivingInspectionQueuePage() {
                 }),
             ]}
             renderActions={(l) => (
-                <Button
-                    size="sm"
-                    onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}
-                >
-                    Inspect
-                </Button>
+                <div className="flex items-center gap-2">
+                    {canExtend(l) && (
+                        <Button size="sm" variant="outline" onClick={() => setExtendLot(l)}>
+                            Extend shelf life
+                        </Button>
+                    )}
+                    <Button
+                        size="sm"
+                        onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}
+                    >
+                        Inspect
+                    </Button>
+                </div>
             )}
             showDetailsLink={false}
         />
+        {extendLot && (
+            <ExtendShelfLifeDialog
+                lotId={String(extendLot.id)}
+                lotNumber={extendLot.lot_number}
+                currentExpiration={extendLot.expiration_date}
+                open={extendLot !== null}
+                onOpenChange={(o) => { if (!o) setExtendLot(null); }}
+            />
+        )}
+        </>
     );
 }
