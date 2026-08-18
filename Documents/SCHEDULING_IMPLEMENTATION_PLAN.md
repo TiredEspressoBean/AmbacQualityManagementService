@@ -125,8 +125,12 @@ fix before the scheduler treats MES gates as authoritative):
   keeping `expiration_date` in sync; exposed as the `extend_shelf_life` lot action
   (`change_materiallot`). Surfaced in the receiving queue (`shelf_life_status` +
   hold badges). Materials with no shelf life get no record and are never gated.
-  *Follow-on:* an FE "extend shelf life" dialog to re-qualify a quarantined lot
-  (the backend action is live; no UI button yet).
+  FE: the receiving queue shows an "Extend shelf life" button on held/EXPIRED lots
+  opening `components/receiving/ExtendShelfLifeDialog.tsx` (new use-by + required
+  justification → `extend_shelf_life`); on success the lot re-qualifies to RECEIVED
+  and drops back into the queue. Verified end-to-end in the browser (soft-hold →
+  badge → extend → re-qualify → live WARNING status). 14 backend tests; full suite
+  green (1751). Commits: `23b3483` (backend), `c7fb77d` (FE).
 
 Step-by-step build plan for the OR-Tools scheduling system described in `OR_TOOLS_INTEGRATION.md`. Each phase is dependency-ordered, testable in isolation, and marked as internal or customer-facing.
 
