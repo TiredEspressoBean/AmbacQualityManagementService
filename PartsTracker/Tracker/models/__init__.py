@@ -208,6 +208,18 @@ from .life_tracking import (
     LifeTracking,
 )
 
+# Scheduling models (OR-Tools CP-SAT foundation — Phase 0)
+from .scheduling import (
+    StepTiming,
+    StepEquipmentAffinity,
+    WorkCenterChangeover,
+    Fixture,
+    OptimizationConfig,
+    ScheduleResult,
+    ScheduledTask,
+    ContinuousMachine,
+)
+
 # Integration models - HubSpot
 from .integrations.hubspot import (
     HubSpotSyncLog,

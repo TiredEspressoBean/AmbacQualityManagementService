@@ -203,6 +203,17 @@ class Command(BaseCommand):
         'Tracker_shiftnoteack',
         'Tracker_userworkcentermembership',
         'Tracker_jobrole',
+
+        # --- Scheduling (OR-Tools CP-SAT foundation, Phase 0). SecureModel
+        # subclasses with a tenant FK. ---
+        'Tracker_steptiming',
+        'Tracker_stepequipmentaffinity',
+        'Tracker_workcenterchangeover',
+        'Tracker_fixture',
+        'Tracker_optimizationconfig',
+        'Tracker_scheduleresult',
+        'Tracker_scheduledtask',
+        'Tracker_continuousmachine',
     ]
 
     def add_arguments(self, parser):

@@ -532,6 +532,14 @@ class Steps(SecureModel):
     expected_duration = models.DurationField(null=True, blank=True)
     """The estimated time this step is expected to take."""
 
+    max_continuous_minutes = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Scheduling constraint: maximum continuous minutes for this step "
+                  "(e.g. max machine run before a required pause, or max hold before "
+                  "the next op must start — cure/dry/transport). Null = unconstrained.",
+    )
+    """Scheduling: max continuous minutes (min-gap constraint); null = unconstrained."""
+
     description = models.TextField(null=True, blank=True)
     """Optional human-readable explanation of what this step entails."""
 
@@ -1457,6 +1465,16 @@ class StepEdge(models.Model):
         default=EdgeType.DEFAULT
     )
 
+    tech_continuity = models.CharField(
+        max_length=10,
+        choices=[('ANY', 'Any operator'), ('SAME', 'Same operator'),
+                 ('DIFFERENT', 'Different operator')],
+        default='ANY',
+        help_text="Scheduling: whether from→to must be run by the same operator "
+                  "(SAME), a different one (DIFFERENT — e.g. independent verification), "
+                  "or ANY.",
+    )
+
     # For measurement-based decision routing (edge-level override)
     # If set, overrides the step's decision settings for this specific edge
     condition_measurement = models.ForeignKey(
@@ -1539,6 +1557,14 @@ class StepExecution(SecureModel):
         on_delete=models.SET_NULL,
         related_name='assigned_step_executions',
         help_text="Operator assigned to this step execution"
+    )
+    equipment = models.ForeignKey(
+        'Tracker.Equipments', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='step_executions',
+        help_text="Machine that ran this step (machine-attributed timing / OEE). "
+                  "Stamped at DWI submit; falls back to step.default_equipment. "
+                  "Nullable for history and no-machine steps (plan #1).",
     )
 
     # Exit tracking (set when part leaves step)
@@ -2630,6 +2656,25 @@ class WorkOrder(SecureModel):
         null=True,
         blank=True,
         related_name='+',
+    )
+
+    # Assembly-convergence peg (plan #9) — DISTINCT from parent_workorder (split
+    # provenance only). Set when this WO makes an in-house component consumed by a
+    # parent assembly WO; lets the scheduler add the cross-WO precedence (child
+    # finish + staging ≤ parent assembly-step start).
+    pegged_to_workorder = models.ForeignKey(
+        'self',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='component_pegs',
+        help_text="Parent assembly WO this in-house component job feeds (plan #9).",
+    )
+    pegged_to_bom_line = models.ForeignKey(
+        'Tracker.BOMLine',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='pegged_workorders',
+        help_text="The parent BOM line this component job fills (plan #9).",
     )
 
     class Meta:

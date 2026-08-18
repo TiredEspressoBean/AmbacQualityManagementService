@@ -46,6 +46,13 @@ ADMIN_ONLY_MODELS = {
     # role/user perms, and suspend/reactivate by the User viewset's
     # bulk-activate action — never by membership CRUD perms.
     'tenantmembership',
+    # Scheduling (OR-Tools CP-SAT foundation, Phase 0). Provisional: no viewset/UI
+    # exists yet and there is no `Planner` group. When Phase 4 lands the scheduling
+    # API + a Planner permission/group, grant these properly (view to staff; config
+    # add/change to Planner; ScheduleResult/ScheduledTask stay solver-written) and
+    # remove them from here.
+    'steptiming', 'stepequipmentaffinity', 'workcenterchangeover', 'fixture',
+    'optimizationconfig', 'scheduleresult', 'scheduledtask', 'continuousmachine',
 }
 
 # change_/delete_ never granted to ANY role — append-only audit/evidence

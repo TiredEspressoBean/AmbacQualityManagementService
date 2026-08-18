@@ -1555,6 +1555,14 @@ class BOMLine(SecureModel):
     quantity = models.DecimalField(max_digits=10, decimal_places=4)
     unit_of_measure = models.CharField(max_length=20, default='EA')
 
+    source = models.CharField(
+        max_length=4,
+        choices=[('MAKE', 'Made in-house'), ('BUY', 'Purchased')],
+        default='BUY',
+        help_text="Make-vs-buy: MAKE spawns an in-house child WO the parent assembly "
+                  "pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.",
+    )
+
     # Drawing references
     find_number = models.CharField(
         max_length=20,
