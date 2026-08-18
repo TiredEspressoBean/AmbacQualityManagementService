@@ -10064,6 +10064,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReceivingVerdict'
           description: ''
+  /api/MaterialLots/{id}/extend_shelf_life/:
+    post:
+      operationId: api_MaterialLots_extend_shelf_life_create
+      description: Governed shelf-life extension (re-tested material gets a new use-by).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtendShelfLifeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExtendShelfLifeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExtendShelfLifeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/{id}/open_inspection/:
     post:
       operationId: api_MaterialLots_open_inspection_create
@@ -39344,6 +39380,23 @@ components:
       - limit
       - model
       - results
+    ExtendShelfLifeRequest:
+      type: object
+      description: |-
+        Governed shelf-life extension: a re-tested lot gets a new use-by date,
+        with a required reason (and the approver taken from the request user).
+      properties:
+        new_expiration_date:
+          type: string
+          format: date
+          description: New use-by date after re-test/re-certification.
+        reason:
+          type: string
+          minLength: 1
+          description: Justification / evidence reference for the extension (required).
+      required:
+      - new_expiration_date
+      - reason
     ExternalContact:
       type: object
       description: |-
@@ -41451,6 +41504,10 @@ components:
           type: string
           format: date
           nullable: true
+        shelf_life_status:
+          type: string
+          nullable: true
+          readOnly: true
         certificate_of_conformance:
           type: string
           format: uri
@@ -41483,6 +41540,7 @@ components:
       - quantity_remaining
       - received_by
       - received_date
+      - shelf_life_status
       - supplier_name
       - unit_of_measure
       - updated_at

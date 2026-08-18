@@ -197,6 +197,9 @@ class MaterialLotSerializer(SecureModelMixin):
     supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
     parent_lot_number = serializers.CharField(source='parent_lot.lot_number', read_only=True, allow_null=True)
     child_lot_count = serializers.SerializerMethodField()
+    # Live calendar shelf-life status (OK/WARNING/EXPIRED), or null when the lot
+    # has no shelf life. Reads the LifeTracking record, not the raw scalar.
+    shelf_life_status = serializers.SerializerMethodField()
 
     class Meta:
         model = MaterialLot
@@ -208,6 +211,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'received_date', 'received_by',
             'quantity', 'quantity_remaining', 'unit_of_measure',
             'status', 'hold_reason', 'manufacture_date', 'expiration_date',
+            'shelf_life_status',
             'certificate_of_conformance', 'storage_location',
             'child_lot_count',
             'created_at', 'updated_at', 'archived',
@@ -222,6 +226,11 @@ class MaterialLotSerializer(SecureModelMixin):
     def get_child_lot_count(self, obj):
         return obj.child_lots.count()
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_shelf_life_status(self, obj):
+        from Tracker.services.life_tracking.shelf_life import shelf_life_status
+        return shelf_life_status(obj)
+
 
 class MaterialLotSplitSerializer(serializers.Serializer):
     """Serializer for splitting a lot"""
@@ -232,6 +241,18 @@ class MaterialLotSplitSerializer(serializers.Serializer):
         help_text="Quantity to split off (must be positive)"
     )
     reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ExtendShelfLifeSerializer(serializers.Serializer):
+    """Governed shelf-life extension: a re-tested lot gets a new use-by date,
+    with a required reason (and the approver taken from the request user)."""
+    new_expiration_date = serializers.DateField(
+        help_text="New use-by date after re-test/re-certification."
+    )
+    reason = serializers.CharField(
+        allow_blank=False,
+        help_text="Justification / evidence reference for the extension (required)."
+    )
 
 
 # ===== MATERIAL USAGE SERIALIZERS =====

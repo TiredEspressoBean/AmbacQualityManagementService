@@ -3711,6 +3711,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/extend_shelf_life/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Governed shelf-life extension (re-tested material gets a new use-by). */
+        post: operations["api_MaterialLots_extend_shelf_life_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/open_inspection/": {
         parameters: {
             query?: never;
@@ -16811,6 +16828,19 @@ export interface components {
             }[];
         };
         /**
+         * @description Governed shelf-life extension: a re-tested lot gets a new use-by date,
+         *     with a required reason (and the approver taken from the request user).
+         */
+        ExtendShelfLifeRequest: {
+            /**
+             * Format: date
+             * @description New use-by date after re-test/re-certification.
+             */
+            new_expiration_date: string;
+            /** @description Justification / evidence reference for the extension (required). */
+            reason: string;
+        };
+        /**
          * @description CRUD over `ExternalContact`. Tenant-scoped automatically by the
          *     viewset; the customer FK is validated to belong to the current tenant
          *     via TenantScopedPrimaryKeyRelatedField.
@@ -17771,6 +17801,7 @@ export interface components {
             manufacture_date?: string | null;
             /** Format: date */
             expiration_date?: string | null;
+            readonly shelf_life_status: string | null;
             /** Format: uri */
             certificate_of_conformance?: string | null;
             storage_location?: string;
@@ -35543,6 +35574,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReceivingVerdict"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_extend_shelf_life_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtendShelfLifeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExtendShelfLifeRequest"];
+                "multipart/form-data": components["schemas"]["ExtendShelfLifeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
                 };
             };
         };

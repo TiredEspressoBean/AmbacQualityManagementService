@@ -7,6 +7,14 @@ import { useListMaterialLots } from "@/hooks/useListMaterialLots";
 
 const col = createColumnHelper<Schema<"MaterialLot">>();
 
+// System-set MaterialLot.hold_reason codes → operator-facing labels (mirrors the
+// vocabulary in services/qms/receiving_inspection.py).
+const HOLD_LABELS: Record<string, string> = {
+    SUPPLIER_UNQUALIFIED: "Unqualified supplier",
+    PART_UNAPPROVED: "Unapproved part",
+    SHELF_LIFE_EXPIRED: "Shelf life expired",
+};
+
 // Queue = lots still needing a disposition: RECEIVED (inspection not yet started)
 // + AWAITING_INSPECTION (in progress). `inspection_pending` is honored server-side.
 function useQueueList(params: { offset: number; limit: number; ordering?: string; search?: string }) {
@@ -33,8 +41,11 @@ export function ReceivingInspectionQueuePage() {
                     renderCell: (l) => (
                         <div className="flex items-center gap-1.5">
                             <Badge variant={l.status === "QUARANTINE" ? "destructive" : "secondary"}>{l.status}</Badge>
-                            {l.hold_reason === "SUPPLIER_UNQUALIFIED" && (
-                                <Badge variant="outline" className="border-amber-400 text-amber-700">Unqualified supplier</Badge>
+                            {HOLD_LABELS[l.hold_reason ?? ""] && (
+                                <Badge variant="outline" className="border-amber-400 text-amber-700">{HOLD_LABELS[l.hold_reason ?? ""]}</Badge>
+                            )}
+                            {l.shelf_life_status === "WARNING" && l.hold_reason !== "SHELF_LIFE_EXPIRED" && (
+                                <Badge variant="outline" className="border-amber-400 text-amber-700">Nearing expiry</Badge>
                             )}
                         </div>
                     ),

@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # system-set reasons here so the FE can map them to labels.
 HOLD_SUPPLIER_UNQUALIFIED = "SUPPLIER_UNQUALIFIED"  # set by check_supplier_qualification
 HOLD_PART_UNAPPROVED = "PART_UNAPPROVED"            # set by check_part_approval
+HOLD_SHELF_LIFE_EXPIRED = "SHELF_LIFE_EXPIRED"      # set when a lot arrives/turns expired
 HOLD_AWAITING_COC = "AWAITING_COC"                  # manual: cert of conformance missing
 HOLD_GAUGE_UNAVAILABLE = "GAUGE_UNAVAILABLE"        # manual: required gauge out for cal
 
@@ -128,6 +129,10 @@ def route_received_lot(lot, user):
     """
     if lot.status != "RECEIVED":
         return None
+    # Seed the calendar shelf-life record from the CoC date / material-type shelf
+    # life so downstream gates and the queue read is_blocked, not the raw scalar.
+    from Tracker.services.life_tracking.shelf_life import attach_shelf_life
+    attach_shelf_life(lot)
     # Supplier-qualification gate (soft hold): a lot from a supplier not qualified
     # for this part type is quarantined and flagged rather than flowing to stock.
     if _held_for_unqualified_supplier(lot):
@@ -135,6 +140,10 @@ def route_received_lot(lot, user):
     # Part-approval gate (soft hold): a lot whose (part type, supplier) has no
     # active part approval (PPAP / FAI) is quarantined and flagged.
     if _held_for_unapproved_part(lot):
+        return None
+    # Shelf-life gate (soft hold): a lot already past its use-by on arrival is
+    # quarantined and flagged rather than routed to inspection/stock.
+    if _held_for_expired_shelf_life(lot):
         return None
     step = resolve_receiving_step(lot.material_type) if lot.material_type_id else None
     if step is None:
@@ -232,6 +241,21 @@ def _emit_part_unapproved(lot) -> None:
         correlation_id=f"materiallot:{lot.id}",
         idempotency_key=f"part.unapproved:materiallot:{lot.id}",
     )
+
+
+def _held_for_expired_shelf_life(lot) -> bool:
+    """Soft-hold a received lot that is already shelf-life expired (its use-by is in
+    the past on arrival). Quarantines + flags with ``SHELF_LIFE_EXPIRED``. Returns
+    True when the lot was held. The extension action can later re-qualify it."""
+    from Tracker.services.life_tracking.shelf_life import is_lot_shelf_life_expired
+
+    if not is_lot_shelf_life_expired(lot):
+        return False
+
+    inventory.quarantine_lot(lot)
+    lot.hold_reason = HOLD_SHELF_LIFE_EXPIRED
+    lot.save(update_fields=["hold_reason"])
+    return True
 
 
 def open_inspection(lot, user):
@@ -483,6 +507,17 @@ def accept(report, user):
     """Accept the inspected lot (AWAITING_INSPECTION → ACCEPTED) + close the execution."""
     if report.material_lot_id is None:
         raise ValueError("Report is not a receiving inspection (no material_lot).")
+    # A lot that expired while awaiting inspection must not land in usable stock:
+    # quarantine + flag instead of accepting.
+    from Tracker.services.life_tracking.shelf_life import is_lot_shelf_life_expired
+    if is_lot_shelf_life_expired(report.material_lot):
+        inventory.quarantine_lot(report.material_lot)
+        report.material_lot.hold_reason = HOLD_SHELF_LIFE_EXPIRED
+        report.material_lot.save(update_fields=["hold_reason"])
+        raise ValueError(
+            f"Lot {report.material_lot.lot_number} is shelf-life expired; it was "
+            f"quarantined instead of accepted. Extend the shelf life or dispose it."
+        )
     inventory.mark_lot_accepted(report.material_lot)
     _finalize_execution(report.material_lot, user)
     if report.status == "PENDING":

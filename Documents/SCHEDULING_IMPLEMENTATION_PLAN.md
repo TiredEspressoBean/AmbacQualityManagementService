@@ -110,15 +110,23 @@ fix before the scheduler treats MES gates as authoritative):
   in-flight WO of that part type at once (no KEEP_ALL, unlike process change-control).
 - **`StepRollback` executor is unwired** — `executed_at` never set; the void /
   re-inspection scope is presently indeterminate.
-- **Expired material has no consumption gate (follow-on).** Surfaced while
-  de-versioning `MaterialLot`: nothing reads `expiration_date` to block
-  consumption/acceptance, so expired material can be used — the material analog of
-  the part life-limit gate. Compounded by two unreconciled shelf-life systems
-  (`MaterialLot.expiration_date` raw date vs `LifeTracking` calendar "Shelf Life",
-  which has the gate + controlled evidence-backed extension machinery but is wired
-  to cores/parts, not lots). Direction: unify material shelf-life under
-  `LifeTracking` (single source of truth, extensions with evidence, consumption
-  gate for free).
+- **Expired material shelf-life unified under `LifeTracking` — RESOLVED (2026-08-18).**
+  Material shelf life now rides the same machinery as part life limits.
+  `services/life_tracking/shelf_life.py`: `attach_shelf_life(lot)` seeds a calendar
+  `LifeTracking` record at receipt from the CoC's absolute `expiration_date` (→
+  per-instance `hard_limit_override`) or the material type's shelf-life
+  `LifeLimitDefinition` (→ derived date); the record — not the raw scalar — is the
+  runtime authority (gate reads live `is_blocked`, mirroring the part gate).
+  Enforcement: `route_received_lot` soft-holds an expired-on-arrival lot
+  (`hold_reason=SHELF_LIFE_EXPIRED`), `accept()` quarantines a lot that expired
+  during inspection, and `MaterialUsage.save()` calls `assert_lot_usable` as the
+  consumption backstop (no consume endpoint exists yet). Governed release:
+  `extend_shelf_life(lot, new_date, reason, approved_by)` via `apply_life_override`,
+  keeping `expiration_date` in sync; exposed as the `extend_shelf_life` lot action
+  (`change_materiallot`). Surfaced in the receiving queue (`shelf_life_status` +
+  hold badges). Materials with no shelf life get no record and are never gated.
+  *Follow-on:* an FE "extend shelf life" dialog to re-qualify a quarantined lot
+  (the backend action is live; no UI button yet).
 
 Step-by-step build plan for the OR-Tools scheduling system described in `OR_TOOLS_INTEGRATION.md`. Each phase is dependency-ordered, testable in isolation, and marked as internal or customer-facing.
 

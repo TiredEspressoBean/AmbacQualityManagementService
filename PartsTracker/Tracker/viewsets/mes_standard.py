@@ -30,6 +30,7 @@ from Tracker.serializers.mes_standard import (
     ScheduleSlotSerializer,
     DowntimeEventSerializer,
     MaterialLotSerializer, MaterialLotSplitSerializer,
+    ExtendShelfLifeSerializer,
     MaterialUsageSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
@@ -208,7 +209,9 @@ class DowntimeEventViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelVi
 
 class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""
-    queryset = MaterialLot.unscoped.select_related('material_type', 'supplier', 'parent_lot', 'received_by')
+    queryset = MaterialLot.unscoped.select_related(
+        'material_type', 'supplier', 'parent_lot', 'received_by'
+    ).prefetch_related('life_tracking__definition')
     serializer_class = MaterialLotSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['lot_number', 'supplier_lot_number', 'material_description']
@@ -259,11 +262,32 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(request=ExtendShelfLifeSerializer, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'])
+    def extend_shelf_life(self, request, pk=None):
+        """Governed shelf-life extension (re-tested material gets a new use-by)."""
+        lot = self.get_object()
+        ser = ExtendShelfLifeSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from Tracker.services.life_tracking.shelf_life import extend_shelf_life
+        try:
+            extend_shelf_life(
+                lot,
+                new_expiration_date=ser.validated_data['new_expiration_date'],
+                reason=ser.validated_data['reason'],
+                approved_by=request.user,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        lot.refresh_from_db()
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
     # ===== RECEIVING INSPECTION (purchased material, Flow A) =====
 
     action_permissions = {
         'accept': ['change_materiallot'],
         'reject': ['change_materiallot'],
+        'extend_shelf_life': ['change_materiallot'],
         # raise_scar creates a real CAPA row (SUPPLIER type) via
         # open_scar_for_lot. Without this it would fall through to the CRUD
         # gate (POST -> add_materiallot) and become a side door around the

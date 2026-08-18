@@ -1136,6 +1136,10 @@ class MaterialLot(SecureModel):
 
     # CoC, mill/material certs, packing slips, supplier docs attached at receipt.
     documents = GenericRelation('Tracker.Documents')
+    # Calendar shelf-life record(s). Attached at receipt by
+    # services.life_tracking.shelf_life.attach_shelf_life; the runtime authority
+    # for expiry gating/status (the expiration_date scalar is just the input).
+    life_tracking = GenericRelation('Tracker.LifeTracking')
 
     LOT_STATUS_CHOICES = [
         ('RECEIVED', 'Received'),
@@ -1341,6 +1345,12 @@ class MaterialUsage(SecureModel):
         # `_state.adding`, NOT `not self.pk`. SecureModel assigns pk at
         # instantiation via uuid7, so `not self.pk` is always False.
         if self.lot and self._state.adding:
+            # Shelf-life gate (backstop). No consumption endpoint exists yet, so
+            # this chokepoint is the load-bearing guard; a future consume service
+            # should call assert_lot_usable itself. Validation logic lives in the
+            # service, not here.
+            from Tracker.services.life_tracking.shelf_life import assert_lot_usable
+            assert_lot_usable(self.lot)
             self.lot.quantity_remaining -= self.qty_consumed
             if self.lot.quantity_remaining <= 0:
                 self.lot.status = 'CONSUMED'

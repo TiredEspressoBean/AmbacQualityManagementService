@@ -2657,6 +2657,7 @@ export type MaterialLot = {
   hold_reason: string;
   manufacture_date?: (string | null) | undefined;
   expiration_date?: (string | null) | undefined;
+  shelf_life_status: string | null;
   certificate_of_conformance?: (string | null) | undefined;
   storage_location?: /**
    * @maxLength 100
@@ -15021,6 +15022,7 @@ const MaterialLot = z.object({
   hold_reason: z.string(),
   manufacture_date: z.string().nullish(),
   expiration_date: z.string().nullish(),
+  shelf_life_status: z.string().nullable(),
   certificate_of_conformance: z.string().url().nullish(),
   storage_location: z.string().max(100).optional(),
   child_lot_count: z.number().int(),
@@ -15170,6 +15172,10 @@ const ReceivingVerdict = z.object({
   defectives: z.number().int(),
   units_recorded: z.number().int(),
   readings: z.number().int(),
+});
+const ExtendShelfLifeRequest = z.object({
+  new_expiration_date: z.string(),
+  reason: z.string().min(1),
 });
 const RaiseScarResponse = z.object({
   capa_id: z.string().uuid(),
@@ -20462,6 +20468,7 @@ export const schemas = {
   QualityReportPersonnel,
   QualityReports,
   ReceivingVerdict,
+  ExtendShelfLifeRequest,
   RaiseScarResponse,
   RecordBulkRequestRequest,
   ReceivingMeasurementInputRequest,
@@ -28772,6 +28779,26 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: ReceivingVerdict,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/extend_shelf_life/",
+    alias: "api_MaterialLots_extend_shelf_life_create",
+    description: `Governed shelf-life extension (re-tested material gets a new use-by).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ExtendShelfLifeRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
   },
   {
     method: "post",
