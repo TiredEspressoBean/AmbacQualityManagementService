@@ -45,12 +45,27 @@ that first; it is what makes durations and OEE honest.
   machine-attributed timing from existing history before the FK is populated;
   (ii) `QualityReportEquipment` stays the quality/root-cause home (which machine —
   incl. inspection/gauge roles — implicated in a report), unchanged;
-  (iii) **retire `EquipmentUsage`** as dormant dead scaffold (same pattern as
-  `ScheduleSlot`): repoint the traceability view at `StepExecution.equipment` and
-  `gauge_nag` at `QualityReportEquipment` (it already reads that source), then remove
-  the model + its RLS/preset/permission-coverage references. A deletion → confirm
-  before executing; a small cleanup alongside Phase 0, and it fixes the empty-data
-  bug for free.
+  (iii) **retire `EquipmentUsage`** (source-of-truth = the quality report). The
+  choice is *dedicated usage log* vs *derive from the QR*, and it splits by equipment
+  kind: production machine → `StepExecution.equipment` (decided above); inspection/
+  gauge → `QualityReportEquipment`. A dedicated `EquipmentUsage` log's **only**
+  differentiator is capturing usage when *no* QR exists (in-process gauge checks,
+  tool/fixture touches) — but that requires a real write path at every touch (capture
+  friction), duplicates the other two homes (3-way sync risk), and today is
+  **unrealized**: nothing writes it, so its readers (traceability view
+  `viewsets/mes_lite.py:984`, `gauge_nag`) already run on empty data. The QR is the
+  better source of truth here: its write path is live (QR submit), its `role` field
+  already distinguishes production/inspection/gauge, and `gauge_nag` *already* reads
+  it ("EquipmentUsage(operator) ∪ equipment on quality reports"). The coverage gap
+  (gauge use outside a recorded inspection) is theoretical in UQMES, where receiving/
+  FPI/in-process checks are all QRs. **Retiring an empty model loses zero data and is
+  reversible** — if a real calibration gap ever appears, reintroduce a *written* usage
+  log deliberately then. Cleanup: repoint the traceability view at
+  `StepExecution.equipment` and `gauge_nag` fully at `QualityReportEquipment`, then
+  remove the model + its RLS/preset/permission-coverage references (deletion → confirm
+  before executing; fixes the empty-data bug for free). Unlike `ScheduleSlot` (#3,
+  deferred — it models a *different* layer), `EquipmentUsage` is a genuine redundant
+  duplicate, so retirement is the right call now.
 - **#3 `ScheduleSlot` ↔ `ScheduledTask` — RESOLVED (design, 2026-08-18).**
   Investigation finding: `ScheduleSlot` (`mes_standard.py:968`) is
   **WO × WorkCenter × Shift** granularity — *no Step FK, no `Equipments` FK* — and
@@ -58,15 +73,33 @@ that first; it is what makes durations and OEE honest.
   and no code anywhere creates a slot** (only `cascade_schedule_slots()` mutates
   existing ones on WO completion). It structurally cannot represent the solver's
   part+step+machine assignment, and since nothing populates it the "two live
-  schedule concepts" hazard is latent, not active. **Decision:** `ScheduledTask`
-  (part+step+machine+start+end) is the single authoritative solver schedule; the
-  solver never writes `ScheduleSlot`. **Retire `ScheduleSlot`** (remove the model +
-  its dormant viewset/serializer/route as dead scaffold) — a deletion, so confirm
-  before executing; slot it as a small cleanup alongside Phase 0. Any future coarse
-  WO/work-center capacity rollup is *derived* from `ScheduledTask`, not a second
-  writable model. Carry `ScheduleSlot`'s good conventions into `ScheduledTask`:
+  schedule concepts" hazard is latent, not active. **Second look (2026-08-18): the
+  two are different *layers*, not duplicates — fate deferred, not retired.** The
+  planned scheduler has Layer 1 = machine scheduling (persisted as `ScheduledTask`,
+  Phase 0/2) and Layer 2 = operator dispatch (Phase 3/6, currently designed as an
+  *ephemeral* `{work_center: {shift: [...]}}` dict — "Requires migration: No", no
+  model). `ScheduleSlot` matches **neither**: it is a *persisted*, coarse
+  **WO × work-center × shift** block carrying `assigned_operator`,
+  `needs_reassignment`, and planned/actual times + status — i.e. exactly the
+  **stateful dispatch data an ephemeral dict can't hold**. So it is a plausible home
+  for *persisted operator dispatch*, not dead weight. **Decision:** (i) `ScheduledTask`
+  (part+step+machine+start+end) is the single authoritative **Layer-1** solver
+  schedule; the solver never reads/writes `ScheduleSlot`. Because they model
+  different layers, coexistence is **not** an integrity hazard (the risk is only
+  UI/semantic — never present both as "the schedule" without labeling the layer).
+  (ii) `ScheduleSlot`'s keep-vs-retire fate is **deferred to the dispatch phase
+  (3/6)** — that is where the real question lives: *do we want persisted dispatch
+  (durable operator↔shift assignments + reassignment + actuals), or keep it
+  ephemeral?* If persisted, `ScheduleSlot` is revived as that store (**rename →
+  `DispatchAssignment`** to kill the `Schedule*` name collision); if ephemeral wins,
+  retire it then. Until then it stays parked (nothing populates it, so it is inert).
+  (iii) Carry `ScheduleSlot`'s good conventions into `ScheduledTask` regardless:
   planned + actual start/end, the `SCHEDULED/IN_PROGRESS/COMPLETED/CANCELLED` status
   vocabulary, and the cascade-on-WO-complete pattern.
+  **Naming:** keep `ScheduledTask` (aligns with CP-SAT interval-var "task"
+  vocabulary; `ScheduledOperation` is an acceptable domain-term alternative). The
+  collision is fixed by renaming the *other* model (`ScheduleSlot → DispatchAssignment`)
+  at the dispatch phase, not by renaming the solver model.
 - **#9 Multi-level BOM / assembly convergence — RESOLVED (design, 2026-08-18;
   build is its own later phase).** When a `BOMLine`'s component is made in-house
   (holder body → injector), the parent's assembly step can't start until the
