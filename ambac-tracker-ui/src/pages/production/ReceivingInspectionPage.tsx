@@ -18,6 +18,8 @@ import {
 import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualifications";
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
+import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
+import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 import { getCookie } from "@/lib/utils";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { FileText } from "lucide-react";
@@ -110,6 +112,7 @@ export function ReceivingInspectionPage() {
     const mode: "unit" | "bulk" = isVariables ? "unit" : (modeOverride ?? (hasNumericChar ? "unit" : "bulk"));
     const [bulkDefectives, setBulkDefectives] = useState("0");
     const [docsOpen, setDocsOpen] = useState(false);
+    const [extendOpen, setExtendOpen] = useState(false);
     const [rejectOpen, setRejectOpen] = useState(false);
     const [rejectSubmitting, setRejectSubmitting] = useState(false);
     // cells keyed `${unit}:${charId}`
@@ -233,9 +236,17 @@ export function ReceivingInspectionPage() {
                     <CardTitle className="flex items-center gap-3">
                         <span className="font-mono">{lot.lot_number}</span>
                         <Badge variant="outline">{lot.status}</Badge>
-                        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setDocsOpen(true)}>
-                            <FileText className="h-4 w-4 mr-1" /> Documents
-                        </Button>
+                        <LotHoldBadges lot={lot} />
+                        <div className="ml-auto flex items-center gap-2">
+                            {canExtend(lot) && (
+                                <Button variant="outline" size="sm" onClick={() => setExtendOpen(true)}>
+                                    Extend shelf life
+                                </Button>
+                            )}
+                            <Button variant="outline" size="sm" onClick={() => setDocsOpen(true)}>
+                                <FileText className="h-4 w-4 mr-1" /> Documents
+                            </Button>
+                        </div>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
                         {lot.material_type_name ?? lot.material_description ?? "—"} · {lot.supplier_name ?? "no supplier"} · qty {lot.quantity}
@@ -487,6 +498,13 @@ export function ReceivingInspectionPage() {
                 acceptNumber={ac}
                 submitting={rejectSubmitting}
                 onConfirm={confirmReject}
+            />
+            <ExtendShelfLifeDialog
+                lotId={String(lot.id)}
+                lotNumber={lot.lot_number}
+                currentExpiration={lot.expiration_date}
+                open={extendOpen}
+                onOpenChange={setExtendOpen}
             />
         </div>
     );

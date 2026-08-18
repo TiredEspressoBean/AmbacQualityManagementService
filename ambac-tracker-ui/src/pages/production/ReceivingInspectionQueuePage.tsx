@@ -6,20 +6,11 @@ import { Button } from "@/components/ui/button";
 import type { Schema } from "@/lib/api/types";
 import { useListMaterialLots } from "@/hooks/useListMaterialLots";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
+import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 
 type Lot = Schema<"MaterialLot">;
-// A lot the operator can re-qualify: held for shelf life, or already flagged EXPIRED.
-const canExtend = (l: Lot) => l.hold_reason === "SHELF_LIFE_EXPIRED" || l.shelf_life_status === "EXPIRED";
 
 const col = createColumnHelper<Schema<"MaterialLot">>();
-
-// System-set MaterialLot.hold_reason codes → operator-facing labels (mirrors the
-// vocabulary in services/qms/receiving_inspection.py).
-const HOLD_LABELS: Record<string, string> = {
-    SUPPLIER_UNQUALIFIED: "Unqualified supplier",
-    PART_UNAPPROVED: "Unapproved part",
-    SHELF_LIFE_EXPIRED: "Shelf life expired",
-};
 
 // Queue = lots still needing a disposition: RECEIVED (inspection not yet started)
 // + AWAITING_INSPECTION (in progress). `inspection_pending` is honored server-side.
@@ -49,12 +40,7 @@ export function ReceivingInspectionQueuePage() {
                     renderCell: (l) => (
                         <div className="flex items-center gap-1.5">
                             <Badge variant={l.status === "QUARANTINE" ? "destructive" : "secondary"}>{l.status}</Badge>
-                            {HOLD_LABELS[l.hold_reason ?? ""] && (
-                                <Badge variant="outline" className="border-amber-400 text-amber-700">{HOLD_LABELS[l.hold_reason ?? ""]}</Badge>
-                            )}
-                            {l.shelf_life_status === "WARNING" && l.hold_reason !== "SHELF_LIFE_EXPIRED" && (
-                                <Badge variant="outline" className="border-amber-400 text-amber-700">Nearing expiry</Badge>
-                            )}
+                            <LotHoldBadges lot={l} />
                         </div>
                     ),
                 }),

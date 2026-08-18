@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { PackagePlus } from "lucide-react";
 import type { Schema } from "@/lib/api/types";
 import { useListMaterialLots } from "@/hooks/useListMaterialLots";
+import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
+import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 
+type Lot = Schema<"MaterialLot">;
 const col = createColumnHelper<Schema<"MaterialLot">>();
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -58,6 +61,8 @@ export function MaterialsPage() {
         all: undefined,
     };
 
+    const [extendLot, setExtendLot] = useState<Lot | null>(null);
+
     // List for the active lens. Defined inline so it closes over `tab`; the
     // ModelEditorPage is remounted per tab (key) to reset its pagination/search.
     const useList = (params: { offset: number; limit: number; ordering?: string; search?: string }) => {
@@ -69,6 +74,7 @@ export function MaterialsPage() {
     };
 
     return (
+        <>
         <ModelEditorPage
             key={tab}
             title="Materials"
@@ -111,25 +117,40 @@ export function MaterialsPage() {
                     renderCell: (l) => (
                         <div className="flex items-center gap-1.5">
                             <Badge variant={STATUS_VARIANT[l.status ?? ""] ?? "outline"}>{l.status}</Badge>
-                            {l.hold_reason === "SUPPLIER_UNQUALIFIED" && (
-                                <Badge variant="outline" className="border-amber-400 text-amber-700">Unqualified supplier</Badge>
-                            )}
+                            <LotHoldBadges lot={l} />
                         </div>
                     ),
                 }),
                 col({ header: "Received", renderCell: (l) => l.received_date ?? "—" }),
             ]}
-            renderActions={(l) =>
-                l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" ? (
-                    <Button
-                        size="sm"
-                        onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}
-                    >
-                        Inspect
-                    </Button>
-                ) : null
-            }
+            renderActions={(l) => (
+                <div className="flex items-center gap-2">
+                    {canExtend(l) && (
+                        <Button size="sm" variant="outline" onClick={() => setExtendLot(l)}>
+                            Extend shelf life
+                        </Button>
+                    )}
+                    {(l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED") && (
+                        <Button
+                            size="sm"
+                            onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}
+                        >
+                            Inspect
+                        </Button>
+                    )}
+                </div>
+            )}
             showDetailsLink={false}
         />
+        {extendLot && (
+            <ExtendShelfLifeDialog
+                lotId={String(extendLot.id)}
+                lotNumber={extendLot.lot_number}
+                currentExpiration={extendLot.expiration_date}
+                open={extendLot !== null}
+                onOpenChange={(o) => { if (!o) setExtendLot(null); }}
+            />
+        )}
+        </>
     );
 }
