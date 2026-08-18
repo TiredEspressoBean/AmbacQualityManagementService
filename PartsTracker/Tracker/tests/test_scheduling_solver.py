@@ -220,6 +220,26 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
         self.assertEqual(result.tasks.count(), 2)
 
+    def test_changeover_gap_between_different_steps(self):
+        from Tracker.models import WorkCenterChangeover
+        # step1 → step2 on the same machine incurs a 45-min changeover on top of
+        # the precedence constraint.
+        WorkCenterChangeover.objects.create(
+            tenant=self.tenant, equipment=self.machine,
+            from_step=self.step1, to_step=self.step2, changeover_minutes=45)
+        _, parts = self._wo("WO-CO", 1)
+        result = solve_schedule(self.tenant)
+        tasks = {t.step_id: t for t in result.tasks.filter(part=parts[0])}
+        gap = (tasks[self.step2.id].start_time - tasks[self.step1.id].end_time).total_seconds() / 60
+        self.assertGreaterEqual(gap, 45, "changeover must separate the two step-types")
+
+    def test_setup_solve_is_feasible(self):
+        StepTiming.objects.filter(step=self.step1).update(setup_minutes=20)
+        self._wo("WO-SU", 1)
+        result = solve_schedule(self.tenant)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        self.assertEqual(result.tasks.count(), 2)
+
     def test_unschedulable_step_still_scheduled_without_capacity(self):
         # A step whose only machine is not is_schedulable gets no capacity link but
         # is still placed (precedence-only) — no crash, task written with null machine.

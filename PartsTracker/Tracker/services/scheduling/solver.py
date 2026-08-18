@@ -98,6 +98,16 @@ def _window_gaps(windows, horizon_start, H) -> list[tuple]:
     return gaps
 
 
+def _transition(changeover, equipment_id, from_step, to_step, to_setup) -> int:
+    """Minutes between consecutive tasks on a machine: 0 for same step (piece after
+    piece), else the WorkCenterChangeover value, falling back to the incoming step's
+    setup when no specific changeover is configured."""
+    if from_step == to_step:
+        return 0
+    val = changeover.get((equipment_id, from_step, to_step))
+    return int(round(val)) if val is not None else to_setup
+
+
 def _map_status(cp_status) -> str:
     from ortools.sat.python import cp_model
     from Tracker.models.scheduling import SolverStatus
@@ -136,6 +146,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         availability = data.get_machine_availability(tenant, horizon)
         secondary = data.get_step_secondary_resources(tenant)   # step_id -> {gauge_id}
         fixtures = data.get_fixture_availability(tenant)         # fixture_id -> FixtureData
+        changeover = data.get_changeover_matrix(tenant)         # (equip, from, to) -> minutes
         config = OptimizationConfig.objects.filter(tenant=tenant).first()
 
         # Which steps need an unconditional occupancy interval (gauge and/or fixture).
@@ -154,6 +165,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
 
         tasks: list[dict] = []
         machine_intervals: dict = defaultdict(list)
+        machine_tasks: dict = defaultdict(list)   # equip_id -> [(present, start, end, step_id, setup)]
         gauge_intervals: dict = defaultdict(list)
         fixture_intervals: dict = defaultdict(list)
         lateness_cost = []
@@ -172,6 +184,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     start = model.NewIntVar(0, H, f"s_{key}")
                     end = model.NewIntVar(0, H, f"e_{key}")
 
+                    setup_int = int(round(timing.setup_minutes)) if timing else 0
                     choices = []
                     if eligible:
                         for a in eligible:
@@ -179,6 +192,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                             lit = model.NewBoolVar(f"m_{key}_{a.equipment_id}")
                             opt = model.NewOptionalFixedSizeIntervalVar(start, dur, lit, f"i_{key}_{a.equipment_id}")
                             machine_intervals[a.equipment_id].append(opt)
+                            machine_tasks[a.equipment_id].append((lit, start, end, node.step_id, setup_int))
                             model.Add(end == start + dur).OnlyEnforceIf(lit)
                             choices.append((lit, a.equipment_id))
                         model.AddExactlyOne([lit for lit, _ in choices])
@@ -219,6 +233,25 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             blocked = [model.NewFixedSizeIntervalVar(gs, ge - gs, f"gap_{equipment_id}_{gs}")
                        for gs, ge in gaps]
             model.AddNoOverlap(intervals + blocked)
+
+        # Sequence-dependent setup / changeover: for each pair of tasks that could
+        # share a machine, insert the changeover gap in whichever order they run
+        # (gated on both being assigned to that machine). Same-step neighbours cost
+        # 0 (piece after piece); different-step neighbours pay the WorkCenterChangeover
+        # (or the incoming step's setup as a fallback). NoOverlap already prevents
+        # time overlap; this adds the transition gap on top.
+        for equipment_id, mtasks in machine_tasks.items():
+            for i in range(len(mtasks)):
+                pi, si, ei, stepi, setupi = mtasks[i]
+                for j in range(i + 1, len(mtasks)):
+                    pj, sj, ej, stepj, setupj = mtasks[j]
+                    t_ij = _transition(changeover, equipment_id, stepi, stepj, setupj)
+                    t_ji = _transition(changeover, equipment_id, stepj, stepi, setupi)
+                    if not t_ij and not t_ji:
+                        continue
+                    i_before_j = model.NewBoolVar(f"seq_{equipment_id}_{i}_{j}")
+                    model.Add(sj >= ei + t_ij).OnlyEnforceIf([pi, pj, i_before_j])
+                    model.Add(si >= ej + t_ji).OnlyEnforceIf([pi, pj, i_before_j.Not()])
 
         # Secondary gauges: one task at a time per gauge.
         for intervals in gauge_intervals.values():
