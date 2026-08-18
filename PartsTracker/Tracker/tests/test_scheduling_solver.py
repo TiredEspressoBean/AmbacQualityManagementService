@@ -300,3 +300,44 @@ class SolverTests(TenantContextMixin, TestCase):
         result = solve_schedule(self.tenant)
         self.assertEqual(result.tasks.count(), 2)
         self.assertTrue(all(t.machine_id is None for t in result.tasks.all()))
+
+    # ---- schedulability gates (don't plan work that can't run) -----------
+
+    def test_on_hold_workorder_is_not_scheduled(self):
+        wo, _ = self._wo("WO-HOLD", 1)
+        wo.workorder_status = WorkOrderStatus.ON_HOLD
+        wo.save(update_fields=["workorder_status"])
+        result = solve_schedule(self.tenant)
+        self.assertEqual(result.tasks.count(), 0, "held WOs are excluded from planning")
+
+    def test_quarantined_part_is_not_scheduled(self):
+        from Tracker.models.mes_lite import PartsStatus
+        _, parts = self._wo("WO-QUAR", 2)
+        parts[0].part_status = PartsStatus.QUARANTINED
+        parts[0].save(update_fields=["part_status"])
+        result = solve_schedule(self.tenant)
+        scheduled_parts = {t.part_id for t in result.tasks.all()}
+        self.assertNotIn(parts[0].id, scheduled_parts, "a quarantined part is dropped")
+        self.assertIn(parts[1].id, scheduled_parts, "its healthy sibling still schedules")
+
+    def test_out_of_service_machine_is_not_assigned(self):
+        from Tracker.models.mes_standard import EquipmentStatus
+        self.machine.status = EquipmentStatus.OUT_OF_SERVICE
+        self.machine.save(update_fields=["status"])
+        _, parts = self._wo("WO-DOWN", 1)
+        result = solve_schedule(self.tenant)
+        self.assertEqual(result.tasks.count(), 2)
+        self.assertTrue(all(t.machine_id is None for t in result.tasks.all()),
+                        "a down machine is never assigned work")
+
+    def test_expected_start_gates_earliest_release(self):
+        from datetime import datetime
+        wo, _ = self._wo("WO-REL", 1)
+        release_date = date.today() + _td(days=3)
+        wo.expected_start = release_date
+        wo.save(update_fields=["expected_start"])
+        result = solve_schedule(self.tenant)
+        release_dt = timezone.make_aware(datetime.combine(release_date, dtime.min))
+        for t in result.tasks.all():
+            self.assertGreaterEqual(t.start_time, release_dt - _td(minutes=1),
+                                    "no task starts before the WO's expected_start")

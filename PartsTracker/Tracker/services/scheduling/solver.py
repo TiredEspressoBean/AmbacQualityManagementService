@@ -85,6 +85,15 @@ def _due_minutes(due_date, horizon_start, H) -> int | None:
     return max(-H, minutes)
 
 
+def _release_minutes(start_date, horizon_start, H) -> int:
+    """Earliest a WO's work may begin: start-of-day of its expected_start, clamped
+    to [0, H]. 0 (already releasable) when unset or in the past."""
+    if start_date is None:
+        return 0
+    rel_dt = timezone.make_aware(datetime.combine(start_date, dtime.min))
+    return max(0, min(H, int((rel_dt - horizon_start).total_seconds() // 60)))
+
+
 def _to_minutes(intervals, horizon_start, H) -> list[tuple]:
     """Datetime intervals → clipped integer-minute [start, end] tuples from H0."""
     out = []
@@ -204,6 +213,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         for wo in wos:
             sequence = [s for s in wo.steps if not s.is_terminal]
             due_minutes = _due_minutes(wo.expected_completion, horizon.start, H)
+            release_min = _release_minutes(wo.expected_start, horizon.start, H)
             penalty = _penalty_cents_per_min(config, wo.priority)
             for part in wo.parts:
                 prev_end = None
@@ -214,6 +224,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     key = f"{part.part_id}_{node.step_id}"
                     start = model.NewIntVar(0, H, f"s_{key}")
                     end = model.NewIntVar(0, H, f"e_{key}")
+                    if release_min:
+                        model.Add(start >= release_min)   # earliest-release gate
 
                     setup_int = int(round(timing.setup_minutes)) if timing else 0
                     choices = []

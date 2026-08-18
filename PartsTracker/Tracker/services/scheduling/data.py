@@ -18,6 +18,15 @@ from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
 from django.utils import timezone
 
 
+# Parts in these states can't be worked, so they never enter the schedule
+# (finished/shipped/inventory, cancelled/scrapped, or held for QA). Active states
+# — PENDING/IN_PROGRESS/AWAITING_QA/READY_FOR_NEXT_STEP/REWORK_* — stay schedulable.
+_UNSCHEDULABLE_PART_STATUSES = frozenset({
+    'COMPLETED', 'SCRAPPED', 'CANCELLED', 'SHIPPED', 'IN_STOCK',
+    'AWAITING_PICKUP', 'CORE_BANKED', 'RMA_CLOSED', 'QUARANTINED',
+})
+
+
 # --- DTOs -------------------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -101,6 +110,7 @@ class WorkOrderData:
     erp_id: str
     priority: int
     expected_completion: date | None
+    expected_start: date | None  # earliest-release gate (no task starts before this)
     quantity: int
     process_id: UUID
     parts: tuple  # tuple[PartData, ...]
@@ -206,11 +216,19 @@ def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
 # --- Machine eligibility / setup / fixtures ---------------------------------
 
 def get_step_equipment_affinities(tenant) -> dict[UUID, list[AffinityData]]:
-    """Which machines can run each step, and how well. `step_id → [AffinityData]`."""
+    """Which machines can run each step, and how well. `step_id → [AffinityData]`.
+    Machines that can't be used right now — not in service, or with lapsed
+    calibration (`Equipments.is_operational`) — are dropped so the solver never
+    assigns work to them."""
     from Tracker.models import StepEquipmentAffinity
 
     result: dict[UUID, list[AffinityData]] = {}
-    for a in StepEquipmentAffinity.objects.filter(tenant=tenant).select_related('equipment'):
+    for a in (
+        StepEquipmentAffinity.objects.filter(tenant=tenant)
+        .select_related('equipment__equipment_type')
+    ):
+        if not a.equipment.is_operational:
+            continue
         result.setdefault(a.step_id, []).append(AffinityData(
             equipment_id=a.equipment_id,
             affinity=a.affinity,
@@ -286,15 +304,18 @@ def get_schedule_horizon(tenant, horizon_days: int = 30) -> HorizonData:
 # --- Active work orders (the routing graph to schedule) ---------------------
 
 def get_active_workorders(tenant) -> list[WorkOrderData]:
-    """Non-terminal work orders with a process, each carrying its parts (current
-    step) and the process routing graph (steps + edges). The process graph is
-    resolved once per distinct process and shared across its work orders."""
+    """Schedulable work orders with a process, each carrying its schedulable parts
+    (current step) and the process routing graph (steps + edges). Excludes finished
+    (COMPLETED/CANCELLED) and held (ON_HOLD) WOs, and drops parts in a state that
+    can't be worked (finished, shipped, quarantined). The process graph is resolved
+    once per distinct process and shared across its work orders."""
     from Tracker.models import ProcessStep, StepEdge, WorkOrder, WorkOrderStatus
 
-    terminal = [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]
+    excluded = [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED,
+                WorkOrderStatus.ON_HOLD]
     wos = (
         WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
-        .exclude(workorder_status__in=terminal)
+        .exclude(workorder_status__in=excluded)
         .prefetch_related('parts')
     )
 
@@ -322,11 +343,14 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     for wo in wos:
         steps, edges = _graph(wo.process_id)
         parts = tuple(
-            PartData(part_id=p.id, current_step_id=p.step_id) for p in wo.parts.all()
+            PartData(part_id=p.id, current_step_id=p.step_id)
+            for p in wo.parts.all()
+            if p.part_status not in _UNSCHEDULABLE_PART_STATUSES
         )
         result.append(WorkOrderData(
             wo_id=wo.id, erp_id=wo.ERP_id, priority=wo.priority,
-            expected_completion=wo.expected_completion, quantity=wo.quantity,
+            expected_completion=wo.expected_completion, expected_start=wo.expected_start,
+            quantity=wo.quantity,
             process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
         ))
     return result
