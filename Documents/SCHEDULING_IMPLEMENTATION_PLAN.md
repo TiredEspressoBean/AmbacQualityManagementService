@@ -27,6 +27,30 @@ that first; it is what makes durations and OEE honest.
   falling back to `step.default_equipment`; nullable so historical rows and
   no-machine steps are fine. Yields machine-attributed coarse cycle time at zero
   extra capture friction. Already reflected in the Phase 0 field table below.
+  **Machine-capture landscape (investigated 2026-08-18) — reconciled:** the machine
+  is *already* recorded in two other places, and neither substitutes for a
+  per-execution FK: (a) `QualityReportEquipment` (`qms.py:203`, through-table with
+  an `EquipmentRole`, default `PRODUCTION`) is really populated by the QR-submit
+  path (`serializers/qms.py:367`) but only for report-generating steps
+  (inspection/FPI/defect/receiving) — *partial* coverage; (b) `EquipmentUsage`
+  (`qms.py:624`, equipment+step+part+used_at, "for performance analysis") is the
+  purpose-built machine-activity model but is written *only by seeders/tests* —
+  dormant — while a part-traceability view (`viewsets/mes_lite.py:984`) and
+  `gauge_nag` read it and therefore show **empty equipment data in real tenants** (a
+  latent bug). `StepExecution.equipment` wins for timing: 1:1 with the execution
+  the fallback chain already averages, universal (every visit), and a direct FK (no
+  ambiguous `(part, step)` join across rework visits). **Decisions:**
+  (i) the scheduling data layer reads machine from `StepExecution.equipment`, and
+  where null falls back to the step's `QualityReportEquipment(PRODUCTION)` — recovers
+  machine-attributed timing from existing history before the FK is populated;
+  (ii) `QualityReportEquipment` stays the quality/root-cause home (which machine —
+  incl. inspection/gauge roles — implicated in a report), unchanged;
+  (iii) **retire `EquipmentUsage`** as dormant dead scaffold (same pattern as
+  `ScheduleSlot`): repoint the traceability view at `StepExecution.equipment` and
+  `gauge_nag` at `QualityReportEquipment` (it already reads that source), then remove
+  the model + its RLS/preset/permission-coverage references. A deletion → confirm
+  before executing; a small cleanup alongside Phase 0, and it fixes the empty-data
+  bug for free.
 - **#3 `ScheduleSlot` ↔ `ScheduledTask` — RESOLVED (design, 2026-08-18).**
   Investigation finding: `ScheduleSlot` (`mes_standard.py:968`) is
   **WO × WorkCenter × Shift** granularity — *no Step FK, no `Equipments` FK* — and
