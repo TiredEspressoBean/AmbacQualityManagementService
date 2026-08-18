@@ -43,7 +43,6 @@ class Command(BaseCommand):
         # Equipment
         'Tracker_equipments',
         'Tracker_equipmenttype',
-        'Tracker_equipmentusage',
         'Tracker_calibrationrecord',
         'Tracker_trainingrecord',
         'Tracker_trainingtype',

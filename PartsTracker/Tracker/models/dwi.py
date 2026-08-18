@@ -593,7 +593,8 @@ class SubstepResource(SecureModel):
     A SubstepResource row references a *class* of resource (e.g.
     EquipmentType="Digital micrometer 0-1 in"). At execution time the
     operator binds an instance (a specific calibrated micrometer) via the
-    existing EquipmentUsage flow. Authoring layer here; binding layer there.
+    execution's equipment link (StepExecution.equipment / the equipment attached
+    to the quality report). Authoring layer here; binding layer there.
     """
 
     substep = models.ForeignKey(

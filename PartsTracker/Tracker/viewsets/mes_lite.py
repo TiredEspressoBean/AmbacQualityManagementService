@@ -918,7 +918,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         """
         from Tracker.models import (
             ProcessStep, QualityReports, MeasurementResult, QuarantineDisposition,
-            EquipmentUsage, MaterialUsage, Documents, StepExecution, TimeEntry,
+            MaterialUsage, Documents, StepExecution, TimeEntry,
             BatchExecution,
         )
         from django.contrib.contenttypes.models import ContentType
@@ -960,7 +960,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         quality_reports = QualityReports.objects.filter(
             part=part
         ).select_related('step', 'detected_by', 'verified_by').prefetch_related(
-            'measurements__definition', 'errors', 'equipment_usages__equipment'
+            'measurements__definition', 'errors'
         )
         qr_map = {}  # step_id -> list of quality reports
         for qr in quality_reports:
@@ -980,16 +980,13 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                     disposition_map[disp.step_id] = []
                 disposition_map[disp.step_id].append(disp)
 
-        # Get equipment usage for this part
-        equipment_usages = EquipmentUsage.objects.filter(
-            part=part
-        ).select_related('equipment', 'step')
-        equipment_map = {}  # step_id -> list of equipment
-        for eu in equipment_usages:
-            if eu.step_id:
-                if eu.step_id not in equipment_map:
-                    equipment_map[eu.step_id] = []
-                equipment_map[eu.step_id].append(eu)
+        # Equipment used for this part, per step: the machine that ran each step
+        # execution (EquipmentUsage retired — see plan #1). Items expose `.equipment`.
+        equipment_map = {}  # step_id -> list of StepExecution (each has .equipment)
+        for ex in StepExecution.objects.filter(
+            part=part, equipment__isnull=False
+        ).select_related('equipment'):
+            equipment_map.setdefault(ex.step_id, []).append(ex)
 
         # Get material usage for this part
         material_usages = MaterialUsage.objects.filter(
@@ -1774,7 +1771,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         """
         from Tracker.models import (
             ProcessStep, QualityReports, MeasurementResult,
-            EquipmentUsage, MaterialUsage, Documents, StepExecution, TimeEntry
+            MaterialUsage, Documents, StepExecution, TimeEntry
         )
         from django.contrib.contenttypes.models import ContentType
         from django.db.models import Count, Min, Max, Q

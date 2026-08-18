@@ -13,7 +13,7 @@ from django.utils import timezone
 from Tracker.models import (
     Orders, Parts, WorkOrder, Steps,
     OrdersStatus, WorkOrderStatus, WorkOrderPriority, PartsStatus,
-    StepExecution, StepTransitionLog, EquipmentUsage,
+    StepExecution, StepTransitionLog,
     Equipments, ProcessStep,
     FPIRecord, FPIStatus, FPIResult, PartTypes,
 )
@@ -339,7 +339,7 @@ class DemoOrdersSeeder(BaseSeeder):
         Creates:
         - StepExecution records showing part progression through workflow
         - StepTransitionLog entries showing part transitions
-        - EquipmentUsage records linking equipment to step executions
+        - equipment attribution on each StepExecution (which machine ran it)
 
         Args:
             process: the Processes object
@@ -456,7 +456,7 @@ class DemoOrdersSeeder(BaseSeeder):
 
         self.log(f"  Created {result['step_executions']} step executions")
         self.log(f"  Created {result['step_transitions']} step transitions")
-        self.log(f"  Created {result['equipment_usage']} equipment usage records")
+        self.log(f"  Set {result['equipment_usage']} step-execution equipment attributions")
 
         return result
 
@@ -464,7 +464,7 @@ class DemoOrdersSeeder(BaseSeeder):
                                      operators, step_equipment_map, equipment_map,
                                      completed=True, result=None):
         """
-        Create StepExecution, StepTransitionLog, and EquipmentUsage records.
+        Create StepExecution (+ equipment attribution) and StepTransitionLog records.
 
         Args:
             part: Parts object
@@ -574,42 +574,18 @@ class DemoOrdersSeeder(BaseSeeder):
             )
             result['step_transitions'] += 1
 
-        # Create EquipmentUsage if this step uses equipment
+        # Attach the machine that ran this step to the StepExecution (equipment
+        # attribution — EquipmentUsage retired, see plan #1). One machine per step.
         equipment_names = step_equipment_map.get(step.name, [])
-        for eq_name in equipment_names:
+        if equipment_names:
+            eq_name = equipment_names[0]
+            if len(equipment_names) > 1:
+                eq_idx = hash(f"{part.ERP_id}-{step.name}") % len(equipment_names)
+                eq_name = equipment_names[eq_idx]
             equipment_obj = equipment_map.get(eq_name)
-            if equipment_obj:
-                # Pick equipment deterministically
-                if len(equipment_names) > 1:
-                    # Choose based on part serial
-                    eq_idx = hash(f"{part.ERP_id}-{step.name}") % len(equipment_names)
-                    eq_name = equipment_names[eq_idx]
-                    equipment_obj = equipment_map.get(eq_name)
-
-                if equipment_obj:
-                    # Check if usage already exists
-                    usage_exists = EquipmentUsage.objects.filter(
-                        tenant=self.tenant,
-                        equipment=equipment_obj,
-                        step=step,
-                        part=part,
-                        used_at=started_at
-                    ).exists()
-
-                    if not usage_exists:
-                        EquipmentUsage.objects.create(
-                            tenant=self.tenant,
-                            equipment=equipment_obj,
-                            step=step,
-                            part=part,
-                            operator=operator,
-                            used_at=started_at,
-                            notes=f"Used for {step.name} operation",
-                        )
-                        result['equipment_usage'] += 1
-
-                # Only use one equipment per step
-                break
+            if equipment_obj and execution.equipment_id != equipment_obj.id:
+                StepExecution.objects.filter(pk=execution.pk).update(equipment=equipment_obj)
+                result['equipment_usage'] += 1
 
         # Return next entry time
         return exited_at if exited_at else started_at

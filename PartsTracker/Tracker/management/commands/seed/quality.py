@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from Tracker.models import (
     QualityReports, QualityErrorsList, QuarantineDisposition,
-    MeasurementResult, EquipmentUsage, MeasurementDefinition,
+    MeasurementResult, MeasurementDefinition,
     SPCBaseline, ChartType, BaselineStatus,
     QualityReportEquipment, EquipmentRole,
 )
@@ -103,9 +103,6 @@ class QualitySeeder(BaseSeeder):
             self.create_audit_log(QualityReports, qr.id, 'CREATE', qa_time, operator,
                                  {'status': [None, status], 'part': [None, part.ERP_id]})
 
-        # Create equipment usage record
-        self._create_equipment_usage(selected_equipment, step, part, qr if status == "FAIL" else None, operator, qa_time)
-
         # Create error lists and dispositions
         self._create_error_lists_and_dispositions(qr, part.part_type, users, qa_time)
 
@@ -131,23 +128,6 @@ class QualitySeeder(BaseSeeder):
         if any(kw in step_name_lower for kw in ['inspection', 'qc', 'testing', 'validation']):
             base_rate *= 1.3
         return min(0.50, base_rate)
-
-    def _create_equipment_usage(self, equipment, step, part, error_report, operator, timestamp):
-        """Create equipment usage record."""
-        if not equipment:
-            return
-
-        # Note: EquipmentUsage is an audit record protected by compliance triggers
-        # and cannot be backdated. It will use current timestamps.
-        EquipmentUsage.objects.create(
-            tenant=self.tenant,
-            equipment=equipment,
-            step=step,
-            part=part,
-            error_report=error_report,
-            operator=operator,
-            notes=f"QA inspection on {equipment.name}" + (" - FAILED" if error_report else "")
-        )
 
     def _create_measurement_results(self, qr, step, status, users, timestamp):
         """Create measurement results for a quality report."""

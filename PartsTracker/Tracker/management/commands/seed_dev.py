@@ -40,7 +40,7 @@ from Tracker.models import (
     ProcessStep, StepEdge,
     # Quality models
     QualityErrorsList, QualityReports, QualityReportDefect, MeasurementDefinition, MeasurementResult,
-    QuarantineDisposition, QaApproval, StepTransitionLog, EquipmentUsage,
+    QuarantineDisposition, QaApproval, StepTransitionLog,
     # Sampling models
     SamplingRuleSet, SamplingRule, SamplingTriggerState, SamplingAuditLog, SamplingAnalytics,
     # Workflow execution models
@@ -297,12 +297,11 @@ class Command(BaseCommand):
             (TrainingType, "Training types", {'tenant': tenant}),
             # Calibration
             (CalibrationRecord, "Calibration records", {'tenant': tenant}),
-            # Quality: EquipmentUsage has FK to QualityReports, must go first
+            # Quality
             (QualityReportDefect, "Quality report defects", {'report__tenant': tenant}),
             (MeasurementResult, "Measurement results", {'tenant': tenant}),
             (MeasurementDefinition, "Measurement definitions", {'tenant': tenant}),
             (QaApproval, "QA approvals", {'tenant': tenant}),
-            (EquipmentUsage, "Equipment usage", {'tenant': tenant}),
             # QuarantineDisposition has PROTECT FK to Parts AND Steps - delete by multiple filters
             (QuarantineDisposition, "Quarantine dispositions (by tenant)", {'tenant': tenant}),
             (QuarantineDisposition, "Quarantine dispositions (by part)", {'part__tenant': tenant}),

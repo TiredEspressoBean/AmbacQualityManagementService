@@ -69,7 +69,7 @@ IMMUTABLE_MODELS = {
     'samplingseveritystate',
     # DB-trigger-immutable tables whose change_/delete_ grants were dead
     # (the trigger raises for everyone, superusers included):
-    'steptransitionlog', 'samplingauditlog', 'equipmentusage',
+    'steptransitionlog', 'samplingauditlog',
     'approvalresponse',
     # A shift-note acknowledgment is a one-time receipt written by the
     # acknowledge action; never edited or deleted via a role's CRUD.
@@ -83,8 +83,8 @@ IMMUTABLE_MODELS = {
 # add_ is performed by services / the runtime, never via a role's CRUD.
 # (stepexecutionmeasurement is NOT here: operators record measurements over
 # HTTP via the bulk-record endpoint, so add_ is granted; change_/delete_
-# stay immutable above. equipmentusage/approvalresponse add_ likewise stay
-# granted — INSERT is allowed, mutation is not.)
+# stay immutable above. approvalresponse add_ likewise stays granted — INSERT
+# is allowed, mutation is not.)
 SYSTEM_WRITTEN_MODELS = {
     'permissionchangelog', 'capastatustransition', 'recordedit',
     'samplingdecision', 'samplingtriggerstate', 'samplingseveritystate',

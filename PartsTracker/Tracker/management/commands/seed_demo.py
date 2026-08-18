@@ -42,7 +42,7 @@ from Tracker.models import (
     ProcessStep, StepEdge,
     # Quality models
     QualityErrorsList, QualityReports, MeasurementDefinition, MeasurementResult,
-    QuarantineDisposition, QaApproval, StepTransitionLog, EquipmentUsage,
+    QuarantineDisposition, QaApproval, StepTransitionLog,
     QualityReportDefect,
     # Sampling models
     SamplingRuleSet, SamplingRule, SamplingTriggerState, SamplingAuditLog, SamplingAnalytics,
@@ -380,7 +380,6 @@ class Command(BaseCommand):
                 ("Parts", Parts.objects.filter(tenant=tenant).count()),
                 ("Step Executions", StepExecution.objects.filter(tenant=tenant).count()),
                 ("Step Transitions", StepTransitionLog.objects.filter(tenant=tenant).count()),
-                ("Equipment Usage", EquipmentUsage.objects.filter(tenant=tenant).count()),
                 ("Quality Reports", QualityReports.objects.filter(tenant=tenant).count()),
                 ("Dispositions", QuarantineDisposition.objects.filter(part__tenant=tenant).count()),
                 ("CAPAs", CAPA.objects.filter(tenant=tenant).count()),

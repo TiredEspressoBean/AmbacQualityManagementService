@@ -28,7 +28,6 @@ class Command(BaseCommand):
         ('Tracker_permissionchangelog', 'permission_log_immutable'),
         ('Tracker_steptransitionlog', 'transition_log_immutable'),
         ('Tracker_samplingauditlog', 'sampling_log_immutable'),
-        ('Tracker_equipmentusage', 'equipment_usage_immutable'),
         ('Tracker_approvalresponse', 'approval_response_immutable'),
         ('Tracker_capastatustransition', 'capa_transition_immutable'),
         ('Tracker_recordedit', 'record_edit_immutable'),

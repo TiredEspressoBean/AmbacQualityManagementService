@@ -78,7 +78,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_materiallot', 'view_materialusage', 'view_harvestedcomponent',
     'view_core',
     # Equipment & Calibration
-    'view_equipments', 'view_equipmenttype', 'view_equipmentusage',
+    'view_equipments', 'view_equipmenttype',
     'view_calibrationrecord',
     # Scheduling
     'view_workcenter', 'view_shift', 'view_scheduleslot', 'view_downtimeevent',
@@ -189,11 +189,9 @@ STAFF_OPERATIONAL_WRITE = [
     'add_materiallot', 'change_materiallot',
     'add_materialusage', 'change_materialusage',
     'add_assemblyusage', 'change_assemblyusage',
-    # Equipment & Calibration (equipmentusage rows are DB-immutable once
-    # written — add only, no change)
+    # Equipment & Calibration
     'add_equipments', 'change_equipments',
     'add_equipmenttype', 'change_equipmenttype',
-    'add_equipmentusage',
     'add_calibrationrecord', 'change_calibrationrecord',
     # Scheduling & time
     'add_workcenter', 'change_workcenter',

@@ -621,48 +621,6 @@ class MeasurementResult(SecureModel):
         return False
 
 
-class EquipmentUsage(SecureModel):
-    """
-    Tracks the usage of equipment on a specific part and step in the manufacturing process.
-
-    Each record logs when a piece of equipment was used, by whom, and optionally links to an error report
-    if an issue occurred during usage. This model supports traceability of machine activity and is useful
-    for both auditing and performance analysis.
-    """
-
-    equipment = models.ForeignKey("Equipments", on_delete=models.SET_NULL, null=True, blank=True)
-    """The equipment or machine that was used."""
-
-    step = models.ForeignKey("Steps", on_delete=models.SET_NULL, null=True, blank=True)
-    """The specific step in the manufacturing process during which the equipment was used."""
-
-    part = models.ForeignKey("Parts", on_delete=models.SET_NULL, null=True, blank=True)
-    """The part involved in the usage event."""
-
-    error_report = models.ForeignKey(QualityReports, on_delete=models.SET_NULL, null=True, blank=True,
-                                     related_name="equipment_usages")
-    """Optional link to an error report generated during or after this usage event."""
-
-    used_at = models.DateTimeField(auto_now_add=True)
-    """Timestamp indicating when the equipment was used."""
-
-    operator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    """The user or operator who performed the operation using the equipment."""
-
-    notes = models.TextField(blank=True)
-    """Optional notes capturing additional context or observations during usage."""
-
-    class Meta:
-        verbose_name_plural = 'Equipment Usage'
-        verbose_name = 'Equipment Usage'
-
-    def __str__(self):
-        """
-        Returns a human-readable summary combining equipment, part, and step information.
-        """
-        return f"{self.equipment} on {self.part} (step: {self.step})"
-
-
 class StepTransitionLog(SecureModel):
     """
     Logs each transition of a part from one step to the next within a manufacturing process.
@@ -2770,7 +2728,8 @@ class CalibrationRecord(SecureModel):
         Critical for impact assessment when calibration fails or equipment found out of tolerance.
         """
         from Tracker.models import Parts
-        from Tracker.models.qms import EquipmentUsage
+        if not self.equipment_id:
+            return Parts.objects.none()
 
         # Find end date: next calibration record or this due_date
         next_cal = CalibrationRecord.objects.filter(
@@ -2780,12 +2739,8 @@ class CalibrationRecord(SecureModel):
 
         end_date = next_cal.calibration_date if next_cal else self.due_date
 
-        return Parts.objects.filter(
-            id__in=EquipmentUsage.objects.filter(
-                equipment=self.equipment,
-                created_at__date__range=(self.calibration_date, end_date)
-            ).values_list('part_id', flat=True)
-        ).distinct()
+        # Delegate to the equipment-level query (production ∪ inspection touch).
+        return self.equipment.get_affected_parts(self.calibration_date, end_date)
 
     def get_previous_calibration(self):
         """Return the calibration record this one supersedes, or None."""

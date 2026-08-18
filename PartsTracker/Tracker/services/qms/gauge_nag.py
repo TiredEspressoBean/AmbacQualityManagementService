@@ -6,16 +6,10 @@ out-of-cal gauge become suspect product retroactively — so the point-of-use
 gate must block, and this nag exists to PRE-EMPT that gate: warn the inspector
 about gauges in their own recent rotation before the block lands.
 
-"Gauges you used" unions the two places an equipment↔user link is recorded:
-  - EquipmentUsage(operator=user)              — the execution binding layer
-  - QualityReportEquipment via detected_by     — equipment attached to reports
-    the user filed
-
-NAMED GAP: nothing writes EquipmentUsage at runtime yet (seeds only) — the
-operator "bind an instance" flow is part of the capture-screen work
-(SubstepResource authors the equipment *class*; the instance binding is the
-missing write). This service is honest about whatever links exist; it gets
-better for free when the binding lands.
+"Gauges you used" = the equipment attached to the quality reports the user
+filed (`QualityReportEquipment` via `detected_by`). This is the single
+equipment↔user source since `EquipmentUsage` was retired (it modeled the same
+link but was never written at runtime — see plan #1).
 """
 from __future__ import annotations
 
@@ -31,18 +25,14 @@ def my_gauge_nag(user, used_within_days: int = DEFAULT_USED_WITHIN_DAYS,
                  due_within_days: int = DEFAULT_DUE_WITHIN_DAYS) -> list[dict]:
     """Equipment the user recently used whose calibration is due soon or
     overdue. One row per equipment, most-urgent first."""
-    from Tracker.models import CalibrationRecord, EquipmentUsage, QualityReportEquipment
+    from Tracker.models import CalibrationRecord, QualityReportEquipment
 
     used_cutoff = timezone.now() - timedelta(days=used_within_days)
 
+    # Gauges the user used = equipment on the quality reports they filed. The
+    # junction has no tenant field; scoping is inherited via the parent report,
+    # which .objects auto-scopes through the FK filter.
     used_ids = set(
-        EquipmentUsage.objects  # tenant-safe: .objects auto-scopes
-        .filter(operator=user, used_at__gte=used_cutoff)
-        .values_list("equipment_id", flat=True)
-    )
-    # Junction table has no tenant field; scoping inherited via the parent
-    # report, which .objects auto-scopes through the FK filter below.
-    used_ids.update(
         QualityReportEquipment.objects
         .filter(quality_report__in=__reports_by(user, used_cutoff))
         .values_list("equipment_id", flat=True)

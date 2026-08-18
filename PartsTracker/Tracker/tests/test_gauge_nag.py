@@ -1,8 +1,8 @@
 """Personal calibration nag: gauges I used recently that are due/overdue.
 
-Usage links come from EquipmentUsage(operator) ∪ equipment on quality reports
-I filed. The runtime EquipmentUsage writer is a named gap (capture-screen
-binding); the service is honest about whatever links exist.
+Usage links come from the equipment attached to quality reports I filed
+(QualityReportEquipment via detected_by) — the sole source since EquipmentUsage
+was retired (plan #1).
 """
 import datetime
 
@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from Tracker.tests.base import TenantTestCase
 from Tracker.models import (
-    CalibrationRecord, EquipmentType, Equipments, EquipmentUsage,
+    CalibrationRecord, EquipmentType, Equipments,
     QualityReportEquipment, QualityReports, PartTypes, Steps,
 )
 from Tracker.services.qms.gauge_nag import my_gauge_nag
@@ -38,8 +38,10 @@ class GaugeNagTests(TenantTestCase):
         return eq
 
     def _use(self, gauge, user=None):
-        EquipmentUsage.objects.create(
-            tenant=self.tenant_a, equipment=gauge, operator=user or self.user_a)
+        # "Used" = the gauge appears on a quality report this user filed.
+        report = QualityReports.objects.create(
+            tenant=self.tenant_a, status="PASS", detected_by=user or self.user_a)
+        QualityReportEquipment.objects.create(quality_report=report, equipment=gauge)
 
     def test_only_my_recently_used_due_gauges(self):
         self._use(self.gauge_due)

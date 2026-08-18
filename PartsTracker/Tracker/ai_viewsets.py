@@ -577,10 +577,6 @@ class QueryViewSet(viewsets.GenericViewSet):
             'id', 'part', 'to_step', 'operator', 'timestamp', 'created_at', 'updated_at',
             'version', 'archived'
         ],
-        'EquipmentUsage': [
-            'id', 'part', 'step', 'equipment', 'operator', 'start_time', 'end_time',
-            'error_report', 'created_at', 'updated_at', 'version', 'archived'
-        ],
         'ExternalAPIOrderIdentifier': [
             'id', 'order', 'external_id', 'source_name', 'created_at', 'updated_at',
             'version', 'archived'
@@ -628,9 +624,6 @@ class QueryViewSet(viewsets.GenericViewSet):
         },
         'MeasurementResult': {
             'report__part__ERP_id', 'definition__label', 'definition__step__name'
-        },
-        'EquipmentUsage': {
-            'part__ERP_id', 'step__name', 'equipment__name', 'operator__username'
         },
         'SamplingRuleSet': {
             'part_type__name', 'process__name', 'step__name'

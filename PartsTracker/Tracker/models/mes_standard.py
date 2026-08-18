@@ -319,17 +319,26 @@ class Equipments(SecureModel):
         """Return parts that used this equipment within the date range.
 
         Critical for impact assessment when equipment is found out of calibration.
-        Query: "What parts did this equipment touch since last known good calibration?"
+        Unions production touch (`StepExecution.equipment`) and inspection touch
+        (equipment on quality reports) — see plan #1 (EquipmentUsage retired).
         """
-        from Tracker.models import Parts
-        from Tracker.models.qms import EquipmentUsage
+        from Tracker.models import Parts, StepExecution
+        from Tracker.models.qms import QualityReportEquipment
 
-        return Parts.objects.filter(
-            id__in=EquipmentUsage.objects.filter(
-                equipment=self,
-                created_at__date__range=(start_date, end_date)
+        part_ids = set(
+            StepExecution.objects.filter(
+                equipment=self, part__isnull=False,
+                entered_at__date__range=(start_date, end_date),
             ).values_list('part_id', flat=True)
-        ).distinct()
+        )
+        part_ids.update(
+            QualityReportEquipment.objects.filter(
+                equipment=self, quality_report__part__isnull=False,
+                quality_report__created_at__date__range=(start_date, end_date),
+            ).values_list('quality_report__part_id', flat=True)
+        )
+        # tenant-safe: .objects auto-scopes; part_ids come from tenant-scoped queries
+        return Parts.objects.filter(id__in=part_ids).distinct()
 
     def get_effective_calibration_interval(self) -> int | None:
         """Return the effective calibration interval in days.

@@ -12,7 +12,7 @@ from Tracker.models import (
     # MES Standard models
     EquipmentType, Equipments, TimeEntry, MaterialUsage,
     # QMS models
-    QualityReports, MeasurementResult, QuarantineDisposition, EquipmentUsage,
+    QualityReports, MeasurementResult, QuarantineDisposition,
     # Core models
     ExternalAPIOrderIdentifier, User, Companies, Documents,
     # Milestone models

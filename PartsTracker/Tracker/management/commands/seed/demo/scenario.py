@@ -335,7 +335,7 @@ class DemoScenario(BaseSeeder):
         - ORD-2024-0042 (Midwest Fleet) - In progress, 24 parts at various stages
         - ORD-2024-0038 (Great Lakes) - Completed, triggered CAPA investigation
         - ORD-2024-0048 (Northern Trucking) - Pending, just received
-        - Workflow execution data (StepExecution, StepTransitionLog, EquipmentUsage)
+        - Workflow execution data (StepExecution, StepTransitionLog)
         """
         # Get company list from result
         company_list = companies.get('customers', [])

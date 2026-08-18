@@ -40,7 +40,7 @@ from Tracker.models import (
     ProcessStep, StepEdge,
     # Quality models
     QualityErrorsList, QualityReports, MeasurementDefinition, MeasurementResult,
-    QuarantineDisposition, QaApproval, StepTransitionLog, EquipmentUsage,
+    QuarantineDisposition, QaApproval, StepTransitionLog,
     # Sampling models
     SamplingRuleSet, SamplingRule, SamplingTriggerState, SamplingAuditLog, SamplingAnalytics,
     # Workflow execution models
@@ -534,7 +534,6 @@ class Command(BaseCommand):
             # Work tracking
             (StepExecution, "Step executions"),
             (StepTransitionLog, "Step transition logs"),
-            (EquipmentUsage, "Equipment usage"),
             # Life tracking models (before parts/cores they reference)
             (LifeTracking, "Life tracking records"),
             (PartTypeLifeLimit, "Part type life limits"),
@@ -622,7 +621,6 @@ class Command(BaseCommand):
             ("Heatmap Annotations", HeatMapAnnotations),
             ("Step Executions", StepExecution),
             ("Step Transition Logs", StepTransitionLog),
-            ("Equipment Usage", EquipmentUsage),
             ("Audit Log Entries", LogEntry),
         ]
 

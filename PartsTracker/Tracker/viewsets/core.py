@@ -2208,7 +2208,6 @@ class ScopeView(viewsets.ViewSet):
         'samplingauditlog',
         'steptransitionlog',
         'samplingtriggerstate',
-        'equipmentusage',
     ]
 
     def _get_exclude_types(self):
