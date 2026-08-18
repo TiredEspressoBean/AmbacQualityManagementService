@@ -240,6 +240,57 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
         self.assertEqual(result.tasks.count(), 2)
 
+    # ---- time fences / warm-start / continuous machines ------------------
+
+    def test_pinned_previous_task_holds_start_and_machine(self):
+        # A prior active schedule whose step1 task is planner-pinned (is_pinned) must
+        # be kept at the same start + machine on the next solve, even though it sits
+        # in the slushy zone (5 days out) where moves would otherwise be free.
+        from Tracker.models.scheduling import FenceZone
+        _, parts = self._wo("WO-PIN", 1)
+        part = parts[0]
+        base = timezone.now()
+        pinned_start = base + _td(days=5)
+        prev = ScheduleResult.objects.create(
+            tenant=self.tenant, horizon_start=base, horizon_end=base + _td(days=30),
+            solver_status=SolverStatus.OPTIMAL, is_active=True)
+        ScheduledTask.objects.create(
+            tenant=self.tenant, schedule=prev, part=part, step=self.step1,
+            machine=self.machine, start_time=pinned_start,
+            end_time=pinned_start + _td(minutes=60),
+            is_pinned=True, fence_zone=FenceZone.SLUSHY)
+
+        result = solve_schedule(self.tenant)
+        new = result.tasks.get(part=part, step=self.step1)
+        self.assertTrue(new.is_pinned)
+        self.assertEqual(new.machine_id, self.machine.id)
+        self.assertAlmostEqual((new.start_time - pinned_start).total_seconds(), 0, delta=120)
+
+    def test_frozen_zone_task_marked_frozen(self):
+        # With no prior schedule, a task the solver places inside the frozen zone
+        # (default 2 days) is stamped fence_zone=frozen.
+        from Tracker.models.scheduling import FenceZone
+        _, parts = self._wo("WO-FZ", 1)
+        result = solve_schedule(self.tenant)
+        s1 = result.tasks.get(part=parts[0], step=self.step1)
+        # a fresh solve packs everything at t≈0, well inside the 2-day frozen zone.
+        self.assertEqual(s1.fence_zone, FenceZone.FROZEN)
+
+    def test_continuous_machine_uses_throughput_duration(self):
+        # A continuous-feed machine ignores the 60-min cycle and runs at
+        # 60 / parts_per_hour minutes per part; bar-change downtime stays feasible.
+        from Tracker.models import ContinuousMachine
+        ContinuousMachine.objects.create(
+            tenant=self.tenant, equipment=self.machine,
+            parts_per_hour=2, bar_change_interval_hours=8,
+            bar_change_duration_minutes=15)
+        _, parts = self._wo("WO-CONT", 1)
+        result = solve_schedule(self.tenant)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        s1 = result.tasks.get(part=parts[0], step=self.step1)
+        self.assertEqual((s1.end_time - s1.start_time).total_seconds() / 60, 30,
+                         "continuous machine uses 60/parts_per_hour = 30 min, not the 60-min cycle")
+
     def test_unschedulable_step_still_scheduled_without_capacity(self):
         # A step whose only machine is not is_schedulable gets no capacity link but
         # is still placed (precedence-only) — no crash, task written with null machine.

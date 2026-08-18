@@ -15,10 +15,14 @@ Layers built so far:
 - Secondary resources: a step's schedulable gauges (Keyence/CMM) are reserved
   one-at-a-time while the task runs.
 - Fixtures: shared tooling as a cumulative resource (≤ quantity concurrent users).
+- Setup/changeover: sequence-dependent transition gaps between machine neighbours.
+- Continuous machines: throughput-based duration + recurring bar-change downtime.
+- Time fences + warm-start: frozen-zone tasks pinned to the previous schedule
+  (time and machine); slushy/liquid tasks seeded as solver hints.
 
-Follow-ons: changeover (circuit), transfer-batching, time fences, continuous
-machines, warm-start. Time is discretized to integer minutes from `horizon.start`;
-results are written back as absolute datetimes.
+Follow-ons: changeover-as-circuit (scalability), transfer-batching. Time is
+discretized to integer minutes from `horizon.start`; results are written back as
+absolute datetimes.
 """
 from __future__ import annotations
 
@@ -45,6 +49,24 @@ def _dur(timing, affinity) -> int:
     elif timing is not None:
         cycle = timing.cycle_time_minutes
     return max(1, round(cycle)) if cycle else 1
+
+
+def _dur_on_machine(timing, affinity, continuous) -> int:
+    """Task minutes on a machine. Continuous-feed machines use throughput
+    (60 / parts_per_hour); everything else uses the step cycle / override."""
+    cm = continuous.get(affinity.equipment_id)
+    if cm is not None and cm.parts_per_hour:
+        return max(1, round(60.0 / cm.parts_per_hour))
+    return _dur(timing, affinity)
+
+
+def _fence_zone(start_min, frozen_min, slushy_min):
+    from Tracker.models.scheduling import FenceZone
+    if start_min < frozen_min:
+        return FenceZone.FROZEN
+    if start_min < slushy_min:
+        return FenceZone.SLUSHY
+    return FenceZone.LIQUID
 
 
 def _penalty_cents_per_min(config, priority: int) -> int:
@@ -134,7 +156,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
     is no work)."""
     from ortools.sat.python import cp_model
     from Tracker.models.scheduling import (
-        FenceZone, OptimizationConfig, ScheduledTask, ScheduleResult,
+        OptimizationConfig, ScheduledTask, ScheduleResult,
     )
 
     with tenant_context(str(tenant.id)):
@@ -147,7 +169,15 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         secondary = data.get_step_secondary_resources(tenant)   # step_id -> {gauge_id}
         fixtures = data.get_fixture_availability(tenant)         # fixture_id -> FixtureData
         changeover = data.get_changeover_matrix(tenant)         # (equip, from, to) -> minutes
+        continuous = {cm.equipment_id: cm for cm in data.get_continuous_machines(tenant)}
+        prev = data.get_previous_schedule(tenant)               # for pins + warm-start
         config = OptimizationConfig.objects.filter(tenant=tenant).first()
+
+        prev_map = {}
+        if prev is not None:
+            prev_map = {(t.part_id, t.step_id): t for t in prev.tasks}
+        frozen_min = int((horizon.frozen_end - horizon.start).total_seconds() // 60)
+        slushy_min = int((horizon.slushy_end - horizon.start).total_seconds() // 60)
 
         # Which steps need an unconditional occupancy interval (gauge and/or fixture).
         fixture_by_step: dict = defaultdict(list)
@@ -169,6 +199,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         gauge_intervals: dict = defaultdict(list)
         fixture_intervals: dict = defaultdict(list)
         lateness_cost = []
+        hints = []   # (start_var, minute) warm-start hints from the previous schedule
 
         for wo in wos:
             sequence = [s for s in wo.steps if not s.is_terminal]
@@ -188,7 +219,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     choices = []
                     if eligible:
                         for a in eligible:
-                            dur = _dur(timing, a)
+                            dur = _dur_on_machine(timing, a, continuous)
                             lit = model.NewBoolVar(f"m_{key}_{a.equipment_id}")
                             opt = model.NewOptionalFixedSizeIntervalVar(start, dur, lit, f"i_{key}_{a.equipment_id}")
                             machine_intervals[a.equipment_id].append(opt)
@@ -215,8 +246,23 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                         if needs_break:
                             model.AddNoOverlap([occ] + break_fixed)
 
+                    # Time fences / warm-start from the previous active schedule.
+                    pinned = False
+                    prevt = prev_map.get((part.part_id, node.step_id))
+                    if prevt is not None:
+                        prev_start = max(0, min(H, int((prevt.start_time - horizon.start).total_seconds() // 60)))
+                        if prevt.is_pinned or prev_start < frozen_min:
+                            model.Add(start == prev_start)              # frozen: hold fixed
+                            if prevt.machine_id and choices:
+                                for lit, eqid in choices:
+                                    if eqid == prevt.machine_id:
+                                        model.Add(lit == 1)             # hold the machine too
+                            pinned = True
+                        else:
+                            hints.append((start, prev_start))           # slushy/liquid: warm-start hint
+
                     tasks.append({'part_id': part.part_id, 'step_id': node.step_id,
-                                  'start': start, 'end': end, 'choices': choices})
+                                  'start': start, 'end': end, 'choices': choices, 'pinned': pinned})
                     if prev_end is not None:
                         model.Add(start >= prev_end)
                     prev_end = end
@@ -228,10 +274,22 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     lateness_cost.append(lateness * penalty)
 
         # Machine capacity + shift windows (gap intervals block unavailable time).
+        # Continuous-feed machines also periodically stop for a bar change; those
+        # are modelled as recurring fixed downtime over the horizon (wall-time
+        # approximation of the material-change interval).
         for equipment_id, intervals in machine_intervals.items():
             gaps = _window_gaps(availability.get(equipment_id, []), horizon.start, H)
             blocked = [model.NewFixedSizeIntervalVar(gs, ge - gs, f"gap_{equipment_id}_{gs}")
                        for gs, ge in gaps]
+            cm = continuous.get(equipment_id)
+            if cm is not None and cm.bar_change_interval_hours and cm.bar_change_duration_minutes:
+                step = int(cm.bar_change_interval_hours * 60)
+                dur_bc = max(1, int(round(cm.bar_change_duration_minutes)))
+                t = step
+                while t < H:
+                    blocked.append(model.NewFixedSizeIntervalVar(
+                        t, min(dur_bc, H - t), f"bar_{equipment_id}_{t}"))
+                    t += step + dur_bc
             model.AddNoOverlap(intervals + blocked)
 
         # Sequence-dependent setup / changeover: for each pair of tasks that could
@@ -267,6 +325,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             model.AddMaxEquality(makespan, [t['end'] for t in tasks])
             model.Minimize(sum(lateness_cost) + makespan)
 
+        for var, minute in hints:            # warm-start from the previous schedule
+            model.AddHint(var, minute)
+
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = time_limit_seconds
 
@@ -293,7 +354,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     machine_id=_chosen_machine(t, solver),
                     start_time=horizon.start + timedelta(minutes=solver.Value(t['start'])),
                     end_time=horizon.start + timedelta(minutes=solver.Value(t['end'])),
-                    fence_zone=FenceZone.LIQUID,
+                    is_pinned=t['pinned'],
+                    fence_zone=_fence_zone(solver.Value(t['start']), frozen_min, slushy_min),
                 )
                 for t in tasks
             ])
