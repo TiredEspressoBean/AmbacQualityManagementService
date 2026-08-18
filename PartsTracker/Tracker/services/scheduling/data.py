@@ -23,14 +23,34 @@ from django.utils import timezone
 @dataclass(frozen=True)
 class TimingData:
     """Resolved time elements for a step. `cycle_time_minutes` comes from the
-    fallback chain; `cycle_source` records which rung supplied it."""
+    fallback chain; `cycle_source` records which rung supplied it.
+
+    Carries the timing accessors so the solver (which consumes these DTOs, not the
+    `StepTiming` model) can compute wall/attended/transfer-batch times directly.
+    """
     step_id: UUID
     cycle_time_minutes: float
     setup_minutes: float
     load_unload_per_piece: float
     external_setup_minutes: float
-    attention_type: str
+    attention_type: str  # 'full' | 'load_unload'
     cycle_source: str  # 'timing' | 'history' | 'expected' | 'none'
+
+    def machine_wall_time(self, quantity: int) -> float:
+        """Minutes the machine is occupied for a batch: internal setup + run."""
+        return self.setup_minutes + self.cycle_time_minutes * max(0, quantity)
+
+    def first_piece_done(self) -> float:
+        """Minutes until the first piece is complete (enables transfer batches)."""
+        return self.setup_minutes + self.cycle_time_minutes + self.load_unload_per_piece
+
+    def operator_attended_time(self, quantity: int) -> float:
+        """Operator-attention minutes: full attention = the whole machine run;
+        load/unload = setup + a touch per piece (machine runs unattended)."""
+        quantity = max(0, quantity)
+        if self.attention_type == 'full':
+            return self.machine_wall_time(quantity)
+        return self.setup_minutes + self.load_unload_per_piece * quantity
 
 
 @dataclass(frozen=True)
@@ -38,6 +58,7 @@ class AffinityData:
     equipment_id: UUID
     affinity: str  # 'eligible' | 'preferred' | 'dialed_in'
     cycle_time_override: float | None
+    is_schedulable: bool  # only schedulable machines get a capacity constraint
 
 
 @dataclass(frozen=True)
@@ -65,6 +86,7 @@ class PartData:
 class StepNode:
     step_id: UUID
     is_terminal: bool
+    requires_first_piece_inspection: bool
 
 
 @dataclass(frozen=True)
@@ -91,6 +113,31 @@ class MachineWindow:
     equipment_id: UUID
     start: datetime
     end: datetime
+
+
+@dataclass(frozen=True)
+class ContinuousMachineData:
+    equipment_id: UUID
+    parts_per_hour: float
+    bar_change_interval_hours: float | None
+    bar_change_duration_minutes: float
+
+
+@dataclass(frozen=True)
+class PreviousTaskData:
+    part_id: UUID
+    step_id: UUID
+    machine_id: UUID | None
+    start_time: datetime
+    end_time: datetime
+    is_pinned: bool
+
+
+@dataclass(frozen=True)
+class PreviousScheduleData:
+    """The active schedule's tasks, for warm-start hints + honoring pinned tasks."""
+    schedule_id: UUID
+    tasks: tuple  # tuple[PreviousTaskData, ...]
 
 
 # --- Timings (with the duration fallback chain) -----------------------------
@@ -151,13 +198,32 @@ def get_step_equipment_affinities(tenant) -> dict[UUID, list[AffinityData]]:
     from Tracker.models import StepEquipmentAffinity
 
     result: dict[UUID, list[AffinityData]] = {}
-    for a in StepEquipmentAffinity.objects.filter(tenant=tenant):
+    for a in StepEquipmentAffinity.objects.filter(tenant=tenant).select_related('equipment'):
         result.setdefault(a.step_id, []).append(AffinityData(
             equipment_id=a.equipment_id,
             affinity=a.affinity,
             cycle_time_override=a.cycle_time_override,
+            is_schedulable=a.equipment.is_schedulable,
         ))
     return result
+
+
+def get_step_secondary_resources(tenant) -> dict[UUID, frozenset]:
+    """Schedulable *secondary* equipment a step requires beyond its production
+    machine — measurement stations (a Keyence/CMM) that are finite resources.
+    `step_id → frozenset(equipment_id)`. Derived from the step's measurement
+    definitions whose gauge is flagged `is_schedulable`; plentiful handhelds
+    (is_schedulable=False) are excluded so they never constrain the schedule."""
+    from Tracker.models import MeasurementDefinition
+
+    result: dict[UUID, set] = {}
+    for md in (
+        MeasurementDefinition.objects
+        .filter(tenant=tenant, default_equipment__is_schedulable=True)
+        .values('step_id', 'default_equipment_id')
+    ):
+        result.setdefault(md['step_id'], set()).add(md['default_equipment_id'])
+    return {step_id: frozenset(eqs) for step_id, eqs in result.items()}
 
 
 def get_changeover_matrix(tenant) -> dict[tuple, float]:
@@ -225,7 +291,11 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     def _graph(process_id):
         if process_id not in graph_cache:
             steps = tuple(
-                StepNode(step_id=ps.step_id, is_terminal=ps.step.is_terminal)
+                StepNode(
+                    step_id=ps.step_id,
+                    is_terminal=ps.step.is_terminal,
+                    requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
+                )
                 for ps in ProcessStep.objects.filter(process_id=process_id)
                 .select_related('step').order_by('order')
             )
@@ -341,3 +411,42 @@ def _subtract_intervals(base: list[tuple], holes: list[tuple]) -> list[tuple]:
         if cursor < b_end:
             result.append((cursor, b_end))
     return result
+
+
+# --- Continuous machines / warm-start ---------------------------------------
+
+def get_continuous_machines(tenant) -> list[ContinuousMachineData]:
+    """Continuous-feed machines (throughput + bar-change), for the lights-out
+    feed-rate constraint."""
+    from Tracker.models import ContinuousMachine
+
+    return [
+        ContinuousMachineData(
+            equipment_id=cm.equipment_id,
+            parts_per_hour=cm.parts_per_hour,
+            bar_change_interval_hours=cm.bar_change_interval_hours,
+            bar_change_duration_minutes=cm.bar_change_duration_minutes,
+        )
+        for cm in ContinuousMachine.objects.filter(tenant=tenant)
+    ]
+
+
+def get_previous_schedule(tenant) -> PreviousScheduleData | None:
+    """The active schedule's tasks — warm-start hints + the pinned tasks the
+    solver must keep fixed. None when no active schedule exists yet."""
+    from Tracker.models import ScheduleResult
+
+    sched = (
+        ScheduleResult.objects.filter(tenant=tenant, is_active=True)
+        .order_by('-created_at').first()
+    )
+    if sched is None:
+        return None
+    tasks = tuple(
+        PreviousTaskData(
+            part_id=t.part_id, step_id=t.step_id, machine_id=t.machine_id,
+            start_time=t.start_time, end_time=t.end_time, is_pinned=t.is_pinned,
+        )
+        for t in sched.tasks.all()
+    )
+    return PreviousScheduleData(schedule_id=sched.id, tasks=tasks)

@@ -8,10 +8,14 @@ from django.utils import timezone
 from datetime import time as dtime
 
 from Tracker.models import (
+    ContinuousMachine,
     DowntimeEvent,
     Equipments,
     Fixture,
+    MeasurementDefinition,
     OptimizationConfig,
+    ScheduledTask,
+    ScheduleResult,
     Parts,
     PartTypes,
     Processes,
@@ -175,6 +179,80 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
         self.assertTrue(avail[self.machine.id], "expected at least one shift window")
         for w in avail[self.machine.id]:
             self.assertLess(w.start, w.end)
+
+    # ---- Phase 1.5 prerequisites ------------------------------------------
+
+    def test_timing_data_methods(self):
+        from Tracker.services.scheduling.data import TimingData
+        t = TimingData(step_id=self.s_timing.id, cycle_time_minutes=5, setup_minutes=8,
+                       load_unload_per_piece=1, external_setup_minutes=0,
+                       attention_type='full', cycle_source='timing')
+        self.assertEqual(t.machine_wall_time(3), 8 + 5 * 3)   # 23
+        self.assertEqual(t.first_piece_done(), 8 + 5 + 1)     # 14
+        self.assertEqual(t.operator_attended_time(3), 23)     # full attention
+        lu = TimingData(step_id=self.s_timing.id, cycle_time_minutes=5, setup_minutes=8,
+                        load_unload_per_piece=1, external_setup_minutes=0,
+                        attention_type='load_unload', cycle_source='timing')
+        self.assertEqual(lu.operator_attended_time(3), 8 + 1 * 3)  # 11 (unattended run)
+
+    def test_affinity_carries_is_schedulable(self):
+        sched_eq = Equipments.objects.create(tenant=self.tenant, name="Keyence", is_schedulable=True)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.s_timing, equipment=sched_eq,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.s_timing, equipment=self.machine)  # default not schedulable
+        aff = {a.equipment_id: a for a in data.get_step_equipment_affinities(self.tenant)[self.s_timing.id]}
+        self.assertTrue(aff[sched_eq.id].is_schedulable)
+        self.assertFalse(aff[self.machine.id].is_schedulable)
+
+    def test_step_node_carries_fpi_flag(self):
+        self.s_timing.requires_first_piece_inspection = True
+        self.s_timing.save(update_fields=["requires_first_piece_inspection"])
+        ProcessStep.objects.create(process=self.process, step=self.s_timing, order=1)
+        WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-FPI", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=1, process=self.process)
+        nodes = {s.step_id: s for s in data.get_active_workorders(self.tenant)[0].steps}
+        self.assertTrue(nodes[self.s_timing.id].requires_first_piece_inspection)
+
+    def test_secondary_resources_only_schedulable_gauges(self):
+        keyence = Equipments.objects.create(tenant=self.tenant, name="Keyence", is_schedulable=True)
+        caliper = Equipments.objects.create(tenant=self.tenant, name="Caliper", is_schedulable=False)
+        MeasurementDefinition.objects.create(
+            tenant=self.tenant, step=self.s_timing, default_equipment=keyence, label="OD", type="NUMERIC")
+        MeasurementDefinition.objects.create(
+            tenant=self.tenant, step=self.s_timing, default_equipment=caliper, label="ID", type="NUMERIC")
+        secondary = data.get_step_secondary_resources(self.tenant)
+        self.assertEqual(secondary[self.s_timing.id], frozenset({keyence.id}))  # caliper excluded
+
+    def test_continuous_machines(self):
+        ContinuousMachine.objects.create(
+            tenant=self.tenant, equipment=self.machine, parts_per_hour=120,
+            bar_change_interval_hours=8, bar_change_duration_minutes=15)
+        cms = data.get_continuous_machines(self.tenant)
+        self.assertEqual(len(cms), 1)
+        self.assertEqual(cms[0].equipment_id, self.machine.id)
+        self.assertEqual(cms[0].parts_per_hour, 120)
+
+    def test_previous_schedule(self):
+        self.assertIsNone(data.get_previous_schedule(self.tenant))  # none active yet
+        now = timezone.now()
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-PS", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=1, process=self.process)
+        part = Parts.objects.create(
+            tenant=self.tenant, ERP_id="P-PS", part_type=self.pt, work_order=wo, step=self.s_timing)
+        sched = ScheduleResult.objects.create(
+            tenant=self.tenant, horizon_start=now, horizon_end=now + timedelta(days=1), is_active=True)
+        ScheduledTask.objects.create(
+            tenant=self.tenant, schedule=sched, part=part, step=self.s_timing, machine=self.machine,
+            start_time=now, end_time=now + timedelta(hours=1), is_pinned=True)
+        prev = data.get_previous_schedule(self.tenant)
+        self.assertIsNotNone(prev)
+        self.assertEqual(len(prev.tasks), 1)
+        self.assertTrue(prev.tasks[0].is_pinned)
+        self.assertEqual(prev.tasks[0].machine_id, self.machine.id)
 
     def test_downtime_is_subtracted(self):
         self._all_week()
