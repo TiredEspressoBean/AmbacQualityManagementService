@@ -1,6 +1,7 @@
 """Phase 2 CP-SAT solver — minimal slice: precedence, machine capacity (no-overlap
 per machine), makespan objective, and the active-schedule supersede.
 """
+from datetime import date, timedelta as _td
 from decimal import Decimal
 
 from django.test import TestCase
@@ -18,6 +19,7 @@ from Tracker.models import (
     StepTiming,
     Tenant,
     WorkOrder,
+    WorkOrderPriority,
     WorkOrderStatus,
 )
 from Tracker.models.scheduling import SolverStatus
@@ -99,6 +101,39 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertTrue(second.is_active)
         # exactly one active schedule at a time.
         self.assertEqual(ScheduleResult.objects.filter(tenant=self.tenant, is_active=True).count(), 1)
+
+    def test_machine_choice_spreads_across_machines(self):
+        # step1 gets a second eligible machine → two parts run in parallel.
+        m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.step1, equipment=m2,
+            affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
+        _, parts = self._wo("WO-MC", 2)
+        result = solve_schedule(self.tenant)
+        s1 = list(result.tasks.filter(step=self.step1))
+        self.assertEqual(len({t.machine_id for t in s1}), 2,
+                         "two parts should spread across the two machines")
+
+    def test_cost_objective_schedules_urgent_before_low(self):
+        # Two WOs (1 part each) contend for the same single machine at step1, both
+        # already overdue. The solver should place URGENT first (its lateness costs
+        # far more per minute than LOW's).
+        past = date.today() - _td(days=1)
+        wo_low = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-LOW", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=1, process=self.process, priority=WorkOrderPriority.LOW, expected_completion=past)
+        low_part = Parts.objects.create(
+            tenant=self.tenant, ERP_id="LOW-P", part_type=self.pt, work_order=wo_low, step=self.step1)
+        wo_urg = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-URG", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=1, process=self.process, priority=WorkOrderPriority.URGENT, expected_completion=past)
+        urg_part = Parts.objects.create(
+            tenant=self.tenant, ERP_id="URG-P", part_type=self.pt, work_order=wo_urg, step=self.step1)
+
+        result = solve_schedule(self.tenant)
+        urg = result.tasks.get(part=urg_part, step=self.step1)
+        low = result.tasks.get(part=low_part, step=self.step1)
+        self.assertLess(urg.start_time, low.start_time, "urgent work should be scheduled first")
 
     def test_unschedulable_step_still_scheduled_without_capacity(self):
         # A step whose only machine is not is_schedulable gets no capacity link but
