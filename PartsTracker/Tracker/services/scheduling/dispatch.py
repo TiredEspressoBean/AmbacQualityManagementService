@@ -12,16 +12,16 @@ Constraints:
   the operator is tied to the whole machine interval; for load/unload steps only to
   the attended sub-interval at the front (front-loaded approximation), which lets one
   operator tend several machines whose load phases don't collide.
-- Availability: an operator is not dispatchable during their actual clock-out breaks
-  (`TimeEntry` BREAK / LUNCH). Shift confinement is inherited from Layer 1 (tasks were
-  already placed inside shift windows).
+- Availability: an operator may only be assigned work during their rostered shift
+  (`User.default_shift`) and never during their actual clock-out breaks (`TimeEntry`
+  BREAK / LUNCH). An operator with no rostered shift is not dispatchable.
 
 Objective: maximize priority-weighted coverage, then softly prefer an operator whose
 primary work-center matches the step. Attended tasks that can't be covered (no
 qualified operator free) are left unassigned and flagged, not dropped.
 
-Follow-ons: per-operator load balancing, a proper operator↔shift roster (availability
-is shift-wide today), work-center eligibility as a hard gate, and consuming actual
+Follow-ons: per-operator load balancing, work-center eligibility as a hard gate,
+multi-shift/rotation rostering (one shift per operator today), and consuming actual
 setup/production TimeEntry for a live mid-shift re-dispatch.
 """
 from __future__ import annotations
@@ -35,6 +35,27 @@ from Tracker.utils.tenant_context import tenant_context
 
 _PRIORITY_WEIGHT = {1: 1000, 2: 500, 3: 100, 4: 25}   # URGENT, HIGH, NORMAL, LOW
 _WC_MATCH_BONUS = 1                                    # << smallest coverage weight
+
+
+def _off_shift_gaps(windows, H0, H) -> list[tuple]:
+    """Minute intervals within [0, H] that fall OUTSIDE an operator's shift windows.
+    Unlike machines, an operator with no windows is never available — empty windows
+    yield the whole horizon as a gap."""
+    mins = []
+    for s, e in windows:
+        ms = max(0, int((s - H0).total_seconds() // 60))
+        me = min(H, int((e - H0).total_seconds() // 60))
+        if ms < me:
+            mins.append((ms, me))
+    mins.sort()
+    gaps, cursor = [], 0
+    for s, e in mins:
+        if s > cursor:
+            gaps.append((cursor, s))
+        cursor = max(cursor, e)
+    if cursor < H:
+        gaps.append((cursor, H))
+    return gaps
 
 
 @dataclass(frozen=True)
@@ -73,6 +94,7 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
         op_ids = {o.user_id for o in operators}
         op_primary = {o.user_id: o.primary_work_center_ids for o in operators}
         unavail = data.get_operator_unavailability(tenant, sched_horizon)
+        op_windows = data.get_operator_shift_windows(tenant, sched_horizon)
 
         tasks = list(
             schedule.tasks.select_related('step', 'part__work_order').all()
@@ -132,7 +154,8 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
                 covered_terms.append((covered, weight))
             task_meta.append((t, lits, True))
 
-        # Operator capacity: no two assigned tasks overlap, and none overlap a break.
+        # Operator capacity: no two assigned tasks overlap, and none overlap a break
+        # or fall outside the operator's rostered shift.
         for op_id, intervals in per_op_intervals.items():
             blocked = []
             for bs, be in unavail.get(op_id, []):
@@ -141,6 +164,9 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
                 if s < e:
                     blocked.append(model.NewFixedSizeIntervalVar(
                         s, e - s, f"br_{op_id}_{s}"))
+            for gs, ge in _off_shift_gaps(op_windows.get(op_id, []), H0, H):
+                blocked.append(model.NewFixedSizeIntervalVar(
+                    gs, ge - gs, f"off_{op_id}_{gs}"))
             model.AddNoOverlap(intervals + blocked)
 
         if covered_terms:

@@ -142,10 +142,12 @@ class PreviousScheduleData:
 
 @dataclass(frozen=True)
 class OperatorData:
-    """A dispatchable operator (Layer 2). `work_center_ids` is the stations they may
-    work; `primary_work_center_ids` their preferred ones (soft objective)."""
+    """A dispatchable operator (Layer 2). `shift_id` is the shift they are rostered to
+    (always set — unrostered operators are not dispatchable). `work_center_ids` is the
+    stations they may work; `primary_work_center_ids` their preferred ones (soft)."""
     user_id: int
     name: str
+    shift_id: object
     work_center_ids: frozenset
     primary_work_center_ids: frozenset
 
@@ -504,9 +506,11 @@ def get_previous_schedule(tenant) -> PreviousScheduleData | None:
 # --- Operator dispatch (Layer 2) --------------------------------------------
 
 def get_dispatchable_operators(tenant) -> list[OperatorData]:
-    """Internal, active operators eligible for dispatch, with their work-center
-    memberships. Active = the account is enabled AND the person has an ACTIVE
-    membership in this tenant (User is not tenant-scoped, so we filter explicitly)."""
+    """Internal, active operators eligible for dispatch, with their rostered shift and
+    work-center memberships. Dispatchable = the account is enabled, the person has an
+    ACTIVE membership in this tenant (User is not tenant-scoped, so we filter
+    explicitly), AND they are rostered to a shift — an operator with no shift is not
+    dispatchable (Layer 2 has no availability window for them)."""
     from Tracker.models import TenantMembership, User, UserWorkCenterMembership
 
     active_ids = set(
@@ -514,7 +518,8 @@ def get_dispatchable_operators(tenant) -> list[OperatorData]:
         .values_list('user_id', flat=True)
     )
     users = list(
-        User.objects.filter(tenant=tenant, is_active=True, user_type='INTERNAL')
+        User.objects.filter(tenant=tenant, is_active=True, user_type='INTERNAL',
+                            default_shift__isnull=False)
     )
 
     wc: dict = {}
@@ -531,11 +536,32 @@ def get_dispatchable_operators(tenant) -> list[OperatorData]:
         name = (f"{u.first_name or ''} {u.last_name or ''}".strip()
                 or u.get_username())
         result.append(OperatorData(
-            user_id=u.id, name=name,
+            user_id=u.id, name=name, shift_id=u.default_shift_id,
             work_center_ids=frozenset(wc.get(u.id, ())),
             primary_work_center_ids=frozenset(primary.get(u.id, ())),
         ))
     return result
+
+
+def get_operator_shift_windows(tenant, horizon: HorizonData) -> dict[int, list[tuple]]:
+    """Per dispatchable operator, the concrete [start, end] datetime windows they are
+    on shift over the horizon — their rostered `default_shift` expanded. Operators with
+    no shift are absent (not dispatchable). Distinct shifts are expanded once and
+    shared across the operators rostered to them."""
+    from Tracker.models import Shift, User
+
+    roster = dict(
+        User.objects.filter(tenant=tenant, is_active=True, user_type='INTERNAL',
+                            default_shift__isnull=False)
+        .values_list('id', 'default_shift_id')
+    )
+    shift_ids = set(roster.values())
+    by_shift = {
+        s.id: _expand_shifts([s], horizon.start, horizon.end)
+        for s in Shift.objects.filter(tenant=tenant, id__in=shift_ids, is_active=True)
+    }
+    return {uid: by_shift.get(sid, []) for uid, sid in roster.items()
+            if by_shift.get(sid)}
 
 
 def get_shift_windows(tenant, horizon: HorizonData) -> list[tuple]:

@@ -1683,6 +1683,17 @@ class User(AbstractUser):
         help_text="Primary job role / position - drives the required-competency profile.",
     )
 
+    default_shift = models.ForeignKey(
+        'Tracker.Shift',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rostered_operators',
+        help_text="The shift this operator is rostered to. Layer-2 dispatch only "
+                  "assigns work during this shift's windows; an operator with no "
+                  "shift is not dispatchable.",
+    )
+
     first_name = models.CharField(max_length=150, blank=True, null=True)
     """User's first name - nullable to support HubSpot contacts without complete information."""
 
