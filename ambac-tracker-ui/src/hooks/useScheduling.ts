@@ -23,8 +23,10 @@ export function useScheduledTasks(scheduleId?: string) {
     queryKey: ["scheduled-tasks", scheduleId],
     enabled: !!scheduleId,
     queryFn: () =>
+      // Fetch the whole schedule (default page size is 25) so every machine/operator
+      // lane is populated, not just the earliest 25 tasks.
       api.api_ScheduledTasks_list({
-        queries: { schedule: scheduleId, ordering: "start_time" },
+        queries: { schedule: scheduleId, ordering: "start_time", limit: 2000 },
       } as never),
   });
 }

@@ -209,7 +209,13 @@ export function SchedulingGanttPage() {
       ) : rows.length === 0 ? (
         <p className="text-muted-foreground">This schedule has no tasks.</p>
       ) : (
-        <GanttProvider range="hourly" zoom={zoom} className="min-h-0 flex-1 rounded-lg border">
+        <GanttProvider
+          range="hourly"
+          zoom={zoom}
+          boundStart={new Date(schedule.horizon_start)}
+          boundEnd={new Date(schedule.horizon_end)}
+          className="min-h-0 flex-1 rounded-lg border"
+        >
           <GanttSidebar>
             {groups.map((g) => (
               <GanttSidebarGroup key={g.machine} name={g.machine}>

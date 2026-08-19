@@ -107,6 +107,10 @@ export type GanttContextProps = {
   timelineData: TimelineData;
   ref: RefObject<HTMLDivElement | null> | null;
   scrollToFeature?: (feature: GanttFeature) => void;
+  // Bounded (shop) mode: when set, the timeline is exactly these day columns from
+  // boundStart, instead of the fixed 3-year calendar grid — used by the hourly range.
+  boundStart?: Date;
+  boundDays?: number;
 };
 
 const getsDaysIn = (range: Range) => {
@@ -444,8 +448,42 @@ const QuarterlyHeader: FC = () => {
   );
 };
 
+// Bounded day columns from boundStart (the schedule horizon), labelled by date.
+// Hourly detail comes from the minute-accurate offset/width; the timeline is exactly
+// the horizon, not a 3-year grid.
+const HourlyHeader: FC = () => {
+  const gantt = useContext(GanttContext);
+  const start = startOfDay(gantt.boundStart ?? new Date());
+  const days = gantt.boundDays ?? 30;
+
+  return (
+    <div className="relative flex flex-col">
+      <GanttContentHeader
+        columns={days}
+        title={format(start, "MMM yyyy")}
+        renderHeaderItem={(item: number) => {
+          const d = addDays(start, item);
+          return (
+            <div className="flex items-center justify-center gap-1">
+              <p>{format(d, "MMM d")}</p>
+              <p className="text-muted-foreground">{format(d, "EEEEE")}</p>
+            </div>
+          );
+        }}
+      />
+      <GanttColumns
+        columns={days}
+        isColumnSecondary={(item: number) => {
+          const day = addDays(start, item).getDay();
+          return day === 0 || day === 6;
+        }}
+      />
+    </div>
+  );
+};
+
 const headers: Record<Range, FC> = {
-  hourly: DailyHeader, // day columns; hourly detail comes from minute-accurate offset/width
+  hourly: HourlyHeader,
   daily: DailyHeader,
   monthly: MonthlyHeader,
   quarterly: QuarterlyHeader,
@@ -862,7 +900,7 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
   const [scrollX] = useGanttScrollX();
   const gantt = useContext(GanttContext);
   const timelineStartDate = useMemo(
-    () => new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1),
+    () => (gantt.boundStart ? startOfDay(gantt.boundStart) : new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1)),
     [gantt.timelineData]
   );
   const [startAt, setStartAt] = useState<Date>(feature.startAt);
@@ -1112,7 +1150,7 @@ export const GanttMarker: FC<
     [gantt.range]
   );
   const timelineStartDate = useMemo(
-    () => new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1),
+    () => (gantt.boundStart ? startOfDay(gantt.boundStart) : new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1)),
     [gantt.timelineData]
   );
 
@@ -1180,6 +1218,10 @@ export type GanttProviderProps = {
   onAddItem?: (date: Date) => void;
   children: ReactNode;
   className?: string;
+  // Bound the timeline to a window (e.g. the schedule horizon) instead of the fixed
+  // 3-year grid — required to make the minute-scale hourly view perform + navigate.
+  boundStart?: Date;
+  boundEnd?: Date;
 };
 
 export const GanttProvider: FC<GanttProviderProps> = ({
@@ -1188,8 +1230,14 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   onAddItem,
   children,
   className,
+  boundStart,
+  boundEnd,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bounded = Boolean(boundStart && boundEnd);
+  const boundDays = bounded
+    ? Math.max(1, differenceInDays(startOfDay(boundEnd!), startOfDay(boundStart!)) + 1)
+    : undefined;
   const [timelineData, setTimelineData] = useState<TimelineData>(
     createInitialTimelineData(new Date())
   );
@@ -1223,11 +1271,20 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollLeft =
-        scrollRef.current.scrollWidth / 2 - scrollRef.current.clientWidth / 2;
+      // Bounded (horizon) mode lands on horizon-start's time-of-day (where the work
+      // begins) — columns start at midnight, so scrolling to 0 would show empty
+      // pre-shift hours. The unbounded 3-year grid centres on today.
+      if (bounded && boundStart) {
+        const dayPx = (columnWidth * zoom) / 100;
+        const minutes = boundStart.getHours() * 60 + boundStart.getMinutes();
+        scrollRef.current.scrollLeft = Math.max(0, (minutes / (60 * 24)) * dayPx - 48);
+      } else {
+        scrollRef.current.scrollLeft =
+          scrollRef.current.scrollWidth / 2 - scrollRef.current.clientWidth / 2;
+      }
       setScrollX(scrollRef.current.scrollLeft);
     }
-  }, [setScrollX]);
+  }, [setScrollX, bounded, boundStart, columnWidth, zoom]);
 
   // Update sidebar width when DOM is ready
   useEffect(() => {
@@ -1266,6 +1323,11 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
       const { scrollLeft, scrollWidth, clientWidth } = scrollElement;
       setScrollX(scrollLeft);
+
+      // Bounded (horizon) mode is a fixed window — never grow the timeline.
+      if (bounded) {
+        return;
+      }
 
       if (scrollLeft === 0) {
         // Extend timelineData to the past
@@ -1388,6 +1450,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         placeholderLength: 2,
         ref: scrollRef,
         scrollToFeature,
+        boundStart,
+        boundDays,
       }}
     >
       <div
@@ -1440,7 +1504,7 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
     [gantt.range]
   );
   const timelineStartDate = useMemo(
-    () => new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1),
+    () => (gantt.boundStart ? startOfDay(gantt.boundStart) : new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1)),
     [gantt.timelineData]
   );
 
