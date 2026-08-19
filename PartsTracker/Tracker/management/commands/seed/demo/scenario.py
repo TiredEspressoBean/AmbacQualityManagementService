@@ -35,6 +35,7 @@ from .sampling import DemoSamplingSeeder
 from .receiving import DemoReceivingSeeder
 from .supplier_quality import DemoSupplierQualitySeeder
 from .outside_process import DemoOutsideProcessSeeder
+from .scheduling import DemoSchedulingSeeder
 from .qa_walk import DemoQaWalkSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
@@ -123,6 +124,11 @@ class DemoScenario(BaseSeeder):
         # back-fill Step.work_center by (step_type, is_outside_process).
         self.log("\n--- Phase 3c: Work Centers ---")
         result['work_centers'] = self._seed_work_centers()
+
+        # Phase 3d: Scheduler inputs — affinities/timings/shift/rostering so a solve
+        # produces a real machine schedule. Needs steps + equipment (all above).
+        self.log("\n--- Phase 3d: Scheduler Inputs ---")
+        result['scheduling'] = self._seed_scheduling()
 
         # Phase 4: Quality Events
         self.log("\n--- Phase 4: Quality Events ---")
@@ -262,6 +268,12 @@ class DemoScenario(BaseSeeder):
         See Documents/WORK_CENTER_DESIGN.md."""
         from .work_centers import DemoWorkCenterSeeder
         seeder = DemoWorkCenterSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed()
+
+    def _seed_scheduling(self):
+        """Seed the CP-SAT scheduler's inputs (affinities/timings/shift/rostering)."""
+        seeder = DemoSchedulingSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         seeder._verbose = self._verbose
         return seeder.seed()
 
