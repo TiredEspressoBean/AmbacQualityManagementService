@@ -114,6 +114,7 @@ class WorkOrderData:
     expected_completion: date | None
     expected_start: date | None  # earliest-release gate (no task starts before this)
     pegged_to_wo_id: UUID | None  # parent assembly WO this component job feeds (#9)
+    pegged_consumes_step_id: UUID | None  # the parent step that consumes it (#9); None → whole parent waits
     quantity: int
     process_id: UUID
     parts: tuple  # tuple[PartData, ...]
@@ -319,6 +320,7 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     wos = (
         WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
         .exclude(workorder_status__in=excluded)
+        .select_related('pegged_to_bom_line')
         .prefetch_related('parts')
     )
 
@@ -352,10 +354,13 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
             for p in wo.parts.all()
             if p.part_status not in _UNSCHEDULABLE_PART_STATUSES
         )
+        consumes_step_id = (wo.pegged_to_bom_line.consumed_at_step_id
+                            if wo.pegged_to_bom_line_id else None)
         result.append(WorkOrderData(
             wo_id=wo.id, erp_id=wo.ERP_id, priority=wo.priority,
             expected_completion=wo.expected_completion, expected_start=wo.expected_start,
             pegged_to_wo_id=wo.pegged_to_workorder_id,
+            pegged_consumes_step_id=consumes_step_id,
             quantity=wo.quantity,
             process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
         ))

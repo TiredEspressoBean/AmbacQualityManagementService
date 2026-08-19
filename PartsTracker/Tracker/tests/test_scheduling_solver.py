@@ -398,3 +398,30 @@ class SolverTests(TenantContextMixin, TestCase):
         child_end = max(t.end_time for t in result.tasks.filter(part__work_order=child))
         gap_min = (parent_start - child_end).total_seconds() / 60
         self.assertGreaterEqual(gap_min, 120, "staging buffer separates component finish from parent start")
+
+    def test_peg_gates_only_the_consuming_step(self):
+        # With BOMLine.consumed_at_step set, only the assembly step waits for the
+        # component — pre-assembly parent work runs in parallel with the component job.
+        from Tracker.models import BOM, BOMLine
+        m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
+        for step in (self.step1, self.step2):
+            StepEquipmentAffinity.objects.create(
+                tenant=self.tenant, step=step, equipment=m2,
+                affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
+        bom = BOM.objects.create(tenant=self.tenant, part_type=self.pt, revision="A", description="")
+        line = BOMLine.objects.create(
+            tenant=self.tenant, bom=bom, component_type=self.pt, quantity=1,
+            find_number="", reference_designator="", notes="", consumed_at_step=self.step2)
+        parent, _ = self._wo("WO-PARENT3", 1)
+        child, _ = self._wo("WO-CHILD3", 1)
+        child.pegged_to_workorder = parent
+        child.pegged_to_bom_line = line
+        child.save(update_fields=["pegged_to_workorder", "pegged_to_bom_line"])
+        result = solve_schedule(self.tenant)
+        child_end = max(t.end_time for t in result.tasks.filter(part__work_order=child))
+        p_step1 = result.tasks.get(part__work_order=parent, step=self.step1)
+        p_step2 = result.tasks.get(part__work_order=parent, step=self.step2)
+        self.assertGreaterEqual(p_step2.start_time, child_end,
+                                "the assembly step waits for the component WO")
+        self.assertLess(p_step1.start_time, child_end,
+                        "pre-assembly parent work is NOT gated by the component")

@@ -217,6 +217,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         hints = []   # (start_var, minute) warm-start hints from the previous schedule
         wo_starts: dict = defaultdict(list)   # wo_id -> [start vars] (for peg gating)
         wo_ends: dict = defaultdict(list)     # wo_id -> [end vars]   (for peg completion)
+        wo_step_starts: dict = defaultdict(list)  # (wo_id, step_id) -> [start vars]
 
         for wo in wos:
             due_minutes = _due_minutes(wo.expected_completion, horizon.start, H)
@@ -299,6 +300,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
 
                 wo_starts[wo.wo_id].extend(node_start.values())
                 wo_ends[wo.wo_id].extend(node_end.values())
+                for sid, s in node_start.items():
+                    wo_step_starts[(wo.wo_id, sid)].append(s)
 
                 if due_minutes is not None and penalty > 0 and part_ends:
                     part_done = model.NewIntVar(0, H, f"done_{part.part_id}")
@@ -310,19 +313,25 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         # Cross-WO assembly-convergence pegs (plan #9): a component WO must finish
         # (+ staging buffer) before its parent assembly WO may start. Both WOs are in
         # this solve; multi-level BOMs chain transitively (A waits on B waits on C).
-        # MVP is conservative — the whole parent waits, since no field yet identifies
-        # which parent step consumes the component (refine to gate that step only).
+        # When the BOM line names the consuming step, only that assembly step waits —
+        # pre-assembly parent work can overlap the component build; otherwise (no
+        # consumed_at_step authored) the whole parent waits, conservatively.
         for wo in wos:
             parent_id = wo.pegged_to_wo_id
             if not parent_id or parent_id == wo.wo_id:
                 continue
             child_ends = wo_ends.get(wo.wo_id)
-            parent_starts = wo_starts.get(parent_id)
-            if not child_ends or not parent_starts:
-                continue   # child or parent produced no tasks (e.g. parent already done)
+            if not child_ends:
+                continue
+            if wo.pegged_consumes_step_id is not None:
+                gated = wo_step_starts.get((parent_id, wo.pegged_consumes_step_id))
+            else:
+                gated = wo_starts.get(parent_id)
+            if not gated:
+                continue   # parent produced no (matching) tasks — e.g. already past it
             child_done = model.NewIntVar(0, H, f"child_done_{wo.wo_id}")
             model.AddMaxEquality(child_done, child_ends)
-            for ps in parent_starts:
+            for ps in gated:
                 model.Add(ps >= child_done + staging_buffer)
 
         # Machine capacity + shift windows (gap intervals block unavailable time).

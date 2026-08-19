@@ -1589,6 +1589,16 @@ class BOMLine(SecureModel):
                   "pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.",
     )
 
+    consumed_at_step = models.ForeignKey(
+        'Tracker.Steps',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='bom_lines_consumed_here',
+        help_text="The parent-process step that consumes this component (the assembly "
+                  "step). When set, the scheduler gates only that step on the component "
+                  "WO's completion; when null, the whole parent waits. Plan #9.",
+    )
+
     # Drawing references
     find_number = models.CharField(
         max_length=20,
