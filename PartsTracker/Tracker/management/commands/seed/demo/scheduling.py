@@ -11,6 +11,9 @@ real machine schedule:
     Testing gets two stands, so the solver has a machine *choice* + contention);
   - decomposed StepTiming (setup / cycle / load-unload / attention) so durations and
     multi-machine tending are realistic;
+  - measuring devices per step: the specific stations (CMM, Keyence) are wired as
+    finite *secondary resources* the solver reserves across steps; go/no-go gauges
+    and handhelds are recorded for traceability but stay unschedulable;
   - one Day shift (machine availability windows + a lunch break);
   - a sequence-dependent changeover on the shared flow stand;
   - rosters the internal operators onto the Day shift so Layer-2 dispatch can cover.
@@ -19,10 +22,11 @@ Runs after manufacturing + outside_process + work_centers (needs the steps and
 equipment). Idempotent.
 """
 from datetime import time
+from decimal import Decimal
 
 from Tracker.models import (
-    Equipments, PartTypes, Shift, Steps, StepEquipmentAffinity, StepTiming,
-    User, WorkCenterChangeover,
+    Equipments, MeasurementDefinition, PartTypes, Shift, Steps,
+    StepEquipmentAffinity, StepTiming, User, WorkCenterChangeover,
 )
 from Tracker.models.scheduling import AttentionType
 
@@ -55,6 +59,18 @@ _TIMINGS = {
     "Assembly":          (20, 45, 3, AttentionType.FULL),
     "Final Test":        (10, 25, 1, AttentionType.FULL),
 }
+
+# Measuring devices used at a step (MeasurementDefinition.default_equipment). A
+# schedulable device (CMM/Keyence) becomes a finite *secondary resource* the solver
+# reserves one-at-a-time across steps; a non-schedulable one (go/no-go, caliper) is
+# recorded for traceability/calibration but never scheduled.
+# (step name, measurement label, type, equipment name)
+_GAUGE_MEASUREMENTS = [
+    ("Component Grading", "Body Bore Diameter",  "NUMERIC",   "CMM Zeiss-1"),              # specific station → secondary resource
+    ("Nozzle Inspection", "Spray Angle",         "NUMERIC",   "Keyence Vision IM-7020"),   # specific station → secondary resource
+    ("Assembly",          "Thread Fit Go/No-Go", "PASS_FAIL", "Go/No-Go Thread Gauge M8x1"),  # plentiful → not scheduled
+    ("Cleaning",          "Post-Clean Bore Dia", "NUMERIC",   "Digital Caliper CAL-1"),    # handheld → not scheduled
+]
 
 
 class DemoSchedulingSeeder(BaseSeeder):
@@ -120,10 +136,29 @@ class DemoSchedulingSeeder(BaseSeeder):
                 tenant=self.tenant, equipment=fts1, from_step=nozzle, to_step=flow,
                 defaults={"changeover_minutes": 15})
 
+        # Measuring devices: wire each step's gauge. Schedulable stations (CMM/Keyence)
+        # become secondary resources the solver serializes; go/no-go + handhelds are
+        # recorded but not scheduled.
+        sec_n = 0
+        for step_name, label, mtype, eq_name in _GAUGE_MEASUREMENTS:
+            eq = Equipments.objects.filter(tenant=self.tenant, name=eq_name).first()
+            if eq is None:
+                continue
+            defaults = {"type": mtype, "default_equipment": eq}
+            if mtype == "NUMERIC":
+                defaults.update({"unit": "mm", "nominal": Decimal("10.000000"),
+                                 "upper_tol": Decimal("0.050000"), "lower_tol": Decimal("0.050000")})
+            for step in self._steps(step_name):
+                MeasurementDefinition.objects.update_or_create(
+                    tenant=self.tenant, step=step, label=label, defaults=defaults)
+                if eq.is_schedulable:
+                    sec_n += 1
+
         rostered = User.objects.filter(
             tenant=self.tenant, user_type="INTERNAL", is_active=True,
             default_shift__isnull=True).update(default_shift=shift)
 
         self.log(f"  {len(machines)} machines schedulable, {aff_n} affinities, "
-                 f"{tim_n} timings, {rostered} operators rostered to {shift.code}.")
+                 f"{tim_n} timings, {sec_n} secondary-gauge resources, "
+                 f"{rostered} operators rostered to {shift.code}.")
         return {"shift": shift, "machines": machines}

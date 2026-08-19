@@ -215,6 +215,41 @@ DEMO_EQUIPMENT_TYPES = [
         'is_portable': False,
         'track_downtime': True,
     },
+    # Specific measuring stations — finite, calibrated, individually identified.
+    {
+        'name': 'CMM',
+        'description': 'Coordinate measuring machine — dimensional inspection station',
+        'requires_calibration': True,
+        'default_calibration_interval_days': 180,
+        'is_portable': False,
+        'track_downtime': True,
+    },
+    {
+        'name': 'Vision System',
+        'description': 'Automated vision measuring system (e.g. Keyence)',
+        'requires_calibration': True,
+        'default_calibration_interval_days': 180,
+        'is_portable': False,
+        'track_downtime': True,
+    },
+    # Attribute go/no-go gauges — specific tools kept in the crib, plentiful.
+    {
+        'name': 'Thread Gauge',
+        'description': 'Go/no-go thread gauges — attribute pass/fail check',
+        'requires_calibration': True,
+        'default_calibration_interval_days': 365,
+        'is_portable': True,
+        'track_downtime': False,
+    },
+    # Non-specific handhelds — plentiful, tracked for calibration, not a shop resource.
+    {
+        'name': 'Handheld Gauge',
+        'description': 'Calipers / micrometers — plentiful handhelds',
+        'requires_calibration': True,
+        'default_calibration_interval_days': 365,
+        'is_portable': True,
+        'track_downtime': False,
+    },
 ]
 
 # Demo equipment
@@ -223,12 +258,27 @@ DEMO_EQUIPMENT_TYPES = [
 # Note: calibration_days is used to calculate CalibrationRecord.due_date (negative = overdue)
 # Calibration tracking happens via CalibrationRecord model, NOT on Equipments directly
 DEMO_EQUIPMENT = [
-    {'name': 'Flow Test Stand #1', 'type': 'Flow Bench', 'serial': 'FTS-001', 'calibration_days': 30, 'location': 'QA Lab'},
-    {'name': 'Flow Test Stand #2', 'type': 'Flow Bench', 'serial': 'FTS-002', 'calibration_days': 60, 'location': 'QA Lab'},
-    {'name': 'Torque Wrench TW-25', 'type': 'Torque Tool', 'serial': 'TW-025', 'calibration_days': -15, 'location': 'Tool Crib'},  # OVERDUE
-    {'name': 'Torque Wrench TW-26', 'type': 'Torque Tool', 'serial': 'TW-026', 'calibration_days': 45, 'location': 'Tool Crib'},
-    {'name': 'Ultrasonic Cleaner UC-1', 'type': 'Cleaning Station', 'serial': 'UC-001', 'calibration_days': None, 'location': 'Machine Shop'},  # No calibration needed
-    {'name': 'Final Test Bench FTB-1', 'type': 'Test Bench', 'serial': 'FTB-001', 'calibration_days': 25, 'location': 'QA Lab'},
+    # Production machines — finite scheduled resources (schedulable=True).
+    {'name': 'Flow Test Stand #1', 'type': 'Flow Bench', 'serial': 'FTS-001', 'calibration_days': 30, 'location': 'QA Lab', 'schedulable': True},
+    {'name': 'Flow Test Stand #2', 'type': 'Flow Bench', 'serial': 'FTS-002', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True},
+    {'name': 'Torque Wrench TW-25', 'type': 'Torque Tool', 'serial': 'TW-025', 'calibration_days': -15, 'location': 'Tool Crib', 'schedulable': True},  # OVERDUE → is_operational excludes from solve
+    {'name': 'Torque Wrench TW-26', 'type': 'Torque Tool', 'serial': 'TW-026', 'calibration_days': 45, 'location': 'Tool Crib', 'schedulable': True},
+    {'name': 'Ultrasonic Cleaner UC-1', 'type': 'Cleaning Station', 'serial': 'UC-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},  # No calibration needed
+    {'name': 'Final Test Bench FTB-1', 'type': 'Test Bench', 'serial': 'FTB-001', 'calibration_days': 25, 'location': 'QA Lab', 'schedulable': True},
+
+    # Specific measuring stations — finite + scheduled as secondary resources.
+    {'name': 'CMM Zeiss-1', 'type': 'CMM', 'serial': 'CMM-001', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True},
+    {'name': 'Keyence Vision IM-7020', 'type': 'Vision System', 'serial': 'KV-7020', 'calibration_days': 90, 'location': 'QA Lab', 'schedulable': True},
+
+    # Go/no-go gauges — specific attribute tools, plentiful in the crib → not scheduled.
+    {'name': 'Go/No-Go Thread Gauge M8x1', 'type': 'Thread Gauge', 'serial': 'GNG-M8', 'calibration_days': 120, 'location': 'Tool Crib'},
+    {'name': 'Go/No-Go Pin Gauge Set', 'type': 'Thread Gauge', 'serial': 'GNG-PIN', 'calibration_days': 200, 'location': 'Tool Crib'},
+
+    # Non-specific handhelds — plentiful, tracked for calibration, never scheduled.
+    {'name': 'Digital Caliper CAL-1', 'type': 'Handheld Gauge', 'serial': 'CAL-001', 'calibration_days': 40, 'location': 'Tool Crib'},
+    {'name': 'Digital Caliper CAL-2', 'type': 'Handheld Gauge', 'serial': 'CAL-002', 'calibration_days': 75, 'location': 'Tool Crib'},
+    {'name': 'Micrometer MIC-1', 'type': 'Handheld Gauge', 'serial': 'MIC-001', 'calibration_days': -10, 'location': 'Tool Crib'},  # OVERDUE handheld
+    {'name': 'Micrometer MIC-2', 'type': 'Handheld Gauge', 'serial': 'MIC-002', 'calibration_days': 50, 'location': 'Tool Crib'},
 ]
 
 # Demo measurement definitions
@@ -401,6 +451,7 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'equipment_type': eq_type,
                     'status': EquipmentStatus.IN_SERVICE,  # Enum member from EquipmentStatus
                     'location': eq_data.get('location', ''),
+                    'is_schedulable': eq_data.get('schedulable', False),  # solver reserves only these
                     'calibration_interval_days': None,  # Inherit from equipment_type
                     '_requires_calibration_override': None,  # Inherit from equipment_type
                     'manufacturer': '',
