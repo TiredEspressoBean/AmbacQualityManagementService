@@ -20,8 +20,10 @@ Layers built so far:
 - Fixtures: shared tooling as a cumulative resource (≤ quantity concurrent users).
 - Setup/changeover: sequence-dependent transition gaps between machine neighbours.
 - Continuous machines: throughput-based duration + recurring bar-change downtime.
-- Time fences + warm-start: frozen-zone tasks pinned to the previous schedule
-  (time and machine); slushy/liquid tasks seeded as solver hints.
+- Time fences + warm-start: frozen-zone / planner-pinned tasks held to the previous
+  schedule (time and machine) by a SOFT penalty — a re-solve after the world changed
+  moves them the minimum instead of going INFEASIBLE, and reports the count
+  (`relaxed_pin_count`); slushy/liquid tasks seeded as solver hints.
 - Cross-WO pegs: a component WO must finish (+ staging buffer) before its parent
   assembly WO starts (WorkOrder.pegged_to_workorder; multi-level chains transitively).
 
@@ -46,6 +48,16 @@ _PENALTY_FIELD = {1: 'late_penalty_urgent', 2: 'late_penalty_high',
 _PENALTY_DEFAULT = {1: Decimal('1000'), 2: Decimal('500'),
                     3: Decimal('100'), 4: Decimal('25')}
 _MINUTES_PER_DAY = 24 * 60
+
+# Pin stickiness (objective weights, cents-equivalent). Pins are SOFT: honored by a
+# large penalty, never a hard constraint — so a re-solve after the world changed
+# (machine down, shift edited) never goes INFEASIBLE; the pin just moves the minimum
+# needed and is reported. Weights dominate the lateness/makespan terms so a pin never
+# drifts for cost reasons — only when a hard constraint forces it. Planner pins
+# (is_pinned) are an order of magnitude stickier than frozen-zone auto-pins.
+_FROZEN_PIN_WEIGHT = 10_000       # per minute of start deviation
+_PLANNER_PIN_WEIGHT = 100_000     # per minute — planner-locked, near-immovable
+_MACHINE_PIN_WEIGHT = 1_000_000   # flat, for moving a pin off its previous machine
 
 
 def _dur(timing, affinity) -> int:
@@ -216,6 +228,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         fixture_intervals: dict = defaultdict(list)
         lateness_cost = []
         hints = []   # (start_var, minute) warm-start hints from the previous schedule
+        pin_penalty = []   # soft-pin objective terms (deviation from the frozen plan)
+        pins = []          # (start_var, prev_start, prev_machine_id, choices) for the moved report
         wo_starts: dict = defaultdict(list)   # wo_id -> [start vars] (for peg gating)
         wo_ends: dict = defaultdict(list)     # wo_id -> [end vars]   (for peg completion)
         wo_step_starts: dict = defaultdict(list)  # (wo_id, step_id) -> [start vars]
@@ -277,17 +291,24 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                             model.AddNoOverlap([occ] + break_fixed)
 
                     # Time fences / warm-start from the previous active schedule.
-                    # Parts only in v1 — cores schedule fresh each solve.
+                    # Parts only in v1 — cores schedule fresh each solve. Frozen and
+                    # planner-pinned tasks are held by a SOFT penalty (never a hard
+                    # constraint) so a re-solve after the world changed can still move
+                    # them the minimum needed instead of going INFEASIBLE.
                     pinned = False
                     prevt = None if is_core else prev_map.get((unit_id, step_id))
                     if prevt is not None:
                         prev_start = max(0, min(H, int((prevt.start_time - horizon.start).total_seconds() // 60)))
                         if prevt.is_pinned or prev_start < frozen_min:
-                            model.Add(start == prev_start)              # frozen: hold fixed
+                            weight = _PLANNER_PIN_WEIGHT if prevt.is_pinned else _FROZEN_PIN_WEIGHT
+                            dev = model.NewIntVar(0, H, f"pindev_{key}")
+                            model.AddAbsEquality(dev, start - prev_start)   # |start - prev_start|
+                            pin_penalty.append(dev * weight)
                             if prevt.machine_id and choices:
                                 for lit, eqid in choices:
                                     if eqid == prevt.machine_id:
-                                        model.Add(lit == 1)             # hold the machine too
+                                        pin_penalty.append((1 - lit) * _MACHINE_PIN_WEIGHT)
+                            pins.append((start, prev_start, prevt.machine_id, choices))
                             pinned = True
                         else:
                             hints.append((start, prev_start))           # slushy/liquid: warm-start hint
@@ -392,7 +413,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         if tasks:
             makespan = model.NewIntVar(0, H, "makespan")
             model.AddMaxEquality(makespan, [t['end'] for t in tasks])
-            model.Minimize(sum(lateness_cost) + makespan)
+            model.Minimize(sum(lateness_cost) + makespan + sum(pin_penalty))
 
         for var, minute in hints:            # warm-start from the previous schedule
             model.AddHint(var, minute)
@@ -403,6 +424,18 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         cp_status = solver.Solve(model) if tasks else cp_model.OPTIMAL
         solved = cp_status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
+        # How many pins the world forced off their frozen time/machine.
+        relaxed = 0
+        if tasks and solved:
+            for start_var, prev_start, prev_machine_id, choices in pins:
+                moved = solver.Value(start_var) != prev_start
+                if prev_machine_id:
+                    chosen = next((eqid for lit, eqid in choices if solver.Value(lit) == 1), None)
+                    if chosen != prev_machine_id:
+                        moved = True
+                if moved:
+                    relaxed += 1
+
         ScheduleResult.objects.filter(tenant=tenant, is_active=True).update(
             is_active=False, is_stale=True)
 
@@ -412,6 +445,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             solver_status=_map_status(cp_status),
             solve_time_ms=int(solver.WallTime() * 1000) if tasks else 0,
             objective_value_cents=int(solver.ObjectiveValue()) if (tasks and solved) else 0,
+            relaxed_pin_count=relaxed,
             is_active=True,
         )
 

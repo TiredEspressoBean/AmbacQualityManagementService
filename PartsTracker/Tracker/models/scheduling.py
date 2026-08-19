@@ -251,6 +251,12 @@ class ScheduleResult(SecureModel):
     objective_value_cents = models.BigIntegerField(
         default=0, help_text="Objective (total cost) in cents.",
     )
+    relaxed_pin_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Frozen/planner-pinned tasks the solver had to move because the "
+                  "world changed under them (machine down, shift edited). >0 means the "
+                  "freeze couldn't be fully honored — surface for the planner.",
+    )
     is_stale = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=False, db_index=True)
 

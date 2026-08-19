@@ -53928,6 +53928,12 @@ components:
           type: integer
           readOnly: true
           description: Objective (total cost) in cents.
+        relaxed_pin_count:
+          type: integer
+          readOnly: true
+          description: Frozen/planner-pinned tasks the solver had to move because
+            the world changed under them (machine down, shift edited). >0 means the
+            freeze couldn't be fully honored — surface for the planner.
         is_active:
           type: boolean
           readOnly: true
@@ -53949,6 +53955,7 @@ components:
       - is_active
       - is_stale
       - objective_value_cents
+      - relaxed_pin_count
       - solve_time_ms
       - solver_status
       - task_count

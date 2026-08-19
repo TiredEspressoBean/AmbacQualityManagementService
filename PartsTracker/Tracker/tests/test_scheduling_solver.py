@@ -276,6 +276,27 @@ class SolverTests(TenantContextMixin, TestCase):
         # a fresh solve packs everything at t≈0, well inside the 2-day frozen zone.
         self.assertEqual(s1.fence_zone, FenceZone.FROZEN)
 
+    def test_infeasible_pin_relaxes_instead_of_failing(self):
+        # A frozen pin whose time no longer fits (the machine's availability changed
+        # under it) must NOT make the solve INFEASIBLE — the pin moves, and the count
+        # of moved pins is reported.
+        from Tracker.models import Shift
+        self._wo("WO-RELAX", 1)
+        first = solve_schedule(self.tenant)            # tasks land at t≈0 (frozen)
+        self.assertIn(first.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        self.assertEqual(first.relaxed_pin_count, 0, "nothing to relax on the first solve")
+
+        # Machine now only available 03:00–04:00 — the frozen t≈0 pins can't hold.
+        Shift.objects.create(
+            tenant=self.tenant, name="Late", code="LATE",
+            start_time=dtime(3, 0), end_time=dtime(4, 0),
+            days_of_week="0,1,2,3,4,5,6", is_active=True)
+        second = solve_schedule(self.tenant)
+        self.assertIn(second.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE),
+                      "soft pins keep the model solvable when the frozen plan no longer fits")
+        self.assertGreaterEqual(second.relaxed_pin_count, 1,
+                                "tasks that couldn't stay frozen are reported as moved")
+
     def test_continuous_machine_uses_throughput_duration(self):
         # A continuous-feed machine ignores the 60-min cycle and runs at
         # 60 / parts_per_hour minutes per part; bar-change downtime stays feasible.
