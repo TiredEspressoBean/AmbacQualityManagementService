@@ -39,6 +39,8 @@ type Task = {
   step_name: string | null;
   machine_name: string | null;
   operator_name: string | null;
+  work_order: string | null;
+  work_center: string | null;
   start_time: string;
   end_time: string;
   is_pinned: boolean;
@@ -81,14 +83,21 @@ export function SchedulingGanttPage() {
         : groupBy === "product"
           ? t.part_erp ?? t.core_number ?? "—"
           : t.machine_name ?? "— Unassigned —";
-    // In the product lane the row IS the part, so the bar names the step (+ machine);
-    // otherwise it names the unit + step.
+    // Bars are labelled for the lane: a machine row shows the WORK ORDER it's
+    // running, an operator row shows the WORK CENTER they're at, and the product row
+    // (which IS a part) shows the step (+ machine).
     const featureName = (t: Task) => {
       const pin = t.is_pinned ? "📌 " : "";
-      if (groupBy === "product")
-        return `${pin}${t.step_name ?? ""}${t.machine_name ? " @ " + t.machine_name : ""}`;
-      const unit = t.part_erp ?? t.core_number ?? "task";
-      return `${pin}${unit} · ${t.step_name ?? ""}`;
+      const step = t.step_name ?? "";
+      if (groupBy === "machine") {
+        const wo = t.work_order ?? t.part_erp ?? t.core_number ?? "job";
+        return `${pin}${wo} · ${step}`;
+      }
+      if (groupBy === "operator") {
+        const wc = t.work_center ?? t.machine_name ?? "—";
+        return `${pin}${wc} · ${step}`;
+      }
+      return `${pin}${step}${t.machine_name ? " @ " + t.machine_name : ""}`;
     };
 
     const byKey = new Map<string, (GanttFeature & { is_pinned: boolean })[]>();

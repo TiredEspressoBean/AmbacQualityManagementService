@@ -6221,6 +6221,8 @@ export type ScheduledTask = {
    * Whether this task needs an operator (false for unattended runs).
    */
   requires_operator: boolean;
+  work_order: string | null;
+  work_center: string | null;
   start_time: string;
   end_time: string;
   /**
@@ -16931,6 +16933,8 @@ const ScheduledTask = z.object({
   assigned_operator: z.number().int().nullable(),
   operator_name: z.string().nullable(),
   requires_operator: z.boolean(),
+  work_order: z.string().nullable(),
+  work_center: z.string().nullable(),
   start_time: z.string().datetime({ offset: true }),
   end_time: z.string().datetime({ offset: true }),
   is_pinned: z.boolean(),

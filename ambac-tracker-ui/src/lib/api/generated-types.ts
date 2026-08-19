@@ -24862,6 +24862,8 @@ export interface components {
             readonly operator_name: string | null;
             /** @description Whether this task needs an operator (false for unattended runs). */
             readonly requires_operator: boolean;
+            readonly work_order: string | null;
+            readonly work_center: string | null;
             /** Format: date-time */
             readonly start_time: string;
             /** Format: date-time */
