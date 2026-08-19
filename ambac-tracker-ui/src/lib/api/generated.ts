@@ -11829,6 +11829,10 @@ export type ScheduleResult = {
    * Objective (total cost) in cents.
    */
   objective_value_cents: number;
+  /**
+   * Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner.
+   */
+  relaxed_pin_count: number;
   is_active: boolean;
   is_stale: boolean;
   created_at: string;
@@ -16953,6 +16957,7 @@ const ScheduleResult = z.object({
   solver_status: SolverStatusEnum,
   solve_time_ms: z.number().int(),
   objective_value_cents: z.number().int(),
+  relaxed_pin_count: z.number().int(),
   is_active: z.boolean(),
   is_stale: z.boolean(),
   created_at: z.string().datetime({ offset: true }),

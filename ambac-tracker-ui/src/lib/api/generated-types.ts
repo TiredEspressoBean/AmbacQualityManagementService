@@ -24755,6 +24755,8 @@ export interface components {
             readonly solve_time_ms: number;
             /** @description Objective (total cost) in cents. */
             readonly objective_value_cents: number;
+            /** @description Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner. */
+            readonly relaxed_pin_count: number;
             readonly is_active: boolean;
             readonly is_stale: boolean;
             /** Format: date-time */
