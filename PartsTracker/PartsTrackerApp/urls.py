@@ -327,6 +327,8 @@ router.register(r'AssemblyUsages', AssemblyUsageViewSet, basename='AssemblyUsage
 router.register(r'Cores', CoreViewSet, basename='Cores')
 router.register(r'HarvestedComponents', HarvestedComponentViewSet, basename='HarvestedComponents')
 router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
+router.register(r'Schedules', ScheduleViewSet, basename='Schedules')
+router.register(r'ScheduledTasks', ScheduledTaskViewSet, basename='ScheduledTasks')
 
 # ===== DWI VIEWSETS =====
 router.register(r'Substeps', SubstepViewSet, basename='Substeps')

@@ -18279,6 +18279,183 @@ paths:
               schema:
                 $ref: '#/components/schemas/ScheduleSlot'
           description: ''
+  /api/ScheduledTasks/:
+    get:
+      operationId: api_ScheduledTasks_list
+      description: Read the scheduled tasks (Gantt rows); pin/unpin a task.
+      parameters:
+      - in: query
+        name: assigned_operator
+        schema:
+          type: integer
+      - in: query
+        name: fence_zone
+        schema:
+          type: string
+          enum:
+          - frozen
+          - liquid
+          - slushy
+        description: |-
+          * `frozen` - Frozen
+          * `slushy` - Slushy
+          * `liquid` - Liquid
+      - in: query
+        name: is_pinned
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: machine
+        schema:
+          type: string
+          format: uuid
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: schedule
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedScheduledTaskList'
+          description: ''
+  /api/ScheduledTasks/{id}/:
+    get:
+      operationId: api_ScheduledTasks_retrieve
+      description: Read the scheduled tasks (Gantt rows); pin/unpin a task.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Scheduled Task.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+          description: ''
+  /api/ScheduledTasks/{id}/pin/:
+    post:
+      operationId: api_ScheduledTasks_pin_create
+      description: |-
+        Pin or unpin a task (planner override); marks the schedule stale so the
+        next solve is known to be needed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Scheduled Task.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PinRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PinRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+          description: ''
+  /api/Schedules/current/:
+    get:
+      operationId: api_Schedules_current_retrieve
+      description: The active schedule's run metadata, or 404 if none exists yet.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResult'
+          description: ''
+  /api/Schedules/dispatch/:
+    post:
+      operationId: api_Schedules_dispatch_create
+      description: Assign operators to the active schedule's attended tasks (Layer
+        2).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispatchResult'
+          description: ''
+  /api/Schedules/solve/:
+    post:
+      operationId: api_Schedules_solve_create
+      description: Run the Layer-1 machine solver, superseding the previous active
+        schedule.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResult'
+          description: ''
   /api/ShiftNotes/:
     get:
       operationId: api_ShiftNotes_list
@@ -38314,6 +38491,23 @@ components:
       required:
       - component_type
       - core_type
+    DispatchResult:
+      type: object
+      properties:
+        schedule:
+          type: string
+          format: uuid
+        attended:
+          type: integer
+        covered:
+          type: integer
+        uncovered:
+          type: integer
+      required:
+      - attended
+      - covered
+      - schedule
+      - uncovered
     DispositionAffectedPart:
       type: object
       description: |-
@@ -39755,6 +39949,16 @@ components:
             additionalProperties: {}
       required:
       - data
+    FenceZoneEnum:
+      enum:
+      - frozen
+      - slushy
+      - liquid
+      type: string
+      description: |-
+        * `frozen` - Frozen
+        * `slushy` - Slushy
+        * `liquid` - Liquid
     FilterOptionsResponse:
       type: object
       properties:
@@ -44257,6 +44461,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ScheduleSlot'
+    PaginatedScheduledTaskList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduledTask'
     PaginatedShiftList:
       type: object
       required:
@@ -49856,6 +50083,13 @@ components:
       required:
       - name
       - provider_kind
+    PinRequestRequest:
+      type: object
+      properties:
+        is_pinned:
+          type: boolean
+      required:
+      - is_pinned
     PresetListResponse:
       type: object
       properties:
@@ -53668,6 +53902,56 @@ components:
         * `small` - small
         * `medium` - medium
         * `large` - large
+    ScheduleResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        horizon_start:
+          type: string
+          format: date-time
+          readOnly: true
+        horizon_end:
+          type: string
+          format: date-time
+          readOnly: true
+        solver_status:
+          allOf:
+          - $ref: '#/components/schemas/SolverStatusEnum'
+          readOnly: true
+        solve_time_ms:
+          type: integer
+          readOnly: true
+        objective_value_cents:
+          type: integer
+          readOnly: true
+          description: Objective (total cost) in cents.
+        is_active:
+          type: boolean
+          readOnly: true
+        is_stale:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        task_count:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - horizon_end
+      - horizon_start
+      - id
+      - is_active
+      - is_stale
+      - objective_value_cents
+      - solve_time_ms
+      - solver_status
+      - task_count
     ScheduleSlot:
       type: object
       description: Production schedule slot serializer
@@ -53808,6 +54092,105 @@ components:
       - name
       - params_schema
       - title
+    ScheduledTask:
+      type: object
+      description: |-
+        One Gantt row: a unit (part or core) + step on a machine, with the operator
+        assignment and resolved display names.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        schedule:
+          type: string
+          format: uuid
+          readOnly: true
+        part:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        part_erp:
+          type: string
+          nullable: true
+          readOnly: true
+        core:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Reman core being torn down (mutually exclusive with `part`).
+        core_number:
+          type: string
+          nullable: true
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+          readOnly: true
+        step_name:
+          type: string
+          nullable: true
+          readOnly: true
+        machine:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Assigned machine (null if the step needs none).
+        machine_name:
+          type: string
+          nullable: true
+          readOnly: true
+        assigned_operator:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Layer-2 operator assignment; null on an attended task means
+            the dispatcher could not cover it (no qualified operator free).
+        operator_name:
+          type: string
+          nullable: true
+          readOnly: true
+        requires_operator:
+          type: boolean
+          readOnly: true
+          description: Whether this task needs an operator (false for unattended runs).
+        start_time:
+          type: string
+          format: date-time
+          readOnly: true
+        end_time:
+          type: string
+          format: date-time
+          readOnly: true
+        is_pinned:
+          type: boolean
+          readOnly: true
+          description: 'Planner-pinned: the solver must keep this fixed.'
+        fence_zone:
+          allOf:
+          - $ref: '#/components/schemas/FenceZoneEnum'
+          readOnly: true
+      required:
+      - assigned_operator
+      - core
+      - core_number
+      - end_time
+      - fence_zone
+      - id
+      - is_pinned
+      - machine
+      - machine_name
+      - operator_name
+      - part
+      - part_erp
+      - requires_operator
+      - schedule
+      - start_time
+      - step
+      - step_name
     ScopeEnum:
       enum:
       - sampled
@@ -54209,6 +54592,20 @@ components:
       - message
       - tenant
       - user
+    SolverStatusEnum:
+      enum:
+      - OPTIMAL
+      - FEASIBLE
+      - INFEASIBLE
+      - MODEL_INVALID
+      - UNKNOWN
+      type: string
+      description: |-
+        * `OPTIMAL` - Optimal
+        * `FEASIBLE` - Feasible
+        * `INFEASIBLE` - Infeasible
+        * `MODEL_INVALID` - Model invalid
+        * `UNKNOWN` - Unknown
     SourceEnum:
       enum:
       - PURCHASED_LOT

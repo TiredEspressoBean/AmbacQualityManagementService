@@ -196,6 +196,12 @@ from .reman import (
     DisassemblyBOMLineViewSet,
 )
 
+# Scheduling (CP-SAT solver + operator dispatch) ViewSets
+from .scheduling import (
+    ScheduleViewSet,
+    ScheduledTaskViewSet,
+)
+
 # Digital Work Instructions ViewSets
 from .dwi import (
     SubstepViewSet,
@@ -407,6 +413,10 @@ __all__ = [
     'HarvestedComponentViewSet',
     'DisassemblyBOMLineViewSet',
 
+    # Scheduling (CP-SAT solver + dispatch)
+    'ScheduleViewSet',
+    'ScheduledTaskViewSet',
+
     # Digital Work Instructions
     'SubstepViewSet',
     'SubstepResourceViewSet',
@@ -559,6 +569,8 @@ def register_viewsets(router):
     router.register(r'Cores', CoreViewSet, basename='Cores')
     router.register(r'HarvestedComponents', HarvestedComponentViewSet, basename='HarvestedComponents')
     router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
+    router.register(r'Schedules', ScheduleViewSet, basename='Schedules')
+    router.register(r'ScheduledTasks', ScheduledTaskViewSet, basename='ScheduledTasks')
 
     # ===== TRAINING VIEWSETS =====
     router.register(r'TrainingTypes', TrainingTypeViewSet, basename='TrainingTypes')
