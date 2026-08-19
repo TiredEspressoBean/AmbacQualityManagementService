@@ -52,12 +52,21 @@ _AFFINITIES = {
 }
 
 # step name -> (setup, cycle, load_unload, attention)
+# step name -> (setup, cycle, load_unload, attention). Every scheduled in-house step
+# gets an honest duration (machine-less steps included). Omitted on purpose:
+# "Nitride Coating" (OSP — its time is vendor lead time, not in-house work) and
+# "Complete" (terminal, not scheduled).
 _TIMINGS = {
+    "Core Receiving":    (5, 10, 1, AttentionType.FULL),          # receive + grade cores
+    "Disassembly":       (10, 40, 2, AttentionType.FULL),         # teardown
+    "Component Grading": (5, 20, 1, AttentionType.FULL),          # grade/sort components
     "Cleaning":          (15, 30, 2, AttentionType.LOAD_UNLOAD),  # unattended wash
     "Nozzle Inspection": (5, 15, 1, AttentionType.FULL),
     "Flow Testing":      (10, 20, 1, AttentionType.FULL),
     "Assembly":          (20, 45, 3, AttentionType.FULL),
     "Final Test":        (10, 25, 1, AttentionType.FULL),
+    "Packaging":         (5, 10, 1, AttentionType.LOAD_UNLOAD),   # box + label
+    "Rework":            (10, 30, 2, AttentionType.FULL),         # rework station
 }
 
 # Measuring devices used at a step (MeasurementDefinition.default_equipment). A
@@ -101,7 +110,20 @@ class DemoSchedulingSeeder(BaseSeeder):
                 m.is_schedulable = True
                 m.save(update_fields=["is_schedulable"])
 
-        aff_n = tim_n = 0
+        # Timings for every step we can time — machine-less steps included, so every
+        # scheduled step has an honest duration (not the solver's 1-minute default).
+        tim_n = 0
+        for step_name, (setup, cycle, lu, attention) in _TIMINGS.items():
+            for step in self._steps(step_name):
+                StepTiming.objects.update_or_create(
+                    tenant=self.tenant, step=step,
+                    defaults={"setup_minutes": setup, "cycle_time_minutes": cycle,
+                              "load_unload_per_piece": lu, "attention_type": attention,
+                              "external_setup_minutes": 0})
+                tim_n += 1
+
+        # Machine affinities for the production steps.
+        aff_n = 0
         for step_name, specs in _AFFINITIES.items():
             for step in self._steps(step_name):
                 for eq_name, affinity in specs:
@@ -112,14 +134,6 @@ class DemoSchedulingSeeder(BaseSeeder):
                         tenant=self.tenant, step=step, equipment=eq,
                         defaults={"affinity": affinity})
                     aff_n += 1
-                if step_name in _TIMINGS:
-                    setup, cycle, lu, attention = _TIMINGS[step_name]
-                    StepTiming.objects.update_or_create(
-                        tenant=self.tenant, step=step,
-                        defaults={"setup_minutes": setup, "cycle_time_minutes": cycle,
-                                  "load_unload_per_piece": lu, "attention_type": attention,
-                                  "external_setup_minutes": 0})
-                    tim_n += 1
 
         shift, _ = Shift.objects.get_or_create(
             tenant=self.tenant, code="DAY",
