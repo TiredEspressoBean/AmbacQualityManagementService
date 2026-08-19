@@ -46,13 +46,9 @@ ADMIN_ONLY_MODELS = {
     # role/user perms, and suspend/reactivate by the User viewset's
     # bulk-activate action — never by membership CRUD perms.
     'tenantmembership',
-    # Scheduling (OR-Tools CP-SAT foundation, Phase 0). Provisional: no viewset/UI
-    # exists yet and there is no `Planner` group. When Phase 4 lands the scheduling
-    # API + a Planner permission/group, grant these properly (view to staff; config
-    # add/change to Planner; ScheduleResult/ScheduledTask stay solver-written) and
-    # remove them from here.
-    'steptiming', 'stepequipmentaffinity', 'workcenterchangeover', 'fixture',
-    'optimizationconfig', 'scheduleresult', 'scheduledtask', 'continuousmachine',
+    # (Scheduling models are now granted — view to staff, add/change to the planner
+    # roles via SCHEDULING_PLANNER_PERMISSIONS; the solver-written perms are opted out
+    # below in IMMUTABLE_MODELS / SYSTEM_WRITTEN_MODELS / SOFT_DELETE_MODELS.)
 }
 
 # change_/delete_ never granted to ANY role — append-only audit/evidence
@@ -71,6 +67,9 @@ IMMUTABLE_MODELS = {
     # (the trigger raises for everyone, superusers included):
     'steptransitionlog', 'samplingauditlog',
     'approvalresponse',
+    # ScheduleResult: created by the solver (add_ granted for the /solve/ action);
+    # is_active/is_stale are flipped by the service, never a role's change endpoint.
+    'scheduleresult',
     # A shift-note acknowledgment is a one-time receipt written by the
     # acknowledge action; never edited or deleted via a role's CRUD.
     'shiftnoteack',
@@ -91,6 +90,7 @@ SYSTEM_WRITTEN_MODELS = {
     'steptransitionlog', 'samplingauditlog',
     'stepgatefiring',   # created by the quality-gate engine, not via role CRUD
     'shiftnoteack',     # written by the acknowledge action, not via role CRUD
+    'scheduledtask',    # rows are written by the solver; change_ (pin/dispatch) is granted
 }
 
 # Granted to NO role as deliberate policy (not a gap to burn down). Maps
@@ -124,6 +124,10 @@ SOFT_DELETE_MODELS = {
     # Shift notes soft-delete via void (retract); retract is gated by
     # change_shiftnote, not delete_shiftnote.
     'shiftnote',
+    # Scheduler records: config is retired via void/re-author and the solver's
+    # ScheduledTask rows are regenerated each solve — never hard-deleted via a role.
+    'scheduledtask', 'steptiming', 'stepequipmentaffinity', 'workcenterchangeover',
+    'fixture', 'optimizationconfig', 'continuousmachine',
 }
 
 # Burn-down: operational perms that SHOULD be granted to roles but aren't yet.

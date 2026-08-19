@@ -83,6 +83,10 @@ STAFF_VIEW_PERMISSIONS = [
     # Scheduling
     'view_workcenter', 'view_shift', 'view_scheduleslot', 'view_downtimeevent',
     'view_timeentry', 'view_userworkcentermembership',
+    # CP-SAT scheduler: everyone can read the schedule + its inputs
+    'view_scheduleresult', 'view_scheduledtask', 'view_steptiming',
+    'view_stepequipmentaffinity', 'view_workcenterchangeover', 'view_fixture',
+    'view_optimizationconfig', 'view_continuousmachine',
     # Milestones & life tracking
     'view_milestone', 'view_milestonetemplate',
     'view_lifelimitdefinition', 'view_parttypelifelimit', 'view_lifetracking',
@@ -452,6 +456,24 @@ SHIFT_NOTE_AUTHOR_PERMISSIONS = [
 # per-role delta. If you're adding a permission, prefer adding it to the right
 # shared set over a role's delta.
 
+# CP-SAT scheduler "planner" authority: run the solver + operator dispatch + pin,
+# and author the scheduler's inputs (timings, machine affinities, changeovers,
+# fixtures, config, continuous machines). Granted to planning roles (Tenant Admin,
+# Production Manager). Solve creates a ScheduleResult (add_scheduleresult); dispatch
+# and pin mutate tasks (change_scheduledtask). ScheduleResult is otherwise
+# solver/service-written (change/delete ungranted) and ScheduledTask add/delete are
+# solver-managed — see the opt-outs in test_permission_coverage.py.
+SCHEDULING_PLANNER_PERMISSIONS = [
+    'add_scheduleresult',        # run the solver
+    'change_scheduledtask',      # operator dispatch + pin/unpin
+    'add_steptiming', 'change_steptiming',
+    'add_stepequipmentaffinity', 'change_stepequipmentaffinity',
+    'add_workcenterchangeover', 'change_workcenterchangeover',
+    'add_fixture', 'change_fixture',
+    'add_optimizationconfig', 'change_optimizationconfig',
+    'add_continuousmachine', 'change_continuousmachine',
+]
+
 GROUP_PRESETS = {
     # -------------------------------------------------------------------------
     # SYSTEM ADMIN - Platform admin (your business - SaaS provider)
@@ -498,6 +520,8 @@ GROUP_PRESETS = {
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             # Formally raise a CAPA
             'initiate_capa',
+            # Run + tune the CP-SAT scheduler (solve/dispatch/pin + config authoring)
+            *SCHEDULING_PLANNER_PERMISSIONS,
         ],
     },
 
@@ -581,6 +605,8 @@ GROUP_PRESETS = {
             'full_tenant_access',
             # Formally raise a CAPA
             'initiate_capa',
+            # Run + tune the CP-SAT scheduler (the production planning function)
+            *SCHEDULING_PLANNER_PERMISSIONS,
         ],
     },
 
