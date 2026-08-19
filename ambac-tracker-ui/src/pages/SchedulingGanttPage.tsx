@@ -56,6 +56,7 @@ export function SchedulingGanttPage() {
   // Zoom = fidelity. Ctrl/⌘ + wheel (what a trackpad pinch emits) zooms; so do the
   // toolbar buttons. Higher zoom widens the day columns so hourly detail is legible.
   const [zoom, setZoom] = useState(220);
+  const [groupBy, setGroupBy] = useState<"machine" | "operator" | "product">("machine");
   const pageRef = useRef<HTMLDivElement>(null);
   const clampZoom = (z: number) => Math.min(1500, Math.max(30, Math.round(z)));
   useEffect(() => {
@@ -72,27 +73,42 @@ export function SchedulingGanttPage() {
 
   const rows = (tasksQuery.data as { results?: Task[] } | undefined)?.results ?? [];
 
-  // Group tasks by machine (Unassigned last) → GanttFeatures.
+  // Group the schedule by machine, by operator (people), or by product (part/core).
   const groups = useMemo(() => {
-    const byMachine = new Map<string, (GanttFeature & { is_pinned: boolean })[]>();
-    for (const t of rows) {
-      const machine = t.machine_name ?? "— Unassigned —";
+    const key = (t: Task) =>
+      groupBy === "operator"
+        ? t.operator_name ?? "— Unassigned —"
+        : groupBy === "product"
+          ? t.part_erp ?? t.core_number ?? "—"
+          : t.machine_name ?? "— Unassigned —";
+    // In the product lane the row IS the part, so the bar names the step (+ machine);
+    // otherwise it names the unit + step.
+    const featureName = (t: Task) => {
+      const pin = t.is_pinned ? "📌 " : "";
+      if (groupBy === "product")
+        return `${pin}${t.step_name ?? ""}${t.machine_name ? " @ " + t.machine_name : ""}`;
       const unit = t.part_erp ?? t.core_number ?? "task";
+      return `${pin}${unit} · ${t.step_name ?? ""}`;
+    };
+
+    const byKey = new Map<string, (GanttFeature & { is_pinned: boolean })[]>();
+    for (const t of rows) {
       const zone = FENCE[t.fence_zone] ?? FENCE.liquid;
       const feature: GanttFeature & { is_pinned: boolean } = {
         id: t.id,
-        name: `${t.is_pinned ? "📌 " : ""}${unit} · ${t.step_name ?? ""}`,
+        name: featureName(t),
         startAt: new Date(t.start_time),
         endAt: new Date(t.end_time),
         status: { id: t.fence_zone, name: zone.name, color: zone.color },
         is_pinned: t.is_pinned,
       };
-      (byMachine.get(machine) ?? byMachine.set(machine, []).get(machine)!).push(feature);
+      const k = key(t);
+      (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(feature);
     }
-    return [...byMachine.entries()]
+    return [...byKey.entries()]
       .sort(([a], [b]) => (a.startsWith("—") ? 1 : b.startsWith("—") ? -1 : a.localeCompare(b)))
-      .map(([machine, features]) => ({ machine, features }));
-  }, [rows]);
+      .map(([name, features]) => ({ machine: name, features }));
+  }, [rows, groupBy]);
 
   const togglePin = (id: string) => {
     const t = rows.find((r) => r.id === id);
@@ -137,6 +153,23 @@ export function SchedulingGanttPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="mr-1 flex items-center rounded-md border p-0.5">
+            {([
+              ["machine", "Machines"],
+              ["operator", "People"],
+              ["product", "Product"],
+            ] as const).map(([mode, label]) => (
+              <Button
+                key={mode}
+                variant={groupBy === mode ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setGroupBy(mode)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           <div className="mr-1 flex items-center gap-1 rounded-md border px-1" title="Ctrl/⌘ + scroll, or pinch, to zoom">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => clampZoom(z * 0.8))}>
               <ZoomOut className="h-4 w-4" />
