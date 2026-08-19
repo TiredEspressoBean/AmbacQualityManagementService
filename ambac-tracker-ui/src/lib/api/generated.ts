@@ -6176,6 +6176,68 @@ export type ScheduleSlotStatusEnum =
    * @enum SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
    */
   "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type PaginatedScheduledTaskList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ScheduledTask>;
+};
+export type ScheduledTask = {
+  id: string;
+  schedule: string;
+  part: string | null;
+  part_erp: string | null;
+  /**
+   * Reman core being torn down (mutually exclusive with `part`).
+   */
+  core: string | null;
+  core_number: string | null;
+  step: string;
+  step_name: string | null;
+  /**
+   * Assigned machine (null if the step needs none).
+   */
+  machine: string | null;
+  machine_name: string | null;
+  /**
+   * Layer-2 operator assignment; null on an attended task means the dispatcher could not cover it (no qualified operator free).
+   */
+  assigned_operator: number | null;
+  operator_name: string | null;
+  /**
+   * Whether this task needs an operator (false for unattended runs).
+   */
+  requires_operator: boolean;
+  start_time: string;
+  end_time: string;
+  /**
+   * Planner-pinned: the solver must keep this fixed.
+   */
+  is_pinned: boolean;
+  fence_zone: FenceZoneEnum;
+};
+export type FenceZoneEnum =
+  /**
+   * * `frozen` - Frozen
+   * `slushy` - Slushy
+   * `liquid` - Liquid
+   *
+   * @enum frozen, slushy, liquid
+   */
+  "frozen" | "slushy" | "liquid";
 export type PaginatedShiftList = {
   /**
    * @example 123
@@ -11757,6 +11819,32 @@ export type SamplingRuleUpdateRequest = {
   value?: (number | null) | undefined;
   order: number;
 };
+export type ScheduleResult = {
+  id: string;
+  horizon_start: string;
+  horizon_end: string;
+  solver_status: SolverStatusEnum;
+  solve_time_ms: number;
+  /**
+   * Objective (total cost) in cents.
+   */
+  objective_value_cents: number;
+  is_active: boolean;
+  is_stale: boolean;
+  created_at: string;
+  task_count: number;
+};
+export type SolverStatusEnum =
+  /**
+   * * `OPTIMAL` - Optimal
+   * `FEASIBLE` - Feasible
+   * `INFEASIBLE` - Infeasible
+   * `MODEL_INVALID` - Model invalid
+   * `UNKNOWN` - Unknown
+   *
+   * @enum OPTIMAL, FEASIBLE, INFEASIBLE, MODEL_INVALID, UNKNOWN
+   */
+  "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN";
 export type ScheduleSlotRequest = {
   work_center: string;
   shift: string;
@@ -16824,6 +16912,58 @@ const PatchedScheduleSlotRequest = z
     archived: z.boolean(),
   })
   .partial();
+const FenceZoneEnum = z.enum(["frozen", "slushy", "liquid"]);
+const ScheduledTask = z.object({
+  id: z.string().uuid(),
+  schedule: z.string().uuid(),
+  part: z.string().uuid().nullable(),
+  part_erp: z.string().nullable(),
+  core: z.string().uuid().nullable(),
+  core_number: z.string().nullable(),
+  step: z.string().uuid(),
+  step_name: z.string().nullable(),
+  machine: z.string().uuid().nullable(),
+  machine_name: z.string().nullable(),
+  assigned_operator: z.number().int().nullable(),
+  operator_name: z.string().nullable(),
+  requires_operator: z.boolean(),
+  start_time: z.string().datetime({ offset: true }),
+  end_time: z.string().datetime({ offset: true }),
+  is_pinned: z.boolean(),
+  fence_zone: FenceZoneEnum,
+});
+const PaginatedScheduledTaskList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ScheduledTask),
+});
+const PinRequestRequest = z.object({ is_pinned: z.boolean() });
+const SolverStatusEnum = z.enum([
+  "OPTIMAL",
+  "FEASIBLE",
+  "INFEASIBLE",
+  "MODEL_INVALID",
+  "UNKNOWN",
+]);
+const ScheduleResult = z.object({
+  id: z.string().uuid(),
+  horizon_start: z.string().datetime({ offset: true }),
+  horizon_end: z.string().datetime({ offset: true }),
+  solver_status: SolverStatusEnum,
+  solve_time_ms: z.number().int(),
+  objective_value_cents: z.number().int(),
+  is_active: z.boolean(),
+  is_stale: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  task_count: z.number().int(),
+});
+const DispatchResult = z.object({
+  schedule: z.string().uuid(),
+  attended: z.number().int(),
+  covered: z.number().int(),
+  uncovered: z.number().int(),
+});
 const ShiftNotePriorityEnum = z.enum(["NORMAL", "HIGH"]);
 const ShiftNoteAckRosterItem = z.object({
   user_name: z.string(),
@@ -20654,6 +20794,13 @@ export const schemas = {
   PaginatedScheduleSlotList,
   ScheduleSlotRequest,
   PatchedScheduleSlotRequest,
+  FenceZoneEnum,
+  ScheduledTask,
+  PaginatedScheduledTaskList,
+  PinRequestRequest,
+  SolverStatusEnum,
+  ScheduleResult,
+  DispatchResult,
   ShiftNotePriorityEnum,
   ShiftNoteAckRosterItem,
   ShiftNote,
@@ -36283,6 +36430,116 @@ problem from the round-4 research).`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/ScheduledTasks/",
+    alias: "api_ScheduledTasks_list",
+    description: `Read the scheduled tasks (Gantt rows); pin/unpin a task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "assigned_operator",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "fence_zone",
+        type: "Query",
+        schema: z.enum(["frozen", "liquid", "slushy"]).optional(),
+      },
+      {
+        name: "is_pinned",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "machine",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "schedule",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedScheduledTaskList,
+  },
+  {
+    method: "get",
+    path: "/api/ScheduledTasks/:id/",
+    alias: "api_ScheduledTasks_retrieve",
+    description: `Read the scheduled tasks (Gantt rows); pin/unpin a task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ScheduledTask,
+  },
+  {
+    method: "post",
+    path: "/api/ScheduledTasks/:id/pin/",
+    alias: "api_ScheduledTasks_pin_create",
+    description: `Pin or unpin a task (planner override); marks the schedule stale so the
+next solve is known to be needed.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ is_pinned: z.boolean() }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ScheduledTask,
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/current/",
+    alias: "api_Schedules_current_retrieve",
+    description: `The active schedule&#x27;s run metadata, or 404 if none exists yet.`,
+    requestFormat: "json",
+    response: ScheduleResult,
+  },
+  {
+    method: "post",
+    path: "/api/Schedules/dispatch/",
+    alias: "api_Schedules_dispatch_create",
+    description: `Assign operators to the active schedule&#x27;s attended tasks (Layer 2).`,
+    requestFormat: "json",
+    response: DispatchResult,
+  },
+  {
+    method: "post",
+    path: "/api/Schedules/solve/",
+    alias: "api_Schedules_solve_create",
+    description: `Run the Layer-1 machine solver, superseding the previous active schedule.`,
+    requestFormat: "json",
+    response: ScheduleResult,
   },
   {
     method: "get",

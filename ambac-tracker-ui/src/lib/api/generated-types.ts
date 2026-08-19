@@ -7517,6 +7517,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ScheduledTasks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read the scheduled tasks (Gantt rows); pin/unpin a task. */
+        get: operations["api_ScheduledTasks_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read the scheduled tasks (Gantt rows); pin/unpin a task. */
+        get: operations["api_ScheduledTasks_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/{id}/pin/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Pin or unpin a task (planner override); marks the schedule stale so the
+         *     next solve is known to be needed.
+         */
+        post: operations["api_ScheduledTasks_pin_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/current/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The active schedule's run metadata, or 404 if none exists yet. */
+        get: operations["api_Schedules_current_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/dispatch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Assign operators to the active schedule's attended tasks (Layer 2). */
+        post: operations["api_Schedules_dispatch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/solve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Run the Layer-1 machine solver, superseding the previous active schedule. */
+        post: operations["api_Schedules_solve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ShiftNotes/": {
         parameters: {
             query?: never;
@@ -16291,6 +16396,13 @@ export interface components {
             line_number?: number;
             archived?: boolean;
         };
+        DispatchResult: {
+            /** Format: uuid */
+            schedule: string;
+            attended: number;
+            covered: number;
+            uncovered: number;
+        };
         /**
          * @description A member part of a batch disposition's load — shown in the form's
          *     affected-load panel so QA can see which parts the failed cycle covers and
@@ -17033,6 +17145,13 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /**
+         * @description * `frozen` - Frozen
+         *     * `slushy` - Slushy
+         *     * `liquid` - Liquid
+         * @enum {string}
+         */
+        FenceZoneEnum: "frozen" | "slushy" | "liquid";
         FilterOptionsResponse: {
             defect_types: {
                 [key: string]: unknown;
@@ -19372,6 +19491,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["ScheduleSlot"][];
+        };
+        PaginatedScheduledTaskList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ScheduledTask"][];
         };
         PaginatedShiftList: {
             /** @example 123 */
@@ -22699,6 +22833,9 @@ export interface components {
             /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
             channels?: unknown;
         };
+        PinRequestRequest: {
+            is_pinned: boolean;
+        };
         PresetListResponse: {
             presets: {
                 [key: string]: unknown;
@@ -24607,6 +24744,23 @@ export interface components {
          * @enum {string}
          */
         ScaleEnum: "small" | "medium" | "large";
+        ScheduleResult: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            readonly horizon_start: string;
+            /** Format: date-time */
+            readonly horizon_end: string;
+            readonly solver_status: components["schemas"]["SolverStatusEnum"];
+            readonly solve_time_ms: number;
+            /** @description Objective (total cost) in cents. */
+            readonly objective_value_cents: number;
+            readonly is_active: boolean;
+            readonly is_stale: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly task_count: number;
+        };
         /** @description Production schedule slot serializer */
         ScheduleSlot: {
             /** Format: uuid */
@@ -24673,6 +24827,46 @@ export interface components {
             title: string;
             description: string;
             params_schema: unknown;
+        };
+        /**
+         * @description One Gantt row: a unit (part or core) + step on a machine, with the operator
+         *     assignment and resolved display names.
+         */
+        ScheduledTask: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly schedule: string;
+            /** Format: uuid */
+            readonly part: string | null;
+            readonly part_erp: string | null;
+            /**
+             * Format: uuid
+             * @description Reman core being torn down (mutually exclusive with `part`).
+             */
+            readonly core: string | null;
+            readonly core_number: string | null;
+            /** Format: uuid */
+            readonly step: string;
+            readonly step_name: string | null;
+            /**
+             * Format: uuid
+             * @description Assigned machine (null if the step needs none).
+             */
+            readonly machine: string | null;
+            readonly machine_name: string | null;
+            /** @description Layer-2 operator assignment; null on an attended task means the dispatcher could not cover it (no qualified operator free). */
+            readonly assigned_operator: number | null;
+            readonly operator_name: string | null;
+            /** @description Whether this task needs an operator (false for unattended runs). */
+            readonly requires_operator: boolean;
+            /** Format: date-time */
+            readonly start_time: string;
+            /** Format: date-time */
+            readonly end_time: string;
+            /** @description Planner-pinned: the solver must keep this fixed. */
+            readonly is_pinned: boolean;
+            readonly fence_zone: components["schemas"]["FenceZoneEnum"];
         };
         /**
          * @description * `sampled` - Per part (sampling)
@@ -24876,6 +25070,15 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description * `OPTIMAL` - Optimal
+         *     * `FEASIBLE` - Feasible
+         *     * `INFEASIBLE` - Infeasible
+         *     * `MODEL_INVALID` - Model invalid
+         *     * `UNKNOWN` - Unknown
+         * @enum {string}
+         */
+        SolverStatusEnum: "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN";
         /**
          * @description * `PURCHASED_LOT` - PURCHASED_LOT
          *     * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
@@ -40914,6 +41117,149 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleSlot"];
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_list: {
+        parameters: {
+            query?: {
+                assigned_operator?: number;
+                /**
+                 * @description * `frozen` - Frozen
+                 *     * `slushy` - Slushy
+                 *     * `liquid` - Liquid
+                 */
+                fence_zone?: "frozen" | "liquid" | "slushy";
+                is_pinned?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                machine?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                schedule?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedScheduledTaskList"];
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Scheduled Task. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTask"];
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_pin_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Scheduled Task. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PinRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PinRequestRequest"];
+                "multipart/form-data": components["schemas"]["PinRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTask"];
+                };
+            };
+        };
+    };
+    api_Schedules_current_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+        };
+    };
+    api_Schedules_dispatch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispatchResult"];
+                };
+            };
+        };
+    };
+    api_Schedules_solve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleResult"];
                 };
             };
         };
