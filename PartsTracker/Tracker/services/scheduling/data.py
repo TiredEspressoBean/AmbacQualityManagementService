@@ -113,6 +113,7 @@ class WorkOrderData:
     priority: int
     expected_completion: date | None
     expected_start: date | None  # earliest-release gate (no task starts before this)
+    pegged_to_wo_id: UUID | None  # parent assembly WO this component job feeds (#9)
     quantity: int
     process_id: UUID
     parts: tuple  # tuple[PartData, ...]
@@ -354,6 +355,7 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
         result.append(WorkOrderData(
             wo_id=wo.id, erp_id=wo.ERP_id, priority=wo.priority,
             expected_completion=wo.expected_completion, expected_start=wo.expected_start,
+            pegged_to_wo_id=wo.pegged_to_workorder_id,
             quantity=wo.quantity,
             process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
         ))

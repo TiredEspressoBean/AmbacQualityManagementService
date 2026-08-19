@@ -370,3 +370,31 @@ class SolverTests(TenantContextMixin, TestCase):
         steps = {t.step_id for t in result.tasks.all()}
         self.assertEqual(steps, {self.step1.id, self.step2.id})
         self.assertNotIn(rework.id, steps, "an ALTERNATE (rework) step isn't planned up front")
+
+    # ---- cross-WO assembly-convergence pegs ------------------------------
+
+    def test_peg_delays_parent_until_component_done(self):
+        # A component WO pegged to a parent assembly WO: the parent may not start
+        # until the component job finishes.
+        parent, _ = self._wo("WO-PARENT", 1)
+        child, _ = self._wo("WO-CHILD", 1)
+        child.pegged_to_workorder = parent
+        child.save(update_fields=["pegged_to_workorder"])
+        result = solve_schedule(self.tenant)
+        parent_start = min(t.start_time for t in result.tasks.filter(part__work_order=parent))
+        child_end = max(t.end_time for t in result.tasks.filter(part__work_order=child))
+        self.assertGreaterEqual(parent_start, child_end,
+                                "parent assembly can't start before the component WO finishes")
+
+    def test_staging_buffer_adds_gap_before_parent(self):
+        from Tracker.models import OptimizationConfig
+        OptimizationConfig.objects.create(tenant=self.tenant, staging_buffer_minutes=120)
+        parent, _ = self._wo("WO-P2", 1)
+        child, _ = self._wo("WO-C2", 1)
+        child.pegged_to_workorder = parent
+        child.save(update_fields=["pegged_to_workorder"])
+        result = solve_schedule(self.tenant)
+        parent_start = min(t.start_time for t in result.tasks.filter(part__work_order=parent))
+        child_end = max(t.end_time for t in result.tasks.filter(part__work_order=child))
+        gap_min = (parent_start - child_end).total_seconds() / 60
+        self.assertGreaterEqual(gap_min, 120, "staging buffer separates component finish from parent start")

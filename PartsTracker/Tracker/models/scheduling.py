@@ -211,6 +211,12 @@ class OptimizationConfig(SecureModel):
         default=0.02, validators=[MinValueValidator(0)],
         help_text="CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).",
     )
+    staging_buffer_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Minutes between a component WO finishing and its parent assembly "
+                  "WO being allowed to start (move/stage time). Assembly-convergence "
+                  "peg — plan #9.",
+    )
 
     class Meta:
         verbose_name = 'Optimization Config'
