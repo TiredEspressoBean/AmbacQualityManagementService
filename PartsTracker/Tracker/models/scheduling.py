@@ -278,7 +278,13 @@ class ScheduledTask(SecureModel):
         ScheduleResult, on_delete=models.CASCADE, related_name='tasks',
     )
     part = models.ForeignKey(
-        'Tracker.Parts', on_delete=models.CASCADE, related_name='scheduled_tasks',
+        'Tracker.Parts', null=True, blank=True, on_delete=models.CASCADE,
+        related_name='scheduled_tasks',
+    )
+    core = models.ForeignKey(
+        'Tracker.Core', null=True, blank=True, on_delete=models.CASCADE,
+        related_name='scheduled_tasks',
+        help_text="Reman core being torn down (mutually exclusive with `part`).",
     )
     step = models.ForeignKey(
         'Tracker.Steps', on_delete=models.PROTECT, related_name='scheduled_tasks',
@@ -316,11 +322,20 @@ class ScheduledTask(SecureModel):
             models.Index(fields=['schedule', 'start_time']),
             models.Index(fields=['machine', 'start_time']),
             models.Index(fields=['part', 'step']),
+            models.Index(fields=['core', 'step']),
             models.Index(fields=['assigned_operator', 'start_time']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                name='scheduledtask_part_xor_core',
+                check=(models.Q(part__isnull=False, core__isnull=True)
+                       | models.Q(part__isnull=True, core__isnull=False)),
+            ),
         ]
 
     def __str__(self):
-        return f"{self.part} · {self.step} @ {self.machine} [{self.start_time:%m-%d %H:%M}]"
+        unit = self.part or self.core
+        return f"{unit} · {self.step} @ {self.machine} [{self.start_time:%m-%d %H:%M}]"
 
 
 class ContinuousMachine(SecureModel):

@@ -26,6 +26,9 @@ _UNSCHEDULABLE_PART_STATUSES = frozenset({
     'AWAITING_PICKUP', 'CORE_BANKED', 'RMA_CLOSED', 'QUARANTINED',
 })
 
+# Reman cores past teardown (all components harvested, or scrapped) have no work left.
+_UNSCHEDULABLE_CORE_STATUSES = frozenset({'DISASSEMBLED', 'SCRAPPED'})
+
 
 # --- DTOs -------------------------------------------------------------------
 
@@ -92,6 +95,14 @@ class PartData:
 
 
 @dataclass(frozen=True)
+class CoreData:
+    """A reman core being torn down — scheduled like a part, through the teardown
+    process, but written back as ScheduledTask.core (not .part)."""
+    core_id: UUID
+    current_step_id: UUID | None
+
+
+@dataclass(frozen=True)
 class StepNode:
     step_id: UUID
     is_terminal: bool
@@ -118,6 +129,7 @@ class WorkOrderData:
     quantity: int
     process_id: UUID
     parts: tuple  # tuple[PartData, ...]
+    cores: tuple  # tuple[CoreData, ...] — reman teardown units on this WO
     steps: tuple   # tuple[StepNode, ...] — the process routing nodes, ordered
     edges: tuple   # tuple[EdgeData, ...] — the routing DAG
 
@@ -321,7 +333,7 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
         WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
         .exclude(workorder_status__in=excluded)
         .select_related('pegged_to_bom_line')
-        .prefetch_related('parts')
+        .prefetch_related('parts', 'cores')
     )
 
     graph_cache: dict[UUID, tuple] = {}
@@ -354,6 +366,11 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
             for p in wo.parts.all()
             if p.part_status not in _UNSCHEDULABLE_PART_STATUSES
         )
+        cores = tuple(
+            CoreData(core_id=c.id, current_step_id=c.step_id)
+            for c in wo.cores.all()
+            if c.status not in _UNSCHEDULABLE_CORE_STATUSES
+        )
         consumes_step_id = (wo.pegged_to_bom_line.consumed_at_step_id
                             if wo.pegged_to_bom_line_id else None)
         result.append(WorkOrderData(
@@ -362,7 +379,7 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
             pegged_to_wo_id=wo.pegged_to_workorder_id,
             pegged_consumes_step_id=consumes_step_id,
             quantity=wo.quantity,
-            process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
+            process_id=wo.process_id, parts=parts, cores=cores, steps=steps, edges=edges,
         ))
     return result
 
@@ -533,7 +550,7 @@ def get_previous_schedule(tenant) -> PreviousScheduleData | None:
             part_id=t.part_id, step_id=t.step_id, machine_id=t.machine_id,
             start_time=t.start_time, end_time=t.end_time, is_pinned=t.is_pinned,
         )
-        for t in sched.tasks.all()
+        for t in sched.tasks.filter(part__isnull=False)   # core tasks: no pin/warm-start in v1
     )
     return PreviousScheduleData(schedule_id=sched.id, tasks=tasks)
 

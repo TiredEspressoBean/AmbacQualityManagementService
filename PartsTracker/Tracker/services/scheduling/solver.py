@@ -5,9 +5,10 @@ Consumes the Phase-1 data-layer DTOs and produces a machine schedule
 (`ScheduleResult` + `ScheduledTask`).
 
 Layers built so far:
-- Route-aware per-(part, step) tasks: each part schedules its remaining nominal
-  route from its current step (DEFAULT edges; rework/scrap excluded), with
-  merge-capable DAG precedence (see `routing.resolve_route`).
+- Route-aware per-(unit, step) tasks: each schedulable unit — a manufacturing part
+  or a reman teardown core — schedules its remaining nominal route from its current
+  step (DEFAULT edges; rework/scrap excluded), with merge-capable DAG precedence
+  (see `routing.resolve_route`). Cores write back as ScheduledTask.core.
 - Machine choice: one of the step's eligible schedulable machines (optional intervals
   + exactly-one), honoring per-machine `cycle_time_override`; one task per machine.
 - Cost objective (integer cents): Σ (part lateness × the WO's priority penalty) +
@@ -223,18 +224,22 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             due_minutes = _due_minutes(wo.expected_completion, horizon.start, H)
             release_min = _release_minutes(wo.expected_start, horizon.start, H)
             penalty = _penalty_cents_per_min(config, wo.priority)
-            for part in wo.parts:
-                # The part's remaining NOMINAL route from its current step (DEFAULT
+            # Schedulable units: manufacturing parts and reman teardown cores. Both
+            # route through wo's process; a core writes back as ScheduledTask.core.
+            units = ([(p.part_id, p.current_step_id, False) for p in wo.parts]
+                     + [(c.core_id, c.current_step_id, True) for c in wo.cores])
+            for unit_id, unit_step_id, is_core in units:
+                # The unit's remaining NOMINAL route from its current step (DEFAULT
                 # edges; rework/scrap branches excluded), with merge-capable DAG
                 # precedence so convergence/divergence nodes schedule correctly.
-                route_ids, prec = resolve_route(part.current_step_id, wo.steps, wo.edges)
+                route_ids, prec = resolve_route(unit_step_id, wo.steps, wo.edges)
                 node_start: dict = {}
                 node_end: dict = {}
                 part_ends = []
                 for step_id in route_ids:
                     timing = timings.get(step_id)
                     eligible = [a for a in affinities.get(step_id, []) if a.is_schedulable]
-                    key = f"{part.part_id}_{step_id}"
+                    key = f"{'c' if is_core else 'p'}{unit_id}_{step_id}"
                     start = model.NewIntVar(0, H, f"s_{key}")
                     end = model.NewIntVar(0, H, f"e_{key}")
                     if release_min:
@@ -272,8 +277,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                             model.AddNoOverlap([occ] + break_fixed)
 
                     # Time fences / warm-start from the previous active schedule.
+                    # Parts only in v1 — cores schedule fresh each solve.
                     pinned = False
-                    prevt = prev_map.get((part.part_id, step_id))
+                    prevt = None if is_core else prev_map.get((unit_id, step_id))
                     if prevt is not None:
                         prev_start = max(0, min(H, int((prevt.start_time - horizon.start).total_seconds() // 60)))
                         if prevt.is_pinned or prev_start < frozen_min:
@@ -286,7 +292,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                         else:
                             hints.append((start, prev_start))           # slushy/liquid: warm-start hint
 
-                    tasks.append({'part_id': part.part_id, 'step_id': step_id,
+                    tasks.append({'part_id': None if is_core else unit_id,
+                                  'core_id': unit_id if is_core else None,
+                                  'step_id': step_id,
                                   'start': start, 'end': end, 'choices': choices, 'pinned': pinned})
                     node_start[step_id] = start
                     node_end[step_id] = end
@@ -304,9 +312,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     wo_step_starts[(wo.wo_id, sid)].append(s)
 
                 if due_minutes is not None and penalty > 0 and part_ends:
-                    part_done = model.NewIntVar(0, H, f"done_{part.part_id}")
+                    part_done = model.NewIntVar(0, H, f"done_{unit_id}")
                     model.AddMaxEquality(part_done, part_ends)   # DAG completion = last sink
-                    lateness = model.NewIntVar(0, 2 * H, f"late_{part.part_id}")
+                    lateness = model.NewIntVar(0, 2 * H, f"late_{unit_id}")
                     model.Add(lateness >= part_done - due_minutes)
                     lateness_cost.append(lateness * penalty)
 
@@ -411,7 +419,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             ScheduledTask.objects.bulk_create([
                 ScheduledTask(
                     tenant=tenant, schedule=result,
-                    part_id=t['part_id'], step_id=t['step_id'],
+                    part_id=t['part_id'], core_id=t['core_id'], step_id=t['step_id'],
                     machine_id=_chosen_machine(t, solver),
                     start_time=horizon.start + timedelta(minutes=solver.Value(t['start'])),
                     end_time=horizon.start + timedelta(minutes=solver.Value(t['end'])),

@@ -425,3 +425,32 @@ class SolverTests(TenantContextMixin, TestCase):
                                 "the assembly step waits for the component WO")
         self.assertLess(p_step1.start_time, child_end,
                         "pre-assembly parent work is NOT gated by the component")
+
+    # ---- reman: schedule teardown cores ----------------------------------
+
+    def _core(self, number, step, status='IN_DISASSEMBLY'):
+        from Tracker.models import Core, User
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id=f"WO-{number}",
+            workorder_status=WorkOrderStatus.IN_PROGRESS, quantity=1, process=self.process)
+        user = User.objects.create(
+            username=f"op-{number}", tenant=self.tenant, user_type='INTERNAL', is_active=True)
+        return Core.objects.create(
+            tenant=self.tenant, core_number=number, core_type=self.pt,
+            received_date=date.today(), received_by=user, condition_grade='B',
+            status=status, work_order=wo, step=step)
+
+    def test_schedules_reman_core_teardown_route(self):
+        core = self._core("CORE-1", self.step1)
+        result = solve_schedule(self.tenant)
+        core_tasks = list(result.tasks.filter(core=core))
+        self.assertEqual({t.step_id for t in core_tasks}, {self.step1.id, self.step2.id},
+                         "a core schedules its remaining teardown route")
+        self.assertTrue(all(t.part_id is None for t in core_tasks),
+                        "core tasks carry no part")
+
+    def test_disassembled_core_is_not_scheduled(self):
+        core = self._core("CORE-DONE", self.step1, status='DISASSEMBLED')
+        result = solve_schedule(self.tenant)
+        self.assertEqual(result.tasks.filter(core=core).count(), 0,
+                         "a fully disassembled core has no teardown work left")
