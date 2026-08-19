@@ -13,6 +13,7 @@ import {
   addMonths,
   differenceInDays,
   differenceInHours,
+  differenceInMinutes,
   differenceInMonths,
   endOfDay,
   endOfMonth,
@@ -83,7 +84,7 @@ export type GanttMarkerProps = {
   label: string;
 };
 
-export type Range = "daily" | "monthly" | "quarterly";
+export type Range = "hourly" | "daily" | "monthly" | "quarterly";
 
 export type TimelineData = {
   year: number;
@@ -217,6 +218,12 @@ const getOffset = (
   const startOf = getStartOf(context.range);
   const fullColumns = differenceIn(startOf(date), timelineStartDate);
 
+  if (context.range === "hourly") {
+    // Position within the day column by minutes-into-day (day columns, minute detail).
+    const minutesIntoDay = differenceInMinutes(date, startOf(date));
+    return parsedColumnWidth * fullColumns + (minutesIntoDay / (60 * 24)) * parsedColumnWidth;
+  }
+
   if (context.range === "daily") {
     return parsedColumnWidth * fullColumns;
   }
@@ -240,6 +247,11 @@ const getWidth = (
   }
 
   const differenceIn = getDifferenceIn(context.range);
+
+  if (context.range === "hourly") {
+    // Minute-accurate: width is the task's share of a (day-wide) column.
+    return (differenceInMinutes(endAt, startAt) / (60 * 24)) * parsedColumnWidth;
+  }
 
   if (context.range === "daily") {
     const delta = differenceIn(endAt, startAt);
@@ -433,6 +445,7 @@ const QuarterlyHeader: FC = () => {
 };
 
 const headers: Record<Range, FC> = {
+  hourly: DailyHeader, // day columns; hourly detail comes from minute-accurate offset/width
   daily: DailyHeader,
   monthly: MonthlyHeader,
   quarterly: QuarterlyHeader,
@@ -1191,6 +1204,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     columnWidth = 150;
   } else if (range === "quarterly") {
     columnWidth = 100;
+  } else if (range === "hourly") {
+    columnWidth = 720; // wide day columns so 15–60 min tasks are visible (~0.5 px/min)
   }
 
   // Memoize CSS variables to prevent unnecessary re-renders
