@@ -54164,6 +54164,14 @@ components:
           type: boolean
           readOnly: true
           description: Whether this task needs an operator (false for unattended runs).
+        work_order:
+          type: string
+          nullable: true
+          readOnly: true
+        work_center:
+          type: string
+          nullable: true
+          readOnly: true
         start_time:
           type: string
           format: date-time
@@ -54198,6 +54206,8 @@ components:
       - start_time
       - step
       - step_name
+      - work_center
+      - work_order
     ScopeEnum:
       enum:
       - sampled

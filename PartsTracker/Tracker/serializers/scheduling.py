@@ -36,6 +36,8 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
     step_name = serializers.SerializerMethodField()
     machine_name = serializers.SerializerMethodField()
     operator_name = serializers.SerializerMethodField()
+    work_order = serializers.SerializerMethodField()
+    work_center = serializers.SerializerMethodField()
 
     class Meta:
         model = ScheduledTask
@@ -43,6 +45,7 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
             'id', 'schedule', 'part', 'part_erp', 'core', 'core_number',
             'step', 'step_name', 'machine', 'machine_name',
             'assigned_operator', 'operator_name', 'requires_operator',
+            'work_order', 'work_center',
             'start_time', 'end_time', 'is_pinned', 'fence_zone',
         )
         read_only_fields = fields
@@ -69,6 +72,17 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
         if u is None:
             return None
         return (f"{u.first_name or ''} {u.last_name or ''}".strip() or u.get_username())
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_work_order(self, obj):
+        wo = (obj.part.work_order if obj.part_id
+              else obj.core.work_order if obj.core_id else None)
+        return wo.ERP_id if wo else None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_work_center(self, obj):
+        wc = obj.step.work_center if obj.step_id else None
+        return wc.name if wc else None
 
 
 class PinRequestSerializer(serializers.Serializer):
