@@ -5,7 +5,9 @@ Consumes the Phase-1 data-layer DTOs and produces a machine schedule
 (`ScheduleResult` + `ScheduledTask`).
 
 Layers built so far:
-- Per-(part, step) tasks; intra-part precedence.
+- Route-aware per-(part, step) tasks: each part schedules its remaining nominal
+  route from its current step (DEFAULT edges; rework/scrap excluded), with
+  merge-capable DAG precedence (see `routing.resolve_route`).
 - Machine choice: one of the step's eligible schedulable machines (optional intervals
   + exactly-one), honoring per-machine `cycle_time_override`; one task per machine.
 - Cost objective (integer cents): Σ (part lateness × the WO's priority penalty) +
@@ -33,6 +35,7 @@ from decimal import Decimal
 from django.utils import timezone
 
 from Tracker.services.scheduling import data
+from Tracker.services.scheduling.routing import resolve_route
 from Tracker.utils.tenant_context import tenant_context
 
 _PENALTY_FIELD = {1: 'late_penalty_urgent', 2: 'late_penalty_high',
@@ -211,17 +214,21 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         hints = []   # (start_var, minute) warm-start hints from the previous schedule
 
         for wo in wos:
-            sequence = [s for s in wo.steps if not s.is_terminal]
             due_minutes = _due_minutes(wo.expected_completion, horizon.start, H)
             release_min = _release_minutes(wo.expected_start, horizon.start, H)
             penalty = _penalty_cents_per_min(config, wo.priority)
             for part in wo.parts:
-                prev_end = None
-                last_end = None
-                for node in sequence:
-                    timing = timings.get(node.step_id)
-                    eligible = [a for a in affinities.get(node.step_id, []) if a.is_schedulable]
-                    key = f"{part.part_id}_{node.step_id}"
+                # The part's remaining NOMINAL route from its current step (DEFAULT
+                # edges; rework/scrap branches excluded), with merge-capable DAG
+                # precedence so convergence/divergence nodes schedule correctly.
+                route_ids, prec = resolve_route(part.current_step_id, wo.steps, wo.edges)
+                node_start: dict = {}
+                node_end: dict = {}
+                part_ends = []
+                for step_id in route_ids:
+                    timing = timings.get(step_id)
+                    eligible = [a for a in affinities.get(step_id, []) if a.is_schedulable]
+                    key = f"{part.part_id}_{step_id}"
                     start = model.NewIntVar(0, H, f"s_{key}")
                     end = model.NewIntVar(0, H, f"e_{key}")
                     if release_min:
@@ -235,7 +242,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                             lit = model.NewBoolVar(f"m_{key}_{a.equipment_id}")
                             opt = model.NewOptionalFixedSizeIntervalVar(start, dur, lit, f"i_{key}_{a.equipment_id}")
                             machine_intervals[a.equipment_id].append(opt)
-                            machine_tasks[a.equipment_id].append((lit, start, end, node.step_id, setup_int))
+                            machine_tasks[a.equipment_id].append((lit, start, end, step_id, setup_int))
                             model.Add(end == start + dur).OnlyEnforceIf(lit)
                             choices.append((lit, a.equipment_id))
                         model.AddExactlyOne([lit for lit, _ in choices])
@@ -248,19 +255,19 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     # during a scheduled break; load_unload steps run unattended.
                     attended = (timing is None) or (timing.attention_type == 'full')
                     needs_break = attended and break_fixed
-                    if node.step_id in occupancy_steps or needs_break:
+                    if step_id in occupancy_steps or needs_break:
                         size = model.NewIntVar(1, H, f"sz_{key}")
                         occ = model.NewIntervalVar(start, size, end, f"occ_{key}")
-                        for gauge_id in secondary.get(node.step_id, ()):
+                        for gauge_id in secondary.get(step_id, ()):
                             gauge_intervals[gauge_id].append(occ)
-                        for fixture_id in fixture_by_step.get(node.step_id, ()):
+                        for fixture_id in fixture_by_step.get(step_id, ()):
                             fixture_intervals[fixture_id].append(occ)
                         if needs_break:
                             model.AddNoOverlap([occ] + break_fixed)
 
                     # Time fences / warm-start from the previous active schedule.
                     pinned = False
-                    prevt = prev_map.get((part.part_id, node.step_id))
+                    prevt = prev_map.get((part.part_id, step_id))
                     if prevt is not None:
                         prev_start = max(0, min(H, int((prevt.start_time - horizon.start).total_seconds() // 60)))
                         if prevt.is_pinned or prev_start < frozen_min:
@@ -273,16 +280,23 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                         else:
                             hints.append((start, prev_start))           # slushy/liquid: warm-start hint
 
-                    tasks.append({'part_id': part.part_id, 'step_id': node.step_id,
+                    tasks.append({'part_id': part.part_id, 'step_id': step_id,
                                   'start': start, 'end': end, 'choices': choices, 'pinned': pinned})
-                    if prev_end is not None:
-                        model.Add(start >= prev_end)
-                    prev_end = end
-                    last_end = end
+                    node_start[step_id] = start
+                    node_end[step_id] = end
+                    part_ends.append(end)
 
-                if due_minutes is not None and penalty > 0 and last_end is not None:
+                # Merge-capable precedence: for each DEFAULT edge start[to] >= end[from];
+                # a node with several predecessors waits for the latest (max) of them.
+                for from_id, to_id in prec:
+                    if from_id in node_end and to_id in node_start:
+                        model.Add(node_start[to_id] >= node_end[from_id])
+
+                if due_minutes is not None and penalty > 0 and part_ends:
+                    part_done = model.NewIntVar(0, H, f"done_{part.part_id}")
+                    model.AddMaxEquality(part_done, part_ends)   # DAG completion = last sink
                     lateness = model.NewIntVar(0, 2 * H, f"late_{part.part_id}")
-                    model.Add(lateness >= last_end - due_minutes)
+                    model.Add(lateness >= part_done - due_minutes)
                     lateness_cost.append(lateness * penalty)
 
         # Machine capacity + shift windows (gap intervals block unavailable time).

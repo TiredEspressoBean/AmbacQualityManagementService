@@ -96,12 +96,14 @@ class StepNode:
     step_id: UUID
     is_terminal: bool
     requires_first_piece_inspection: bool
+    order: int  # ProcessStep.order — the linear fallback when a process has no edges
 
 
 @dataclass(frozen=True)
 class EdgeData:
     from_step_id: UUID
     to_step_id: UUID
+    edge_type: str  # 'DEFAULT' (nominal/pass) | 'ALTERNATE' (rework/fail) | 'ESCALATION'
 
 
 @dataclass(frozen=True)
@@ -328,12 +330,14 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
                     step_id=ps.step_id,
                     is_terminal=ps.step.is_terminal,
                     requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
+                    order=ps.order,
                 )
                 for ps in ProcessStep.objects.filter(process_id=process_id)
                 .select_related('step').order_by('order')
             )
             edges = tuple(
-                EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id)
+                EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id,
+                         edge_type=e.edge_type)
                 for e in StepEdge.objects.filter(process_id=process_id)
             )
             graph_cache[process_id] = (steps, edges)

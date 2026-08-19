@@ -341,3 +341,32 @@ class SolverTests(TenantContextMixin, TestCase):
         for t in result.tasks.all():
             self.assertGreaterEqual(t.start_time, release_dt - _td(minutes=1),
                                     "no task starts before the WO's expected_start")
+
+    # ---- route-aware scheduling ------------------------------------------
+
+    def test_schedules_only_remaining_route_from_current_step(self):
+        # A part sitting on step2 must not re-book the already-completed step1
+        # (staggered batches: parts spread across steps shouldn't phantom-load).
+        _, parts = self._wo("WO-MID", 1)
+        parts[0].step = self.step2
+        parts[0].save(update_fields=["step"])
+        result = solve_schedule(self.tenant)
+        steps = {t.step_id for t in result.tasks.filter(part=parts[0])}
+        self.assertEqual(steps, {self.step2.id}, "only the remaining route is scheduled")
+
+    def test_default_edges_exclude_rework_branch(self):
+        # With an authored routing graph, a rework step reachable only via an
+        # ALTERNATE edge is not scheduled up front — only the DEFAULT spine is.
+        from Tracker.models import StepEdge
+        rework = Steps.objects.create(
+            tenant=self.tenant, part_type=self.pt, name="Rework", step_type="TASK")
+        ProcessStep.objects.create(process=self.process, step=rework, order=3)
+        StepEdge.objects.create(
+            process=self.process, from_step=self.step1, to_step=self.step2, edge_type="DEFAULT")
+        StepEdge.objects.create(
+            process=self.process, from_step=self.step2, to_step=rework, edge_type="ALTERNATE")
+        _, parts = self._wo("WO-RW", 1)
+        result = solve_schedule(self.tenant)
+        steps = {t.step_id for t in result.tasks.all()}
+        self.assertEqual(steps, {self.step1.id, self.step2.id})
+        self.assertNotIn(rework.id, steps, "an ALTERNATE (rework) step isn't planned up front")
