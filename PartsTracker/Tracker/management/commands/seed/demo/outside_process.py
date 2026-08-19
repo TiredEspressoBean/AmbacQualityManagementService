@@ -30,6 +30,71 @@ class DemoOutsideProcessSeeder(BaseSeeder):
         super().__init__(stdout, style, scale=scale)
         self.tenant = tenant
 
+    def _sync_process_order(self, process):
+        """Renumber a process's ProcessStep.order to follow its DEFAULT-edge forward
+        spine, so `order` and routing never disagree. Steps reachable from the entry
+        along DEFAULT edges get 1..k in topological order; off-spine stations (e.g. a
+        Rework node reached only via ALTERNATE) are appended after by their prior
+        order. Idempotent — the same routing always yields the same numbering."""
+        import heapq
+        from collections import deque
+
+        pss = list(ProcessStep.objects.filter(process=process).select_related('step'))
+        if len(pss) < 2:
+            return
+        ids = {ps.step_id for ps in pss}
+        existing = {ps.step_id: ps.order for ps in pss}
+        adj = {}
+        for e in StepEdge.objects.filter(process=process, edge_type=EdgeType.DEFAULT):
+            if e.from_step_id in ids and e.to_step_id in ids:
+                adj.setdefault(e.from_step_id, []).append(e.to_step_id)
+        if not adj:
+            return  # no DEFAULT routing to derive order from — keep authored order
+
+        entry = next((ps.step_id for ps in pss if ps.is_entry_point), None) \
+            or min(pss, key=lambda p: p.order).step_id
+
+        # Forward-reachable spine from the entry (excludes back-edge-only stations).
+        reachable, dq = set(), deque([entry])
+        while dq:
+            s = dq.popleft()
+            if s in reachable:
+                continue
+            reachable.add(s)
+            for nxt in adj.get(s, ()):
+                if nxt not in reachable:
+                    dq.append(nxt)
+
+        # Kahn topological order of the induced spine, tie-broken by prior order.
+        indeg = {s: 0 for s in reachable}
+        for s in reachable:
+            for nxt in adj.get(s, ()):
+                if nxt in reachable:
+                    indeg[nxt] += 1
+        heap = [(existing.get(s, 0), str(s), s) for s in reachable if indeg[s] == 0]
+        heapq.heapify(heap)
+        ordered, seen = [], set()
+        while heap:
+            _, _, s = heapq.heappop(heap)
+            if s in seen:
+                continue
+            seen.add(s)
+            ordered.append(s)
+            for nxt in adj.get(s, ()):
+                if nxt in reachable:
+                    indeg[nxt] -= 1
+                    if indeg[nxt] == 0:
+                        heapq.heappush(heap, (existing.get(nxt, 0), str(nxt), nxt))
+        ordered += sorted(ids - set(ordered), key=lambda x: existing.get(x, 0))
+
+        # Two-phase write to respect the unique(process, order) constraint: park at
+        # high temp orders, then assign the final 1..N.
+        for sid in ids:
+            ProcessStep.objects.filter(process=process, step_id=sid).update(
+                order=10000 + existing.get(sid, 0))
+        for pos, sid in enumerate(ordered, start=1):
+            ProcessStep.objects.filter(process=process, step_id=sid).update(order=pos)
+
     def seed(self, companies, users, manufacturing, orders):
         self.log("Creating demo outside-processing data...")
         result = {"step": None, "shipments": [], "ready_parts": []}
@@ -85,10 +150,13 @@ class DemoOutsideProcessSeeder(BaseSeeder):
         StepMeasurementRequirement.objects.get_or_create(step=osp_step, measurement=thickness)
 
         if process is not None:
-            next_order = (ProcessStep.objects.filter(process=process)
-                          .order_by("-order").values_list("order", flat=True).first() or 0) + 1
-            ProcessStep.objects.get_or_create(process=process, step=osp_step,
-                                              defaults={"order": next_order})
+            # Put the OSP step on the process. The order here is a placeholder —
+            # `_sync_process_order` below fixes every step's order to match the
+            # routing. (The old `max(order)+1` append put Nitride *last* in order
+            # while the edge splice puts it *mid-flow* — order and edges disagreed.)
+            ProcessStep.objects.get_or_create(
+                process=process, step=osp_step,
+                defaults={"order": ProcessStep.objects.filter(process=process).count() + 1})
             # Splice the OSP step into the routing chain (Assembly → Nitride →
             # Final Test) so it isn't an unreachable dangling node in the flow
             # editor — and returned parts have a real next step after acceptance.
@@ -103,6 +171,9 @@ class DemoOutsideProcessSeeder(BaseSeeder):
                         defaults={"condition_measurement": None, "condition_operator": "",
                                   "condition_value": None},
                     )
+            # Order must agree with the routing: renumber by the DEFAULT-edge
+            # forward spine so Nitride lands between Assembly and Final Test.
+            self._sync_process_order(process)
 
         # --- Parts staged at the OSP step (dedicated, so other narratives are untouched) ---
         def make_part(suffix):
