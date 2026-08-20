@@ -10,6 +10,7 @@ import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { useMouse, useThrottle, useWindowScroll } from "@uidotdev/usehooks";
 import {
   addDays,
+  addMinutes,
   addMonths,
   differenceInDays,
   differenceInHours,
@@ -44,6 +45,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -175,6 +177,16 @@ const getAddRange = (range: Range) => {
 };
 
 const getDateByMousePosition = (context: GanttContextProps, mouseX: number) => {
+  // Hourly: one column = one day (columnWidth px), pixels within it map linearly
+  // to minutes. Origin is the bound horizon start, matching getOffset/getWidth.
+  if (context.range === "hourly") {
+    const origin = context.boundStart
+      ? startOfDay(context.boundStart)
+      : new Date(context.timelineData[0].year, 0, 1);
+    const pxPerDay = (context.columnWidth * context.zoom) / 100;
+    const minutes = (mouseX / pxPerDay) * 24 * 60;
+    return addMinutes(origin, minutes);
+  }
   const timelineStartDate = new Date(context.timelineData[0].year, 0, 1);
   const columnWidth = (context.columnWidth * context.zoom) / 100;
   const offset = Math.floor(mouseX / columnWidth);
@@ -592,21 +604,24 @@ export const GanttSidebarHeader: FC = () => (
 export type GanttSidebarGroupProps = {
   children: ReactNode;
   name: string;
+  accessory?: ReactNode;
   className?: string;
 };
 
 export const GanttSidebarGroup: FC<GanttSidebarGroupProps> = ({
   children,
   name,
+  accessory,
   className,
 }) => (
   <div className={className}>
-    <p
-      className="w-full truncate p-2.5 text-left font-medium text-muted-foreground text-xs"
+    <div
+      className="flex w-full items-center gap-2 p-2.5 text-left font-medium text-muted-foreground text-xs"
       style={{ height: "var(--gantt-row-height)" }}
     >
-      {name}
-    </p>
+      <p className="flex-1 truncate">{name}</p>
+      {accessory}
+    </div>
     <div className="divide-y divide-border/50">{children}</div>
   </div>
 );
@@ -856,11 +871,13 @@ export const GanttFeatureDragHelper: FC<GanttFeatureDragHelperProps> = ({
 
 export type GanttFeatureItemCardProps = Pick<GanttFeature, "id"> & {
   children?: ReactNode;
+  className?: string;
 };
 
 export const GanttFeatureItemCard: FC<GanttFeatureItemCardProps> = ({
   id,
   children,
+  className,
 }) => {
   const [, setDragging] = useGanttDragging();
   const { attributes, listeners, setNodeRef } = useDraggable({ id });
@@ -869,7 +886,12 @@ export const GanttFeatureItemCard: FC<GanttFeatureItemCardProps> = ({
   useEffect(() => setDragging(isPressed), [isPressed, setDragging]);
 
   return (
-    <Card className="h-full w-full rounded-md bg-background p-2 text-xs shadow-sm">
+    <Card
+      className={cn(
+        "h-full w-full rounded-md bg-background p-2 text-xs shadow-sm",
+        className
+      )}
+    >
       <div
         className={cn(
           "flex h-full w-full items-center justify-between gap-2 text-left",
@@ -887,14 +909,24 @@ export const GanttFeatureItemCard: FC<GanttFeatureItemCardProps> = ({
 
 export type GanttFeatureItemProps = GanttFeature & {
   onMove?: (id: string, startDate: Date, endDate: Date | null) => void;
+  onSelect?: (id: string) => void;
+  resizable?: boolean;
+  /** Render only the positioned bar (no full-width row wrapper), so several bars
+   * can share one lane row — used by the collapsed resource-lane view. */
+  bare?: boolean;
   children?: ReactNode;
   className?: string;
+  cardClassName?: string;
 };
 
 export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
   onMove,
+  onSelect,
+  resizable,
+  bare,
   children,
   className,
+  cardClassName,
   ...feature
 }) => {
   const [scrollX] = useGanttScrollX();
@@ -905,6 +937,14 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
   );
   const [startAt, setStartAt] = useState<Date>(feature.startAt);
   const [endAt, setEndAt] = useState<Date | null>(feature.endAt);
+
+  // Keep the rendered position tied to the source data. After a move settles, the
+  // query refetches and hands fresh Date objects — success → the new time, a
+  // rejected drop → unchanged — so this resync also snaps a refused drag back.
+  useEffect(() => {
+    setStartAt(feature.startAt);
+    setEndAt(feature.endAt ?? null);
+  }, [feature.startAt, feature.endAt]);
 
   // Memoize expensive calculations
   const width = useMemo(
@@ -935,19 +975,30 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
     setPreviousEndAt(endAt);
   }, [mousePosition.x, startAt, endAt]);
 
-  const handleItemDragMove = useCallback(() => {
-    const currentDate = getDateByMousePosition(gantt, mousePosition.x);
-    const originalDate = getDateByMousePosition(gantt, previousMouseX);
-    const delta =
-      gantt.range === "daily"
-        ? getDifferenceIn(gantt.range)(currentDate, originalDate)
-        : getInnerDifferenceIn(gantt.range)(currentDate, originalDate);
-    const newStartDate = addDays(previousStartAt, delta);
-    const newEndDate = previousEndAt ? addDays(previousEndAt, delta) : null;
-
-    setStartAt(newStartDate);
-    setEndAt(newEndDate);
-  }, [gantt, mousePosition.x, previousMouseX, previousStartAt, previousEndAt]);
+  const handleItemDragMove = useCallback(
+    (event?: { delta?: { x: number } }) => {
+      // Hourly: derive the shift from dnd-kit's own cumulative pixel delta rather
+      // than the useMouse position — the latter is stale (0,0) on the first drag
+      // before any mousemove flushes, which sent the bar flying to the horizon end.
+      if (gantt.range === "hourly") {
+        const dayPx = (gantt.columnWidth * gantt.zoom) / 100;
+        const dx = event?.delta?.x ?? 0;
+        const minutes = (dx / dayPx) * 24 * 60;
+        setStartAt(addMinutes(previousStartAt, minutes));
+        setEndAt(previousEndAt ? addMinutes(previousEndAt, minutes) : null);
+        return;
+      }
+      const currentDate = getDateByMousePosition(gantt, mousePosition.x);
+      const originalDate = getDateByMousePosition(gantt, previousMouseX);
+      const delta =
+        gantt.range === "daily"
+          ? getDifferenceIn(gantt.range)(currentDate, originalDate)
+          : getInnerDifferenceIn(gantt.range)(currentDate, originalDate);
+      setStartAt(addDays(previousStartAt, delta));
+      setEndAt(previousEndAt ? addDays(previousEndAt, delta) : null);
+    },
+    [gantt, mousePosition.x, previousMouseX, previousStartAt, previousEndAt]
+  );
 
   const onDragEnd = useCallback(
     () => onMove?.(feature.id, startAt, endAt),
@@ -972,20 +1023,21 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
     setEndAt(newEndAt);
   }, [gantt, mousePosition.x, scrollX]);
 
-  return (
-    <div
-      className={cn("relative flex w-max min-w-full py-0.5", className)}
-      style={{ height: "var(--gantt-row-height)" }}
-    >
+  const bar = (
       <div
-        className="pointer-events-auto absolute top-0.5"
+        data-task-id={feature.id}
+        className={cn(
+          "pointer-events-auto absolute top-0.5",
+          onSelect && "cursor-pointer"
+        )}
+        onClick={onSelect ? () => onSelect(feature.id) : undefined}
         style={{
           height: "calc(var(--gantt-row-height) - 4px)",
           width: Math.round(width),
           left: Math.round(offset),
         }}
       >
-        {onMove && (
+        {onMove && resizable && (
           <DndContext
             modifiers={[restrictToHorizontalAxis]}
             onDragEnd={onDragEnd}
@@ -1006,13 +1058,13 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
           onDragStart={handleItemDragStart}
           sensors={[mouseSensor]}
         >
-          <GanttFeatureItemCard id={feature.id}>
+          <GanttFeatureItemCard id={feature.id} className={cardClassName}>
             {children ?? (
               <p className="flex-1 truncate text-xs">{feature.name}</p>
             )}
           </GanttFeatureItemCard>
         </DndContext>
-        {onMove && (
+        {onMove && resizable && (
           <DndContext
             modifiers={[restrictToHorizontalAxis]}
             onDragEnd={onDragEnd}
@@ -1027,6 +1079,17 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
           </DndContext>
         )}
       </div>
+  );
+
+  // Bare: just the positioned bar (the lane row is the positioned parent). Wrapped:
+  // the bar inside its own full-width row (one task per row).
+  if (bare) return bar;
+  return (
+    <div
+      className={cn("relative flex w-max min-w-full py-0.5", className)}
+      style={{ height: "var(--gantt-row-height)" }}
+    >
+      {bar}
     </div>
   );
 };
@@ -1408,8 +1471,12 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         return;
       }
 
-      // Calculate timeline start date from timelineData
-      const timelineStartDate = new Date(timelineData[0].year, 0, 1);
+      // Use the SAME origin the feature bars are positioned from: horizon start in
+      // bounded mode, else the fixed 3-year grid. (Measuring from Jan 1 of the grid
+      // here scrolls to a wildly wrong offset — the far right of the timeline.)
+      const timelineStartDate = boundStart
+        ? startOfDay(boundStart)
+        : new Date(timelineData[0].year, 0, 1);
 
       // Calculate the horizontal offset for the feature's start date
       const offset = getOffset(feature.startAt, timelineStartDate, {
@@ -1425,15 +1492,15 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         ref: scrollRef,
       });
 
-      // Scroll to align the feature's start with the right side of the sidebar
-      const targetScrollLeft = Math.max(0, offset);
+      // Land a little before the feature so it isn't flush against the sidebar.
+      const targetScrollLeft = Math.max(0, offset - 80);
 
       scrollElement.scrollTo({
         left: targetScrollLeft,
         behavior: "smooth",
       });
     },
-    [timelineData, zoom, range, columnWidth, sidebarWidth, onAddItem]
+    [timelineData, zoom, range, columnWidth, sidebarWidth, onAddItem, boundStart]
   );
 
   return (
@@ -1490,6 +1557,135 @@ export const GanttTimeline: FC<GanttTimelineProps> = ({
     {children}
   </div>
 );
+
+export type GanttShiftBandsProps = {
+  /** Working windows (shift calendar). The complement within [rangeStart,rangeEnd]
+   * — nights, weekends, non-shift hours — is shaded. */
+  windows: { start: Date; end: Date }[];
+  rangeStart: Date;
+  rangeEnd: Date;
+  className?: string;
+};
+
+/** Background shading for non-working time, so gaps in the schedule read as
+ * "the shop was closed" rather than "the solver left a hole". Hourly range only. */
+export const GanttShiftBands: FC<GanttShiftBandsProps> = ({
+  windows,
+  rangeStart,
+  rangeEnd,
+  className,
+}) => {
+  const gantt = useContext(GanttContext);
+  if (gantt.range !== "hourly" || !gantt.boundStart) {
+    return null;
+  }
+  const origin = startOfDay(gantt.boundStart);
+  const dayPx = (gantt.columnWidth * gantt.zoom) / 100;
+  const toPx = (d: Date) => (differenceInMinutes(d, origin) / (60 * 24)) * dayPx;
+
+  // Non-working gaps = complement of the working windows within the horizon.
+  const sorted = [...windows]
+    .map((w) => ({ s: w.start, e: w.end }))
+    .sort((a, b) => a.s.getTime() - b.s.getTime());
+  const gaps: { s: Date; e: Date }[] = [];
+  let cursor = rangeStart;
+  for (const w of sorted) {
+    if (w.e <= rangeStart || w.s >= rangeEnd) continue;
+    const ws = w.s < rangeStart ? rangeStart : w.s;
+    const we = w.e > rangeEnd ? rangeEnd : w.e;
+    if (ws > cursor) gaps.push({ s: cursor, e: ws });
+    if (we > cursor) cursor = we;
+  }
+  if (cursor < rangeEnd) gaps.push({ s: cursor, e: rangeEnd });
+
+  return (
+    <div className={cn("pointer-events-none absolute inset-0 z-0", className)}>
+      {gaps.map((g, i) => {
+        const left = toPx(g.s);
+        const width = toPx(g.e) - toPx(g.s);
+        if (width <= 0) return null;
+        return (
+          <div
+            key={i}
+            className="absolute bg-foreground/[0.055]"
+            style={{
+              left: Math.round(left),
+              width: Math.round(width),
+              top: "var(--gantt-header-height)",
+              bottom: 0,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+export type GanttPegLinesProps = {
+  /** Task ids of ONE job's steps, in route/time order; a curve connects each
+   * step's end to the next step's start. Fewer than 2 renders nothing. */
+  ids: string[];
+  /** Bump to re-measure after the bars move (e.g., a drag or a re-solve). */
+  revision?: number;
+  className?: string;
+};
+
+/** SVG peg lines linking one job's operations across rows — the "flow of this
+ * order" overlay. Positions are measured from the live bars (via data-task-id),
+ * so they track zoom, scroll, and moves without re-deriving the layout math. */
+export const GanttPegLines: FC<GanttPegLinesProps> = ({ ids, revision, className }) => {
+  const gantt = useContext(GanttContext);
+  const ref = useRef<HTMLDivElement>(null);
+  const [segs, setSegs] = useState<
+    { x1: number; y1: number; x2: number; y2: number }[]
+  >([]);
+  const idKey = ids.join(",");
+
+  useLayoutEffect(() => {
+    const container = ref.current;
+    const scope = container?.parentElement;
+    if (!container || !scope || ids.length < 2) {
+      setSegs([]);
+      return;
+    }
+    const c = container.getBoundingClientRect();
+    const boxes = ids
+      .map((id) => {
+        const el = scope.querySelector(`[data-task-id="${id}"]`) as HTMLElement | null;
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { left: r.left - c.left, right: r.right - c.left, y: r.top - c.top + r.height / 2 };
+      })
+      .filter((b): b is { left: number; right: number; y: number } => b !== null);
+    const next = [];
+    for (let i = 0; i < boxes.length - 1; i++) {
+      next.push({ x1: boxes[i].right, y1: boxes[i].y, x2: boxes[i + 1].left, y2: boxes[i + 1].y });
+    }
+    setSegs(next);
+    // idKey/revision/zoom/range are the only things that move the bars; positions
+    // are measured relative to this overlay, so scrolling needs no re-measure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idKey, revision, gantt.zoom, gantt.range]);
+
+  if (ids.length < 2) return null;
+  return (
+    <div ref={ref} className={cn("pointer-events-none absolute inset-0 z-20", className)}>
+      <svg className="h-full w-full overflow-visible text-sky-500" fill="none">
+        {segs.map((s, i) => (
+          <g key={i}>
+            <path
+              d={`M ${s.x1} ${s.y1} C ${s.x1 + 20} ${s.y1}, ${s.x2 - 20} ${s.y2}, ${s.x2} ${s.y2}`}
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeOpacity={0.75}
+            />
+            <circle cx={s.x2} cy={s.y2} r={2.5} fill="currentColor" />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
 
 export type GanttTodayProps = {
   className?: string;

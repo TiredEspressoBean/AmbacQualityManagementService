@@ -6223,6 +6223,8 @@ export type ScheduledTask = {
   requires_operator: boolean;
   work_order: string | null;
   work_center: string | null;
+  due_date: string | null;
+  is_late: boolean;
   start_time: string;
   end_time: string;
   /**
@@ -11828,9 +11830,13 @@ export type ScheduleResult = {
   solver_status: SolverStatusEnum;
   solve_time_ms: number;
   /**
-   * Objective (total cost) in cents.
+   * Raw CP-SAT objective (lateness + makespan + pin-stickiness penalties). NOT money despite the legacy 'cents' name — the pin weights dominate it. Kept for solve-to-solve comparison; surface weighted_lateness to planners instead.
    */
   objective_value_cents: number;
+  /**
+   * Priority-weighted lateness only (Σ part late-minutes × the WO's priority penalty) — the objective's lateness term, isolated from makespan and pin penalties. The 'how late, weighted by priority' signal shown in the UI.
+   */
+  weighted_lateness: number;
   /**
    * Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner.
    */
@@ -13103,6 +13109,13 @@ export type WorkOrderStepHistoryResponse = {
   process_name: string | null;
   total_parts: number;
   step_history: Array<StepSummary>;
+};
+export type WorkingWindows = {
+  windows: Array<WorkingWindow>;
+};
+export type WorkingWindow = {
+  start: string;
+  end: string;
 };
 
 const ApprovalStatusEnum = z.enum([
@@ -16935,6 +16948,8 @@ const ScheduledTask = z.object({
   requires_operator: z.boolean(),
   work_order: z.string().nullable(),
   work_center: z.string().nullable(),
+  due_date: z.string().nullable(),
+  is_late: z.boolean(),
   start_time: z.string().datetime({ offset: true }),
   end_time: z.string().datetime({ offset: true }),
   is_pinned: z.boolean(),
@@ -16946,7 +16961,18 @@ const PaginatedScheduledTaskList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(ScheduledTask),
 });
+const MoveRequestRequest = z.object({
+  start_time: z.string().datetime({ offset: true }),
+});
 const PinRequestRequest = z.object({ is_pinned: z.boolean() });
+const MoveBatchRequestRequest = z.object({
+  task_ids: z.array(z.string().uuid()),
+  start_time: z.string().datetime({ offset: true }),
+});
+const PinBatchRequestRequest = z.object({
+  task_ids: z.array(z.string().uuid()),
+  is_pinned: z.boolean(),
+});
 const SolverStatusEnum = z.enum([
   "OPTIMAL",
   "FEASIBLE",
@@ -16961,18 +16987,18 @@ const ScheduleResult = z.object({
   solver_status: SolverStatusEnum,
   solve_time_ms: z.number().int(),
   objective_value_cents: z.number().int(),
+  weighted_lateness: z.number().int(),
   relaxed_pin_count: z.number().int(),
   is_active: z.boolean(),
   is_stale: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   task_count: z.number().int(),
 });
-const DispatchResult = z.object({
-  schedule: z.string().uuid(),
-  attended: z.number().int(),
-  covered: z.number().int(),
-  uncovered: z.number().int(),
+const WorkingWindow = z.object({
+  start: z.string().datetime({ offset: true }),
+  end: z.string().datetime({ offset: true }),
 });
+const WorkingWindows = z.object({ windows: z.array(WorkingWindow) });
 const ShiftNotePriorityEnum = z.enum(["NORMAL", "HIGH"]);
 const ShiftNoteAckRosterItem = z.object({
   user_name: z.string(),
@@ -20806,10 +20832,14 @@ export const schemas = {
   FenceZoneEnum,
   ScheduledTask,
   PaginatedScheduledTaskList,
+  MoveRequestRequest,
   PinRequestRequest,
+  MoveBatchRequestRequest,
+  PinBatchRequestRequest,
   SolverStatusEnum,
   ScheduleResult,
-  DispatchResult,
+  WorkingWindow,
+  WorkingWindows,
   ShiftNotePriorityEnum,
   ShiftNoteAckRosterItem,
   ShiftNote,
@@ -36507,6 +36537,35 @@ problem from the round-4 research).`,
   },
   {
     method: "post",
+    path: "/api/ScheduledTasks/:id/move/",
+    alias: "api_ScheduledTasks_move_create",
+    description: `Drag-to-reschedule (Layer 1). Validates the drop against the cheap local
+constraints (horizon, release, route precedence); on success pins the task at
+the new time and marks the schedule stale so the next Solve reflows the rest.
+Returns 422 with a reason when the drop violates a local constraint.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ start_time: z.string().datetime({ offset: true }) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ScheduledTask,
+    errors: [
+      {
+        status: 422,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/ScheduledTasks/:id/pin/",
     alias: "api_ScheduledTasks_pin_create",
     description: `Pin or unpin a task (planner override); marks the schedule stale so the
@@ -36527,6 +36586,44 @@ next solve is known to be needed.`,
     response: ScheduledTask,
   },
   {
+    method: "post",
+    path: "/api/ScheduledTasks/move_batch/",
+    alias: "api_ScheduledTasks_move_batch_create",
+    description: `Re-anchor a work-order batch (a WO&#x27;s parts at one operation) to a new start;
+every part shifts by the same delta, keeping the batch&#x27;s spacing. Validated per
+part; 422 (whole move refused) if any part breaks a local constraint.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MoveBatchRequestRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+    errors: [
+      {
+        status: 422,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/ScheduledTasks/pin_batch/",
+    alias: "api_ScheduledTasks_pin_batch_create",
+    description: `Pin/unpin every part of a work-order batch; marks the schedule stale.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PinBatchRequestRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "get",
     path: "/api/Schedules/current/",
     alias: "api_Schedules_current_retrieve",
@@ -36538,17 +36635,45 @@ next solve is known to be needed.`,
     method: "post",
     path: "/api/Schedules/dispatch/",
     alias: "api_Schedules_dispatch_create",
-    description: `Assign operators to the active schedule&#x27;s attended tasks (Layer 2).`,
+    description: `Kick off Layer-2 operator dispatch in the background. Returns a task id; poll
+&#x60;solve_status?task_id&#x3D;&#x60; for the coverage summary.`,
     requestFormat: "json",
-    response: DispatchResult,
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/solve_status/",
+    alias: "api_Schedules_solve_status_retrieve",
+    description: `Poll a background solve/dispatch task. &#x60;state&#x60; is PENDING (queued/running),
+SUCCESS, or FAILURE; on SUCCESS &#x60;result&#x60; carries the task&#x27;s return value.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "post",
     path: "/api/Schedules/solve/",
     alias: "api_Schedules_solve_create",
-    description: `Run the Layer-1 machine solver, superseding the previous active schedule.`,
+    description: `Kick off the Layer-1 machine solve in the background. Returns a task id; poll
+&#x60;solve_status?task_id&#x3D;&#x60; for state, then re-read &#x60;current&#x60;.`,
     requestFormat: "json",
-    response: ScheduleResult,
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/working_windows/",
+    alias: "api_Schedules_working_windows_retrieve",
+    description: `The tenant&#x27;s working windows over the active schedule&#x27;s horizon (shift
+calendar expanded to datetimes). The Gantt shades the complement — nights,
+weekends, non-shift hours. Empty list when no schedule or no shifts.`,
+    requestFormat: "json",
+    response: WorkingWindows,
   },
   {
     method: "get",

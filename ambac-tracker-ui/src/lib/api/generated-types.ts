@@ -7551,6 +7551,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ScheduledTasks/{id}/move/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Drag-to-reschedule (Layer 1). Validates the drop against the cheap local
+         *     constraints (horizon, release, route precedence); on success pins the task at
+         *     the new time and marks the schedule stale so the next Solve reflows the rest.
+         *     Returns 422 with a reason when the drop violates a local constraint.
+         */
+        post: operations["api_ScheduledTasks_move_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ScheduledTasks/{id}/pin/": {
         parameters: {
             query?: never;
@@ -7565,6 +7587,44 @@ export interface paths {
          *     next solve is known to be needed.
          */
         post: operations["api_ScheduledTasks_pin_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/move_batch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Re-anchor a work-order batch (a WO's parts at one operation) to a new start;
+         *     every part shifts by the same delta, keeping the batch's spacing. Validated per
+         *     part; 422 (whole move refused) if any part breaks a local constraint.
+         */
+        post: operations["api_ScheduledTasks_move_batch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/pin_batch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Pin/unpin every part of a work-order batch; marks the schedule stale. */
+        post: operations["api_ScheduledTasks_pin_batch_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7597,7 +7657,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Assign operators to the active schedule's attended tasks (Layer 2). */
+        /**
+         * @description Kick off Layer-2 operator dispatch in the background. Returns a task id; poll
+         *     `solve_status?task_id=` for the coverage summary.
+         */
         post: operations["api_Schedules_dispatch_create"];
         delete?: never;
         options?: never;
@@ -7614,8 +7677,52 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Run the Layer-1 machine solver, superseding the previous active schedule. */
+        /**
+         * @description Kick off the Layer-1 machine solve in the background. Returns a task id; poll
+         *     `solve_status?task_id=` for state, then re-read `current`.
+         */
         post: operations["api_Schedules_solve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/solve_status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Poll a background solve/dispatch task. `state` is PENDING (queued/running),
+         *     SUCCESS, or FAILURE; on SUCCESS `result` carries the task's return value.
+         */
+        get: operations["api_Schedules_solve_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/working_windows/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The tenant's working windows over the active schedule's horizon (shift
+         *     calendar expanded to datetimes). The Gantt shades the complement — nights,
+         *     weekends, non-shift hours. Empty list when no schedule or no shifts.
+         */
+        get: operations["api_Schedules_working_windows_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -16396,13 +16503,6 @@ export interface components {
             line_number?: number;
             archived?: boolean;
         };
-        DispatchResult: {
-            /** Format: uuid */
-            schedule: string;
-            attended: number;
-            covered: number;
-            uncovered: number;
-        };
         /**
          * @description A member part of a batch disposition's load — shown in the form's
          *     affected-load panel so QA can see which parts the failed cycle covers and
@@ -18317,6 +18417,20 @@ export interface components {
          * @enum {string}
          */
         ModeEnum: "saas" | "dedicated";
+        /**
+         * @description Re-anchor a work-order batch: its earliest part moves to start_time, the rest
+         *     shift by the same delta.
+         */
+        MoveBatchRequestRequest: {
+            task_ids: string[];
+            /** Format: date-time */
+            start_time: string;
+        };
+        /** @description Drag-to-reschedule: the new start; the task keeps its duration. */
+        MoveRequestRequest: {
+            /** Format: date-time */
+            start_time: string;
+        };
         NcrAgingResponse: {
             data: {
                 [key: string]: unknown;
@@ -22833,6 +22947,11 @@ export interface components {
             /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
             channels?: unknown;
         };
+        /** @description Pin/unpin every part of a batch. */
+        PinBatchRequestRequest: {
+            task_ids: string[];
+            is_pinned: boolean;
+        };
         PinRequestRequest: {
             is_pinned: boolean;
         };
@@ -24753,8 +24872,10 @@ export interface components {
             readonly horizon_end: string;
             readonly solver_status: components["schemas"]["SolverStatusEnum"];
             readonly solve_time_ms: number;
-            /** @description Objective (total cost) in cents. */
+            /** @description Raw CP-SAT objective (lateness + makespan + pin-stickiness penalties). NOT money despite the legacy 'cents' name — the pin weights dominate it. Kept for solve-to-solve comparison; surface weighted_lateness to planners instead. */
             readonly objective_value_cents: number;
+            /** @description Priority-weighted lateness only (Σ part late-minutes × the WO's priority penalty) — the objective's lateness term, isolated from makespan and pin penalties. The 'how late, weighted by priority' signal shown in the UI. */
+            readonly weighted_lateness: number;
             /** @description Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner. */
             readonly relaxed_pin_count: number;
             readonly is_active: boolean;
@@ -24864,6 +24985,9 @@ export interface components {
             readonly requires_operator: boolean;
             readonly work_order: string | null;
             readonly work_center: string | null;
+            /** Format: date */
+            readonly due_date: string | null;
+            readonly is_late: boolean;
             /** Format: date-time */
             readonly start_time: string;
             /** Format: date-time */
@@ -28289,6 +28413,15 @@ export interface components {
             work_center_kind: string | null;
             readiness: string;
             is_held: boolean;
+        };
+        WorkingWindow: {
+            /** Format: date-time */
+            start: string;
+            /** Format: date-time */
+            end: string;
+        };
+        WorkingWindows: {
+            windows: components["schemas"]["WorkingWindow"][];
         };
         /**
          * @description Nested policy + steps. Replace-all semantics on update: writing a
@@ -41183,6 +41316,44 @@ export interface operations {
             };
         };
     };
+    api_ScheduledTasks_move_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Scheduled Task. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MoveRequestRequest"];
+                "multipart/form-data": components["schemas"]["MoveRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTask"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_ScheduledTasks_pin_create: {
         parameters: {
             query?: never;
@@ -41207,6 +41378,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduledTask"];
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_move_batch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveBatchRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MoveBatchRequestRequest"];
+                "multipart/form-data": components["schemas"]["MoveBatchRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_pin_batch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PinBatchRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PinBatchRequestRequest"];
+                "multipart/form-data": components["schemas"]["PinBatchRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -41239,12 +41474,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DispatchResult"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -41258,12 +41495,56 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScheduleResult"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Schedules_solve_status_retrieve: {
+        parameters: {
+            query: {
+                task_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Schedules_working_windows_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkingWindows"];
                 };
             };
         };
