@@ -277,12 +277,21 @@ class ScheduleResult(SecureModel):
     )
     is_stale = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=False, db_index=True)
+    is_draft = models.BooleanField(
+        default=False, db_index=True,
+        help_text="A proposed 'what-if' schedule the planner reviews against the live "
+                  "one and then commits or discards. A draft never supersedes the active "
+                  "schedule until committed; committing promotes it to is_active.",
+    )
 
     class Meta:
         verbose_name = 'Schedule Result'
         verbose_name_plural = 'Schedule Results'
         ordering = ['-created_at']
-        indexes = [models.Index(fields=['is_active', 'is_stale'])]
+        indexes = [
+            models.Index(fields=['is_active', 'is_stale']),
+            models.Index(fields=['is_draft']),
+        ]
 
     def __str__(self):
         return f"Schedule {self.created_at:%Y-%m-%d %H:%M} ({self.solver_status})"

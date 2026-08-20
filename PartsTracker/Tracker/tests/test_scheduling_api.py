@@ -147,6 +147,42 @@ class SchedulingAPITests(TenantTestCase):
             self.assertTrue(after[i]['is_pinned'])
             self.assertGreaterEqual(self._parse(after[i]['start_time']), turn_end)
 
+    def test_whatif_draft_commit(self):
+        self.authenticate_superuser(self.tenant_a)
+        self.client.post('/api/Schedules/solve/')            # live
+        live_id = self.client.get('/api/Schedules/current/').data['id']
+
+        self.client.post('/api/Schedules/solve-draft/')      # what-if draft
+        # Live is untouched while a draft is pending.
+        self.assertEqual(self.client.get('/api/Schedules/current/').data['id'], live_id)
+        dr = self.client.get('/api/Schedules/draft/')
+        self.assertEqual(dr.status_code, 200, dr.content)
+        self.assertTrue(dr.data['is_draft'])
+        cmp = self.client.get('/api/Schedules/compare/')
+        self.assertEqual(cmp.status_code, 200)
+        self.assertIsNotNone(cmp.data['live'])
+        self.assertIsNotNone(cmp.data['draft'])
+
+        c = self.client.post('/api/Schedules/commit/')       # promote draft to live
+        self.assertEqual(c.status_code, 200, c.content)
+        self.assertTrue(c.data['is_active'])
+        self.assertFalse(c.data['is_draft'])
+        self.assertNotEqual(c.data['id'], live_id)
+        self.assertEqual(self.client.get('/api/Schedules/draft/').status_code, 404)
+
+    def test_whatif_discard_leaves_live(self):
+        self.authenticate_superuser(self.tenant_a)
+        self.client.post('/api/Schedules/solve/')
+        live_id = self.client.get('/api/Schedules/current/').data['id']
+        self.client.post('/api/Schedules/solve-draft/')
+        self.assertEqual(self.client.get('/api/Schedules/draft/').status_code, 200)
+
+        d = self.client.post('/api/Schedules/discard/')
+        self.assertEqual(d.status_code, 200)
+        self.assertGreaterEqual(d.data['discarded'], 1)
+        self.assertEqual(self.client.get('/api/Schedules/draft/').status_code, 404)
+        self.assertEqual(self.client.get('/api/Schedules/current/').data['id'], live_id)
+
     def test_dispatch_returns_coverage(self):
         self.authenticate_superuser(self.tenant_a)
         self.client.post('/api/Schedules/solve/')

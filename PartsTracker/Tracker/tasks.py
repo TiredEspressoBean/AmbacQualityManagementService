@@ -80,13 +80,15 @@ def add_numbers(x, y):
 # task state pollable.
 
 @shared_task(bind=True, soft_time_limit=600, time_limit=660)
-def run_solve_task(self, tenant_id: str, time_limit_seconds: int = 180):
-    """Run the Layer-1 machine solve for a tenant; returns the new ScheduleResult id."""
+def run_solve_task(self, tenant_id: str, time_limit_seconds: int = 180, draft: bool = False):
+    """Run the Layer-1 machine solve for a tenant; returns the new ScheduleResult id.
+    `draft=True` produces a reviewable what-if that leaves the live schedule untouched."""
     from Tracker.models.core import Tenant
     from Tracker.services.scheduling.solver import solve_schedule
     tenant = Tenant.objects.get(id=tenant_id)
-    result = solve_schedule(tenant, time_limit_seconds=time_limit_seconds)
-    return {'schedule_id': str(result.id), 'solver_status': result.solver_status}
+    result = solve_schedule(tenant, time_limit_seconds=time_limit_seconds, draft=draft)
+    return {'schedule_id': str(result.id), 'solver_status': result.solver_status,
+            'is_draft': result.is_draft}
 
 
 @shared_task(bind=True, soft_time_limit=600, time_limit=660)

@@ -7631,6 +7631,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Schedules/commit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Promote the draft to the live schedule, superseding the previous live one. */
+        post: operations["api_Schedules_commit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/compare/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Live vs draft: each schedule's summary plus how many tasks the draft moves. */
+        get: operations["api_Schedules_compare_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Schedules/current/": {
         parameters: {
             query?: never;
@@ -7638,10 +7672,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The active schedule's run metadata, or 404 if none exists yet. */
+        /** @description The live (committed) schedule's run metadata, or 404 if none exists yet. */
         get: operations["api_Schedules_current_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/discard/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Throw the draft away, leaving the live schedule untouched. */
+        post: operations["api_Schedules_discard_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7668,6 +7719,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Schedules/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The current what-if draft, or 404 if none is pending review. */
+        get: operations["api_Schedules_draft_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Schedules/solve/": {
         parameters: {
             query?: never;
@@ -7678,10 +7746,31 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Kick off the Layer-1 machine solve in the background. Returns a task id; poll
-         *     `solve_status?task_id=` for state, then re-read `current`.
+         * @description Kick off the Layer-1 machine solve in the background, replacing the live
+         *     schedule. Returns a task id; poll `solve_status?task_id=`, then re-read `current`.
          */
         post: operations["api_Schedules_solve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/solve-draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Kick off a what-if solve in the background that produces a *draft* — the live
+         *     schedule is untouched. Returns a task id; poll `solve_status?task_id=`, then read
+         *     `draft` / `compare` and `commit` or `discard`.
+         */
+        post: operations["api_Schedules_solve_draft_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24880,6 +24969,8 @@ export interface components {
             readonly relaxed_pin_count: number;
             readonly is_active: boolean;
             readonly is_stale: boolean;
+            /** @description A proposed 'what-if' schedule the planner reviews against the live one and then commits or discards. A draft never supersedes the active schedule until committed; committing promotes it to is_active. */
+            readonly is_draft: boolean;
             /** Format: date-time */
             readonly created_at: string;
             readonly task_count: number;
@@ -41446,6 +41537,56 @@ export interface operations {
             };
         };
     };
+    api_Schedules_commit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Schedules_compare_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_Schedules_current_retrieve: {
         parameters: {
             query?: never;
@@ -41461,6 +41602,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+        };
+    };
+    api_Schedules_discard_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -41486,7 +41648,47 @@ export interface operations {
             };
         };
     };
+    api_Schedules_draft_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+        };
+    };
     api_Schedules_solve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Schedules_solve_draft_create: {
         parameters: {
             query?: never;
             header?: never;

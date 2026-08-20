@@ -28,6 +28,9 @@ from Tracker.serializers.scheduling import (
 from Tracker.services.scheduling.manual_move import (
     MoveRejected, move_batch, move_task, pin_batch,
 )
+from Tracker.services.scheduling.scenario import (
+    commit_draft, compare_draft, discard_draft,
+)
 from Tracker.tasks import run_dispatch_task, run_solve_task
 from .base import TenantScopedMixin
 
@@ -41,17 +44,51 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     """Run the solver / dispatch and read the active schedule."""
     queryset = ScheduleResult.unscoped.all()
     serializer_class = ScheduleResultSerializer
-    action_permissions = {'run_dispatch': ['change_scheduledtask']}
-    crud_exempt_actions = {'run_dispatch'}
+    action_permissions = {
+        'run_dispatch': ['change_scheduledtask'],
+        'commit': ['add_scheduleresult'],
+        'discard': ['add_scheduleresult'],
+    }
+    crud_exempt_actions = {'run_dispatch', 'commit', 'discard'}
 
     @extend_schema(request=None, responses={200: ScheduleResultSerializer})
     @action(detail=False, methods=['get'])
     def current(self, request):
-        """The active schedule's run metadata, or 404 if none exists yet."""
+        """The live (committed) schedule's run metadata, or 404 if none exists yet."""
         sched = self.get_queryset().filter(is_active=True).order_by('-created_at').first()
         if sched is None:
             return Response({'detail': 'No active schedule.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(self.get_serializer(sched).data)
+
+    @extend_schema(request=None, responses={200: ScheduleResultSerializer})
+    @action(detail=False, methods=['get'])
+    def draft(self, request):
+        """The current what-if draft, or 404 if none is pending review."""
+        sched = self.get_queryset().filter(is_draft=True).order_by('-created_at').first()
+        if sched is None:
+            return Response({'detail': 'No draft.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(self.get_serializer(sched).data)
+
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=['get'])
+    def compare(self, request):
+        """Live vs draft: each schedule's summary plus how many tasks the draft moves."""
+        return Response(compare_draft(self.tenant))
+
+    @extend_schema(request=None, responses={200: ScheduleResultSerializer, 404: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=['post'])
+    def commit(self, request):
+        """Promote the draft to the live schedule, superseding the previous live one."""
+        promoted = commit_draft(self.tenant)
+        if promoted is None:
+            return Response({'detail': 'No draft to commit.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ScheduleResultSerializer(promoted).data)
+
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=['post'])
+    def discard(self, request):
+        """Throw the draft away, leaving the live schedule untouched."""
+        return Response({'discarded': discard_draft(self.tenant)})
 
     @extend_schema(
         request=None,
@@ -78,9 +115,18 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     @extend_schema(request=None, responses={202: OpenApiTypes.OBJECT})
     @action(detail=False, methods=['post'])
     def solve(self, request):
-        """Kick off the Layer-1 machine solve in the background. Returns a task id; poll
-        `solve_status?task_id=` for state, then re-read `current`."""
+        """Kick off the Layer-1 machine solve in the background, replacing the live
+        schedule. Returns a task id; poll `solve_status?task_id=`, then re-read `current`."""
         task = run_solve_task.delay(str(self.tenant.id), _ASYNC_TIME_LIMIT_SECONDS)
+        return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(request=None, responses={202: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=['post'], url_path='solve-draft')
+    def solve_draft(self, request):
+        """Kick off a what-if solve in the background that produces a *draft* — the live
+        schedule is untouched. Returns a task id; poll `solve_status?task_id=`, then read
+        `draft` / `compare` and `commit` or `discard`."""
+        task = run_solve_task.delay(str(self.tenant.id), _ASYNC_TIME_LIMIT_SECONDS, draft=True)
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
     @extend_schema(

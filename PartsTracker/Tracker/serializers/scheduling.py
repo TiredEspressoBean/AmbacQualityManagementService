@@ -19,7 +19,7 @@ class ScheduleResultSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'horizon_start', 'horizon_end', 'solver_status', 'solve_time_ms',
             'objective_value_cents', 'weighted_lateness', 'relaxed_pin_count',
-            'is_active', 'is_stale', 'created_at', 'task_count',
+            'is_active', 'is_stale', 'is_draft', 'created_at', 'task_count',
         )
         read_only_fields = fields
 

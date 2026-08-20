@@ -198,7 +198,7 @@ def _chosen_machine(task, solver) -> object | None:
     return None
 
 
-def solve_schedule(tenant, time_limit_seconds: int = 300):
+def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
     """Solve the Layer-1 machine schedule for a tenant and persist it as the new
     active `ScheduleResult`. Returns the ScheduleResult (empty + OPTIMAL when there
     is no work)."""
@@ -470,8 +470,13 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             if (tasks and solved) else 0
         )
 
-        ScheduleResult.objects.filter(tenant=tenant, is_active=True).update(
-            is_active=False, is_stale=True)
+        if draft:
+            # A draft is a reviewable what-if; it never supersedes the live schedule.
+            # Replace only the prior draft (scratch — cascade-deletes its tasks).
+            ScheduleResult.objects.filter(tenant=tenant, is_draft=True).delete()
+        else:
+            ScheduleResult.objects.filter(tenant=tenant, is_active=True).update(
+                is_active=False, is_stale=True)
 
         result = ScheduleResult.objects.create(
             tenant=tenant,
@@ -481,7 +486,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             objective_value_cents=int(solver.ObjectiveValue()) if (tasks and solved) else 0,
             weighted_lateness=weighted_lateness,
             relaxed_pin_count=relaxed,
-            is_active=True,
+            is_active=not draft,
+            is_draft=draft,
         )
 
         if tasks and solved:

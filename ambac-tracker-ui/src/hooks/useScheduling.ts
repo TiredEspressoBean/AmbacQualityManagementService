@@ -122,6 +122,56 @@ export function useSolveSchedule() {
   );
 }
 
+/** Run a what-if solve in the background — produces a draft, live untouched. */
+export function useSolveDraft() {
+  return useAsyncScheduleTask(
+    () => api.api_Schedules_solve_draft_create(undefined as never) as Promise<{ task_id: string }>,
+    { verb: "the what-if", done: () => "What-if draft ready — review it below" }
+  );
+}
+
+/** The pending what-if draft (null when none). */
+export function useDraftSchedule() {
+  return useQuery({
+    queryKey: ["schedule", "draft"],
+    queryFn: async () => {
+      try {
+        return await api.api_Schedules_draft_retrieve();
+      } catch (e: any) {
+        if (e?.response?.status === 404) return null; // no draft pending
+        throw e;
+      }
+    },
+  });
+}
+
+/** Live-vs-draft comparison (summaries + moved-task count); only when a draft exists. */
+export function useCompareDraft(enabled: boolean) {
+  return useQuery({
+    queryKey: ["schedule", "compare"],
+    enabled,
+    queryFn: () => api.api_Schedules_compare_retrieve(),
+  });
+}
+
+/** Promote the draft to the live schedule. */
+export function useCommitDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.api_Schedules_commit_create(undefined as never),
+    onSuccess: () => invalidateSchedule(qc),
+  });
+}
+
+/** Throw the draft away, leaving live untouched. */
+export function useDiscardDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.api_Schedules_discard_create(undefined as never),
+    onSuccess: () => invalidateSchedule(qc),
+  });
+}
+
 /** Assign operators to the active schedule (Layer 2) in the background. */
 export function useDispatchSchedule() {
   return useAsyncScheduleTask(

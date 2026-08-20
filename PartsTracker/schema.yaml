@@ -18522,10 +18522,11 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/Schedules/current/:
-    get:
-      operationId: api_Schedules_current_retrieve
-      description: The active schedule's run metadata, or 404 if none exists yet.
+  /api/Schedules/commit/:
+    post:
+      operationId: api_Schedules_commit_create
+      description: Promote the draft to the live schedule, superseding the previous
+        live one.
       tags:
       - api
       security:
@@ -18537,6 +18538,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScheduleResult'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/compare/:
+    get:
+      operationId: api_Schedules_compare_retrieve
+      description: 'Live vs draft: each schedule''s summary plus how many tasks the
+        draft moves.'
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/current/:
+    get:
+      operationId: api_Schedules_current_retrieve
+      description: The live (committed) schedule's run metadata, or 404 if none exists
+        yet.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResult'
+          description: ''
+  /api/Schedules/discard/:
+    post:
+      operationId: api_Schedules_discard_create
+      description: Throw the draft away, leaving the live schedule untouched.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Schedules/dispatch/:
     post:
@@ -18557,12 +18617,48 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Schedules/draft/:
+    get:
+      operationId: api_Schedules_draft_retrieve
+      description: The current what-if draft, or 404 if none is pending review.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResult'
+          description: ''
   /api/Schedules/solve/:
     post:
       operationId: api_Schedules_solve_create
       description: |-
-        Kick off the Layer-1 machine solve in the background. Returns a task id; poll
-        `solve_status?task_id=` for state, then re-read `current`.
+        Kick off the Layer-1 machine solve in the background, replacing the live
+        schedule. Returns a task id; poll `solve_status?task_id=`, then re-read `current`.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/solve-draft/:
+    post:
+      operationId: api_Schedules_solve_draft_create
+      description: |-
+        Kick off a what-if solve in the background that produces a *draft* — the live
+        schedule is untouched. Returns a task id; poll `solve_status?task_id=`, then read
+        `draft` / `compare` and `commit` or `discard`.
       tags:
       - api
       security:
@@ -54137,6 +54233,12 @@ components:
         is_stale:
           type: boolean
           readOnly: true
+        is_draft:
+          type: boolean
+          readOnly: true
+          description: A proposed 'what-if' schedule the planner reviews against the
+            live one and then commits or discards. A draft never supersedes the active
+            schedule until committed; committing promotes it to is_active.
         created_at:
           type: string
           format: date-time
@@ -54150,6 +54252,7 @@ components:
       - horizon_start
       - id
       - is_active
+      - is_draft
       - is_stale
       - objective_value_cents
       - relaxed_pin_count

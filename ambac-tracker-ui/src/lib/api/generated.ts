@@ -11843,6 +11843,10 @@ export type ScheduleResult = {
   relaxed_pin_count: number;
   is_active: boolean;
   is_stale: boolean;
+  /**
+   * A proposed 'what-if' schedule the planner reviews against the live one and then commits or discards. A draft never supersedes the active schedule until committed; committing promotes it to is_active.
+   */
+  is_draft: boolean;
   created_at: string;
   task_count: number;
 };
@@ -16991,6 +16995,7 @@ const ScheduleResult = z.object({
   relaxed_pin_count: z.number().int(),
   is_active: z.boolean(),
   is_stale: z.boolean(),
+  is_draft: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   task_count: z.number().int(),
 });
@@ -36624,12 +36629,42 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
     response: z.object({}).partial().passthrough(),
   },
   {
+    method: "post",
+    path: "/api/Schedules/commit/",
+    alias: "api_Schedules_commit_create",
+    description: `Promote the draft to the live schedule, superseding the previous live one.`,
+    requestFormat: "json",
+    response: ScheduleResult,
+    errors: [
+      {
+        status: 404,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/compare/",
+    alias: "api_Schedules_compare_retrieve",
+    description: `Live vs draft: each schedule&#x27;s summary plus how many tasks the draft moves.`,
+    requestFormat: "json",
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "get",
     path: "/api/Schedules/current/",
     alias: "api_Schedules_current_retrieve",
-    description: `The active schedule&#x27;s run metadata, or 404 if none exists yet.`,
+    description: `The live (committed) schedule&#x27;s run metadata, or 404 if none exists yet.`,
     requestFormat: "json",
     response: ScheduleResult,
+  },
+  {
+    method: "post",
+    path: "/api/Schedules/discard/",
+    alias: "api_Schedules_discard_create",
+    description: `Throw the draft away, leaving the live schedule untouched.`,
+    requestFormat: "json",
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "post",
@@ -36639,6 +36674,14 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
 &#x60;solve_status?task_id&#x3D;&#x60; for the coverage summary.`,
     requestFormat: "json",
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/draft/",
+    alias: "api_Schedules_draft_retrieve",
+    description: `The current what-if draft, or 404 if none is pending review.`,
+    requestFormat: "json",
+    response: ScheduleResult,
   },
   {
     method: "get",
@@ -36658,10 +36701,20 @@ SUCCESS, or FAILURE; on SUCCESS &#x60;result&#x60; carries the task&#x27;s retur
   },
   {
     method: "post",
+    path: "/api/Schedules/solve-draft/",
+    alias: "api_Schedules_solve_draft_create",
+    description: `Kick off a what-if solve in the background that produces a *draft* — the live
+schedule is untouched. Returns a task id; poll &#x60;solve_status?task_id&#x3D;&#x60;, then read
+&#x60;draft&#x60; / &#x60;compare&#x60; and &#x60;commit&#x60; or &#x60;discard&#x60;.`,
+    requestFormat: "json",
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
     path: "/api/Schedules/solve/",
     alias: "api_Schedules_solve_create",
-    description: `Kick off the Layer-1 machine solve in the background. Returns a task id; poll
-&#x60;solve_status?task_id&#x3D;&#x60; for state, then re-read &#x60;current&#x60;.`,
+    description: `Kick off the Layer-1 machine solve in the background, replacing the live
+schedule. Returns a task id; poll &#x60;solve_status?task_id&#x3D;&#x60;, then re-read &#x60;current&#x60;.`,
     requestFormat: "json",
     response: z.object({}).partial().passthrough(),
   },
