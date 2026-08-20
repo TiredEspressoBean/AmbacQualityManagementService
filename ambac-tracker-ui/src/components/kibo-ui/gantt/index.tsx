@@ -45,7 +45,6 @@ import {
   useContext,
   useEffect,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -98,7 +97,13 @@ export type TimelineData = {
 }[];
 
 export type GanttContextProps = {
-  zoom: number;
+  // Zoom lives behind a ref, not a context value: changing the zoom NUMBER must not
+  // change the context object's identity, or every consumer (all bars, header, pegs)
+  // would re-render on each zoom step. In hourly mode the bars position purely off the
+  // --gantt-column-width CSS variable, so a zoom needs zero React work — the provider
+  // just updates that one variable. Handlers/helpers that need the live number read
+  // zoomRef.current at call time.
+  zoomRef: RefObject<number>;
   range: Range;
   columnWidth: number;
   sidebarWidth: number;
@@ -183,12 +188,12 @@ const getDateByMousePosition = (context: GanttContextProps, mouseX: number) => {
     const origin = context.boundStart
       ? startOfDay(context.boundStart)
       : new Date(context.timelineData[0].year, 0, 1);
-    const pxPerDay = (context.columnWidth * context.zoom) / 100;
+    const pxPerDay = (context.columnWidth * context.zoomRef.current) / 100;
     const minutes = (mouseX / pxPerDay) * 24 * 60;
     return addMinutes(origin, minutes);
   }
   const timelineStartDate = new Date(context.timelineData[0].year, 0, 1);
-  const columnWidth = (context.columnWidth * context.zoom) / 100;
+  const columnWidth = (context.columnWidth * context.zoomRef.current) / 100;
   const offset = Math.floor(mouseX / columnWidth);
   const daysIn = getsDaysIn(context.range);
   const addRange = getAddRange(context.range);
@@ -229,7 +234,7 @@ const getOffset = (
   timelineStartDate: Date,
   context: GanttContextProps
 ) => {
-  const parsedColumnWidth = (context.columnWidth * context.zoom) / 100;
+  const parsedColumnWidth = (context.columnWidth * context.zoomRef.current) / 100;
   const differenceIn = getDifferenceIn(context.range);
   const startOf = getStartOf(context.range);
   const fullColumns = differenceIn(startOf(date), timelineStartDate);
@@ -256,7 +261,7 @@ const getWidth = (
   endAt: Date | null,
   context: GanttContextProps
 ) => {
-  const parsedColumnWidth = (context.columnWidth * context.zoom) / 100;
+  const parsedColumnWidth = (context.columnWidth * context.zoomRef.current) / 100;
 
   if (!endAt) {
     return parsedColumnWidth * 2;
@@ -318,8 +323,14 @@ const calculateInnerOffset = (
   return (dayOfMonth / totalRangeDays) * columnWidth;
 };
 
+// A separate, reactive zoom channel for the few overlays that position in raw pixels
+// (shift bands, peg lines) and MUST re-render to rescale on zoom. The main GanttContext
+// deliberately excludes zoom so the CSS-var-positioned bars don't re-render; anything
+// that can't ride the --gantt-column-width variable subscribes here instead.
+const GanttZoomContext = createContext<number>(100);
+
 const GanttContext = createContext<GanttContextProps>({
-  zoom: 100,
+  zoomRef: { current: 100 },
   range: "monthly",
   columnWidth: 50,
   headerHeight: 60,
@@ -919,7 +930,7 @@ export type GanttFeatureItemProps = GanttFeature & {
   cardClassName?: string;
 };
 
-export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
+const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
   onMove,
   onSelect,
   resizable,
@@ -956,6 +967,20 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
     [startAt, timelineStartDate, gantt]
   );
 
+  // Hourly: express position as a ZOOM-INDEPENDENT fraction of a day-column, so the bar
+  // is placed with calc(var(--gantt-column-width) * fraction). A zoom then changes ONE
+  // CSS variable and the browser repositions every bar via CSS — no per-bar JS/DOM work,
+  // no re-layout driven from React. (Buttery zoom on ~500 bars.)
+  const hourly = gantt.range === "hourly";
+  const widthFraction = useMemo(
+    () => (endAt ? differenceInMinutes(endAt, startAt) / (60 * 24) : 2),
+    [startAt, endAt]
+  );
+  const leftFraction = useMemo(
+    () => differenceInMinutes(startAt, timelineStartDate) / (60 * 24),
+    [startAt, timelineStartDate]
+  );
+
   const addRange = useMemo(() => getAddRange(gantt.range), [gantt.range]);
   const [mousePosition] = useMouse<HTMLDivElement>();
 
@@ -981,7 +1006,7 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
       // than the useMouse position — the latter is stale (0,0) on the first drag
       // before any mousemove flushes, which sent the bar flying to the horizon end.
       if (gantt.range === "hourly") {
-        const dayPx = (gantt.columnWidth * gantt.zoom) / 100;
+        const dayPx = (gantt.columnWidth * gantt.zoomRef.current) / 100;
         const dx = event?.delta?.x ?? 0;
         const minutes = (dx / dayPx) * 24 * 60;
         setStartAt(addMinutes(previousStartAt, minutes));
@@ -1033,8 +1058,8 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
         onClick={onSelect ? () => onSelect(feature.id) : undefined}
         style={{
           height: "calc(var(--gantt-row-height) - 4px)",
-          width: Math.round(width),
-          left: Math.round(offset),
+          width: hourly ? `calc(var(--gantt-column-width) * ${widthFraction})` : Math.round(width),
+          left: hourly ? `calc(var(--gantt-column-width) * ${leftFraction})` : Math.round(offset),
         }}
       >
         {onMove && resizable && (
@@ -1093,6 +1118,10 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
     </div>
   );
 };
+
+// Memoized: with stable feature objects + handlers, bars entering/leaving the virtualized
+// window are the only ones that (un)mount on scroll — the rest skip re-render entirely.
+export const GanttFeatureItem = memo(GanttFeatureItemBase);
 
 export type GanttFeatureListGroupProps = {
   children: ReactNode;
@@ -1227,9 +1256,9 @@ export const GanttMarker: FC<
       calculateInnerOffset(
         date,
         gantt.range,
-        (gantt.columnWidth * gantt.zoom) / 100
+        (gantt.columnWidth * gantt.zoomRef.current) / 100
       ),
-    [date, gantt.range, gantt.columnWidth, gantt.zoom]
+    [date, gantt.range, gantt.columnWidth]
   );
 
   const handleRemove = useCallback(() => onRemove?.(id), [onRemove, id]);
@@ -1297,6 +1326,10 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   boundEnd,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Live zoom, readable by handlers/helpers without making the context value change
+  // identity on zoom (which would re-render every bar). Updated on each render.
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
   const bounded = Boolean(boundStart && boundEnd);
   const boundDays = bounded
     ? Math.max(1, differenceInDays(startOfDay(boundEnd!), startOfDay(boundStart!)) + 1)
@@ -1347,7 +1380,29 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       }
       setScrollX(scrollRef.current.scrollLeft);
     }
-  }, [setScrollX, bounded, boundStart, columnWidth, zoom]);
+    // Runs on mount and when the horizon changes — NOT on zoom (zoom is handled by the
+    // zoom-to-centre effect below), so zooming no longer snaps scroll back to the start.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setScrollX, bounded, boundStart]);
+
+  // Keep the time under the viewport CENTRE fixed while zooming (instead of resetting).
+  // Deliberately useEffect, NOT useLayoutEffect: this reads scrollLeft/clientWidth, and
+  // a layout-effect read runs while the just-changed column-width has dirtied layout —
+  // forcing a synchronous reflow of the whole timeline every tween frame. Running after
+  // paint reads clean layout (no forced reflow); the JS tween's per-frame steps are
+  // small enough that the one-frame scroll catch-up isn't visible, and the centre lands
+  // exactly on settle.
+  const prevDayPxRef = useRef((columnWidth * zoom) / 100);
+  useEffect(() => {
+    const el = scrollRef.current;
+    const newDayPx = (columnWidth * zoom) / 100;
+    const oldDayPx = prevDayPxRef.current;
+    prevDayPxRef.current = newDayPx;
+    if (!el || oldDayPx === newDayPx || oldDayPx <= 0) return;
+    const centreFrac = (el.scrollLeft + el.clientWidth / 2) / oldDayPx;
+    el.scrollLeft = Math.max(0, centreFrac * newDayPx - el.clientWidth / 2);
+    setScrollX(el.scrollLeft);
+  }, [zoom, columnWidth, setScrollX]);
 
   // Update sidebar width when DOM is ready
   useEffect(() => {
@@ -1480,7 +1535,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
       // Calculate the horizontal offset for the feature's start date
       const offset = getOffset(feature.startAt, timelineStartDate, {
-        zoom,
+        zoomRef,
         range,
         columnWidth,
         sidebarWidth,
@@ -1500,27 +1555,43 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         behavior: "smooth",
       });
     },
-    [timelineData, zoom, range, columnWidth, sidebarWidth, onAddItem, boundStart]
+    [timelineData, range, columnWidth, sidebarWidth, onAddItem, boundStart]
+  );
+
+  // The context value must be identity-stable across zoom (zoom lives in zoomRef, not
+  // here) so a zoom step re-renders only this provider (to update the CSS variable),
+  // not the whole subtree of bars. Memoized on its real deps only.
+  const contextValue = useMemo<GanttContextProps>(
+    () => ({
+      zoomRef,
+      range,
+      headerHeight,
+      columnWidth,
+      sidebarWidth,
+      rowHeight,
+      onAddItem,
+      timelineData,
+      placeholderLength: 2,
+      ref: scrollRef,
+      scrollToFeature,
+      boundStart,
+      boundDays,
+    }),
+    [
+      range,
+      columnWidth,
+      sidebarWidth,
+      onAddItem,
+      timelineData,
+      scrollToFeature,
+      boundStart,
+      boundDays,
+    ]
   );
 
   return (
-    <GanttContext.Provider
-      value={{
-        zoom,
-        range,
-        headerHeight,
-        columnWidth,
-        sidebarWidth,
-        rowHeight,
-        onAddItem,
-        timelineData,
-        placeholderLength: 2,
-        ref: scrollRef,
-        scrollToFeature,
-        boundStart,
-        boundDays,
-      }}
-    >
+    <GanttContext.Provider value={contextValue}>
+    <GanttZoomContext.Provider value={zoom}>
       <div
         className={cn(
           "gantt relative isolate grid h-full w-full flex-none select-none overflow-auto rounded-sm bg-secondary",
@@ -1531,10 +1602,15 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         style={{
           ...cssVariables,
           gridTemplateColumns: "var(--gantt-sidebar-width) 1fr",
+          // No CSS transition on --gantt-column-width: the zoom is eased in JS (a rAF
+          // tween on the applied zoom in SchedulingGanttPage), and the width + the
+          // zoom-to-centre scroll adjustment must land on the SAME frame. A CSS ease
+          // here would lag the width behind the scroll and make the anchor drift.
         }}
       >
         {children}
       </div>
+    </GanttZoomContext.Provider>
     </GanttContext.Provider>
   );
 };
@@ -1576,11 +1652,12 @@ export const GanttShiftBands: FC<GanttShiftBandsProps> = ({
   className,
 }) => {
   const gantt = useContext(GanttContext);
+  const zoom = useContext(GanttZoomContext);
   if (gantt.range !== "hourly" || !gantt.boundStart) {
     return null;
   }
   const origin = startOfDay(gantt.boundStart);
-  const dayPx = (gantt.columnWidth * gantt.zoom) / 100;
+  const dayPx = (gantt.columnWidth * zoom) / 100;
   const toPx = (d: Date) => (differenceInMinutes(d, origin) / (60 * 24)) * dayPx;
 
   // Non-working gaps = complement of the working windows within the horizon.
@@ -1635,53 +1712,73 @@ export type GanttPegLinesProps = {
  * so they track zoom, scroll, and moves without re-deriving the layout math. */
 export const GanttPegLines: FC<GanttPegLinesProps> = ({ ids, revision, className }) => {
   const gantt = useContext(GanttContext);
+  const zoom = useContext(GanttZoomContext);
   const ref = useRef<HTMLDivElement>(null);
   const [segs, setSegs] = useState<
     { x1: number; y1: number; x2: number; y2: number }[]
   >([]);
   const idKey = ids.join(",");
+  // Px per day-column at the current zoom, tracked in a ref. Zoom only scales X, so
+  // instead of re-measuring bars on every zoom (getBoundingClientRect forces a full
+  // layout — the reflow the profiler flagged), we measure ONCE and scale the peg X
+  // by dayPx/measuredDayPx. Re-measure only when the job/data/grouping changes.
+  const dayPx = (gantt.columnWidth * zoom) / 100;
+  const dayPxRef = useRef(dayPx);
+  dayPxRef.current = dayPx;
+  const measuredDayPxRef = useRef(dayPx);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const container = ref.current;
     const scope = container?.parentElement;
     if (!container || !scope || ids.length < 2) {
       setSegs([]);
       return;
     }
-    const c = container.getBoundingClientRect();
-    const boxes = ids
-      .map((id) => {
-        const el = scope.querySelector(`[data-task-id="${id}"]`) as HTMLElement | null;
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return { left: r.left - c.left, right: r.right - c.left, y: r.top - c.top + r.height / 2 };
-      })
-      .filter((b): b is { left: number; right: number; y: number } => b !== null);
-    const next = [];
-    for (let i = 0; i < boxes.length - 1; i++) {
-      next.push({ x1: boxes[i].right, y1: boxes[i].y, x2: boxes[i + 1].left, y2: boxes[i + 1].y });
-    }
-    setSegs(next);
-    // idKey/revision/zoom/range are the only things that move the bars; positions
-    // are measured relative to this overlay, so scrolling needs no re-measure.
+    // Debounced so rapid changes coalesce; still relative to this overlay (scroll-safe).
+    const measure = () => {
+      const c = container.getBoundingClientRect();
+      const boxes = ids
+        .map((id) => {
+          const el = scope.querySelector(`[data-task-id="${id}"]`) as HTMLElement | null;
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { left: r.left - c.left, right: r.right - c.left, y: r.top - c.top + r.height / 2 };
+        })
+        .filter((b): b is { left: number; right: number; y: number } => b !== null);
+      const next = [];
+      for (let i = 0; i < boxes.length - 1; i++) {
+        next.push({ x1: boxes[i].right, y1: boxes[i].y, x2: boxes[i + 1].left, y2: boxes[i + 1].y });
+      }
+      measuredDayPxRef.current = dayPxRef.current; // remember the zoom these X's are in
+      setSegs(next);
+    };
+    const timer = window.setTimeout(measure, 60);
+    return () => window.clearTimeout(timer);
+    // NB: zoom is deliberately NOT a dep — zoom is handled by scaling X below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idKey, revision, gantt.zoom, gantt.range]);
+  }, [idKey, revision, gantt.range]);
 
   if (ids.length < 2) return null;
+  // Scale measured X to the current zoom (Y is zoom-invariant). No layout reads here.
+  const sx = dayPx / (measuredDayPxRef.current || 1);
   return (
     <div ref={ref} className={cn("pointer-events-none absolute inset-0 z-20", className)}>
       <svg className="h-full w-full overflow-visible text-sky-500" fill="none">
-        {segs.map((s, i) => (
-          <g key={i}>
-            <path
-              d={`M ${s.x1} ${s.y1} C ${s.x1 + 20} ${s.y1}, ${s.x2 - 20} ${s.y2}, ${s.x2} ${s.y2}`}
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeOpacity={0.75}
-            />
-            <circle cx={s.x2} cy={s.y2} r={2.5} fill="currentColor" />
-          </g>
-        ))}
+        {segs.map((s, i) => {
+          const x1 = s.x1 * sx;
+          const x2 = s.x2 * sx;
+          return (
+            <g key={i}>
+              <path
+                d={`M ${x1} ${s.y1} C ${x1 + 20} ${s.y1}, ${x2 - 20} ${s.y2}, ${x2} ${s.y2}`}
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeOpacity={0.75}
+              />
+              <circle cx={x2} cy={s.y2} r={2.5} fill="currentColor" />
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
@@ -1714,9 +1811,9 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
       calculateInnerOffset(
         date,
         gantt.range,
-        (gantt.columnWidth * gantt.zoom) / 100
+        (gantt.columnWidth * gantt.zoomRef.current) / 100
       ),
-    [date, gantt.range, gantt.columnWidth, gantt.zoom]
+    [date, gantt.range, gantt.columnWidth]
   );
 
   return (

@@ -8,6 +8,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Registered so the Gantt column width can be *animated* (custom properties are not
+ * transitionable otherwise). The Gantt bars are positioned via
+ * calc(var(--gantt-column-width) * fraction), so easing this one variable eases the
+ * whole timeline's zoom — browser-native, no per-bar JS. */
+@property --gantt-column-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 /*
  * Branding Architecture:
  *

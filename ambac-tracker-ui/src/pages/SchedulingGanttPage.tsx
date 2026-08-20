@@ -1,7 +1,8 @@
 // Production schedule Gantt — reads the active CP-SAT schedule and renders it,
 // grouped by machine / operator / product, with solve / dispatch actions, search,
 // and a per-task detail dialog (opened from the bar) that pins/unpins.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { differenceInMinutes, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { ChevronRight, Pin, PinOff, Search, ZoomIn, ZoomOut } from "lucide-react";
 import {
@@ -32,6 +33,11 @@ import {
   useCurrentSchedule,
   useScheduledTasks,
   useSolveSchedule,
+  useSolveDraft,
+  useDraftSchedule,
+  useCompareDraft,
+  useCommitDraft,
+  useDiscardDraft,
   useDispatchSchedule,
   usePinTask,
   useMoveTask,
@@ -45,6 +51,10 @@ const FENCE = {
   slushy: { name: "Slushy", color: "#f59e0b" },
   liquid: { name: "Liquid", color: "#22c55e" },
 } as const;
+
+const ZOOM_MIN = 30;
+const ZOOM_MAX = 1500;
+const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z)));
 
 /** Stable key for the unit (part or core) a task belongs to — one job's route. */
 const unitKey = (t: { part_erp: string | null; core_number: string | null }) =>
@@ -84,12 +94,115 @@ type Task = {
   fence_zone: keyof typeof FENCE;
 };
 
+type CompareSummary = {
+  schedule_id: string;
+  solver_status: string;
+  weighted_lateness: number;
+  makespan_minutes: number;
+  task_count: number;
+  uncovered: number;
+};
+type CompareResult = { live: CompareSummary | null; draft: CompareSummary | null; moved: number };
+
+/** Banner comparing the pending what-if draft to the live schedule, with commit/discard. */
+function DraftCompareBar({
+  compare,
+  committing,
+  discarding,
+  onCommit,
+  onDiscard,
+}: {
+  compare?: CompareResult;
+  committing: boolean;
+  discarding: boolean;
+  onCommit: () => void;
+  onDiscard: () => void;
+}) {
+  const l = compare?.live;
+  const d = compare?.draft;
+  const hrs = (m?: number) => (m == null ? "—" : (m / 60).toFixed(1));
+  const deltaCls = (delta: number | null) =>
+    delta == null || delta === 0
+      ? "text-muted-foreground"
+      : delta < 0
+        ? "text-green-600 dark:text-green-400" // lower makespan/lateness is better
+        : "text-red-600 dark:text-red-400";
+  const dMakespan = l && d ? d.makespan_minutes - l.makespan_minutes : null;
+  const dLateness = l && d ? d.weighted_lateness - l.weighted_lateness : null;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="font-medium text-amber-700 dark:text-amber-400">
+          What-if draft — review vs live
+        </span>
+        <span>
+          makespan <span className="text-muted-foreground">{hrs(l?.makespan_minutes)} → </span>
+          <span className="font-medium">{hrs(d?.makespan_minutes)} h</span>
+          {dMakespan != null && dMakespan !== 0 && (
+            <span className={"ml-1 " + deltaCls(dMakespan)}>
+              ({dMakespan > 0 ? "+" : ""}
+              {(dMakespan / 60).toFixed(1)} h)
+            </span>
+          )}
+        </span>
+        <span>
+          lateness{" "}
+          <span className="text-muted-foreground">
+            {(l?.weighted_lateness ?? 0).toLocaleString()} →{" "}
+          </span>
+          <span className="font-medium">{(d?.weighted_lateness ?? 0).toLocaleString()}</span>
+          {dLateness != null && dLateness !== 0 && (
+            <span className={"ml-1 " + deltaCls(dLateness)}>
+              ({dLateness > 0 ? "+" : ""}
+              {dLateness.toLocaleString()})
+            </span>
+          )}
+        </span>
+        {compare?.moved != null && (
+          <span className="text-muted-foreground">moves {compare.moved.toLocaleString()} tasks</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={onCommit} disabled={committing}>
+          {committing ? "Committing…" : "Commit draft"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={onDiscard} disabled={discarding}>
+          {discarding ? "Discarding…" : "Discard"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function SchedulingGanttPage() {
   const current = useCurrentSchedule();
-  const schedule = current.data ?? null;
+  const live = current.data ?? null;
+  const draftQuery = useDraftSchedule();
+  const draft = draftQuery.data ?? null;
+
+  // Which schedule the board shows: live (committed) or the pending what-if draft.
+  const [viewMode, setViewMode] = useState<"live" | "draft">("live");
+  const viewingDraft = viewMode === "draft" && draft != null;
+  const schedule = viewingDraft ? draft : live;
+  // Stable Date objects for the horizon — a fresh `new Date()` each render was making
+  // the Gantt's scroll-reset effect re-fire on every re-render (snapping scroll back
+  // to the start). Memoize so the identity only changes when the schedule does.
+  const horizonStart = useMemo(
+    () => (schedule ? new Date(schedule.horizon_start) : null),
+    [schedule?.horizon_start]
+  );
+  const horizonEnd = useMemo(
+    () => (schedule ? new Date(schedule.horizon_end) : null),
+    [schedule?.horizon_end]
+  );
+
   const tasksQuery = useScheduledTasks(schedule?.id);
   const windowsQuery = useWorkingWindows(schedule?.id);
+  const compareQuery = useCompareDraft(draft != null);
   const solve = useSolveSchedule();
+  const solveDraft = useSolveDraft();
+  const commitDraft = useCommitDraft();
+  const discardDraft = useDiscardDraft();
   const dispatch = useDispatchSchedule();
   const pin = usePinTask();
   const move = useMoveTask();
@@ -116,22 +229,113 @@ export function SchedulingGanttPage() {
       return next;
     });
   const pageRef = useRef<HTMLDivElement>(null);
-  const clampZoom = (z: number) => Math.min(1500, Math.max(30, Math.round(z)));
+  // Smooth zoom: wheel/pinch and the toolbar buttons set a *target* zoom; a single rAF
+  // tween eases the applied zoom toward it (~exponential approach). The applied value
+  // drives the --gantt-column-width variable with NO CSS transition, so the column
+  // width and the zoom-to-centre scroll adjustment move together on the same frame —
+  // no easing lag, no anchor drift. Cheap now that the bars are decoupled from zoom:
+  // a tween frame re-renders only this page, the provider, and the two px-based
+  // overlays (shift bands, peg lines), never the ~200 bars.
+  const targetZoom = useRef(220);
+  const appliedZoom = useRef(220);
+  const zoomRaf = useRef<number | null>(null);
+  const tweenZoom = useCallback(() => {
+    if (zoomRaf.current != null) return;
+    const tick = () => {
+      const target = targetZoom.current;
+      const diff = target - appliedZoom.current;
+      if (Math.abs(diff) <= 0.75) {
+        appliedZoom.current = target;
+        setZoom(target);
+        zoomRaf.current = null;
+        return;
+      }
+      appliedZoom.current += diff * 0.3; // ~exponential ease toward target
+      setZoom(clampZoom(appliedZoom.current));
+      zoomRaf.current = requestAnimationFrame(tick);
+    };
+    zoomRaf.current = requestAnimationFrame(tick);
+  }, []);
+  const nudgeZoom = useCallback(
+    (factor: number) => {
+      targetZoom.current = clampZoom(targetZoom.current * factor);
+      tweenZoom();
+    },
+    [tweenZoom]
+  );
   useEffect(() => {
     const el = pageRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return; // plain wheel scrolls; pinch/ctrl zooms
       e.preventDefault();
-      setZoom((z) => clampZoom(z * (e.deltaY < 0 ? 1.12 : 0.89)));
+      const d = Math.max(-120, Math.min(120, e.deltaY));
+      targetZoom.current = clampZoom(targetZoom.current * Math.exp(-d * 0.003));
+      tweenZoom();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      if (zoomRaf.current != null) cancelAnimationFrame(zoomRaf.current);
+    };
+  }, [tweenZoom]);
+
+  // Virtualization: only render bars whose time-range intersects the visible scroll
+  // window (+ a buffer), so a 30-day, ~500-task board keeps only a few dozen bars in
+  // the DOM. Track the timeline scroll container's scrollLeft/width, throttled to rAF.
+  const [viewport, setViewport] = useState({ scrollLeft: 0, clientWidth: 4000 });
+  useEffect(() => {
+    const el = pageRef.current?.querySelector(".gantt") as HTMLElement | null;
+    if (!el) return;
+    // Read scroll/width from EVENTS (scroll + resize), never a per-frame rAF poll: the
+    // poll read scrollLeft on every animation frame, and during a zoom (which dirties
+    // layout each frame) that forced a synchronous reflow of the whole timeline per
+    // frame — the jank the trace flagged. Scroll/resize handlers fire after layout has
+    // settled, so their reads are clean. Programmatic scrolls (zoom-to-centre) still
+    // emit scroll events, so the window keeps tracking.
+    const read = () =>
+      setViewport((v) => {
+        const scrollLeft = el.scrollLeft;
+        const clientWidth = el.clientWidth;
+        return v.scrollLeft === scrollLeft && v.clientWidth === clientWidth
+          ? v
+          : { scrollLeft, clientWidth };
+      });
+    read(); // seed
+    el.addEventListener("scroll", read, { passive: true });
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", read);
+      ro.disconnect();
+    };
+    // Re-bind when the timeline (re)mounts — once tasks finish loading (dataUpdatedAt),
+    // not just when the schedule id changes.
+  }, [current.data?.id, draft?.id, viewingDraft, tasksQuery.dataUpdatedAt]);
 
   const allRows = (tasksQuery.data as { results?: Task[] } | undefined)?.results ?? [];
   const detailTask = allRows.find((r) => r.id === detailId) ?? null;
   const focusTask = allRows.find((r) => r.id === focusId) ?? null;
+
+  // Visible day-fraction window for bar virtualization. Bars are positioned as a
+  // fraction of a day-column from the horizon start, so we can filter by fraction
+  // without touching the DOM. One-viewport buffer each side hides the recycling.
+  const vizWindow = useMemo(() => {
+    if (!schedule) return null;
+    const dayPx = (720 * zoom) / 100; // hourly column width × zoom
+    const buffer = viewport.clientWidth;
+    return {
+      origin: startOfDay(horizonStart!),
+      startFrac: (viewport.scrollLeft - buffer) / dayPx,
+      endFrac: (viewport.scrollLeft + viewport.clientWidth + buffer) / dayPx,
+    };
+  }, [schedule, zoom, viewport]);
+  const inWindow = (f: { startAt: Date; endAt: Date | null }) => {
+    if (!vizWindow) return true;
+    const lf = differenceInMinutes(f.startAt, vizWindow.origin) / 1440;
+    const rf = f.endAt ? differenceInMinutes(f.endAt, vizWindow.origin) / 1440 : lf + 0.02;
+    return rf >= vizWindow.startFrac && lf <= vizWindow.endFrac;
+  };
 
   // The focused job's steps, in time order — peg lines connect them.
   const pegChain = useMemo(() => {
@@ -144,14 +348,14 @@ export function SchedulingGanttPage() {
   }, [focusTask, allRows]);
   const pegIds = useMemo(() => pegChain.map((t) => t.id), [pegChain]);
 
-  const handleSelect = (id: string) => {
+  const handleSelect = useCallback((id: string) => {
     if (isBatchId(id)) {
       setDetailBatchId(id); // a merged WO batch → batch dialog
       return;
     }
     setDetailId(id);
     setFocusId(id);
-  };
+  }, []);
 
   // The per-lane load bar (busy-hours), shown in each resource header.
   const loadBar = (loadMinutes: number) =>
@@ -351,7 +555,7 @@ export function SchedulingGanttPage() {
   // Drag-to-reschedule: pin the task at the dropped start. The server keeps its
   // duration and 422s (with a reason) if the drop breaks a local constraint; the
   // bar snaps back on refetch.
-  const onMoveTask = (id: string, start: Date) => {
+  const onMoveTask = useCallback((id: string, start: Date) => {
     move.mutate(
       { id, start_time: start.toISOString() },
       {
@@ -360,10 +564,10 @@ export function SchedulingGanttPage() {
           toast.error(e?.response?.data?.detail ?? "Couldn't move the task there"),
       }
     );
-  };
+  }, [move]);
 
   // Drag a merged WO-batch bar: re-anchor all its parts to the drop time.
-  const onMoveBatch = (id: string, start: Date) => {
+  const onMoveBatch = useCallback((id: string, start: Date) => {
     const meta = batchMeta.get(id);
     if (!meta) return;
     moveBatch.mutate(
@@ -375,7 +579,7 @@ export function SchedulingGanttPage() {
           toast.error(e?.response?.data?.detail ?? "Couldn't move the batch there"),
       }
     );
-  };
+  }, [moveBatch, batchMeta]);
 
   const toggleBatchPin = () => {
     if (!detailBatch) return;
@@ -409,6 +613,11 @@ export function SchedulingGanttPage() {
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {schedule ? (
               <>
+                {viewingDraft && (
+                  <Badge className="border-transparent bg-amber-500 text-white hover:bg-amber-500">
+                    DRAFT (what-if)
+                  </Badge>
+                )}
                 <Badge variant="secondary">{schedule.solver_status}</Badge>
                 <span>{schedule.task_count} tasks</span>
                 <span>· makespan {kpis.makespanH.toFixed(1)} h</span>
@@ -473,22 +682,71 @@ export function SchedulingGanttPage() {
             ))}
           </div>
           <div className="mr-1 flex items-center gap-1 rounded-md border px-1" title="Ctrl/⌘ + scroll, or pinch, to zoom">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => clampZoom(z * 0.8))}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => nudgeZoom(0.8)}>
               <ZoomOut className="h-4 w-4" />
             </Button>
             <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">{zoom}%</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => clampZoom(z * 1.25))}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => nudgeZoom(1.25)}>
               <ZoomIn className="h-4 w-4" />
             </Button>
           </div>
+          {draft && (
+            <div className="mr-1 flex items-center rounded-md border p-0.5">
+              {(["live", "draft"] as const).map((m) => (
+                <Button
+                  key={m}
+                  variant={viewMode === m ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-7 px-2 text-xs capitalize"
+                  onClick={() => setViewMode(m)}
+                >
+                  {m}
+                </Button>
+              ))}
+            </div>
+          )}
           <Button onClick={solve.run} disabled={solve.isRunning}>
             {solve.isRunning ? "Solving…" : "Solve"}
           </Button>
-          <Button variant="secondary" onClick={dispatch.run} disabled={dispatch.isRunning || !schedule}>
+          <Button
+            variant="outline"
+            onClick={solveDraft.run}
+            disabled={solveDraft.isRunning}
+            title="Explore a what-if without touching the live schedule"
+          >
+            {solveDraft.isRunning ? "Solving…" : "What-if"}
+          </Button>
+          <Button variant="secondary" onClick={dispatch.run} disabled={dispatch.isRunning || !live}>
             {dispatch.isRunning ? "Dispatching…" : "Dispatch"}
           </Button>
         </div>
       </header>
+
+      {draft && (
+        <DraftCompareBar
+          compare={compareQuery.data as CompareResult | undefined}
+          committing={commitDraft.isPending}
+          discarding={discardDraft.isPending}
+          onCommit={() =>
+            commitDraft.mutate(undefined, {
+              onSuccess: () => {
+                setViewMode("live");
+                toast.success("Draft committed — now the live schedule");
+              },
+              onError: () => toast.error("Couldn't commit the draft"),
+            })
+          }
+          onDiscard={() =>
+            discardDraft.mutate(undefined, {
+              onSuccess: () => {
+                setViewMode("live");
+                toast.success("Draft discarded");
+              },
+              onError: () => toast.error("Couldn't discard the draft"),
+            })
+          }
+        />
+      )}
 
       {schedule && schedule.relaxed_pin_count > 0 && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
@@ -505,8 +763,8 @@ export function SchedulingGanttPage() {
         <GanttProvider
           range="hourly"
           zoom={zoom}
-          boundStart={new Date(schedule.horizon_start)}
-          boundEnd={new Date(schedule.horizon_end)}
+          boundStart={horizonStart!}
+          boundEnd={horizonEnd!}
           className="min-h-0 flex-1 rounded-lg border"
         >
           <GanttSidebar>
@@ -546,8 +804,8 @@ export function SchedulingGanttPage() {
             {shiftWindows.length > 0 && (
               <GanttShiftBands
                 windows={shiftWindows}
-                rangeStart={new Date(schedule.horizon_start)}
-                rangeEnd={new Date(schedule.horizon_end)}
+                rangeStart={horizonStart!}
+                rangeEnd={horizonEnd!}
               />
             )}
             <GanttFeatureList>
@@ -566,7 +824,7 @@ export function SchedulingGanttPage() {
                     className="relative w-max min-w-full py-0.5"
                     style={{ height: "var(--gantt-row-height)" }}
                   >
-                    {g.batches.map((f) => (
+                    {g.batches.filter(inWindow).map((f) => (
                       <GanttFeatureItem key={f.id} {...f} {...laneBarProps(f)} bare />
                     ))}
                   </div>
