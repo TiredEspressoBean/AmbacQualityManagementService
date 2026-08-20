@@ -1007,9 +1007,11 @@ def send_capa_task_assignment_notification(self, task_id):
     from django.core.mail import send_mail
     from django.conf import settings
 
-    # Initial lookup to get tenant context
+    # Cross-tenant lookup to LEARN the tenant (the worker has no context yet);
+    # everything after runs inside tenant_context. Using .objects here would raise
+    # TenantContextRequired — the chicken-and-egg the tenant_context below resolves.
     try:
-        task = CapaTasks.objects.get(id=task_id)
+        task = CapaTasks.unscoped.get(id=task_id)
     except CapaTasks.DoesNotExist:
         logger.error(f"CapaTasks {task_id} not found")
         return {'status': 'error', 'message': 'Task not found'}
@@ -1061,9 +1063,11 @@ def send_capa_verification_complete_notification(self, capa_id):
     from django.core.mail import send_mail
     from django.conf import settings
 
-    # Initial lookup to get tenant context
+    # Cross-tenant lookup to LEARN the tenant (the worker has no context yet);
+    # everything after runs inside tenant_context. .objects here would raise
+    # TenantContextRequired.
     try:
-        capa = CAPA.objects.get(id=capa_id)
+        capa = CAPA.unscoped.get(id=capa_id)
     except CAPA.DoesNotExist:
         logger.error(f"CAPA {capa_id} not found")
         return {'status': 'error', 'message': 'CAPA not found'}
