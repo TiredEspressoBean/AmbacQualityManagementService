@@ -188,7 +188,9 @@ class DemoShowcaseSeeder(BaseSeeder):
                 "process": process,
                 "workorder_status": WorkOrderStatus.IN_PROGRESS,
                 "priority": WorkOrderPriority.HIGH,
-                "expected_completion": (self.today + timedelta(days=5)).date(),
+                # Due before it can physically finish: the hot job we're already behind on.
+                # Surfaces the Gantt's late-order highlighting (red bars + ⏰ badge).
+                "expected_completion": (self.today + timedelta(days=1)).date(),
                 "quantity": 1,
                 "notes": "SHOWCASE demo work order - hero injector INJ-SHOWCASE-001.",
                 "expected_duration": None,

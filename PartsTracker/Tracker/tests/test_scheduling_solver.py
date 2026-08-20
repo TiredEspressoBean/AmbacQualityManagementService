@@ -67,6 +67,26 @@ class SolverTests(TenantContextMixin, TestCase):
     def _overlaps(a, b):
         return a.start_time < b.end_time and b.start_time < a.end_time
 
+    def test_batches_same_workorder_on_a_machine(self):
+        # Two work orders, three parts each, sharing one machine. With the job-change
+        # setup, interleaving the WOs costs setup time the solver avoids — so it keeps
+        # each WO's parts batched at each operation (minimal same-op WO switches).
+        self._wo("WB-A", 3)
+        self._wo("WB-B", 3)
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        tasks = list(
+            ScheduledTask.objects.filter(schedule=result, machine=self.machine)
+            .select_related('part__work_order').order_by('start_time')
+        )
+        # Count WO changes between adjacent SAME-operation tasks. Perfectly batched =
+        # one switch per operation (2 ops → 2); interleaving would be far more.
+        switches = sum(
+            1 for a, b in zip(tasks, tasks[1:])
+            if a.step_id == b.step_id and a.part.work_order_id != b.part.work_order_id
+        )
+        self.assertLessEqual(switches, 2, f"WOs not batched: {switches} same-op switches")
+
     def test_empty_tenant_returns_empty_optimal(self):
         result = solve_schedule(self.tenant)
         self.assertEqual(result.solver_status, SolverStatus.OPTIMAL)

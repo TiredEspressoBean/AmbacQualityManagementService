@@ -18368,6 +18368,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/ScheduledTask'
           description: ''
+  /api/ScheduledTasks/{id}/move/:
+    post:
+      operationId: api_ScheduledTasks_move_create
+      description: |-
+        Drag-to-reschedule (Layer 1). Validates the drop against the cheap local
+        constraints (horizon, release, route precedence); on success pins the task at
+        the new time and marks the schedule stale so the next Solve reflows the rest.
+        Returns 422 with a reason when the drop violates a local constraint.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Scheduled Task.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MoveRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MoveRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/ScheduledTasks/{id}/pin/:
     post:
       operationId: api_ScheduledTasks_pin_create
@@ -18406,6 +18453,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/ScheduledTask'
           description: ''
+  /api/ScheduledTasks/move_batch/:
+    post:
+      operationId: api_ScheduledTasks_move_batch_create
+      description: |-
+        Re-anchor a work-order batch (a WO's parts at one operation) to a new start;
+        every part shifts by the same delta, keeping the batch's spacing. Validated per
+        part; 422 (whole move refused) if any part breaks a local constraint.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveBatchRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MoveBatchRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MoveBatchRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/ScheduledTasks/pin_batch/:
+    post:
+      operationId: api_ScheduledTasks_pin_batch_create
+      description: Pin/unpin every part of a work-order batch; marks the schedule
+        stale.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinBatchRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PinBatchRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PinBatchRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/Schedules/current/:
     get:
       operationId: api_Schedules_current_retrieve
@@ -18425,8 +18541,53 @@ paths:
   /api/Schedules/dispatch/:
     post:
       operationId: api_Schedules_dispatch_create
-      description: Assign operators to the active schedule's attended tasks (Layer
-        2).
+      description: |-
+        Kick off Layer-2 operator dispatch in the background. Returns a task id; poll
+        `solve_status?task_id=` for the coverage summary.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/solve/:
+    post:
+      operationId: api_Schedules_solve_create
+      description: |-
+        Kick off the Layer-1 machine solve in the background. Returns a task id; poll
+        `solve_status?task_id=` for state, then re-read `current`.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/solve_status/:
+    get:
+      operationId: api_Schedules_solve_status_retrieve
+      description: |-
+        Poll a background solve/dispatch task. `state` is PENDING (queued/running),
+        SUCCESS, or FAILURE; on SUCCESS `result` carries the task's return value.
+      parameters:
+      - in: query
+        name: task_id
+        schema:
+          type: string
+        required: true
       tags:
       - api
       security:
@@ -18437,24 +18598,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DispatchResult'
+                type: object
+                additionalProperties: {}
           description: ''
-  /api/Schedules/solve/:
-    post:
-      operationId: api_Schedules_solve_create
-      description: Run the Layer-1 machine solver, superseding the previous active
-        schedule.
+  /api/Schedules/working_windows/:
+    get:
+      operationId: api_Schedules_working_windows_retrieve
+      description: |-
+        The tenant's working windows over the active schedule's horizon (shift
+        calendar expanded to datetimes). The Gantt shades the complement — nights,
+        weekends, non-shift hours. Empty list when no schedule or no shifts.
       tags:
       - api
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '201':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduleResult'
+                $ref: '#/components/schemas/WorkingWindows'
           description: ''
   /api/ShiftNotes/:
     get:
@@ -38491,23 +38655,6 @@ components:
       required:
       - component_type
       - core_type
-    DispatchResult:
-      type: object
-      properties:
-        schedule:
-          type: string
-          format: uuid
-        attended:
-          type: integer
-        covered:
-          type: integer
-        uncovered:
-          type: integer
-      required:
-      - attended
-      - covered
-      - schedule
-      - uncovered
     DispositionAffectedPart:
       type: object
       description: |-
@@ -42530,6 +42677,32 @@ components:
       description: |-
         * `saas` - saas
         * `dedicated` - dedicated
+    MoveBatchRequestRequest:
+      type: object
+      description: |-
+        Re-anchor a work-order batch: its earliest part moves to start_time, the rest
+        shift by the same delta.
+      properties:
+        task_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        start_time:
+          type: string
+          format: date-time
+      required:
+      - start_time
+      - task_ids
+    MoveRequestRequest:
+      type: object
+      description: 'Drag-to-reschedule: the new start; the task keeps its duration.'
+      properties:
+        start_time:
+          type: string
+          format: date-time
+      required:
+      - start_time
     NcrAgingResponse:
       type: object
       properties:
@@ -50083,6 +50256,20 @@ components:
       required:
       - name
       - provider_kind
+    PinBatchRequestRequest:
+      type: object
+      description: Pin/unpin every part of a batch.
+      properties:
+        task_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        is_pinned:
+          type: boolean
+      required:
+      - is_pinned
+      - task_ids
     PinRequestRequest:
       type: object
       properties:
@@ -53927,7 +54114,17 @@ components:
         objective_value_cents:
           type: integer
           readOnly: true
-          description: Objective (total cost) in cents.
+          description: Raw CP-SAT objective (lateness + makespan + pin-stickiness
+            penalties). NOT money despite the legacy 'cents' name — the pin weights
+            dominate it. Kept for solve-to-solve comparison; surface weighted_lateness
+            to planners instead.
+        weighted_lateness:
+          type: integer
+          readOnly: true
+          description: Priority-weighted lateness only (Σ part late-minutes × the
+            WO's priority penalty) — the objective's lateness term, isolated from
+            makespan and pin penalties. The 'how late, weighted by priority' signal
+            shown in the UI.
         relaxed_pin_count:
           type: integer
           readOnly: true
@@ -53959,6 +54156,7 @@ components:
       - solve_time_ms
       - solver_status
       - task_count
+      - weighted_lateness
     ScheduleSlot:
       type: object
       description: Production schedule slot serializer
@@ -54172,6 +54370,14 @@ components:
           type: string
           nullable: true
           readOnly: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          readOnly: true
+        is_late:
+          type: boolean
+          readOnly: true
         start_time:
           type: string
           format: date-time
@@ -54192,9 +54398,11 @@ components:
       - assigned_operator
       - core
       - core_number
+      - due_date
       - end_time
       - fence_zone
       - id
+      - is_late
       - is_pinned
       - machine
       - machine_name
@@ -60889,6 +61097,27 @@ components:
       - work_center_kind
       - work_order
       - work_order_erp_id
+    WorkingWindow:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+      required:
+      - end
+      - start
+    WorkingWindows:
+      type: object
+      properties:
+        windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingWindow'
+      required:
+      - windows
     _Escalation:
       type: object
       description: |-

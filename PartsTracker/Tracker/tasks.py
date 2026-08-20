@@ -72,6 +72,36 @@ def add_numbers(x, y):
     return result
 
 
+# --- Scheduling (CP-SAT) --------------------------------------------------
+# Solve and dispatch run in the background so they can take the minutes a large,
+# well-batched schedule needs to converge — the synchronous endpoints capped them
+# at 30s. Tasks take the tenant id (a primitive) and re-fetch, per the async
+# convention. Time limits are generous; the result backend (django-db) makes the
+# task state pollable.
+
+@shared_task(bind=True, soft_time_limit=600, time_limit=660)
+def run_solve_task(self, tenant_id: str, time_limit_seconds: int = 180):
+    """Run the Layer-1 machine solve for a tenant; returns the new ScheduleResult id."""
+    from Tracker.models.core import Tenant
+    from Tracker.services.scheduling.solver import solve_schedule
+    tenant = Tenant.objects.get(id=tenant_id)
+    result = solve_schedule(tenant, time_limit_seconds=time_limit_seconds)
+    return {'schedule_id': str(result.id), 'solver_status': result.solver_status}
+
+
+@shared_task(bind=True, soft_time_limit=600, time_limit=660)
+def run_dispatch_task(self, tenant_id: str, time_limit_seconds: int = 180):
+    """Run the Layer-2 operator dispatch for a tenant; returns the coverage summary."""
+    from Tracker.models.core import Tenant
+    from Tracker.services.scheduling.dispatch import dispatch_operators
+    tenant = Tenant.objects.get(id=tenant_id)
+    summary = dispatch_operators(tenant, time_limit_seconds=time_limit_seconds)
+    if summary is None:
+        return {'detail': 'No active schedule to dispatch.'}
+    return {'schedule': str(summary.schedule_id), 'attended': summary.attended,
+            'covered': summary.covered, 'uncovered': summary.uncovered}
+
+
 @shared_task(bind=True, base=RetryableEmbeddingTask)
 def embed_document_async(self, document_id):
     """

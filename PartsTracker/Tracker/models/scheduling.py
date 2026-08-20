@@ -217,6 +217,13 @@ class OptimizationConfig(SecureModel):
                   "WO being allowed to start (move/stage time). Assembly-convergence "
                   "peg — plan #9.",
     )
+    job_change_minutes = models.PositiveIntegerField(
+        default=10,
+        help_text="Setup minutes charged when a resource switches to a different work "
+                  "order on the SAME operation — keeps a job's parts batched together. "
+                  "Kept below operation-change setups by design: staying on the same "
+                  "operation matters more than staying on the same work order.",
+    )
 
     class Meta:
         verbose_name = 'Optimization Config'
@@ -249,7 +256,18 @@ class ScheduleResult(SecureModel):
     )
     solve_time_ms = models.PositiveIntegerField(default=0)
     objective_value_cents = models.BigIntegerField(
-        default=0, help_text="Objective (total cost) in cents.",
+        default=0,
+        help_text="Raw CP-SAT objective (lateness + makespan + pin-stickiness "
+                  "penalties). NOT money despite the legacy 'cents' name — the pin "
+                  "weights dominate it. Kept for solve-to-solve comparison; surface "
+                  "weighted_lateness to planners instead.",
+    )
+    weighted_lateness = models.BigIntegerField(
+        default=0,
+        help_text="Priority-weighted lateness only (Σ part late-minutes × the WO's "
+                  "priority penalty) — the objective's lateness term, isolated from "
+                  "makespan and pin penalties. The 'how late, weighted by priority' "
+                  "signal shown in the UI.",
     )
     relaxed_pin_count = models.PositiveIntegerField(
         default=0,

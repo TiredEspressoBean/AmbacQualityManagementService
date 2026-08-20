@@ -87,6 +87,17 @@ def _fence_zone(start_min, frozen_min, slushy_min):
     return FenceZone.LIQUID
 
 
+_JOB_CHANGE_DEFAULT = 10   # minutes — minor setup to switch work orders on the same op
+
+
+def _job_change_minutes(config) -> int:
+    """Setup charged when a resource switches to a different work order on the SAME
+    operation — keeps a job's parts batched. Below op-change setups by design (op
+    continuity outranks WO continuity)."""
+    v = getattr(config, 'job_change_minutes', None) if config else None
+    return int(v) if v is not None else _JOB_CHANGE_DEFAULT
+
+
 def _penalty_cents_per_min(config, priority: int) -> int:
     if config is not None:
         dollars_per_day = getattr(config, _PENALTY_FIELD.get(priority, 'late_penalty_normal'))
@@ -147,14 +158,24 @@ def _window_gaps(windows, horizon_start, H) -> list[tuple]:
     return gaps
 
 
-def _transition(changeover, equipment_id, from_step, to_step, to_setup) -> int:
-    """Minutes between consecutive tasks on a machine: 0 for same step (piece after
-    piece), else the WorkCenterChangeover value, falling back to the incoming step's
-    setup when no specific changeover is configured."""
+def _transition(changeover, equipment_id, from_step, to_step, to_setup,
+                from_wo=None, to_wo=None, job_change=0) -> int:
+    """Minutes between consecutive tasks on a machine — the setup the solver pays to
+    switch, so it prefers to keep a resource on the same work:
+    - same step AND same work order → 0 (piece after piece within one job's batch);
+    - same step, DIFFERENT work order → `job_change` (a job change on the same
+      operation: paperwork, re-fixturing, first-off — keeps a WO's parts together);
+    - different step → the WorkCenterChangeover value, or the incoming step's setup
+      as a fallback (an operation change).
+    These costs push switching later, so minimizing makespan/lateness batches work."""
     if from_step == to_step:
-        return 0
+        return 0 if from_wo == to_wo else job_change
+    # Operation change. Keeping the same OPERATION matters more than keeping the same
+    # work order, so an op change never costs less than a job change (floor at
+    # job_change); a configured changeover/setup above that is used as-is.
     val = changeover.get((equipment_id, from_step, to_step))
-    return int(round(val)) if val is not None else to_setup
+    op_change = int(round(val)) if val is not None else to_setup
+    return max(op_change, job_change)
 
 
 def _map_status(cp_status) -> str:
@@ -206,6 +227,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         frozen_min = int((horizon.frozen_end - horizon.start).total_seconds() // 60)
         slushy_min = int((horizon.slushy_end - horizon.start).total_seconds() // 60)
         staging_buffer = config.staging_buffer_minutes if config else 0
+        job_change_min = _job_change_minutes(config)   # WO-change setup on the same op
 
         # Which steps need an unconditional occupancy interval (gauge and/or fixture).
         fixture_by_step: dict = defaultdict(list)
@@ -223,10 +245,11 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
 
         tasks: list[dict] = []
         machine_intervals: dict = defaultdict(list)
-        machine_tasks: dict = defaultdict(list)   # equip_id -> [(present, start, end, step_id, setup)]
+        machine_tasks: dict = defaultdict(list)   # equip_id -> [(present, start, end, step_id, setup, wo_id)]
         gauge_intervals: dict = defaultdict(list)
         fixture_intervals: dict = defaultdict(list)
         lateness_cost = []
+        lateness_terms = []   # (lateness_var, penalty) — for the isolated lateness total
         hints = []   # (start_var, minute) warm-start hints from the previous schedule
         pin_penalty = []   # soft-pin objective terms (deviation from the frozen plan)
         pins = []          # (start_var, prev_start, prev_machine_id, choices) for the moved report
@@ -267,7 +290,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                             lit = model.NewBoolVar(f"m_{key}_{a.equipment_id}")
                             opt = model.NewOptionalFixedSizeIntervalVar(start, dur, lit, f"i_{key}_{a.equipment_id}")
                             machine_intervals[a.equipment_id].append(opt)
-                            machine_tasks[a.equipment_id].append((lit, start, end, step_id, setup_int))
+                            machine_tasks[a.equipment_id].append(
+                                (lit, start, end, step_id, setup_int, wo.wo_id))
                             model.Add(end == start + dur).OnlyEnforceIf(lit)
                             choices.append((lit, a.equipment_id))
                         model.AddExactlyOne([lit for lit, _ in choices])
@@ -338,6 +362,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                     lateness = model.NewIntVar(0, 2 * H, f"late_{unit_id}")
                     model.Add(lateness >= part_done - due_minutes)
                     lateness_cost.append(lateness * penalty)
+                    lateness_terms.append((lateness, penalty))  # for the isolated total
 
         # Cross-WO assembly-convergence pegs (plan #9): a component WO must finish
         # (+ staging buffer) before its parent assembly WO may start. Both WOs are in
@@ -390,11 +415,13 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
         # time overlap; this adds the transition gap on top.
         for equipment_id, mtasks in machine_tasks.items():
             for i in range(len(mtasks)):
-                pi, si, ei, stepi, setupi = mtasks[i]
+                pi, si, ei, stepi, setupi, woi = mtasks[i]
                 for j in range(i + 1, len(mtasks)):
-                    pj, sj, ej, stepj, setupj = mtasks[j]
-                    t_ij = _transition(changeover, equipment_id, stepi, stepj, setupj)
-                    t_ji = _transition(changeover, equipment_id, stepj, stepi, setupi)
+                    pj, sj, ej, stepj, setupj, woj = mtasks[j]
+                    t_ij = _transition(changeover, equipment_id, stepi, stepj, setupj,
+                                       woi, woj, job_change_min)
+                    t_ji = _transition(changeover, equipment_id, stepj, stepi, setupi,
+                                       woj, woi, job_change_min)
                     if not t_ij and not t_ji:
                         continue
                     i_before_j = model.NewBoolVar(f"seq_{equipment_id}_{i}_{j}")
@@ -436,6 +463,13 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
                 if moved:
                     relaxed += 1
 
+        # The lateness term on its own — priority-weighted late-minutes, isolated from
+        # the makespan + pin-stickiness terms that dominate the raw objective.
+        weighted_lateness = (
+            sum(solver.Value(var) * penalty for var, penalty in lateness_terms)
+            if (tasks and solved) else 0
+        )
+
         ScheduleResult.objects.filter(tenant=tenant, is_active=True).update(
             is_active=False, is_stale=True)
 
@@ -445,6 +479,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300):
             solver_status=_map_status(cp_status),
             solve_time_ms=int(solver.WallTime() * 1000) if tasks else 0,
             objective_value_cents=int(solver.ObjectiveValue()) if (tasks and solved) else 0,
+            weighted_lateness=weighted_lateness,
             relaxed_pin_count=relaxed,
             is_active=True,
         )

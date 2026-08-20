@@ -412,6 +412,17 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
     return result
 
 
+def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:
+    """Tenant-wide working windows (merged, sorted) over [start, end] — the active
+    shift calendar expanded to datetimes. The complement is non-working time
+    (nights/weekends), which the Gantt shades. Empty when no shifts are configured
+    (the solver treats that as always-available; the UI then shades nothing)."""
+    from Tracker.models import Shift
+
+    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    return _expand_shifts(shifts, start, end)
+
+
 def _expand_shifts(shifts, start: datetime, end: datetime) -> list[tuple]:
     """Expand recurring shifts into concrete [start, end] datetime windows over
     [start, end], clipped to that range. Overnight shifts (end_time <= start_time)
