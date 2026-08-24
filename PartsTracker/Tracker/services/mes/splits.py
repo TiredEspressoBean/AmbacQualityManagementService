@@ -98,6 +98,13 @@ def split_part_from_lot(
         # blocks here, then sees split_from_lot set and returns already_split.
         part = Parts.objects.select_for_update().get(pk=part.id)
         if part.split_from_lot:
+            # SCRAP escalation: a part already split (e.g. quarantined) can still be
+            # scrapped. Without this, the idempotency guard would leave it non-terminal
+            # (schedulable/rejoinable) despite the scrap request.
+            if reason == PartSplitReason.SCRAP and part.part_status != PartsStatus.SCRAPPED:
+                part.part_status = PartsStatus.SCRAPPED
+                part.lot_split_reason = PartSplitReason.SCRAP
+                part.save(update_fields=['part_status', 'lot_split_reason'])
             return SplitResult(
                 part_id=str(part.id),
                 reason=part.lot_split_reason or reason,
@@ -116,6 +123,13 @@ def split_part_from_lot(
             # (status is otherwise driven by the disposition cascade), so a scrap-split
             # made directly through this service must set it here to stay consistent.
             part.part_status = PartsStatus.SCRAPPED
+            update_fields.append('part_status')
+        elif reason == PartSplitReason.QUARANTINE:
+            # A part split off the cohort must land in a DEFINED held state, never drift
+            # down the route solo. Quarantine holds it: QUARANTINED is excluded from
+            # scheduling and preserved through transitions (HELD_PART_STATUSES), matching
+            # what the disposition cascade sets — so the manual split path is consistent.
+            part.part_status = PartsStatus.QUARANTINED
             update_fields.append('part_status')
 
         moved_to_step_id: str | None = None
@@ -189,8 +203,15 @@ def rejoin_part_to_lot(
     part: "Parts",
     user: "User",
     notes: str = "",
+    cascade: bool = True,
 ) -> RejoinResult:
     """Re-converge a previously-split part back into its WorkOrder cohort's flow.
+
+    `cascade` (default True) re-runs `try_advance_lot` for the reunited cohort. Callers
+    already inside an advancement transaction (the rework-exit auto-rejoin) MUST pass
+    `cascade=False`: cascading there would run `try_advance_lot` while the outer
+    transaction still holds this step's row locks and then grab the next step's — a
+    cross-step lock order that can deadlock a rework loop under concurrency.
 
     The inverse of `split_part_from_lot`, for a reworked/quarantine-cleared part
     that has caught back up to a step where its siblings sit. Genealogy-preserving:
@@ -216,6 +237,19 @@ def rejoin_part_to_lot(
         part = Parts.objects.select_for_update().get(pk=part.id)
         if not part.split_from_lot:
             # Not split (or already rejoined) — nothing to do.
+            return RejoinResult(part_id=str(part.id), rejoined=False,
+                                prior_reason=part.lot_split_reason or None)
+
+        # A truly-terminal part cannot rejoin. A SCRAP lot-split keeps its step, so the
+        # sibling check below would otherwise pass and stamp rejoined_at on a scrapped
+        # record. NB: QUARANTINED is a *clearable* hold, not terminal — a QA-cleared part
+        # may still rejoin — so it is deliberately excluded here.
+        _terminal_caller = {
+            PartsStatus.SCRAPPED, PartsStatus.CANCELLED, PartsStatus.SHIPPED,
+            PartsStatus.IN_STOCK, PartsStatus.AWAITING_PICKUP, PartsStatus.COMPLETED,
+            PartsStatus.CORE_BANKED,
+        }
+        if part.part_status in {s.value for s in _terminal_caller}:
             return RejoinResult(part_id=str(part.id), rejoined=False,
                                 prior_reason=part.lot_split_reason or None)
 
@@ -253,7 +287,9 @@ def rejoin_part_to_lot(
 
         # Cohort grew — re-evaluate advancement for the reunited lot in the same
         # request so the reunion (and any now-unblocked advance) is reflected inline.
-        if part.work_order_id and part.step_id:
+        # Skipped when cascade=False (nested inside advance_part_step) to avoid the
+        # cross-step lock-ordering deadlock described above.
+        if cascade and part.work_order_id and part.step_id:
             from Tracker.services.mes.advancement import try_advance_lot
             try_advance_lot(
                 work_order_id=str(part.work_order_id),

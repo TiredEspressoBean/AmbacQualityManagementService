@@ -110,7 +110,9 @@ class WorkOrderSplitTests(TestCase):
         self.assertFalse(p.split_from_lot, "parent-cohort split flag cleared in the child")
         self.assertEqual(p.lot_split_reason, 'quarantine', "genealogy retained")
 
-    def test_undo_split_returns_parts_clears_flag_and_restores_step(self):
+    def test_undo_split_returns_untouched_parts_unstarted(self):
+        # An untouched REWORK-split part (never worked in the child routing) is reversible;
+        # it returns to the parent unstarted (step=None), not fabricated onto some step.
         wo, parts = self._wo("WO-U", 3, status=PartsStatus.IN_PROGRESS, step=self.s2)
         child = split_work_order(
             wo, WorkOrderSplitReason.REWORK, self.user, new_erp_id="WO-U-C",
@@ -120,6 +122,23 @@ class WorkOrderSplitTests(TestCase):
         p = Parts.objects.get(id=parts[0].id)
         self.assertEqual(p.work_order_id, wo.id, "part returned to parent")
         self.assertFalse(p.split_from_lot)
-        self.assertEqual(p.step_id, self.s1.id, "stranded (step=None) part restored to first step")
+        self.assertIsNone(p.step_id, "an untouched REWORK-split part returns unstarted")
         child.refresh_from_db()
         self.assertTrue(child.archived)
+
+    def test_undo_split_refuses_a_part_worked_in_child_routing(self):
+        # MES rule: once a split-off part has been worked in the child's (different)
+        # routing, its step is foreign to the parent process — undo is refused rather
+        # than fabricating a position.
+        wo, parts = self._wo("WO-UW", 3, status=PartsStatus.IN_PROGRESS, step=self.s2)
+        child = split_work_order(
+            wo, WorkOrderSplitReason.REWORK, self.user, new_erp_id="WO-UW-C",
+            part_ids=[str(parts[0].id)], target_process_id=str(self.rework_proc.id))
+        # Simulate work in the child routing: the part now sits on a rework-process step.
+        p = Parts.objects.get(id=parts[0].id)
+        p.step = self.rs1
+        p.save(update_fields=['step'])
+        with self.assertRaises(ValueError):
+            undo_split(child, self.user)
+        p.refresh_from_db()
+        self.assertEqual(p.work_order_id, child.id, "refused undo leaves the part on the child WO")

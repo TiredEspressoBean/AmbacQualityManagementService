@@ -611,3 +611,56 @@ class RejoinCohortTests(AdvancementEngineBase):
         target.refresh_from_db()
         self.assertEqual(target.part_status, PartsStatus.SCRAPPED, "scrap split is terminal")
         self.assertTrue(target.split_from_lot)
+
+    def test_scrapped_part_cannot_rejoin(self):
+        # #5: a SCRAP lot-split keeps its step, so siblings are present — but a terminal
+        # (SCRAPPED) part must NOT rejoin (would stamp rejoined_at on a scrapped record).
+        from Tracker.models import PartSplitReason, PartsStatus
+        from Tracker.services.mes.splits import split_part_from_lot, rejoin_part_to_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=2, substeps_per_step=1, wo_erp_id="WO-SCRAP-REJOIN",
+        )
+        target = lot['parts'][0]
+        split_part_from_lot(part=target, reason=PartSplitReason.SCRAP.value, user=self.user)
+        target.refresh_from_db()
+        self.assertEqual(target.part_status, PartsStatus.SCRAPPED)
+        res = rejoin_part_to_lot(part=target, user=self.user)
+        self.assertFalse(res.rejoined, "a scrapped part cannot rejoin even with siblings present")
+        target.refresh_from_db()
+        self.assertTrue(target.split_from_lot)
+        self.assertIsNone(target.rejoined_at)
+
+    def test_scrap_escalates_an_already_split_part(self):
+        # #9: a part already split (quarantine) can still be scrapped — the idempotency
+        # guard must not leave it non-terminal.
+        from Tracker.models import PartSplitReason, PartsStatus
+        from Tracker.services.mes.splits import split_part_from_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=2, substeps_per_step=1, wo_erp_id="WO-SCRAP-ESC",
+        )
+        target = lot['parts'][0]
+        split_part_from_lot(part=target, reason=PartSplitReason.QUARANTINE.value, user=self.user)
+        target.refresh_from_db()
+        self.assertTrue(target.split_from_lot)
+        self.assertNotEqual(target.part_status, PartsStatus.SCRAPPED)
+        res = split_part_from_lot(part=target, reason=PartSplitReason.SCRAP.value, user=self.user)
+        self.assertTrue(res.already_split)
+        target.refresh_from_db()
+        self.assertEqual(target.part_status, PartsStatus.SCRAPPED, "scrap escalates an already-split part")
+
+    def test_quarantine_split_sets_held_state(self):
+        # #6: a quarantine lot-split must land the part in a DEFINED held state
+        # (QUARANTINED), not leave it drifting solo as IN_PROGRESS.
+        from Tracker.models import PartSplitReason, PartsStatus
+        from Tracker.services.mes.splits import split_part_from_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=2, substeps_per_step=1, wo_erp_id="WO-QSPLIT",
+        )
+        target = lot['parts'][0]
+        split_part_from_lot(part=target, reason=PartSplitReason.QUARANTINE.value, user=self.user)
+        target.refresh_from_db()
+        self.assertEqual(target.part_status, PartsStatus.QUARANTINED)
+        self.assertTrue(target.split_from_lot)

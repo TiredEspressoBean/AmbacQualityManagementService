@@ -2694,12 +2694,13 @@ class WorkOrder(SecureModel):
     )
     lockstep_batch = models.BooleanField(
         null=True, blank=True,
-        help_text="Lot cohesion for this WO's cohort. When on, the whole batch must "
-                  "move and start together: the scheduler holds the entire WO out of the "
-                  "plan while any member is split off in rework, so the lot never starts "
-                  "without all its parts and reconverges (Parts.rejoined_at) first. Off "
-                  "lets the cohort proceed while a straggler reworks solo. Null inherits "
-                  "the tenant's OptimizationConfig.default_lockstep_batch.",
+        help_text="Lot cohesion intent for this WO's cohort. NOTE: currently informational "
+                  "only — the scheduler always schedules co-located cohort parts as one "
+                  "cohesive lot (one occupancy, one start) and carves a rework straggler "
+                  "into its own lot so the cohort keeps progressing; ON and OFF behave "
+                  "identically today. The OFF meaning (let a large lot break into transfer "
+                  "batches to pipeline) is reserved for the future transfer-batching work. "
+                  "Null inherits OptimizationConfig.default_lockstep_batch.",
     )
     """Per-WO lot cohesion; null = inherit the tenant default. New-manufacturing lots
     default (via the tenant config) to lock-step so a batch stays together."""

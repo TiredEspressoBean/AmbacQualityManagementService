@@ -20564,6 +20564,18 @@ export interface components {
             sampling_context?: unknown;
             archived?: boolean;
         };
+        PartsSplitFromLotInputRequest: {
+            reason: components["schemas"]["ReasonEnum"];
+            /** Format: uuid */
+            rework_target_step_id?: string | null;
+            notes?: string;
+        };
+        PartsSplitFromLotResponse: {
+            part_id: string;
+            reason: string;
+            moved_to_step_id: string | null;
+            already_split: boolean;
+        };
         /**
          * @description * `PENDING` - Pending
          *     * `IN_PROGRESS` - In Progress
@@ -24160,6 +24172,13 @@ export interface components {
             work_order: string | null;
             status: string;
         };
+        /**
+         * @description * `quarantine` - Quarantine
+         *     * `rework` - Rework
+         *     * `scrap` - Scrap
+         * @enum {string}
+         */
+        ReasonEnum: "quarantine" | "rework" | "scrap";
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
             /** Format: uuid */
@@ -38957,9 +38976,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PartsBulkSetStatusInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartsBulkSetStatusInputRequest"];
-                "multipart/form-data": components["schemas"]["PartsBulkSetStatusInputRequest"];
+                "application/json": components["schemas"]["PartsSplitFromLotInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartsSplitFromLotInputRequest"];
+                "multipart/form-data": components["schemas"]["PartsSplitFromLotInputRequest"];
             };
         };
         responses: {
@@ -38968,7 +38987,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BulkSetStatusResponse"];
+                    "application/json": components["schemas"]["PartsSplitFromLotResponse"];
                 };
             };
         };
@@ -39094,9 +39113,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PartsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartsRequest"];
-                "multipart/form-data": components["schemas"]["PartsRequest"];
+                "application/json": components["schemas"]["PartsBulkSetStatusInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartsBulkSetStatusInputRequest"];
+                "multipart/form-data": components["schemas"]["PartsBulkSetStatusInputRequest"];
             };
         };
         responses: {
@@ -39105,7 +39124,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Parts"];
+                    "application/json": components["schemas"]["BulkSetStatusResponse"];
                 };
             };
         };

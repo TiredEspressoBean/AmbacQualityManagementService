@@ -386,7 +386,13 @@ def advance_part_step(
 
     if leaving_rework_step:
         _close_open_rework_disposition(part, operator)
-        _attempt_lot_rejoin(part, operator)
+
+    # Multi-shot re-convergence: a split part rejoins its cohort as soon as it advances
+    # into a step where its siblings now sit — attempted on EVERY advance, not only at
+    # rework-exit. With the lock-step hold removed the cohort races ahead, so the exact
+    # rework-exit step rarely still holds the cohort; retrying on each advance lets the
+    # straggler catch up and reconverge. No-op for non-split parts.
+    _attempt_lot_rejoin(part, operator)
 
     return "escalated" if was_escalated else "advanced"
 
@@ -431,7 +437,9 @@ def _attempt_lot_rejoin(part, operator) -> None:
     from django.core.exceptions import ValidationError
     from Tracker.services.mes.splits import rejoin_part_to_lot
     try:
-        rejoin_part_to_lot(part=part, user=operator)
+        # cascade=False: we're inside advance_part_step's advancement flow already;
+        # re-running try_advance_lot here would grab cross-step locks (deadlock risk).
+        rejoin_part_to_lot(part=part, user=operator, cascade=False)
     except ValidationError:
         pass  # no cohort siblings at this step yet — reconverge later / at FG
     except Exception:

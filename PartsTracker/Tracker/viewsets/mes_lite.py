@@ -20,7 +20,7 @@ from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 from Tracker.filters import PartFilter, OrderFilter
 from Tracker.models import (
     # MES Lite models
-    Orders, Parts, PartsStatus, WorkOrder, WorkOrderStatus, Steps, PartTypes, Processes,
+    Orders, Parts, PartsStatus, PartSplitReason, WorkOrder, WorkOrderStatus, Steps, PartTypes, Processes,
     StepExecution, ProcessStatus, OutsideProcessShipment,
     # MES Standard models
     Equipments, EquipmentType,
@@ -821,16 +821,21 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
 
     @extend_schema(
         request=inline_serializer(
-            name="PartsBulkSetStatusInput",
+            name="PartsSplitFromLotInput",
             fields={
-                "ids": serializers.ListField(child=serializers.UUIDField()),
-                "status": serializers.ChoiceField(choices=PartsStatus.choices),
-                "reason": serializers.CharField(required=False, allow_blank=True),
+                "reason": serializers.ChoiceField(choices=PartSplitReason.choices),
+                "rework_target_step_id": serializers.UUIDField(required=False, allow_null=True),
+                "notes": serializers.CharField(required=False, allow_blank=True),
             },
         ),
         responses={200: inline_serializer(
-            name="BulkSetStatusResponse",
-            fields={"results": serializers.ListField(child=serializers.DictField())},
+            name="PartsSplitFromLotResponse",
+            fields={
+                "part_id": serializers.CharField(),
+                "reason": serializers.CharField(),
+                "moved_to_step_id": serializers.CharField(allow_null=True),
+                "already_split": serializers.BooleanField(),
+            },
         )},
     )
     @action(detail=True, methods=["post"], url_path="split_from_lot")
@@ -844,6 +849,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             { "reason": "rework", "rework_target_step_id": "<uuid?>",
               "notes": "<optional>" }
         """
+        from django.core.exceptions import ValidationError
         from Tracker.services.mes.splits import split_part_from_lot
         from Tracker.models import Steps
 
@@ -869,6 +875,9 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 rework_target_step=target_step,
                 notes=request.data.get("notes") or "",
             )
+        except ValidationError as e:
+            msg = "; ".join(e.messages) if getattr(e, "messages", None) else str(e)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -924,6 +933,20 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "prior_reason": result.prior_reason,
         })
 
+    @extend_schema(
+        request=inline_serializer(
+            name="PartsBulkSetStatusInput",
+            fields={
+                "ids": serializers.ListField(child=serializers.UUIDField()),
+                "status": serializers.ChoiceField(choices=PartsStatus.choices),
+                "reason": serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={200: inline_serializer(
+            name="BulkSetStatusResponse",
+            fields={"results": serializers.ListField(child=serializers.DictField())},
+        )},
+    )
     @action(detail=False, methods=["post"], url_path="bulk_set_status")
     def bulk_set_status(self, request):
         from Tracker.services.mes.parts import bulk_set_status as svc

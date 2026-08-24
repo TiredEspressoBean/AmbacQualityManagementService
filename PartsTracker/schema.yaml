@@ -14167,13 +14167,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+              $ref: '#/components/schemas/PartsSplitFromLotInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+              $ref: '#/components/schemas/PartsSplitFromLotInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+              $ref: '#/components/schemas/PartsSplitFromLotInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -14183,7 +14183,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BulkSetStatusResponse'
+                $ref: '#/components/schemas/PartsSplitFromLotResponse'
           description: ''
   /api/Parts/{id}/traveler/:
     get:
@@ -14373,13 +14373,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartsRequest'
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartsRequest'
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartsRequest'
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -14389,7 +14389,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Parts'
+                $ref: '#/components/schemas/BulkSetStatusResponse'
           description: ''
   /api/Parts/export/{export_format}/:
     get:
@@ -46287,6 +46287,36 @@ components:
       required:
       - ERP_id
       - part_type
+    PartsSplitFromLotInputRequest:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/ReasonEnum'
+        rework_target_step_id:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+      required:
+      - reason
+    PartsSplitFromLotResponse:
+      type: object
+      properties:
+        part_id:
+          type: string
+        reason:
+          type: string
+        moved_to_step_id:
+          type: string
+          nullable: true
+        already_split:
+          type: boolean
+      required:
+      - already_split
+      - moved_to_step_id
+      - part_id
+      - reason
     PartsStatusEnum:
       enum:
       - PENDING
@@ -52686,6 +52716,16 @@ components:
       - id
       - status
       - work_order
+    ReasonEnum:
+      enum:
+      - quarantine
+      - rework
+      - scrap
+      type: string
+      description: |-
+        * `quarantine` - Quarantine
+        * `rework` - Rework
+        * `scrap` - Scrap
     ReceivingCharacteristic:
       type: object
       description: A measurement definition to capture during receiving inspection.

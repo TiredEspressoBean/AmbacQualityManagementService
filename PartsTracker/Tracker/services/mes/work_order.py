@@ -480,12 +480,33 @@ def undo_split(child_wo: WorkOrder, actor) -> WorkOrder:
         raise ValueError("Parent work order not found")
 
     with transaction.atomic():
+        from Tracker.models import ProcessStep
         now = timezone.now()
-        # Per-instance save() so django-auditlog logs each part's return to the parent
-        # (bulk .update() would bypass the signal and leave the move untraced).
         child_parts = list(Parts.unscoped.filter(
             tenant_id=child_wo.tenant_id, work_order=child_wo))
-        first_step_id = None  # resolved lazily to restore REWORK-split parts (step=None)
+
+        # MES rule: a split is reversible only while the split-off units are UNTOUCHED.
+        # A REWORK split reroutes parts onto a DIFFERENT process; once a part has been
+        # worked there, its current step is foreign to the parent's routing and can't be
+        # cleanly restored (cross-routing step identity doesn't transfer). Refuse the undo
+        # rather than fabricate a position — the shop should complete the rework and rejoin,
+        # or disposition those parts. (QUANTITY/OPERATION splits keep parent-process steps,
+        # and an untouched REWORK part is step=None → returns as unstarted; both pass.)
+        parent_step_ids = set(
+            ProcessStep.objects.filter(process=parent_wo.process)
+            .values_list('step_id', flat=True)
+        )
+        worked = [p for p in child_parts
+                  if p.step_id is not None and p.step_id not in parent_step_ids]
+        if worked:
+            raise ValueError(
+                f"Cannot undo split: {len(worked)} part(s) have been worked in the child "
+                f"work order's routing (e.g. {worked[0].ERP_id}). Complete the rework and "
+                f"rejoin, or disposition those parts, instead of undoing the split."
+            )
+
+        # Per-instance save() so django-auditlog logs each part's return to the parent
+        # (bulk .update() would bypass the signal and leave the move untraced).
         for p in child_parts:
             p.work_order = parent_wo
             p.updated_at = now
@@ -493,17 +514,6 @@ def undo_split(child_wo: WorkOrder, actor) -> WorkOrder:
             if p.split_from_lot:
                 p.split_from_lot = False   # back in the parent cohort
                 fields.append('split_from_lot')
-            if p.step_id is None:
-                # A REWORK split nulled the step; restore to the parent process's first
-                # step so the returned part isn't stranded unschedulable/undispositioned.
-                if first_step_id is None:
-                    from Tracker.models import ProcessStep
-                    ps = (ProcessStep.objects.filter(process=parent_wo.process)
-                          .order_by('order').first())
-                    first_step_id = ps.step_id if ps else None
-                if first_step_id is not None:
-                    p.step_id = first_step_id
-                    fields.append('step')
             p.save(update_fields=fields)
 
         child_wo.archived = True

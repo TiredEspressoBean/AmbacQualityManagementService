@@ -8662,6 +8662,20 @@ export type PartsRequest = {
   sampling_context?: unknown | undefined;
   archived?: boolean | undefined;
 };
+export type PartsSplitFromLotInputRequest = {
+  reason: ReasonEnum;
+  rework_target_step_id?: (string | null) | undefined;
+  notes?: string | undefined;
+};
+export type ReasonEnum =
+  /**
+   * * `quarantine` - Quarantine
+   * `rework` - Rework
+   * `scrap` - Scrap
+   *
+   * @enum quarantine, rework, scrap
+   */
+  "quarantine" | "rework" | "scrap";
 export type PatchedApprovalRequestRequest = Partial<{
   content_type: number | null;
   /**
@@ -16060,13 +16074,17 @@ const ReworkStatusResponse = z.object({
 const api_Parts_rollback_create_Body = z
   .object({ reason: z.string(), override_id: z.string().uuid() })
   .partial();
-const PartsBulkSetStatusInputRequest = z.object({
-  ids: z.array(z.string().uuid()),
-  status: PartsStatusEnum,
-  reason: z.string().optional(),
+const ReasonEnum = z.enum(["quarantine", "rework", "scrap"]);
+const PartsSplitFromLotInputRequest = z.object({
+  reason: ReasonEnum,
+  rework_target_step_id: z.string().uuid().nullish(),
+  notes: z.string().optional(),
 });
-const BulkSetStatusResponse = z.object({
-  results: z.array(z.object({}).partial().passthrough()),
+const PartsSplitFromLotResponse = z.object({
+  part_id: z.string(),
+  reason: z.string(),
+  moved_to_step_id: z.string().nullable(),
+  already_split: z.boolean(),
 });
 const TravelerStepStatusEnum = z.enum([
   "COMPLETED",
@@ -16194,6 +16212,14 @@ const PartsBulkRollbackInputRequest = z.object({
   override_id: z.string().uuid().nullish(),
 });
 const BulkRollbackResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const PartsBulkSetStatusInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+  status: PartsStatusEnum,
+  reason: z.string().optional(),
+});
+const BulkSetStatusResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
 });
 const PartSelect = z.object({
@@ -20773,8 +20799,9 @@ export const schemas = {
   ResolveDecisionInputRequest,
   ReworkStatusResponse,
   api_Parts_rollback_create_Body,
-  PartsBulkSetStatusInputRequest,
-  BulkSetStatusResponse,
+  ReasonEnum,
+  PartsSplitFromLotInputRequest,
+  PartsSplitFromLotResponse,
   TravelerStepStatusEnum,
   TravelerOperator,
   TravelerApproval,
@@ -20795,6 +20822,8 @@ export const schemas = {
   BulkResultResponse,
   PartsBulkRollbackInputRequest,
   BulkRollbackResponse,
+  PartsBulkSetStatusInputRequest,
+  BulkSetStatusResponse,
   PartSelect,
   PaginatedPartSelectList,
   ProcessStatusEnum,
@@ -32371,7 +32400,7 @@ Quarantine, rework, and scrap all flow through this endpoint
       {
         name: "body",
         type: "Body",
-        schema: PartsBulkSetStatusInputRequest,
+        schema: PartsSplitFromLotInputRequest,
       },
       {
         name: "id",
@@ -32384,7 +32413,7 @@ Quarantine, rework, and scrap all flow through this endpoint
         schema: z.array(z.string()).optional(),
       },
     ],
-    response: BulkSetStatusResponse,
+    response: PartsSplitFromLotResponse,
   },
   {
     method: "get",
@@ -32493,7 +32522,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: PartsRequest,
+        schema: PartsBulkSetStatusInputRequest,
       },
       {
         name: "status__in",
@@ -32501,7 +32530,7 @@ Import/Export endpoints (auto-configured from model):
         schema: z.array(z.string()).optional(),
       },
     ],
-    response: Parts,
+    response: BulkSetStatusResponse,
   },
   {
     method: "get",

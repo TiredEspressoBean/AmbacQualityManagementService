@@ -254,12 +254,13 @@ class OptimizationConfig(SecureModel):
     )
     default_lockstep_batch = models.BooleanField(
         default=True,
-        help_text="Default lot cohesion for work orders that don't set their own "
-                  "(`WorkOrder.lockstep_batch`): when on, a WO's cohort must move as one "
-                  "batch — the solver holds the whole WO (won't start the batch) while "
-                  "any member is split off in rework, so the lot always starts together "
-                  "and reconverges (see Parts.rejoined_at) before advancing. Off lets the "
-                  "cohort proceed while a straggler reworks independently.",
+        help_text="Default lot-cohesion intent for work orders that don't set their own "
+                  "(`WorkOrder.lockstep_batch`). NOTE: currently informational only — the "
+                  "solver always schedules co-located cohort parts as one cohesive lot and "
+                  "carves a rework straggler into its own lot so the cohort keeps "
+                  "progressing (it does NOT hold the WO); ON and OFF behave identically "
+                  "today. The OFF meaning (allow a large lot to break into transfer batches "
+                  "to pipeline) is reserved for the future transfer-batching work.",
     )
 
     class Meta:
