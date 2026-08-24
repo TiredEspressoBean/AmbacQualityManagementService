@@ -50,6 +50,10 @@ export type MockPart = {
     rework_count: number;
     requires_sampling: boolean;
     traveler: MockStepVisit[];
+    /** Lot-split genealogy (PART grain). True while pulled off the cohort for
+     *  rework/quarantine; drives the "Rejoin lot" action. */
+    split_from_lot?: boolean;
+    lot_split_reason?: string | null;
 };
 
 export type MockWorkOrderStatus =

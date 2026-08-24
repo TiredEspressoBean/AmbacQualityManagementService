@@ -94,7 +94,7 @@ import { useUpdatePart } from "@/hooks/parts";
 import { useBulkIncrementParts } from "@/hooks/parts";
 import { useBulkRollbackParts } from "@/hooks/parts";
 import { useBulkSetStatusParts } from "@/hooks/parts";
-import { useSplitPartFromLot } from "@/hooks/parts";
+import { useSplitPartFromLot, useRejoinPartToLot } from "@/hooks/parts";
 import type { PartSplitReason } from "@/hooks/parts";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { PendingDecisionsPanel } from "@/components/dwi/PendingDecisionsPanel";
@@ -178,6 +178,8 @@ function adaptPart(p: PartRow): MockPart {
         rework_count: p.total_rework_count,
         requires_sampling: p.requires_sampling,
         traveler: [], // fetched lazily via usePartTraveler on row expand
+        split_from_lot: p.split_from_lot ?? false,
+        lot_split_reason: p.lot_split_reason ?? null,
     };
 }
 
@@ -797,7 +799,8 @@ type Action =
     | { kind: "move"; stepId: string }
     | { kind: "status"; status: MockPartStatus }
     | { kind: "scrap"; reason: string }
-    | { kind: "split"; reason: PartSplitReason; reworkTargetStepId?: string };
+    | { kind: "split"; reason: PartSplitReason; reworkTargetStepId?: string }
+    | { kind: "rejoin" };
 
 /** Group names that grant the privileged "Force advance" emergency action.
  *  Default operator flow is event-driven; this button only appears for
@@ -1107,6 +1110,7 @@ export function WorkOrderControlPage() {
     const bulkRollbackMutation = useBulkRollbackParts();
     const bulkSetStatusMutation = useBulkSetStatusParts();
     const splitPart = useSplitPartFromLot();
+    const rejoinPart = useRejoinPartToLot();
     const { data: authUser } = useAuthUser();
     const canForceAdvance = userCanForceAdvance(authUser);
     // Rework-split targets: real, tenant-scoped remanufacturing processes
@@ -1144,8 +1148,7 @@ export function WorkOrderControlPage() {
             });
         } else if (action.kind === "split") {
             // Lot-cohesion engine: pull part(s) off the cohort so they
-            // advance solo. Quarantine, rework, expedite, customer-pull,
-            // and scrap all flow through here.
+            // advance solo. Quarantine, rework, and scrap flow through here.
             void Promise.all(
                 ids.map((id) =>
                     splitPart.mutateAsync({
@@ -1158,6 +1161,14 @@ export function WorkOrderControlPage() {
                 ),
             ).catch(() => {
                 setBulkErrorBanner(`One or more parts failed to split.`);
+            });
+        } else if (action.kind === "rejoin") {
+            // Inverse of split: re-converge a reworked/cleared part with its
+            // cohort. The API requires a sibling at the part's current step.
+            void Promise.all(
+                ids.map((id) => rejoinPart.mutateAsync({ id })),
+            ).catch(() => {
+                setBulkErrorBanner(`One or more parts couldn't rejoin their lot (no cohort siblings at their step yet).`);
             });
         } else if (action.kind === "rewind") {
             bulkRollbackMutation.mutate(ids, {
@@ -1858,7 +1869,20 @@ export function WorkOrderControlPage() {
                                                     )}
                                                 </Button>
                                             </TableCell>
-                                            <TableCell className="font-mono text-sm">{p.serial}</TableCell>
+                                            <TableCell className="font-mono text-sm">
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    {p.serial}
+                                                    {p.split_from_lot && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="px-1 py-0 text-[9px] uppercase text-amber-600 border-amber-300"
+                                                            title="Pulled off the lot cohort — advancing solo until it reconverges"
+                                                        >
+                                                            {p.lot_split_reason ? `split · ${p.lot_split_reason}` : "split"}
+                                                        </Badge>
+                                                    )}
+                                                </span>
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs text-muted-foreground">{step?.order}.</span>
@@ -1953,6 +1977,13 @@ export function WorkOrderControlPage() {
                                                         {/* Splits: pull the part off the WO cohort so it advances solo.
                                                             The engine treats these as the only sanctioned exception
                                                             actions; status changes don't move the part out of the lot. */}
+                                                        {p.split_from_lot && (
+                                                            <DropdownMenuItem
+                                                                onClick={() => applyToIds([p.id], { kind: "rejoin" })}
+                                                            >
+                                                                Rejoin lot
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuItem
                                                             onClick={() => {
                                                                 setReworkDialogIds([p.id]);

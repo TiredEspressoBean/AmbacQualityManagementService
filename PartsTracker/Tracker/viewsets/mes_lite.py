@@ -255,7 +255,14 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
 
     # 4a — resolving a MANUAL decision-point branch is manager/lead-gated, and
     # isn't "creating a part" (so it's CRUD-exempt; the action perm is the gate).
-    crud_exempt_actions = {'resolve_decision'}
+    # split_from_lot / rejoin_to_lot likewise MODIFY a part's cohort membership, so they
+    # are gated by change_parts (below) rather than the POST→add_parts default — splitting
+    # or rejoining a part is not "creating" one. CRUD-exempt so add_parts doesn't also apply.
+    crud_exempt_actions = {'resolve_decision', 'split_from_lot', 'rejoin_to_lot'}
+    action_permissions = {
+        'split_from_lot': ['change_parts'],
+        'rejoin_to_lot': ['change_parts'],
+    }
 
     # `resolve_step_decision` lives in `cosign_actions`, not
     # `action_permissions`, for the same reason FPI buy-off does: an operator
@@ -832,8 +839,8 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         POST /api/Parts/{id}/split_from_lot/
 
         Pull this part off its WorkOrder cohort so it advances solo.
-        Quarantine, rework, expedite, customer-pull, and scrap all flow
-        through this endpoint. Body:
+        Quarantine, rework, and scrap all flow through this endpoint
+        (see PartSplitReason). Body:
             { "reason": "rework", "rework_target_step_id": "<uuid?>",
               "notes": "<optional>" }
         """
@@ -870,6 +877,51 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "reason": result.reason,
             "moved_to_step_id": result.moved_to_step_id,
             "already_split": result.already_split,
+        })
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PartsRejoinToLotInput",
+            fields={"notes": serializers.CharField(required=False, allow_blank=True)},
+        ),
+        responses={200: inline_serializer(
+            name="PartsRejoinToLotResponse",
+            fields={
+                "part_id": serializers.CharField(),
+                "rejoined": serializers.BooleanField(),
+                "prior_reason": serializers.CharField(allow_null=True),
+            },
+        )},
+    )
+    @action(detail=True, methods=["post"], url_path="rejoin_to_lot")
+    def rejoin_to_lot(self, request, pk=None):
+        """
+        POST /api/Parts/{id}/rejoin_to_lot/
+
+        Re-converge a previously-split part back into its WorkOrder cohort's flow —
+        the inverse of split_from_lot. Requires a cohort sibling at the part's current
+        step (you rejoin where your siblings are). The split genealogy
+        (lot_split_reason / lot_split_at) is retained; rejoined_at is stamped.
+        Body: { "notes": "<optional>" }
+        """
+        from django.core.exceptions import ValidationError
+        from Tracker.services.mes.splits import rejoin_part_to_lot
+
+        part = self.get_object()
+        try:
+            result = rejoin_part_to_lot(
+                part=part,
+                user=request.user,
+                notes=request.data.get("notes") or "",
+            )
+        except ValidationError as e:
+            msg = "; ".join(e.messages) if getattr(e, "messages", None) else str(e)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "part_id": result.part_id,
+            "rejoined": result.rejoined,
+            "prior_reason": result.prior_reason,
         })
 
     @action(detail=False, methods=["post"], url_path="bulk_set_status")

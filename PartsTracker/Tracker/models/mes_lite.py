@@ -635,6 +635,18 @@ class Steps(SecureModel):
     - FPI pass unlocks production for remaining parts
     """
 
+    labor_model = models.CharField(
+        max_length=10, null=True, blank=True,
+        choices=[('off', 'Off (no crew constraint)'), ('pool', 'Pool (cap at qualified crew)'),
+                 ('named', 'Named (assign a specific operator)')],
+        help_text="How the scheduler constrains this step's operators. Null inherits the "
+                  "tenant's OptimizationConfig.default_labor_model. POOL caps concurrent "
+                  "attended work at the qualified crew; OFF drops the constraint; NAMED "
+                  "assigns a specific operator in the solve — reserve NAMED for specialist "
+                  "bottlenecks (e.g. a step only one certified operator can run).",
+    )
+    """Per-step dual-resource labor model; null = inherit the tenant default."""
+
     FPI_SCOPE_CHOICES = [
         ('PER_WORKORDER', 'Per Work Order'),
         ('PER_SHIFT', 'Per Shift'),
@@ -2680,6 +2692,17 @@ class WorkOrder(SecureModel):
         related_name='pegged_workorders',
         help_text="The parent BOM line this component job fills (plan #9).",
     )
+    lockstep_batch = models.BooleanField(
+        null=True, blank=True,
+        help_text="Lot cohesion for this WO's cohort. When on, the whole batch must "
+                  "move and start together: the scheduler holds the entire WO out of the "
+                  "plan while any member is split off in rework, so the lot never starts "
+                  "without all its parts and reconverges (Parts.rejoined_at) first. Off "
+                  "lets the cohort proceed while a straggler reworks solo. Null inherits "
+                  "the tenant's OptimizationConfig.default_lockstep_batch.",
+    )
+    """Per-WO lot cohesion; null = inherit the tenant default. New-manufacturing lots
+    default (via the tenant config) to lock-step so a batch stays together."""
 
     class Meta:
         verbose_name = "Work Order"
@@ -3003,37 +3026,55 @@ class Parts(SecureModel):
     """Total number of times this part has been reworked across all steps."""
 
     # =========================================================================
-    # Lot-cohesion advancement: per-part split fields
+    # Lot-cohesion advancement: per-part lot-split fields
     # =========================================================================
     # See `Documents/DIGITAL_WORK_INSTRUCTIONS_DESIGN.md` for the lot-cohesion
     # advancement model. Non-split parts at the same (WorkOrder, Step) advance
-    # as a cohort, all-or-none. Splits remove a part from that cohort so it
-    # advances independently (quarantine, rework, expedite, scrap).
+    # as a cohort, all-or-none. A lot-split removes a part from that cohort so it
+    # advances independently (quarantine, rework, scrap), and it re-converges via
+    # `rejoin_part_to_lot`. NB: these are the PART-grain lot-split fields — distinct
+    # from WorkOrder.split_reason/split_at, which record a WO-grain split into a
+    # child WorkOrder. See `Documents/COHORT_VS_WORKORDER_SPLIT_RECONCILIATION.md`.
 
-    split_from_cohort = models.BooleanField(
+    split_from_lot = models.BooleanField(
         default=False,
         help_text=(
-            "True iff this part has been pulled off its WorkOrder cohort "
-            "and now advances independently. Set via the split_part_from_lot "
-            "service; one-way in v1 (no re-merging)."
+            "True iff this part has been pulled off its WorkOrder cohort and now "
+            "advances independently. Set via the split_part_from_lot service; cleared "
+            "by rejoin_part_to_lot when the part re-converges with its siblings."
         ),
     )
     """When True, the part is excluded from cohort gating in
     `try_advance_lot()` and evaluated on a per-part basis. Quarantine,
-    rework, and customer-pull all set this flag."""
+    rework, and scrap all set this flag."""
 
-    split_reason = models.CharField(
+    lot_split_reason = models.CharField(
         max_length=20,
         choices=PartSplitReason.choices,
         blank=True,
-        help_text="Reason this part was split off; blank when split_from_cohort=False.",
+        help_text="Reason this part was split off its lot; blank when split_from_lot=False.",
     )
 
-    split_at = models.DateTimeField(
+    lot_split_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="UTC timestamp when the split happened. Set together with split_from_cohort.",
+        help_text="UTC timestamp when the lot-split happened. Set together with split_from_lot.",
     )
+
+    rejoined_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "UTC timestamp when a previously-split part rejoined its cohort's flow "
+            "(via the rejoin_part_to_lot service). split_from_lot is cleared on rejoin "
+            "but lot_split_reason/lot_split_at are RETAINED — the split→rejoin pair is an "
+            "immutable genealogy record of the detour (rework/quarantine) the part took."
+        ),
+    )
+    """Set when a reworked/cleared part re-converges with its siblings. The part
+    re-enters cohort gating (`try_advance_lot`) and the scheduler re-collapses it into
+    the lot, while its quality genealogy (lot_split_reason, lot_split_at, rework counts)
+    stays on the record. See `split_from_lot`."""
 
     # =========================================================================
     # ITAR / Export Control Fields

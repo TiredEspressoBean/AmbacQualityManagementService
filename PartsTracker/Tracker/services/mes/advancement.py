@@ -222,8 +222,8 @@ def _evaluate_and_advance(
     # (via get_fpi_status) in the cohort / batch / split paths below — that is
     # the single source of truth, so no separate FPI gate is needed here.
 
-    cohort = [p for p in parts_at_step if not p.split_from_cohort]
-    split_parts = [p for p in parts_at_step if p.split_from_cohort]
+    cohort = [p for p in parts_at_step if not p.split_from_lot]
+    split_parts = [p for p in parts_at_step if p.split_from_lot]
 
     result = LotAdvanceResult(status='noop')
 

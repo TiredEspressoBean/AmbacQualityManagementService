@@ -208,6 +208,17 @@ class Equipments(SecureModel):
     )
     """Scheduler reserves this asset only when True (plan #1). Off ≠ untracked."""
 
+    runs_unattended = models.BooleanField(
+        default=True,
+        help_text="Whether this machine can run lights-out (unattended) between staffed "
+                  "shifts. True (default): the Layer-1 scheduler runs it 24/7, gated only "
+                  "by downtime — a lot-operation can span nights/weekends. False: its work "
+                  "is confined to the shift calendar (an operator must be present to run "
+                  "it). Operator presence for the attended portions is handled by Layer-2 "
+                  "dispatch regardless of this flag.",
+    )
+    """Lights-out capable (default). False confines Layer-1 work to shift windows."""
+
     # === LOCATION ===
     location = models.CharField(max_length=100, blank=True)
     """Physical location (e.g., 'QA Lab', 'Machine Shop', 'Tool Crib')."""

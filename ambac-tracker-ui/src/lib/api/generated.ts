@@ -4521,6 +4521,19 @@ export type Parts = {
   process: string | null;
   total_rework_count: number;
   archived?: boolean | undefined;
+  /**
+   * True iff this part has been pulled off its WorkOrder cohort and now advances independently. Set via the split_part_from_lot service; cleared by rejoin_part_to_lot when the part re-converges with its siblings.
+   */
+  split_from_lot: boolean;
+  lot_split_reason: string | null;
+  /**
+   * UTC timestamp when the lot-split happened. Set together with split_from_lot.
+   */
+  lot_split_at: string | null;
+  /**
+   * UTC timestamp when a previously-split part rejoined its cohort's flow (via the rejoin_part_to_lot service). split_from_lot is cleared on rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin pair is an immutable genealogy record of the detour (rework/quarantine) the part took.
+   */
+  rejoined_at: string | null;
 };
 export type PaginatedPersonalRuleList = {
   /**
@@ -15969,6 +15982,10 @@ const Parts = z.object({
   process: z.string().uuid().nullable(),
   total_rework_count: z.number().int(),
   archived: z.boolean().optional(),
+  split_from_lot: z.boolean(),
+  lot_split_reason: z.string().nullable(),
+  lot_split_at: z.string().datetime({ offset: true }).nullable(),
+  rejoined_at: z.string().datetime({ offset: true }).nullable(),
 });
 const PaginatedPartsList = z.object({
   count: z.number().int(),
@@ -16020,6 +16037,12 @@ const DecisionOptionsResponse = z.object({
 const PartIncrementInputRequest = z
   .object({ decision: z.string().min(1) })
   .partial();
+const PartsRejoinToLotInputRequest = z.object({ notes: z.string() }).partial();
+const PartsRejoinToLotResponse = z.object({
+  part_id: z.string(),
+  rejoined: z.boolean(),
+  prior_reason: z.string().nullable(),
+});
 const ResolveDecisionInputRequest = z.object({
   decision: z.string().min(1),
   cosign_email: z.string().optional(),
@@ -20745,6 +20768,8 @@ export const schemas = {
   CompleteStepResponse,
   DecisionOptionsResponse,
   PartIncrementInputRequest,
+  PartsRejoinToLotInputRequest,
+  PartsRejoinToLotResponse,
   ResolveDecisionInputRequest,
   ReworkStatusResponse,
   api_Parts_rollback_create_Body,
@@ -32223,6 +32248,37 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
   },
   {
     method: "post",
+    path: "/api/Parts/:id/rejoin_to_lot/",
+    alias: "api_Parts_rejoin_to_lot_create",
+    description: `POST /api/Parts/{id}/rejoin_to_lot/
+
+Re-converge a previously-split part back into its WorkOrder cohort&#x27;s flow —
+the inverse of split_from_lot. Requires a cohort sibling at the part&#x27;s current
+step (you rejoin where your siblings are). The split genealogy
+(lot_split_reason / lot_split_at) is retained; rejoined_at is stamped.
+Body: { &quot;notes&quot;: &quot;&lt;optional&gt;&quot; }`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ notes: z.string() }).partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: PartsRejoinToLotResponse,
+  },
+  {
+    method: "post",
     path: "/api/Parts/:id/resolve_decision/",
     alias: "api_Parts_resolve_decision_create",
     description: `4a — manager/lead resolves a MANUAL decision-point step by choosing
@@ -32306,8 +32362,8 @@ remain, and the ESCALATION target it routes to once the cap is exceeded
     description: `POST /api/Parts/{id}/split_from_lot/
 
 Pull this part off its WorkOrder cohort so it advances solo.
-Quarantine, rework, expedite, customer-pull, and scrap all flow
-through this endpoint. Body:
+Quarantine, rework, and scrap all flow through this endpoint
+(see PartSplitReason). Body:
     { &quot;reason&quot;: &quot;rework&quot;, &quot;rework_target_step_id&quot;: &quot;&lt;uuid?&gt;&quot;,
       &quot;notes&quot;: &quot;&lt;optional&gt;&quot; }`,
     requestFormat: "json",

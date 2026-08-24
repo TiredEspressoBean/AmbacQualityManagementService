@@ -120,8 +120,8 @@ class CascadeMergeTests(TenantContextMixin, VectorTestCase):
         the downstream step uses. The important guarantee: nothing is
         dropped."""
         p_split = self._make_part('P-CM-SPL', self.step_a)
-        p_split.split_from_cohort = True
-        p_split.save(update_fields=['split_from_cohort'])
+        p_split.split_from_lot = True
+        p_split.save(update_fields=['split_from_lot'])
 
         result = self._advance(self.step_a)
 

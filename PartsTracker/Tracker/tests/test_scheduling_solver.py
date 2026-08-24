@@ -67,6 +67,19 @@ class SolverTests(TenantContextMixin, TestCase):
     def _overlaps(a, b):
         return a.start_time < b.end_time and b.start_time < a.end_time
 
+    @staticmethod
+    def _peak_concurrency(tasks):
+        evs = []
+        for t in tasks:
+            evs.append((t.start_time, 1))
+            evs.append((t.end_time, -1))
+        evs.sort(key=lambda x: (x[0], x[1]))
+        cur = peak = 0
+        for _, d in evs:
+            cur += d
+            peak = max(peak, cur)
+        return peak
+
     def test_batches_same_workorder_on_a_machine(self):
         # Two work orders, three parts each, sharing one machine. With the job-change
         # setup, interleaving the WOs costs setup time the solver avoids — so it keeps
@@ -106,13 +119,16 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertEqual((s1.end_time - s1.start_time).total_seconds(), 60 * 60)
 
     def test_machine_capacity_no_overlap(self):
-        # Two parts share the same machine at step1 → their tasks must not overlap.
-        _, parts = self._wo("WO-B", 2)
+        # Two lots (one part each) contend for the same machine at step1 → their
+        # operations must not overlap. Two parts of ONE work order would be a single
+        # lot (one interval), so capacity is tested with two work orders.
+        self._wo("WO-B1", 1)
+        self._wo("WO-B2", 1)
         result = solve_schedule(self.tenant)
         s1_tasks = list(result.tasks.filter(step=self.step1))
         self.assertEqual(len(s1_tasks), 2)
         self.assertFalse(self._overlaps(s1_tasks[0], s1_tasks[1]),
-                         "two parts on the same machine must be serialized")
+                         "two lots on the same machine must be serialized")
 
     def test_solve_supersedes_prior_active(self):
         self._wo("WO-C", 1)
@@ -126,16 +142,18 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertEqual(ScheduleResult.objects.filter(tenant=self.tenant, is_active=True).count(), 1)
 
     def test_machine_choice_spreads_across_machines(self):
-        # step1 gets a second eligible machine → two parts run in parallel.
+        # step1 gets a second eligible machine → two lots run in parallel on the two
+        # machines. A single lot can't split across machines, so this uses two lots.
         m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
         StepEquipmentAffinity.objects.create(
             tenant=self.tenant, step=self.step1, equipment=m2,
             affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
-        _, parts = self._wo("WO-MC", 2)
+        self._wo("WO-MC1", 1)
+        self._wo("WO-MC2", 1)
         result = solve_schedule(self.tenant)
         s1 = list(result.tasks.filter(step=self.step1))
         self.assertEqual(len({t.machine_id for t in s1}), 2,
-                         "two parts should spread across the two machines")
+                         "two lots should spread across the two machines")
 
     def test_cost_objective_schedules_urgent_before_low(self):
         # Two WOs (1 part each) contend for the same single machine at step1, both
@@ -182,8 +200,8 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertEqual(result.tasks.count(), 2)
 
     def test_secondary_gauge_serializes(self):
-        # step1 has two machines (could run in parallel) but shares one gauge → the
-        # two parts' step1 tasks cannot overlap in time.
+        # step1 has two machines (lots could run in parallel) but shares one gauge → the
+        # two lots' step1 operations cannot overlap in time.
         m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
         StepEquipmentAffinity.objects.create(
             tenant=self.tenant, step=self.step1, equipment=m2,
@@ -191,11 +209,12 @@ class SolverTests(TenantContextMixin, TestCase):
         gauge = Equipments.objects.create(tenant=self.tenant, name="Keyence", is_schedulable=True)
         MeasurementDefinition.objects.create(
             tenant=self.tenant, step=self.step1, default_equipment=gauge, label="OD", type="NUMERIC")
-        self._wo("WO-G", 2)
+        self._wo("WO-G1", 1)
+        self._wo("WO-G2", 1)
         result = solve_schedule(self.tenant)
         s1 = list(result.tasks.filter(step=self.step1))
         self.assertFalse(self._overlaps(s1[0], s1[1]),
-                         "a shared gauge must serialize the two tasks")
+                         "a shared gauge must serialize the two lots")
 
     def test_fixture_capacity(self):
         m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
@@ -204,11 +223,12 @@ class SolverTests(TenantContextMixin, TestCase):
             affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
         fx = Fixture.objects.create(tenant=self.tenant, name="Vise", quantity=1)
         fx.steps.add(self.step1)
-        self._wo("WO-FX", 2)
+        self._wo("WO-FX1", 1)
+        self._wo("WO-FX2", 1)
         result = solve_schedule(self.tenant)
         s1 = list(result.tasks.filter(step=self.step1))
         self.assertFalse(self._overlaps(s1[0], s1[1]),
-                         "quantity-1 fixture must serialize the two tasks")
+                         "quantity-1 fixture must serialize the two lots")
 
     def test_fixture_capacity_two_allows_parallel(self):
         m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
@@ -217,11 +237,60 @@ class SolverTests(TenantContextMixin, TestCase):
             affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
         fx = Fixture.objects.create(tenant=self.tenant, name="Vise", quantity=2)
         fx.steps.add(self.step1)
-        self._wo("WO-FX2", 2)
+        self._wo("WO-FX2a", 1)
+        self._wo("WO-FX2b", 1)
         result = solve_schedule(self.tenant)
         s1 = list(result.tasks.filter(step=self.step1))
         self.assertTrue(self._overlaps(s1[0], s1[1]),
-                        "quantity-2 fixture allows the two tasks to run concurrently")
+                        "quantity-2 fixture allows the two lots to run concurrently")
+
+    def test_labor_capacity_caps_concurrent_attended(self):
+        # Three machines let step1 run three lots at once on MACHINE capacity alone, but
+        # only two operators are rostered → the crew cap forces at most two attended lots
+        # concurrently (the third waits for a free operator).
+        from Tracker.models import Shift, User
+        for i in (2, 3):
+            m = Equipments.objects.create(tenant=self.tenant, name=f"CNC-{i}", is_schedulable=True)
+            for step in (self.step1, self.step2):
+                StepEquipmentAffinity.objects.create(
+                    tenant=self.tenant, step=step, equipment=m,
+                    affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        shift = Shift.objects.create(
+            tenant=self.tenant, name="All", code="ALL",
+            start_time=dtime(0, 0), end_time=dtime(23, 59),
+            days_of_week="0,1,2,3,4,5,6", is_active=True)
+        for i in range(2):
+            User.objects.create(username=f"op{i}", tenant=self.tenant, user_type='INTERNAL',
+                                is_active=True, default_shift=shift)
+        for n in ("L1", "L2", "L3"):
+            self._wo(n, 1)
+        result = solve_schedule(self.tenant, time_limit_seconds=20)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        s1 = list(result.tasks.filter(step=self.step1))
+        self.assertEqual(len(s1), 3)
+        self.assertLessEqual(self._peak_concurrency(s1), 2,
+                             "labor capacity must cap concurrent attended lots at the crew size")
+
+    def test_no_roster_leaves_labor_unconstrained(self):
+        # With a shift but NO rostered operators (crew 0), the labor cap is skipped and
+        # three lots run in parallel across three machines (machine capacity only).
+        from Tracker.models import Shift
+        for i in (2, 3):
+            m = Equipments.objects.create(tenant=self.tenant, name=f"CNC-{i}", is_schedulable=True)
+            for step in (self.step1, self.step2):
+                StepEquipmentAffinity.objects.create(
+                    tenant=self.tenant, step=step, equipment=m,
+                    affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        Shift.objects.create(
+            tenant=self.tenant, name="All", code="ALL",
+            start_time=dtime(0, 0), end_time=dtime(23, 59),
+            days_of_week="0,1,2,3,4,5,6", is_active=True)
+        for n in ("L1", "L2", "L3"):
+            self._wo(n, 1)
+        result = solve_schedule(self.tenant, time_limit_seconds=20)
+        s1 = list(result.tasks.filter(step=self.step1))
+        self.assertEqual(self._peak_concurrency(s1), 3,
+                         "no rostered crew → attended work is not labor-capped")
 
     def test_scheduled_breaks_expand_and_solve_stays_feasible(self):
         from Tracker.models import Shift
@@ -297,20 +366,24 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertEqual(s1.fence_zone, FenceZone.FROZEN)
 
     def test_infeasible_pin_relaxes_instead_of_failing(self):
-        # A frozen pin whose time no longer fits (the machine's availability changed
-        # under it) must NOT make the solve INFEASIBLE — the pin moves, and the count
-        # of moved pins is reported.
-        from Tracker.models import Shift
+        # A frozen pin whose time no longer fits (the machine went down under it) must
+        # NOT make the solve INFEASIBLE — the pin moves, and the count of moved pins is
+        # reported. Machines run lights-out by default, so the conflict is forced with a
+        # downtime event (a shift restriction wouldn't confine a 24/7 machine).
+        from Tracker.models import DowntimeEvent, User
         self._wo("WO-RELAX", 1)
         first = solve_schedule(self.tenant)            # tasks land at t≈0 (frozen)
         self.assertIn(first.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
         self.assertEqual(first.relaxed_pin_count, 0, "nothing to relax on the first solve")
 
-        # Machine now only available 03:00–04:00 — the frozen t≈0 pins can't hold.
-        Shift.objects.create(
-            tenant=self.tenant, name="Late", code="LATE",
-            start_time=dtime(3, 0), end_time=dtime(4, 0),
-            days_of_week="0,1,2,3,4,5,6", is_active=True)
+        # Machine is down for the first 2 days — the frozen t≈0 pins can't hold.
+        now = timezone.now()
+        reporter = User.objects.create(
+            username="dt-reporter", tenant=self.tenant, user_type='INTERNAL', is_active=True)
+        DowntimeEvent.objects.create(
+            tenant=self.tenant, equipment=self.machine, category='UNPLANNED',
+            reason="breakdown", start_time=now, end_time=now + _td(days=2),
+            reported_by=reporter)
         second = solve_schedule(self.tenant)
         self.assertIn(second.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE),
                       "soft pins keep the model solvable when the frozen plan no longer fits")
@@ -495,3 +568,84 @@ class SolverTests(TenantContextMixin, TestCase):
         result = solve_schedule(self.tenant)
         self.assertEqual(result.tasks.filter(core=core).count(), 0,
                          "a fully disassembled core has no teardown work left")
+
+
+class LockStepBatchTests(TenantContextMixin, TestCase):
+    """Lock-step lot cohesion: the cohort's non-held parts schedule as one cohesive lot
+    (one start); a part split off to rework is carved into its own lot so the cohort keeps
+    progressing — the batch is NOT held for a straggler."""
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Lock", slug="sched-lock", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        self.pt = PartTypes.objects.create(tenant=self.tenant, name="Injector")
+        self.process = Processes.objects.create(tenant=self.tenant, name="P", part_type=self.pt)
+        self.machine = Equipments.objects.create(tenant=self.tenant, name="CNC-1", is_schedulable=True)
+        self.step1 = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Turn", step_type="TASK")
+        self.step2 = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Mill", step_type="TASK")
+        ProcessStep.objects.create(process=self.process, step=self.step1, order=1)
+        ProcessStep.objects.create(process=self.process, step=self.step2, order=2)
+        StepTiming.objects.create(tenant=self.tenant, step=self.step1, cycle_time_minutes=60)
+        StepTiming.objects.create(tenant=self.tenant, step=self.step2, cycle_time_minutes=30)
+        for st in (self.step1, self.step2):
+            StepEquipmentAffinity.objects.create(
+                tenant=self.tenant, step=st, equipment=self.machine,
+                affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+
+    def _wo(self, erp, n_parts, lockstep=None):
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id=erp, workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=n_parts, process=self.process, lockstep_batch=lockstep)
+        parts = [
+            Parts.objects.create(
+                tenant=self.tenant, ERP_id=f"{erp}-P{i}", part_type=self.pt,
+                work_order=wo, step=self.step1)
+            for i in range(n_parts)
+        ]
+        return wo, parts
+
+    def test_cohort_progresses_with_straggler_carved_out(self):
+        # A lock-step WO with one part split to rework: the batch is NOT held. The
+        # cohort's non-held parts schedule (as one lot), and the split part schedules
+        # as its OWN lot — everything gets planned; nothing is parked.
+        wo, parts = self._wo("WO-CARVE", 3, lockstep=True)
+        parts[0].split_from_lot = True   # one member off in rework
+        parts[0].save(update_fields=['split_from_lot'])
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        wo_tasks = ScheduledTask.objects.filter(schedule=result, part__work_order=wo)
+        self.assertGreater(wo_tasks.count(), 0, "the batch is not held for a straggler")
+        # All three parts are scheduled (2 cohort + 1 straggler), all present.
+        scheduled_parts = {t.part_id for t in wo_tasks}
+        self.assertEqual(scheduled_parts, {p.id for p in parts})
+
+    def test_split_part_carved_into_its_own_lot(self):
+        # The cohort schedules as ONE lot (shared start) at step1; the split part at the
+        # same step is a SEPARATE lot, so it doesn't drag the cohort.
+        wo, parts = self._wo("WO-SPLITLOT", 3, lockstep=True)
+        parts[0].split_from_lot = True
+        parts[0].save(update_fields=['split_from_lot'])
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+
+        s1 = list(ScheduledTask.objects.filter(
+            schedule=result, part__work_order=wo, step=self.step1))
+        cohort_starts = {t.start_time for t in s1 if t.part_id in {parts[1].id, parts[2].id}}
+        self.assertEqual(len(cohort_starts), 1, "the 2-part cohort shares one start (one lot)")
+        # The split part is its own lot — distinct (step, start) grouping from the cohort.
+        lots = {(t.step_id, t.start_time) for t in s1}
+        self.assertEqual(len(lots), 2, "cohort lot + carved-out straggler lot = 2 lots at step1")
+
+    def test_intact_lockstep_cohort_starts_together(self):
+        wo, parts = self._wo("WO-TOG", 3, lockstep=True)  # no split
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+
+        step1_tasks = list(ScheduledTask.objects.filter(
+            schedule=result, part__work_order=wo, step=self.step1))
+        self.assertEqual(len(step1_tasks), 3)
+        starts = {t.start_time for t in step1_tasks}
+        self.assertEqual(len(starts), 1, "one lot → all parts share a single start")

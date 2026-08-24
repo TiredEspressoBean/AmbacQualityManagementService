@@ -387,6 +387,13 @@ def split_work_order(
     REWORK: move the given part_ids onto `target_process_id`; parts reset to PENDING with step cleared.
 
     Parent retains provenance via child.parent_workorder. No merges. Parts keep their identity.
+
+    Idempotency: guarded by `new_erp_id` uniqueness — a double-submit with the same
+    new_erp_id is rejected (no duplicate child), so retries are safe; a different erp_id
+    is a distinct, intentional split.
+
+    Authorization is enforced at the viewset (IsAuthenticated + TenantModelPermissions →
+    add_workorder), not here — the service takes `actor` only for provenance/audit.
     """
     if reason not in WorkOrderSplitReason.values:
         raise ValueError(f"Invalid split reason: {reason}")
@@ -431,17 +438,28 @@ def split_work_order(
             split_by=actor,
         )
 
-        part_pks = [p.pk for p in parts]
-        update_qs = Parts.unscoped.filter(tenant_id=parent_wo.tenant_id, pk__in=part_pks)
-        if reason == WorkOrderSplitReason.REWORK:
-            update_qs.update(
-                work_order=child,
-                step=None,
-                part_status=PartsStatus.PENDING,
-                updated_at=now,
-            )
-        else:
-            update_qs.update(work_order=child, updated_at=now)
+        # Reassign per-instance via save() rather than a bulk .update(): bulk update
+        # fires no signals, so django-auditlog would record NO LogEntry for parts moving
+        # between work orders (or their step/status reset) — a traceability hole for an
+        # AS9100 product. A split moves a subset of the lot, not the whole thing, so one
+        # save per moved part is acceptable. Parts has no custom post_save receiver
+        # (only auditlog's), so this adds auditing without triggering other cascades.
+        for p in parts:
+            p.work_order = child
+            p.updated_at = now
+            fields = ['work_order', 'updated_at']
+            if p.split_from_lot:
+                # The part is a fresh member of the CHILD's cohort now; the parent-cohort
+                # split flag is meaningless here (it would otherwise orphan the part out of
+                # the child's cohort gating). Clear the functional flag; the genealogy
+                # (lot_split_reason / lot_split_at) is retained on the record + in auditlog.
+                p.split_from_lot = False
+                fields.append('split_from_lot')
+            if reason == WorkOrderSplitReason.REWORK:
+                p.step = None
+                p.part_status = PartsStatus.PENDING
+                fields += ['step', 'part_status']
+            p.save(update_fields=fields)
 
     return child
 
@@ -450,6 +468,7 @@ def undo_split(child_wo: WorkOrder, actor) -> WorkOrder:
     """Reverse a split: reassign child's parts back to the parent and archive the child WO.
 
     Preserves audit trail — the original split entry on the child remains in django-auditlog.
+    Authorization is enforced at the viewset (TenantModelPermissions), not here.
     """
     if child_wo.parent_workorder_id is None:
         raise ValueError("Work order is not the result of a split")
@@ -462,9 +481,30 @@ def undo_split(child_wo: WorkOrder, actor) -> WorkOrder:
 
     with transaction.atomic():
         now = timezone.now()
-        Parts.unscoped.filter(
-            tenant_id=child_wo.tenant_id, work_order=child_wo,
-        ).update(work_order=parent_wo, updated_at=now)
+        # Per-instance save() so django-auditlog logs each part's return to the parent
+        # (bulk .update() would bypass the signal and leave the move untraced).
+        child_parts = list(Parts.unscoped.filter(
+            tenant_id=child_wo.tenant_id, work_order=child_wo))
+        first_step_id = None  # resolved lazily to restore REWORK-split parts (step=None)
+        for p in child_parts:
+            p.work_order = parent_wo
+            p.updated_at = now
+            fields = ['work_order', 'updated_at']
+            if p.split_from_lot:
+                p.split_from_lot = False   # back in the parent cohort
+                fields.append('split_from_lot')
+            if p.step_id is None:
+                # A REWORK split nulled the step; restore to the parent process's first
+                # step so the returned part isn't stranded unschedulable/undispositioned.
+                if first_step_id is None:
+                    from Tracker.models import ProcessStep
+                    ps = (ProcessStep.objects.filter(process=parent_wo.process)
+                          .order_by('order').first())
+                    first_step_id = ps.step_id if ps else None
+                if first_step_id is not None:
+                    p.step_id = first_step_id
+                    fields.append('step')
+            p.save(update_fields=fields)
 
         child_wo.archived = True
         child_wo.save(update_fields=['archived', 'updated_at'])

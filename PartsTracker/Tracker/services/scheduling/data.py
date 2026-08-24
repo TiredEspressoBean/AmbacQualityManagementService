@@ -92,6 +92,7 @@ class HorizonData:
 class PartData:
     part_id: UUID
     current_step_id: UUID | None
+    split_from_lot: bool = False  # True = split off in rework, a lock-step straggler
 
 
 @dataclass(frozen=True)
@@ -126,6 +127,7 @@ class WorkOrderData:
     expected_start: date | None  # earliest-release gate (no task starts before this)
     pegged_to_wo_id: UUID | None  # parent assembly WO this component job feeds (#9)
     pegged_consumes_step_id: UUID | None  # the parent step that consumes it (#9); None → whole parent waits
+    lockstep_batch: bool | None  # per-WO lot cohesion; None → inherit tenant default
     quantity: int
     process_id: UUID
     parts: tuple  # tuple[PartData, ...]
@@ -362,7 +364,8 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     for wo in wos:
         steps, edges = _graph(wo.process_id)
         parts = tuple(
-            PartData(part_id=p.id, current_step_id=p.step_id)
+            PartData(part_id=p.id, current_step_id=p.step_id,
+                     split_from_lot=p.split_from_lot)
             for p in wo.parts.all()
             if p.part_status not in _UNSCHEDULABLE_PART_STATUSES
         )
@@ -378,6 +381,7 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
             expected_completion=wo.expected_completion, expected_start=wo.expected_start,
             pegged_to_wo_id=wo.pegged_to_workorder_id,
             pegged_consumes_step_id=consumes_step_id,
+            lockstep_batch=wo.lockstep_batch,
             quantity=wo.quantity,
             process_id=wo.process_id, parts=parts, cores=cores, steps=steps, edges=edges,
         ))
@@ -410,6 +414,71 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
         free = _subtract_intervals(base, downtime.get(eq.id, []))
         result[eq.id] = [MachineWindow(equipment_id=eq.id, start=s, end=e) for s, e in free]
     return result
+
+
+def get_step_labor_models(tenant) -> dict[UUID, str]:
+    """Effective labor model per current step: the step's own `labor_model`, else the
+    tenant's `OptimizationConfig.default_labor_model` ('pool' when unconfigured). One of
+    'off' | 'pool' | 'named' — how the solver constrains that step's operators."""
+    from Tracker.models import OptimizationConfig, Steps
+
+    cfg = OptimizationConfig.objects.filter(tenant=tenant).first()
+    default = cfg.default_labor_model if cfg else 'pool'
+    return {
+        s.id: (s.labor_model or default)
+        for s in Steps.objects.filter(tenant=tenant, is_current_version=True)
+    }
+
+
+def get_step_operator_pools(tenant) -> dict[UUID, frozenset]:
+    """For each TRAINING-GATED step, the dispatchable operators qualified to run it:
+    `step_id -> frozenset(user_id)`. Ungated steps are omitted — any operator can run
+    them, so they're governed by the total-crew cap, not a per-skill one. Lets Layer-1
+    cap a scarce skill (e.g. one assembler) at its trained crew, so that work serializes
+    and pushes late instead of piling up uncoverable."""
+    from Tracker.models import Steps
+    from Tracker.services.training import (
+        get_qualified_users_for_step, get_required_training,
+    )
+
+    op_ids = {o.user_id for o in get_dispatchable_operators(tenant)}
+    pools: dict[UUID, frozenset] = {}
+    for step in Steps.objects.filter(tenant=tenant, is_current_version=True):
+        if not get_required_training(step):
+            continue
+        qualified = {u.id for u in get_qualified_users_for_step(step, tenant=tenant)}
+        pools[step.id] = frozenset(qualified & op_ids)
+    return pools
+
+
+def get_attended_only_machines(tenant) -> frozenset:
+    """Machines that CANNOT run lights-out (`runs_unattended=False`): their Layer-1
+    work is confined to the shift calendar (an operator must be present). Everything
+    else runs 24/7, gated only by downtime — a lot-operation may span nights."""
+    from Tracker.models import Equipments
+
+    return frozenset(
+        Equipments.objects.filter(tenant=tenant, runs_unattended=False)
+        .values_list('id', flat=True)
+    )
+
+
+def get_machine_downtime(tenant, horizon: HorizonData) -> dict[UUID, list[tuple]]:
+    """Per equipment: merged [start, end] downtime intervals overlapping the horizon.
+    The machine is unavailable during these regardless of lights-out status (a down
+    machine is down); the 24/7 default subtracts only these from the timeline."""
+    from Tracker.models import DowntimeEvent
+
+    out: dict[UUID, list[tuple]] = {}
+    for d in (
+        DowntimeEvent.objects.filter(tenant=tenant, equipment__isnull=False)
+        .filter(start_time__lt=horizon.end)
+        .exclude(end_time__lt=horizon.start)
+    ):
+        out.setdefault(d.equipment_id, []).append(
+            (d.start_time, d.end_time or horizon.end)
+        )
+    return {eq: _merge_intervals(iv) for eq, iv in out.items()}
 
 
 def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:

@@ -79,7 +79,7 @@ class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
 
         self.part.refresh_from_db()
         self.assertEqual(self.part.step_id, self.rework_step.id)  # routed to rework
-        self.assertTrue(self.part.split_from_cohort)  # pulled off the lot
+        self.assertTrue(self.part.split_from_lot)  # pulled off the lot
         disp.refresh_from_db()
         self.assertEqual(disp.current_state, "IN_PROGRESS")  # NOT closed by routing
 
@@ -95,7 +95,7 @@ class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
 
         self.part.refresh_from_db()
         self.assertEqual(self.part.step_id, self.task_step.id)  # unchanged
-        self.assertFalse(self.part.split_from_cohort)
+        self.assertFalse(self.part.split_from_lot)
         self.assertEqual(self.part.part_status, "REWORK_NEEDED")
 
     def test_disposition_closes_when_part_leaves_rework_step(self):
@@ -127,5 +127,5 @@ class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
                 rework_target_step=bad_step,
             )
         self.part.refresh_from_db()
-        self.assertFalse(self.part.split_from_cohort)  # rejected before any mutation
+        self.assertFalse(self.part.split_from_lot)  # rejected before any mutation
         self.assertEqual(self.part.step_id, self.task_step.id)

@@ -13946,6 +13946,57 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Parts/{id}/rejoin_to_lot/:
+    post:
+      operationId: api_Parts_rejoin_to_lot_create
+      description: |-
+        POST /api/Parts/{id}/rejoin_to_lot/
+
+        Re-converge a previously-split part back into its WorkOrder cohort's flow —
+        the inverse of split_from_lot. Requires a cohort sibling at the part's current
+        step (you rejoin where your siblings are). The split genealogy
+        (lot_split_reason / lot_split_at) is retained; rejoined_at is stamped.
+        Body: { "notes": "<optional>" }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartsRejoinToLotInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartsRejoinToLotInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartsRejoinToLotInputRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartsRejoinToLotResponse'
+          description: ''
   /api/Parts/{id}/resolve_decision/:
     post:
       operationId: api_Parts_resolve_decision_create
@@ -14089,8 +14140,8 @@ paths:
         POST /api/Parts/{id}/split_from_lot/
 
         Pull this part off its WorkOrder cohort so it advances solo.
-        Quarantine, rework, expedite, customer-pull, and scrap all flow
-        through this endpoint. Body:
+        Quarantine, rework, and scrap all flow through this endpoint
+        (see PartSplitReason). Body:
             { "reason": "rework", "rework_target_step_id": "<uuid?>",
               "notes": "<optional>" }
       parameters:
@@ -46085,11 +46136,40 @@ components:
           readOnly: true
         archived:
           type: boolean
+        split_from_lot:
+          type: boolean
+          readOnly: true
+          description: True iff this part has been pulled off its WorkOrder cohort
+            and now advances independently. Set via the split_part_from_lot service;
+            cleared by rejoin_part_to_lot when the part re-converges with its siblings.
+        lot_split_reason:
+          type: string
+          nullable: true
+          readOnly: true
+        lot_split_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: UTC timestamp when the lot-split happened. Set together with
+            split_from_lot.
+        rejoined_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: UTC timestamp when a previously-split part rejoined its cohort's
+            flow (via the rejoin_part_to_lot service). split_from_lot is cleared on
+            rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin
+            pair is an immutable genealogy record of the detour (rework/quarantine)
+            the part took.
       required:
       - ERP_id
       - created_at
       - has_error
       - id
+      - lot_split_at
+      - lot_split_reason
       - needs_qa
       - order_name
       - part_type
@@ -46099,7 +46179,9 @@ components:
       - process_name
       - qa_completed
       - quality_info
+      - rejoined_at
       - requires_sampling
+      - split_from_lot
       - step_description
       - step_info
       - step_name
@@ -46147,6 +46229,25 @@ components:
       required:
       - ids
       - status
+    PartsRejoinToLotInputRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+    PartsRejoinToLotResponse:
+      type: object
+      properties:
+        part_id:
+          type: string
+        rejoined:
+          type: boolean
+        prior_reason:
+          type: string
+          nullable: true
+      required:
+      - part_id
+      - prior_reason
+      - rejoined
     PartsRequest:
       type: object
       description: Enhanced parts serializer using model methods

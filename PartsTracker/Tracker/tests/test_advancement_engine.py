@@ -464,3 +464,150 @@ class TryAdvanceLotTests(AdvancementEngineBase):
         for p in lot['parts']:
             p.refresh_from_db()
             self.assertEqual(p.step_id, step_b.id)
+
+
+# ============================================================================
+# Group 2 — rejoin_part_to_lot (genealogy-preserving re-convergence)
+# ============================================================================
+
+
+class RejoinCohortTests(AdvancementEngineBase):
+    """Unit tests for `Tracker.services.mes.splits.rejoin_part_to_lot` — a split part
+    re-converging with its cohort's flow while its split genealogy is retained."""
+
+    def _split_in_place(self, part):
+        """Split `part` off its cohort (quarantine, no rework target) so it stays
+        at its current step, flagged split_from_lot."""
+        from Tracker.models import PartSplitReason
+        from Tracker.services.mes.splits import split_part_from_lot
+        split_part_from_lot(
+            part=part,
+            reason=PartSplitReason.QUARANTINE.value,
+            user=self.user,
+        )
+        part.refresh_from_db()
+
+    def test_rejoin_clears_split_but_retains_genealogy(self):
+        from Tracker.services.mes.splits import rejoin_part_to_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=3, substeps_per_step=1, wo_erp_id="WO-REJOIN",
+        )
+        step_a = lot['steps'][0]
+        target = lot['parts'][0]
+        self._split_in_place(target)
+        self.assertTrue(target.split_from_lot)
+        self.assertEqual(target.step_id, step_a.id)  # stayed with siblings
+
+        result = rejoin_part_to_lot(part=target, user=self.user)
+
+        self.assertTrue(result.rejoined)
+        self.assertEqual(result.prior_reason, 'quarantine')
+        target.refresh_from_db()
+        # Flow re-converges...
+        self.assertFalse(target.split_from_lot)
+        self.assertIsNotNone(target.rejoined_at)
+        # ...but the genealogy of the detour is RETAINED.
+        self.assertEqual(target.lot_split_reason, 'quarantine')
+        self.assertIsNotNone(target.lot_split_at)
+
+    def test_rejoin_restores_cohort_gating(self):
+        """After rejoin, the part is a cohort member again: completing only the
+        OTHER parts no longer advances the lot — the rejoined part holds it."""
+        from Tracker.services.mes.splits import rejoin_part_to_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=2, substeps_per_step=1, wo_erp_id="WO-REJOIN-GATE",
+        )
+        step_a, step_b = lot['steps']
+        p_rejoin, p_other = lot['parts']
+        self._split_in_place(p_rejoin)
+        rejoin_part_to_lot(part=p_rejoin, user=self.user)
+
+        # Complete ONLY the other part's gate; the rejoined part's gate is unmet.
+        _complete_substeps_for_part(
+            tenant=self.tenant, user=self.user, part=p_other,
+            substeps=lot['substeps_by_step'][0],
+        )
+        result = try_advance_lot(
+            work_order_id=str(lot['wo'].id),
+            step_id=str(step_a.id),
+            tenant_id=str(self.tenant.id),
+            operator=self.user,
+        )
+        # Cohesion restored → the unmet rejoined part blocks the whole lot.
+        self.assertEqual(result.status, 'blocked')
+        for p in lot['parts']:
+            p.refresh_from_db()
+            self.assertEqual(p.step_id, step_a.id)
+
+    def test_rejoin_on_unsplit_part_is_noop(self):
+        from Tracker.services.mes.splits import rejoin_part_to_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=2, substeps_per_step=1, wo_erp_id="WO-REJOIN-NOOP",
+        )
+        part = lot['parts'][0]
+        result = rejoin_part_to_lot(part=part, user=self.user)
+        self.assertFalse(result.rejoined)
+        part.refresh_from_db()
+        self.assertIsNone(part.rejoined_at)
+        self.assertFalse(part.split_from_lot)
+
+    def test_rejoin_without_siblings_is_rejected(self):
+        """You rejoin where your siblings are: a split part standing alone at a
+        step has no cohort to rejoin."""
+        from django.core.exceptions import ValidationError
+        from Tracker.services.mes.splits import rejoin_part_to_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=1, substeps_per_step=1, wo_erp_id="WO-REJOIN-SOLO",
+        )
+        target = lot['parts'][0]
+        self._split_in_place(target)  # the only part in the WO
+        with self.assertRaises(ValidationError):
+            rejoin_part_to_lot(part=target, user=self.user)
+
+    def test_attempt_lot_rejoin_reconverges_when_siblings_present(self):
+        # The rework-exit wire (parts._attempt_lot_rejoin): a split part sitting with a
+        # cohort sibling re-converges automatically.
+        from Tracker.services.mes.parts import _attempt_lot_rejoin
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=2, substeps_per_step=1, wo_erp_id="WO-AUTOREJOIN",
+        )
+        target = lot['parts'][0]
+        self._split_in_place(target)          # split, stays at step_a beside its sibling
+        _attempt_lot_rejoin(target, self.user)
+        target.refresh_from_db()
+        self.assertFalse(target.split_from_lot, "auto-rejoin cleared the split")
+        self.assertIsNotNone(target.rejoined_at)
+
+    def test_attempt_lot_rejoin_is_noop_when_alone(self):
+        # No cohort sibling at the step → the wire leaves the part split (reconverge later),
+        # and must not raise.
+        from Tracker.services.mes.parts import _attempt_lot_rejoin
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=1, substeps_per_step=1, wo_erp_id="WO-AUTOREJOIN-SOLO",
+        )
+        target = lot['parts'][0]
+        self._split_in_place(target)
+        _attempt_lot_rejoin(target, self.user)   # must not raise
+        target.refresh_from_db()
+        self.assertTrue(target.split_from_lot, "stays split when no siblings are present")
+
+    def test_scrap_split_marks_part_terminal(self):
+        # A SCRAP lot-split must make the part terminal (SCRAPPED), not just flag it —
+        # otherwise it stays schedulable and rejoinable (the split reason alone is not a status).
+        from Tracker.models import PartSplitReason, PartsStatus
+        from Tracker.services.mes.splits import split_part_from_lot
+        lot = _build_lot(
+            tenant=self.tenant, user=self.user, part_type=self.part_type,
+            num_steps=2, num_parts=2, substeps_per_step=1, wo_erp_id="WO-SCRAP",
+        )
+        target = lot['parts'][0]
+        split_part_from_lot(part=target, reason=PartSplitReason.SCRAP.value, user=self.user)
+        target.refresh_from_db()
+        self.assertEqual(target.part_status, PartsStatus.SCRAPPED, "scrap split is terminal")
+        self.assertTrue(target.split_from_lot)

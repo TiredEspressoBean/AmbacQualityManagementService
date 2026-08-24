@@ -5388,6 +5388,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Parts/{id}/rejoin_to_lot/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/Parts/{id}/rejoin_to_lot/
+         *
+         *     Re-converge a previously-split part back into its WorkOrder cohort's flow —
+         *     the inverse of split_from_lot. Requires a cohort sibling at the part's current
+         *     step (you rejoin where your siblings are). The split genealogy
+         *     (lot_split_reason / lot_split_at) is retained; rejoined_at is stamped.
+         *     Body: { "notes": "<optional>" }
+         */
+        post: operations["api_Parts_rejoin_to_lot_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Parts/{id}/resolve_decision/": {
         parameters: {
             query?: never;
@@ -5464,8 +5489,8 @@ export interface paths {
          * @description POST /api/Parts/{id}/split_from_lot/
          *
          *     Pull this part off its WorkOrder cohort so it advances solo.
-         *     Quarantine, rework, expedite, customer-pull, and scrap all flow
-         *     through this endpoint. Body:
+         *     Quarantine, rework, and scrap all flow through this endpoint
+         *     (see PartSplitReason). Body:
          *         { "reason": "rework", "rework_target_step_id": "<uuid?>",
          *           "notes": "<optional>" }
          */
@@ -20484,6 +20509,19 @@ export interface components {
             readonly process: string | null;
             readonly total_rework_count: number;
             archived?: boolean;
+            /** @description True iff this part has been pulled off its WorkOrder cohort and now advances independently. Set via the split_part_from_lot service; cleared by rejoin_part_to_lot when the part re-converges with its siblings. */
+            readonly split_from_lot: boolean;
+            readonly lot_split_reason: string | null;
+            /**
+             * Format: date-time
+             * @description UTC timestamp when the lot-split happened. Set together with split_from_lot.
+             */
+            readonly lot_split_at: string | null;
+            /**
+             * Format: date-time
+             * @description UTC timestamp when a previously-split part rejoined its cohort's flow (via the rejoin_part_to_lot service). split_from_lot is cleared on rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin pair is an immutable genealogy record of the detour (rework/quarantine) the part took.
+             */
+            readonly rejoined_at: string | null;
         };
         PartsBulkIncrementInputRequest: {
             ids: string[];
@@ -20498,6 +20536,14 @@ export interface components {
             ids: string[];
             status: components["schemas"]["PartsStatusEnum"];
             reason?: string;
+        };
+        PartsRejoinToLotInputRequest: {
+            notes?: string;
+        };
+        PartsRejoinToLotResponse: {
+            part_id: string;
+            rejoined: boolean;
+            prior_reason: string | null;
         };
         /** @description Enhanced parts serializer using model methods */
         PartsRequest: {
@@ -38764,6 +38810,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_Parts_rejoin_to_lot_create: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PartsRejoinToLotInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartsRejoinToLotInputRequest"];
+                "multipart/form-data": components["schemas"]["PartsRejoinToLotInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartsRejoinToLotResponse"];
                 };
             };
         };

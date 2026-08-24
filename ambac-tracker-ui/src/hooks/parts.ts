@@ -153,6 +153,7 @@ export const partsMutationKeys = {
     bulkRollback: ["parts", "bulk-rollback"] as const,
     bulkSetStatus: ["parts", "bulk-set-status"] as const,
     splitFromLot: ["parts", "split-from-lot"] as const,
+    rejoinToLot: ["parts", "rejoin-to-lot"] as const,
     advanceLot: ["parts", "advance-lot"] as const,
     completeStep: ["parts", "complete-step"] as const,
 };
@@ -166,6 +167,11 @@ type SplitFromLotVariables = {
     id: string;
     reason: PartSplitReason;
     rework_target_step_id?: string;
+    notes?: string;
+};
+
+type RejoinToLotVariables = {
+    id: string;
     notes?: string;
 };
 
@@ -337,6 +343,23 @@ export const splitPartFromLotMutationOptions = (queryClient: QueryClient) =>
 export const useSplitPartFromLot = () => {
     const queryClient = useQueryClient();
     return useMutation(splitPartFromLotMutationOptions(queryClient));
+};
+
+export const rejoinPartToLotMutationOptions = (queryClient: QueryClient) =>
+    mutationOptions<unknown, unknown, RejoinToLotVariables>({
+        mutationKey: partsMutationKeys.rejoinToLot,
+        mutationFn: ({ id, notes }) =>
+            api.api_Parts_rejoin_to_lot_create(
+                { ...(notes ? { notes } : {}) } as never,
+                { params: { id }, headers: csrfHeaders() },
+            ),
+        onSuccess: () => invalidateAllParts(queryClient),
+        meta: { errorMessage: "Couldn't rejoin part to lot", successMessage: "Part rejoined its lot" },
+    });
+
+export const useRejoinPartToLot = () => {
+    const queryClient = useQueryClient();
+    return useMutation(rejoinPartToLotMutationOptions(queryClient));
 };
 
 export const advanceLotMutationOptions = (queryClient: QueryClient) =>

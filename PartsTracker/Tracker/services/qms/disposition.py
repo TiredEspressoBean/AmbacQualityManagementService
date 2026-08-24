@@ -237,7 +237,7 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
     if disposition.disposition_type not in ('REWORK', 'REPAIR'):
         return
     part = disposition.part
-    if part is None or part.split_from_cohort:
+    if part is None or part.split_from_lot:
         return
     process = part.work_order.process if part.work_order_id else None
     if process is None:

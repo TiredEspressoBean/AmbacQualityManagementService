@@ -386,6 +386,7 @@ def advance_part_step(
 
     if leaving_rework_step:
         _close_open_rework_disposition(part, operator)
+        _attempt_lot_rejoin(part, operator)
 
     return "escalated" if was_escalated else "advanced"
 
@@ -417,6 +418,24 @@ def _close_open_rework_disposition(part, operator) -> None:
             "Could not auto-close rework disposition %s for part %s (left open).",
             disp.pk, part.id,
         )
+
+
+def _attempt_lot_rejoin(part, operator) -> None:
+    """A reworked part that just re-entered the nominal flow re-converges with its lot's
+    cohort IF its siblings are at the same step (rejoin_part_to_lot's precondition). If
+    the cohort has moved on, the part stays split and reconverges later / at finished
+    goods — the batch is never held for it. Best-effort: rejoin is a convenience for lot
+    cohesion + scheduling, not an advancement gate, so failures are swallowed."""
+    if operator is None or not getattr(part, 'split_from_lot', False):
+        return
+    from django.core.exceptions import ValidationError
+    from Tracker.services.mes.splits import rejoin_part_to_lot
+    try:
+        rejoin_part_to_lot(part=part, user=operator)
+    except ValidationError:
+        pass  # no cohort siblings at this step yet — reconverge later / at FG
+    except Exception:
+        logger.warning("Lot rejoin attempt failed for part %s (left split).", part.id)
 
 
 def rollback_part_step(

@@ -31,6 +31,19 @@ class AttentionType(models.TextChoices):
     LOAD_UNLOAD = 'load_unload', 'Load/unload only (machine runs unattended between)'
 
 
+class LaborModel(models.TextChoices):
+    """How the Layer-1 solver constrains the operators a step needs (the dual-resource
+    labor model, selectable per step — see PlanetTogether's Named/Shared/Pool split):
+    - OFF: no crew constraint — the step runs machine-only, dispatch is advisory;
+    - POOL: cap concurrent attended work at the qualified crew on shift (cheap,
+      approximate — a multi-skilled operator counts in every pool);
+    - NAMED: assign a SPECIFIC operator inside the solve (exact — use for a specialist
+      bottleneck like one certified assembler; costs solve time, so reserve it)."""
+    OFF = 'off', 'Off (no crew constraint)'
+    POOL = 'pool', 'Pool (cap at qualified crew)'
+    NAMED = 'named', 'Named (assign a specific operator)'
+
+
 class StepTiming(SecureModel):
     """Decomposed time elements for a step, replacing a single `expected_duration`.
 
@@ -223,6 +236,30 @@ class OptimizationConfig(SecureModel):
                   "order on the SAME operation — keeps a job's parts batched together. "
                   "Kept below operation-change setups by design: staying on the same "
                   "operation matters more than staying on the same work order.",
+    )
+    default_labor_model = models.CharField(
+        max_length=10, choices=LaborModel.choices, default=LaborModel.POOL,
+        help_text="The labor model applied to steps that don't set their own "
+                  "(`Steps.labor_model`): POOL caps attended work at the qualified crew "
+                  "on shift; OFF drops the crew constraint; NAMED assigns a specific "
+                  "operator in the solve (reserve for specialist bottlenecks).",
+    )
+    match_operators = models.BooleanField(
+        default=False,
+        help_text="Two-phase solve: first schedule machines (fast, pooled labor), then "
+                  "re-solve assigning a SPECIFIC operator to every attended op, warm-"
+                  "started from the machine plan. Guarantees a real operator↔operation "
+                  "matching (scarce skills push work late, never silently uncovered) at "
+                  "the cost of a longer solve. Off = single fast machine solve.",
+    )
+    default_lockstep_batch = models.BooleanField(
+        default=True,
+        help_text="Default lot cohesion for work orders that don't set their own "
+                  "(`WorkOrder.lockstep_batch`): when on, a WO's cohort must move as one "
+                  "batch — the solver holds the whole WO (won't start the batch) while "
+                  "any member is split off in rework, so the lot always starts together "
+                  "and reconverges (see Parts.rejoined_at) before advancing. Off lets the "
+                  "cohort proceed while a straggler reworks independently.",
     )
 
     class Meta:
