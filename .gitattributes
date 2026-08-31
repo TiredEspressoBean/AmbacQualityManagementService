@@ -1,0 +1,7 @@
+# Files that are copied/mounted into Linux containers must keep LF endings —
+# a CRLF shebang ("#!/bin/bash\r") makes the kernel fail with
+# "exec: no such file or directory" (this broke the compose postgres image on
+# Windows checkouts, where core.autocrlf=true rewrites them to CRLF).
+*.sh text eol=lf
+init-db.sql text eol=lf
+conf/pgbackrest.conf text eol=lf
