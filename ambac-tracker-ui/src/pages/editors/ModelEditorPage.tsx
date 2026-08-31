@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Plus } from "lucide-react";
 import { useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { DataExportMenu } from "@/components/data-export-menu";
@@ -83,6 +83,7 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     Steps: "Steps",
     Equipment: "Equipment",
     Equipments: "Equipment",
+    Fixtures: "Fixtures",
     "Equipment-types": "Equipment-types",
     EquipmentTypes: "Equipment-types",
 
@@ -98,6 +99,7 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     MeasurementDefinitions: "MeasurementDefinitions",
     ReceivingInspectionPlans: "ReceivingInspectionPlans",
     MaterialLots: "MaterialLots",
+    Materials: "Materials",
     CAPAs: "CAPAs",
     CapaTasks: "CapaTasks",
     CapaVerifications: "CapaVerifications",
@@ -471,8 +473,18 @@ export function ModelEditorPage<T extends { id: string | number }>({
         }
     };
 
-    if (isLoading) return <Skeleton className="h-32 w-full" />;
-    if (error) return <p className="text-red-500">Error loading {title}</p>;
+    if (isLoading) return (
+        <div className="space-y-4 p-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-72 w-full rounded-md" />
+        </div>
+    );
+    if (error) return (
+        <div className="p-6">
+            <p className="text-sm text-destructive">Couldn't load {title.toLowerCase()}. Try refreshing.</p>
+        </div>
+    );
 
     const items = Array.isArray(data?.results) ? data.results : [];
     const total = data?.count || 0;
@@ -484,7 +496,12 @@ export function ModelEditorPage<T extends { id: string | number }>({
         // is responsible for its own breathing room from the sidebar/chrome.
         <div className="space-y-4 p-6 pb-24">
             {/* Title */}
-            {!hideTitle && <h2 className="text-xl font-semibold">{title}</h2>}
+            {!hideTitle && (
+                <div className="flex items-baseline gap-3">
+                    <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+                    <span className="text-sm text-muted-foreground tabular-nums">{total} total</span>
+                </div>
+            )}
 
             {/* Optional header content (e.g., stats cards) */}
             {headerContent}
@@ -533,32 +550,33 @@ export function ModelEditorPage<T extends { id: string | number }>({
                     </Select>
                 ))}
 
-                {onCreate && <Button onClick={onCreate}>New {title}</Button>}
-
-                {/* Import/Export - automatically shown if modelName is configured */}
-                {apiEndpoint && !disableExport && (
-                    <>
-                        <DataImportDialog
-                            modelName={apiEndpoint}
-                            onImportComplete={() => {
-                                queryClient.invalidateQueries({ queryKey: [modelName] });
-                            }}
-                        />
-                        <DataExportMenu
-                            modelName={apiEndpoint}
-                            queryParams={{
-                                ordering,
-                                search: debouncedSearch,
-                                ...activeFilters,
-                            }}
-                        />
-                    </>
-                )}
-
-                {/* Optional extra content */}
-                {extraToolbarContent && (
-                    <div className="ml-auto flex-shrink-0">{extraToolbarContent}</div>
-                )}
+                {/* Right-aligned action group: create + import/export + any extra. */}
+                <div className="ml-auto flex flex-shrink-0 items-center gap-2">
+                    {apiEndpoint && !disableExport && (
+                        <>
+                            <DataImportDialog
+                                modelName={apiEndpoint}
+                                onImportComplete={() => {
+                                    queryClient.invalidateQueries({ queryKey: [modelName] });
+                                }}
+                            />
+                            <DataExportMenu
+                                modelName={apiEndpoint}
+                                queryParams={{
+                                    ordering,
+                                    search: debouncedSearch,
+                                    ...activeFilters,
+                                }}
+                            />
+                        </>
+                    )}
+                    {extraToolbarContent}
+                    {onCreate && (
+                        <Button onClick={onCreate}>
+                            <Plus className="mr-1 h-4 w-4" /> New {title}
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Table with responsive columns via CSS breakpoints. The wrapper
@@ -567,7 +585,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                 is sticky-right so it stays visible while scrolling. */}
             <div className="relative w-full overflow-x-auto rounded-md border">
                 <Table>
-                    <TableCaption>{title} List</TableCaption>
+                    <TableCaption className="sr-only">{title} list</TableCaption>
                     <TableHeader>
                         <TableRow>
                             {columns.map((col, i) => (
@@ -621,30 +639,50 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                 )}
                             </TableRow>
                         ))}
+                        {items.length === 0 && (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={columns.length + (showDetailsLink ? 1 : 0) + (renderActions ? 1 : 0)}
+                                    className="h-24 text-center text-muted-foreground"
+                                >
+                                    No {title.toLowerCase()} found
+                                    {debouncedSearch ? ` for "${debouncedSearch}"` : ""}.
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </div>
 
             {/* Pagination */}
-            <div className="flex justify-between items-center">
-                <Button
-                    variant="secondary"
-                    onClick={() => setOffset(Math.max(offset - limit, 0))}
-                    disabled={offset === 0}
-                >
-                    Previous
-                </Button>
-                <span>
-                    Page {page} of {pageCount}
-                </span>
-                <Button
-                    variant="secondary"
-                    onClick={() => setOffset(offset + limit)}
-                    disabled={offset + limit >= total}
-                >
-                    Next
-                </Button>
-            </div>
+            {total > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground tabular-nums">
+                        {total} result{total === 1 ? "" : "s"}
+                    </span>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setOffset(Math.max(offset - limit, 0))}
+                            disabled={offset === 0}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-muted-foreground tabular-nums">
+                            Page {page} of {pageCount || 1}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setOffset(offset + limit)}
+                            disabled={offset + limit >= total}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

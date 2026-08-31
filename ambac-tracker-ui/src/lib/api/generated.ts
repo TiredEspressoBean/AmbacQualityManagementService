@@ -524,8 +524,34 @@ export type BOMStatusEnum =
 export type BOMLine = {
   id: string;
   bom: string;
-  component_type: string;
-  component_type_name: string;
+  component_type?:
+    | /**
+     * In-house component (source=MAKE). Mutually exclusive with `material`.
+     */
+    (string | null)
+    | undefined;
+  component_type_name: string | null;
+  material?:
+    | /**
+     * Purchased component (source=BUY). Mutually exclusive with `component_type`.
+     */
+    (string | null)
+    | undefined;
+  material_name: string | null;
+  source?: /**
+     * Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+    
+    * `MAKE` - Made in-house
+    * `BUY` - Purchased
+     */
+  BOMLineSourceEnum | undefined;
+  consumed_at_step?:
+    | /**
+     * The parent-process step that consumes this component (the assembly step). When set, the scheduler gates only that step on the component WO's completion; when null, the whole parent waits. Plan #9.
+     */
+    (string | null)
+    | undefined;
+  consumed_at_step_name: string | null;
   /**
    * @pattern ^-?\d{0,6}(?:\.\d{0,4})?$
    */
@@ -559,6 +585,75 @@ export type BOMLine = {
   number | undefined;
   created_at: string;
   updated_at: string;
+  archived?: boolean | undefined;
+};
+export type BOMLineSourceEnum =
+  /**
+   * * `MAKE` - Made in-house
+   * `BUY` - Purchased
+   *
+   * @enum MAKE, BUY
+   */
+  "MAKE" | "BUY";
+export type BOMLineRequest = {
+  bom: string;
+  component_type?:
+    | /**
+     * In-house component (source=MAKE). Mutually exclusive with `material`.
+     */
+    (string | null)
+    | undefined;
+  material?:
+    | /**
+     * Purchased component (source=BUY). Mutually exclusive with `component_type`.
+     */
+    (string | null)
+    | undefined;
+  source?: /**
+     * Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+    
+    * `MAKE` - Made in-house
+    * `BUY` - Purchased
+     */
+  BOMLineSourceEnum | undefined;
+  consumed_at_step?:
+    | /**
+     * The parent-process step that consumes this component (the assembly step). When set, the scheduler gates only that step on the component WO's completion; when null, the whole parent waits. Plan #9.
+     */
+    (string | null)
+    | undefined;
+  /**
+   * @pattern ^-?\d{0,6}(?:\.\d{0,4})?$
+   */
+  quantity: string;
+  unit_of_measure?: /**
+   * @minLength 1
+   * @maxLength 20
+   */
+  string | undefined;
+  find_number?: /**
+   * Drawing callout number
+   *
+   * @maxLength 20
+   */
+  string | undefined;
+  reference_designator?: /**
+   * Reference designator(s) - e.g., 'R1, R2, R3' for electronics
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  is_optional?: boolean | undefined;
+  allow_harvested?: /**
+   * For reman: whether harvested components can satisfy this line
+   */
+  boolean | undefined;
+  notes?: string | undefined;
+  line_number?: /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
   archived?: boolean | undefined;
 };
 export type BOMList = {
@@ -2083,6 +2178,20 @@ export type Equipments = {
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
   boolean | undefined;
+  batch_capacity?: /**
+   * How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  batch_mode?: /**
+     * How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+    
+    * `concurrent` - Concurrent (parallel jobs)
+    * `cycle` - Cycle (shared load, fixed cycle time)
+     */
+  BatchModeEnum | undefined;
   notes?: string | undefined;
   created_at: string;
   updated_at: string;
@@ -2104,6 +2213,14 @@ export type EquipmentsStatusEnum =
   | "IN_CALIBRATION"
   | "IN_MAINTENANCE"
   | "RETIRED";
+export type BatchModeEnum =
+  /**
+   * * `concurrent` - Concurrent (parallel jobs)
+   * `cycle` - Cycle (shared load, fixed cycle time)
+   *
+   * @enum concurrent, cycle
+   */
+  "concurrent" | "cycle";
 export type EquipmentsRequest = {
   /**
    * @minLength 1
@@ -2132,6 +2249,20 @@ export type EquipmentsRequest = {
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
   boolean | undefined;
+  batch_capacity?: /**
+   * How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  batch_mode?: /**
+     * How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+    
+    * `concurrent` - Concurrent (parallel jobs)
+    * `cycle` - Cycle (shared load, fixed cycle time)
+     */
+  BatchModeEnum | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
@@ -2245,6 +2376,92 @@ export type BlankEnum =
    * @enum
    */
   unknown;
+export type Fixture = {
+  id: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  kind?: /**
+     * What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+    
+    * `FIXTURE` - Fixture
+    * `TOOL` - Cutting tool
+    * `DIE` - Die / mold
+    * `PROGRAM` - NC program
+    * `OTHER` - Other
+     */
+  FixtureKindEnum | undefined;
+  quantity?: /**
+   * How many of this resource exist (concurrency limit).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  lead_time_days?:
+    | /**
+     * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  steps?: /**
+   * Steps that require this resource.
+   */
+  Array<string> | undefined;
+  step_names: Array<string>;
+};
+export type FixtureKindEnum =
+  /**
+   * * `FIXTURE` - Fixture
+   * `TOOL` - Cutting tool
+   * `DIE` - Die / mold
+   * `PROGRAM` - NC program
+   * `OTHER` - Other
+   *
+   * @enum FIXTURE, TOOL, DIE, PROGRAM, OTHER
+   */
+  "FIXTURE" | "TOOL" | "DIE" | "PROGRAM" | "OTHER";
+export type FixtureRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  kind?: /**
+     * What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+    
+    * `FIXTURE` - Fixture
+    * `TOOL` - Cutting tool
+    * `DIE` - Die / mold
+    * `PROGRAM` - NC program
+    * `OTHER` - Other
+     */
+  FixtureKindEnum | undefined;
+  quantity?: /**
+   * How many of this resource exist (concurrency limit).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  lead_time_days?:
+    | /**
+     * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  steps?: /**
+   * Steps that require this resource.
+   */
+  Array<string> | undefined;
+};
 export type GeneratedReport = {
   id: string;
   /**
@@ -2384,7 +2601,7 @@ export type ImportSummary = {
   errors: number;
 };
 export type IncomingInspectionRow = {
-  source: SourceEnum;
+  source: IncomingInspectionRowSourceEnum;
   id: string;
   reference: string;
   item: string;
@@ -2395,7 +2612,7 @@ export type IncomingInspectionRow = {
   received_at: string | null;
   step_id: string | null;
 };
-export type SourceEnum =
+export type IncomingInspectionRowSourceEnum =
   /**
    * * `PURCHASED_LOT` - PURCHASED_LOT
    * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
@@ -2608,6 +2825,108 @@ export type IntegrationSyncLogStatusEnum =
    * @enum RUNNING, SUCCESS, FAILED
    */
   "RUNNING" | "SUCCESS" | "FAILED";
+export type LaborCalendarBlock = {
+  id: string;
+  user?:
+    | /**
+     * The operator this block applies to. Null = the whole company (every operator), e.g. an all-hands meeting.
+     */
+    (number | null)
+    | undefined;
+  user_name: string | null;
+  kind?: LaborCalendarBlockKindEnum | undefined;
+  recurrence?: LaborRecurrenceEnum | undefined;
+  start_time?:
+    | /**
+     * One-off start (recurrence=ONCE).
+     */
+    (string | null)
+    | undefined;
+  end_time?:
+    | /**
+     * One-off end (recurrence=ONCE).
+     */
+    (string | null)
+    | undefined;
+  days_of_week?: /**
+   * Recurring days as comma-separated numbers (0=Monday..6=Sunday), e.g. '0,2,4' (recurrence=WEEKLY).
+   *
+   * @maxLength 20
+   */
+  string | undefined;
+  window_start?:
+    | /**
+     * Recurring start time-of-day (recurrence=WEEKLY).
+     */
+    (string | null)
+    | undefined;
+  window_end?:
+    | /**
+     * Recurring end time-of-day (recurrence=WEEKLY).
+     */
+    (string | null)
+    | undefined;
+  reason?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+  is_active?: boolean | undefined;
+};
+export type LaborCalendarBlockKindEnum =
+  /**
+   * * `PTO` - PTO / vacation
+   * `SICK` - Sick
+   * `TRAINING` - Training
+   * `MEETING` - Meeting
+   * `BREAK` - Break
+   * `OTHER` - Other
+   *
+   * @enum PTO, SICK, TRAINING, MEETING, BREAK, OTHER
+   */
+  "PTO" | "SICK" | "TRAINING" | "MEETING" | "BREAK" | "OTHER";
+export type LaborRecurrenceEnum =
+  /**
+   * * `ONCE` - One-off (dated)
+   * `WEEKLY` - Weekly (recurring)
+   *
+   * @enum ONCE, WEEKLY
+   */
+  "ONCE" | "WEEKLY";
+export type LaborCalendarBlockRequest = Partial<{
+  /**
+   * The operator this block applies to. Null = the whole company (every operator), e.g. an all-hands meeting.
+   */
+  user: number | null;
+  kind: LaborCalendarBlockKindEnum;
+  recurrence: LaborRecurrenceEnum;
+  /**
+   * One-off start (recurrence=ONCE).
+   */
+  start_time: string | null;
+  /**
+   * One-off end (recurrence=ONCE).
+   */
+  end_time: string | null;
+  /**
+   * Recurring days as comma-separated numbers (0=Monday..6=Sunday), e.g. '0,2,4' (recurrence=WEEKLY).
+   *
+   * @maxLength 20
+   */
+  days_of_week: string;
+  /**
+   * Recurring start time-of-day (recurrence=WEEKLY).
+   */
+  window_start: string | null;
+  /**
+   * Recurring end time-of-day (recurrence=WEEKLY).
+   */
+  window_end: string | null;
+  /**
+   * @maxLength 200
+   */
+  reason: string;
+  is_active: boolean;
+}>;
 export type MaterialLot = {
   id: string;
   /**
@@ -2618,8 +2937,16 @@ export type MaterialLot = {
   parent_lot_number: string | null;
   material_type?: (string | null) | undefined;
   material_type_name: string | null;
+  material?:
+    | /**
+     * The raw material / consumable this lot is stock of (mutually exclusive with material_type, which is for buyable parts).
+     */
+    (string | null)
+    | undefined;
+  material_name: string | null;
+  item_name: string;
   material_description?: /**
-   * Description for raw materials not tracked as PartTypes
+   * Free-text description for ad-hoc raw materials not in the Material list
    *
    * @maxLength 200
    */
@@ -2745,8 +3072,14 @@ export type MaterialLotRequest = {
   lot_number: string;
   parent_lot?: (string | null) | undefined;
   material_type?: (string | null) | undefined;
+  material?:
+    | /**
+     * The raw material / consumable this lot is stock of (mutually exclusive with material_type, which is for buyable parts).
+     */
+    (string | null)
+    | undefined;
   material_description?: /**
-   * Description for raw materials not tracked as PartTypes
+   * Free-text description for ad-hoc raw materials not in the Material list
    *
    * @maxLength 200
    */
@@ -3024,6 +3357,152 @@ export type Milestone = {
    */
   boolean | undefined;
 };
+export type OperatorHoursReport = {
+  rows: Array<OperatorHoursRow>;
+};
+export type OperatorHoursRow = {
+  user_id: number;
+  name: string;
+  on_shift_hours: number;
+  direct_hours: number;
+};
+export type OptimizationConfig = {
+  id: string;
+  solver_time_limit_seconds?: /**
+   * CP-SAT wall-clock cap per solve (seconds); best-so-far is returned when it elapses. With match_operators on it's split across the machine (~40%) and operator (~60%) phases.
+   *
+   * @minimum 1
+   * @maximum 2147483647
+   */
+  number | undefined;
+  relative_gap_limit?: /**
+   * CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).
+   *
+   * @minimum 0
+   */
+  number | undefined;
+  frozen_zone_days?: /**
+   * Days from now within which tasks are pinned (frozen).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  slushy_zone_days?: /**
+   * Days after the frozen zone where moves are discouraged.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  default_outside_process_turnaround_days?: /**
+   * Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  match_operators?: /**
+   * Two-phase solve: first schedule machines (fast, pooled labor), then re-solve assigning a SPECIFIC operator to every attended op, warm-started from the machine plan. Guarantees a real operator↔operation matching (scarce skills push work late, never silently uncovered) at the cost of a longer solve. Off = single fast machine solve.
+   */
+  boolean | undefined;
+  default_labor_model?: /**
+     * The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
+    
+    * `off` - Off (no crew constraint)
+    * `pool` - Pool (cap at qualified crew)
+    * `named` - Named (assign a specific operator)
+     */
+  DefaultLaborModelEnum | undefined;
+  default_lockstep_batch?: /**
+   * Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work.
+   */
+  boolean | undefined;
+  shop_rate_per_hour?: /**
+   * Labor + overhead cost per shop hour (objective input).
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  overtime_multiplier?: /**
+   * @pattern ^-?\d{0,2}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  pfd_allowance_pct?: /**
+   * Personal/fatigue/delay allowance added to attended time (%).
+   *
+   * @pattern ^-?\d{0,3}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  late_penalty_urgent?: /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  late_penalty_high?: /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  late_penalty_normal?: /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  late_penalty_low?: /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  staging_buffer_minutes?: /**
+   * Minutes between a component WO finishing and its parent assembly WO being allowed to start (move/stage time). Assembly-convergence peg — plan #9.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  job_change_minutes?: /**
+   * Setup minutes charged when a resource switches to a different work order on the SAME operation — keeps a job's parts batched together. Kept below operation-change setups by design: staying on the same operation matters more than staying on the same work order.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  default_move_minutes?: /**
+   * Move/queue time between consecutive operations of a route — the next operation can't start until this many minutes after the prior one finishes (transport + queue). Applied to every intra-route hand-off; 0 = parts flow with no transfer delay. (Distinct from staging_buffer, which is the cross-work-order assembly-convergence gap.)
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  auto_resolve?: /**
+     * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
+    
+    * `off` - Off (flag stale only; planner re-solves by hand)
+    * `live` - Live (auto re-solve and supersede the schedule)
+     */
+  AutoResolveEnum | undefined;
+  auto_resolve_min_interval_minutes?: /**
+   * Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+};
+export type DefaultLaborModelEnum =
+  /**
+   * * `off` - Off (no crew constraint)
+   * `pool` - Pool (cap at qualified crew)
+   * `named` - Named (assign a specific operator)
+   *
+   * @enum off, pool, named
+   */
+  "off" | "pool" | "named";
+export type AutoResolveEnum =
+  /**
+   * * `off` - Off (flag stale only; planner re-solves by hand)
+   * `live` - Live (auto re-solve and supersede the schedule)
+   *
+   * @enum off, live
+   */
+  "off" | "live";
 export type Orders = {
   id: string;
   /**
@@ -3132,6 +3611,44 @@ export type OutsideProcessShipmentStatusEnum =
    * @enum SENT, RETURNED, CLOSED
    */
   "SENT" | "RETURNED" | "CLOSED";
+export type OvertimeWindow = {
+  id: string;
+  /**
+   * The shift being run as overtime — supplies the hours and the crew (operators rostered to it).
+   */
+  shift: string;
+  shift_name: string | null;
+  recurrence?: LaborRecurrenceEnum | undefined;
+  start_date?: (string | null) | undefined;
+  end_date?: (string | null) | undefined;
+  days_of_week?: /**
+   * @maxLength 20
+   */
+  string | undefined;
+  reason?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+  is_active?: boolean | undefined;
+};
+export type OvertimeWindowRequest = {
+  /**
+   * The shift being run as overtime — supplies the hours and the crew (operators rostered to it).
+   */
+  shift: string;
+  recurrence?: LaborRecurrenceEnum | undefined;
+  start_date?: (string | null) | undefined;
+  end_date?: (string | null) | undefined;
+  days_of_week?: /**
+   * @maxLength 20
+   */
+  string | undefined;
+  reason?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+  is_active?: boolean | undefined;
+};
 export type PaginatedApprovalRequestList = {
   /**
    * @example 123
@@ -3488,6 +4005,15 @@ export type Company = {
      * @maxLength 50
      */
     (string | null)
+    | undefined;
+  default_outside_process_turnaround_days?:
+    | /**
+     * Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
     | undefined;
   user_count: number;
   created_at: string;
@@ -3938,6 +4464,25 @@ export type PaginatedFiveWhysList = {
     | undefined;
   results: Array<FiveWhys>;
 };
+export type PaginatedFixtureList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<Fixture>;
+};
 export type PaginatedGeneratedReportList = {
   /**
    * @example 123
@@ -4100,6 +4645,80 @@ export type JobRole = {
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type PaginatedLaborCalendarBlockList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<LaborCalendarBlock>;
+};
+export type PaginatedMaterialList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<Material>;
+};
+export type Material = {
+  id: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  part_number?: /**
+   * Supplier or internal catalog number/SKU.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  description?: /**
+   * @maxLength 255
+   */
+  string | undefined;
+  unit_of_measure?: /**
+   * @maxLength 20
+   */
+  string | undefined;
+  purchase_lead_time_days?:
+    | /**
+     * Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  preferred_supplier?: (string | null) | undefined;
+  preferred_supplier_name: string | null;
+  is_active?: boolean | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
 export type PaginatedMaterialLotList = {
   /**
    * @example 123
@@ -4250,6 +4869,25 @@ export type PaginatedOutsideProcessShipmentList = {
     (string | null)
     | undefined;
   results: Array<OutsideProcessShipment>;
+};
+export type PaginatedOvertimeWindowList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<OvertimeWindow>;
 };
 export type PaginatedPartApprovalList = {
   /**
@@ -4444,6 +5082,30 @@ export type PartTypes = {
    * Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock.
    */
   boolean | undefined;
+  can_make?: /**
+   * This part can be produced in-house (has a production process; shortages spawn child work orders).
+   */
+  boolean | undefined;
+  can_buy?: /**
+   * This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts.
+   */
+  boolean | undefined;
+  purchase_lead_time_days?:
+    | /**
+     * Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  preferred_supplier?:
+    | /**
+     * Default supplier when this part is purchased.
+     */
+    (string | null)
+    | undefined;
+  preferred_supplier_name: string | null;
   itar_controlled?: /**
    * Part type is ITAR-controlled defense article (22 CFR 121 USML)
    */
@@ -4679,6 +5341,61 @@ export type PersonalSchedule = {
   updated_at: string;
   owner_user: number;
 };
+export type PaginatedPlantCalendarExceptionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<PlantCalendarException>;
+};
+export type PlantCalendarException = {
+  id: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  kind?: PlantCalendarExceptionKindEnum | undefined;
+  start_time: string;
+  end_time: string;
+  recurrence?: /**
+     * YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+    
+    * `ONCE` - One-off (dated)
+    * `YEARLY` - Repeats yearly
+     */
+  PlantClosureRecurrenceEnum | undefined;
+  is_active?: boolean | undefined;
+};
+export type PlantCalendarExceptionKindEnum =
+  /**
+   * * `HOLIDAY` - Holiday
+   * `SHUTDOWN` - Plant Shutdown
+   * `INVENTORY` - Inventory / Stock-take
+   * `OTHER` - Other
+   *
+   * @enum HOLIDAY, SHUTDOWN, INVENTORY, OTHER
+   */
+  "HOLIDAY" | "SHUTDOWN" | "INVENTORY" | "OTHER";
+export type PlantClosureRecurrenceEnum =
+  /**
+   * * `ONCE` - One-off (dated)
+   * `YEARLY` - Repeats yearly
+   *
+   * @enum ONCE, YEARLY
+   */
+  "ONCE" | "YEARLY";
 export type PaginatedProcessChangeNoticeList = {
   /**
    * @example 123
@@ -5075,6 +5792,15 @@ export type Step = {
     (string | null)
     | undefined;
   outside_supplier_name: string | null;
+  outside_process_lead_days?:
+    | /**
+     * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
   is_terminal?: boolean | undefined;
   terminal_status?: (TerminalStatusEnum | BlankEnum) | undefined;
   max_visits?:
@@ -5173,6 +5899,15 @@ export type StepEdge = {
      * @pattern ^-?\d{0,6}(?:\.\d{0,4})?$
      */
     (string | null)
+    | undefined;
+  max_minutes?:
+    | /**
+     * Scheduling: MAX elapsed minutes allowed between from_step finishing and to_step starting — a process time limit (e.g. 'coat within 4h of clean', passivation dwell, adhesive pot-life). The scheduler treats it as a soft upper bound: it schedules to meet it and FLAGS the op when capacity can't, rather than blocking the whole solve. Null = no limit (the default).
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
     | undefined;
 };
 export type EdgeTypeEnum =
@@ -5277,6 +6012,12 @@ export type Processes = {
     | undefined;
   approved_at: string | null;
   approved_by: number | null;
+  default_scrap_rate?: /**
+   * Default expected scrap fraction (0–1) applied to steps of this process that don't set their own `Steps.scrap_rate`. Used to gross up the started quantity so a work order still finishes the requested number of good parts (release-11-to-ship-10).
+   *
+   * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
+   */
+  string | undefined;
   part_type_name: string | null;
   process_steps: Array<ProcessStep>;
   step_edges: Array<StepEdge>;
@@ -6235,6 +6976,7 @@ export type ScheduledTask = {
    */
   requires_operator: boolean;
   work_order: string | null;
+  work_order_id: string | null;
   work_center: string | null;
   due_date: string | null;
   is_late: boolean;
@@ -6245,6 +6987,35 @@ export type ScheduledTask = {
    */
   is_pinned: boolean;
   fence_zone: FenceZoneEnum;
+  /**
+   * A purchased component this operation consumes is short on hand with no known incoming receipt date — the op is scheduled but flagged for the planner (material-constrained scheduling, buy-side).
+   */
+  material_shortage: boolean;
+  /**
+   * Human summary of the material situation for this op — short component(s), shortfall, and any incoming receipt date. Empty when material is on hand. Set post-solve alongside material_shortage.
+   */
+  material_detail: string;
+  /**
+   * Heuristic reason this task finishes late — the binding constraint (material / uncovered operator / machine contention / late release / tight lead time). Empty when the task is on time. Set post-solve by services.scheduling.late_cause.
+   */
+  late_cause: string;
+  /**
+   * This operation was physically running at solve time (open StepExecution) — the solver pinned it at 'now' with only its remaining duration. Distinguishes a running lock from a planner pin on the Gantt.
+   */
+  in_progress: boolean;
+  /**
+   * Real start of this operation, stamped from the part/core's StepExecution entry (capture-only; for planned-vs-actual). Null until the unit reaches this step.
+   */
+  actual_start: string | null;
+  /**
+   * Real completion, stamped from the StepExecution exit. Null while the op is unstarted or still running.
+   */
+  actual_end: string | null;
+  is_makeup: boolean;
+  /**
+   * This op starts later than a max-time-between-operations limit on its incoming edge allows (e.g. a cure/coat/passivation window) — capacity couldn't meet the window, so it's scheduled but flagged: the part will scrap or need rework unless expedited. Set post-solve (soft constraint).
+   */
+  cure_window_violation: boolean;
 };
 export type FenceZoneEnum =
   /**
@@ -6823,6 +7594,15 @@ export type Steps = {
      */
     (string | null)
     | undefined;
+  outside_process_lead_days?:
+    | /**
+     * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
   is_terminal?: boolean | undefined;
@@ -6849,6 +7629,14 @@ export type Steps = {
    * @maxLength 20
    */
   string | undefined;
+  scrap_rate?:
+    | /**
+     * Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
+     *
+     * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -8497,8 +9285,11 @@ export type WorkQueueRow = {
   expected_completion: string | null;
   qty_ready: number;
   earliest_entered_at: string | null;
+  scheduled_start: string | null;
   work_center: string | null;
   work_center_kind: string | null;
+  machine: string | null;
+  machine_name: string | null;
   readiness: string;
   is_held: boolean;
 };
@@ -8771,6 +9562,61 @@ export type PatchedApprovalTemplateRequest = Partial<{
    * Reason for edit (audit trail). Defaults to a generic descriptor when omitted.
    */
   change_description: string;
+  archived: boolean;
+}>;
+export type PatchedBOMLineRequest = Partial<{
+  bom: string;
+  /**
+   * In-house component (source=MAKE). Mutually exclusive with `material`.
+   */
+  component_type: string | null;
+  /**
+   * Purchased component (source=BUY). Mutually exclusive with `component_type`.
+   */
+  material: string | null;
+  /**
+     * Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+    
+    * `MAKE` - Made in-house
+    * `BUY` - Purchased
+     */
+  source: BOMLineSourceEnum;
+  /**
+   * The parent-process step that consumes this component (the assembly step). When set, the scheduler gates only that step on the component WO's completion; when null, the whole parent waits. Plan #9.
+   */
+  consumed_at_step: string | null;
+  /**
+   * @pattern ^-?\d{0,6}(?:\.\d{0,4})?$
+   */
+  quantity: string;
+  /**
+   * @minLength 1
+   * @maxLength 20
+   */
+  unit_of_measure: string;
+  /**
+   * Drawing callout number
+   *
+   * @maxLength 20
+   */
+  find_number: string;
+  /**
+   * Reference designator(s) - e.g., 'R1, R2, R3' for electronics
+   *
+   * @maxLength 100
+   */
+  reference_designator: string;
+  is_optional: boolean;
+  /**
+   * For reman: whether harvested components can satisfy this line
+   */
+  allow_harvested: boolean;
+  notes: string;
+  /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  line_number: number;
   archived: boolean;
 }>;
 export type PatchedBOMRequest = Partial<{
@@ -9164,8 +10010,57 @@ export type PatchedEquipmentsRequest = Partial<{
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
   is_schedulable: boolean;
+  /**
+   * How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  batch_capacity: number;
+  /**
+     * How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+    
+    * `concurrent` - Concurrent (parallel jobs)
+    * `cycle` - Cycle (shared load, fixed cycle time)
+     */
+  batch_mode: BatchModeEnum;
   notes: string;
   archived: boolean;
+}>;
+export type PatchedFixtureRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+     * What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+    
+    * `FIXTURE` - Fixture
+    * `TOOL` - Cutting tool
+    * `DIE` - Die / mold
+    * `PROGRAM` - NC program
+    * `OTHER` - Other
+     */
+  kind: FixtureKindEnum;
+  /**
+   * How many of this resource exist (concurrency limit).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  quantity: number;
+  /**
+   * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  lead_time_days: number | null;
+  /**
+   * Steps that require this resource.
+   */
+  steps: Array<string>;
 }>;
 export type PatchedHarvestedComponentRequest = Partial<{
   core: string;
@@ -9232,6 +10127,41 @@ export type PatchedIntegrationConfigRequest = Partial<{
   api_url: string;
   config: unknown;
 }>;
+export type PatchedLaborCalendarBlockRequest = Partial<{
+  /**
+   * The operator this block applies to. Null = the whole company (every operator), e.g. an all-hands meeting.
+   */
+  user: number | null;
+  kind: LaborCalendarBlockKindEnum;
+  recurrence: LaborRecurrenceEnum;
+  /**
+   * One-off start (recurrence=ONCE).
+   */
+  start_time: string | null;
+  /**
+   * One-off end (recurrence=ONCE).
+   */
+  end_time: string | null;
+  /**
+   * Recurring days as comma-separated numbers (0=Monday..6=Sunday), e.g. '0,2,4' (recurrence=WEEKLY).
+   *
+   * @maxLength 20
+   */
+  days_of_week: string;
+  /**
+   * Recurring start time-of-day (recurrence=WEEKLY).
+   */
+  window_start: string | null;
+  /**
+   * Recurring end time-of-day (recurrence=WEEKLY).
+   */
+  window_end: string | null;
+  /**
+   * @maxLength 200
+   */
+  reason: string;
+  is_active: boolean;
+}>;
 export type PatchedMaterialLotRequest = Partial<{
   /**
    * @minLength 1
@@ -9241,7 +10171,11 @@ export type PatchedMaterialLotRequest = Partial<{
   parent_lot: string | null;
   material_type: string | null;
   /**
-   * Description for raw materials not tracked as PartTypes
+   * The raw material / consumable this lot is stock of (mutually exclusive with material_type, which is for buyable parts).
+   */
+  material: string | null;
+  /**
+   * Free-text description for ad-hoc raw materials not in the Material list
    *
    * @maxLength 200
    */
@@ -9328,6 +10262,125 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
    */
   backup_equipment: string | null;
 }>;
+export type PatchedOptimizationConfigRequest = Partial<{
+  /**
+   * CP-SAT wall-clock cap per solve (seconds); best-so-far is returned when it elapses. With match_operators on it's split across the machine (~40%) and operator (~60%) phases.
+   *
+   * @minimum 1
+   * @maximum 2147483647
+   */
+  solver_time_limit_seconds: number;
+  /**
+   * CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).
+   *
+   * @minimum 0
+   */
+  relative_gap_limit: number;
+  /**
+   * Days from now within which tasks are pinned (frozen).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  frozen_zone_days: number;
+  /**
+   * Days after the frozen zone where moves are discouraged.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  slushy_zone_days: number;
+  /**
+   * Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  default_outside_process_turnaround_days: number;
+  /**
+   * Two-phase solve: first schedule machines (fast, pooled labor), then re-solve assigning a SPECIFIC operator to every attended op, warm-started from the machine plan. Guarantees a real operator↔operation matching (scarce skills push work late, never silently uncovered) at the cost of a longer solve. Off = single fast machine solve.
+   */
+  match_operators: boolean;
+  /**
+     * The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
+    
+    * `off` - Off (no crew constraint)
+    * `pool` - Pool (cap at qualified crew)
+    * `named` - Named (assign a specific operator)
+     */
+  default_labor_model: DefaultLaborModelEnum;
+  /**
+   * Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work.
+   */
+  default_lockstep_batch: boolean;
+  /**
+   * Labor + overhead cost per shop hour (objective input).
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  shop_rate_per_hour: string;
+  /**
+   * @pattern ^-?\d{0,2}(?:\.\d{0,2})?$
+   */
+  overtime_multiplier: string;
+  /**
+   * Personal/fatigue/delay allowance added to attended time (%).
+   *
+   * @pattern ^-?\d{0,3}(?:\.\d{0,2})?$
+   */
+  pfd_allowance_pct: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  late_penalty_urgent: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  late_penalty_high: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  late_penalty_normal: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+   */
+  late_penalty_low: string;
+  /**
+   * Minutes between a component WO finishing and its parent assembly WO being allowed to start (move/stage time). Assembly-convergence peg — plan #9.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  staging_buffer_minutes: number;
+  /**
+   * Setup minutes charged when a resource switches to a different work order on the SAME operation — keeps a job's parts batched together. Kept below operation-change setups by design: staying on the same operation matters more than staying on the same work order.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  job_change_minutes: number;
+  /**
+   * Move/queue time between consecutive operations of a route — the next operation can't start until this many minutes after the prior one finishes (transport + queue). Applied to every intra-route hand-off; 0 = parts flow with no transfer delay. (Distinct from staging_buffer, which is the cross-work-order assembly-convergence gap.)
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  default_move_minutes: number;
+  /**
+     * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
+    
+    * `off` - Off (flag stale only; planner re-solves by hand)
+    * `live` - Live (auto re-solve and supersede the schedule)
+     */
+  auto_resolve: AutoResolveEnum;
+  /**
+   * Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  auto_resolve_min_interval_minutes: number;
+}>;
 export type PatchedOrdersRequest = Partial<{
   /**
    * @minLength 1
@@ -9342,6 +10395,24 @@ export type PatchedOrdersRequest = Partial<{
   current_hubspot_gate: string | null;
   current_milestone: string | null;
   archived: boolean;
+}>;
+export type PatchedOvertimeWindowRequest = Partial<{
+  /**
+   * The shift being run as overtime — supplies the hours and the crew (operators rostered to it).
+   */
+  shift: string;
+  recurrence: LaborRecurrenceEnum;
+  start_date: string | null;
+  end_date: string | null;
+  /**
+   * @maxLength 20
+   */
+  days_of_week: string;
+  /**
+   * @maxLength 200
+   */
+  reason: string;
+  is_active: boolean;
 }>;
 export type PatchedPartApprovalRequest = Partial<{
   part_type: string;
@@ -9469,6 +10540,24 @@ export type PatchedPersonalScheduleRequest = Partial<{
    */
   channels: unknown;
 }>;
+export type PatchedPlantCalendarExceptionRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  kind: PlantCalendarExceptionKindEnum;
+  start_time: string;
+  end_time: string;
+  /**
+     * YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+    
+    * `ONCE` - One-off (dated)
+    * `YEARLY` - Repeats yearly
+     */
+  recurrence: PlantClosureRecurrenceEnum;
+  is_active: boolean;
+}>;
 export type PatchedProcessChangeOrderRequest = Partial<{
   /**
    * How the change will be carried out, who is responsible, what artifacts will be modified.
@@ -9595,6 +10684,12 @@ export type PatchedProcessesRequest = Partial<{
    * Description of changes from previous version (for approval review)
    */
   change_description: string | null;
+  /**
+   * Default expected scrap fraction (0–1) applied to steps of this process that don't set their own `Steps.scrap_rate`. Used to gross up the started quantity so a work order still finishes the requested number of good parts (release-11-to-ship-10).
+   *
+   * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
+   */
+  default_scrap_rate: string;
 }>;
 export type PatchedQualityReportsRequest = Partial<{
   step: string | null;
@@ -10151,6 +11246,13 @@ export type PatchedStepsRequest = Partial<{
    * Default subcontract vendor for this outside-process op (overridable per shipment).
    */
   outside_supplier: string | null;
+  /**
+   * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  outside_process_lead_days: number | null;
   is_decision_point: boolean;
   decision_type: DecisionTypeEnum | BlankEnum;
   is_terminal: boolean;
@@ -10174,6 +11276,12 @@ export type PatchedStepsRequest = Partial<{
    * @maxLength 20
    */
   sequencing_mode: string;
+  /**
+   * Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
+   *
+   * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
+   */
+  scrap_rate: string | null;
   archived: boolean;
 }>;
 export type PatchedSubstepCompletionRequest = Partial<{
@@ -10776,6 +11884,7 @@ export type PatchedWorkOrderRequest = Partial<{
   quantity: number;
   related_order: string | null;
   process: string | null;
+  expected_start: string | null;
   expected_completion: string | null;
   expected_duration: string | null;
   true_completion: string | null;
@@ -10881,6 +11990,24 @@ export type PersonalScheduleRequest = {
    * List of channel codes, e.g. ['email']. Email-only at launch.
    */
   unknown | undefined;
+};
+export type PlantCalendarExceptionRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  kind?: PlantCalendarExceptionKindEnum | undefined;
+  start_time: string;
+  end_time: string;
+  recurrence?: /**
+     * YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+    
+    * `ONCE` - One-off (dated)
+    * `YEARLY` - Repeats yearly
+     */
+  PlantClosureRecurrenceEnum | undefined;
+  is_active?: boolean | undefined;
 };
 export type ProcessChangeOrderRequest = {
   /**
@@ -11035,6 +12162,12 @@ export type ProcessesRequest = {
      */
     (string | null)
     | undefined;
+  default_scrap_rate?: /**
+   * Default expected scrap fraction (0–1) applied to steps of this process that don't set their own `Steps.scrap_rate`. Used to gross up the started quantity so a work order still finishes the requested number of good parts (release-11-to-ship-10).
+   *
+   * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
+   */
+  string | undefined;
 };
 export type QADocumentsResponse = {
   work_order_documents: Array<Documents>;
@@ -11855,7 +12988,18 @@ export type ScheduleResult = {
   horizon_start: string;
   horizon_end: string;
   solver_status: SolverStatusEnum;
+  /**
+   * Total CP-SAT wall-clock across all phases (ms).
+   */
   solve_time_ms: number;
+  /**
+   * Wall-clock of the machine (Layer-1) phase (ms). Equals solve_time_ms for a single-phase solve (match_operators off).
+   */
+  machine_solve_ms: number;
+  /**
+   * Wall-clock of the named-operator (Layer-2 in-solve) phase (ms); 0 when match_operators is off and operators come from Dispatch.
+   */
+  operator_solve_ms: number;
   /**
    * Raw CP-SAT objective (lateness + makespan + pin-stickiness penalties). NOT money despite the legacy 'cents' name — the pin weights dominate it. Kept for solve-to-solve comparison; surface weighted_lateness to planners instead.
    */
@@ -11868,6 +13012,10 @@ export type ScheduleResult = {
    * Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner.
    */
   relaxed_pin_count: number;
+  /**
+   * CP-SAT proven optimality gap: (objective − best_bound) / |objective|. 0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means the solver proved the schedule is within that fraction of the best possible objective before the time limit. Null when nothing was solved.
+   */
+  relative_gap: number | null;
   is_active: boolean;
   is_stale: boolean;
   /**
@@ -11921,6 +13069,33 @@ export type ShiftNoteRequest = {
   effective_from?: (string | null) | undefined;
   effective_until?: (string | null) | undefined;
 };
+export type SourcingRequirements = {
+  source: Array<SourceRequirement>;
+  produce: Array<ProduceRequirement>;
+  tooling: Array<ToolingRequirement>;
+};
+export type SourceRequirement = {
+  material: string;
+  qty_short: number;
+  need_by: string | null;
+  lead_time_days: number | null;
+  order_by: string | null;
+  incoming_date: string | null;
+};
+export type ProduceRequirement = {
+  work_order: string;
+  component: string;
+  qty: number;
+  need_by: string | null;
+  status: string;
+};
+export type ToolingRequirement = {
+  fixture: string;
+  kind: string;
+  need_by: string | null;
+  lead_time_days: number | null;
+  order_by: string | null;
+};
 export type StepEdgeRequest = {
   from_step: string;
   to_step: string;
@@ -11939,6 +13114,15 @@ export type StepEdgeRequest = {
      * @pattern ^-?\d{0,6}(?:\.\d{0,4})?$
      */
     (string | null)
+    | undefined;
+  max_minutes?:
+    | /**
+     * Scheduling: MAX elapsed minutes allowed between from_step finishing and to_step starting — a process time limit (e.g. 'coat within 4h of clean', passivation dwell, adhesive pot-life). The scheduler treats it as a soft upper bound: it schedules to meet it and FLAGS the op when capacity can't, rather than blocking the whole solve. Null = no limit (the default).
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
     | undefined;
 };
 export type StepExecutionRequest = {
@@ -12103,6 +13287,15 @@ export type StepRequest = {
      */
     (string | null)
     | undefined;
+  outside_process_lead_days?:
+    | /**
+     * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
   is_terminal?: boolean | undefined;
   terminal_status?: (TerminalStatusEnum | BlankEnum) | undefined;
   max_visits?:
@@ -12231,6 +13424,15 @@ export type StepsRequest = {
      */
     (string | null)
     | undefined;
+  outside_process_lead_days?:
+    | /**
+     * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
   is_terminal?: boolean | undefined;
@@ -12258,6 +13460,14 @@ export type StepsRequest = {
    * @maxLength 20
    */
   string | undefined;
+  scrap_rate?:
+    | /**
+     * Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
+     *
+     * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
   archived?: boolean | undefined;
 };
 export type SubmitProcessForApprovalResponse = {
@@ -13065,6 +14275,7 @@ export type WorkOrder = {
   related_order_detail: {};
   process?: (string | null) | undefined;
   process_info: {};
+  expected_start?: (string | null) | undefined;
   expected_completion?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
   true_completion?: (string | null) | undefined;
@@ -13102,6 +14313,25 @@ export type WorkOrderBulkTransitionInputRequest = {
   status: WorkOrderStatusEnum;
   notes?: string | undefined;
 };
+export type WorkOrderMaterialRequirements = {
+  rows: Array<WorkOrderMaterialRequirementRow>;
+};
+export type WorkOrderMaterialRequirementRow = {
+  component: string;
+  kind: string;
+  source: string;
+  quantity: number;
+  unit_of_measure: string;
+  consumed_at_step: string | null;
+  on_hand: number;
+  incoming: number;
+  short_qty: number;
+  status: string;
+  is_optional: boolean;
+  lead_time_days: number | null;
+  need_by: string | null;
+  order_by: string | null;
+};
 export type WorkOrderRequest = {
   /**
    * @minLength 1
@@ -13128,6 +14358,7 @@ export type WorkOrderRequest = {
   number | undefined;
   related_order?: (string | null) | undefined;
   process?: (string | null) | undefined;
+  expected_start?: (string | null) | undefined;
   expected_completion?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
   true_completion?: (string | null) | undefined;
@@ -13484,11 +14715,17 @@ const PatchedAssemblyUsageRequest = z
 const AssemblyRemoveRequest = z
   .object({ reason: z.string().default("") })
   .partial();
+const BOMLineSourceEnum = z.enum(["MAKE", "BUY"]);
 const BOMLine = z.object({
   id: z.string().uuid(),
   bom: z.string().uuid(),
-  component_type: z.string().uuid(),
-  component_type_name: z.string(),
+  component_type: z.string().uuid().nullish(),
+  component_type_name: z.string().nullable(),
+  material: z.string().uuid().nullish(),
+  material_name: z.string().nullable(),
+  source: BOMLineSourceEnum.optional(),
+  consumed_at_step: z.string().uuid().nullish(),
+  consumed_at_step_name: z.string().nullable(),
   quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().max(20).optional(),
   find_number: z.string().max(20).optional(),
@@ -13509,7 +14746,10 @@ const PaginatedBOMLineList = z.object({
 });
 const BOMLineRequest = z.object({
   bom: z.string().uuid(),
-  component_type: z.string().uuid(),
+  component_type: z.string().uuid().nullish(),
+  material: z.string().uuid().nullish(),
+  source: BOMLineSourceEnum.optional(),
+  consumed_at_step: z.string().uuid().nullish(),
   quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().min(1).max(20).optional(),
   find_number: z.string().max(20).optional(),
@@ -13523,7 +14763,10 @@ const BOMLineRequest = z.object({
 const PatchedBOMLineRequest = z
   .object({
     bom: z.string().uuid(),
-    component_type: z.string().uuid(),
+    component_type: z.string().uuid().nullable(),
+    material: z.string().uuid().nullable(),
+    source: BOMLineSourceEnum,
+    consumed_at_step: z.string().uuid().nullable(),
     quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
     unit_of_measure: z.string().min(1).max(20),
     find_number: z.string().max(20),
@@ -14059,6 +15302,12 @@ const Company = z.object({
   name: z.string().max(50),
   description: z.string(),
   hubspot_api_id: z.string().max(50).nullish(),
+  default_outside_process_turnaround_days: z
+    .number()
+    .int()
+    .gte(0)
+    .lte(2147483647)
+    .nullish(),
   user_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -14075,6 +15324,12 @@ const CompanyRequest = z.object({
   name: z.string().min(1).max(50),
   description: z.string().min(1),
   hubspot_api_id: z.string().max(50).nullish(),
+  default_outside_process_turnaround_days: z
+    .number()
+    .int()
+    .gte(0)
+    .lte(2147483647)
+    .nullish(),
   archived: z.boolean().optional(),
 });
 const PatchedCompanyRequest = z
@@ -14082,6 +15337,12 @@ const PatchedCompanyRequest = z
     name: z.string().min(1).max(50),
     description: z.string().min(1),
     hubspot_api_id: z.string().max(50).nullable(),
+    default_outside_process_turnaround_days: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647)
+      .nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -14650,6 +15911,7 @@ const EquipmentsStatusEnum = z.enum([
   "IN_MAINTENANCE",
   "RETIRED",
 ]);
+const BatchModeEnum = z.enum(["concurrent", "cycle"]);
 const Equipments = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
@@ -14661,6 +15923,8 @@ const Equipments = z.object({
   location: z.string().max(100).optional(),
   status: EquipmentsStatusEnum.optional(),
   is_schedulable: z.boolean().optional(),
+  batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
+  batch_mode: BatchModeEnum.optional(),
   notes: z.string().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -14682,6 +15946,8 @@ const EquipmentsRequest = z.object({
   location: z.string().max(100).optional(),
   status: EquipmentsStatusEnum.optional(),
   is_schedulable: z.boolean().optional(),
+  batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
+  batch_mode: BatchModeEnum.optional(),
   notes: z.string().optional(),
   archived: z.boolean().optional(),
 });
@@ -14755,6 +16021,8 @@ const PatchedEquipmentsRequest = z
     location: z.string().max(100),
     status: EquipmentsStatusEnum,
     is_schedulable: z.boolean(),
+    batch_capacity: z.number().int().gte(0).lte(2147483647),
+    batch_mode: BatchModeEnum,
     notes: z.string(),
     archived: z.boolean(),
   })
@@ -14952,6 +16220,38 @@ const PatchedFiveWhysRequest = z
     archived: z.boolean(),
   })
   .partial();
+const FixtureKindEnum = z.enum(["FIXTURE", "TOOL", "DIE", "PROGRAM", "OTHER"]);
+const Fixture = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  kind: FixtureKindEnum.optional(),
+  quantity: z.number().int().gte(0).lte(2147483647).optional(),
+  lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  steps: z.array(z.string().uuid()).optional(),
+  step_names: z.array(z.string()),
+});
+const PaginatedFixtureList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Fixture),
+});
+const FixtureRequest = z.object({
+  name: z.string().min(1).max(100),
+  kind: FixtureKindEnum.optional(),
+  quantity: z.number().int().gte(0).lte(2147483647).optional(),
+  lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  steps: z.array(z.string().uuid()).optional(),
+});
+const PatchedFixtureRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    kind: FixtureKindEnum,
+    quantity: z.number().int().gte(0).lte(2147483647),
+    lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
+    steps: z.array(z.string().uuid()),
+  })
+  .partial();
 const HarvestedComponentRequest = z.object({
   core: z.string().uuid(),
   component_type: z.string().uuid(),
@@ -15060,9 +16360,12 @@ const HeatMapFacetsResponse = z.object({
   severities: z.array(SeverityFacet),
   total_count: z.number().int(),
 });
-const SourceEnum = z.enum(["PURCHASED_LOT", "OUTSIDE_PROCESS"]);
+const IncomingInspectionRowSourceEnum = z.enum([
+  "PURCHASED_LOT",
+  "OUTSIDE_PROCESS",
+]);
 const IncomingInspectionRow = z.object({
-  source: SourceEnum,
+  source: IncomingInspectionRowSourceEnum,
   id: z.string().uuid(),
   reference: z.string(),
   item: z.string(),
@@ -15144,6 +16447,63 @@ const PatchedJobRoleRequest = z
     archived: z.boolean(),
   })
   .partial();
+const LaborCalendarBlockKindEnum = z.enum([
+  "PTO",
+  "SICK",
+  "TRAINING",
+  "MEETING",
+  "BREAK",
+  "OTHER",
+]);
+const LaborRecurrenceEnum = z.enum(["ONCE", "WEEKLY"]);
+const LaborCalendarBlock = z.object({
+  id: z.string().uuid(),
+  user: z.number().int().nullish(),
+  user_name: z.string().nullable(),
+  kind: LaborCalendarBlockKindEnum.optional(),
+  recurrence: LaborRecurrenceEnum.optional(),
+  start_time: z.string().datetime({ offset: true }).nullish(),
+  end_time: z.string().datetime({ offset: true }).nullish(),
+  days_of_week: z.string().max(20).optional(),
+  window_start: z.string().nullish(),
+  window_end: z.string().nullish(),
+  reason: z.string().max(200).optional(),
+  is_active: z.boolean().optional(),
+});
+const PaginatedLaborCalendarBlockList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(LaborCalendarBlock),
+});
+const LaborCalendarBlockRequest = z
+  .object({
+    user: z.number().int().nullable(),
+    kind: LaborCalendarBlockKindEnum,
+    recurrence: LaborRecurrenceEnum,
+    start_time: z.string().datetime({ offset: true }).nullable(),
+    end_time: z.string().datetime({ offset: true }).nullable(),
+    days_of_week: z.string().max(20),
+    window_start: z.string().nullable(),
+    window_end: z.string().nullable(),
+    reason: z.string().max(200),
+    is_active: z.boolean(),
+  })
+  .partial();
+const PatchedLaborCalendarBlockRequest = z
+  .object({
+    user: z.number().int().nullable(),
+    kind: LaborCalendarBlockKindEnum,
+    recurrence: LaborRecurrenceEnum,
+    start_time: z.string().datetime({ offset: true }).nullable(),
+    end_time: z.string().datetime({ offset: true }).nullable(),
+    days_of_week: z.string().max(20),
+    window_start: z.string().nullable(),
+    window_end: z.string().nullable(),
+    reason: z.string().max(200),
+    is_active: z.boolean(),
+  })
+  .partial();
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
   "AWAITING_INSPECTION",
@@ -15161,6 +16521,9 @@ const MaterialLot = z.object({
   parent_lot_number: z.string().nullable(),
   material_type: z.string().uuid().nullish(),
   material_type_name: z.string().nullable(),
+  material: z.string().uuid().nullish(),
+  material_name: z.string().nullable(),
+  item_name: z.string(),
   material_description: z.string().max(200).optional(),
   supplier: z.string().uuid().nullish(),
   supplier_name: z.string().nullable(),
@@ -15194,6 +16557,7 @@ const MaterialLotRequest = z.object({
   lot_number: z.string().min(1).max(100),
   parent_lot: z.string().uuid().nullish(),
   material_type: z.string().uuid().nullish(),
+  material: z.string().uuid().nullish(),
   material_description: z.string().max(200).optional(),
   supplier: z.string().uuid().nullish(),
   supplier_lot_number: z.string().max(100).optional(),
@@ -15214,6 +16578,7 @@ const PatchedMaterialLotRequest = z
     lot_number: z.string().min(1).max(100),
     parent_lot: z.string().uuid().nullable(),
     material_type: z.string().uuid().nullable(),
+    material: z.string().uuid().nullable(),
     material_description: z.string().max(200),
     supplier: z.string().uuid().nullable(),
     supplier_lot_number: z.string().max(100),
@@ -15434,6 +16799,48 @@ const PaginatedMaterialUsageList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(MaterialUsage),
 });
+const Material = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  part_number: z.string().max(100).optional(),
+  description: z.string().max(255).optional(),
+  unit_of_measure: z.string().max(20).optional(),
+  purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  preferred_supplier: z.string().uuid().nullish(),
+  preferred_supplier_name: z.string().nullable(),
+  is_active: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedMaterialList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Material),
+});
+const MaterialRequest = z.object({
+  name: z.string().min(1).max(100),
+  part_number: z.string().max(100).optional(),
+  description: z.string().max(255).optional(),
+  unit_of_measure: z.string().min(1).max(20).optional(),
+  purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  preferred_supplier: z.string().uuid().nullish(),
+  is_active: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedMaterialRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    part_number: z.string().max(100),
+    description: z.string().max(255),
+    unit_of_measure: z.string().min(1).max(20),
+    purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
+    preferred_supplier: z.string().uuid().nullable(),
+    is_active: z.boolean(),
+    archived: z.boolean(),
+  })
+  .partial();
 const TypeEnum = z.enum(["NUMERIC", "PASS_FAIL"]);
 const MeasurementDefinition = z.object({
   id: z.string().uuid(),
@@ -15825,6 +17232,43 @@ const SendPartsOutRequestRequest = z.object({
   supplier: z.string().uuid().optional(),
   reference: z.string().optional(),
 });
+const OvertimeWindow = z.object({
+  id: z.string().uuid(),
+  shift: z.string().uuid(),
+  shift_name: z.string().nullable(),
+  recurrence: LaborRecurrenceEnum.optional(),
+  start_date: z.string().nullish(),
+  end_date: z.string().nullish(),
+  days_of_week: z.string().max(20).optional(),
+  reason: z.string().max(200).optional(),
+  is_active: z.boolean().optional(),
+});
+const PaginatedOvertimeWindowList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(OvertimeWindow),
+});
+const OvertimeWindowRequest = z.object({
+  shift: z.string().uuid(),
+  recurrence: LaborRecurrenceEnum.optional(),
+  start_date: z.string().nullish(),
+  end_date: z.string().nullish(),
+  days_of_week: z.string().max(20).optional(),
+  reason: z.string().max(200).optional(),
+  is_active: z.boolean().optional(),
+});
+const PatchedOvertimeWindowRequest = z
+  .object({
+    shift: z.string().uuid(),
+    recurrence: LaborRecurrenceEnum,
+    start_date: z.string().nullable(),
+    end_date: z.string().nullable(),
+    days_of_week: z.string().max(20),
+    reason: z.string().max(200),
+    is_active: z.boolean(),
+  })
+  .partial();
 const PartApprovalTypeEnum = z.enum(["PPAP", "FAI"]);
 const QualificationStatusEnum = z.enum([
   "PENDING",
@@ -15903,6 +17347,11 @@ const PartTypes = z.object({
   ERP_id: z.string().max(50).nullish(),
   requires_supplier_qualification: z.boolean().optional(),
   requires_part_approval: z.boolean().optional(),
+  can_make: z.boolean().optional(),
+  can_buy: z.boolean().optional(),
+  purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  preferred_supplier: z.string().uuid().nullish(),
+  preferred_supplier_name: z.string().nullable(),
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
@@ -15926,6 +17375,10 @@ const PartTypesRequest = z.object({
   ERP_id: z.string().max(50).nullish(),
   requires_supplier_qualification: z.boolean().optional(),
   requires_part_approval: z.boolean().optional(),
+  can_make: z.boolean().optional(),
+  can_buy: z.boolean().optional(),
+  purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  preferred_supplier: z.string().uuid().nullish(),
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
@@ -15941,6 +17394,10 @@ const PatchedPartTypesRequest = z
     ERP_id: z.string().max(50).nullable(),
     requires_supplier_qualification: z.boolean(),
     requires_part_approval: z.boolean(),
+    can_make: z.boolean(),
+    can_buy: z.boolean(),
+    purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
+    preferred_supplier: z.string().uuid().nullable(),
     itar_controlled: z.boolean(),
     eccn: z.string().max(20),
     usml_category: z.string().max(10),
@@ -16235,6 +17692,46 @@ const PaginatedPartSelectList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(PartSelect),
 });
+const PlantCalendarExceptionKindEnum = z.enum([
+  "HOLIDAY",
+  "SHUTDOWN",
+  "INVENTORY",
+  "OTHER",
+]);
+const PlantClosureRecurrenceEnum = z.enum(["ONCE", "YEARLY"]);
+const PlantCalendarException = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  kind: PlantCalendarExceptionKindEnum.optional(),
+  start_time: z.string().datetime({ offset: true }),
+  end_time: z.string().datetime({ offset: true }),
+  recurrence: PlantClosureRecurrenceEnum.optional(),
+  is_active: z.boolean().optional(),
+});
+const PaginatedPlantCalendarExceptionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PlantCalendarException),
+});
+const PlantCalendarExceptionRequest = z.object({
+  name: z.string().min(1).max(100),
+  kind: PlantCalendarExceptionKindEnum.optional(),
+  start_time: z.string().datetime({ offset: true }),
+  end_time: z.string().datetime({ offset: true }),
+  recurrence: PlantClosureRecurrenceEnum.optional(),
+  is_active: z.boolean().optional(),
+});
+const PatchedPlantCalendarExceptionRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    kind: PlantCalendarExceptionKindEnum,
+    start_time: z.string().datetime({ offset: true }),
+    end_time: z.string().datetime({ offset: true }),
+    recurrence: PlantClosureRecurrenceEnum,
+    is_active: z.boolean(),
+  })
+  .partial();
 const ProcessStatusEnum = z.enum([
   "DRAFT",
   "PENDING_APPROVAL",
@@ -16302,6 +17799,7 @@ const Step = z.object({
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
   outside_supplier_name: z.string().nullable(),
+  outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -16328,6 +17826,7 @@ const StepEdge = z.object({
     .string()
     .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
     .nullish(),
+  max_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
 });
 const Processes = z.object({
   id: z.string().uuid(),
@@ -16344,6 +17843,10 @@ const Processes = z.object({
   change_description: z.string().nullish(),
   approved_at: z.string().datetime({ offset: true }).nullable(),
   approved_by: z.number().int().nullable(),
+  default_scrap_rate: z
+    .string()
+    .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
+    .optional(),
   part_type_name: z.string().nullable(),
   process_steps: z.array(ProcessStep),
   step_edges: z.array(StepEdge),
@@ -16365,6 +17868,10 @@ const ProcessesRequest = z.object({
   status: ProcessStatusEnum.optional(),
   category: ProcessesCategoryEnum.optional(),
   change_description: z.string().nullish(),
+  default_scrap_rate: z
+    .string()
+    .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
+    .optional(),
 });
 const PatchedProcessesRequest = z
   .object({
@@ -16377,6 +17884,7 @@ const PatchedProcessesRequest = z
     status: ProcessStatusEnum,
     category: ProcessesCategoryEnum,
     change_description: z.string().nullable(),
+    default_scrap_rate: z.string().regex(/^-?\d{0,1}(?:\.\d{0,4})?$/),
   })
   .partial();
 const ProcessWithSteps = z.object({
@@ -17000,6 +18508,7 @@ const ScheduledTask = z.object({
   operator_name: z.string().nullable(),
   requires_operator: z.boolean(),
   work_order: z.string().nullable(),
+  work_order_id: z.string().uuid().nullable(),
   work_center: z.string().nullable(),
   due_date: z.string().nullable(),
   is_late: z.boolean(),
@@ -17007,6 +18516,14 @@ const ScheduledTask = z.object({
   end_time: z.string().datetime({ offset: true }),
   is_pinned: z.boolean(),
   fence_zone: FenceZoneEnum,
+  material_shortage: z.boolean(),
+  material_detail: z.string(),
+  late_cause: z.string(),
+  in_progress: z.boolean(),
+  actual_start: z.string().datetime({ offset: true }).nullable(),
+  actual_end: z.string().datetime({ offset: true }).nullable(),
+  is_makeup: z.boolean(),
+  cure_window_violation: z.boolean(),
 });
 const PaginatedScheduledTaskList = z.object({
   count: z.number().int(),
@@ -17018,6 +18535,24 @@ const MoveRequestRequest = z.object({
   start_time: z.string().datetime({ offset: true }),
 });
 const PinRequestRequest = z.object({ is_pinned: z.boolean() });
+const ReassignMachineRequestRequest = z.object({
+  machine_id: z.string().uuid(),
+});
+const ReassignOperatorRequestRequest = z.object({
+  operator_id: z.string().uuid().nullable(),
+});
+const BatchMembershipRequestRequest = z.object({
+  task_ids: z.array(z.string().uuid()),
+  merge: z.boolean(),
+});
+const BulkReassignMachineRequestRequest = z.object({
+  task_ids: z.array(z.string().uuid()),
+  machine_id: z.string().uuid(),
+});
+const BulkReassignOperatorRequestRequest = z.object({
+  task_ids: z.array(z.string().uuid()),
+  operator_id: z.string().uuid().nullable(),
+});
 const MoveBatchRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
   start_time: z.string().datetime({ offset: true }),
@@ -17039,14 +18574,147 @@ const ScheduleResult = z.object({
   horizon_end: z.string().datetime({ offset: true }),
   solver_status: SolverStatusEnum,
   solve_time_ms: z.number().int(),
+  machine_solve_ms: z.number().int(),
+  operator_solve_ms: z.number().int(),
   objective_value_cents: z.number().int(),
   weighted_lateness: z.number().int(),
   relaxed_pin_count: z.number().int(),
+  relative_gap: z.number().nullable(),
   is_active: z.boolean(),
   is_stale: z.boolean(),
   is_draft: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   task_count: z.number().int(),
+});
+const DefaultLaborModelEnum = z.enum(["off", "pool", "named"]);
+const AutoResolveEnum = z.enum(["off", "live"]);
+const OptimizationConfig = z.object({
+  id: z.string().uuid(),
+  solver_time_limit_seconds: z.number().int().gte(1).lte(2147483647).optional(),
+  relative_gap_limit: z.number().gte(0).optional(),
+  frozen_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
+  slushy_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
+  default_outside_process_turnaround_days: z
+    .number()
+    .int()
+    .gte(0)
+    .lte(2147483647)
+    .optional(),
+  match_operators: z.boolean().optional(),
+  default_labor_model: DefaultLaborModelEnum.optional(),
+  default_lockstep_batch: z.boolean().optional(),
+  shop_rate_per_hour: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+  overtime_multiplier: z
+    .string()
+    .regex(/^-?\d{0,2}(?:\.\d{0,2})?$/)
+    .optional(),
+  pfd_allowance_pct: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+    .optional(),
+  late_penalty_urgent: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+  late_penalty_high: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+  late_penalty_normal: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+  late_penalty_low: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .optional(),
+  staging_buffer_minutes: z.number().int().gte(0).lte(2147483647).optional(),
+  job_change_minutes: z.number().int().gte(0).lte(2147483647).optional(),
+  default_move_minutes: z.number().int().gte(0).lte(2147483647).optional(),
+  auto_resolve: AutoResolveEnum.optional(),
+  auto_resolve_min_interval_minutes: z
+    .number()
+    .int()
+    .gte(0)
+    .lte(2147483647)
+    .optional(),
+});
+const PatchedOptimizationConfigRequest = z
+  .object({
+    solver_time_limit_seconds: z.number().int().gte(1).lte(2147483647),
+    relative_gap_limit: z.number().gte(0),
+    frozen_zone_days: z.number().int().gte(0).lte(2147483647),
+    slushy_zone_days: z.number().int().gte(0).lte(2147483647),
+    default_outside_process_turnaround_days: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647),
+    match_operators: z.boolean(),
+    default_labor_model: DefaultLaborModelEnum,
+    default_lockstep_batch: z.boolean(),
+    shop_rate_per_hour: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+    overtime_multiplier: z.string().regex(/^-?\d{0,2}(?:\.\d{0,2})?$/),
+    pfd_allowance_pct: z.string().regex(/^-?\d{0,3}(?:\.\d{0,2})?$/),
+    late_penalty_urgent: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+    late_penalty_high: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+    late_penalty_normal: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+    late_penalty_low: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
+    staging_buffer_minutes: z.number().int().gte(0).lte(2147483647),
+    job_change_minutes: z.number().int().gte(0).lte(2147483647),
+    default_move_minutes: z.number().int().gte(0).lte(2147483647),
+    auto_resolve: AutoResolveEnum,
+    auto_resolve_min_interval_minutes: z.number().int().gte(0).lte(2147483647),
+  })
+  .partial();
+const ExplodeWorkOrderInputRequest = z.object({
+  work_order_id: z.string().uuid(),
+  create: z.boolean().optional().default(true),
+});
+const OperatorHoursRow = z.object({
+  user_id: z.number().int(),
+  name: z.string(),
+  on_shift_hours: z.number(),
+  direct_hours: z.number(),
+});
+const OperatorHoursReport = z.object({ rows: z.array(OperatorHoursRow) });
+const PlanWorkOrderInputRequest = z.object({
+  process: z.string().uuid(),
+  quantity: z.number().int().gte(1),
+  erp_id: z.string().max(100).optional(),
+  priority: z.number().int().optional(),
+  expected_start: z.string().nullish(),
+  expected_completion: z.string().nullish(),
+});
+const SourceRequirement = z.object({
+  material: z.string(),
+  qty_short: z.number().int(),
+  need_by: z.string().nullable(),
+  lead_time_days: z.number().int().nullable(),
+  order_by: z.string().nullable(),
+  incoming_date: z.string().nullable(),
+});
+const ProduceRequirement = z.object({
+  work_order: z.string(),
+  component: z.string(),
+  qty: z.number().int(),
+  need_by: z.string().nullable(),
+  status: z.string(),
+});
+const ToolingRequirement = z.object({
+  fixture: z.string(),
+  kind: z.string(),
+  need_by: z.string().nullable(),
+  lead_time_days: z.number().int().nullable(),
+  order_by: z.string().nullable(),
+});
+const SourcingRequirements = z.object({
+  source: z.array(SourceRequirement),
+  produce: z.array(ProduceRequirement),
+  tooling: z.array(ToolingRequirement),
 });
 const WorkingWindow = z.object({
   start: z.string().datetime({ offset: true }),
@@ -17434,6 +19102,7 @@ const Steps = z.object({
   step_type: StepTypeEnum.optional(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
+  outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
   is_terminal: z.boolean().optional(),
@@ -17442,6 +19111,10 @@ const Steps = z.object({
   revisit_assignment: RevisitAssignmentEnum.optional(),
   revisit_role: z.string().uuid().nullish(),
   sequencing_mode: z.string().max(20).optional(),
+  scrap_rate: z
+    .string()
+    .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
+    .nullish(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -17469,6 +19142,7 @@ const StepsRequest = z.object({
   step_type: StepTypeEnum.optional(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
+  outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
   is_terminal: z.boolean().optional(),
@@ -17477,6 +19151,10 @@ const StepsRequest = z.object({
   revisit_assignment: RevisitAssignmentEnum.optional(),
   revisit_role: z.string().uuid().nullish(),
   sequencing_mode: z.string().min(1).max(20).optional(),
+  scrap_rate: z
+    .string()
+    .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
+    .nullish(),
   archived: z.boolean().optional(),
 });
 const PatchedStepsRequest = z
@@ -17496,6 +19174,12 @@ const PatchedStepsRequest = z
     step_type: StepTypeEnum,
     is_outside_process: z.boolean(),
     outside_supplier: z.string().uuid().nullable(),
+    outside_process_lead_days: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647)
+      .nullable(),
     is_decision_point: z.boolean(),
     decision_type: z.union([DecisionTypeEnum, BlankEnum]),
     is_terminal: z.boolean(),
@@ -17504,6 +19188,10 @@ const PatchedStepsRequest = z
     revisit_assignment: RevisitAssignmentEnum,
     revisit_role: z.string().uuid().nullable(),
     sequencing_mode: z.string().min(1).max(20),
+    scrap_rate: z
+      .string()
+      .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
+      .nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -18779,6 +20467,7 @@ const WorkOrderRequest = z.object({
   quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
   related_order: z.string().uuid().nullish(),
   process: z.string().uuid().nullish(),
+  expected_start: z.string().nullish(),
   expected_completion: z.string().nullish(),
   expected_duration: z.string().nullish(),
   true_completion: z.string().nullish(),
@@ -18797,6 +20486,7 @@ const WorkOrder = z.object({
   related_order_detail: z.object({}).partial().passthrough().nullable(),
   process: z.string().uuid().nullish(),
   process_info: z.object({}).partial().passthrough().nullable(),
+  expected_start: z.string().nullish(),
   expected_completion: z.string().nullish(),
   expected_duration: z.string().nullish(),
   true_completion: z.string().nullish(),
@@ -18820,6 +20510,7 @@ const PatchedWorkOrderRequest = z
     quantity: z.number().int().gte(-2147483648).lte(2147483647),
     related_order: z.string().uuid().nullable(),
     process: z.string().uuid().nullable(),
+    expected_start: z.string().nullable(),
     expected_completion: z.string().nullable(),
     expected_duration: z.string().nullable(),
     true_completion: z.string().nullable(),
@@ -18839,6 +20530,40 @@ const WorkOrderBulkAddPartsResponse = z.object({
   count: z.number().int(),
   created_part_ids: z.array(z.string().uuid()),
 });
+const WorkOrderCreateMakeupResponse = z.object({
+  created: z.number().int(),
+  target_good: z.number().int(),
+  alive: z.number().int(),
+  good: z.number().int(),
+  scrapped: z.number().int(),
+  shortfall: z.number().int(),
+});
+const WorkOrderMakeupStatus = z.object({
+  target_good: z.number().int(),
+  alive: z.number().int(),
+  good: z.number().int(),
+  scrapped: z.number().int(),
+  shortfall: z.number().int(),
+});
+const WorkOrderMaterialRequirementRow = z.object({
+  component: z.string(),
+  kind: z.string(),
+  source: z.string(),
+  quantity: z.number(),
+  unit_of_measure: z.string(),
+  consumed_at_step: z.string().nullable(),
+  on_hand: z.number(),
+  incoming: z.number(),
+  short_qty: z.number(),
+  status: z.string(),
+  is_optional: z.boolean(),
+  lead_time_days: z.number().int().nullable(),
+  need_by: z.string().nullable(),
+  order_by: z.string().nullable(),
+});
+const WorkOrderMaterialRequirements = z.object({
+  rows: z.array(WorkOrderMaterialRequirementRow),
+});
 const WorkOrderPlaceOnHoldInputRequest = z.object({
   reason: z.string().min(1),
   notes: z.string().optional(),
@@ -18850,6 +20575,14 @@ const QADocumentsResponse = z.object({
   part_type_documents: z.array(Documents),
   current_step_id: z.string().uuid().nullable(),
   parts_in_qa: z.number().int(),
+});
+const WorkOrderSetQuantityInputRequest = z.object({
+  quantity: z.number().int().gte(0),
+});
+const WorkOrderSetQuantityResponse = z.object({
+  quantity: z.number().int(),
+  added: z.number().int(),
+  cancelled: z.number().int(),
 });
 const WorkOrderSplitInputRequest = z.object({
   reason: z.string().min(1),
@@ -18924,8 +20657,11 @@ const WorkQueueRow = z.object({
   expected_completion: z.string().nullable(),
   qty_ready: z.number().int(),
   earliest_entered_at: z.string().datetime({ offset: true }).nullable(),
+  scheduled_start: z.string().datetime({ offset: true }).nullable(),
   work_center: z.string().uuid().nullable(),
   work_center_kind: z.string().nullable(),
+  machine: z.string().uuid().nullable(),
+  machine_name: z.string().nullable(),
   readiness: z.string(),
   is_held: z.boolean(),
 });
@@ -20479,6 +22215,7 @@ const StepEdgeRequest = z.object({
     .string()
     .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
     .nullish(),
+  max_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
 });
 const StepRequest = z.object({
   name: z.string().min(1).max(50),
@@ -20499,6 +22236,7 @@ const StepRequest = z.object({
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
+  outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -20533,6 +22271,7 @@ export const schemas = {
   AssemblyUsageRequest,
   PatchedAssemblyUsageRequest,
   AssemblyRemoveRequest,
+  BOMLineSourceEnum,
   BOMLine,
   PaginatedBOMLineList,
   BOMLineRequest,
@@ -20647,6 +22386,7 @@ export const schemas = {
   UserSelect,
   PaginatedUserSelectList,
   EquipmentsStatusEnum,
+  BatchModeEnum,
   Equipments,
   PaginatedEquipmentsList,
   EquipmentsRequest,
@@ -20675,6 +22415,11 @@ export const schemas = {
   PaginatedFiveWhysList,
   FiveWhysRequest,
   PatchedFiveWhysRequest,
+  FixtureKindEnum,
+  Fixture,
+  PaginatedFixtureList,
+  FixtureRequest,
+  PatchedFixtureRequest,
   HarvestedComponentRequest,
   PatchedHarvestedComponentRequest,
   HarvestedComponentAcceptRequest,
@@ -20688,7 +22433,7 @@ export const schemas = {
   DefectTypeFacet,
   SeverityFacet,
   HeatMapFacetsResponse,
-  SourceEnum,
+  IncomingInspectionRowSourceEnum,
   IncomingInspectionRow,
   InspectionInboxTypeEnum,
   SubjectKindEnum,
@@ -20700,6 +22445,12 @@ export const schemas = {
   PaginatedJobRoleList,
   JobRoleRequest,
   PatchedJobRoleRequest,
+  LaborCalendarBlockKindEnum,
+  LaborRecurrenceEnum,
+  LaborCalendarBlock,
+  PaginatedLaborCalendarBlockList,
+  LaborCalendarBlockRequest,
+  PatchedLaborCalendarBlockRequest,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,
@@ -20730,6 +22481,10 @@ export const schemas = {
   MaterialLotBulkCreateError,
   MaterialUsage,
   PaginatedMaterialUsageList,
+  Material,
+  PaginatedMaterialList,
+  MaterialRequest,
+  PatchedMaterialRequest,
   TypeEnum,
   MeasurementDefinition,
   PaginatedMeasurementDefinitionList,
@@ -20773,6 +22528,10 @@ export const schemas = {
   ReadyToShipGroup,
   PaginatedReadyToShipGroupList,
   SendPartsOutRequestRequest,
+  OvertimeWindow,
+  PaginatedOvertimeWindowList,
+  OvertimeWindowRequest,
+  PatchedOvertimeWindowRequest,
   PartApprovalTypeEnum,
   QualificationStatusEnum,
   PartApproval,
@@ -20826,6 +22585,12 @@ export const schemas = {
   BulkSetStatusResponse,
   PartSelect,
   PaginatedPartSelectList,
+  PlantCalendarExceptionKindEnum,
+  PlantClosureRecurrenceEnum,
+  PlantCalendarException,
+  PaginatedPlantCalendarExceptionList,
+  PlantCalendarExceptionRequest,
+  PatchedPlantCalendarExceptionRequest,
   ProcessStatusEnum,
   ProcessesCategoryEnum,
   FpiScopeEnum,
@@ -20893,10 +22658,27 @@ export const schemas = {
   PaginatedScheduledTaskList,
   MoveRequestRequest,
   PinRequestRequest,
+  ReassignMachineRequestRequest,
+  ReassignOperatorRequestRequest,
+  BatchMembershipRequestRequest,
+  BulkReassignMachineRequestRequest,
+  BulkReassignOperatorRequestRequest,
   MoveBatchRequestRequest,
   PinBatchRequestRequest,
   SolverStatusEnum,
   ScheduleResult,
+  DefaultLaborModelEnum,
+  AutoResolveEnum,
+  OptimizationConfig,
+  PatchedOptimizationConfigRequest,
+  ExplodeWorkOrderInputRequest,
+  OperatorHoursRow,
+  OperatorHoursReport,
+  PlanWorkOrderInputRequest,
+  SourceRequirement,
+  ProduceRequirement,
+  ToolingRequirement,
+  SourcingRequirements,
   WorkingWindow,
   WorkingWindows,
   ShiftNotePriorityEnum,
@@ -21070,8 +22852,14 @@ export const schemas = {
   PatchedWorkOrderRequest,
   WorkOrderBulkAddPartsInputRequest,
   WorkOrderBulkAddPartsResponse,
+  WorkOrderCreateMakeupResponse,
+  WorkOrderMakeupStatus,
+  WorkOrderMaterialRequirementRow,
+  WorkOrderMaterialRequirements,
   WorkOrderPlaceOnHoldInputRequest,
   QADocumentsResponse,
+  WorkOrderSetQuantityInputRequest,
+  WorkOrderSetQuantityResponse,
   WorkOrderSplitInputRequest,
   WorkOrderSplitResponse,
   StepSummary,
@@ -27661,6 +29449,168 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/Fixtures/",
+    alias: "api_Fixtures_list",
+    description: `CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+operations against the quantity available (cumulative capacity).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "kind",
+        type: "Query",
+        schema: z
+          .enum(["DIE", "FIXTURE", "OTHER", "PROGRAM", "TOOL"])
+          .optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedFixtureList,
+  },
+  {
+    method: "post",
+    path: "/api/Fixtures/",
+    alias: "api_Fixtures_create",
+    description: `CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+operations against the quantity available (cumulative capacity).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: FixtureRequest,
+      },
+    ],
+    response: Fixture,
+  },
+  {
+    method: "get",
+    path: "/api/Fixtures/:id/",
+    alias: "api_Fixtures_retrieve",
+    description: `CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+operations against the quantity available (cumulative capacity).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Fixture,
+  },
+  {
+    method: "put",
+    path: "/api/Fixtures/:id/",
+    alias: "api_Fixtures_update",
+    description: `CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+operations against the quantity available (cumulative capacity).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: FixtureRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Fixture,
+  },
+  {
+    method: "patch",
+    path: "/api/Fixtures/:id/",
+    alias: "api_Fixtures_partial_update",
+    description: `CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+operations against the quantity available (cumulative capacity).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedFixtureRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Fixture,
+  },
+  {
+    method: "delete",
+    path: "/api/Fixtures/:id/",
+    alias: "api_Fixtures_destroy",
+    description: `CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+operations against the quantity available (cumulative capacity).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Fixtures/export-excel/",
+    alias: "api_Fixtures_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/Fixtures/metadata/",
+    alias: "api_Fixtures_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/FPIRecords/",
     alias: "api_FPIRecords_list",
     description: `List FPI records with filtering`,
@@ -28873,6 +30823,183 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
   },
   {
     method: "get",
+    path: "/api/LaborCalendarBlocks/",
+    alias: "api_LaborCalendarBlocks_list",
+    description: `CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+one-off or weekly, company-wide (user null) or per person. Operators only; machines
+keep running (only PlantCalendarException stops machines).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "kind",
+        type: "Query",
+        schema: z
+          .enum(["BREAK", "MEETING", "OTHER", "PTO", "SICK", "TRAINING"])
+          .optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "recurrence",
+        type: "Query",
+        schema: z.enum(["ONCE", "WEEKLY"]).optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "user",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: PaginatedLaborCalendarBlockList,
+  },
+  {
+    method: "post",
+    path: "/api/LaborCalendarBlocks/",
+    alias: "api_LaborCalendarBlocks_create",
+    description: `CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+one-off or weekly, company-wide (user null) or per person. Operators only; machines
+keep running (only PlantCalendarException stops machines).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LaborCalendarBlockRequest,
+      },
+    ],
+    response: LaborCalendarBlock,
+  },
+  {
+    method: "get",
+    path: "/api/LaborCalendarBlocks/:id/",
+    alias: "api_LaborCalendarBlocks_retrieve",
+    description: `CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+one-off or weekly, company-wide (user null) or per person. Operators only; machines
+keep running (only PlantCalendarException stops machines).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LaborCalendarBlock,
+  },
+  {
+    method: "put",
+    path: "/api/LaborCalendarBlocks/:id/",
+    alias: "api_LaborCalendarBlocks_update",
+    description: `CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+one-off or weekly, company-wide (user null) or per person. Operators only; machines
+keep running (only PlantCalendarException stops machines).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LaborCalendarBlockRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LaborCalendarBlock,
+  },
+  {
+    method: "patch",
+    path: "/api/LaborCalendarBlocks/:id/",
+    alias: "api_LaborCalendarBlocks_partial_update",
+    description: `CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+one-off or weekly, company-wide (user null) or per person. Operators only; machines
+keep running (only PlantCalendarException stops machines).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedLaborCalendarBlockRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LaborCalendarBlock,
+  },
+  {
+    method: "delete",
+    path: "/api/LaborCalendarBlocks/:id/",
+    alias: "api_LaborCalendarBlocks_destroy",
+    description: `CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+one-off or weekly, company-wide (user null) or per person. Operators only; machines
+keep running (only PlantCalendarException stops machines).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/LaborCalendarBlocks/export-excel/",
+    alias: "api_LaborCalendarBlocks_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/LaborCalendarBlocks/metadata/",
+    alias: "api_LaborCalendarBlocks_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/MaterialLots/",
     alias: "api_MaterialLots_list",
     description: `Material lot tracking with split capability`,
@@ -29242,6 +31369,165 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/Materials/",
+    alias: "api_Materials_list",
+    description: `Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "preferred_supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedMaterialList,
+  },
+  {
+    method: "post",
+    path: "/api/Materials/",
+    alias: "api_Materials_create",
+    description: `Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MaterialRequest,
+      },
+    ],
+    response: Material,
+  },
+  {
+    method: "get",
+    path: "/api/Materials/:id/",
+    alias: "api_Materials_retrieve",
+    description: `Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Material,
+  },
+  {
+    method: "put",
+    path: "/api/Materials/:id/",
+    alias: "api_Materials_update",
+    description: `Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MaterialRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Material,
+  },
+  {
+    method: "patch",
+    path: "/api/Materials/:id/",
+    alias: "api_Materials_partial_update",
+    description: `Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedMaterialRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Material,
+  },
+  {
+    method: "delete",
+    path: "/api/Materials/:id/",
+    alias: "api_Materials_destroy",
+    description: `Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Materials/export-excel/",
+    alias: "api_Materials_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/Materials/metadata/",
+    alias: "api_Materials_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -31658,6 +33944,176 @@ to the shipment and runs the same DWI receiving runtime as incoming lots.`,
   },
   {
     method: "get",
+    path: "/api/OvertimeWindows/",
+    alias: "api_OvertimeWindows_list",
+    description: `CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+weekly, company-wide. The solver adds these to operator + attended-machine
+availability (plant closures still win).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "recurrence",
+        type: "Query",
+        schema: z.enum(["ONCE", "WEEKLY"]).optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "shift",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedOvertimeWindowList,
+  },
+  {
+    method: "post",
+    path: "/api/OvertimeWindows/",
+    alias: "api_OvertimeWindows_create",
+    description: `CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+weekly, company-wide. The solver adds these to operator + attended-machine
+availability (plant closures still win).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: OvertimeWindowRequest,
+      },
+    ],
+    response: OvertimeWindow,
+  },
+  {
+    method: "get",
+    path: "/api/OvertimeWindows/:id/",
+    alias: "api_OvertimeWindows_retrieve",
+    description: `CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+weekly, company-wide. The solver adds these to operator + attended-machine
+availability (plant closures still win).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OvertimeWindow,
+  },
+  {
+    method: "put",
+    path: "/api/OvertimeWindows/:id/",
+    alias: "api_OvertimeWindows_update",
+    description: `CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+weekly, company-wide. The solver adds these to operator + attended-machine
+availability (plant closures still win).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: OvertimeWindowRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OvertimeWindow,
+  },
+  {
+    method: "patch",
+    path: "/api/OvertimeWindows/:id/",
+    alias: "api_OvertimeWindows_partial_update",
+    description: `CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+weekly, company-wide. The solver adds these to operator + attended-machine
+availability (plant closures still win).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedOvertimeWindowRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OvertimeWindow,
+  },
+  {
+    method: "delete",
+    path: "/api/OvertimeWindows/:id/",
+    alias: "api_OvertimeWindows_destroy",
+    description: `CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+weekly, company-wide. The solver adds these to operator + attended-machine
+availability (plant closures still win).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/OvertimeWindows/export-excel/",
+    alias: "api_OvertimeWindows_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/OvertimeWindows/metadata/",
+    alias: "api_OvertimeWindows_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/PartApprovals/",
     alias: "api_PartApprovals_list",
     description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
@@ -33182,6 +35638,167 @@ Used by frontend permission picker UI.`,
       },
     ],
     response: PermissionListResponse,
+  },
+  {
+    method: "get",
+    path: "/api/PlantCalendarExceptions/",
+    alias: "api_PlantCalendarExceptions_list",
+    description: `CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+blocks every machine and treats operators as absent during these.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "kind",
+        type: "Query",
+        schema: z
+          .enum(["HOLIDAY", "INVENTORY", "OTHER", "SHUTDOWN"])
+          .optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedPlantCalendarExceptionList,
+  },
+  {
+    method: "post",
+    path: "/api/PlantCalendarExceptions/",
+    alias: "api_PlantCalendarExceptions_create",
+    description: `CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+blocks every machine and treats operators as absent during these.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PlantCalendarExceptionRequest,
+      },
+    ],
+    response: PlantCalendarException,
+  },
+  {
+    method: "get",
+    path: "/api/PlantCalendarExceptions/:id/",
+    alias: "api_PlantCalendarExceptions_retrieve",
+    description: `CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+blocks every machine and treats operators as absent during these.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PlantCalendarException,
+  },
+  {
+    method: "put",
+    path: "/api/PlantCalendarExceptions/:id/",
+    alias: "api_PlantCalendarExceptions_update",
+    description: `CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+blocks every machine and treats operators as absent during these.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PlantCalendarExceptionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PlantCalendarException,
+  },
+  {
+    method: "patch",
+    path: "/api/PlantCalendarExceptions/:id/",
+    alias: "api_PlantCalendarExceptions_partial_update",
+    description: `CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+blocks every machine and treats operators as absent during these.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedPlantCalendarExceptionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PlantCalendarException,
+  },
+  {
+    method: "delete",
+    path: "/api/PlantCalendarExceptions/:id/",
+    alias: "api_PlantCalendarExceptions_destroy",
+    description: `CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+blocks every machine and treats operators as absent during these.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/PlantCalendarExceptions/export-excel/",
+    alias: "api_PlantCalendarExceptions_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/PlantCalendarExceptions/metadata/",
+    alias: "api_PlantCalendarExceptions_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -36677,6 +39294,117 @@ next solve is known to be needed.`,
   },
   {
     method: "post",
+    path: "/api/ScheduledTasks/:id/reassign-machine/",
+    alias: "api_ScheduledTasks_reassign_machine_create",
+    description: `Put this task on a specific machine (planner override) + pin it. Applies now;
+the next Solve keeps it there (machine-pin). Warns if the machine isn&#x27;t eligible.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ machine_id: z.string().uuid() }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/ScheduledTasks/:id/reassign-operator/",
+    alias: "api_ScheduledTasks_reassign_operator_create",
+    description: `Assign / re-assign / clear (null) the operator on this task (manual coverage).
+Applies now; warns if the operator isn&#x27;t qualified for the step.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ operator_id: z.string().uuid().nullable() }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/ScheduledTasks/:id/reassign-options/",
+    alias: "api_ScheduledTasks_reassign_options_retrieve",
+    description: `Machines eligible for this task&#x27;s step + operators qualified for it — the
+options the detail dialog&#x27;s reassign dropdowns show.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/ScheduledTasks/batch-membership/",
+    alias: "api_ScheduledTasks_batch_membership_create",
+    description: `Direct-manipulation batch control. &#x60;merge&#x3D;true&#x60; → rejoin the WO+step cohort:
+unpin the parts (the solver batches the unpinned cohort) and snap them onto the
+cohort&#x27;s slot so the ×N cell collapses now. &#x60;merge&#x3D;false&#x60; → break apart: lay the
+parts in separate slots and PIN them (separate fixed bars). Applies immediately and
+marks the schedule stale; the next Solve forms/optimizes the batch.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BatchMembershipRequestRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/ScheduledTasks/bulk-reassign-machine/",
+    alias: "api_ScheduledTasks_bulk_reassign_machine_create",
+    description: `Move several selected tasks onto one machine (planner override) + pin them.
+Applies now; returns {changed, warnings} (a warning per distinct step the machine
+isn&#x27;t authored for). The next Solve keeps them there (machine-pin).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BulkReassignMachineRequestRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/ScheduledTasks/bulk-reassign-operator/",
+    alias: "api_ScheduledTasks_bulk_reassign_operator_create",
+    description: `Assign / clear (null) one operator across several selected tasks — bulk manual
+coverage. Applies now; returns {changed, warnings} (warns, listing steps the
+operator isn&#x27;t trained for).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BulkReassignOperatorRequestRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
     path: "/api/ScheduledTasks/move_batch/",
     alias: "api_ScheduledTasks_move_batch_create",
     description: `Re-anchor a work-order batch (a WO&#x27;s parts at one operation) to a new start;
@@ -36737,6 +39465,33 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
   },
   {
     method: "get",
+    path: "/api/Schedules/config/",
+    alias: "api_Schedules_config_retrieve",
+    description: `The tenant&#x27;s solver knobs (time limit, fence zones, penalties, labor model).
+GET reads them; PATCH updates the subset provided. Gated on
+change_optimizationconfig — the scheduling settings dialog.`,
+    requestFormat: "json",
+    response: OptimizationConfig,
+  },
+  {
+    method: "patch",
+    path: "/api/Schedules/config/",
+    alias: "api_Schedules_config_partial_update",
+    description: `The tenant&#x27;s solver knobs (time limit, fence zones, penalties, labor model).
+GET reads them; PATCH updates the subset provided. Gated on
+change_optimizationconfig — the scheduling settings dialog.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedOptimizationConfigRequest,
+      },
+    ],
+    response: OptimizationConfig,
+  },
+  {
+    method: "get",
     path: "/api/Schedules/current/",
     alias: "api_Schedules_current_retrieve",
     description: `The live (committed) schedule&#x27;s run metadata, or 404 if none exists yet.`,
@@ -36767,6 +39522,77 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
     description: `The current what-if draft, or 404 if none is pending review.`,
     requestFormat: "json",
     response: ScheduleResult,
+  },
+  {
+    method: "post",
+    path: "/api/Schedules/explode-work-order/",
+    alias: "api_Schedules_explode_work_order_create",
+    description: `(Re)explode an existing work order&#x27;s BOM into pegged in-house component WOs.
+&#x60;create&#x3D;false&#x60; previews (top-level, no writes). Net-first: existing stock + already-
+pegged component WOs offset the requirement, so re-running is idempotent.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ExplodeWorkOrderInputRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/operator_hours/",
+    alias: "api_Schedules_operator_hours_retrieve",
+    description: `Shop hours worked per operator over a date range, from TimeEntry —
+&#x60;on_shift_hours&#x60; (attendance) and &#x60;direct_hours&#x60; (clocked onto jobs). Scoped to
+shop-floor operators (Operator / Shift Lead groups).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "end",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "start",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: OperatorHoursReport,
+  },
+  {
+    method: "post",
+    path: "/api/Schedules/plan-work-order/",
+    alias: "api_Schedules_plan_work_order_create",
+    description: `Add work: create a WO for a process and spawn its parts at the first step,
+so it schedules on the next Solve. The &#x27;add work&#x27; half of Gantt planning.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PlanWorkOrderInputRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/requirements/",
+    alias: "api_Schedules_requirements_retrieve",
+    description: `Sourcing &amp; production requirements for open demand — what to buy (source),
+what to make (produce), and tooling to acquire, with lead-time-driven order-by
+dates.`,
+    requestFormat: "json",
+    response: SourcingRequirements,
   },
   {
     method: "get",
@@ -37346,7 +40172,11 @@ un-acked). Paginated to match the list contract.`,
     method: "get",
     path: "/api/Shifts/",
     alias: "api_Shifts_list",
-    description: `Shift definition management`,
+    description: `Shift definition management.
+
+&#x60;Shift&#x60; is a versioned model (&#x60;_is_versioned&#x3D;True&#x60;, for DCAS labor audits), so
+edits mutate via &#x60;create_new_version&#x60; — never a raw save — and the list is scoped
+to current versions. Delete is the SecureModel soft-delete (archive).`,
     requestFormat: "json",
     parameters: [
       {
@@ -37376,7 +40206,11 @@ un-acked). Paginated to match the list contract.`,
     method: "post",
     path: "/api/Shifts/",
     alias: "api_Shifts_create",
-    description: `Shift definition management`,
+    description: `Shift definition management.
+
+&#x60;Shift&#x60; is a versioned model (&#x60;_is_versioned&#x3D;True&#x60;, for DCAS labor audits), so
+edits mutate via &#x60;create_new_version&#x60; — never a raw save — and the list is scoped
+to current versions. Delete is the SecureModel soft-delete (archive).`,
     requestFormat: "json",
     parameters: [
       {
@@ -37391,7 +40225,11 @@ un-acked). Paginated to match the list contract.`,
     method: "get",
     path: "/api/Shifts/:id/",
     alias: "api_Shifts_retrieve",
-    description: `Shift definition management`,
+    description: `Shift definition management.
+
+&#x60;Shift&#x60; is a versioned model (&#x60;_is_versioned&#x3D;True&#x60;, for DCAS labor audits), so
+edits mutate via &#x60;create_new_version&#x60; — never a raw save — and the list is scoped
+to current versions. Delete is the SecureModel soft-delete (archive).`,
     requestFormat: "json",
     parameters: [
       {
@@ -37406,7 +40244,11 @@ un-acked). Paginated to match the list contract.`,
     method: "put",
     path: "/api/Shifts/:id/",
     alias: "api_Shifts_update",
-    description: `Shift definition management`,
+    description: `Shift definition management.
+
+&#x60;Shift&#x60; is a versioned model (&#x60;_is_versioned&#x3D;True&#x60;, for DCAS labor audits), so
+edits mutate via &#x60;create_new_version&#x60; — never a raw save — and the list is scoped
+to current versions. Delete is the SecureModel soft-delete (archive).`,
     requestFormat: "json",
     parameters: [
       {
@@ -37426,7 +40268,11 @@ un-acked). Paginated to match the list contract.`,
     method: "patch",
     path: "/api/Shifts/:id/",
     alias: "api_Shifts_partial_update",
-    description: `Shift definition management`,
+    description: `Shift definition management.
+
+&#x60;Shift&#x60; is a versioned model (&#x60;_is_versioned&#x3D;True&#x60;, for DCAS labor audits), so
+edits mutate via &#x60;create_new_version&#x60; — never a raw save — and the list is scoped
+to current versions. Delete is the SecureModel soft-delete (archive).`,
     requestFormat: "json",
     parameters: [
       {
@@ -37446,7 +40292,11 @@ un-acked). Paginated to match the list contract.`,
     method: "delete",
     path: "/api/Shifts/:id/",
     alias: "api_Shifts_destroy",
-    description: `Shift definition management`,
+    description: `Shift definition management.
+
+&#x60;Shift&#x60; is a versioned model (&#x60;_is_versioned&#x3D;True&#x60;, for DCAS labor audits), so
+edits mutate via &#x60;create_new_version&#x60; — never a raw save — and the list is scoped
+to current versions. Delete is the SecureModel soft-delete (archive).`,
     requestFormat: "json",
     parameters: [
       {
@@ -44210,6 +47060,22 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "post",
+    path: "/api/WorkOrders/:id/cancel/",
+    alias: "api_WorkOrders_cancel_create",
+    description: `Cancel this work order — it drops out of scheduling. Refused if any part has
+already shipped/completed (can&#x27;t undo delivered work).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
     path: "/api/WorkOrders/:id/clear_hold/",
     alias: "api_WorkOrders_clear_hold_create",
     description: `Work Orders CRUD with CSV import/export support.
@@ -44228,6 +47094,61 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/create_makeup/",
+    alias: "api_WorkOrders_create_makeup_create",
+    description: `Planner-confirmed make-up: spawn replacement parts (flagged &#x60;is_makeup&#x60;) at the
+route&#x27;s first step to cover the shortfall, and flag the schedule for re-solve.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderCreateMakeupResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/:id/makeup_status/",
+    alias: "api_WorkOrders_makeup_status_retrieve",
+    description: `Make-up gap for this WO: good parts owed (&#x60;target_good&#x60;) vs. still alive;
+&#x60;shortfall&#x60; is how many replacements a make-up would create to cover scrap that
+outran the expected yield.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderMakeupStatus,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/:id/material_requirements/",
+    alias: "api_WorkOrders_material_requirements_retrieve",
+    description: `The &#x27;what this job needs&#x27; readout — top-level BOM components × WO quantity,
+bucketed by consumed-at-step, with a shortage flag vs on-hand + promised. Picklist-
+*lite*: no bins / lot picking / reservations (that&#x27;s the ERP/WMS&#x27;s job).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderMaterialRequirements,
   },
   {
     method: "post",
@@ -44284,6 +47205,26 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrder,
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/set_quantity/",
+    alias: "api_WorkOrders_set_quantity_create",
+    description: `Set a WO&#x27;s quantity: add parts (increase) or cancel unstarted parts (decrease).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ quantity: z.number().int().gte(0) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderSetQuantityResponse,
   },
   {
     method: "post",
@@ -44545,6 +47486,8 @@ Read-only; permissioned on &#x60;view_workorder&#x60; (already granted broadly �
 row is a view onto WorkOrder work, not a first-class model). Filters:
   - &#x60;readiness&#x3D;ready|blocked&#x60; (default: both, blocked sunk last)
   - &#x60;wo&#x3D;&lt;uuid&gt;&#x60; — rows for a single WO
+  - &#x60;machine&#x3D;&lt;uuid&gt;&#x60; / &#x60;machine__in&#x3D;&lt;csv&gt;&#x60; — station pull: only rows the live
+    schedule assigned to that machine (unscheduled rows drop out)
   - &#x60;search&#x3D;&lt;term&gt;&#x60; — matches WO ERP id or step name
   - standard &#x60;?limit&#x3D;&amp;offset&#x3D;&#x60; pagination`,
     requestFormat: "json",

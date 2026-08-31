@@ -95,7 +95,10 @@ def create_new_bom_version(
             # tenant-safe: scoped via bom FK (BOM is tenant-scoped)
             BOMLine.objects.create(
                 bom=new_version,
-                component_type=line.component_type,
+                component_type=line.component_type,  # in-house (MAKE)
+                material=line.material,              # purchased (BUY)
+                source=line.source,
+                consumed_at_step=line.consumed_at_step,
                 quantity=line.quantity,
                 unit_of_measure=line.unit_of_measure,
                 find_number=line.find_number,

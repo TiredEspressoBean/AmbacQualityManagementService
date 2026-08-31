@@ -1,10 +1,10 @@
 // Production schedule Gantt — reads the active CP-SAT schedule and renders it,
-// grouped by machine / operator / product, with solve / dispatch actions, search,
+// grouped by machine / operator / work order, with solve / dispatch actions, search,
 // and a per-task detail dialog (opened from the bar) that pins/unpins.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { toast } from "sonner";
-import { ChevronRight, Pin, PinOff, Search, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeftRight, ChevronRight, Combine, Pin, PinOff, Plus, Search, Settings, Split, ZoomIn, ZoomOut } from "lucide-react";
 import {
   GanttProvider,
   GanttSidebar,
@@ -43,8 +43,14 @@ import {
   useMoveTask,
   useMoveBatch,
   usePinBatch,
+  useBatchMembership,
   useWorkingWindows,
 } from "@/hooks/useScheduling";
+import { SchedulingSettingsDialog } from "@/components/scheduling/SchedulingSettingsDialog";
+import { NewWorkOrderDialog } from "@/components/scheduling/NewWorkOrderDialog";
+import { TaskReassignControls } from "@/components/scheduling/TaskReassignControls";
+import { EditWorkOrderDialog } from "@/components/scheduling/EditWorkOrderDialog";
+import { BulkReassignDialog } from "@/components/scheduling/BulkReassignDialog";
 
 const FENCE = {
   frozen: { name: "Frozen", color: "#ef4444" },
@@ -63,6 +69,7 @@ const unitKey = (t: { part_erp: string | null; core_number: string | null }) =>
 /** A merged work-order batch on a lane (many parts of one WO at one operation). */
 type BatchMeta = {
   work_order: string | null;
+  work_order_id: string | null;
   step_name: string | null;
   machine_name: string | null;
   work_center: string | null;
@@ -81,15 +88,25 @@ type Task = {
   part_erp: string | null;
   core_number: string | null;
   step_name: string | null;
+  machine: string | null;
   machine_name: string | null;
+  assigned_operator: string | null;
   operator_name: string | null;
   work_order: string | null;
+  work_order_id: string | null;
   work_center: string | null;
   requires_operator: boolean;
   due_date: string | null;
   is_late: boolean;
+  material_shortage: boolean;
+  material_detail: string;
+  late_cause: string;
+  in_progress: boolean;
   start_time: string;
   end_time: string;
+  actual_start: string | null;
+  actual_end: string | null;
+  is_makeup: boolean;
   is_pinned: boolean;
   fence_zone: keyof typeof FENCE;
 };
@@ -208,14 +225,23 @@ export function SchedulingGanttPage() {
   const move = useMoveTask();
   const moveBatch = useMoveBatch();
   const pinBatch = usePinBatch();
+  const batchMembership = useBatchMembership();
 
   // Zoom = fidelity. Ctrl/⌘ + wheel (what a trackpad pinch emits) zooms; so do the
   // toolbar buttons. Higher zoom widens the day columns so hourly detail is legible.
   const [zoom, setZoom] = useState(220);
-  const [groupBy, setGroupBy] = useState<"machine" | "operator" | "product">("machine");
+  const [groupBy, setGroupBy] = useState<"machine" | "operator" | "workorder">("machine");
   const [search, setSearch] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailBatchId, setDetailBatchId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newWoOpen, setNewWoOpen] = useState(false);
+  const [editWoId, setEditWoId] = useState<string | null>(null);
+  // Multi-select: ⌘/Ctrl-click bars to select several, then merge/break them in one go.
+  // Holds bar ids (a batch bar's id or a single task id) — expanded to task ids on action.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+  const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
   // The "focused" job whose route chain draws peg lines. Set on bar click and kept
   // after the detail dialog closes, so the chain stays visible until cleared.
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -225,7 +251,8 @@ export function SchedulingGanttPage() {
   const toggleExpand = (key: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   const pageRef = useRef<HTMLDivElement>(null);
@@ -348,7 +375,20 @@ export function SchedulingGanttPage() {
   }, [focusTask, allRows]);
   const pegIds = useMemo(() => pegChain.map((t) => t.id), [pegChain]);
 
-  const handleSelect = useCallback((id: string) => {
+  const handleSelect = useCallback((id: string, event?: { ctrlKey: boolean; metaKey: boolean }) => {
+    // ⌘/Ctrl-click adds the bar to a multi-selection (for batch merge/break) instead of
+    // opening its detail dialog.
+    if (event && (event.ctrlKey || event.metaKey)) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      return;
+    }
+    // A plain click clears any multi-selection and opens the detail dialog.
+    setSelectedIds((prev) => (prev.size ? new Set() : prev));
     if (isBatchId(id)) {
       setDetailBatchId(id); // a merged WO batch → batch dialog
       return;
@@ -374,13 +414,15 @@ export function SchedulingGanttPage() {
       </span>
     ) : null;
 
-  // Props shared by every rendered bar (drag, select, late-highlight).
+  // Props shared by every rendered bar (drag, select, late-highlight, multi-select ring).
   const barProps = (f: { id: string; is_late: boolean }) => ({
     onMove: onMoveTask,
     onSelect: handleSelect,
-    cardClassName: f.is_late
-      ? "ring-2 ring-inset ring-red-500 text-red-600 dark:text-red-400"
-      : undefined,
+    cardClassName: selectedIds.has(f.id)
+      ? "ring-2 ring-inset ring-sky-500 ring-offset-1"
+      : f.is_late
+        ? "ring-2 ring-inset ring-red-500 text-red-600 dark:text-red-400"
+        : undefined,
   });
 
   // Collapsed-lane bars: a merged WO batch drags as a whole (re-anchor all its
@@ -405,16 +447,27 @@ export function SchedulingGanttPage() {
     let minStart = Infinity;
     let maxEnd = -Infinity;
     let uncovered = 0;
+    let materialShort = 0;
     const lateWos = new Set<string>();
+    const causeCounts: Record<string, number> = {};
     for (const t of allRows) {
       minStart = Math.min(minStart, new Date(t.start_time).getTime());
       maxEnd = Math.max(maxEnd, new Date(t.end_time).getTime());
       if (t.requires_operator && !t.operator_name) uncovered += 1;
-      if (t.is_late) lateWos.add(t.work_order ?? t.id);
+      if (t.material_shortage) materialShort += 1;
+      if (t.is_late) {
+        lateWos.add(t.work_order ?? t.id);
+        if (t.late_cause) causeCounts[t.late_cause] = (causeCounts[t.late_cause] ?? 0) + 1;
+      }
     }
     const makespanH =
       allRows.length && isFinite(minStart) ? (maxEnd - minStart) / 3_600_000 : 0;
-    return { makespanH, uncovered, lateOrders: lateWos.size };
+    // Dominant late-causes, for the late-orders badge tooltip.
+    const lateCauseSummary = Object.entries(causeCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cause, n]) => `${cause}: ${n}`)
+      .join("\n");
+    return { makespanH, uncovered, materialShort, lateOrders: lateWos.size, lateCauseSummary };
   }, [allRows]);
 
   // Text search filters which tasks show (across WO / unit / step / machine / operator).
@@ -432,14 +485,14 @@ export function SchedulingGanttPage() {
     const key = (t: Task) =>
       groupBy === "operator"
         ? t.operator_name ?? "— Unassigned —"
-        : groupBy === "product"
-          ? t.part_erp ?? t.core_number ?? "—"
+        : groupBy === "workorder"
+          ? t.work_order ?? t.part_erp ?? t.core_number ?? "— No WO —"
           : t.machine_name ?? "— Unassigned —";
     // Bars are labelled for the lane: a machine row shows the WORK ORDER it's
-    // running, an operator row shows the WORK CENTER they're at, and the product row
-    // (which IS a part) shows the step (+ machine).
+    // running, an operator row shows the WORK CENTER they're at, and a work-order row
+    // (the WO IS the lane) shows the step (+ the part / machine).
     const featureName = (t: Task) => {
-      const pin = `${t.is_pinned ? "📌 " : ""}${t.is_late ? "⏰ " : ""}`;
+      const pin = `${t.in_progress ? "▶ " : ""}${t.is_pinned ? "📌 " : ""}${t.is_late ? "⏰ " : ""}${t.material_shortage ? "▲ " : ""}${t.is_makeup ? "⟳ " : ""}`;
       const step = t.step_name ?? "";
       if (groupBy === "machine") {
         const wo = t.work_order ?? t.part_erp ?? t.core_number ?? "job";
@@ -449,7 +502,8 @@ export function SchedulingGanttPage() {
         const wc = t.work_center ?? t.machine_name ?? "—";
         return `${pin}${wc} · ${step}`;
       }
-      return `${pin}${step}${t.machine_name ? " @ " + t.machine_name : ""}`;
+      const unit = t.part_erp ?? t.core_number ?? "";
+      return `${pin}${step}${unit ? " · " + unit : ""}`;
     };
 
     type Feat = GanttFeature & { is_pinned: boolean; is_late: boolean };
@@ -467,10 +521,19 @@ export function SchedulingGanttPage() {
     };
     // A work order's batch key on a lane (parts of the same WO run contiguously).
     const woOf = (t: Task) => t.work_order ?? t.part_erp ?? t.core_number ?? "job";
+    // Contiguous-run merge key per lane. A cell = parts ACTUALLY co-scheduled: same
+    // lane grouping (WO on a machine/people lane, step on a WO lane) AND the same start +
+    // machine (i.e. one lot / one shared interval). So a merge (aligned onto one slot)
+    // collapses to one ×N cell, and a break (staggered onto separate slots) shows as
+    // separate bars — immediately, and consistent with what the solver produces.
+    const batchKey = (t: Task) => {
+      const lane = groupBy === "workorder" ? t.step_name ?? "—" : woOf(t);
+      return `${lane}::${t.start_time}::${t.machine_name ?? "—"}`;
+    };
 
     const meta = new Map<string, BatchMeta>();
-    // Merge each lane's contiguous same-WO tasks into one batch bar (machine/people
-    // views). A run of 1 stays a normal task bar. Product view never merges.
+    // Merge each lane's contiguous same-key tasks into one batch bar. A run of 1 stays
+    // a normal task bar.
     const mergeBatches = (tasks: Task[]): Feat[] => {
       const sorted = [...tasks].sort(
         (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
@@ -493,7 +556,9 @@ export function SchedulingGanttPage() {
           const zone = FENCE[first.fence_zone] ?? FENCE.liquid;
           out.push({
             id,
-            name: `${allPinned ? "📌 " : ""}${anyLate ? "⏰ " : ""}${woOf(first)} · ${first.step_name ?? ""} ×${run.length}`,
+            name: `${allPinned ? "📌 " : ""}${anyLate ? "⏰ " : ""}${
+              groupBy === "workorder" ? "" : woOf(first) + " · "
+            }${first.step_name ?? ""} ×${run.length}`,
             startAt,
             endAt,
             status: { id: first.fence_zone, name: zone.name, color: zone.color },
@@ -502,6 +567,7 @@ export function SchedulingGanttPage() {
           });
           meta.set(id, {
             work_order: first.work_order,
+            work_order_id: first.work_order_id,
             step_name: first.step_name,
             machine_name: first.machine_name,
             work_center: first.work_center,
@@ -516,7 +582,7 @@ export function SchedulingGanttPage() {
         run = [];
       };
       for (const t of sorted) {
-        if (run.length && woOf(t) !== woOf(run[run.length - 1])) flush();
+        if (run.length && batchKey(t) !== batchKey(run[run.length - 1])) flush();
         run.push(t);
       }
       flush();
@@ -532,9 +598,8 @@ export function SchedulingGanttPage() {
       .sort(([a], [b]) => (a.startsWith("—") ? 1 : b.startsWith("—") ? -1 : a.localeCompare(b)))
       .map(([name, tasks]) => ({
         machine: name,
-        features: tasks.map(toFeature),                       // expanded: one bar per task
-        batches: groupBy === "product" ? tasks.map(toFeature) // collapsed: merged WO batches
-                                       : mergeBatches(tasks),
+        features: tasks.map(toFeature),  // expanded: one bar per task (part-op)
+        batches: mergeBatches(tasks),    // collapsed: WO batches (machine/people) or step batches (WO lane)
         loadMinutes: tasks.reduce(
           (s, t) => s + (new Date(t.end_time).getTime() - new Date(t.start_time).getTime()) / 60000,
           0
@@ -545,6 +610,65 @@ export function SchedulingGanttPage() {
   const groups = groupData.list;
   const batchMeta = groupData.batchMeta;
   const detailBatch = detailBatchId ? batchMeta.get(detailBatchId) ?? null : null;
+
+  // Merge/break the given tasks (from a bar's detail dialog) into / out of one lot.
+  const runBatch = useCallback(
+    (taskIds: string[], merge: boolean, onDone?: () => void) => {
+      if (!taskIds.length) return;
+      batchMembership.mutate({ task_ids: taskIds, merge }, { onSuccess: onDone });
+    },
+    [batchMembership]
+  );
+
+  // Expand the multi-selection (bar ids — batch or single-task) to the underlying task
+  // ids, then merge / break them in one call. The backend groups by cohort, so a
+  // selection spanning several WOs stays coherent (each merges into its own lot).
+  const selectedTaskIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const id of selectedIds) {
+      const meta = batchMeta.get(id);
+      if (meta) ids.push(...meta.taskIds);
+      else if (!isBatchId(id)) ids.push(id);
+    }
+    return [...new Set(ids)];
+  }, [selectedIds, batchMeta]);
+
+  const runSelected = useCallback(
+    (merge: boolean) => {
+      const ids = selectedTaskIds;
+      if (!ids.length) return;
+      batchMembership.mutate(
+        { task_ids: ids, merge },
+        {
+          onSuccess: () => {
+            toast.success(`${merge ? "Merged" : "Broke apart"} ${ids.length} parts`);
+            clearSelection();
+          },
+          onError: () => toast.error(`Couldn't ${merge ? "merge" : "break"} the selection`),
+        }
+      );
+    },
+    [selectedTaskIds, batchMembership, clearSelection]
+  );
+
+  // Pin / unpin every selected part in one call (reuses the batch-pin endpoint).
+  const runSelectedPin = useCallback(
+    (isPinned: boolean) => {
+      const ids = selectedTaskIds;
+      if (!ids.length) return;
+      pinBatch.mutate(
+        { task_ids: ids, is_pinned: isPinned },
+        {
+          onSuccess: () => {
+            toast.success(`${isPinned ? "Pinned" : "Unpinned"} ${ids.length} parts`);
+            clearSelection();
+          },
+          onError: () => toast.error(`Couldn't ${isPinned ? "pin" : "unpin"} the selection`),
+        }
+      );
+    },
+    [selectedTaskIds, pinBatch, clearSelection]
+  );
 
   // Busiest lane, for scaling the per-lane load bars (relative utilization).
   const maxLoad = useMemo(
@@ -618,7 +742,23 @@ export function SchedulingGanttPage() {
                     DRAFT (what-if)
                   </Badge>
                 )}
-                <Badge variant="secondary">{schedule.solver_status}</Badge>
+                <Badge
+                  variant="secondary"
+                  title={
+                    schedule.solver_status === "OPTIMAL"
+                      ? "The solver proved this is the best possible schedule for the objective."
+                      : schedule.relative_gap != null
+                        ? `Time-limited: proven within ${(schedule.relative_gap * 100).toFixed(1)}% of the best possible objective.`
+                        : "A feasible schedule (optimality not proven)."
+                  }
+                >
+                  {schedule.solver_status}
+                  {schedule.solver_status === "OPTIMAL"
+                    ? " · proven best"
+                    : schedule.relative_gap != null && schedule.relative_gap > 0.0001
+                      ? ` · within ${(schedule.relative_gap * 100).toFixed(schedule.relative_gap < 0.01 ? 1 : 0)}%`
+                      : ""}
+                </Badge>
                 <span>{schedule.task_count} tasks</span>
                 <span>· makespan {kpis.makespanH.toFixed(1)} h</span>
                 <span
@@ -629,12 +769,34 @@ export function SchedulingGanttPage() {
                     ? `${schedule.weighted_lateness.toLocaleString()} (priority-wtd)`
                     : "none"}
                 </span>
-                <span>· solved in {schedule.solve_time_ms} ms</span>
+                <span
+                  title={
+                    schedule.operator_solve_ms > 0
+                      ? `Machine (Layer-1) phase: ${schedule.machine_solve_ms} ms · Named-operator (Layer-2) phase: ${schedule.operator_solve_ms} ms`
+                      : "Single-phase machine solve — operators assigned separately via Dispatch."
+                  }
+                >
+                  · solved in {schedule.solve_time_ms} ms
+                  {schedule.operator_solve_ms > 0 && (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      (machine {schedule.machine_solve_ms} · people {schedule.operator_solve_ms} ms)
+                    </span>
+                  )}
+                </span>
                 {kpis.uncovered > 0 && (
                   <Badge variant="destructive">{kpis.uncovered} uncovered</Badge>
                 )}
+                {kpis.materialShort > 0 && (
+                  <Badge variant="destructive">▲ {kpis.materialShort} material-short</Badge>
+                )}
                 {kpis.lateOrders > 0 && (
-                  <Badge variant="destructive">⏰ {kpis.lateOrders} late order(s)</Badge>
+                  <Badge
+                    variant="destructive"
+                    title={kpis.lateCauseSummary || "Late orders — re-solve for causes"}
+                  >
+                    ⏰ {kpis.lateOrders} late order(s)
+                  </Badge>
                 )}
                 {schedule.is_stale && <Badge variant="outline">stale — re-solve</Badge>}
               </>
@@ -664,11 +826,78 @@ export function SchedulingGanttPage() {
               <span className="text-muted-foreground">✕</span>
             </button>
           )}
+          {selectedIds.size > 0 && (
+            <div className="mr-1 flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5">
+              <span className="px-1 text-xs font-medium text-sky-600 tabular-nums dark:text-sky-400">
+                {selectedTaskIds.length} selected
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => runSelected(true)}
+                disabled={batchMembership.isPending || selectedTaskIds.length < 2}
+                title="Merge the selected parts into their work-order lot(s)"
+              >
+                <Combine className="mr-1 h-3.5 w-3.5" /> Merge
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => runSelected(false)}
+                disabled={batchMembership.isPending || selectedTaskIds.length < 1}
+                title="Break the selected parts into individually-scheduled bars"
+              >
+                <Split className="mr-1 h-3.5 w-3.5" /> Break
+              </Button>
+              <span className="mx-0.5 h-4 w-px bg-sky-500/30" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => runSelectedPin(true)}
+                disabled={pinBatch.isPending || selectedTaskIds.length < 1}
+                title="Pin the selected parts so the solver keeps them in place"
+              >
+                <Pin className="mr-1 h-3.5 w-3.5" /> Pin
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => runSelectedPin(false)}
+                disabled={pinBatch.isPending || selectedTaskIds.length < 1}
+                title="Unpin the selected parts so the solver can reschedule them"
+              >
+                <PinOff className="mr-1 h-3.5 w-3.5" /> Unpin
+              </Button>
+              <span className="mx-0.5 h-4 w-px bg-sky-500/30" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setBulkReassignOpen(true)}
+                disabled={selectedTaskIds.length < 1}
+                title="Set a machine and/or operator for all selected tasks"
+              >
+                <ArrowLeftRight className="mr-1 h-3.5 w-3.5" /> Reassign…
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground"
+                onClick={clearSelection}
+              >
+                ✕
+              </Button>
+            </div>
+          )}
           <div className="mr-1 flex items-center rounded-md border p-0.5">
             {([
               ["machine", "Machines"],
               ["operator", "People"],
-              ["product", "Product"],
+              ["workorder", "Work orders"],
             ] as const).map(([mode, label]) => (
               <Button
                 key={mode}
@@ -705,6 +934,24 @@ export function SchedulingGanttPage() {
               ))}
             </div>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            title="Create a new work order"
+            onClick={() => setNewWoOpen(true)}
+          >
+            <Plus className="mr-1 h-4 w-4" /> New WO
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            title="Scheduling settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
           <Button onClick={solve.run} disabled={solve.isRunning}>
             {solve.isRunning ? "Solving…" : "Solve"}
           </Button>
@@ -752,6 +999,49 @@ export function SchedulingGanttPage() {
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
           ⚠ {schedule.relaxed_pin_count} frozen task(s) had to move — the world changed under
           the pinned plan. Review before committing.
+        </div>
+      )}
+
+      {schedule && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-xs text-muted-foreground">
+          <span
+            className="flex items-center gap-1.5"
+            title="Solver time-fence: how free the solver is to reschedule a task. Frozen stays put, Slushy resists moving, Liquid is fully re-plannable."
+          >
+            <span className="font-medium text-foreground">Fence:</span>
+            {Object.values(FENCE).map((z) => (
+              <span key={z.name} className="flex items-center gap-1">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: z.color }}
+                />
+                {z.name}
+              </span>
+            ))}
+          </span>
+          <span className="text-border">|</span>
+          <span className="flex items-center gap-1" title="Planner lock: a task the planner pinned so the solver must keep it fixed. Independent of the fence zone.">
+            <span className="font-medium text-foreground">📌 Pinned</span>
+            <span>= planner lock</span>
+          </span>
+          <span className="flex items-center gap-1" title="The task is scheduled to finish after its due date.">
+            <span className="font-medium text-foreground">⏰ Late</span>
+          </span>
+          <span className="flex items-center gap-1" title="A purchased component this op consumes is short on hand with no known incoming receipt date.">
+            <span className="font-medium text-foreground">▲ Material short</span>
+          </span>
+          <span className="flex items-center gap-1" title="This operation was running when the schedule was solved — pinned at 'now' with only its remaining time.">
+            <span className="font-medium text-foreground">▶ Running</span>
+          </span>
+          <span className="flex items-center gap-1" title="A make-up / replacement part, spawned to cover scrap and keep the work order on track for its ordered good count.">
+            <span className="font-medium text-foreground">⟳ Make-up</span>
+          </span>
+          <span className="text-border">|</span>
+          <span title="Hold ⌘ (or Ctrl) and click bars to select several, then Merge or Break them together.">
+            <kbd className="rounded border bg-muted px-1 font-sans text-[10px]">⌘</kbd>/
+            <kbd className="rounded border bg-muted px-1 font-sans text-[10px]">Ctrl</kbd>-click to
+            multi-select
+          </span>
         </div>
       )}
 
@@ -857,6 +1147,12 @@ export function SchedulingGanttPage() {
                 <dd className={detailTask.is_late ? "text-red-600 dark:text-red-400" : undefined}>
                   {detailTask.due_date ?? "— none —"}
                 </dd>
+                {detailTask.is_late && detailTask.late_cause && (
+                  <>
+                    <dt className="text-muted-foreground" title="Heuristic binding constraint that makes this operation late.">Why late</dt>
+                    <dd className="text-red-600 dark:text-red-400">{detailTask.late_cause}</dd>
+                  </>
+                )}
                 <dt className="text-muted-foreground">Machine</dt>
                 <dd>{detailTask.machine_name ?? "— none —"}</dd>
                 <dt className="text-muted-foreground">Work center</dt>
@@ -870,10 +1166,79 @@ export function SchedulingGanttPage() {
                 <dd>{new Date(detailTask.start_time).toLocaleString()}</dd>
                 <dt className="text-muted-foreground">End</dt>
                 <dd>{new Date(detailTask.end_time).toLocaleString()}</dd>
-                <dt className="text-muted-foreground">Fence zone</dt>
-                <dd className="capitalize">{detailTask.fence_zone}</dd>
+                {(detailTask.actual_start || detailTask.actual_end) && (
+                  <>
+                    <dt className="text-muted-foreground" title="Real start/finish captured from the shop floor (planned vs actual).">Actual</dt>
+                    <dd>
+                      {detailTask.actual_start ? new Date(detailTask.actual_start).toLocaleString() : "—"}
+                      {" → "}
+                      {detailTask.actual_end ? new Date(detailTask.actual_end).toLocaleString() : "in progress"}
+                      {detailTask.actual_end && (() => {
+                        const deltaMin = Math.round(
+                          (new Date(detailTask.actual_end).getTime() - new Date(detailTask.end_time).getTime()) / 60000);
+                        if (deltaMin === 0) return <span className="text-muted-foreground"> (on plan)</span>;
+                        const late = deltaMin > 0;
+                        return (
+                          <span className={late ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
+                            {" "}({Math.abs(deltaMin)} min {late ? "late" : "early"} vs plan)
+                          </span>
+                        );
+                      })()}
+                    </dd>
+                  </>
+                )}
+                <dt className="text-muted-foreground" title="Solver time-fence: how free the solver is to reschedule this task.">Fence zone</dt>
+                <dd className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-sm"
+                    style={{ backgroundColor: (FENCE[detailTask.fence_zone] ?? FENCE.liquid).color }}
+                  />
+                  <span className="capitalize">{detailTask.fence_zone}</span>
+                </dd>
+                {detailTask.in_progress && (
+                  <>
+                    <dt className="text-muted-foreground" title="This operation was running when the schedule was solved — locked at 'now' with only its remaining time.">Status</dt>
+                    <dd className="text-sky-600 dark:text-sky-400">
+                      ▶ Running (~{Math.max(0, Math.round((new Date(detailTask.end_time).getTime() - Date.now()) / 60000))} min left)
+                    </dd>
+                  </>
+                )}
+                <dt className="text-muted-foreground" title="Planner lock — independent of the solver fence zone.">Planner pin</dt>
+                <dd>{detailTask.is_pinned ? "📌 Pinned" : "Not pinned"}</dd>
+                <dt className="text-muted-foreground" title="Purchased-component availability for this operation (buy-side).">Material</dt>
+                <dd className={detailTask.material_shortage ? "text-red-600 dark:text-red-400" : undefined}>
+                  {detailTask.material_detail
+                    ? `${detailTask.material_shortage ? "▲ " : "⏳ "}${detailTask.material_detail}`
+                    : "OK"}
+                </dd>
               </dl>
-              <DialogFooter>
+              {detailTask.part_erp && (
+                <TaskReassignControls
+                  taskId={detailTask.id}
+                  machineId={detailTask.machine}
+                  operatorId={detailTask.assigned_operator}
+                />
+              )}
+              <DialogFooter className="gap-2 sm:justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => runBatch([detailTask.id], true, () => setDetailId(null))}
+                    disabled={batchMembership.isPending}
+                    title="Fold this part back into its work-order lot so it batches with its siblings"
+                  >
+                    <Combine className="mr-1 h-4 w-4" /> Merge into batch
+                  </Button>
+                  {detailTask.work_order_id && (
+                    <Button
+                      variant="outline"
+                      onClick={() => { setEditWoId(detailTask.work_order_id); setDetailId(null); }}
+                      title="Edit this work order's priority, dates, and quantity"
+                    >
+                      Edit WO
+                    </Button>
+                  )}
+                </div>
                 <Button
                   variant={detailTask.is_pinned ? "secondary" : "default"}
                   onClick={() => togglePin(detailTask.id)}
@@ -927,7 +1292,34 @@ export function SchedulingGanttPage() {
                 Drag the batch bar to re-anchor all {detailBatch.count} parts; expand the
                 lane (▸) to move or pin individual parts.
               </p>
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => runBatch(detailBatch.taskIds, false, () => setDetailBatchId(null))}
+                    disabled={batchMembership.isPending}
+                    title="Break this batch into individually-schedulable parts"
+                  >
+                    <Split className="mr-1 h-4 w-4" /> Break apart
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => runBatch(detailBatch.taskIds, true, () => setDetailBatchId(null))}
+                    disabled={batchMembership.isPending}
+                    title="Fold these parts back into their work-order lot, combining with the rest of the batch"
+                  >
+                    <Combine className="mr-1 h-4 w-4" /> Merge into batch
+                  </Button>
+                  {detailBatch.work_order_id && (
+                    <Button
+                      variant="outline"
+                      onClick={() => { setEditWoId(detailBatch.work_order_id); setDetailBatchId(null); }}
+                      title="Edit this work order's priority, dates, and quantity"
+                    >
+                      Edit WO
+                    </Button>
+                  )}
+                </div>
                 <Button
                   variant={detailBatch.allPinned ? "secondary" : "default"}
                   onClick={toggleBatchPin}
@@ -948,6 +1340,17 @@ export function SchedulingGanttPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <SchedulingSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <NewWorkOrderDialog open={newWoOpen} onOpenChange={setNewWoOpen} />
+      <EditWorkOrderDialog workOrderId={editWoId} onOpenChange={(o) => !o && setEditWoId(null)} />
+      <BulkReassignDialog
+        open={bulkReassignOpen}
+        onOpenChange={setBulkReassignOpen}
+        taskIds={selectedTaskIds}
+        repTaskId={selectedTaskIds[0] ?? null}
+        onDone={clearSelection}
+      />
     </div>
   );
 }

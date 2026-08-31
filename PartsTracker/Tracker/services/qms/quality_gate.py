@@ -208,9 +208,14 @@ def _dispatch_action(action, *, ruleset, firing, work_order, material_lot,
 
 
 def _hold(ruleset, *, work_order, material_lot):
+    from Tracker.services.scheduling.staleness import mark_active_schedule_stale
+
     if material_lot is not None:
         from Tracker.services.mes.inventory import quarantine_lot
         quarantine_lot(material_lot)
+        # A quarantined lot removes available material — the schedule's material
+        # gate must re-plan around it.
+        mark_active_schedule_stale(material_lot.tenant_id)
         return
     # In-process: quarantine the not-yet-advanced parts in the window.
     from Tracker.models import Parts, PartsStatus
@@ -218,6 +223,9 @@ def _hold(ruleset, *, work_order, material_lot):
         work_order=work_order, step=ruleset.step,
         part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
     ).update(part_status=PartsStatus.QUARANTINED)
+    # Bulk `.update()` bypasses the Parts post_save that would flag the schedule,
+    # so quarantined parts would otherwise stay on the board — flag it explicitly.
+    mark_active_schedule_stale(work_order.tenant_id)
 
 
 def _raise_capa_or_scar(ruleset, firing, *, material_lot, user):

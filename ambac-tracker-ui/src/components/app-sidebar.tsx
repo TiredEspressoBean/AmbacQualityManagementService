@@ -3,9 +3,12 @@ import { useMemo } from "react"
 import {
     BookOpen,
     Bot,
+    CalendarDays,
+    CalendarRange,
     CheckSquare,
     ClipboardList,
     ClipboardCheck,
+    Clock,
     Database,
     Factory,
     FileCheck,
@@ -63,6 +66,15 @@ const productionPages = [
     { name: "Work Orders", url: "/production/work-orders", icon: Factory },
     { name: "WO Control Center", url: "/workorders", icon: LayoutDashboard },
     { name: "Processes", url: "/editor/processes", icon: Workflow },
+]
+
+// Scheduling - APS planning surfaces (staff only, collapsible). The Gantt is the
+// board; calendar drives working windows; labor hours + requirements are its reports.
+const schedulingPages = [
+    { name: "Schedule (Gantt)", url: "/production/schedule", icon: CalendarRange },
+    { name: "Calendar", url: "/production/calendar", icon: CalendarDays },
+    { name: "Labor Hours", url: "/production/labor-hours", icon: Clock },
+    { name: "Requirements", url: "/production/requirements", icon: ClipboardList },
 ]
 
 // Supply - inbound material + suppliers (staff only, collapsible). "Materials"
@@ -194,6 +206,15 @@ export function AppSidebar({
                                     title="Production"
                                     pages={productionPages}
                                     defaultOpen={true}
+                                />
+                            )}
+
+                            {/* Scheduling - APS board + reports */}
+                            {showProduction && (
+                                <NavPagesCollapsible
+                                    title="Scheduling"
+                                    pages={schedulingPages}
+                                    defaultOpen={false}
                                 />
                             )}
 

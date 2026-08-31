@@ -1,6 +1,7 @@
 "use client"
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
 import {toast} from "sonner";
+import {Plus, Pencil, Trash2} from "lucide-react";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
@@ -28,6 +29,19 @@ import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 import {api, schemas} from "@/lib/api/generated";
 import {ReportButton} from "@/components/reports/ReportButton";
 import {isFieldRequired} from "@/lib/zod-config";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {BomLineDialog, type BomLine} from "@/components/bom/BomLineDialog";
+import {useCreateBom, useReleaseBom, useCreateBomRevision, useDeleteBomLine} from "@/hooks/useBom";
+import {useRetrieveSteps} from "@/hooks/useRetrieveSteps";
 
 // Use generated schema - error messages handled by global error map
 const formSchema = schemas.PartTypesRequest.pick({
@@ -240,6 +254,10 @@ function pickBom(boms: BomListItem[]): BomListItem | undefined {
     // Highest revision first (revisions are short strings, e.g. "A", "B", "10").
     const byRevisionDesc = (a: BomListItem, b: BomListItem) =>
         (b.revision ?? "").localeCompare(a.revision ?? "", undefined, { numeric: true });
+    // Prefer an editable DRAFT (that's what you'd be working on), then the
+    // effective RELEASED, then whatever's latest.
+    const draft = boms.filter((b) => b.status === "DRAFT").sort(byRevisionDesc);
+    if (draft.length > 0) return draft[0];
     const released = boms.filter((b) => b.status === "RELEASED").sort(byRevisionDesc);
     if (released.length > 0) return released[0];
     return [...boms].sort(byRevisionDesc)[0];
@@ -264,17 +282,67 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
     });
 
     const lines = bom?.lines ?? [];
+    const isDraft = chosen?.status === "DRAFT";
+
+    // The assembly's own process steps — the ops a line can be "consumed at".
+    const {data: stepsData} = useRetrieveSteps({ part_type: partTypeId, limit: 500 } as never);
+    const steps = (stepsData?.results ?? [])
+        .filter((s) => s?.id)
+        .map((s) => ({ id: String(s.id), name: s.name as string }));
+
+    // Mutations + dialog state for inline authoring.
+    const createBom = useCreateBom();
+    const releaseBom = useReleaseBom();
+    const createRevision = useCreateBomRevision();
+    const deleteLine = useDeleteBomLine();
+
+    const [lineDialogOpen, setLineDialogOpen] = useState(false);
+    const [editingLine, setEditingLine] = useState<BomLine | null>(null);
+    const [deletingLineId, setDeletingLineId] = useState<string | null>(null);
+
+    const openAddLine = () => { setEditingLine(null); setLineDialogOpen(true); };
+    const openEditLine = (line: BomLine) => { setEditingLine(line); setLineDialogOpen(true); };
 
     return (
         <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Bill of Materials</CardTitle>
-                    <ReportButton
-                        reportType="bom_report"
-                        label="BOM Report"
-                        params={chosen ? {id: chosen.id} : null}
-                    />
+                    <div className="flex items-center gap-2">
+                        {/* Lifecycle action depends on the chosen BOM's status. */}
+                        {!chosen && !listLoading && (
+                            <Button size="sm" onClick={() => createBom.mutate(partTypeId)} disabled={createBom.isPending}>
+                                <Plus className="mr-1 h-4 w-4" /> Create BOM
+                            </Button>
+                        )}
+                        {isDraft && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => chosen && releaseBom.mutate(String(chosen.id))}
+                                disabled={releaseBom.isPending || lines.length === 0}
+                                title={lines.length === 0 ? "Add at least one line first" : "Release for production"}
+                            >
+                                Release
+                            </Button>
+                        )}
+                        {chosen && !isDraft && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => createRevision.mutate(String(chosen.id))}
+                                disabled={createRevision.isPending}
+                                title="Start an editable draft copy"
+                            >
+                                New revision
+                            </Button>
+                        )}
+                        <ReportButton
+                            reportType="bom_report"
+                            label="BOM Report"
+                            params={chosen ? {id: chosen.id} : null}
+                        />
+                    </div>
                 </div>
                 {chosen && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
@@ -285,6 +353,9 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                         </Badge>
                         <span>·</span>
                         <span>{chosen.line_count} line{chosen.line_count === 1 ? "" : "s"}</span>
+                        {!isDraft && chosen.status === "RELEASED" && (
+                            <span className="italic">· released BOMs are read-only — use “New revision” to edit</span>
+                        )}
                     </div>
                 )}
             </CardHeader>
@@ -292,38 +363,115 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                 {listLoading ? (
                     <p className="text-sm text-muted-foreground">Loading BOMs…</p>
                 ) : !chosen ? (
-                    <p className="text-sm text-muted-foreground">No released BOM for this part type.</p>
+                    <p className="text-sm text-muted-foreground">
+                        No BOM yet for this part type. Create one to list the components it's built from.
+                    </p>
                 ) : detailLoading ? (
                     <p className="text-sm text-muted-foreground">Loading lines…</p>
-                ) : lines.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">This BOM has no lines.</p>
                 ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Find #</TableHead>
-                                <TableHead>Component</TableHead>
-                                <TableHead>Qty</TableHead>
-                                <TableHead>UoM</TableHead>
-                                <TableHead>Optional</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {lines.map((line) => (
-                                <TableRow key={line.id}>
-                                    <TableCell>{line.find_number || "—"}</TableCell>
-                                    <TableCell className="font-medium">
-                                        {line.component_type_name || "—"}
-                                    </TableCell>
-                                    <TableCell>{line.quantity}</TableCell>
-                                    <TableCell>{line.unit_of_measure || "—"}</TableCell>
-                                    <TableCell>{line.is_optional ? "Yes" : "No"}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <>
+                        {lines.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                {isDraft ? "This draft has no lines yet — add the first component." : "This BOM has no lines."}
+                            </p>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Find #</TableHead>
+                                        <TableHead>Component</TableHead>
+                                        <TableHead>Source</TableHead>
+                                        <TableHead>Qty</TableHead>
+                                        <TableHead>UoM</TableHead>
+                                        <TableHead>Consumed at</TableHead>
+                                        <TableHead>Optional</TableHead>
+                                        {isDraft && <TableHead className="w-20 text-right">Edit</TableHead>}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {lines.map((line) => {
+                                        // A line is EITHER an in-house component_type (MAKE) or a
+                                        // purchased material (BUY) — show whichever it carries.
+                                        const isBuy = line.source === "BUY";
+                                        const label = isBuy
+                                            ? line.material_name
+                                            : line.component_type_name;
+                                        return (
+                                            <TableRow key={line.id}>
+                                                <TableCell>{line.find_number || "—"}</TableCell>
+                                                <TableCell className="font-medium">{label || "—"}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={isBuy ? "outline" : "secondary"}>
+                                                        {isBuy ? "Buy" : "Make"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>{line.quantity}</TableCell>
+                                                <TableCell>{line.unit_of_measure || "—"}</TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    {line.consumed_at_step_name || "Whole assembly"}
+                                                </TableCell>
+                                                <TableCell>{line.is_optional ? "Yes" : "No"}</TableCell>
+                                                {isDraft && (
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" title="Edit line"
+                                                            onClick={() => openEditLine(line as BomLine)}>
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="text-destructive"
+                                                            title="Remove line" onClick={() => setDeletingLineId(String(line.id))}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        )}
+
+                        {isDraft && (
+                            <Button variant="outline" size="sm" className="mt-3" onClick={openAddLine}>
+                                <Plus className="mr-1 h-4 w-4" /> Add line
+                            </Button>
+                        )}
+                    </>
                 )}
             </CardContent>
+
+            {/* Line create/edit dialog (DRAFT only) */}
+            {chosen && (
+                <BomLineDialog
+                    open={lineDialogOpen}
+                    onOpenChange={setLineDialogOpen}
+                    bomId={String(chosen.id)}
+                    line={editingLine}
+                    steps={steps}
+                />
+            )}
+
+            {/* Delete-line confirm */}
+            <AlertDialog open={!!deletingLineId} onOpenChange={(o) => !o && setDeletingLineId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove this line?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            It will be removed from this draft BOM. This can't be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => {
+                                if (deletingLineId) deleteLine.mutate(deletingLineId, {onSettled: () => setDeletingLineId(null)});
+                            }}
+                        >
+                            Remove
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }

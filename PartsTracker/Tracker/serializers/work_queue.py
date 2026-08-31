@@ -24,9 +24,20 @@ class WorkQueueRowSerializer(serializers.Serializer):
     qty_ready = serializers.IntegerField()
     earliest_entered_at = serializers.DateTimeField(allow_null=True)
 
+    # Earliest planned start for this (WO, step) on the live APS schedule; null
+    # when the solver hasn't placed it. Drives the queue's order (scheduled rows
+    # lead in planned order) and the "planned HH:MM" hint on the operator home.
+    scheduled_start = serializers.DateTimeField(allow_null=True)
+
     # Which surface this row belongs on. See Documents/WORK_CENTER_DESIGN.md.
     work_center = serializers.UUIDField(allow_null=True)
     work_center_kind = serializers.CharField(allow_null=True)
+
+    # The machine the live schedule assigned this cohort to — lets the floor see (and the
+    # queue scope to) the specific station, not just the work center. Null when the step
+    # needs no machine or the solver hasn't placed it.
+    machine = serializers.UUIDField(allow_null=True)
+    machine_name = serializers.CharField(allow_null=True)
 
     # v1 readiness bucket: 'blocked' when the WO has an active hold, else 'ready'.
     # Upstream-done is implicit (open executions exist here); certified/cal/

@@ -53,6 +53,10 @@ def contain_failed_batch(report) -> None:
     if held:
         # tenant-safe: members sourced from the batch (same tenant).
         Parts.objects.bulk_update(held, ["part_status"])
+        # bulk_update bypasses the Parts post_save that flags the schedule stale,
+        # so the held parts would keep being scheduled — flag it explicitly.
+        from Tracker.services.scheduling.staleness import mark_active_schedule_stale
+        mark_active_schedule_stale(report.tenant_id)
 
     qa_user = (
         User.objects.filter(

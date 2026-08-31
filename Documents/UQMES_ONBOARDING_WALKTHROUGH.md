@@ -1,4 +1,4 @@
-# UQMES QA walkthrough — a primer for inspectors and managers
+/resume# UQMES QA walkthrough — a primer for inspectors and managers
 
 **Who this is for.** The QA team getting oriented in UQMES — inspectors
 and managers both. It follows one inspector (Sarah) hands-on through a

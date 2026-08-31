@@ -429,10 +429,18 @@ class DemoQaWalkSeeder(BaseSeeder):
                         'value_string': '' if nominal is not None else 'PASS',
                     })
                 elif node_type == 'attestationCheckpoint':
-                    caps.append({
-                        'node_id': node_id, 'kind': 'attestation',
-                        'confirmed': True, 'meaning': attrs.get('label') or 'Confirmed',
-                    })
+                    if attrs.get('kind') == 'signature':
+                        caps.append({
+                            'node_id': node_id, 'kind': 'attestation',
+                            'signature': {'user_id': str(operator.id),
+                                          'signed_at': self.today.isoformat()},
+                            'meaning': attrs.get('label') or 'Signed',
+                        })
+                    else:
+                        caps.append({
+                            'node_id': node_id, 'kind': 'attestation',
+                            'confirm': True, 'meaning': attrs.get('label') or 'Confirmed',
+                        })
                 elif node_type == 'qualityStatusField':
                     caps.append({'node_id': node_id, 'kind': 'status', 'status': 'PASS'})
                 elif node_type == 'equipmentRolesField' and equipment is not None:

@@ -44,6 +44,13 @@ app.conf.beat_schedule = {
         'task': 'Tracker.tasks.check_overdue_capas',
         'schedule': crontab(hour=8, minute=0),
     },
+    # Re-solve schedules that have drifted stale, for tenants opted into
+    # auto-resolve (OptimizationConfig.auto_resolve = LIVE). Every 15 min; each
+    # tenant's min-interval batches a burst of changes into one re-solve.
+    'tick-auto-resolve': {
+        'task': 'Tracker.tasks.tick_auto_resolve',
+        'schedule': crontab(minute='*/15'),
+    },
 }
 
 app.conf.timezone = 'UTC'

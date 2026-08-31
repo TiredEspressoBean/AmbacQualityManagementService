@@ -193,6 +193,7 @@ export interface StepData {
   description?: string;
   max_visits?: number | null;
   expected_duration?: string | null;
+  scrap_rate?: number | string | null;
   part_type?: string;
   part_type_name?: string;
   // QA fields
@@ -270,6 +271,9 @@ export interface FlowNodeData {
 
   // Timer node fields
   expectedDuration?: string;
+
+  // Expected scrap fraction at this step (0–1); null inherits the process default.
+  scrapRate?: number | null;
 
   // Start node
   isStart?: boolean;

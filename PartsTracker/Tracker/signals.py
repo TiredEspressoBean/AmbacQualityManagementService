@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from django.db import transaction
-from django.db.models.signals import post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 
@@ -12,6 +12,7 @@ from .models import (
     QualityReports, QuarantineDisposition, ThreeDModel, Documents,
     ApprovalRequest, ApprovalResponse,
     CAPA, CapaTasks, CapaVerification,
+    Equipments,
     Tenant,
     UserRole,
     WorkOrder, WorkOrderStatus,
@@ -504,3 +505,149 @@ def cascade_schedule_slots_on_workorder_complete(sender, instance, **kwargs):
 
     from Tracker.services.mes.work_order import cascade_schedule_slots
     cascade_schedule_slots(instance)
+
+
+# =============================================================================
+# REACTIVE RE-PLAN — mark the active schedule stale on disruptive change
+# =============================================================================
+# `ScheduleResult.is_stale` is otherwise only set when a fresh solve supersedes
+# the active plan. These receivers flip it reactively when the world changes
+# under the live plan (new/cancelled demand, a part leaving the flow, lost
+# capacity) so the planner UI can surface "schedule out of date — re-solve".
+# This is a *hint*, not an auto-solve (the periodic auto-solve beat is a policy
+# choice, Phase B). Deliberately NOT tripped by routine step advances: an actuals
+# drift on every advance would leave the flag permanently on and meaningless —
+# reconciling actuals against the plan is the auto-solve beat's job.
+
+# Part statuses that meaningfully change the schedulable set (a part leaving the
+# flow, or being held out of it).
+_DISRUPTIVE_PART_STATUSES = frozenset({'SCRAPPED', 'CANCELLED', 'QUARANTINED'})
+
+
+def _mark_active_schedule_stale(tenant_id) -> None:
+    """Flip the tenant's active, committed schedule to stale.
+
+    Delegates to the scheduling service so non-signal paths trip the same flag —
+    notably the bulk `.update()` / `bulk_update` quarantines in
+    `services/qms/{quality_gate,batch_disposition}`, which bypass the `Parts`
+    disruption signal below."""
+    from Tracker.services.scheduling.staleness import mark_active_schedule_stale
+    mark_active_schedule_stale(tenant_id)
+
+
+def _touched(update_fields, tracked: set) -> bool:
+    """True when a save may have changed a tracked field: either it was a full
+    save (update_fields is None) or the passed update_fields intersects `tracked`."""
+    return update_fields is None or bool(set(update_fields) & tracked)
+
+
+@receiver(post_save, sender=WorkOrder)
+def mark_schedule_stale_on_workorder_change(sender, instance, created, update_fields, **kwargs):
+    """New demand, or a priority/status change on existing demand, invalidates the
+    live plan."""
+    if created or _touched(update_fields, {'workorder_status', 'priority'}):
+        _mark_active_schedule_stale(instance.tenant_id)
+
+
+@receiver(post_delete, sender=WorkOrder)
+def mark_schedule_stale_on_workorder_delete(sender, instance, **kwargs):
+    """Demand removed — the plan no longer matches the order book."""
+    _mark_active_schedule_stale(instance.tenant_id)
+
+
+@receiver(post_save, sender='Tracker.Parts')
+def mark_schedule_stale_on_part_disruption(sender, instance, created, update_fields, **kwargs):
+    """A part leaving the flow (scrap/cancel/quarantine) or being carved into its
+    own lot (split) changes what the solver must cover. Gated on the disruptive
+    value AND the relevant fields being touched, so routine advances (which move
+    part_status to IN_PROGRESS/COMPLETED, and mostly run via bulk_update anyway)
+    don't churn the flag."""
+    disruptive_value = (
+        instance.part_status in _DISRUPTIVE_PART_STATUSES or bool(instance.split_from_lot)
+    )
+    if disruptive_value and _touched(update_fields, {'part_status', 'split_from_lot'}):
+        _mark_active_schedule_stale(instance.tenant_id)
+
+
+@receiver(post_save, sender='Tracker.DowntimeEvent')
+def mark_schedule_stale_on_downtime(sender, instance, **kwargs):
+    """Lost (or edited) capacity window on a machine/work center invalidates the
+    machine-layer plan."""
+    _mark_active_schedule_stale(instance.tenant_id)
+
+
+# Capacity / timing master data: not part/WO/downtime events, but they change
+# the solver's inputs (shift calendars, plant closures, step timings, machine
+# eligibility, changeover matrix, tooling capacity). Edits are infrequent and
+# capacity-relevant, so the unconditional group flags on every save/delete;
+# Equipments and MaterialLot are higher-churn, so they gate on the fields that
+# actually affect the solve.
+
+@receiver(post_save, sender='Tracker.Shift')
+@receiver(post_delete, sender='Tracker.Shift')
+@receiver(post_save, sender='Tracker.PlantCalendarException')
+@receiver(post_delete, sender='Tracker.PlantCalendarException')
+@receiver(post_save, sender='Tracker.StepTiming')
+@receiver(post_delete, sender='Tracker.StepTiming')
+@receiver(post_save, sender='Tracker.StepEquipmentAffinity')
+@receiver(post_delete, sender='Tracker.StepEquipmentAffinity')
+@receiver(post_save, sender='Tracker.WorkCenterChangeover')
+@receiver(post_delete, sender='Tracker.WorkCenterChangeover')
+@receiver(post_save, sender='Tracker.Fixture')
+@receiver(post_delete, sender='Tracker.Fixture')
+@receiver(post_save, sender='Tracker.LaborCalendarBlock')
+@receiver(post_delete, sender='Tracker.LaborCalendarBlock')
+@receiver(post_save, sender='Tracker.OvertimeWindow')
+@receiver(post_delete, sender='Tracker.OvertimeWindow')
+def mark_schedule_stale_on_capacity_master_change(sender, instance, **kwargs):
+    """A calendar / timing / eligibility / changeover / tooling master-data edit
+    changed the solver's inputs — the live plan may no longer be optimal or even
+    feasible, so flag it for re-solve."""
+    _mark_active_schedule_stale(instance.tenant_id)
+
+
+_EQUIP_CAPACITY_FIELDS = {
+    'status', 'is_schedulable', 'runs_unattended', 'calibration_interval_days',
+}
+
+
+@receiver(post_save, sender='Tracker.Equipments')
+def mark_schedule_stale_on_equipment_change(sender, instance, created, update_fields, **kwargs):
+    """A machine's schedulability, operational status, lights-out capability, or
+    calibration window changing alters available capacity. Trivial edits
+    (name/location) don't, so gate on the capacity fields."""
+    if created or _touched(update_fields, _EQUIP_CAPACITY_FIELDS):
+        _mark_active_schedule_stale(instance.tenant_id)
+
+
+@receiver(m2m_changed, sender=Equipments.operating_shifts.through)
+def mark_schedule_stale_on_equipment_shifts_change(sender, instance, action, **kwargs):
+    """Per-machine operating calendar (E5) changed — capacity windows moved."""
+    if action in ('post_add', 'post_remove', 'post_clear'):
+        # `instance` is whichever side the M2M was edited from; both carry tenant_id.
+        _mark_active_schedule_stale(getattr(instance, 'tenant_id', None))
+
+
+# Not quantity_remaining: it drops on every partial consumption (routine
+# execution), which would keep the flag permanently on. A full consumption flips
+# `status` to CONSUMED, which still fires; new receipts fire via `created`.
+_MATLOT_GATE_FIELDS = {'status', 'promised_date'}
+
+
+@receiver(post_save, sender='Tracker.MaterialLot')
+def mark_schedule_stale_on_material_lot_change(sender, instance, created, update_fields, **kwargs):
+    """A new receipt, a status change (accepted / rejected / quarantined /
+    consumed), or a moved promised date changes what the material gate can net,
+    freeing or blocking material-gated starts."""
+    if created or _touched(update_fields, _MATLOT_GATE_FIELDS):
+        _mark_active_schedule_stale(instance.tenant_id)
+
+
+@receiver(post_save, sender='Tracker.StepExecution')
+def capture_execution_actuals(sender, instance, **kwargs):
+    """Stamp the live schedule's task with the real start/end when a part/core
+    enters or exits a step (planned-vs-actual capture). Deliberately does NOT mark
+    the schedule stale — routine advances are not a re-solve trigger, and the
+    write is a bulk update that bypasses ScheduledTask signals."""
+    from Tracker.services.scheduling.actuals import record_execution_actuals
+    record_execution_actuals(instance)

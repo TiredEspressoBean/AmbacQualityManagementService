@@ -40,6 +40,16 @@ const editors = [
         path: "/editor/equipmentTypes",
     },
     {
+        name: "Tooling",
+        description: "Manage shared, quantity-limited resources — fixtures, cutting tools, dies, and NC programs the scheduler treats as finite.",
+        path: "/editor/tooling",
+    },
+    {
+        name: "Materials",
+        description: "Manage purchased components (O-rings, seals, coils) with suppliers and lead times — the BUY side of a BOM. Part Types stay in-house SKUs.",
+        path: "/editor/materials",
+    },
+    {
         name: "Error Types",
         description: "Manage the types of recurring non conformance errors.",
         path: "/editor/errorTypes",

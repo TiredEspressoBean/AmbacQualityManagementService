@@ -315,12 +315,13 @@ class CompanySerializer(SecureModelMixin):
     class Meta:
         model = Companies
         fields = ('id', 'name', 'description', 'hubspot_api_id',
+                  'default_outside_process_turnaround_days',
                   'user_count', 'created_at', 'updated_at', 'archived', 'version')
         read_only_fields = ('created_at', 'updated_at', 'version')
 
     # Fields whose edits are soft-delete / metadata only and should NOT
     # trigger a new version.
-    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'default_outside_process_turnaround_days'})
 
     @extend_schema_field(serializers.IntegerField())
     def get_user_count(self, obj):

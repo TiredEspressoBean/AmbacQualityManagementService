@@ -39,16 +39,22 @@ _INJECTOR_PART_TYPE = "Common Rail Injector"
 _SCHEDULABLE = [
     "Ultrasonic Cleaner UC-1", "Flow Test Stand #1", "Flow Test Stand #2",
     "Torque Wrench TW-26", "Final Test Bench FTB-1",
+    "Disassembly Press DP-1", "Grading Bench GB-1", "Rework Station RW-1",
+    "Packaging Station PK-1",
 ]
 
 # step name -> [(equipment name, affinity)]
 _AFFINITIES = {
+    "Disassembly":       [("Disassembly Press DP-1", "dialed_in")],
+    "Component Grading": [("Grading Bench GB-1", "dialed_in")],
     "Cleaning":          [("Ultrasonic Cleaner UC-1", "dialed_in")],
     "Nozzle Inspection": [("Flow Test Stand #1", "eligible")],
     "Flow Testing":      [("Flow Test Stand #1", "preferred"),
                           ("Flow Test Stand #2", "eligible")],
     "Assembly":          [("Torque Wrench TW-26", "preferred")],
     "Final Test":        [("Final Test Bench FTB-1", "dialed_in")],
+    "Packaging":         [("Packaging Station PK-1", "dialed_in")],
+    "Rework":            [("Rework Station RW-1", "dialed_in")],
 }
 
 # step name -> (setup, cycle, load_unload, attention)

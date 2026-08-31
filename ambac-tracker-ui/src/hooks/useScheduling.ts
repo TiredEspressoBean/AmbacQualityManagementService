@@ -186,6 +186,465 @@ export function useDispatchSchedule() {
   );
 }
 
+/** The tenant's solver knobs (time limit, fences, penalties, labor model). */
+export function useOptimizationConfig() {
+  return useQuery({
+    queryKey: ["schedule", "config"],
+    queryFn: () => api.api_Schedules_config_retrieve(),
+  });
+}
+
+/** Update the tenant's solver knobs (partial). */
+export function useUpdateOptimizationConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Record<string, unknown>) =>
+      api.api_Schedules_config_partial_update(patch as never),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schedule", "config"] });
+      toast.success("Solver settings saved");
+    },
+    onError: () => toast.error("Couldn't save solver settings"),
+  });
+}
+
+/** Merge selected tasks into one lot (one ×N cell) or break them apart into separate
+ * bars. `merge=false` splits; `merge=true` folds back together. */
+export function useBatchMembership() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ task_ids, merge }: { task_ids: string[]; merge: boolean }) =>
+      api.api_ScheduledTasks_batch_membership_create({ task_ids, merge } as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      toast.success(
+        r?.merged
+          ? `Merged ${r.changed} part(s) into one batch — re-solve to group them`
+          : `Broke apart ${r.changed} part(s) — re-solve to separate them`
+      );
+    },
+    onError: () => toast.error("Couldn't change batching"),
+  });
+}
+
+/** Fetch a work order (for the edit dialog's current values). */
+export function useWorkOrder(id: string | null) {
+  return useQuery({
+    queryKey: ["work-order", id],
+    enabled: !!id,
+    queryFn: () => api.api_WorkOrders_retrieve({ params: { id } } as never),
+  });
+}
+
+/** Operator shop-hours over a date range — on-shift (attendance) + direct (job) hours,
+ *  from TimeEntry, scoped to shop-floor operators. */
+export type OperatorHoursRow = {
+  user_id: number; name: string; on_shift_hours: number; direct_hours: number;
+};
+export function useOperatorHours(start: string, end: string) {
+  return useQuery({
+    queryKey: ["operator-hours", start, end],
+    queryFn: async () =>
+      ((await api.api_Schedules_operator_hours_retrieve({
+        queries: { start, end },
+      } as never)) as { rows?: OperatorHoursRow[] }).rows ?? [],
+  });
+}
+
+/** Sourcing & production requirements — what open demand needs bought (source) or built
+ *  (produce), plus tooling not on hand, with lead-time-driven order-by dates. */
+export type SourceRow = {
+  material: string; qty_short: number; need_by: string; lead_time_days: number | null;
+  order_by: string | null; incoming_date: string | null;
+};
+export type ProduceRow = {
+  work_order: string; component: string; qty: number; need_by: string; status: string;
+};
+export type ToolingRow = {
+  fixture: string; kind: string; need_by: string; lead_time_days: number | null;
+  order_by: string | null;
+};
+export function useRequirements() {
+  return useQuery({
+    queryKey: ["schedule", "requirements"],
+    queryFn: () =>
+      api.api_Schedules_requirements_retrieve() as Promise<{
+        source: SourceRow[]; produce: ProduceRow[]; tooling: ToolingRow[];
+      }>,
+  });
+}
+
+/** Per-WO material requirements — the "what this job needs" readout (picklist-lite):
+ *  top-level BOM components × WO qty, bucketed by consumed-at-step, with a shortage flag. */
+export type MaterialRequirementRow = {
+  component: string; kind: string; source: string; quantity: number;
+  unit_of_measure: string; consumed_at_step: string | null;
+  on_hand: number; incoming: number; short_qty: number; status: string; is_optional: boolean;
+  lead_time_days: number | null; need_by: string | null; order_by: string | null;
+};
+export function useWorkOrderMaterialRequirements(id: string | null) {
+  return useQuery({
+    queryKey: ["work-order", "material-requirements", id],
+    enabled: !!id,
+    queryFn: async () =>
+      ((await api.api_WorkOrders_material_requirements_retrieve({
+        params: { id },
+      } as never)) as { rows?: MaterialRequirementRow[] }).rows ?? [],
+  });
+}
+
+/** Make-up gap for a work order — good owed vs. still alive; `shortfall` is what a
+ *  make-up would create. Refetched when the edit dialog opens. */
+export function useMakeupStatus(id: string | null) {
+  return useQuery({
+    queryKey: ["work-order", "makeup", id],
+    enabled: !!id,
+    queryFn: () => api.api_WorkOrders_makeup_status_retrieve({ params: { id } } as never),
+  });
+}
+
+/** Planner-confirmed make-up: spawn replacement parts to cover the shortfall. */
+export function useCreateMakeup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.api_WorkOrders_create_makeup_create(undefined as never, { params: { id } } as never),
+    onSuccess: (_data, id) => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order", "makeup", id] });
+      toast.success("Make-up parts created");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't create make-up parts"),
+  });
+}
+
+/** PATCH a work order's schedule-relevant attributes (priority / due / release). */
+export function useUpdateWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
+      api.api_WorkOrders_partial_update(body as never, { params: { id } } as never),
+    onSuccess: () => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      toast.success("Work order updated — re-solve to apply");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't update work order"),
+  });
+}
+
+/** Set a WO's quantity (adds parts, or cancels unstarted parts). */
+export function useSetWorkOrderQuantity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, quantity }: { id: string; quantity: number }) =>
+      api.api_WorkOrders_set_quantity_create({ quantity } as never, { params: { id } } as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      const msg = r?.added ? `Added ${r.added} part(s)` : r?.cancelled ? `Cancelled ${r.cancelled} unstarted part(s)` : "Quantity unchanged";
+      toast.success(`${msg} — re-solve to apply`);
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't change quantity"),
+  });
+}
+
+/** Put a work order on hold (drops it from the schedule until released). */
+export function useHoldWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.api_WorkOrders_place_on_hold_create({ reason } as never, { params: { id } } as never),
+    onSuccess: () => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      toast.success("Work order held — re-solve to drop it");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't hold work order"),
+  });
+}
+
+/** Release a work order's hold (returns it to the schedule). */
+export function useReleaseWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.api_WorkOrders_clear_hold_create(undefined as never, { params: { id } } as never),
+    onSuccess: () => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      toast.success("Hold cleared — re-solve to reschedule");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't release hold"),
+  });
+}
+
+/** Cancel a work order (drops it from scheduling). Refused if parts have shipped. */
+export function useCancelWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.api_WorkOrders_cancel_create(undefined as never, { params: { id } } as never),
+    onSuccess: () => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      toast.success("Work order cancelled");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't cancel work order"),
+  });
+}
+
+/** Eligible machines + qualified operators for a task's step (reassign dropdowns). */
+export function useReassignOptions(taskId: string | null) {
+  return useQuery({
+    queryKey: ["reassign-options", taskId],
+    enabled: !!taskId,
+    queryFn: () =>
+      api.api_ScheduledTasks_reassign_options_retrieve({ params: { id: taskId } } as never),
+  });
+}
+
+/** Move a task onto a specific machine (+ pin). Warns if the machine isn't eligible. */
+export function useReassignMachine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, machine_id }: { id: string; machine_id: string }) =>
+      api.api_ScheduledTasks_reassign_machine_create(
+        { machine_id } as never, { params: { id } } as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      if (r?.warning) toast.warning(r.warning);
+      else toast.success("Machine reassigned");
+    },
+    onError: () => toast.error("Couldn't reassign machine"),
+  });
+}
+
+/** Assign / clear the operator on a task. Warns if the operator isn't qualified. */
+export function useReassignOperator() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, operator_id }: { id: string; operator_id: string | null }) =>
+      api.api_ScheduledTasks_reassign_operator_create(
+        { operator_id } as never, { params: { id } } as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      if (r?.warning) toast.warning(r.warning);
+      else toast.success("Operator updated");
+    },
+    onError: () => toast.error("Couldn't update operator"),
+  });
+}
+
+/** Move several selected tasks onto one machine (+ pin). Warns per ineligible step. */
+export function useBulkReassignMachine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ task_ids, machine_id }: { task_ids: string[]; machine_id: string }) =>
+      api.api_ScheduledTasks_bulk_reassign_machine_create({ task_ids, machine_id } as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      const warnings: string[] = r?.warnings ?? [];
+      if (warnings.length) warnings.forEach((w) => toast.warning(w));
+      else toast.success(`Reassigned ${r?.changed ?? 0} tasks`);
+    },
+    onError: () => toast.error("Couldn't reassign the selection"),
+  });
+}
+
+/** Assign / clear one operator across several selected tasks. Warns per ineligible step. */
+export function useBulkReassignOperator() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ task_ids, operator_id }: { task_ids: string[]; operator_id: string | null }) =>
+      api.api_ScheduledTasks_bulk_reassign_operator_create({ task_ids, operator_id } as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      const warnings: string[] = r?.warnings ?? [];
+      if (warnings.length) warnings.forEach((w) => toast.warning(w));
+      else toast.success(`Updated ${r?.changed ?? 0} tasks`);
+    },
+    onError: () => toast.error("Couldn't update the selection"),
+  });
+}
+
+/** Processes available to plan a new work order against. */
+export function useProcesses() {
+  return useQuery({
+    queryKey: ["processes", "for-planning"],
+    queryFn: () => api.api_Processes_list({ queries: { limit: 500 } } as never),
+  });
+}
+
+/** Create a new work order + its parts (the Gantt 'add work' action). */
+export function usePlanWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api.api_Schedules_plan_work_order_create(body as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      toast.success(`Work order ${r?.ERP_id ?? ""} created — re-solve to schedule it`);
+      // Yield gross-up: started more than requested to still finish the good count.
+      if (r?.yield?.started && r?.yield?.target_good) {
+        toast.info(
+          `Started ${r.yield.started} to yield ${r.yield.target_good} good (expected scrap)`
+        );
+      }
+      // BOM auto-explosion ran server-side: report component WOs made / netted / short.
+      const ex = r?.explosion;
+      if (ex?.created_count) {
+        toast.success(`Generated ${ex.created_count} in-house component work order(s) from the BOM`);
+      }
+      if (ex?.short?.length) {
+        toast.warning(
+          `${ex.short.length} MAKE component(s) couldn't be built automatically: ` +
+            ex.short.map((s: any) => `${s.component} (${s.reason})`).join("; ")
+        );
+      }
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.detail ?? "Couldn't create the work order"),
+  });
+}
+
+/** (Re)explode an existing work order's BOM into pegged component WOs. */
+export function useExplodeWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ work_order_id, create = true }: { work_order_id: string; create?: boolean }) =>
+      api.api_Schedules_explode_work_order_create({ work_order_id, create } as never),
+    onSuccess: (r: any) => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      const made = r?.created_count ?? 0;
+      if (made) toast.success(`Generated ${made} component work order(s)`);
+      else toast.success("BOM exploded — nothing new needed");
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.detail ?? "Couldn't explode the BOM"),
+  });
+}
+
+/** Work-hours shift calendar (the solver's working windows come from these). */
+export function useShifts() {
+  return useQuery({
+    queryKey: ["shifts"],
+    queryFn: () =>
+      api.api_Shifts_list({ queries: { ordering: "start_time", limit: 200 } } as never),
+  });
+}
+
+/** Create (no id) or update (with id) a shift. */
+export function useSaveShift() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id?: string } & Record<string, unknown>) =>
+      id
+        ? api.api_Shifts_partial_update(body as never, { params: { id } } as never)
+        : api.api_Shifts_create(body as never),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      toast.success("Shift saved");
+    },
+    onError: () => toast.error("Couldn't save shift — is the code unique?"),
+  });
+}
+
+/** Remove a shift. */
+export function useDeleteShift() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.api_Shifts_destroy(undefined as never, { params: { id } } as never),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      toast.success("Shift removed");
+    },
+    onError: () => toast.error("Couldn't remove shift"),
+  });
+}
+
+// --- Tooling / shared resources (fixtures, cutting tools, dies, NC programs) ---
+
+/** Paginated list for the tooling editor table (ModelEditorPage shape). */
+export function useFixturesList(params: {
+  offset: number;
+  limit: number;
+  ordering?: string;
+  search?: string;
+  filters?: Record<string, string>;
+}) {
+  const { offset, limit, ordering, search, filters } = params;
+  return useQuery({
+    queryKey: ["fixtures", { offset, limit, ordering, search, filters }],
+    queryFn: () =>
+      api.api_Fixtures_list({
+        queries: { offset, limit, ordering, search, ...(filters ?? {}) },
+      } as never),
+  });
+}
+
+/** One tooling resource (for the edit form). */
+export function useRetrieveFixture(id?: string) {
+  return useQuery({
+    queryKey: ["fixture", id],
+    enabled: !!id,
+    queryFn: () => api.api_Fixtures_retrieve({ params: { id } } as never),
+  });
+}
+
+/** Create a tooling resource. */
+export function useCreateFixture() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.api_Fixtures_create(body as never),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fixtures"] });
+      invalidateSchedule(qc);
+    },
+  });
+}
+
+/** Update a tooling resource. */
+export function useUpdateFixture() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
+      api.api_Fixtures_partial_update(body as never, { params: { id } } as never),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fixtures"] });
+      invalidateSchedule(qc);
+    },
+  });
+}
+
+/** Remove a tooling resource. */
+export function useDeleteFixture() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.api_Fixtures_destroy(undefined as never, { params: { id } } as never),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fixtures"] });
+      invalidateSchedule(qc);
+      toast.success("Resource removed");
+    },
+    onError: () => toast.error("Couldn't remove resource"),
+  });
+}
+
+/** A process's detail, including its ordered `process_steps` — powers the tooling form's
+ *  cascading Process → Step picker. */
+export function useProcessDetail(id?: string) {
+  return useQuery({
+    queryKey: ["process-detail", id],
+    enabled: !!id,
+    queryFn: () => api.api_Processes_retrieve({ params: { id } } as never),
+  });
+}
+
 /** Pin / unpin a task (planner lock). */
 export function usePinTask() {
   const qc = useQueryClient();

@@ -14,7 +14,7 @@ from drf_spectacular.utils import extend_schema_field
 
 from Tracker.models import (
     WorkCenter, Shift, ScheduleSlot, DowntimeEvent,
-    MaterialLot, MaterialUsage, TimeEntry,
+    Material, MaterialLot, MaterialUsage, TimeEntry,
     BOM, BOMLine, AssemblyUsage,
     Equipments, PartTypes, Parts, WorkOrder, Steps, User, Companies,
 )
@@ -184,6 +184,22 @@ class DowntimeEventSerializer(SecureModelMixin):
 
 # ===== MATERIAL LOT SERIALIZERS =====
 
+class MaterialSerializer(SecureModelMixin):
+    """Purchased item — raw material / bought component (distinct from in-house PartTypes).
+    Holds the purchase lead time used by the sourcing report."""
+    preferred_supplier_name = serializers.CharField(
+        source='preferred_supplier.name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Material
+        fields = (
+            'id', 'name', 'part_number', 'description', 'unit_of_measure',
+            'purchase_lead_time_days', 'preferred_supplier', 'preferred_supplier_name',
+            'is_active', 'created_at', 'updated_at', 'archived',
+        )
+        read_only_fields = ('created_at', 'updated_at')
+
+
 class MaterialLotSerializer(SecureModelMixin):
     """Material lot serializer.
 
@@ -193,7 +209,11 @@ class MaterialLotSerializer(SecureModelMixin):
     controlled Document. ``quantity_remaining`` stays read-only (written only by
     the consumption/split services).
     """
+    # A lot is stock of a buyable part (material_type → PartTypes) XOR a raw
+    # material (material → Material). item_name is the subject-agnostic label.
     material_type_name = serializers.CharField(source='material_type.name', read_only=True, allow_null=True)
+    material_name = serializers.CharField(source='material.name', read_only=True, allow_null=True)
+    item_name = serializers.CharField(read_only=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
     parent_lot_number = serializers.CharField(source='parent_lot.lot_number', read_only=True, allow_null=True)
     child_lot_count = serializers.SerializerMethodField()
@@ -205,7 +225,8 @@ class MaterialLotSerializer(SecureModelMixin):
         model = MaterialLot
         fields = (
             'id', 'lot_number', 'parent_lot', 'parent_lot_number',
-            'material_type', 'material_type_name', 'material_description',
+            'material_type', 'material_type_name',
+            'material', 'material_name', 'item_name', 'material_description',
             'supplier', 'supplier_name', 'supplier_lot_number',
             'erp_po_number', 'promised_date',
             'received_date', 'received_by',
@@ -324,18 +345,36 @@ class ClockInSerializer(serializers.Serializer):
 # ===== BOM SERIALIZERS =====
 
 class BOMLineSerializer(SecureModelMixin):
-    """BOM line item serializer"""
-    component_type_name = serializers.CharField(source='component_type.name', read_only=True)
+    """BOM line item serializer. A line's component is EITHER an in-house `component_type`
+    (source=MAKE) OR a purchased `material` (source=BUY) — exactly one."""
+    component_type_name = serializers.CharField(
+        source='component_type.name', read_only=True, allow_null=True)
+    material_name = serializers.CharField(
+        source='material.name', read_only=True, allow_null=True)
+    consumed_at_step_name = serializers.CharField(
+        source='consumed_at_step.name', read_only=True, allow_null=True)
 
     class Meta:
         model = BOMLine
         fields = (
             'id', 'bom', 'component_type', 'component_type_name',
+            'material', 'material_name', 'source',
+            'consumed_at_step', 'consumed_at_step_name',
             'quantity', 'unit_of_measure', 'find_number', 'reference_designator',
             'is_optional', 'allow_harvested', 'notes', 'line_number',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = ('created_at', 'updated_at')
+
+    def validate(self, attrs):
+        def pick(name):
+            return attrs.get(name, getattr(self.instance, name, None))
+        has_ct = pick('component_type') is not None
+        has_mat = pick('material') is not None
+        if has_ct == has_mat:
+            raise serializers.ValidationError(
+                "Set exactly one of component_type (in-house/MAKE) or material (purchased/BUY).")
+        return attrs
 
 
 class BOMSerializer(SecureModelMixin):

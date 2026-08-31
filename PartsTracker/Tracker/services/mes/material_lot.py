@@ -53,6 +53,7 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
             lot_number=child_lot_number,
             parent_lot=locked,
             material_type=locked.material_type,
+            material=locked.material,
             material_description=locked.material_description,
             supplier=locked.supplier,
             supplier_lot_number=locked.supplier_lot_number,

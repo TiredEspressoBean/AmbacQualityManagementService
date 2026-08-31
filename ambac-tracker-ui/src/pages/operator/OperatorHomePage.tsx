@@ -421,6 +421,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     </Badge>
                                 )}
                                 <span className="ml-auto">
+                                    {heroRow.scheduled_start ? `planned ${new Date(heroRow.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ` : ""}
                                     {heroRow.earliest_entered_at ? `ready ${formatDistanceToNow(new Date(heroRow.earliest_entered_at))}` : ""}
                                     {heroRow.expected_completion ? ` · due ${heroRow.expected_completion}` : ""}
                                 </span>
@@ -430,6 +431,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                 <div className="mt-1 text-sm text-muted-foreground">
                                     {heroRow.part_type_name ? <>{heroRow.part_type_name} · </> : null}
                                     <span className="font-mono">{heroRow.work_order_erp_id}</span>
+                                    {heroRow.machine_name ? <> · on <span className="font-medium text-foreground">{heroRow.machine_name}</span></> : null}
                                 </div>
                                 <div className="mt-2 text-sm text-muted-foreground">
                                     <b className="text-foreground">{heroRow.qty_ready}</b> pc{heroRow.qty_ready === 1 ? "" : "s"} waiting
@@ -615,6 +617,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                 </div>
                                 <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
                                     {row.work_order_erp_id} · {row.qty_ready} pc{row.qty_ready === 1 ? "" : "s"}
+                                    {row.machine_name ? ` · ${row.machine_name}` : ""}
+                                    {row.scheduled_start ? ` · planned ${new Date(row.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
                                     {row.earliest_entered_at ? ` · waiting ${formatDistanceToNow(new Date(row.earliest_entered_at))}` : ""}
                                 </div>
                             </button>

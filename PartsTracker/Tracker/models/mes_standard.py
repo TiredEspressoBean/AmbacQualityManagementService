@@ -208,6 +208,27 @@ class Equipments(SecureModel):
     )
     """Scheduler reserves this asset only when True (plan #1). Off ≠ untracked."""
 
+    class BatchMode(models.TextChoices):
+        CONCURRENT = 'concurrent', 'Concurrent (parallel jobs)'
+        CYCLE = 'cycle', 'Cycle (shared load, fixed cycle time)'
+
+    batch_capacity = models.PositiveIntegerField(
+        default=1,
+        help_text="How many jobs/parts this resource handles at once. 1 (default) = a normal "
+                  "one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`.",
+    )
+    """Batch size. 1 = serial machine; >1 = batch/process resource (see batch_mode)."""
+
+    batch_mode = models.CharField(
+        max_length=12, choices=BatchMode.choices, default=BatchMode.CONCURRENT,
+        help_text="How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to "
+                  "batch_capacity independent jobs run at once (a bank of wash tanks / parallel "
+                  "stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity "
+                  "parts, and the cycle time is fixed regardless of how full the load is (a job "
+                  "of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.",
+    )
+    """CONCURRENT = parallel jobs (cumulative); CYCLE = one shared load-fire-unload at a time."""
+
     runs_unattended = models.BooleanField(
         default=True,
         help_text="Whether this machine can run lights-out (unattended) between staffed "
@@ -218,6 +239,15 @@ class Equipments(SecureModel):
                   "dispatch regardless of this flag.",
     )
     """Lights-out capable (default). False confines Layer-1 work to shift windows."""
+
+    operating_shifts = models.ManyToManyField(
+        'Tracker.Shift', blank=True, related_name='equipment',
+        help_text="Optional per-machine operating calendar: the shifts this machine runs. "
+                  "Empty (default) inherits the tenant-wide shift calendar. Lets a "
+                  "bottleneck run more shifts than the rest of the floor. Applies to "
+                  "attended (runs_unattended=False) machines; lights-out machines run 24/7.",
+    )
+    """Per-machine operating calendar; empty inherits the tenant shift calendar."""
 
     # === LOCATION ===
     location = models.CharField(max_length=100, blank=True)
@@ -1156,6 +1186,197 @@ class DowntimeEvent(SecureModel):
         return None
 
 
+class PlantCalendarException(SecureModel):
+    """A tenant-wide non-working window — a holiday, plant shutdown, or inventory day.
+
+    Unlike DowntimeEvent (which downs one machine), this closes the WHOLE plant for
+    [start_time, end_time]: the scheduler blocks every machine and treats operators as
+    absent. Recurring weekly hours live on Shift; this is for the one-off DATED closures
+    the weekly day-of-week calendar can't express (so the solver stops booking work on
+    Christmas / during the summer shutdown)."""
+    KIND_CHOICES = [
+        ('HOLIDAY', 'Holiday'),
+        ('SHUTDOWN', 'Plant Shutdown'),
+        ('INVENTORY', 'Inventory / Stock-take'),
+        ('OTHER', 'Other'),
+    ]
+    RECURRENCE_CHOICES = [
+        ('ONCE', 'One-off (dated)'),
+        ('YEARLY', 'Repeats yearly'),
+    ]
+    name = models.CharField(max_length=100)
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES, default='HOLIDAY')
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    recurrence = models.CharField(
+        max_length=8, choices=RECURRENCE_CHOICES, default='ONCE',
+        help_text="YEARLY repeats the closure's month/day span every year (fixed-date "
+                  "holidays like Christmas); the stored year is just the first occurrence.")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Plant Calendar Exception'
+        verbose_name_plural = 'Plant Calendar Exceptions'
+        ordering = ['start_time']
+        indexes = [models.Index(fields=['tenant', 'start_time'])]
+
+    def __str__(self):
+        return f"{self.name} ({self.kind}) {self.start_time:%Y-%m-%d}→{self.end_time:%Y-%m-%d}"
+
+
+class LaborCalendarBlock(SecureModel):
+    """Operator non-working time — PTO, sick, training, meetings, ad-hoc breaks —
+    one-off or recurring weekly, for the whole company or one person.
+
+    Unlike PlantCalendarException (which closes the WHOLE plant, blocking machines
+    AND operators), this affects **operators only**: the scheduler drops the covered
+    windows from the affected operators' on-shift time (see
+    services.scheduling.data.get_operator_shift_windows), so Layer-1 pooled headcount
+    and Layer-2 dispatch treat them as out — but a lights-out machine keeps running
+    through, say, an all-hands. `user` null = the whole company; set = that person.
+
+    `recurrence` picks which fields apply:
+      - ONCE   → `start_time` / `end_time` (datetimes): a PTO day, a shutdown week.
+      - WEEKLY → `days_of_week` + `window_start` / `window_end` (time-of-day): a
+                 standing Monday all-hands, a daily stretch break.
+    (Per-shift daily breaks/lunch already live on `Shift.break_windows`; this is for
+    blocks that aren't tied to a single shift.)"""
+
+    KIND_CHOICES = [
+        ('PTO', 'PTO / vacation'),
+        ('SICK', 'Sick'),
+        ('TRAINING', 'Training'),
+        ('MEETING', 'Meeting'),
+        ('BREAK', 'Break'),
+        ('OTHER', 'Other'),
+    ]
+    RECURRENCE_CHOICES = [
+        ('ONCE', 'One-off (dated)'),
+        ('WEEKLY', 'Weekly (recurring)'),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='calendar_blocks',
+        null=True, blank=True,
+        help_text="The operator this block applies to. Null = the whole company "
+                  "(every operator), e.g. an all-hands meeting.")
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES, default='OTHER')
+    recurrence = models.CharField(max_length=8, choices=RECURRENCE_CHOICES, default='ONCE')
+
+    # ONCE
+    start_time = models.DateTimeField(
+        null=True, blank=True, help_text="One-off start (recurrence=ONCE).")
+    end_time = models.DateTimeField(
+        null=True, blank=True, help_text="One-off end (recurrence=ONCE).")
+
+    # WEEKLY
+    days_of_week = models.CharField(
+        max_length=20, blank=True, default='',
+        help_text="Recurring days as comma-separated numbers (0=Monday..6=Sunday), "
+                  "e.g. '0,2,4' (recurrence=WEEKLY).")
+    window_start = models.TimeField(
+        null=True, blank=True, help_text="Recurring start time-of-day (recurrence=WEEKLY).")
+    window_end = models.TimeField(
+        null=True, blank=True, help_text="Recurring end time-of-day (recurrence=WEEKLY).")
+
+    reason = models.CharField(max_length=200, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Labor Calendar Block'
+        verbose_name_plural = 'Labor Calendar Blocks'
+        ordering = ['start_time']
+        indexes = [
+            models.Index(fields=['tenant', 'is_active']),
+            models.Index(fields=['user', 'start_time']),
+        ]
+
+    def __str__(self):
+        who = self.user_id or 'ALL'
+        when = (f"{self.start_time:%Y-%m-%d}" if self.recurrence == 'ONCE' and self.start_time
+                else f"weekly[{self.days_of_week}]")
+        return f"{who} {self.kind} ({self.recurrence}) {when}"
+
+
+class OvertimeWindow(SecureModel):
+    """Additive shop-open time — an extra run of a SHIFT (overtime / weekend shift).
+
+    The inverse of the other calendar entries: instead of removing availability, this
+    GRANTS working time. It names a `shift`, so it inherits that shift's hours AND its
+    crew: the scheduler adds the shift's window to the availability of operators
+    rostered to that shift, and to every attended machine (the shop is running).
+    Lights-out machines already run 24/7. Plant closures still win — overtime does not
+    override a PlantCalendarException (don't mark a day a closure if you intend to run
+    it). See services.scheduling.data.get_overtime_windows / get_overtime_machine_windows.
+
+    `recurrence` picks which fields say WHEN to run the shift:
+      - ONCE   → `start_date` / `end_date`: run it on each date in the range (this
+                 Saturday, or a shutdown-recovery week).
+      - WEEKLY → `days_of_week`: run it on those weekdays every week (a standing 2nd
+                 shift on days the shift doesn't normally cover)."""
+
+    RECURRENCE_CHOICES = [
+        ('ONCE', 'One-off (dated)'),
+        ('WEEKLY', 'Weekly (recurring)'),
+    ]
+    shift = models.ForeignKey(
+        'Tracker.Shift', on_delete=models.CASCADE, related_name='overtime_windows',
+        help_text="The shift being run as overtime — supplies the hours and the crew "
+                  "(operators rostered to it).")
+    recurrence = models.CharField(max_length=8, choices=RECURRENCE_CHOICES, default='ONCE')
+    # ONCE — the extra day(s) to run the shift
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    # WEEKLY — extra weekdays to run the shift (0=Monday..6=Sunday)
+    days_of_week = models.CharField(max_length=20, blank=True, default='')
+    reason = models.CharField(max_length=200, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Overtime Window'
+        verbose_name_plural = 'Overtime Windows'
+        ordering = ['start_date']
+        indexes = [models.Index(fields=['tenant', 'is_active'])]
+
+    def __str__(self):
+        when = (f"{self.start_date}" if self.recurrence == 'ONCE' and self.start_date
+                else f"weekly[{self.days_of_week}]")
+        return f"Overtime shift={self.shift_id} ({self.recurrence}) {when}"
+
+
+class Material(SecureModel):
+    """A PURCHASED item — raw material or bought component (O-rings, seals, fasteners).
+
+    Distinct from `PartTypes`, which is reserved for in-house SKUs / things produced
+    in-house (holder bodies, etc.). BOM BUY lines reference a Material; received stock
+    (`MaterialLot`) is stock of a Material. In-house MAKE components stay on PartTypes
+    (they spawn child work orders). Purchase lead time lives here — it's a property of
+    the bought item, not of a manufactured part type."""
+
+    name = models.CharField(max_length=100)
+    part_number = models.CharField(
+        max_length=100, blank=True, help_text="Supplier or internal catalog number/SKU.")
+    description = models.CharField(max_length=255, blank=True)
+    unit_of_measure = models.CharField(max_length=20, default='EA')
+    purchase_lead_time_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Days to source this item from a supplier — drives the order-by date in "
+                  "the sourcing report (order-by = need-by − lead time).")
+    preferred_supplier = models.ForeignKey(
+        Companies, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='supplied_materials')
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Material'
+        verbose_name_plural = 'Materials'
+        ordering = ['name']
+        indexes = [models.Index(fields=['tenant', 'is_active'])]
+
+    def __str__(self):
+        return self.name
+
+
 class MaterialLot(SecureModel):
     """
     Tracks a lot of material received from a supplier.
@@ -1198,7 +1419,11 @@ class MaterialLot(SecureModel):
         related_name='child_lots'
     )
 
-    # Material type - can be a PartType for components, or generic for raw materials
+    # What this lot is stock of. A received lot is either a buyable *part*
+    # (`material_type` → PartTypes; make/buy is a sourcing attribute of the part) or a
+    # raw *material* / consumable (`material` → Material). Exactly-one is enforced by a
+    # check constraint; both may be null only for an ad-hoc lot described by
+    # `material_description`. See item()/item_name() for the subject-agnostic accessors.
     material_type = models.ForeignKey(
         'Tracker.PartTypes',
         null=True,
@@ -1206,10 +1431,19 @@ class MaterialLot(SecureModel):
         on_delete=models.PROTECT,
         related_name='material_lots'
     )
+    material = models.ForeignKey(
+        'Tracker.Material',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='lots',
+        help_text="The raw material / consumable this lot is stock of (mutually exclusive "
+                  "with material_type, which is for buyable parts).",
+    )
     material_description = models.CharField(
         max_length=200,
         blank=True,
-        help_text="Description for raw materials not tracked as PartTypes"
+        help_text="Free-text description for ad-hoc raw materials not in the Material list"
     )
 
     supplier = models.ForeignKey(
@@ -1281,11 +1515,27 @@ class MaterialLot(SecureModel):
                 condition=models.Q(is_current_version=True),
                 name='materiallot_tenant_lotnumber_uniq',
             ),
+            # A lot is stock of a buyable part XOR a raw material (or neither, for an
+            # ad-hoc lot named only by material_description) — never both.
+            models.CheckConstraint(
+                condition=~models.Q(material_type__isnull=False, material__isnull=False),
+                name='materiallot_part_xor_material',
+            ),
         ]
 
+    @property
+    def item(self):
+        """The thing this lot is stock of — a buyable PartType or a raw Material
+        (or None for an ad-hoc lot described only by material_description)."""
+        return self.material_type or self.material
+
+    @property
+    def item_name(self):
+        it = self.item
+        return it.name if it is not None else (self.material_description or "")
+
     def __str__(self):
-        desc = self.material_type.name if self.material_type else self.material_description
-        return f"Lot {self.lot_number} - {desc}"
+        return f"Lot {self.lot_number} - {self.item_name}"
 
     def split(self, quantity, reason=""):
         """Thin wrapper — delegates to `services.mes.material_lot.split_material_lot`."""
@@ -1583,10 +1833,22 @@ class BOMLine(SecureModel):
         on_delete=models.CASCADE,
         related_name='lines'
     )
+    # A line's component is EITHER an in-house PartType (source=MAKE — spawns a child WO)
+    # OR a purchased Material (source=BUY — procured). Exactly one is set (see the Meta
+    # constraint). PartTypes is in-house SKUs only; purchased items live on Material.
     component_type = models.ForeignKey(
         'Tracker.PartTypes',
+        null=True, blank=True,
         on_delete=models.PROTECT,
-        related_name='used_in_boms'
+        related_name='used_in_boms',
+        help_text="In-house component (source=MAKE). Mutually exclusive with `material`.",
+    )
+    material = models.ForeignKey(
+        'Tracker.Material',
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name='used_in_boms',
+        help_text="Purchased component (source=BUY). Mutually exclusive with `component_type`.",
     )
 
     quantity = models.DecimalField(max_digits=10, decimal_places=4)
@@ -1639,9 +1901,42 @@ class BOMLine(SecureModel):
         verbose_name = 'BOM Line'
         verbose_name_plural = 'BOM Lines'
         ordering = ['bom', 'line_number']
+        constraints = [
+            models.CheckConstraint(
+                name='bomline_exactly_one_component',
+                check=(
+                    models.Q(component_type__isnull=False, material__isnull=True)
+                    | models.Q(component_type__isnull=True, material__isnull=False)
+                ),
+            ),
+        ]
+
+    @property
+    def component_label(self) -> str:
+        """Human name of the component, whichever kind it is (Material or PartType)."""
+        if self.material_id:
+            return self.material.name
+        if self.component_type_id:
+            return self.component_type.name
+        return "component"
 
     def __str__(self):
-        return f"{self.bom} Line {self.line_number}: {self.component_type.name} x{self.quantity}"
+        return f"{self.bom} Line {self.line_number}: {self.component_label} x{self.quantity}"
+
+    def save(self, *args, **kwargs):
+        # Auto-fill a gap-numbered line_number (10, 20, 30…) for new lines that don't
+        # specify one, so the BOM keeps a stable, insertable ordering. Explicit values
+        # (seeds, version copies) are preserved. Sequence-number auto-fill only — no
+        # business logic here.
+        if self._state.adding and not self.line_number and self.bom_id:
+            last = (
+                # tenant-safe: scoped to a single BOM, which belongs to one tenant.
+                BOMLine.unscoped.filter(bom_id=self.bom_id)
+                .order_by('-line_number')
+                .values_list('line_number', flat=True).first()
+            )
+            self.line_number = (last or 0) + 10
+        super().save(*args, **kwargs)
 
 
 class AssemblyUsage(SecureModel):

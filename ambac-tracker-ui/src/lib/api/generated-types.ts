@@ -3316,6 +3316,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Fixtures/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+         *     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+         *     operations against the quantity available (cumulative capacity).
+         */
+        get: operations["api_Fixtures_list"];
+        put?: never;
+        /**
+         * @description CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+         *     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+         *     operations against the quantity available (cumulative capacity).
+         */
+        post: operations["api_Fixtures_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Fixtures/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+         *     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+         *     operations against the quantity available (cumulative capacity).
+         */
+        get: operations["api_Fixtures_retrieve"];
+        /**
+         * @description CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+         *     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+         *     operations against the quantity available (cumulative capacity).
+         */
+        put: operations["api_Fixtures_update"];
+        post?: never;
+        /**
+         * @description CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+         *     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+         *     operations against the quantity available (cumulative capacity).
+         */
+        delete: operations["api_Fixtures_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+         *     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+         *     operations against the quantity available (cumulative capacity).
+         */
+        patch: operations["api_Fixtures_partial_update"];
+        trace?: never;
+    };
+    "/api/Fixtures/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_Fixtures_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Fixtures/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_Fixtures_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/HarvestedComponents/": {
         parameters: {
             query?: never;
@@ -3639,6 +3735,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/LaborCalendarBlocks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+         *     one-off or weekly, company-wide (user null) or per person. Operators only; machines
+         *     keep running (only PlantCalendarException stops machines).
+         */
+        get: operations["api_LaborCalendarBlocks_list"];
+        put?: never;
+        /**
+         * @description CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+         *     one-off or weekly, company-wide (user null) or per person. Operators only; machines
+         *     keep running (only PlantCalendarException stops machines).
+         */
+        post: operations["api_LaborCalendarBlocks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LaborCalendarBlocks/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+         *     one-off or weekly, company-wide (user null) or per person. Operators only; machines
+         *     keep running (only PlantCalendarException stops machines).
+         */
+        get: operations["api_LaborCalendarBlocks_retrieve"];
+        /**
+         * @description CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+         *     one-off or weekly, company-wide (user null) or per person. Operators only; machines
+         *     keep running (only PlantCalendarException stops machines).
+         */
+        put: operations["api_LaborCalendarBlocks_update"];
+        post?: never;
+        /**
+         * @description CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+         *     one-off or weekly, company-wide (user null) or per person. Operators only; machines
+         *     keep running (only PlantCalendarException stops machines).
+         */
+        delete: operations["api_LaborCalendarBlocks_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+         *     one-off or weekly, company-wide (user null) or per person. Operators only; machines
+         *     keep running (only PlantCalendarException stops machines).
+         */
+        patch: operations["api_LaborCalendarBlocks_partial_update"];
+        trace?: never;
+    };
+    "/api/LaborCalendarBlocks/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_LaborCalendarBlocks_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LaborCalendarBlocks/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_LaborCalendarBlocks_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/": {
         parameters: {
             query?: never;
@@ -3924,6 +4116,96 @@ export interface paths {
         };
         /** @description Material consumption records (read-only, created via lot consumption) */
         get: operations["api_MaterialUsages_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Materials/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+         *     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+         */
+        get: operations["api_Materials_list"];
+        put?: never;
+        /**
+         * @description Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+         *     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+         */
+        post: operations["api_Materials_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Materials/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+         *     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+         */
+        get: operations["api_Materials_retrieve"];
+        /**
+         * @description Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+         *     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+         */
+        put: operations["api_Materials_update"];
+        post?: never;
+        /**
+         * @description Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+         *     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+         */
+        delete: operations["api_Materials_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+         *     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+         */
+        patch: operations["api_Materials_partial_update"];
+        trace?: never;
+    };
+    "/api/Materials/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_Materials_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Materials/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_Materials_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4802,6 +5084,102 @@ export interface paths {
         put?: never;
         /** @description Send a batch of parts out to a subcontract vendor for an outside-process step. Creates the shipment, links the parts, and moves them to AT_OUTSIDE_PROCESS. */
         post: operations["api_OutsideProcessShipments_send_out_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OvertimeWindows/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+         *     weekly, company-wide. The solver adds these to operator + attended-machine
+         *     availability (plant closures still win).
+         */
+        get: operations["api_OvertimeWindows_list"];
+        put?: never;
+        /**
+         * @description CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+         *     weekly, company-wide. The solver adds these to operator + attended-machine
+         *     availability (plant closures still win).
+         */
+        post: operations["api_OvertimeWindows_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OvertimeWindows/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+         *     weekly, company-wide. The solver adds these to operator + attended-machine
+         *     availability (plant closures still win).
+         */
+        get: operations["api_OvertimeWindows_retrieve"];
+        /**
+         * @description CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+         *     weekly, company-wide. The solver adds these to operator + attended-machine
+         *     availability (plant closures still win).
+         */
+        put: operations["api_OvertimeWindows_update"];
+        post?: never;
+        /**
+         * @description CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+         *     weekly, company-wide. The solver adds these to operator + attended-machine
+         *     availability (plant closures still win).
+         */
+        delete: operations["api_OvertimeWindows_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+         *     weekly, company-wide. The solver adds these to operator + attended-machine
+         *     availability (plant closures still win).
+         */
+        patch: operations["api_OvertimeWindows_partial_update"];
+        trace?: never;
+    };
+    "/api/OvertimeWindows/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_OvertimeWindows_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OvertimeWindows/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_OvertimeWindows_metadata_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5720,6 +6098,96 @@ export interface paths {
         };
         /** @description Lightweight endpoint for dropdown/combobox selections */
         get: operations["api_Parts_select_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+         *     blocks every machine and treats operators as absent during these.
+         */
+        get: operations["api_PlantCalendarExceptions_list"];
+        put?: never;
+        /**
+         * @description CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+         *     blocks every machine and treats operators as absent during these.
+         */
+        post: operations["api_PlantCalendarExceptions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+         *     blocks every machine and treats operators as absent during these.
+         */
+        get: operations["api_PlantCalendarExceptions_retrieve"];
+        /**
+         * @description CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+         *     blocks every machine and treats operators as absent during these.
+         */
+        put: operations["api_PlantCalendarExceptions_update"];
+        post?: never;
+        /**
+         * @description CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+         *     blocks every machine and treats operators as absent during these.
+         */
+        delete: operations["api_PlantCalendarExceptions_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+         *     blocks every machine and treats operators as absent during these.
+         */
+        patch: operations["api_PlantCalendarExceptions_partial_update"];
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_PlantCalendarExceptions_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_PlantCalendarExceptions_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7618,6 +8086,131 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ScheduledTasks/{id}/reassign-machine/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Put this task on a specific machine (planner override) + pin it. Applies now;
+         *     the next Solve keeps it there (machine-pin). Warns if the machine isn't eligible.
+         */
+        post: operations["api_ScheduledTasks_reassign_machine_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/{id}/reassign-operator/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Assign / re-assign / clear (null) the operator on this task (manual coverage).
+         *     Applies now; warns if the operator isn't qualified for the step.
+         */
+        post: operations["api_ScheduledTasks_reassign_operator_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/{id}/reassign-options/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Machines eligible for this task's step + operators qualified for it — the
+         *     options the detail dialog's reassign dropdowns show.
+         */
+        get: operations["api_ScheduledTasks_reassign_options_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/batch-membership/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Direct-manipulation batch control. `merge=true` → rejoin the WO+step cohort:
+         *     unpin the parts (the solver batches the unpinned cohort) and snap them onto the
+         *     cohort's slot so the ×N cell collapses now. `merge=false` → break apart: lay the
+         *     parts in separate slots and PIN them (separate fixed bars). Applies immediately and
+         *     marks the schedule stale; the next Solve forms/optimizes the batch.
+         */
+        post: operations["api_ScheduledTasks_batch_membership_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/bulk-reassign-machine/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Move several selected tasks onto one machine (planner override) + pin them.
+         *     Applies now; returns {changed, warnings} (a warning per distinct step the machine
+         *     isn't authored for). The next Solve keeps them there (machine-pin).
+         */
+        post: operations["api_ScheduledTasks_bulk_reassign_machine_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ScheduledTasks/bulk-reassign-operator/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Assign / clear (null) one operator across several selected tasks — bulk manual
+         *     coverage. Applies now; returns {changed, warnings} (warns, listing steps the
+         *     operator isn't trained for).
+         */
+        post: operations["api_ScheduledTasks_bulk_reassign_operator_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ScheduledTasks/move_batch/": {
         parameters: {
             query?: never;
@@ -7690,6 +8283,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Schedules/config/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The tenant's solver knobs (time limit, fence zones, penalties, labor model).
+         *     GET reads them; PATCH updates the subset provided. Gated on
+         *     change_optimizationconfig — the scheduling settings dialog.
+         */
+        get: operations["api_Schedules_config_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description The tenant's solver knobs (time limit, fence zones, penalties, labor model).
+         *     GET reads them; PATCH updates the subset provided. Gated on
+         *     change_optimizationconfig — the scheduling settings dialog.
+         */
+        patch: operations["api_Schedules_config_partial_update"];
+        trace?: never;
+    };
     "/api/Schedules/current/": {
         parameters: {
             query?: never;
@@ -7753,6 +8372,89 @@ export interface paths {
         };
         /** @description The current what-if draft, or 404 if none is pending review. */
         get: operations["api_Schedules_draft_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/explode-work-order/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description (Re)explode an existing work order's BOM into pegged in-house component WOs.
+         *     `create=false` previews (top-level, no writes). Net-first: existing stock + already-
+         *     pegged component WOs offset the requirement, so re-running is idempotent.
+         */
+        post: operations["api_Schedules_explode_work_order_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/operator_hours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Shop hours worked per operator over a date range, from TimeEntry —
+         *     `on_shift_hours` (attendance) and `direct_hours` (clocked onto jobs). Scoped to
+         *     shop-floor operators (Operator / Shift Lead groups).
+         */
+        get: operations["api_Schedules_operator_hours_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/plan-work-order/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Add work: create a WO for a process and spawn its parts at the first step,
+         *     so it schedules on the next Solve. The 'add work' half of Gantt planning.
+         */
+        post: operations["api_Schedules_plan_work_order_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/requirements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Sourcing & production requirements for open demand — what to buy (source),
+         *     what to make (produce), and tooling to acquire, with lead-time-driven order-by
+         *     dates.
+         */
+        get: operations["api_Schedules_requirements_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7945,10 +8647,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Shift definition management */
+        /**
+         * @description Shift definition management.
+         *
+         *     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+         *     edits mutate via `create_new_version` — never a raw save — and the list is scoped
+         *     to current versions. Delete is the SecureModel soft-delete (archive).
+         */
         get: operations["api_Shifts_list"];
         put?: never;
-        /** @description Shift definition management */
+        /**
+         * @description Shift definition management.
+         *
+         *     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+         *     edits mutate via `create_new_version` — never a raw save — and the list is scoped
+         *     to current versions. Delete is the SecureModel soft-delete (archive).
+         */
         post: operations["api_Shifts_create"];
         delete?: never;
         options?: never;
@@ -7963,16 +8677,40 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Shift definition management */
+        /**
+         * @description Shift definition management.
+         *
+         *     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+         *     edits mutate via `create_new_version` — never a raw save — and the list is scoped
+         *     to current versions. Delete is the SecureModel soft-delete (archive).
+         */
         get: operations["api_Shifts_retrieve"];
-        /** @description Shift definition management */
+        /**
+         * @description Shift definition management.
+         *
+         *     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+         *     edits mutate via `create_new_version` — never a raw save — and the list is scoped
+         *     to current versions. Delete is the SecureModel soft-delete (archive).
+         */
         put: operations["api_Shifts_update"];
         post?: never;
-        /** @description Shift definition management */
+        /**
+         * @description Shift definition management.
+         *
+         *     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+         *     edits mutate via `create_new_version` — never a raw save — and the list is scoped
+         *     to current versions. Delete is the SecureModel soft-delete (archive).
+         */
         delete: operations["api_Shifts_destroy"];
         options?: never;
         head?: never;
-        /** @description Shift definition management */
+        /**
+         * @description Shift definition management.
+         *
+         *     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+         *     edits mutate via `create_new_version` — never a raw save — and the list is scoped
+         *     to current versions. Delete is the SecureModel soft-delete (archive).
+         */
         patch: operations["api_Shifts_partial_update"];
         trace?: never;
     };
@@ -11149,6 +11887,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkOrders/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Cancel this work order — it drops out of scheduling. Refused if any part has
+         *     already shipped/completed (can't undo delivered work).
+         */
+        post: operations["api_WorkOrders_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkOrders/{id}/clear_hold/": {
         parameters: {
             query?: never;
@@ -11168,6 +11926,68 @@ export interface paths {
          *     - GET /export/ - Export filtered data to CSV/Excel
          */
         post: operations["api_WorkOrders_clear_hold_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/create_makeup/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Planner-confirmed make-up: spawn replacement parts (flagged `is_makeup`) at the
+         *     route's first step to cover the shortfall, and flag the schedule for re-solve.
+         */
+        post: operations["api_WorkOrders_create_makeup_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/makeup_status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Make-up gap for this WO: good parts owed (`target_good`) vs. still alive;
+         *     `shortfall` is how many replacements a make-up would create to cover scrap that
+         *     outran the expected yield.
+         */
+        get: operations["api_WorkOrders_makeup_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/material_requirements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The 'what this job needs' readout — top-level BOM components × WO quantity,
+         *     bucketed by consumed-at-step, with a shortage flag vs on-hand + promised. Picklist-
+         *     *lite*: no bins / lot picking / reservations (that's the ERP/WMS's job).
+         */
+        get: operations["api_WorkOrders_material_requirements_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11227,6 +12047,23 @@ export interface paths {
         get: operations["api_WorkOrders_qa_summary_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/set_quantity/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Set a WO's quantity: add parts (increase) or cancel unstarted parts (decrease). */
+        post: operations["api_WorkOrders_set_quantity_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11508,6 +12345,8 @@ export interface paths {
          *     row is a view onto WorkOrder work, not a first-class model). Filters:
          *       - `readiness=ready|blocked` (default: both, blocked sunk last)
          *       - `wo=<uuid>` — rows for a single WO
+         *       - `machine=<uuid>` / `machine__in=<csv>` — station pull: only rows the live
+         *         schedule assigned to that machine (unscheduled rows drop out)
          *       - `search=<term>` — matches WO ERP id or step name
          *       - standard `?limit=&offset=` pagination
          */
@@ -15165,6 +16004,12 @@ export interface components {
             readonly is_primary: boolean;
         };
         /**
+         * @description * `off` - Off (flag stale only; planner re-solves by hand)
+         *     * `live` - Live (auto re-solve and supersede the schedule)
+         * @enum {string}
+         */
+        AutoResolveEnum: "off" | "live";
+        /**
          * @description Bill of Materials serializer.
          *
          *     PATCH semantics: DRAFT BOMs are edited in place via super().update().
@@ -15197,15 +16042,40 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
-        /** @description BOM line item serializer */
+        /**
+         * @description BOM line item serializer. A line's component is EITHER an in-house `component_type`
+         *     (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+         */
         BOMLine: {
             /** Format: uuid */
             readonly id: string;
             /** Format: uuid */
             bom: string;
-            /** Format: uuid */
-            component_type: string;
-            readonly component_type_name: string;
+            /**
+             * Format: uuid
+             * @description In-house component (source=MAKE). Mutually exclusive with `material`.
+             */
+            component_type?: string | null;
+            readonly component_type_name: string | null;
+            /**
+             * Format: uuid
+             * @description Purchased component (source=BUY). Mutually exclusive with `component_type`.
+             */
+            material?: string | null;
+            readonly material_name: string | null;
+            /**
+             * @description Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+             *
+             *     * `MAKE` - Made in-house
+             *     * `BUY` - Purchased
+             */
+            source?: components["schemas"]["BOMLineSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The parent-process step that consumes this component (the assembly step). When set, the scheduler gates only that step on the component WO's completion; when null, the whole parent waits. Plan #9.
+             */
+            consumed_at_step?: string | null;
+            readonly consumed_at_step_name: string | null;
             /** Format: decimal */
             quantity: string;
             unit_of_measure?: string;
@@ -15224,12 +16094,35 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
-        /** @description BOM line item serializer */
+        /**
+         * @description BOM line item serializer. A line's component is EITHER an in-house `component_type`
+         *     (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+         */
         BOMLineRequest: {
             /** Format: uuid */
             bom: string;
-            /** Format: uuid */
-            component_type: string;
+            /**
+             * Format: uuid
+             * @description In-house component (source=MAKE). Mutually exclusive with `material`.
+             */
+            component_type?: string | null;
+            /**
+             * Format: uuid
+             * @description Purchased component (source=BUY). Mutually exclusive with `component_type`.
+             */
+            material?: string | null;
+            /**
+             * @description Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+             *
+             *     * `MAKE` - Made in-house
+             *     * `BUY` - Purchased
+             */
+            source?: components["schemas"]["BOMLineSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The parent-process step that consumes this component (the assembly step). When set, the scheduler gates only that step on the component WO's completion; when null, the whole parent waits. Plan #9.
+             */
+            consumed_at_step?: string | null;
             /** Format: decimal */
             quantity: string;
             unit_of_measure?: string;
@@ -15244,6 +16137,12 @@ export interface components {
             line_number?: number;
             archived?: boolean;
         };
+        /**
+         * @description * `MAKE` - Made in-house
+         *     * `BUY` - Purchased
+         * @enum {string}
+         */
+        BOMLineSourceEnum: "MAKE" | "BUY";
         /** @description Lightweight BOM serializer for lists */
         BOMList: {
             /** Format: uuid */
@@ -15371,6 +16270,20 @@ export interface components {
             /** @description Operator notes captured at batch start / during the run. */
             notes?: string;
         };
+        /**
+         * @description Planner batch control: merge selected tasks into one lot (`merge=true`) or break
+         *     them apart into separate lots (`merge=false`).
+         */
+        BatchMembershipRequestRequest: {
+            task_ids: string[];
+            merge: boolean;
+        };
+        /**
+         * @description * `concurrent` - Concurrent (parallel jobs)
+         *     * `cycle` - Cycle (shared load, fixed cycle time)
+         * @enum {string}
+         */
+        BatchModeEnum: "concurrent" | "cycle";
         BatchSealResponse: {
             batch_id: string;
             sealed_at: string;
@@ -15409,6 +16322,18 @@ export interface components {
             user_ids: number[];
             /** Format: uuid */
             company_id: string | null;
+        };
+        /** @description Move several scheduled tasks onto one machine at once (planner override). */
+        BulkReassignMachineRequestRequest: {
+            task_ids: string[];
+            /** Format: uuid */
+            machine_id: string;
+        };
+        /** @description Assign / clear (null) one operator across several scheduled tasks at once. */
+        BulkReassignOperatorRequestRequest: {
+            task_ids: string[];
+            /** Format: uuid */
+            operator_id: string | null;
         };
         BulkReconcileSummary: {
             total: number;
@@ -15931,6 +16856,8 @@ export interface components {
             name: string;
             description: string;
             hubspot_api_id?: string | null;
+            /** @description Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations. */
+            default_outside_process_turnaround_days?: number | null;
             readonly user_count: number;
             /** Format: date-time */
             readonly created_at: string;
@@ -15952,6 +16879,8 @@ export interface components {
             name: string;
             description: string;
             hubspot_api_id?: string | null;
+            /** @description Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations. */
+            default_outside_process_turnaround_days?: number | null;
             archived?: boolean;
         };
         /**
@@ -16468,6 +17397,13 @@ export interface components {
          * @enum {string}
          */
         DecisionTypeEnum: "QA_RESULT" | "MEASUREMENT" | "MANUAL" | "AGGREGATE";
+        /**
+         * @description * `off` - Off (no crew constraint)
+         *     * `pool` - Pool (cap at qualified crew)
+         *     * `named` - Named (assign a specific operator)
+         * @enum {string}
+         */
+        DefaultLaborModelEnum: "off" | "pool" | "named";
         DefectParetoResponse: {
             data: {
                 [key: string]: unknown;
@@ -17093,6 +18029,15 @@ export interface components {
             status?: components["schemas"]["EquipmentsStatusEnum"];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
+            /** @description How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`. */
+            batch_capacity?: number;
+            /**
+             * @description How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+             *
+             *     * `concurrent` - Concurrent (parallel jobs)
+             *     * `cycle` - Cycle (shared load, fixed cycle time)
+             */
+            batch_mode?: components["schemas"]["BatchModeEnum"];
             notes?: string;
             /** Format: date-time */
             readonly created_at: string;
@@ -17120,6 +18065,15 @@ export interface components {
             status?: components["schemas"]["EquipmentsStatusEnum"];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
+            /** @description How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`. */
+            batch_capacity?: number;
+            /**
+             * @description How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+             *
+             *     * `concurrent` - Concurrent (parallel jobs)
+             *     * `cycle` - Cycle (shared load, fixed cycle time)
+             */
+            batch_mode?: components["schemas"]["BatchModeEnum"];
             notes?: string;
             archived?: boolean;
         };
@@ -17156,6 +18110,13 @@ export interface components {
             results: {
                 [key: string]: unknown;
             }[];
+        };
+        /** @description (Re)explode an existing work order's BOM. `create=false` previews without writing. */
+        ExplodeWorkOrderInputRequest: {
+            /** Format: uuid */
+            work_order_id: string;
+            /** @default true */
+            create: boolean;
         };
         /**
          * @description Governed shelf-life extension: a re-tested lot gets a new use-by date,
@@ -17510,6 +18471,68 @@ export interface components {
             archived?: boolean;
         };
         /**
+         * @description A shared, quantity-limited scheduling resource — fixture / cutting tool / die / NC
+         *     program. `steps` is the set of operations that require it; the solver serializes ops
+         *     against the `quantity` available (cumulative capacity). `steps` validates against the
+         *     tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+         */
+        Fixture: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            /**
+             * @description What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+             *
+             *     * `FIXTURE` - Fixture
+             *     * `TOOL` - Cutting tool
+             *     * `DIE` - Die / mold
+             *     * `PROGRAM` - NC program
+             *     * `OTHER` - Other
+             */
+            kind?: components["schemas"]["FixtureKindEnum"];
+            /** @description How many of this resource exist (concurrency limit). */
+            quantity?: number;
+            /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
+            lead_time_days?: number | null;
+            /** @description Steps that require this resource. */
+            steps?: string[];
+            readonly step_names: string[];
+        };
+        /**
+         * @description * `FIXTURE` - Fixture
+         *     * `TOOL` - Cutting tool
+         *     * `DIE` - Die / mold
+         *     * `PROGRAM` - NC program
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        FixtureKindEnum: "FIXTURE" | "TOOL" | "DIE" | "PROGRAM" | "OTHER";
+        /**
+         * @description A shared, quantity-limited scheduling resource — fixture / cutting tool / die / NC
+         *     program. `steps` is the set of operations that require it; the solver serializes ops
+         *     against the `quantity` available (cumulative capacity). `steps` validates against the
+         *     tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+         */
+        FixtureRequest: {
+            name: string;
+            /**
+             * @description What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+             *
+             *     * `FIXTURE` - Fixture
+             *     * `TOOL` - Cutting tool
+             *     * `DIE` - Die / mold
+             *     * `PROGRAM` - NC program
+             *     * `OTHER` - Other
+             */
+            kind?: components["schemas"]["FixtureKindEnum"];
+            /** @description How many of this resource exist (concurrency limit). */
+            quantity?: number;
+            /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
+            lead_time_days?: number | null;
+            /** @description Steps that require this resource. */
+            steps?: string[];
+        };
+        /**
          * @description * `PER_WORKORDER` - Per Work Order
          *     * `PER_SHIFT` - Per Shift
          *     * `PER_EQUIPMENT` - Per Equipment
@@ -17803,7 +18826,7 @@ export interface components {
          *     `source` = the inspection-lot origin). See services.qms.incoming_inspection.
          */
         IncomingInspectionRow: {
-            source: components["schemas"]["SourceEnum"];
+            source: components["schemas"]["IncomingInspectionRowSourceEnum"];
             /** Format: uuid */
             id: string;
             reference: string;
@@ -17817,6 +18840,12 @@ export interface components {
             /** Format: uuid */
             step_id: string | null;
         };
+        /**
+         * @description * `PURCHASED_LOT` - PURCHASED_LOT
+         *     * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
+         * @enum {string}
+         */
+        IncomingInspectionRowSourceEnum: "PURCHASED_LOT" | "OUTSIDE_PROCESS";
         /**
          * @description One row of the inspector's task inbox — flat across every inspection
          *     source, never grouped by work order. See services.qms.inspection_inbox.
@@ -18074,6 +19103,97 @@ export interface components {
             api_key: string;
             base_url: string;
         };
+        /**
+         * @description Operator non-working time — PTO / sick / training / meeting / break — one-off
+         *     (ONCE: start_time+end_time) or weekly (WEEKLY: days_of_week+window_start/end),
+         *     company-wide (user null) or per person. Operators only; machines keep running.
+         *     Validates the fields the chosen recurrence needs.
+         */
+        LaborCalendarBlock: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description The operator this block applies to. Null = the whole company (every operator), e.g. an all-hands meeting. */
+            user?: number | null;
+            readonly user_name: string | null;
+            kind?: components["schemas"]["LaborCalendarBlockKindEnum"];
+            recurrence?: components["schemas"]["LaborRecurrenceEnum"];
+            /**
+             * Format: date-time
+             * @description One-off start (recurrence=ONCE).
+             */
+            start_time?: string | null;
+            /**
+             * Format: date-time
+             * @description One-off end (recurrence=ONCE).
+             */
+            end_time?: string | null;
+            /** @description Recurring days as comma-separated numbers (0=Monday..6=Sunday), e.g. '0,2,4' (recurrence=WEEKLY). */
+            days_of_week?: string;
+            /**
+             * Format: time
+             * @description Recurring start time-of-day (recurrence=WEEKLY).
+             */
+            window_start?: string | null;
+            /**
+             * Format: time
+             * @description Recurring end time-of-day (recurrence=WEEKLY).
+             */
+            window_end?: string | null;
+            reason?: string;
+            is_active?: boolean;
+        };
+        /**
+         * @description * `PTO` - PTO / vacation
+         *     * `SICK` - Sick
+         *     * `TRAINING` - Training
+         *     * `MEETING` - Meeting
+         *     * `BREAK` - Break
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        LaborCalendarBlockKindEnum: "PTO" | "SICK" | "TRAINING" | "MEETING" | "BREAK" | "OTHER";
+        /**
+         * @description Operator non-working time — PTO / sick / training / meeting / break — one-off
+         *     (ONCE: start_time+end_time) or weekly (WEEKLY: days_of_week+window_start/end),
+         *     company-wide (user null) or per person. Operators only; machines keep running.
+         *     Validates the fields the chosen recurrence needs.
+         */
+        LaborCalendarBlockRequest: {
+            /** @description The operator this block applies to. Null = the whole company (every operator), e.g. an all-hands meeting. */
+            user?: number | null;
+            kind?: components["schemas"]["LaborCalendarBlockKindEnum"];
+            recurrence?: components["schemas"]["LaborRecurrenceEnum"];
+            /**
+             * Format: date-time
+             * @description One-off start (recurrence=ONCE).
+             */
+            start_time?: string | null;
+            /**
+             * Format: date-time
+             * @description One-off end (recurrence=ONCE).
+             */
+            end_time?: string | null;
+            /** @description Recurring days as comma-separated numbers (0=Monday..6=Sunday), e.g. '0,2,4' (recurrence=WEEKLY). */
+            days_of_week?: string;
+            /**
+             * Format: time
+             * @description Recurring start time-of-day (recurrence=WEEKLY).
+             */
+            window_start?: string | null;
+            /**
+             * Format: time
+             * @description Recurring end time-of-day (recurrence=WEEKLY).
+             */
+            window_end?: string | null;
+            reason?: string;
+            is_active?: boolean;
+        };
+        /**
+         * @description * `ONCE` - One-off (dated)
+         *     * `WEEKLY` - Weekly (recurring)
+         * @enum {string}
+         */
+        LaborRecurrenceEnum: "ONCE" | "WEEKLY";
         ListMetadataResponse: {
             search_fields: string[];
             search_fields_display: string[];
@@ -18089,6 +19209,30 @@ export interface components {
             /** Format: email */
             email?: string;
             password: string;
+        };
+        /**
+         * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
+         *     Holds the purchase lead time used by the sourcing report.
+         */
+        Material: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            /** @description Supplier or internal catalog number/SKU. */
+            part_number?: string;
+            description?: string;
+            unit_of_measure?: string;
+            /** @description Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
+            purchase_lead_time_days?: number | null;
+            /** Format: uuid */
+            preferred_supplier?: string | null;
+            readonly preferred_supplier_name: string | null;
+            is_active?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
         };
         /**
          * @description Material lot serializer.
@@ -18109,7 +19253,14 @@ export interface components {
             /** Format: uuid */
             material_type?: string | null;
             readonly material_type_name: string | null;
-            /** @description Description for raw materials not tracked as PartTypes */
+            /**
+             * Format: uuid
+             * @description The raw material / consumable this lot is stock of (mutually exclusive with material_type, which is for buyable parts).
+             */
+            material?: string | null;
+            readonly material_name: string | null;
+            readonly item_name: string;
+            /** @description Free-text description for ad-hoc raw materials not in the Material list */
             material_description?: string;
             /** Format: uuid */
             supplier?: string | null;
@@ -18201,7 +19352,12 @@ export interface components {
             parent_lot?: string | null;
             /** Format: uuid */
             material_type?: string | null;
-            /** @description Description for raw materials not tracked as PartTypes */
+            /**
+             * Format: uuid
+             * @description The raw material / consumable this lot is stock of (mutually exclusive with material_type, which is for buyable parts).
+             */
+            material?: string | null;
+            /** @description Free-text description for ad-hoc raw materials not in the Material list */
             material_description?: string;
             /** Format: uuid */
             supplier?: string | null;
@@ -18251,6 +19407,23 @@ export interface components {
          * @enum {string}
          */
         MaterialLotStatusEnum: "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
+        /**
+         * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
+         *     Holds the purchase lead time used by the sourcing report.
+         */
+        MaterialRequest: {
+            name: string;
+            /** @description Supplier or internal catalog number/SKU. */
+            part_number?: string;
+            description?: string;
+            unit_of_measure?: string;
+            /** @description Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
+            purchase_lead_time_days?: number | null;
+            /** Format: uuid */
+            preferred_supplier?: string | null;
+            is_active?: boolean;
+            archived?: boolean;
+        };
         /** @description Material consumption record serializer */
         MaterialUsage: {
             /** Format: uuid */
@@ -18605,6 +19778,85 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        OperatorHoursReport: {
+            rows: components["schemas"]["OperatorHoursRow"][];
+        };
+        OperatorHoursRow: {
+            user_id: number;
+            name: string;
+            /** Format: double */
+            on_shift_hours: number;
+            /** Format: double */
+            direct_hours: number;
+        };
+        /**
+         * @description The tenant's solver knobs — read + PATCH from the scheduling settings dialog.
+         *     All fields are editable except the identity/version bookkeeping.
+         */
+        OptimizationConfig: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description CP-SAT wall-clock cap per solve (seconds); best-so-far is returned when it elapses. With match_operators on it's split across the machine (~40%) and operator (~60%) phases. */
+            solver_time_limit_seconds?: number;
+            /**
+             * Format: double
+             * @description CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).
+             */
+            relative_gap_limit?: number;
+            /** @description Days from now within which tasks are pinned (frozen). */
+            frozen_zone_days?: number;
+            /** @description Days after the frozen zone where moves are discouraged. */
+            slushy_zone_days?: number;
+            /** @description Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time. */
+            default_outside_process_turnaround_days?: number;
+            /** @description Two-phase solve: first schedule machines (fast, pooled labor), then re-solve assigning a SPECIFIC operator to every attended op, warm-started from the machine plan. Guarantees a real operator↔operation matching (scarce skills push work late, never silently uncovered) at the cost of a longer solve. Off = single fast machine solve. */
+            match_operators?: boolean;
+            /**
+             * @description The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
+             *
+             *     * `off` - Off (no crew constraint)
+             *     * `pool` - Pool (cap at qualified crew)
+             *     * `named` - Named (assign a specific operator)
+             */
+            default_labor_model?: components["schemas"]["DefaultLaborModelEnum"];
+            /** @description Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work. */
+            default_lockstep_batch?: boolean;
+            /**
+             * Format: decimal
+             * @description Labor + overhead cost per shop hour (objective input).
+             */
+            shop_rate_per_hour?: string;
+            /** Format: decimal */
+            overtime_multiplier?: string;
+            /**
+             * Format: decimal
+             * @description Personal/fatigue/delay allowance added to attended time (%).
+             */
+            pfd_allowance_pct?: string;
+            /** Format: decimal */
+            late_penalty_urgent?: string;
+            /** Format: decimal */
+            late_penalty_high?: string;
+            /** Format: decimal */
+            late_penalty_normal?: string;
+            /** Format: decimal */
+            late_penalty_low?: string;
+            /** @description Minutes between a component WO finishing and its parent assembly WO being allowed to start (move/stage time). Assembly-convergence peg — plan #9. */
+            staging_buffer_minutes?: number;
+            /** @description Setup minutes charged when a resource switches to a different work order on the SAME operation — keeps a job's parts batched together. Kept below operation-change setups by design: staying on the same operation matters more than staying on the same work order. */
+            job_change_minutes?: number;
+            /** @description Move/queue time between consecutive operations of a route — the next operation can't start until this many minutes after the prior one finishes (transport + queue). Applied to every intra-route hand-off; 0 = parts flow with no transfer delay. (Distinct from staging_buffer, which is the cross-work-order assembly-convergence gap.) */
+            default_move_minutes?: number;
+            /**
+             * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
+             *
+             *     * `off` - Off (flag stale only; planner re-solves by hand)
+             *     * `live` - Live (auto re-solve and supersede the schedule)
+             */
+            auto_resolve?: components["schemas"]["AutoResolveEnum"];
+            /** @description Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve. */
+            auto_resolve_min_interval_minutes?: number;
+        };
         /** @description Enhanced orders serializer with user filtering and features */
         Orders: {
             /** Format: uuid */
@@ -18760,6 +20012,51 @@ export interface components {
          * @enum {string}
          */
         OutsideProcessShipmentStatusEnum: "SENT" | "RETURNED" | "CLOSED";
+        /**
+         * @description Additive shop-open time — an extra run of a `shift` (its hours + crew). ONCE runs
+         *     it on [start_date, end_date]; WEEKLY on days_of_week. The solver adds it to that
+         *     shift's operators + attended machines (closures still win). Validates the fields the
+         *     recurrence needs.
+         */
+        OvertimeWindow: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The shift being run as overtime — supplies the hours and the crew (operators rostered to it).
+             */
+            shift: string;
+            readonly shift_name: string | null;
+            recurrence?: components["schemas"]["LaborRecurrenceEnum"];
+            /** Format: date */
+            start_date?: string | null;
+            /** Format: date */
+            end_date?: string | null;
+            days_of_week?: string;
+            reason?: string;
+            is_active?: boolean;
+        };
+        /**
+         * @description Additive shop-open time — an extra run of a `shift` (its hours + crew). ONCE runs
+         *     it on [start_date, end_date]; WEEKLY on days_of_week. The solver adds it to that
+         *     shift's operators + attended machines (closures still win). Validates the fields the
+         *     recurrence needs.
+         */
+        OvertimeWindowRequest: {
+            /**
+             * Format: uuid
+             * @description The shift being run as overtime — supplies the hours and the crew (operators rostered to it).
+             */
+            shift: string;
+            recurrence?: components["schemas"]["LaborRecurrenceEnum"];
+            /** Format: date */
+            start_date?: string | null;
+            /** Format: date */
+            end_date?: string | null;
+            days_of_week?: string;
+            reason?: string;
+            is_active?: boolean;
+        };
         PaginatedApprovalRequestList: {
             /** @example 123 */
             count: number;
@@ -19180,6 +20477,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["FiveWhys"][];
         };
+        PaginatedFixtureList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["Fixture"][];
+        };
         PaginatedGeneratedReportList: {
             /** @example 123 */
             count: number;
@@ -19285,6 +20597,36 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["JobRole"][];
         };
+        PaginatedLaborCalendarBlockList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["LaborCalendarBlock"][];
+        };
+        PaginatedMaterialList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["Material"][];
+        };
         PaginatedMaterialLotList: {
             /** @example 123 */
             count: number;
@@ -19374,6 +20716,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["OutsideProcessShipment"][];
+        };
+        PaginatedOvertimeWindowList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["OvertimeWindow"][];
         };
         PaginatedPartApprovalList: {
             /** @example 123 */
@@ -19479,6 +20836,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["PersonalSchedule"][];
+        };
+        PaginatedPlantCalendarExceptionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["PlantCalendarException"][];
         };
         PaginatedProcessChangeNoticeList: {
             /** @example 123 */
@@ -20412,6 +21784,18 @@ export interface components {
             requires_supplier_qualification?: boolean;
             /** @description Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock. */
             requires_part_approval?: boolean;
+            /** @description This part can be produced in-house (has a production process; shortages spawn child work orders). */
+            can_make?: boolean;
+            /** @description This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts. */
+            can_buy?: boolean;
+            /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
+            purchase_lead_time_days?: number | null;
+            /**
+             * Format: uuid
+             * @description Default supplier when this part is purchased.
+             */
+            preferred_supplier?: string | null;
+            readonly preferred_supplier_name: string | null;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -20451,6 +21835,17 @@ export interface components {
             requires_supplier_qualification?: boolean;
             /** @description Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock. */
             requires_part_approval?: boolean;
+            /** @description This part can be produced in-house (has a production process; shortages spawn child work orders). */
+            can_make?: boolean;
+            /** @description This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts. */
+            can_buy?: boolean;
+            /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
+            purchase_lead_time_days?: number | null;
+            /**
+             * Format: uuid
+             * @description Default supplier when this part is purchased.
+             */
+            preferred_supplier?: string | null;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -20711,12 +22106,35 @@ export interface components {
             step?: string | null;
             archived?: boolean;
         };
-        /** @description BOM line item serializer */
+        /**
+         * @description BOM line item serializer. A line's component is EITHER an in-house `component_type`
+         *     (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+         */
         PatchedBOMLineRequest: {
             /** Format: uuid */
             bom?: string;
-            /** Format: uuid */
-            component_type?: string;
+            /**
+             * Format: uuid
+             * @description In-house component (source=MAKE). Mutually exclusive with `material`.
+             */
+            component_type?: string | null;
+            /**
+             * Format: uuid
+             * @description Purchased component (source=BUY). Mutually exclusive with `component_type`.
+             */
+            material?: string | null;
+            /**
+             * @description Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+             *
+             *     * `MAKE` - Made in-house
+             *     * `BUY` - Purchased
+             */
+            source?: components["schemas"]["BOMLineSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The parent-process step that consumes this component (the assembly step). When set, the scheduler gates only that step on the component WO's completion; when null, the whole parent waits. Plan #9.
+             */
+            consumed_at_step?: string | null;
             /** Format: decimal */
             quantity?: string;
             unit_of_measure?: string;
@@ -20888,6 +22306,8 @@ export interface components {
             name?: string;
             description?: string;
             hubspot_api_id?: string | null;
+            /** @description Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations. */
+            default_outside_process_turnaround_days?: number | null;
             archived?: boolean;
         };
         /** @description Remanufacturing core serializer */
@@ -21171,6 +22591,15 @@ export interface components {
             status?: components["schemas"]["EquipmentsStatusEnum"];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
+            /** @description How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`. */
+            batch_capacity?: number;
+            /**
+             * @description How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+             *
+             *     * `concurrent` - Concurrent (parallel jobs)
+             *     * `cycle` - Cycle (shared load, fixed cycle time)
+             */
+            batch_mode?: components["schemas"]["BatchModeEnum"];
             notes?: string;
             archived?: boolean;
         };
@@ -21246,6 +22675,31 @@ export interface components {
             identified_root_cause?: string | null;
             archived?: boolean;
         };
+        /**
+         * @description A shared, quantity-limited scheduling resource — fixture / cutting tool / die / NC
+         *     program. `steps` is the set of operations that require it; the solver serializes ops
+         *     against the `quantity` available (cumulative capacity). `steps` validates against the
+         *     tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+         */
+        PatchedFixtureRequest: {
+            name?: string;
+            /**
+             * @description What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+             *
+             *     * `FIXTURE` - Fixture
+             *     * `TOOL` - Cutting tool
+             *     * `DIE` - Die / mold
+             *     * `PROGRAM` - NC program
+             *     * `OTHER` - Other
+             */
+            kind?: components["schemas"]["FixtureKindEnum"];
+            /** @description How many of this resource exist (concurrency limit). */
+            quantity?: number;
+            /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
+            lead_time_days?: number | null;
+            /** @description Steps that require this resource. */
+            steps?: string[];
+        };
         /** @description Harvested component serializer */
         PatchedHarvestedComponentRequest: {
             /** Format: uuid */
@@ -21307,6 +22761,42 @@ export interface components {
             archived?: boolean;
         };
         /**
+         * @description Operator non-working time — PTO / sick / training / meeting / break — one-off
+         *     (ONCE: start_time+end_time) or weekly (WEEKLY: days_of_week+window_start/end),
+         *     company-wide (user null) or per person. Operators only; machines keep running.
+         *     Validates the fields the chosen recurrence needs.
+         */
+        PatchedLaborCalendarBlockRequest: {
+            /** @description The operator this block applies to. Null = the whole company (every operator), e.g. an all-hands meeting. */
+            user?: number | null;
+            kind?: components["schemas"]["LaborCalendarBlockKindEnum"];
+            recurrence?: components["schemas"]["LaborRecurrenceEnum"];
+            /**
+             * Format: date-time
+             * @description One-off start (recurrence=ONCE).
+             */
+            start_time?: string | null;
+            /**
+             * Format: date-time
+             * @description One-off end (recurrence=ONCE).
+             */
+            end_time?: string | null;
+            /** @description Recurring days as comma-separated numbers (0=Monday..6=Sunday), e.g. '0,2,4' (recurrence=WEEKLY). */
+            days_of_week?: string;
+            /**
+             * Format: time
+             * @description Recurring start time-of-day (recurrence=WEEKLY).
+             */
+            window_start?: string | null;
+            /**
+             * Format: time
+             * @description Recurring end time-of-day (recurrence=WEEKLY).
+             */
+            window_end?: string | null;
+            reason?: string;
+            is_active?: boolean;
+        };
+        /**
          * @description Material lot serializer.
          *
          *     MaterialLot is physical inventory, not a controlled document (de-versioned —
@@ -21321,7 +22811,12 @@ export interface components {
             parent_lot?: string | null;
             /** Format: uuid */
             material_type?: string | null;
-            /** @description Description for raw materials not tracked as PartTypes */
+            /**
+             * Format: uuid
+             * @description The raw material / consumable this lot is stock of (mutually exclusive with material_type, which is for buyable parts).
+             */
+            material?: string | null;
+            /** @description Free-text description for ad-hoc raw materials not in the Material list */
             material_description?: string;
             /** Format: uuid */
             supplier?: string | null;
@@ -21347,6 +22842,23 @@ export interface components {
             /** Format: binary */
             certificate_of_conformance?: string | null;
             storage_location?: string;
+            archived?: boolean;
+        };
+        /**
+         * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
+         *     Holds the purchase lead time used by the sourcing report.
+         */
+        PatchedMaterialRequest: {
+            name?: string;
+            /** @description Supplier or internal catalog number/SKU. */
+            part_number?: string;
+            description?: string;
+            unit_of_measure?: string;
+            /** @description Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
+            purchase_lead_time_days?: number | null;
+            /** Format: uuid */
+            preferred_supplier?: string | null;
+            is_active?: boolean;
             archived?: boolean;
         };
         /**
@@ -21406,6 +22918,72 @@ export interface components {
             is_default?: boolean;
             archived?: boolean;
         };
+        /**
+         * @description The tenant's solver knobs — read + PATCH from the scheduling settings dialog.
+         *     All fields are editable except the identity/version bookkeeping.
+         */
+        PatchedOptimizationConfigRequest: {
+            /** @description CP-SAT wall-clock cap per solve (seconds); best-so-far is returned when it elapses. With match_operators on it's split across the machine (~40%) and operator (~60%) phases. */
+            solver_time_limit_seconds?: number;
+            /**
+             * Format: double
+             * @description CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).
+             */
+            relative_gap_limit?: number;
+            /** @description Days from now within which tasks are pinned (frozen). */
+            frozen_zone_days?: number;
+            /** @description Days after the frozen zone where moves are discouraged. */
+            slushy_zone_days?: number;
+            /** @description Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time. */
+            default_outside_process_turnaround_days?: number;
+            /** @description Two-phase solve: first schedule machines (fast, pooled labor), then re-solve assigning a SPECIFIC operator to every attended op, warm-started from the machine plan. Guarantees a real operator↔operation matching (scarce skills push work late, never silently uncovered) at the cost of a longer solve. Off = single fast machine solve. */
+            match_operators?: boolean;
+            /**
+             * @description The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
+             *
+             *     * `off` - Off (no crew constraint)
+             *     * `pool` - Pool (cap at qualified crew)
+             *     * `named` - Named (assign a specific operator)
+             */
+            default_labor_model?: components["schemas"]["DefaultLaborModelEnum"];
+            /** @description Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work. */
+            default_lockstep_batch?: boolean;
+            /**
+             * Format: decimal
+             * @description Labor + overhead cost per shop hour (objective input).
+             */
+            shop_rate_per_hour?: string;
+            /** Format: decimal */
+            overtime_multiplier?: string;
+            /**
+             * Format: decimal
+             * @description Personal/fatigue/delay allowance added to attended time (%).
+             */
+            pfd_allowance_pct?: string;
+            /** Format: decimal */
+            late_penalty_urgent?: string;
+            /** Format: decimal */
+            late_penalty_high?: string;
+            /** Format: decimal */
+            late_penalty_normal?: string;
+            /** Format: decimal */
+            late_penalty_low?: string;
+            /** @description Minutes between a component WO finishing and its parent assembly WO being allowed to start (move/stage time). Assembly-convergence peg — plan #9. */
+            staging_buffer_minutes?: number;
+            /** @description Setup minutes charged when a resource switches to a different work order on the SAME operation — keeps a job's parts batched together. Kept below operation-change setups by design: staying on the same operation matters more than staying on the same work order. */
+            job_change_minutes?: number;
+            /** @description Move/queue time between consecutive operations of a route — the next operation can't start until this many minutes after the prior one finishes (transport + queue). Applied to every intra-route hand-off; 0 = parts flow with no transfer delay. (Distinct from staging_buffer, which is the cross-work-order assembly-convergence gap.) */
+            default_move_minutes?: number;
+            /**
+             * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
+             *
+             *     * `off` - Off (flag stale only; planner re-solves by hand)
+             *     * `live` - Live (auto re-solve and supersede the schedule)
+             */
+            auto_resolve?: components["schemas"]["AutoResolveEnum"];
+            /** @description Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve. */
+            auto_resolve_min_interval_minutes?: number;
+        };
         /** @description Enhanced orders serializer with user filtering and features */
         PatchedOrdersRequest: {
             name?: string;
@@ -21446,6 +23024,27 @@ export interface components {
             return_reference?: string;
             notes?: string;
             archived?: boolean;
+        };
+        /**
+         * @description Additive shop-open time — an extra run of a `shift` (its hours + crew). ONCE runs
+         *     it on [start_date, end_date]; WEEKLY on days_of_week. The solver adds it to that
+         *     shift's operators + attended machines (closures still win). Validates the fields the
+         *     recurrence needs.
+         */
+        PatchedOvertimeWindowRequest: {
+            /**
+             * Format: uuid
+             * @description The shift being run as overtime — supplies the hours and the crew (operators rostered to it).
+             */
+            shift?: string;
+            recurrence?: components["schemas"]["LaborRecurrenceEnum"];
+            /** Format: date */
+            start_date?: string | null;
+            /** Format: date */
+            end_date?: string | null;
+            days_of_week?: string;
+            reason?: string;
+            is_active?: boolean;
         };
         /**
          * @description Base serializer for SecureModel instances.
@@ -21503,6 +23102,17 @@ export interface components {
             requires_supplier_qualification?: boolean;
             /** @description Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock. */
             requires_part_approval?: boolean;
+            /** @description This part can be produced in-house (has a production process; shortages spawn child work orders). */
+            can_make?: boolean;
+            /** @description This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts. */
+            can_buy?: boolean;
+            /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
+            purchase_lead_time_days?: number | null;
+            /**
+             * Format: uuid
+             * @description Default supplier when this part is purchased.
+             */
+            preferred_supplier?: string | null;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -21593,6 +23203,26 @@ export interface components {
             timezone?: string;
             /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
             channels?: unknown;
+        };
+        /**
+         * @description A dated, plant-wide non-working window — holiday / shutdown / inventory day.
+         *     The solver blocks EVERY machine and treats operators as absent during it.
+         */
+        PatchedPlantCalendarExceptionRequest: {
+            name?: string;
+            kind?: components["schemas"]["PlantCalendarExceptionKindEnum"];
+            /** Format: date-time */
+            start_time?: string;
+            /** Format: date-time */
+            end_time?: string;
+            /**
+             * @description YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+             *
+             *     * `ONCE` - One-off (dated)
+             *     * `YEARLY` - Repeats yearly
+             */
+            recurrence?: components["schemas"]["PlantClosureRecurrenceEnum"];
+            is_active?: boolean;
         };
         /** @description Read/write serializer for PCNs. */
         PatchedProcessChangeNoticeRequest: {
@@ -21727,6 +23357,11 @@ export interface components {
             category?: components["schemas"]["ProcessesCategoryEnum"];
             /** @description Description of changes from previous version (for approval review) */
             change_description?: string | null;
+            /**
+             * Format: decimal
+             * @description Default expected scrap fraction (0–1) applied to steps of this process that don't set their own `Steps.scrap_rate`. Used to gross up the started quantity so a work order still finishes the requested number of good parts (release-11-to-ship-10).
+             */
+            default_scrap_rate?: string;
         };
         /**
          * @description Quality errors list serializer.
@@ -22279,6 +23914,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
+            outside_process_lead_days?: number | null;
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
             is_terminal?: boolean;
@@ -22293,6 +23930,11 @@ export interface components {
             revisit_role?: string | null;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
+            /**
+             * Format: decimal
+             * @description Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
+             */
+            scrap_rate?: string | null;
             archived?: boolean;
         };
         /** @description Per-execution completion record. */
@@ -22942,6 +24584,8 @@ export interface components {
             /** Format: uuid */
             process?: string | null;
             /** Format: date */
+            expected_start?: string | null;
+            /** Format: date */
             expected_completion?: string | null;
             expected_duration?: string | null;
             /** Format: date */
@@ -23102,6 +24746,74 @@ export interface components {
         PinRequestRequest: {
             is_pinned: boolean;
         };
+        /** @description Input for the Gantt 'add work' action — create a WO + spawn its parts. */
+        PlanWorkOrderInputRequest: {
+            /** Format: uuid */
+            process: string;
+            quantity: number;
+            erp_id?: string;
+            priority?: number;
+            /** Format: date */
+            expected_start?: string | null;
+            /** Format: date */
+            expected_completion?: string | null;
+        };
+        /**
+         * @description A dated, plant-wide non-working window — holiday / shutdown / inventory day.
+         *     The solver blocks EVERY machine and treats operators as absent during it.
+         */
+        PlantCalendarException: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            kind?: components["schemas"]["PlantCalendarExceptionKindEnum"];
+            /** Format: date-time */
+            start_time: string;
+            /** Format: date-time */
+            end_time: string;
+            /**
+             * @description YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+             *
+             *     * `ONCE` - One-off (dated)
+             *     * `YEARLY` - Repeats yearly
+             */
+            recurrence?: components["schemas"]["PlantClosureRecurrenceEnum"];
+            is_active?: boolean;
+        };
+        /**
+         * @description * `HOLIDAY` - Holiday
+         *     * `SHUTDOWN` - Plant Shutdown
+         *     * `INVENTORY` - Inventory / Stock-take
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        PlantCalendarExceptionKindEnum: "HOLIDAY" | "SHUTDOWN" | "INVENTORY" | "OTHER";
+        /**
+         * @description A dated, plant-wide non-working window — holiday / shutdown / inventory day.
+         *     The solver blocks EVERY machine and treats operators as absent during it.
+         */
+        PlantCalendarExceptionRequest: {
+            name: string;
+            kind?: components["schemas"]["PlantCalendarExceptionKindEnum"];
+            /** Format: date-time */
+            start_time: string;
+            /** Format: date-time */
+            end_time: string;
+            /**
+             * @description YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+             *
+             *     * `ONCE` - One-off (dated)
+             *     * `YEARLY` - Repeats yearly
+             */
+            recurrence?: components["schemas"]["PlantClosureRecurrenceEnum"];
+            is_active?: boolean;
+        };
+        /**
+         * @description * `ONCE` - One-off (dated)
+         *     * `YEARLY` - Repeats yearly
+         * @enum {string}
+         */
+        PlantClosureRecurrenceEnum: "ONCE" | "YEARLY";
         PresetListResponse: {
             presets: {
                 [key: string]: unknown;
@@ -23517,6 +25229,11 @@ export interface components {
             /** Format: date-time */
             readonly approved_at: string | null;
             readonly approved_by: number | null;
+            /**
+             * Format: decimal
+             * @description Default expected scrap fraction (0–1) applied to steps of this process that don't set their own `Steps.scrap_rate`. Used to gross up the started quantity so a work order still finishes the requested number of good parts (release-11-to-ship-10).
+             */
+            default_scrap_rate?: string;
             readonly part_type_name: string | null;
             readonly process_steps: components["schemas"]["ProcessStep"][];
             readonly step_edges: components["schemas"]["StepEdge"][];
@@ -23567,6 +25284,11 @@ export interface components {
             category?: components["schemas"]["ProcessesCategoryEnum"];
             /** @description Description of changes from previous version (for approval review) */
             change_description?: string | null;
+            /**
+             * Format: decimal
+             * @description Default expected scrap fraction (0–1) applied to steps of this process that don't set their own `Steps.scrap_rate`. Used to gross up the started quantity so a work order still finishes the requested number of good parts (release-11-to-ship-10).
+             */
+            default_scrap_rate?: string;
         };
         /**
          * @description * `PENDING` - Pending
@@ -23576,6 +25298,14 @@ export interface components {
          * @enum {string}
          */
         ProcessingStatusEnum: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+        ProduceRequirement: {
+            work_order: string;
+            component: string;
+            qty: number;
+            /** Format: date */
+            need_by: string | null;
+            status: string;
+        };
         ProposeProcessChangeRequestRequest: {
             /** Format: uuid */
             target_process_id: string;
@@ -24179,6 +25909,16 @@ export interface components {
          * @enum {string}
          */
         ReasonEnum: "quarantine" | "rework" | "scrap";
+        /** @description Move a scheduled task onto a specific machine (planner override). */
+        ReassignMachineRequestRequest: {
+            /** Format: uuid */
+            machine_id: string;
+        };
+        /** @description Assign / re-assign / clear (null) the operator on a scheduled task. */
+        ReassignOperatorRequestRequest: {
+            /** Format: uuid */
+            operator_id: string | null;
+        };
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
             /** Format: uuid */
@@ -25025,13 +26765,23 @@ export interface components {
             /** Format: date-time */
             readonly horizon_end: string;
             readonly solver_status: components["schemas"]["SolverStatusEnum"];
+            /** @description Total CP-SAT wall-clock across all phases (ms). */
             readonly solve_time_ms: number;
+            /** @description Wall-clock of the machine (Layer-1) phase (ms). Equals solve_time_ms for a single-phase solve (match_operators off). */
+            readonly machine_solve_ms: number;
+            /** @description Wall-clock of the named-operator (Layer-2 in-solve) phase (ms); 0 when match_operators is off and operators come from Dispatch. */
+            readonly operator_solve_ms: number;
             /** @description Raw CP-SAT objective (lateness + makespan + pin-stickiness penalties). NOT money despite the legacy 'cents' name — the pin weights dominate it. Kept for solve-to-solve comparison; surface weighted_lateness to planners instead. */
             readonly objective_value_cents: number;
             /** @description Priority-weighted lateness only (Σ part late-minutes × the WO's priority penalty) — the objective's lateness term, isolated from makespan and pin penalties. The 'how late, weighted by priority' signal shown in the UI. */
             readonly weighted_lateness: number;
             /** @description Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner. */
             readonly relaxed_pin_count: number;
+            /**
+             * Format: double
+             * @description CP-SAT proven optimality gap: (objective − best_bound) / |objective|. 0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means the solver proved the schedule is within that fraction of the best possible objective before the time limit. Null when nothing was solved.
+             */
+            readonly relative_gap: number | null;
             readonly is_active: boolean;
             readonly is_stale: boolean;
             /** @description A proposed 'what-if' schedule the planner reviews against the live one and then commits or discards. A draft never supersedes the active schedule until committed; committing promotes it to is_active. */
@@ -25140,6 +26890,8 @@ export interface components {
             /** @description Whether this task needs an operator (false for unattended runs). */
             readonly requires_operator: boolean;
             readonly work_order: string | null;
+            /** Format: uuid */
+            readonly work_order_id: string | null;
             readonly work_center: string | null;
             /** Format: date */
             readonly due_date: string | null;
@@ -25151,6 +26903,27 @@ export interface components {
             /** @description Planner-pinned: the solver must keep this fixed. */
             readonly is_pinned: boolean;
             readonly fence_zone: components["schemas"]["FenceZoneEnum"];
+            /** @description A purchased component this operation consumes is short on hand with no known incoming receipt date — the op is scheduled but flagged for the planner (material-constrained scheduling, buy-side). */
+            readonly material_shortage: boolean;
+            /** @description Human summary of the material situation for this op — short component(s), shortfall, and any incoming receipt date. Empty when material is on hand. Set post-solve alongside material_shortage. */
+            readonly material_detail: string;
+            /** @description Heuristic reason this task finishes late — the binding constraint (material / uncovered operator / machine contention / late release / tight lead time). Empty when the task is on time. Set post-solve by services.scheduling.late_cause. */
+            readonly late_cause: string;
+            /** @description This operation was physically running at solve time (open StepExecution) — the solver pinned it at 'now' with only its remaining duration. Distinguishes a running lock from a planner pin on the Gantt. */
+            readonly in_progress: boolean;
+            /**
+             * Format: date-time
+             * @description Real start of this operation, stamped from the part/core's StepExecution entry (capture-only; for planned-vs-actual). Null until the unit reaches this step.
+             */
+            readonly actual_start: string | null;
+            /**
+             * Format: date-time
+             * @description Real completion, stamped from the StepExecution exit. Null while the op is unstarted or still running.
+             */
+            readonly actual_end: string | null;
+            readonly is_makeup: boolean;
+            /** @description This op starts later than a max-time-between-operations limit on its incoming edge allows (e.g. a cure/coat/passivation window) — capacity couldn't meet the window, so it's scheduled but flagged: the part will scrap or need rework unless expedited. Set post-solve (soft constraint). */
+            readonly cure_window_violation: boolean;
         };
         /**
          * @description * `sampled` - Per part (sampling)
@@ -25363,12 +27136,17 @@ export interface components {
          * @enum {string}
          */
         SolverStatusEnum: "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN";
-        /**
-         * @description * `PURCHASED_LOT` - PURCHASED_LOT
-         *     * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
-         * @enum {string}
-         */
-        SourceEnum: "PURCHASED_LOT" | "OUTSIDE_PROCESS";
+        SourceRequirement: {
+            material: string;
+            qty_short: number;
+            /** Format: date */
+            need_by: string | null;
+            lead_time_days: number | null;
+            /** Format: date */
+            order_by: string | null;
+            /** Format: date */
+            incoming_date: string | null;
+        };
         /**
          * @description * `CUSTOMER_RETURN` - Customer Return
          *     * `PURCHASED` - Purchased Core
@@ -25377,6 +27155,11 @@ export interface components {
          * @enum {string}
          */
         SourceTypeEnum: "CUSTOMER_RETURN" | "PURCHASED" | "WARRANTY" | "TRADE_IN";
+        SourcingRequirements: {
+            source: components["schemas"]["SourceRequirement"][];
+            produce: components["schemas"]["ProduceRequirement"][];
+            tooling: components["schemas"]["ToolingRequirement"][];
+        };
         /**
          * @description * `QUANTITY` - Quantity
          *     * `OPERATION` - Operation
@@ -25441,6 +27224,8 @@ export interface components {
              */
             outside_supplier?: string | null;
             readonly outside_supplier_name: string | null;
+            /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
+            outside_process_lead_days?: number | null;
             is_terminal?: boolean;
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
@@ -25486,6 +27271,8 @@ export interface components {
              * @description Threshold value for measurement-based routing
              */
             condition_value?: string | null;
+            /** @description Scheduling: MAX elapsed minutes allowed between from_step finishing and to_step starting — a process time limit (e.g. 'coat within 4h of clean', passivation dwell, adhesive pot-life). The scheduler treats it as a soft upper bound: it schedules to meet it and FLAGS the op when capacity can't, rather than blocking the whole solve. Null = no limit (the default). */
+            max_minutes?: number | null;
         };
         /** @description StepEdge serializer - DAG edges between steps */
         StepEdgeRequest: {
@@ -25505,6 +27292,8 @@ export interface components {
              * @description Threshold value for measurement-based routing
              */
             condition_value?: string | null;
+            /** @description Scheduling: MAX elapsed minutes allowed between from_step finishing and to_step starting — a process time limit (e.g. 'coat within 4h of clean', passivation dwell, adhesive pot-life). The scheduler treats it as a soft upper bound: it schedules to meet it and FLAGS the op when capacity can't, rather than blocking the whole solve. Null = no limit (the default). */
+            max_minutes?: number | null;
         };
         /**
          * @description Serializer for step execution tracking (workflow engine).
@@ -25923,6 +27712,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
+            outside_process_lead_days?: number | null;
             is_terminal?: boolean;
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
@@ -26124,6 +27915,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
+            outside_process_lead_days?: number | null;
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
             is_terminal?: boolean;
@@ -26138,6 +27931,11 @@ export interface components {
             revisit_role?: string | null;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
+            /**
+             * Format: decimal
+             * @description Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
+             */
+            scrap_rate?: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -26199,6 +27997,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
+            outside_process_lead_days?: number | null;
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
             is_terminal?: boolean;
@@ -26213,6 +28013,11 @@ export interface components {
             revisit_role?: string | null;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
+            /**
+             * Format: decimal
+             * @description Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
+             */
+            scrap_rate?: string | null;
             archived?: boolean;
         };
         /**
@@ -27566,6 +29371,15 @@ export interface components {
          * @enum {string}
          */
         TimeEntryTypeEnum: "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT" | "SHIFT" | "BREAK" | "LUNCH";
+        ToolingRequirement: {
+            fixture: string;
+            kind: string;
+            /** Format: date */
+            need_by: string | null;
+            lead_time_days: number | null;
+            /** Format: date */
+            order_by: string | null;
+        };
         /** @description Operators x training-types competency matrix. */
         TrainingMatrix: {
             qualified_at: number;
@@ -28349,6 +30163,8 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Format: date */
+            expected_start?: string | null;
+            /** Format: date */
             expected_completion?: string | null;
             expected_duration?: string | null;
             /** Format: date */
@@ -28418,6 +30234,14 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        WorkOrderCreateMakeupResponse: {
+            created: number;
+            target_good: number;
+            alive: number;
+            good: number;
+            scrapped: number;
+            shortfall: number;
+        };
         /** @description Lightweight serializer for work order list views - avoids N+1 queries. */
         WorkOrderList: {
             /** Format: uuid */
@@ -28471,6 +30295,38 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        WorkOrderMakeupStatus: {
+            target_good: number;
+            alive: number;
+            good: number;
+            scrapped: number;
+            shortfall: number;
+        };
+        WorkOrderMaterialRequirementRow: {
+            component: string;
+            kind: string;
+            source: string;
+            /** Format: double */
+            quantity: number;
+            unit_of_measure: string;
+            consumed_at_step: string | null;
+            /** Format: double */
+            on_hand: number;
+            /** Format: double */
+            incoming: number;
+            /** Format: double */
+            short_qty: number;
+            status: string;
+            is_optional: boolean;
+            lead_time_days: number | null;
+            /** Format: date */
+            need_by: string | null;
+            /** Format: date */
+            order_by: string | null;
+        };
+        WorkOrderMaterialRequirements: {
+            rows: components["schemas"]["WorkOrderMaterialRequirementRow"][];
+        };
         WorkOrderPlaceOnHoldInputRequest: {
             reason: string;
             notes?: string;
@@ -28504,6 +30360,8 @@ export interface components {
             /** Format: uuid */
             process?: string | null;
             /** Format: date */
+            expected_start?: string | null;
+            /** Format: date */
             expected_completion?: string | null;
             expected_duration?: string | null;
             /** Format: date */
@@ -28511,6 +30369,14 @@ export interface components {
             true_duration?: string | null;
             notes?: string | null;
             archived?: boolean;
+        };
+        WorkOrderSetQuantityInputRequest: {
+            quantity: number;
+        };
+        WorkOrderSetQuantityResponse: {
+            quantity: number;
+            added: number;
+            cancelled: number;
         };
         WorkOrderSplitInputRequest: {
             reason: string;
@@ -28564,9 +30430,14 @@ export interface components {
             qty_ready: number;
             /** Format: date-time */
             earliest_entered_at: string | null;
+            /** Format: date-time */
+            scheduled_start: string | null;
             /** Format: uuid */
             work_center: string | null;
             work_center_kind: string | null;
+            /** Format: uuid */
+            machine: string | null;
+            machine_name: string | null;
             readiness: string;
             is_held: boolean;
         };
@@ -35150,6 +37021,211 @@ export interface operations {
             };
         };
     };
+    api_Fixtures_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+                 *
+                 *     * `FIXTURE` - Fixture
+                 *     * `TOOL` - Cutting tool
+                 *     * `DIE` - Die / mold
+                 *     * `PROGRAM` - NC program
+                 *     * `OTHER` - Other
+                 */
+                kind?: "DIE" | "FIXTURE" | "OTHER" | "PROGRAM" | "TOOL";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFixtureList"];
+                };
+            };
+        };
+    };
+    api_Fixtures_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixtureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FixtureRequest"];
+                "multipart/form-data": components["schemas"]["FixtureRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Fixture"];
+                };
+            };
+        };
+    };
+    api_Fixtures_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Fixture. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Fixture"];
+                };
+            };
+        };
+    };
+    api_Fixtures_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Fixture. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixtureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FixtureRequest"];
+                "multipart/form-data": components["schemas"]["FixtureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Fixture"];
+                };
+            };
+        };
+    };
+    api_Fixtures_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Fixture. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_Fixtures_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Fixture. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedFixtureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedFixtureRequest"];
+                "multipart/form-data": components["schemas"]["PatchedFixtureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Fixture"];
+                };
+            };
+        };
+    };
+    api_Fixtures_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Fixtures_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
     api_HarvestedComponents_list: {
         parameters: {
             query?: {
@@ -35872,6 +37948,217 @@ export interface operations {
             };
         };
     };
+    api_LaborCalendarBlocks_list: {
+        parameters: {
+            query?: {
+                is_active?: boolean;
+                /**
+                 * @description * `PTO` - PTO / vacation
+                 *     * `SICK` - Sick
+                 *     * `TRAINING` - Training
+                 *     * `MEETING` - Meeting
+                 *     * `BREAK` - Break
+                 *     * `OTHER` - Other
+                 */
+                kind?: "BREAK" | "MEETING" | "OTHER" | "PTO" | "SICK" | "TRAINING";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `ONCE` - One-off (dated)
+                 *     * `WEEKLY` - Weekly (recurring)
+                 */
+                recurrence?: "ONCE" | "WEEKLY";
+                /** @description A search term. */
+                search?: string;
+                user?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedLaborCalendarBlockList"];
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["LaborCalendarBlockRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LaborCalendarBlockRequest"];
+                "multipart/form-data": components["schemas"]["LaborCalendarBlockRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborCalendarBlock"];
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Labor Calendar Block. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborCalendarBlock"];
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Labor Calendar Block. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["LaborCalendarBlockRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LaborCalendarBlockRequest"];
+                "multipart/form-data": components["schemas"]["LaborCalendarBlockRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborCalendarBlock"];
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Labor Calendar Block. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_LaborCalendarBlocks_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Labor Calendar Block. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLaborCalendarBlockRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedLaborCalendarBlockRequest"];
+                "multipart/form-data": components["schemas"]["PatchedLaborCalendarBlockRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborCalendarBlock"];
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
     api_MaterialLots_list: {
         parameters: {
             query?: {
@@ -36414,6 +38701,203 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    api_Materials_list: {
+        parameters: {
+            query?: {
+                is_active?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                preferred_supplier?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialList"];
+                };
+            };
+        };
+    };
+    api_Materials_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialRequest"];
+                "multipart/form-data": components["schemas"]["MaterialRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Material"];
+                };
+            };
+        };
+    };
+    api_Materials_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Material"];
+                };
+            };
+        };
+    };
+    api_Materials_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialRequest"];
+                "multipart/form-data": components["schemas"]["MaterialRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Material"];
+                };
+            };
+        };
+    };
+    api_Materials_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_Materials_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMaterialRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialRequest"];
+                "multipart/form-data": components["schemas"]["PatchedMaterialRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Material"];
+                };
+            };
+        };
+    };
+    api_Materials_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Materials_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -37796,6 +40280,208 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutsideProcessShipment"];
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_list: {
+        parameters: {
+            query?: {
+                is_active?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `ONCE` - One-off (dated)
+                 *     * `WEEKLY` - Weekly (recurring)
+                 */
+                recurrence?: "ONCE" | "WEEKLY";
+                /** @description A search term. */
+                search?: string;
+                shift?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOvertimeWindowList"];
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OvertimeWindowRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["OvertimeWindowRequest"];
+                "multipart/form-data": components["schemas"]["OvertimeWindowRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeWindow"];
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Overtime Window. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeWindow"];
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Overtime Window. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OvertimeWindowRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["OvertimeWindowRequest"];
+                "multipart/form-data": components["schemas"]["OvertimeWindowRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeWindow"];
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Overtime Window. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_OvertimeWindows_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Overtime Window. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOvertimeWindowRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedOvertimeWindowRequest"];
+                "multipart/form-data": components["schemas"]["PatchedOvertimeWindowRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeWindow"];
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -39360,6 +42046,209 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedPartSelectList"];
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_list: {
+        parameters: {
+            query?: {
+                is_active?: boolean;
+                /**
+                 * @description * `HOLIDAY` - Holiday
+                 *     * `SHUTDOWN` - Plant Shutdown
+                 *     * `INVENTORY` - Inventory / Stock-take
+                 *     * `OTHER` - Other
+                 */
+                kind?: "HOLIDAY" | "INVENTORY" | "OTHER" | "SHUTDOWN";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPlantCalendarExceptionList"];
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlantCalendarExceptionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PlantCalendarExceptionRequest"];
+                "multipart/form-data": components["schemas"]["PlantCalendarExceptionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantCalendarException"];
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Plant Calendar Exception. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantCalendarException"];
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Plant Calendar Exception. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlantCalendarExceptionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PlantCalendarExceptionRequest"];
+                "multipart/form-data": components["schemas"]["PlantCalendarExceptionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantCalendarException"];
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Plant Calendar Exception. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_PlantCalendarExceptions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Plant Calendar Exception. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlantCalendarExceptionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPlantCalendarExceptionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPlantCalendarExceptionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantCalendarException"];
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -41569,6 +44458,171 @@ export interface operations {
             };
         };
     };
+    api_ScheduledTasks_reassign_machine_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Scheduled Task. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignMachineRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReassignMachineRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReassignMachineRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_reassign_operator_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Scheduled Task. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignOperatorRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReassignOperatorRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReassignOperatorRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_reassign_options_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Scheduled Task. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_batch_membership_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchMembershipRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BatchMembershipRequestRequest"];
+                "multipart/form-data": components["schemas"]["BatchMembershipRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_bulk_reassign_machine_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkReassignMachineRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BulkReassignMachineRequestRequest"];
+                "multipart/form-data": components["schemas"]["BulkReassignMachineRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_ScheduledTasks_bulk_reassign_operator_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkReassignOperatorRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BulkReassignOperatorRequestRequest"];
+                "multipart/form-data": components["schemas"]["BulkReassignOperatorRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_ScheduledTasks_move_batch_create: {
         parameters: {
             query?: never;
@@ -41683,6 +44737,50 @@ export interface operations {
             };
         };
     };
+    api_Schedules_config_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptimizationConfig"];
+                };
+            };
+        };
+    };
+    api_Schedules_config_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOptimizationConfigRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedOptimizationConfigRequest"];
+                "multipart/form-data": components["schemas"]["PatchedOptimizationConfigRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptimizationConfig"];
+                };
+            };
+        };
+    };
     api_Schedules_current_retrieve: {
         parameters: {
             query?: never;
@@ -41759,6 +44857,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+        };
+    };
+    api_Schedules_explode_work_order_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplodeWorkOrderInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExplodeWorkOrderInputRequest"];
+                "multipart/form-data": components["schemas"]["ExplodeWorkOrderInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Schedules_operator_hours_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Range end (inclusive). Default: today. */
+                end?: string;
+                /** @description Range start (inclusive). Default: 7 days ago. */
+                start?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorHoursReport"];
+                };
+            };
+        };
+    };
+    api_Schedules_plan_work_order_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanWorkOrderInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PlanWorkOrderInputRequest"];
+                "multipart/form-data": components["schemas"]["PlanWorkOrderInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Schedules_requirements_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourcingRequirements"];
                 };
             };
         };
@@ -48551,6 +51756,30 @@ export interface operations {
             };
         };
     };
+    api_WorkOrders_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_WorkOrders_clear_hold_create: {
         parameters: {
             query?: never;
@@ -48571,6 +51800,78 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_WorkOrders_create_makeup_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkOrderRequest"];
+                "multipart/form-data": components["schemas"]["WorkOrderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderCreateMakeupResponse"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_makeup_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderMakeupStatus"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_material_requirements_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderMaterialRequirements"];
                 };
             };
         };
@@ -48645,6 +51946,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrder"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_set_quantity_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderSetQuantityInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkOrderSetQuantityInputRequest"];
+                "multipart/form-data": components["schemas"]["WorkOrderSetQuantityInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderSetQuantityResponse"];
                 };
             };
         };

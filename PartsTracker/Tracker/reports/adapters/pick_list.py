@@ -185,7 +185,7 @@ class PickListAdapter(ReportAdapter):
                     part_type=part_type,
                     status="RELEASED",
                 )
-                .prefetch_related("lines__component_type")
+                .prefetch_related("lines__component_type", "lines__material")
                 .order_by("-revision")
                 .first()
             )
@@ -195,10 +195,20 @@ class PickListAdapter(ReportAdapter):
                 for line in bom.lines.all():
                     qty_per = line.quantity
                     qty_req = qty_per * wo_qty
+                    # A line is EITHER an in-house component_type (MAKE) or a
+                    # purchased material (BUY).
+                    if line.material_id:
+                        component_part_number = line.material.part_number or ""
+                        component_name = line.material.name
+                    elif line.component_type_id:
+                        component_part_number = line.component_type.ERP_id or ""
+                        component_name = line.component_type.name
+                    else:
+                        component_part_number, component_name = "", "(unset)"
                     items.append(PickListItem(
                         find_number=line.find_number or "",
-                        component_part_number=line.component_type.ERP_id or "",
-                        component_name=line.component_type.name,
+                        component_part_number=component_part_number,
+                        component_name=component_name,
                         qty_per_assembly=_fmt_qty(qty_per),
                         qty_required=_fmt_qty(qty_req),
                         unit_of_measure=line.unit_of_measure,

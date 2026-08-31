@@ -1,6 +1,6 @@
 """Phase 1 scheduling data layer — the self-contained lookups (timings with the
 fallback chain, affinities, changeover, fixtures, horizon)."""
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
@@ -179,6 +179,52 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
         self.assertTrue(avail[self.machine.id], "expected at least one shift window")
         for w in avail[self.machine.id]:
             self.assertLess(w.start, w.end)
+
+    # ---- calibration-as-time-window ---------------------------------------
+
+    def _cal_machine(self, name="CMM-cal"):
+        """A machine that requires calibration (override on the instance)."""
+        return Equipments.objects.create(
+            tenant=self.tenant, name=name, _requires_calibration_override=True)
+
+    def _add_calibration(self, eq, *, calibration_date, due_date, result=None):
+        from Tracker.models import CalibrationRecord
+        return CalibrationRecord.objects.create(
+            tenant=self.tenant, equipment=eq,
+            calibration_date=calibration_date, due_date=due_date,
+            result=result or CalibrationRecord.CalibrationResult.PASS)
+
+    def test_calibration_expiry_truncates_availability(self):
+        self._all_week()
+        eq = self._cal_machine()
+        h = data.get_schedule_horizon(self.tenant, horizon_days=4)
+        due = (h.start + timedelta(days=1)).date()  # lapses mid-horizon
+        self._add_calibration(eq, calibration_date=h.start.date(), due_date=due)
+        avail = data.get_machine_availability(self.tenant, h)
+        # Usable through the due date, unavailable from the following midnight.
+        expiry = timezone.make_aware(datetime.combine(due + timedelta(days=1), dtime.min))
+        self.assertTrue(avail[eq.id], "expected windows before calibration lapse")
+        self.assertTrue(all(w.end <= expiry for w in avail[eq.id]))
+        # And it's genuinely truncated — the last window ends before the horizon end.
+        self.assertLess(max(w.end for w in avail[eq.id]), h.end)
+
+    def test_lapsed_calibration_leaves_no_windows(self):
+        self._all_week()
+        eq = self._cal_machine("CMM-lapsed")
+        h = data.get_schedule_horizon(self.tenant, horizon_days=4)
+        past = (h.start - timedelta(days=2)).date()
+        self._add_calibration(
+            eq, calibration_date=(h.start - timedelta(days=10)).date(), due_date=past)
+        avail = data.get_machine_availability(self.tenant, h)
+        self.assertEqual(avail.get(eq.id), [])
+
+    def test_non_calibrated_machine_not_truncated(self):
+        self._all_week()
+        h = data.get_schedule_horizon(self.tenant, horizon_days=4)
+        avail = data.get_machine_availability(self.tenant, h)
+        # self.machine has no calibration requirement → spans to the horizon end.
+        self.assertTrue(avail[self.machine.id])
+        self.assertGreaterEqual(max(w.end for w in avail[self.machine.id]), h.end - timedelta(minutes=2))
 
     # ---- Phase 1.5 prerequisites ------------------------------------------
 

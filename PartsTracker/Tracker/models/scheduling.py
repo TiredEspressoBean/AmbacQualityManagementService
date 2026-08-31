@@ -31,6 +31,18 @@ class AttentionType(models.TextChoices):
     LOAD_UNLOAD = 'load_unload', 'Load/unload only (machine runs unattended between)'
 
 
+class AutoResolveMode(models.TextChoices):
+    """What the periodic re-solve beat does when a tenant's live schedule drifts
+    stale (a quality hold, new demand, lost capacity, a receipt, etc.):
+    - OFF: nothing — the plan is only flagged stale for a planner to re-solve by
+      hand (default; the floor plan never changes without a human);
+    - LIVE: re-solve and supersede the live schedule automatically. The frozen
+      zone + planner pins protect committed near-term work, so only the drifted
+      tail moves."""
+    OFF = 'off', 'Off (flag stale only; planner re-solves by hand)'
+    LIVE = 'live', 'Live (auto re-solve and supersede the schedule)'
+
+
 class LaborModel(models.TextChoices):
     """How the Layer-1 solver constrains the operators a step needs (the dual-resource
     labor model, selectable per step — see PlanetTogether's Named/Shared/Pool split):
@@ -175,16 +187,36 @@ class WorkCenterChangeover(SecureModel):
 
 
 class Fixture(SecureModel):
-    """A shared piece of tooling with limited quantity — a cumulative (capacity)
-    resource: at most `quantity` steps using it can run at once."""
+    """A shared, quantity-limited resource an operation ties up while it runs — a
+    cumulative (capacity) constraint: at most `quantity` steps using it can run at once.
+    Covers fixtures, cutting tools, dies, and NC programs (all the same scheduling
+    mechanic — a scarce shared thing an op needs); `kind` only categorises it."""
+
+    KIND_CHOICES = [
+        ('FIXTURE', 'Fixture'),
+        ('TOOL', 'Cutting tool'),
+        ('DIE', 'Die / mold'),
+        ('PROGRAM', 'NC program'),
+        ('OTHER', 'Other'),
+    ]
 
     name = models.CharField(max_length=100)
+    kind = models.CharField(
+        max_length=10, choices=KIND_CHOICES, default='FIXTURE',
+        help_text="What kind of shared resource this is (categorisation only — the "
+                  "scheduling constraint is identical for all kinds).",
+    )
     quantity = models.PositiveIntegerField(
-        default=1, help_text="How many of this fixture exist (concurrency limit).",
+        default=1, help_text="How many of this resource exist (concurrency limit).",
+    )
+    lead_time_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Days to acquire or produce this tooling if it's short — drives the "
+                  "order-by date in the sourcing report.",
     )
     steps = models.ManyToManyField(
         'Tracker.Steps', related_name='fixtures', blank=True,
-        help_text="Steps that require this fixture.",
+        help_text="Steps that require this resource.",
     )
 
     class Meta:
@@ -216,6 +248,11 @@ class OptimizationConfig(SecureModel):
     slushy_zone_days = models.PositiveIntegerField(
         default=7, help_text="Days after the frozen zone where moves are discouraged.",
     )
+    default_outside_process_turnaround_days = models.PositiveIntegerField(
+        default=7,
+        help_text="Fallback outside-process turnaround (calendar days) when neither the step "
+                  "nor the vendor specifies one — so an OSP step always reserves elapsed time.",
+    )
     pfd_allowance_pct = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal('15.00'),
         help_text="Personal/fatigue/delay allowance added to attended time (%).",
@@ -223,6 +260,12 @@ class OptimizationConfig(SecureModel):
     relative_gap_limit = models.FloatField(
         default=0.02, validators=[MinValueValidator(0)],
         help_text="CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).",
+    )
+    solver_time_limit_seconds = models.PositiveIntegerField(
+        default=180, validators=[MinValueValidator(1)],
+        help_text="CP-SAT wall-clock cap per solve (seconds); best-so-far is returned "
+                  "when it elapses. With match_operators on it's split across the "
+                  "machine (~40%) and operator (~60%) phases.",
     )
     staging_buffer_minutes = models.PositiveIntegerField(
         default=0,
@@ -236,6 +279,14 @@ class OptimizationConfig(SecureModel):
                   "order on the SAME operation — keeps a job's parts batched together. "
                   "Kept below operation-change setups by design: staying on the same "
                   "operation matters more than staying on the same work order.",
+    )
+    default_move_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Move/queue time between consecutive operations of a route — the next "
+                  "operation can't start until this many minutes after the prior one "
+                  "finishes (transport + queue). Applied to every intra-route hand-off; "
+                  "0 = parts flow with no transfer delay. (Distinct from staging_buffer, "
+                  "which is the cross-work-order assembly-convergence gap.)",
     )
     default_labor_model = models.CharField(
         max_length=10, choices=LaborModel.choices, default=LaborModel.POOL,
@@ -261,6 +312,21 @@ class OptimizationConfig(SecureModel):
                   "progressing (it does NOT hold the WO); ON and OFF behave identically "
                   "today. The OFF meaning (allow a large lot to break into transfer batches "
                   "to pipeline) is reserved for the future transfer-batching work.",
+    )
+    auto_resolve = models.CharField(
+        max_length=10, choices=AutoResolveMode.choices, default=AutoResolveMode.OFF,
+        help_text="Automatic rescheduling when the live plan drifts stale. OFF "
+                  "(default): the plan is only flagged for a planner to re-solve by "
+                  "hand — nothing on the floor changes automatically. LIVE: a "
+                  "background beat re-solves and supersedes the live schedule; the "
+                  "frozen zone + planner pins protect committed near-term work, so "
+                  "only the drifted tail moves.",
+    )
+    auto_resolve_min_interval_minutes = models.PositiveIntegerField(
+        default=30,
+        help_text="Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule "
+                  "sooner than this many minutes after its last solve, so a burst of "
+                  "changes batches into one re-solve.",
     )
 
     class Meta:
@@ -292,7 +358,20 @@ class ScheduleResult(SecureModel):
     solver_status = models.CharField(
         max_length=15, choices=SolverStatus.choices, default=SolverStatus.UNKNOWN,
     )
-    solve_time_ms = models.PositiveIntegerField(default=0)
+    solve_time_ms = models.PositiveIntegerField(
+        default=0,
+        help_text="Total CP-SAT wall-clock across all phases (ms).",
+    )
+    machine_solve_ms = models.PositiveIntegerField(
+        default=0,
+        help_text="Wall-clock of the machine (Layer-1) phase (ms). Equals "
+                  "solve_time_ms for a single-phase solve (match_operators off).",
+    )
+    operator_solve_ms = models.PositiveIntegerField(
+        default=0,
+        help_text="Wall-clock of the named-operator (Layer-2 in-solve) phase (ms); "
+                  "0 when match_operators is off and operators come from Dispatch.",
+    )
     objective_value_cents = models.BigIntegerField(
         default=0,
         help_text="Raw CP-SAT objective (lateness + makespan + pin-stickiness "
@@ -306,6 +385,13 @@ class ScheduleResult(SecureModel):
                   "priority penalty) — the objective's lateness term, isolated from "
                   "makespan and pin penalties. The 'how late, weighted by priority' "
                   "signal shown in the UI.",
+    )
+    relative_gap = models.FloatField(
+        null=True, blank=True,
+        help_text="CP-SAT proven optimality gap: (objective − best_bound) / |objective|. "
+                  "0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means "
+                  "the solver proved the schedule is within that fraction of the best "
+                  "possible objective before the time limit. Null when nothing was solved.",
     )
     relaxed_pin_count = models.PositiveIntegerField(
         default=0,
@@ -383,6 +469,49 @@ class ScheduledTask(SecureModel):
         related_name='dispatched_tasks',
         help_text="Layer-2 operator assignment; null on an attended task means "
                   "the dispatcher could not cover it (no qualified operator free).",
+    )
+    material_shortage = models.BooleanField(
+        default=False,
+        help_text="A purchased component this operation consumes is short on hand with no "
+                  "known incoming receipt date — the op is scheduled but flagged for the "
+                  "planner (material-constrained scheduling, buy-side).",
+    )
+    material_detail = models.CharField(
+        max_length=300, blank=True, default="",
+        help_text="Human summary of the material situation for this op — short component(s), "
+                  "shortfall, and any incoming receipt date. Empty when material is on hand. "
+                  "Set post-solve alongside material_shortage.",
+    )
+    late_cause = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Heuristic reason this task finishes late — the binding constraint "
+                  "(material / uncovered operator / machine contention / late release / "
+                  "tight lead time). Empty when the task is on time. Set post-solve by "
+                  "services.scheduling.late_cause.",
+    )
+    cure_window_violation = models.BooleanField(
+        default=False,
+        help_text="This op starts later than a max-time-between-operations limit on its "
+                  "incoming edge allows (e.g. a cure/coat/passivation window) — capacity "
+                  "couldn't meet the window, so it's scheduled but flagged: the part will "
+                  "scrap or need rework unless expedited. Set post-solve (soft constraint).",
+    )
+    in_progress = models.BooleanField(
+        default=False,
+        help_text="This operation was physically running at solve time (open "
+                  "StepExecution) — the solver pinned it at 'now' with only its remaining "
+                  "duration. Distinguishes a running lock from a planner pin on the Gantt.",
+    )
+    actual_start = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Real start of this operation, stamped from the part/core's "
+                  "StepExecution entry (capture-only; for planned-vs-actual). Null until "
+                  "the unit reaches this step.",
+    )
+    actual_end = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Real completion, stamped from the StepExecution exit. Null while the "
+                  "op is unstarted or still running.",
     )
 
     class Meta:

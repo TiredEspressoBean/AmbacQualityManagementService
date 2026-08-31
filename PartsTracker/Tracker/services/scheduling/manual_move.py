@@ -16,13 +16,25 @@ for exactly that reason.
 """
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.db import transaction
 from django.utils import timezone
 
 from .data import EdgeData, StepNode
 from .routing import resolve_route
+
+
+def _step_setup_cycle(step_id):
+    """(setup_minutes, cycle_minutes) for a step from its `StepTiming`, or None when
+    there's no usable timing. Used to size batch bars in the merge/break PREVIEW: a lot
+    of N ≈ setup + N×cycle (one setup); a broken part ≈ setup + cycle. Approximate — the
+    solver refines the exact number (PFD / machine-override / continuous) on re-solve."""
+    from Tracker.models import StepTiming
+    t = StepTiming.objects.filter(step_id=step_id).first()
+    if t is None or not t.cycle_time_minutes:
+        return None
+    return (float(t.setup_minutes or 0), float(t.cycle_time_minutes))
 
 
 class MoveRejected(Exception):
@@ -179,3 +191,212 @@ def pin_batch(tasks, is_pinned: bool):
         schedule.is_stale = True
         schedule.save(update_fields=['is_stale'])
     return len(tasks)
+
+
+def reassign_machine(task, machine, user=None) -> dict:
+    """Direct-manipulation machine reassignment: put `task` on `machine` and pin it so
+    the solver keeps it there (machine-pin) on re-solve. Applies immediately; warns —
+    but does NOT block — if `machine` isn't an authored-eligible machine for the step
+    (planner override). Marks the schedule stale. Returns {'warning': str | None}."""
+    from Tracker.models import StepEquipmentAffinity
+
+    eligible = StepEquipmentAffinity.objects.filter(
+        step_id=task.step_id, equipment=machine).exists()
+    task.machine = machine
+    task.is_pinned = True
+    task.save(update_fields=['machine', 'is_pinned'])
+    schedule = task.schedule
+    schedule.is_stale = True
+    schedule.save(update_fields=['is_stale'])
+    warning = None if eligible else (
+        f"{machine.name} isn't an authored machine for '{task.step.name}' — it'll run "
+        f"there while pinned, but isn't in the step's eligible list."
+    )
+    return {'warning': warning}
+
+
+def reassign_operator(task, operator, user=None) -> dict:
+    """Direct-manipulation operator (re)assignment / manual coverage of an attended task.
+    `operator=None` clears the assignment. Applies immediately; warns — but does NOT
+    block — if the operator isn't qualified for the step. Marks the schedule stale.
+    Returns {'warning': str | None}."""
+    warning = None
+    if operator is not None:
+        from Tracker.services.training import get_qualified_users_for_step
+        qualified = get_qualified_users_for_step(task.step, tenant=task.tenant)
+        if not qualified.filter(pk=operator.pk).exists():
+            name = operator.get_full_name() or operator.username
+            warning = (f"{name} isn't trained for '{task.step.name}' — assigned anyway; "
+                       f"verify qualification.")
+    task.assigned_operator = operator
+    task.save(update_fields=['assigned_operator'])
+    schedule = task.schedule
+    schedule.is_stale = True
+    schedule.save(update_fields=['is_stale'])
+    return {'warning': warning}
+
+
+def _merge_group(schedule, group, wo_id, step_id) -> int:
+    """Merge one WO+step cohort's selected parts: unpin them and snap them onto the
+    cohort's existing slot so the cell collapses now; the solver forms the final lot on
+    re-solve. `group` is pre-sorted by start_time."""
+    from Tracker.models import ScheduledTask
+
+    rep = group[0]
+    sel_ids = {t.id for t in group}
+    # Target = an unpinned, scheduled sibling of the same WO+step NOT in this selection.
+    # Fall back to the earliest selected task when the whole cell is being merged.
+    # tenant-safe: schedule/part FKs constrain to the tenant.
+    cohort = (
+        ScheduledTask.objects
+        .filter(schedule=schedule, step_id=step_id,
+                part__work_order_id=wo_id, is_pinned=False)
+        .exclude(id__in=sel_ids).exclude(part__isnull=True)
+        .order_by('start_time').first()
+    )
+    base = cohort.start_time if cohort else rep.start_time
+    machine_id = cohort.machine_id if cohort else rep.machine_id
+    # Preview length of the merged lot: one setup + N×cycle (saves the repeated setups).
+    # Falls back to each task's own length when the step has no timing.
+    sc = _step_setup_cycle(step_id)
+    lot_dur = timedelta(minutes=sc[0] + sc[1] * len(group)) if sc else None
+    for t in group:
+        t.start_time = base
+        t.end_time = base + (lot_dur if lot_dur is not None else (t.end_time - t.start_time))
+        t.machine_id = machine_id
+        t.is_pinned = False  # hand back to the solver — it batches the unpinned cohort
+        t.save(update_fields=['start_time', 'end_time', 'machine_id', 'is_pinned'])
+    return len(group)
+
+
+def _break_group(schedule, group, step_id) -> int:
+    """Break one WO+step cohort's selected parts into their own sequential, pinned slots
+    (separate fixed bars). `group` is pre-sorted by start_time."""
+    # Each broken-off part becomes its own lot → pays its own setup: preview length ≈
+    # setup + cycle. Falls back to the task's own length without timing.
+    sc = _step_setup_cycle(step_id)
+    part_dur = timedelta(minutes=sc[0] + sc[1]) if sc else None
+    cursor = group[0].start_time
+    for t in group:
+        dur = part_dur if part_dur is not None else (t.end_time - t.start_time)
+        t.start_time = cursor
+        t.end_time = cursor + dur
+        t.is_pinned = True
+        t.save(update_fields=['start_time', 'end_time', 'is_pinned'])
+        cursor = t.end_time
+    return len(group)
+
+
+def bulk_reassign_machine(tasks, machine, user=None) -> dict:
+    """Reassign several tasks onto `machine` at once (planner override) + pin them, like
+    `reassign_machine` applied across a multi-selection. Applies immediately; collects one
+    warning per distinct step the machine isn't authored for (never blocks). Marks the
+    affected schedule(s) stale. Returns {'changed': int, 'warnings': [str]}."""
+    from Tracker.models import StepEquipmentAffinity
+
+    tasks = list(tasks)
+    if not tasks:
+        return {'changed': 0, 'warnings': []}
+    step_ids = {t.step_id for t in tasks}
+    eligible_steps = set(
+        StepEquipmentAffinity.objects
+        .filter(equipment=machine, step_id__in=step_ids)
+        .values_list('step_id', flat=True)
+    )
+    schedules, warned, warnings = {}, set(), []
+    with transaction.atomic():
+        for t in tasks:
+            t.machine = machine
+            t.is_pinned = True
+            t.save(update_fields=['machine', 'is_pinned'])
+            schedules[t.schedule_id] = t.schedule
+            if t.step_id not in eligible_steps and t.step_id not in warned:
+                warned.add(t.step_id)
+                warnings.append(
+                    f"{machine.name} isn't an authored machine for '{t.step.name}' — "
+                    f"pinned there anyway."
+                )
+        for sched in schedules.values():
+            sched.is_stale = True
+            sched.save(update_fields=['is_stale'])
+    return {'changed': len(tasks), 'warnings': warnings}
+
+
+def bulk_reassign_operator(tasks, operator, user=None) -> dict:
+    """Assign (or clear, `operator=None`) one operator across several tasks at once —
+    manual coverage of a multi-selection. Applies immediately; warns once, listing the
+    steps the operator isn't trained for (never blocks). Marks the affected schedule(s)
+    stale. Returns {'changed': int, 'warnings': [str]}."""
+    tasks = list(tasks)
+    if not tasks:
+        return {'changed': 0, 'warnings': []}
+    warnings = []
+    if operator is not None:
+        from Tracker.services.training import get_qualified_users_for_step
+        steps = {t.step_id: t.step for t in tasks}
+        tenant = tasks[0].tenant
+        unqualified = {
+            step.name
+            for sid, step in steps.items()
+            if not get_qualified_users_for_step(step, tenant=tenant)
+            .filter(pk=operator.pk).exists()
+        }
+        if unqualified:
+            name = operator.get_full_name() or operator.username
+            warnings.append(
+                f"{name} isn't trained for: {', '.join(sorted(unqualified))} — assigned anyway."
+            )
+    schedules = {}
+    with transaction.atomic():
+        for t in tasks:
+            t.assigned_operator = operator
+            t.save(update_fields=['assigned_operator'])
+            schedules[t.schedule_id] = t.schedule
+        for sched in schedules.values():
+            sched.is_stale = True
+            sched.save(update_fields=['is_stale'])
+    return {'changed': len(tasks), 'warnings': warnings}
+
+
+def regroup_batch(tasks, merge: bool, user=None) -> int:
+    """Direct-manipulation batch merge / break (Gantt), applied immediately like a drag.
+
+    The batch key is the attribute (work order, step) — the cohort — matching how APS
+    tools batch (by attribute/rule, engine-formed), not by hand-picking a target batch:
+      `merge=True`  → REJOIN the WO+step cohort: UNPIN the parts so the solver batches
+                      them with their cohort, and snap them onto the cohort's existing slot
+                      (or the earliest selected, if the whole cell is selected) so the
+                      cell collapses immediately. The solver forms the final batch on the
+                      next Solve.
+      `merge=False` → break the parts into their own sequential slots, PINNED → separate
+                      fixed bars now. They stay apart while pinned; merge (unpin) hands
+                      them back to the solver.
+
+    A multi-select can span several WO+step cohorts (e.g. dragging a box over bars from
+    two work orders); the selection is grouped by cohort and each group merges into — or
+    breaks out of — its OWN cohort, never collapsed across work orders. Marks the
+    schedule stale; the next Solve re-optimizes (soft pins). Cores are skipped (they carry
+    no lot). Returns the number of tasks changed.
+    """
+    tasks = [t for t in tasks if t.part_id]  # cores carry no lot membership
+    if not tasks:
+        return 0
+    schedule = tasks[0].schedule
+
+    # Group the selection by cohort (work order + step) so a mixed multi-select stays
+    # coherent — each cohort is regrouped independently.
+    grouped: dict[tuple, list] = {}
+    for t in tasks:
+        grouped.setdefault((t.part.work_order_id, t.step_id), []).append(t)
+
+    changed = 0
+    with transaction.atomic():
+        for (wo_id, step_id), group in grouped.items():
+            group.sort(key=lambda t: t.start_time)
+            if merge:
+                changed += _merge_group(schedule, group, wo_id, step_id)
+            else:
+                changed += _break_group(schedule, group, step_id)
+        schedule.is_stale = True
+        schedule.save(update_fields=['is_stale'])
+    return changed

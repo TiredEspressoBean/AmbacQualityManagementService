@@ -1520,6 +1520,16 @@ class Companies(SecureModel):
     hubspot_api_id = models.CharField(max_length=50, null=True, blank=True)
     """The unique identifier for this company in the HubSpot API (used for CRM integration)."""
 
+    default_outside_process_turnaround_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text=(
+            "Default subcontract turnaround (calendar days) when this company is a step's "
+            "outside-process vendor and the step doesn't specify its own lead time. Used by "
+            "the scheduler to reserve elapsed vendor time for outside-process operations."
+        ),
+    )
+    """Supplier-level default outside-process turnaround (calendar days); see Steps.outside_process_lead_days."""
+
     class Meta:
         verbose_name_plural = 'Companies'
         verbose_name = 'Company'

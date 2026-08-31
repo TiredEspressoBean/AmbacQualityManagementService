@@ -106,3 +106,42 @@ class StepExecutionEquipmentCaptureTests(TenantContextMixin, TestCase):
     def test_no_affinity_leaves_production_unset(self):
         self._advance()
         self.assertIsNone(self._new_exec_at_step2().primary_equipment)
+
+    def _make_scheduled_task(self, machine, step, *, is_active=True):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from Tracker.models import ScheduledTask, ScheduleResult
+        now = timezone.now()
+        sched = ScheduleResult.objects.create(
+            tenant=self.tenant, horizon_start=now, horizon_end=now + timedelta(days=1),
+            is_active=is_active,
+        )
+        return ScheduledTask.objects.create(
+            tenant=self.tenant, schedule=sched, part=self.part, step=step,
+            machine=machine, start_time=now, end_time=now + timedelta(hours=1),
+        )
+
+    def test_active_schedule_machine_stamped_when_no_affinity(self):
+        # No authored affinity on step2, but the live schedule assigned CNC-7 →
+        # that solver choice becomes the as-built PRODUCTION link.
+        self._make_scheduled_task(self.cnc, self.step2, is_active=True)
+        self._advance()
+        self.assertEqual(self._new_exec_at_step2().primary_equipment, self.cnc)
+
+    def test_authored_affinity_wins_over_schedule(self):
+        best = Equipments.objects.create(tenant=self.tenant, name="CNC-dialed")
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.step2, equipment=best,
+            affinity=StepEquipmentAffinity.Affinity.DIALED_IN,
+        )
+        self._make_scheduled_task(self.cnc, self.step2, is_active=True)
+        self._advance()
+        # Authoring beats the schedule fallback.
+        self.assertEqual(self._new_exec_at_step2().primary_equipment, best)
+
+    def test_inactive_schedule_not_used(self):
+        self._make_scheduled_task(self.cnc, self.step2, is_active=False)
+        self._advance()
+        self.assertIsNone(self._new_exec_at_step2().primary_equipment)

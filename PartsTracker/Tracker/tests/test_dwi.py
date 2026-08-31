@@ -1369,7 +1369,10 @@ class BuildCaptureStateTests(DwiPhase1BaseTestCase):
             captures=[
                 {"node_id": self.m_node, "kind": "measurement",
                  "measurement_definition_id": str(self.md.id), "value_numeric": 0.5},
-                {"node_id": self.a_node, "kind": "attestation", "confirmed": True},
+                # Signature-kind attestation → the FE sends a `signature` object
+                # (buildCaptures), which the required-field gate also expects.
+                {"node_id": self.a_node, "kind": "attestation",
+                 "signature": {"signer_name": "Op A", "confirmed": True}},
                 {"node_id": self.s_node, "kind": "status", "status": "PASS"},
             ],
         )
@@ -1380,8 +1383,105 @@ class BuildCaptureStateTests(DwiPhase1BaseTestCase):
         # Status → the bare status string.
         self.assertEqual(node_map[self.s_node], "PASS")
         # Signature attestation → the payload object (checkSatisfied wants object).
-        self.assertEqual(node_map[self.a_node], {"confirmed": True})
+        self.assertEqual(node_map[self.a_node], {"signature": {"signer_name": "Op A", "confirmed": True}})
 
     def test_empty_execution_returns_empty(self):
         from Tracker.services.dwi.operator_capture import build_capture_state
         self.assertEqual(build_capture_state(self.step_execution), {})
+
+
+class SequencingEnforcementTests(DwiPhase1BaseTestCase):
+    """Server-side enforcement of `Steps.sequencing_mode='sequential'`:
+    an earlier required substep must be complete before a later one submits."""
+
+    def _submit(self, substep):
+        from Tracker.services.dwi.operator_capture import submit_substep
+        return submit_substep(
+            substep=substep, step_execution=self.step_execution,
+            user=self.user, captures=[],
+        )
+
+    def test_sequential_blocks_out_of_order_completion(self):
+        from django.core.exceptions import ValidationError
+        s0 = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="First op")
+        s1 = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=1, title="Second op")
+        # step defaults to sequential; completing s1 before s0 is refused.
+        with self.assertRaises(ValidationError):
+            self._submit(s1)
+        # completing s0 first, then s1, is allowed.
+        self._submit(s0)
+        self._submit(s1)  # no raise
+
+    def test_optional_prior_substep_does_not_block(self):
+        Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="Optional first",
+            is_optional=True)
+        s1 = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=1, title="Required second")
+        # optional prior left undone must not block the later required one.
+        self._submit(s1)  # no raise
+
+    def test_free_order_allows_out_of_order(self):
+        self.step.sequencing_mode = SequencingMode.FREE_ORDER
+        self.step.save(update_fields=['sequencing_mode'])
+        Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="First op")
+        s1 = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=1, title="Second op")
+        self._submit(s1)  # free order → no raise
+
+
+class RequiredFieldCaptureTests(DwiPhase1BaseTestCase):
+    """Server-side enforcement of engineer-required capture nodes at submit."""
+
+    def _text_substep(self, required=True):
+        self.node = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        return Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="Enter reading",
+            body_blocks={"type": "doc", "content": [
+                {"type": "textInput", "attrs": {"node_id": self.node, "required": required}},
+            ]},
+        )
+
+    def _submit(self, substep, captures, **kw):
+        from Tracker.services.dwi.operator_capture import submit_substep
+        return submit_substep(
+            substep=substep, step_execution=self.step_execution,
+            user=self.user, captures=captures, **kw)
+
+    def test_missing_required_text_rejected(self):
+        from django.core.exceptions import ValidationError
+        sub = self._text_substep(required=True)
+        with self.assertRaises(ValidationError):
+            self._submit(sub, captures=[])
+
+    def test_blank_required_text_rejected(self):
+        from django.core.exceptions import ValidationError
+        sub = self._text_substep(required=True)
+        with self.assertRaises(ValidationError):
+            self._submit(sub, captures=[
+                {"node_id": self.node, "kind": "text", "value_text": "   "}])
+
+    def test_present_required_text_accepted(self):
+        sub = self._text_substep(required=True)
+        self._submit(sub, captures=[
+            {"node_id": self.node, "kind": "text", "value_text": "0.501"}])  # no raise
+
+    def test_optional_node_not_enforced(self):
+        sub = self._text_substep(required=False)
+        self._submit(sub, captures=[])  # no raise
+
+    def test_marked_na_bypasses_required_capture(self):
+        # A substep marked N/A skips required-field capture entirely.
+        self.node = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        sub = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="Optional check",
+            is_optional=True, allow_not_applicable=True,
+            body_blocks={"type": "doc", "content": [
+                {"type": "textInput", "attrs": {"node_id": self.node, "required": True}},
+            ]},
+        )
+        self._submit(sub, captures=[], marked_not_applicable=True,
+                     na_reason_code="NOT_APPLICABLE")  # no raise

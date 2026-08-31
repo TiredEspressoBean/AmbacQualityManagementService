@@ -2142,6 +2142,88 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             return Response({"detail": "No open hold"}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"id": str(hold.id), "cleared_at": hold.cleared_at})
 
+    @extend_schema(request=None, responses={200: dict})
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        """Cancel this work order — it drops out of scheduling. Refused if any part has
+        already shipped/completed (can't undo delivered work)."""
+        wo = self.get_object()
+        shipped = [
+            PartsStatus.SHIPPED, PartsStatus.COMPLETED, PartsStatus.IN_STOCK,
+            PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED,
+        ]
+        if wo.parts.filter(part_status__in=shipped).exists():
+            return Response(
+                {"detail": "Can't cancel — some parts have already shipped or completed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        wo.workorder_status = WorkOrderStatus.CANCELLED
+        wo.save(update_fields=["workorder_status"])
+        return Response({"id": str(wo.id), "status": wo.workorder_status})
+
+    @extend_schema(responses={200: inline_serializer(
+        name="WorkOrderMakeupStatus",
+        fields={
+            "target_good": serializers.IntegerField(),
+            "alive": serializers.IntegerField(),
+            "good": serializers.IntegerField(),
+            "scrapped": serializers.IntegerField(),
+            "shortfall": serializers.IntegerField(),
+        })})
+    @action(detail=True, methods=["get"], url_path="makeup_status")
+    def makeup_status(self, request, pk=None):
+        """Make-up gap for this WO: good parts owed (`target_good`) vs. still alive;
+        `shortfall` is how many replacements a make-up would create to cover scrap that
+        outran the expected yield."""
+        from Tracker.services.mes.makeup import work_order_shortfall
+        return Response(work_order_shortfall(self.get_object()))
+
+    @extend_schema(responses={200: inline_serializer(
+        name="WorkOrderCreateMakeupResponse",
+        fields={
+            "created": serializers.IntegerField(),
+            "target_good": serializers.IntegerField(),
+            "alive": serializers.IntegerField(),
+            "good": serializers.IntegerField(),
+            "scrapped": serializers.IntegerField(),
+            "shortfall": serializers.IntegerField(),
+        })})
+    @action(detail=True, methods=["post"], url_path="create_makeup")
+    def create_makeup(self, request, pk=None):
+        """Planner-confirmed make-up: spawn replacement parts (flagged `is_makeup`) at the
+        route's first step to cover the shortfall, and flag the schedule for re-solve."""
+        from Tracker.services.mes.makeup import create_makeup_parts
+        return Response(create_makeup_parts(self.get_object(), user=request.user))
+
+    @extend_schema(responses={200: inline_serializer(
+        name="WorkOrderMaterialRequirements",
+        fields={"rows": serializers.ListField(child=inline_serializer(
+            name="WorkOrderMaterialRequirementRow",
+            fields={
+                "component": serializers.CharField(),
+                "kind": serializers.CharField(),           # BUY / MAKE
+                "source": serializers.CharField(),
+                "quantity": serializers.FloatField(),      # required = line qty × WO qty
+                "unit_of_measure": serializers.CharField(),
+                "consumed_at_step": serializers.CharField(allow_null=True),
+                "on_hand": serializers.FloatField(),
+                "incoming": serializers.FloatField(),       # promised receipts (BUY) / live child WOs (MAKE)
+                "short_qty": serializers.FloatField(),
+                "status": serializers.CharField(),          # ok / short / building
+                "is_optional": serializers.BooleanField(),
+                # "When to order" — set on short BUY lines; null for MAKE / covered lines.
+                "lead_time_days": serializers.IntegerField(allow_null=True),
+                "need_by": serializers.DateField(allow_null=True),
+                "order_by": serializers.DateField(allow_null=True),
+            }))})})
+    @action(detail=True, methods=["get"], url_path="material_requirements")
+    def material_requirements(self, request, pk=None):
+        """The 'what this job needs' readout — top-level BOM components × WO quantity,
+        bucketed by consumed-at-step, with a shortage flag vs on-hand + promised. Picklist-
+        *lite*: no bins / lot picking / reservations (that's the ERP/WMS's job)."""
+        from Tracker.services.mes.requirements import work_order_material_requirements
+        return Response(work_order_material_requirements(self.get_object()))
+
     @extend_schema(
         request=inline_serializer(
             name="WorkOrderBulkPlaceOnHoldInput",
@@ -2329,6 +2411,60 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             },
             status=status.HTTP_201_CREATED,
         )
+
+    @extend_schema(
+        request=inline_serializer(
+            name="WorkOrderSetQuantityInput",
+            fields={"quantity": serializers.IntegerField(min_value=0)},
+        ),
+        responses={200: inline_serializer(
+            name="WorkOrderSetQuantityResponse",
+            fields={"quantity": serializers.IntegerField(),
+                    "added": serializers.IntegerField(),
+                    "cancelled": serializers.IntegerField()},
+        )},
+        description="Set a WO's quantity: add parts (increase) or cancel unstarted parts (decrease).",
+    )
+    @action(detail=True, methods=["post"], url_path="set_quantity")
+    def set_quantity(self, request, pk=None):
+        """Change this WO's quantity from the Gantt. Increase → spawns parts at the
+        process's first step; decrease → cancels excess UNSTARTED (un-worked) parts.
+        400 if a decrease can't be met from unstarted parts."""
+        from Tracker.models import ProcessStep
+        from Tracker.services.mes.work_order import (
+            bulk_add_parts_to_workorder, reduce_work_order_quantity,
+        )
+        wo = self.get_object()
+        try:
+            new_q = int(request.data.get('quantity'))
+        except (TypeError, ValueError):
+            return Response({"detail": "quantity must be an integer"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if new_q < 0:
+            return Response({"detail": "quantity must be >= 0"}, status=status.HTTP_400_BAD_REQUEST)
+        live = wo.parts.exclude(part_status__in=[PartsStatus.CANCELLED, PartsStatus.SCRAPPED])
+        current = live.count()
+        added = cancelled = 0
+        try:
+            if new_q > current:
+                if not wo.process_id or wo.process.part_type_id is None:
+                    return Response({"detail": "WO has no process/part type to add parts."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                first_ps = ProcessStep.objects.filter(process=wo.process).order_by('order').first()
+                if first_ps is None:
+                    return Response({"detail": "Process has no steps."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                new_parts = bulk_add_parts_to_workorder(
+                    wo, wo.process.part_type, first_ps.step, new_q - current,
+                    erp_id_start=current + 1)
+                added = len(new_parts)
+                wo.quantity = new_q
+                wo.save(update_fields=['quantity'])
+            elif new_q < current:
+                cancelled = reduce_work_order_quantity(wo, new_q, user=request.user)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"quantity": new_q, "added": added, "cancelled": cancelled})
 
     @extend_schema(
         request=inline_serializer(

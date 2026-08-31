@@ -441,24 +441,29 @@ class DemoShowcaseSeeder(BaseSeeder):
 
         from decimal import Decimal
         from Tracker.models.mes_lite import PartTypes
-        from Tracker.models.mes_standard import BOM, BOMLine
+        from Tracker.models.mes_standard import BOM, BOMLine, Material
 
-        # (name, ERP_id, ID_prefix, find_number, qty, uom, optional)
+        # (name, ERP_id, ID_prefix, find_number, qty, uom, optional, source)
+        # In-house sub-assemblies are MAKE (PartTypes); purchased items are BUY (Material).
         components = [
-            ("Injector Nozzle Assembly", "CRI-NZL", "NZL", "10", 1, "EA", False),
-            ("Control Valve Assembly", "CRI-VLV", "VLV", "20", 1, "EA", False),
-            ("Injector Spring", "CRI-SPR", "SPR", "30", 1, "EA", False),
-            ("Solenoid Coil", "CRI-SOL", "SOL", "40", 1, "EA", False),
-            ("Seal & O-Ring Kit", "CRI-SEAL", "SEAL", "50", 1, "EA", True),
+            ("Injector Nozzle Assembly", "CRI-NZL", "NZL", "10", 1, "EA", False, "MAKE"),
+            ("Control Valve Assembly", "CRI-VLV", "VLV", "20", 1, "EA", False, "MAKE"),
+            ("Injector Spring", "CRI-SPR", "SPR", "30", 1, "EA", False, "BUY"),
+            ("Solenoid Coil", "CRI-SOL", "SOL", "40", 1, "EA", False, "BUY"),
+            ("Seal & O-Ring Kit", "CRI-SEAL", "SEAL", "50", 1, "EA", True, "BUY"),
         ]
-        comp_types = {}
-        for name, erp, prefix, *_ in components:
-            pt = PartTypes.objects.filter(tenant=self.tenant, name=name).first()
-            if not pt:
-                pt = PartTypes.objects.create(
-                    tenant=self.tenant, name=name, ERP_id=erp, ID_prefix=prefix,
-                )
-            comp_types[name] = pt
+        make_types, buy_materials = {}, {}
+        for name, erp, prefix, find, qty, uom, optional, source in components:
+            if source == "MAKE":
+                pt = PartTypes.objects.filter(tenant=self.tenant, name=name).first()
+                if not pt:
+                    pt = PartTypes.objects.create(
+                        tenant=self.tenant, name=name, ERP_id=erp, ID_prefix=prefix)
+                make_types[name] = pt
+            else:
+                buy_materials[name], _ = Material.objects.update_or_create(
+                    tenant=self.tenant, name=name,
+                    defaults={'part_number': erp, 'unit_of_measure': uom})
 
         bom = BOM.objects.filter(
             tenant=self.tenant, part_type=part_type, revision="A", bom_type="ASSEMBLY",
@@ -481,17 +486,17 @@ class DemoShowcaseSeeder(BaseSeeder):
             BOM.objects.filter(pk=bom.pk).update(status="RELEASED")
 
         if created or bom.lines.count() == 0:
-            for name, erp, prefix, find, qty, uom, optional in components:
-                BOMLine.objects.create(
-                    tenant=self.tenant,
-                    bom=bom,
-                    component_type=comp_types[name],
-                    quantity=Decimal(qty),
-                    unit_of_measure=uom,
-                    find_number=find,
-                    line_number=int(find),
+            for name, erp, prefix, find, qty, uom, optional, source in components:
+                line_kwargs = dict(
+                    tenant=self.tenant, bom=bom, source=source, quantity=Decimal(qty),
+                    unit_of_measure=uom, find_number=find, line_number=int(find),
                     is_optional=optional,
                 )
+                if source == "MAKE":
+                    line_kwargs['component_type'] = make_types[name]
+                else:
+                    line_kwargs['material'] = buy_materials[name]
+                BOMLine.objects.create(**line_kwargs)
 
         self.log(f"  BOM {bom.revision} ({bom.status}) with {bom.lines.count()} lines for {part_type.name}")
         return bom

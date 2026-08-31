@@ -8845,6 +8845,269 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/Fixtures/:
+    get:
+      operationId: api_Fixtures_list
+      description: |-
+        CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+        dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+        operations against the quantity available (cumulative capacity).
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - DIE
+          - FIXTURE
+          - OTHER
+          - PROGRAM
+          - TOOL
+        description: |-
+          What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+
+          * `FIXTURE` - Fixture
+          * `TOOL` - Cutting tool
+          * `DIE` - Die / mold
+          * `PROGRAM` - NC program
+          * `OTHER` - Other
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFixtureList'
+          description: ''
+    post:
+      operationId: api_Fixtures_create
+      description: |-
+        CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+        dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+        operations against the quantity available (cumulative capacity).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FixtureRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FixtureRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FixtureRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fixture'
+          description: ''
+  /api/Fixtures/{id}/:
+    get:
+      operationId: api_Fixtures_retrieve
+      description: |-
+        CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+        dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+        operations against the quantity available (cumulative capacity).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Fixture.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fixture'
+          description: ''
+    put:
+      operationId: api_Fixtures_update
+      description: |-
+        CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+        dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+        operations against the quantity available (cumulative capacity).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Fixture.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FixtureRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FixtureRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FixtureRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fixture'
+          description: ''
+    patch:
+      operationId: api_Fixtures_partial_update
+      description: |-
+        CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+        dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+        operations against the quantity available (cumulative capacity).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Fixture.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFixtureRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFixtureRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFixtureRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fixture'
+          description: ''
+    delete:
+      operationId: api_Fixtures_destroy
+      description: |-
+        CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
+        dies, and NC programs. Assigning a resource to steps makes the solver serialize those
+        operations against the quantity available (cumulative capacity).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Fixture.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/Fixtures/export-excel/:
+    get:
+      operationId: api_Fixtures_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/Fixtures/metadata/:
+    get:
+      operationId: api_Fixtures_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/HarvestedComponents/:
     get:
       operationId: api_HarvestedComponents_list
@@ -9801,6 +10064,285 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/LaborCalendarBlocks/:
+    get:
+      operationId: api_LaborCalendarBlocks_list
+      description: |-
+        CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+        one-off or weekly, company-wide (user null) or per person. Operators only; machines
+        keep running (only PlantCalendarException stops machines).
+      parameters:
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - BREAK
+          - MEETING
+          - OTHER
+          - PTO
+          - SICK
+          - TRAINING
+        description: |-
+          * `PTO` - PTO / vacation
+          * `SICK` - Sick
+          * `TRAINING` - Training
+          * `MEETING` - Meeting
+          * `BREAK` - Break
+          * `OTHER` - Other
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: recurrence
+        schema:
+          type: string
+          enum:
+          - ONCE
+          - WEEKLY
+        description: |-
+          * `ONCE` - One-off (dated)
+          * `WEEKLY` - Weekly (recurring)
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: user
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLaborCalendarBlockList'
+          description: ''
+    post:
+      operationId: api_LaborCalendarBlocks_create
+      description: |-
+        CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+        one-off or weekly, company-wide (user null) or per person. Operators only; machines
+        keep running (only PlantCalendarException stops machines).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaborCalendarBlockRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LaborCalendarBlockRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LaborCalendarBlockRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaborCalendarBlock'
+          description: ''
+  /api/LaborCalendarBlocks/{id}/:
+    get:
+      operationId: api_LaborCalendarBlocks_retrieve
+      description: |-
+        CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+        one-off or weekly, company-wide (user null) or per person. Operators only; machines
+        keep running (only PlantCalendarException stops machines).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Labor Calendar Block.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaborCalendarBlock'
+          description: ''
+    put:
+      operationId: api_LaborCalendarBlocks_update
+      description: |-
+        CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+        one-off or weekly, company-wide (user null) or per person. Operators only; machines
+        keep running (only PlantCalendarException stops machines).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Labor Calendar Block.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaborCalendarBlockRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LaborCalendarBlockRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LaborCalendarBlockRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaborCalendarBlock'
+          description: ''
+    patch:
+      operationId: api_LaborCalendarBlocks_partial_update
+      description: |-
+        CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+        one-off or weekly, company-wide (user null) or per person. Operators only; machines
+        keep running (only PlantCalendarException stops machines).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Labor Calendar Block.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLaborCalendarBlockRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLaborCalendarBlockRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLaborCalendarBlockRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaborCalendarBlock'
+          description: ''
+    delete:
+      operationId: api_LaborCalendarBlocks_destroy
+      description: |-
+        CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
+        one-off or weekly, company-wide (user null) or per person. Operators only; machines
+        keep running (only PlantCalendarException stops machines).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Labor Calendar Block.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/LaborCalendarBlocks/export-excel/:
+    get:
+      operationId: api_LaborCalendarBlocks_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/LaborCalendarBlocks/metadata/:
+    get:
+      operationId: api_LaborCalendarBlocks_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/MaterialLots/:
     get:
       operationId: api_MaterialLots_list
@@ -10484,6 +11026,254 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/Materials/:
+    get:
+      operationId: api_Materials_list
+      description: |-
+        Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+        The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+      parameters:
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: preferred_supplier
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialList'
+          description: ''
+    post:
+      operationId: api_Materials_create
+      description: |-
+        Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+        The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+  /api/Materials/{id}/:
+    get:
+      operationId: api_Materials_retrieve
+      description: |-
+        Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+        The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+    put:
+      operationId: api_Materials_update
+      description: |-
+        Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+        The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+    patch:
+      operationId: api_Materials_partial_update
+      description: |-
+        Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+        The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+    delete:
+      operationId: api_Materials_destroy
+      description: |-
+        Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+        The buy-side item list, distinct from in-house PartTypes; holds purchase lead time.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/Materials/export-excel/:
+    get:
+      operationId: api_Materials_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/Materials/metadata/:
+    get:
+      operationId: api_Materials_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/MeasurementDefinitions/:
     get:
@@ -12443,6 +13233,270 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OutsideProcessShipment'
+          description: ''
+  /api/OvertimeWindows/:
+    get:
+      operationId: api_OvertimeWindows_list
+      description: |-
+        CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+        weekly, company-wide. The solver adds these to operator + attended-machine
+        availability (plant closures still win).
+      parameters:
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: recurrence
+        schema:
+          type: string
+          enum:
+          - ONCE
+          - WEEKLY
+        description: |-
+          * `ONCE` - One-off (dated)
+          * `WEEKLY` - Weekly (recurring)
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: shift
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOvertimeWindowList'
+          description: ''
+    post:
+      operationId: api_OvertimeWindows_create
+      description: |-
+        CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+        weekly, company-wide. The solver adds these to operator + attended-machine
+        availability (plant closures still win).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OvertimeWindowRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OvertimeWindowRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OvertimeWindowRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OvertimeWindow'
+          description: ''
+  /api/OvertimeWindows/{id}/:
+    get:
+      operationId: api_OvertimeWindows_retrieve
+      description: |-
+        CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+        weekly, company-wide. The solver adds these to operator + attended-machine
+        availability (plant closures still win).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Overtime Window.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OvertimeWindow'
+          description: ''
+    put:
+      operationId: api_OvertimeWindows_update
+      description: |-
+        CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+        weekly, company-wide. The solver adds these to operator + attended-machine
+        availability (plant closures still win).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Overtime Window.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OvertimeWindowRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OvertimeWindowRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OvertimeWindowRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OvertimeWindow'
+          description: ''
+    patch:
+      operationId: api_OvertimeWindows_partial_update
+      description: |-
+        CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+        weekly, company-wide. The solver adds these to operator + attended-machine
+        availability (plant closures still win).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Overtime Window.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOvertimeWindowRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOvertimeWindowRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOvertimeWindowRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OvertimeWindow'
+          description: ''
+    delete:
+      operationId: api_OvertimeWindows_destroy
+      description: |-
+        CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
+        weekly, company-wide. The solver adds these to operator + attended-machine
+        availability (plant closures still win).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Overtime Window.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/OvertimeWindows/export-excel/:
+    get:
+      operationId: api_OvertimeWindows_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/OvertimeWindows/metadata/:
+    get:
+      operationId: api_OvertimeWindows_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/PartApprovals/:
     get:
@@ -14736,6 +15790,263 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedPartSelectList'
+          description: ''
+  /api/PlantCalendarExceptions/:
+    get:
+      operationId: api_PlantCalendarExceptions_list
+      description: |-
+        CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+        blocks every machine and treats operators as absent during these.
+      parameters:
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - HOLIDAY
+          - INVENTORY
+          - OTHER
+          - SHUTDOWN
+        description: |-
+          * `HOLIDAY` - Holiday
+          * `SHUTDOWN` - Plant Shutdown
+          * `INVENTORY` - Inventory / Stock-take
+          * `OTHER` - Other
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlantCalendarExceptionList'
+          description: ''
+    post:
+      operationId: api_PlantCalendarExceptions_create
+      description: |-
+        CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+        blocks every machine and treats operators as absent during these.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlantCalendarExceptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlantCalendarExceptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlantCalendarExceptionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantCalendarException'
+          description: ''
+  /api/PlantCalendarExceptions/{id}/:
+    get:
+      operationId: api_PlantCalendarExceptions_retrieve
+      description: |-
+        CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+        blocks every machine and treats operators as absent during these.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Plant Calendar Exception.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantCalendarException'
+          description: ''
+    put:
+      operationId: api_PlantCalendarExceptions_update
+      description: |-
+        CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+        blocks every machine and treats operators as absent during these.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Plant Calendar Exception.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlantCalendarExceptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlantCalendarExceptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlantCalendarExceptionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantCalendarException'
+          description: ''
+    patch:
+      operationId: api_PlantCalendarExceptions_partial_update
+      description: |-
+        CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+        blocks every machine and treats operators as absent during these.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Plant Calendar Exception.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlantCalendarExceptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPlantCalendarExceptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPlantCalendarExceptionRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantCalendarException'
+          description: ''
+    delete:
+      operationId: api_PlantCalendarExceptions_destroy
+      description: |-
+        CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
+        blocks every machine and treats operators as absent during these.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Plant Calendar Exception.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/PlantCalendarExceptions/export-excel/:
+    get:
+      operationId: api_PlantCalendarExceptions_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/PlantCalendarExceptions/metadata/:
+    get:
+      operationId: api_PlantCalendarExceptions_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/Processes/:
     get:
@@ -18504,6 +19815,209 @@ paths:
               schema:
                 $ref: '#/components/schemas/ScheduledTask'
           description: ''
+  /api/ScheduledTasks/{id}/reassign-machine/:
+    post:
+      operationId: api_ScheduledTasks_reassign_machine_create
+      description: |-
+        Put this task on a specific machine (planner override) + pin it. Applies now;
+        the next Solve keeps it there (machine-pin). Warns if the machine isn't eligible.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Scheduled Task.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignMachineRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReassignMachineRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReassignMachineRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/ScheduledTasks/{id}/reassign-operator/:
+    post:
+      operationId: api_ScheduledTasks_reassign_operator_create
+      description: |-
+        Assign / re-assign / clear (null) the operator on this task (manual coverage).
+        Applies now; warns if the operator isn't qualified for the step.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Scheduled Task.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignOperatorRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReassignOperatorRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReassignOperatorRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/ScheduledTasks/{id}/reassign-options/:
+    get:
+      operationId: api_ScheduledTasks_reassign_options_retrieve
+      description: |-
+        Machines eligible for this task's step + operators qualified for it — the
+        options the detail dialog's reassign dropdowns show.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Scheduled Task.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/ScheduledTasks/batch-membership/:
+    post:
+      operationId: api_ScheduledTasks_batch_membership_create
+      description: |-
+        Direct-manipulation batch control. `merge=true` → rejoin the WO+step cohort:
+        unpin the parts (the solver batches the unpinned cohort) and snap them onto the
+        cohort's slot so the ×N cell collapses now. `merge=false` → break apart: lay the
+        parts in separate slots and PIN them (separate fixed bars). Applies immediately and
+        marks the schedule stale; the next Solve forms/optimizes the batch.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchMembershipRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchMembershipRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchMembershipRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/ScheduledTasks/bulk-reassign-machine/:
+    post:
+      operationId: api_ScheduledTasks_bulk_reassign_machine_create
+      description: |-
+        Move several selected tasks onto one machine (planner override) + pin them.
+        Applies now; returns {changed, warnings} (a warning per distinct step the machine
+        isn't authored for). The next Solve keeps them there (machine-pin).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReassignMachineRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkReassignMachineRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkReassignMachineRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/ScheduledTasks/bulk-reassign-operator/:
+    post:
+      operationId: api_ScheduledTasks_bulk_reassign_operator_create
+      description: |-
+        Assign / clear (null) one operator across several selected tasks — bulk manual
+        coverage. Applies now; returns {changed, warnings} (warns, listing steps the
+        operator isn't trained for).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReassignOperatorRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkReassignOperatorRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkReassignOperatorRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/ScheduledTasks/move_batch/:
     post:
       operationId: api_ScheduledTasks_move_batch_create
@@ -18615,6 +20129,54 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Schedules/config/:
+    get:
+      operationId: api_Schedules_config_retrieve
+      description: |-
+        The tenant's solver knobs (time limit, fence zones, penalties, labor model).
+        GET reads them; PATCH updates the subset provided. Gated on
+        change_optimizationconfig — the scheduling settings dialog.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationConfig'
+          description: ''
+    patch:
+      operationId: api_Schedules_config_partial_update
+      description: |-
+        The tenant's solver knobs (time limit, fence zones, penalties, labor model).
+        GET reads them; PATCH updates the subset provided. Gated on
+        change_optimizationconfig — the scheduling settings dialog.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOptimizationConfigRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOptimizationConfigRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOptimizationConfigRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationConfig'
+          description: ''
   /api/Schedules/current/:
     get:
       operationId: api_Schedules_current_retrieve
@@ -18683,6 +20245,127 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScheduleResult'
+          description: ''
+  /api/Schedules/explode-work-order/:
+    post:
+      operationId: api_Schedules_explode_work_order_create
+      description: |-
+        (Re)explode an existing work order's BOM into pegged in-house component WOs.
+        `create=false` previews (top-level, no writes). Net-first: existing stock + already-
+        pegged component WOs offset the requirement, so re-running is idempotent.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplodeWorkOrderInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExplodeWorkOrderInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExplodeWorkOrderInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/operator_hours/:
+    get:
+      operationId: api_Schedules_operator_hours_retrieve
+      description: |-
+        Shop hours worked per operator over a date range, from TimeEntry —
+        `on_shift_hours` (attendance) and `direct_hours` (clocked onto jobs). Scoped to
+        shop-floor operators (Operator / Shift Lead groups).
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: 'Range end (inclusive). Default: today.'
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: 'Range start (inclusive). Default: 7 days ago.'
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorHoursReport'
+          description: ''
+  /api/Schedules/plan-work-order/:
+    post:
+      operationId: api_Schedules_plan_work_order_create
+      description: |-
+        Add work: create a WO for a process and spawn its parts at the first step,
+        so it schedules on the next Solve. The 'add work' half of Gantt planning.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanWorkOrderInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanWorkOrderInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanWorkOrderInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/requirements/:
+    get:
+      operationId: api_Schedules_requirements_retrieve
+      description: |-
+        Sourcing & production requirements for open demand — what to buy (source),
+        what to make (produce), and tooling to acquire, with lead-time-driven order-by
+        dates.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourcingRequirements'
           description: ''
   /api/Schedules/solve/:
     post:
@@ -19077,7 +20760,12 @@ paths:
   /api/Shifts/:
     get:
       operationId: api_Shifts_list
-      description: Shift definition management
+      description: |-
+        Shift definition management.
+
+        `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+        edits mutate via `create_new_version` — never a raw save — and the list is scoped
+        to current versions. Delete is the SecureModel soft-delete (archive).
       parameters:
       - in: query
         name: is_active
@@ -19115,7 +20803,12 @@ paths:
           description: ''
     post:
       operationId: api_Shifts_create
-      description: Shift definition management
+      description: |-
+        Shift definition management.
+
+        `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+        edits mutate via `create_new_version` — never a raw save — and the list is scoped
+        to current versions. Delete is the SecureModel soft-delete (archive).
       tags:
       - api
       requestBody:
@@ -19143,7 +20836,12 @@ paths:
   /api/Shifts/{id}/:
     get:
       operationId: api_Shifts_retrieve
-      description: Shift definition management
+      description: |-
+        Shift definition management.
+
+        `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+        edits mutate via `create_new_version` — never a raw save — and the list is scoped
+        to current versions. Delete is the SecureModel soft-delete (archive).
       parameters:
       - in: path
         name: id
@@ -19166,7 +20864,12 @@ paths:
           description: ''
     put:
       operationId: api_Shifts_update
-      description: Shift definition management
+      description: |-
+        Shift definition management.
+
+        `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+        edits mutate via `create_new_version` — never a raw save — and the list is scoped
+        to current versions. Delete is the SecureModel soft-delete (archive).
       parameters:
       - in: path
         name: id
@@ -19201,7 +20904,12 @@ paths:
           description: ''
     patch:
       operationId: api_Shifts_partial_update
-      description: Shift definition management
+      description: |-
+        Shift definition management.
+
+        `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+        edits mutate via `create_new_version` — never a raw save — and the list is scoped
+        to current versions. Delete is the SecureModel soft-delete (archive).
       parameters:
       - in: path
         name: id
@@ -19235,7 +20943,12 @@ paths:
           description: ''
     delete:
       operationId: api_Shifts_destroy
-      description: Shift definition management
+      description: |-
+        Shift definition management.
+
+        `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+        edits mutate via `create_new_version` — never a raw save — and the list is scoped
+        to current versions. Delete is the SecureModel soft-delete (archive).
       parameters:
       - in: path
         name: id
@@ -28224,6 +29937,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkOrderBulkAddPartsResponse'
           description: ''
+  /api/WorkOrders/{id}/cancel/:
+    post:
+      operationId: api_WorkOrders_cancel_create
+      description: |-
+        Cancel this work order — it drops out of scheduling. Refused if any part has
+        already shipped/completed (can't undo delivered work).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkOrders/{id}/clear_hold/:
     post:
       operationId: api_WorkOrders_clear_hold_create
@@ -28255,6 +29995,98 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/WorkOrders/{id}/create_makeup/:
+    post:
+      operationId: api_WorkOrders_create_makeup_create
+      description: |-
+        Planner-confirmed make-up: spawn replacement parts (flagged `is_makeup`) at the
+        route's first step to cover the shortfall, and flag the schedule for re-solve.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderCreateMakeupResponse'
+          description: ''
+  /api/WorkOrders/{id}/makeup_status/:
+    get:
+      operationId: api_WorkOrders_makeup_status_retrieve
+      description: |-
+        Make-up gap for this WO: good parts owed (`target_good`) vs. still alive;
+        `shortfall` is how many replacements a make-up would create to cover scrap that
+        outran the expected yield.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderMakeupStatus'
+          description: ''
+  /api/WorkOrders/{id}/material_requirements/:
+    get:
+      operationId: api_WorkOrders_material_requirements_retrieve
+      description: |-
+        The 'what this job needs' readout — top-level BOM components × WO quantity,
+        bucketed by consumed-at-step, with a shortage flag vs on-hand + promised. Picklist-
+        *lite*: no bins / lot picking / reservations (that's the ERP/WMS's job).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderMaterialRequirements'
           description: ''
   /api/WorkOrders/{id}/place_on_hold/:
     post:
@@ -28347,6 +30179,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrder'
+          description: ''
+  /api/WorkOrders/{id}/set_quantity/:
+    post:
+      operationId: api_WorkOrders_set_quantity_create
+      description: 'Set a WO''s quantity: add parts (increase) or cancel unstarted
+        parts (decrease).'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderSetQuantityInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderSetQuantityInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderSetQuantityInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderSetQuantityResponse'
           description: ''
   /api/WorkOrders/{id}/split/:
     post:
@@ -28775,6 +30644,8 @@ paths:
         row is a view onto WorkOrder work, not a first-class model). Filters:
           - `readiness=ready|blocked` (default: both, blocked sunk last)
           - `wo=<uuid>` — rows for a single WO
+          - `machine=<uuid>` / `machine__in=<csv>` — station pull: only rows the live
+            schedule assigned to that machine (unscheduled rows drop out)
           - `search=<term>` — matches WO ERP id or step name
           - standard `?limit=&offset=` pagination
       parameters:
@@ -35893,6 +37764,14 @@ components:
       - work_center_code
       - work_center_kind
       - work_center_name
+    AutoResolveEnum:
+      enum:
+      - 'off'
+      - live
+      type: string
+      description: |-
+        * `off` - Off (flag stale only; planner re-solves by hand)
+        * `live` - Live (auto re-solve and supersede the schedule)
     BOM:
       type: object
       description: |-
@@ -35978,7 +37857,9 @@ components:
       - version
     BOMLine:
       type: object
-      description: BOM line item serializer
+      description: |-
+        BOM line item serializer. A line's component is EITHER an in-house `component_type`
+        (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
       properties:
         id:
           type: string
@@ -35990,9 +37871,40 @@ components:
         component_type:
           type: string
           format: uuid
+          nullable: true
+          description: In-house component (source=MAKE). Mutually exclusive with `material`.
         component_type_name:
           type: string
           readOnly: true
+          nullable: true
+        material:
+          type: string
+          format: uuid
+          nullable: true
+          description: Purchased component (source=BUY). Mutually exclusive with `component_type`.
+        material_name:
+          type: string
+          readOnly: true
+          nullable: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/BOMLineSourceEnum'
+          description: |-
+            Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+
+            * `MAKE` - Made in-house
+            * `BUY` - Purchased
+        consumed_at_step:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The parent-process step that consumes this component (the
+            assembly step). When set, the scheduler gates only that step on the component
+            WO''s completion; when null, the whole parent waits. Plan #9.'
+        consumed_at_step_name:
+          type: string
+          readOnly: true
+          nullable: true
         quantity:
           type: string
           format: decimal
@@ -36031,15 +37943,18 @@ components:
           type: boolean
       required:
       - bom
-      - component_type
       - component_type_name
+      - consumed_at_step_name
       - created_at
       - id
+      - material_name
       - quantity
       - updated_at
     BOMLineRequest:
       type: object
-      description: BOM line item serializer
+      description: |-
+        BOM line item serializer. A line's component is EITHER an in-house `component_type`
+        (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
       properties:
         bom:
           type: string
@@ -36047,6 +37962,28 @@ components:
         component_type:
           type: string
           format: uuid
+          nullable: true
+          description: In-house component (source=MAKE). Mutually exclusive with `material`.
+        material:
+          type: string
+          format: uuid
+          nullable: true
+          description: Purchased component (source=BUY). Mutually exclusive with `component_type`.
+        source:
+          allOf:
+          - $ref: '#/components/schemas/BOMLineSourceEnum'
+          description: |-
+            Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+
+            * `MAKE` - Made in-house
+            * `BUY` - Purchased
+        consumed_at_step:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The parent-process step that consumes this component (the
+            assembly step). When set, the scheduler gates only that step on the component
+            WO''s completion; when null, the whole parent waits. Plan #9.'
         quantity:
           type: string
           format: decimal
@@ -36078,8 +38015,15 @@ components:
           type: boolean
       required:
       - bom
-      - component_type
       - quantity
+    BOMLineSourceEnum:
+      enum:
+      - MAKE
+      - BUY
+      type: string
+      description: |-
+        * `MAKE` - Made in-house
+        * `BUY` - Purchased
     BOMList:
       type: object
       description: Lightweight BOM serializer for lists
@@ -36275,6 +38219,30 @@ components:
       required:
       - step
       - work_order
+    BatchMembershipRequestRequest:
+      type: object
+      description: |-
+        Planner batch control: merge selected tasks into one lot (`merge=true`) or break
+        them apart into separate lots (`merge=false`).
+      properties:
+        task_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        merge:
+          type: boolean
+      required:
+      - merge
+      - task_ids
+    BatchModeEnum:
+      enum:
+      - concurrent
+      - cycle
+      type: string
+      description: |-
+        * `concurrent` - Concurrent (parallel jobs)
+        * `cycle` - Cycle (shared load, fixed cycle time)
     BatchSealResponse:
       type: object
       properties:
@@ -36353,6 +38321,39 @@ components:
       required:
       - company_id
       - user_ids
+    BulkReassignMachineRequestRequest:
+      type: object
+      description: Move several scheduled tasks onto one machine at once (planner
+        override).
+      properties:
+        task_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        machine_id:
+          type: string
+          format: uuid
+      required:
+      - machine_id
+      - task_ids
+    BulkReassignOperatorRequestRequest:
+      type: object
+      description: Assign / clear (null) one operator across several scheduled tasks
+        at once.
+      properties:
+        task_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        operator_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - operator_id
+      - task_ids
     BulkReconcileSummary:
       type: object
       properties:
@@ -37455,6 +39456,15 @@ components:
           type: string
           nullable: true
           maxLength: 50
+        default_outside_process_turnaround_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Default subcontract turnaround (calendar days) when this company
+            is a step's outside-process vendor and the step doesn't specify its own
+            lead time. Used by the scheduler to reserve elapsed vendor time for outside-process
+            operations.
         user_count:
           type: integer
           readOnly: true
@@ -37501,6 +39511,15 @@ components:
           type: string
           nullable: true
           maxLength: 50
+        default_outside_process_turnaround_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Default subcontract turnaround (calendar days) when this company
+            is a step's outside-process vendor and the step doesn't specify its own
+            lead time. Used by the scheduler to reserve elapsed vendor time for outside-process
+            operations.
         archived:
           type: boolean
       required:
@@ -38535,6 +40554,16 @@ components:
         * `MEASUREMENT` - Based on Measurement Threshold
         * `MANUAL` - Manual Operator Selection
         * `AGGREGATE` - Based on Quality Gate (aggregate signal)
+    DefaultLaborModelEnum:
+      enum:
+      - 'off'
+      - pool
+      - named
+      type: string
+      description: |-
+        * `off` - Off (no crew constraint)
+        * `pool` - Pool (cap at qualified crew)
+        * `named` - Named (assign a specific operator)
     DefectParetoResponse:
       type: object
       properties:
@@ -39751,6 +41780,21 @@ components:
             to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers)
             — those are still tracked on step executions, just never scheduled. Capacity
             for a type = the count of its schedulable units.
+        batch_capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: How many jobs/parts this resource handles at once. 1 (default)
+            = a normal one-at-a-time machine. >1 = a batch/process resource — see
+            `batch_mode`.
+        batch_mode:
+          allOf:
+          - $ref: '#/components/schemas/BatchModeEnum'
+          description: |-
+            How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+
+            * `concurrent` - Concurrent (parallel jobs)
+            * `cycle` - Cycle (shared load, fixed cycle time)
         notes:
           type: string
         created_at:
@@ -39811,6 +41855,21 @@ components:
             to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers)
             — those are still tracked on step executions, just never scheduled. Capacity
             for a type = the count of its schedulable units.
+        batch_capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: How many jobs/parts this resource handles at once. 1 (default)
+            = a normal one-at-a-time machine. >1 = a batch/process resource — see
+            `batch_mode`.
+        batch_mode:
+          allOf:
+          - $ref: '#/components/schemas/BatchModeEnum'
+          description: |-
+            How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+
+            * `concurrent` - Concurrent (parallel jobs)
+            * `cycle` - Cycle (shared load, fixed cycle time)
         notes:
           type: string
         archived:
@@ -39880,6 +41939,19 @@ components:
       - limit
       - model
       - results
+    ExplodeWorkOrderInputRequest:
+      type: object
+      description: (Re)explode an existing work order's BOM. `create=false` previews
+        without writing.
+      properties:
+        work_order_id:
+          type: string
+          format: uuid
+        create:
+          type: boolean
+          default: true
+      required:
+      - work_order_id
     ExtendShelfLifeRequest:
       type: object
       description: |-
@@ -40584,6 +42656,116 @@ components:
           type: boolean
       required:
       - rca_record
+    Fixture:
+      type: object
+      description: |-
+        A shared, quantity-limited scheduling resource — fixture / cutting tool / die / NC
+        program. `steps` is the set of operations that require it; the solver serializes ops
+        against the `quantity` available (cumulative capacity). `steps` validates against the
+        tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/FixtureKindEnum'
+          description: |-
+            What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+
+            * `FIXTURE` - Fixture
+            * `TOOL` - Cutting tool
+            * `DIE` - Die / mold
+            * `PROGRAM` - NC program
+            * `OTHER` - Other
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: How many of this resource exist (concurrency limit).
+        lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to acquire or produce this tooling if it's short — drives
+            the order-by date in the sourcing report.
+        steps:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Steps that require this resource.
+        step_names:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - id
+      - name
+      - step_names
+    FixtureKindEnum:
+      enum:
+      - FIXTURE
+      - TOOL
+      - DIE
+      - PROGRAM
+      - OTHER
+      type: string
+      description: |-
+        * `FIXTURE` - Fixture
+        * `TOOL` - Cutting tool
+        * `DIE` - Die / mold
+        * `PROGRAM` - NC program
+        * `OTHER` - Other
+    FixtureRequest:
+      type: object
+      description: |-
+        A shared, quantity-limited scheduling resource — fixture / cutting tool / die / NC
+        program. `steps` is the set of operations that require it; the solver serializes ops
+        against the `quantity` available (cumulative capacity). `steps` validates against the
+        tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/FixtureKindEnum'
+          description: |-
+            What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+
+            * `FIXTURE` - Fixture
+            * `TOOL` - Cutting tool
+            * `DIE` - Die / mold
+            * `PROGRAM` - NC program
+            * `OTHER` - Other
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: How many of this resource exist (concurrency limit).
+        lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to acquire or produce this tooling if it's short — drives
+            the order-by date in the sourcing report.
+        steps:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Steps that require this resource.
+      required:
+      - name
     FpiScopeEnum:
       enum:
       - PER_WORKORDER
@@ -41229,7 +43411,7 @@ components:
         `source` = the inspection-lot origin). See services.qms.incoming_inspection.
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/IncomingInspectionRowSourceEnum'
         id:
           type: string
           format: uuid
@@ -41265,6 +43447,14 @@ components:
       - status_display
       - step_id
       - supplier
+    IncomingInspectionRowSourceEnum:
+      enum:
+      - PURCHASED_LOT
+      - OUTSIDE_PROCESS
+      type: string
+      description: |-
+        * `PURCHASED_LOT` - PURCHASED_LOT
+        * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
     InspectionInboxRow:
       type: object
       description: |-
@@ -41875,6 +44065,135 @@ components:
       - full_model_name
       - model
       - provider
+    LaborCalendarBlock:
+      type: object
+      description: |-
+        Operator non-working time — PTO / sick / training / meeting / break — one-off
+        (ONCE: start_time+end_time) or weekly (WEEKLY: days_of_week+window_start/end),
+        company-wide (user null) or per person. Operators only; machines keep running.
+        Validates the fields the chosen recurrence needs.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+          nullable: true
+          description: The operator this block applies to. Null = the whole company
+            (every operator), e.g. an all-hands meeting.
+        user_name:
+          type: string
+          nullable: true
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/LaborCalendarBlockKindEnum'
+        recurrence:
+          $ref: '#/components/schemas/LaborRecurrenceEnum'
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: One-off start (recurrence=ONCE).
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: One-off end (recurrence=ONCE).
+        days_of_week:
+          type: string
+          description: Recurring days as comma-separated numbers (0=Monday..6=Sunday),
+            e.g. '0,2,4' (recurrence=WEEKLY).
+          maxLength: 20
+        window_start:
+          type: string
+          format: time
+          nullable: true
+          description: Recurring start time-of-day (recurrence=WEEKLY).
+        window_end:
+          type: string
+          format: time
+          nullable: true
+          description: Recurring end time-of-day (recurrence=WEEKLY).
+        reason:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
+      required:
+      - id
+      - user_name
+    LaborCalendarBlockKindEnum:
+      enum:
+      - PTO
+      - SICK
+      - TRAINING
+      - MEETING
+      - BREAK
+      - OTHER
+      type: string
+      description: |-
+        * `PTO` - PTO / vacation
+        * `SICK` - Sick
+        * `TRAINING` - Training
+        * `MEETING` - Meeting
+        * `BREAK` - Break
+        * `OTHER` - Other
+    LaborCalendarBlockRequest:
+      type: object
+      description: |-
+        Operator non-working time — PTO / sick / training / meeting / break — one-off
+        (ONCE: start_time+end_time) or weekly (WEEKLY: days_of_week+window_start/end),
+        company-wide (user null) or per person. Operators only; machines keep running.
+        Validates the fields the chosen recurrence needs.
+      properties:
+        user:
+          type: integer
+          nullable: true
+          description: The operator this block applies to. Null = the whole company
+            (every operator), e.g. an all-hands meeting.
+        kind:
+          $ref: '#/components/schemas/LaborCalendarBlockKindEnum'
+        recurrence:
+          $ref: '#/components/schemas/LaborRecurrenceEnum'
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: One-off start (recurrence=ONCE).
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: One-off end (recurrence=ONCE).
+        days_of_week:
+          type: string
+          description: Recurring days as comma-separated numbers (0=Monday..6=Sunday),
+            e.g. '0,2,4' (recurrence=WEEKLY).
+          maxLength: 20
+        window_start:
+          type: string
+          format: time
+          nullable: true
+          description: Recurring start time-of-day (recurrence=WEEKLY).
+        window_end:
+          type: string
+          format: time
+          nullable: true
+          description: Recurring end time-of-day (recurrence=WEEKLY).
+        reason:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
+    LaborRecurrenceEnum:
+      enum:
+      - ONCE
+      - WEEKLY
+      type: string
+      description: |-
+        * `ONCE` - One-off (dated)
+        * `WEEKLY` - Weekly (recurring)
     ListMetadataResponse:
       type: object
       properties:
@@ -41921,6 +44240,62 @@ components:
           minLength: 1
       required:
       - password
+    Material:
+      type: object
+      description: |-
+        Purchased item — raw material / bought component (distinct from in-house PartTypes).
+        Holds the purchase lead time used by the sourcing report.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        part_number:
+          type: string
+          description: Supplier or internal catalog number/SKU.
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 255
+        unit_of_measure:
+          type: string
+          maxLength: 20
+        purchase_lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to source this item from a supplier — drives the order-by
+            date in the sourcing report (order-by = need-by − lead time).
+        preferred_supplier:
+          type: string
+          format: uuid
+          nullable: true
+        preferred_supplier_name:
+          type: string
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - name
+      - preferred_supplier_name
+      - updated_at
     MaterialLot:
       type: object
       description: |-
@@ -41955,9 +44330,23 @@ components:
           type: string
           readOnly: true
           nullable: true
+        material:
+          type: string
+          format: uuid
+          nullable: true
+          description: The raw material / consumable this lot is stock of (mutually
+            exclusive with material_type, which is for buyable parts).
+        material_name:
+          type: string
+          readOnly: true
+          nullable: true
+        item_name:
+          type: string
+          readOnly: true
         material_description:
           type: string
-          description: Description for raw materials not tracked as PartTypes
+          description: Free-text description for ad-hoc raw materials not in the Material
+            list
           maxLength: 200
         supplier:
           type: string
@@ -42043,7 +44432,9 @@ components:
       - created_at
       - hold_reason
       - id
+      - item_name
       - lot_number
+      - material_name
       - material_type_name
       - parent_lot_number
       - quantity
@@ -42164,9 +44555,16 @@ components:
           type: string
           format: uuid
           nullable: true
+        material:
+          type: string
+          format: uuid
+          nullable: true
+          description: The raw material / consumable this lot is stock of (mutually
+            exclusive with material_type, which is for buyable parts).
         material_description:
           type: string
-          description: Description for raw materials not tracked as PartTypes
+          description: Free-text description for ad-hoc raw materials not in the Material
+            list
           maxLength: 200
         supplier:
           type: string
@@ -42255,6 +44653,44 @@ components:
         * `CONSUMED` - Consumed
         * `SCRAPPED` - Scrapped
         * `QUARANTINE` - Quarantine
+    MaterialRequest:
+      type: object
+      description: |-
+        Purchased item — raw material / bought component (distinct from in-house PartTypes).
+        Holds the purchase lead time used by the sourcing report.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        part_number:
+          type: string
+          description: Supplier or internal catalog number/SKU.
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 255
+        unit_of_measure:
+          type: string
+          minLength: 1
+          maxLength: 20
+        purchase_lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to source this item from a supplier — drives the order-by
+            date in the sourcing report (order-by = need-by − lead time).
+        preferred_supplier:
+          type: string
+          format: uuid
+          nullable: true
+        is_active:
+          type: boolean
+        archived:
+          type: boolean
+      required:
+      - name
     MaterialUsage:
       type: object
       description: Material consumption record serializer
@@ -42985,6 +45421,168 @@ components:
             additionalProperties: {}
       required:
       - data
+    OperatorHoursReport:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperatorHoursRow'
+      required:
+      - rows
+    OperatorHoursRow:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        name:
+          type: string
+        on_shift_hours:
+          type: number
+          format: double
+        direct_hours:
+          type: number
+          format: double
+      required:
+      - direct_hours
+      - name
+      - on_shift_hours
+      - user_id
+    OptimizationConfig:
+      type: object
+      description: |-
+        The tenant's solver knobs — read + PATCH from the scheduling settings dialog.
+        All fields are editable except the identity/version bookkeeping.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        solver_time_limit_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+          description: CP-SAT wall-clock cap per solve (seconds); best-so-far is returned
+            when it elapses. With match_operators on it's split across the machine
+            (~40%) and operator (~60%) phases.
+        relative_gap_limit:
+          type: number
+          format: double
+          minimum: 0
+          description: CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).
+        frozen_zone_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Days from now within which tasks are pinned (frozen).
+        slushy_zone_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Days after the frozen zone where moves are discouraged.
+        default_outside_process_turnaround_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Fallback outside-process turnaround (calendar days) when neither
+            the step nor the vendor specifies one — so an OSP step always reserves
+            elapsed time.
+        match_operators:
+          type: boolean
+          description: 'Two-phase solve: first schedule machines (fast, pooled labor),
+            then re-solve assigning a SPECIFIC operator to every attended op, warm-started
+            from the machine plan. Guarantees a real operator↔operation matching (scarce
+            skills push work late, never silently uncovered) at the cost of a longer
+            solve. Off = single fast machine solve.'
+        default_labor_model:
+          allOf:
+          - $ref: '#/components/schemas/DefaultLaborModelEnum'
+          description: |-
+            The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
+
+            * `off` - Off (no crew constraint)
+            * `pool` - Pool (cap at qualified crew)
+            * `named` - Named (assign a specific operator)
+        default_lockstep_batch:
+          type: boolean
+          description: 'Default lot-cohesion intent for work orders that don''t set
+            their own (`WorkOrder.lockstep_batch`). NOTE: currently informational
+            only — the solver always schedules co-located cohort parts as one cohesive
+            lot and carves a rework straggler into its own lot so the cohort keeps
+            progressing (it does NOT hold the WO); ON and OFF behave identically today.
+            The OFF meaning (allow a large lot to break into transfer batches to pipeline)
+            is reserved for the future transfer-batching work.'
+        shop_rate_per_hour:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Labor + overhead cost per shop hour (objective input).
+        overtime_multiplier:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,2})?$
+        pfd_allowance_pct:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          description: Personal/fatigue/delay allowance added to attended time (%).
+        late_penalty_urgent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        late_penalty_high:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        late_penalty_normal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        late_penalty_low:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        staging_buffer_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'Minutes between a component WO finishing and its parent assembly
+            WO being allowed to start (move/stage time). Assembly-convergence peg
+            — plan #9.'
+        job_change_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'Setup minutes charged when a resource switches to a different
+            work order on the SAME operation — keeps a job''s parts batched together.
+            Kept below operation-change setups by design: staying on the same operation
+            matters more than staying on the same work order.'
+        default_move_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Move/queue time between consecutive operations of a route —
+            the next operation can't start until this many minutes after the prior
+            one finishes (transport + queue). Applied to every intra-route hand-off;
+            0 = parts flow with no transfer delay. (Distinct from staging_buffer,
+            which is the cross-work-order assembly-convergence gap.)
+        auto_resolve:
+          allOf:
+          - $ref: '#/components/schemas/AutoResolveEnum'
+          description: |-
+            Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
+
+            * `off` - Off (flag stale only; planner re-solves by hand)
+            * `live` - Live (auto re-solve and supersede the schedule)
+        auto_resolve_min_interval_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'Anti-churn floor for LIVE auto-resolve: don''t re-solve a
+            schedule sooner than this many minutes after its last solve, so a burst
+            of changes batches into one re-solve.'
+      required:
+      - id
     Orders:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -43309,6 +45907,82 @@ components:
         * `SENT` - Sent Out
         * `RETURNED` - Returned
         * `CLOSED` - Closed
+    OvertimeWindow:
+      type: object
+      description: |-
+        Additive shop-open time — an extra run of a `shift` (its hours + crew). ONCE runs
+        it on [start_date, end_date]; WEEKLY on days_of_week. The solver adds it to that
+        shift's operators + attended machines (closures still win). Validates the fields the
+        recurrence needs.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        shift:
+          type: string
+          format: uuid
+          description: The shift being run as overtime — supplies the hours and the
+            crew (operators rostered to it).
+        shift_name:
+          type: string
+          nullable: true
+          readOnly: true
+        recurrence:
+          $ref: '#/components/schemas/LaborRecurrenceEnum'
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        days_of_week:
+          type: string
+          maxLength: 20
+        reason:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
+      required:
+      - id
+      - shift
+      - shift_name
+    OvertimeWindowRequest:
+      type: object
+      description: |-
+        Additive shop-open time — an extra run of a `shift` (its hours + crew). ONCE runs
+        it on [start_date, end_date]; WEEKLY on days_of_week. The solver adds it to that
+        shift's operators + attended machines (closures still win). Validates the fields the
+        recurrence needs.
+      properties:
+        shift:
+          type: string
+          format: uuid
+          description: The shift being run as overtime — supplies the hours and the
+            crew (operators rostered to it).
+        recurrence:
+          $ref: '#/components/schemas/LaborRecurrenceEnum'
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        days_of_week:
+          type: string
+          maxLength: 20
+        reason:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
+      required:
+      - shift
     PaginatedApprovalRequestList:
       type: object
       required:
@@ -43953,6 +46627,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FiveWhys'
+    PaginatedFixtureList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fixture'
     PaginatedGeneratedReportList:
       type: object
       required:
@@ -44114,6 +46811,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/JobRole'
+    PaginatedLaborCalendarBlockList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaborCalendarBlock'
+    PaginatedMaterialList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
     PaginatedMaterialLotList:
       type: object
       required:
@@ -44252,6 +46995,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OutsideProcessShipment'
+    PaginatedOvertimeWindowList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OvertimeWindow'
     PaginatedPartApprovalList:
       type: object
       required:
@@ -44413,6 +47179,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PersonalSchedule'
+    PaginatedPlantCalendarExceptionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlantCalendarException'
     PaginatedProcessChangeNoticeList:
       type: object
       required:
@@ -45929,6 +48718,30 @@ components:
           description: Require an active PartApproval (PPAP/FAI) covering the (part
             type, supplier) before a received lot of this part type can be accepted
             into stock.
+        can_make:
+          type: boolean
+          description: This part can be produced in-house (has a production process;
+            shortages spawn child work orders).
+        can_buy:
+          type: boolean
+          description: This part can be purchased from a supplier. May be True alongside
+            can_make for dual-sourced parts.
+        purchase_lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to source this part from a supplier when bought — drives
+            the order-by date in the sourcing report (order-by = need-by − lead time).
+        preferred_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default supplier when this part is purchased.
+        preferred_supplier_name:
+          type: string
+          readOnly: true
+          nullable: true
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -45964,6 +48777,7 @@ components:
       - id
       - is_current_version
       - name
+      - preferred_supplier_name
       - previous_version
       - updated_at
       - version
@@ -46009,6 +48823,26 @@ components:
           description: Require an active PartApproval (PPAP/FAI) covering the (part
             type, supplier) before a received lot of this part type can be accepted
             into stock.
+        can_make:
+          type: boolean
+          description: This part can be produced in-house (has a production process;
+            shortages spawn child work orders).
+        can_buy:
+          type: boolean
+          description: This part can be purchased from a supplier. May be True alongside
+            can_make for dual-sourced parts.
+        purchase_lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to source this part from a supplier when bought — drives
+            the order-by date in the sourcing report (order-by = need-by − lead time).
+        preferred_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default supplier when this part is purchased.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -46594,7 +49428,9 @@ components:
           type: boolean
     PatchedBOMLineRequest:
       type: object
-      description: BOM line item serializer
+      description: |-
+        BOM line item serializer. A line's component is EITHER an in-house `component_type`
+        (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
       properties:
         bom:
           type: string
@@ -46602,6 +49438,28 @@ components:
         component_type:
           type: string
           format: uuid
+          nullable: true
+          description: In-house component (source=MAKE). Mutually exclusive with `material`.
+        material:
+          type: string
+          format: uuid
+          nullable: true
+          description: Purchased component (source=BUY). Mutually exclusive with `component_type`.
+        source:
+          allOf:
+          - $ref: '#/components/schemas/BOMLineSourceEnum'
+          description: |-
+            Make-vs-buy: MAKE spawns an in-house child WO the parent assembly pegs to (WorkOrder.pegged_to_bom_line); BUY is procured. Plan #9.
+
+            * `MAKE` - Made in-house
+            * `BUY` - Purchased
+        consumed_at_step:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The parent-process step that consumes this component (the
+            assembly step). When set, the scheduler gates only that step on the component
+            WO''s completion; when null, the whole parent waits. Plan #9.'
         quantity:
           type: string
           format: decimal
@@ -46884,6 +49742,15 @@ components:
           type: string
           nullable: true
           maxLength: 50
+        default_outside_process_turnaround_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Default subcontract turnaround (calendar days) when this company
+            is a step's outside-process vendor and the step doesn't specify its own
+            lead time. Used by the scheduler to reserve elapsed vendor time for outside-process
+            operations.
         archived:
           type: boolean
     PatchedCoreRequest:
@@ -47365,6 +50232,21 @@ components:
             to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers)
             — those are still tracked on step executions, just never scheduled. Capacity
             for a type = the count of its schedulable units.
+        batch_capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: How many jobs/parts this resource handles at once. 1 (default)
+            = a normal one-at-a-time machine. >1 = a batch/process resource — see
+            `batch_mode`.
+        batch_mode:
+          allOf:
+          - $ref: '#/components/schemas/BatchModeEnum'
+          description: |-
+            How a batch resource (batch_capacity>1) behaves. CONCURRENT: up to batch_capacity independent jobs run at once (a bank of wash tanks / parallel stations). CYCLE: a furnace/oven — ONE load at a time of up to batch_capacity parts, and the cycle time is fixed regardless of how full the load is (a job of N parts takes ceil(N / batch_capacity) loads). Ignored when capacity = 1.
+
+            * `concurrent` - Concurrent (parallel jobs)
+            * `cycle` - Cycle (shared load, fixed cycle time)
         notes:
           type: string
         archived:
@@ -47488,6 +50370,47 @@ components:
           nullable: true
         archived:
           type: boolean
+    PatchedFixtureRequest:
+      type: object
+      description: |-
+        A shared, quantity-limited scheduling resource — fixture / cutting tool / die / NC
+        program. `steps` is the set of operations that require it; the solver serializes ops
+        against the `quantity` available (cumulative capacity). `steps` validates against the
+        tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/FixtureKindEnum'
+          description: |-
+            What kind of shared resource this is (categorisation only — the scheduling constraint is identical for all kinds).
+
+            * `FIXTURE` - Fixture
+            * `TOOL` - Cutting tool
+            * `DIE` - Die / mold
+            * `PROGRAM` - NC program
+            * `OTHER` - Other
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: How many of this resource exist (concurrency limit).
+        lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to acquire or produce this tooling if it's short — drives
+            the order-by date in the sourcing report.
+        steps:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Steps that require this resource.
     PatchedHarvestedComponentRequest:
       type: object
       description: Harvested component serializer
@@ -47603,6 +50526,53 @@ components:
           description: Inactive roles are hidden from assignment pickers.
         archived:
           type: boolean
+    PatchedLaborCalendarBlockRequest:
+      type: object
+      description: |-
+        Operator non-working time — PTO / sick / training / meeting / break — one-off
+        (ONCE: start_time+end_time) or weekly (WEEKLY: days_of_week+window_start/end),
+        company-wide (user null) or per person. Operators only; machines keep running.
+        Validates the fields the chosen recurrence needs.
+      properties:
+        user:
+          type: integer
+          nullable: true
+          description: The operator this block applies to. Null = the whole company
+            (every operator), e.g. an all-hands meeting.
+        kind:
+          $ref: '#/components/schemas/LaborCalendarBlockKindEnum'
+        recurrence:
+          $ref: '#/components/schemas/LaborRecurrenceEnum'
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: One-off start (recurrence=ONCE).
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: One-off end (recurrence=ONCE).
+        days_of_week:
+          type: string
+          description: Recurring days as comma-separated numbers (0=Monday..6=Sunday),
+            e.g. '0,2,4' (recurrence=WEEKLY).
+          maxLength: 20
+        window_start:
+          type: string
+          format: time
+          nullable: true
+          description: Recurring start time-of-day (recurrence=WEEKLY).
+        window_end:
+          type: string
+          format: time
+          nullable: true
+          description: Recurring end time-of-day (recurrence=WEEKLY).
+        reason:
+          type: string
+          maxLength: 200
+        is_active:
+          type: boolean
     PatchedMaterialLotRequest:
       type: object
       description: |-
@@ -47626,9 +50596,16 @@ components:
           type: string
           format: uuid
           nullable: true
+        material:
+          type: string
+          format: uuid
+          nullable: true
+          description: The raw material / consumable this lot is stock of (mutually
+            exclusive with material_type, which is for buyable parts).
         material_description:
           type: string
-          description: Description for raw materials not tracked as PartTypes
+          description: Free-text description for ad-hoc raw materials not in the Material
+            list
           maxLength: 200
         supplier:
           type: string
@@ -47676,6 +50653,42 @@ components:
         storage_location:
           type: string
           maxLength: 100
+        archived:
+          type: boolean
+    PatchedMaterialRequest:
+      type: object
+      description: |-
+        Purchased item — raw material / bought component (distinct from in-house PartTypes).
+        Holds the purchase lead time used by the sourcing report.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        part_number:
+          type: string
+          description: Supplier or internal catalog number/SKU.
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 255
+        unit_of_measure:
+          type: string
+          minLength: 1
+          maxLength: 20
+        purchase_lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to source this item from a supplier — drives the order-by
+            date in the sourcing report (order-by = need-by − lead time).
+        preferred_supplier:
+          type: string
+          format: uuid
+          nullable: true
+        is_active:
+          type: boolean
         archived:
           type: boolean
     PatchedMeasurementDefinitionRequest:
@@ -47779,6 +50792,135 @@ components:
           description: Default template for new orders in this tenant
         archived:
           type: boolean
+    PatchedOptimizationConfigRequest:
+      type: object
+      description: |-
+        The tenant's solver knobs — read + PATCH from the scheduling settings dialog.
+        All fields are editable except the identity/version bookkeeping.
+      properties:
+        solver_time_limit_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+          description: CP-SAT wall-clock cap per solve (seconds); best-so-far is returned
+            when it elapses. With match_operators on it's split across the machine
+            (~40%) and operator (~60%) phases.
+        relative_gap_limit:
+          type: number
+          format: double
+          minimum: 0
+          description: CP-SAT relative optimality gap to stop at (e.g. 0.02 = 2%).
+        frozen_zone_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Days from now within which tasks are pinned (frozen).
+        slushy_zone_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Days after the frozen zone where moves are discouraged.
+        default_outside_process_turnaround_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Fallback outside-process turnaround (calendar days) when neither
+            the step nor the vendor specifies one — so an OSP step always reserves
+            elapsed time.
+        match_operators:
+          type: boolean
+          description: 'Two-phase solve: first schedule machines (fast, pooled labor),
+            then re-solve assigning a SPECIFIC operator to every attended op, warm-started
+            from the machine plan. Guarantees a real operator↔operation matching (scarce
+            skills push work late, never silently uncovered) at the cost of a longer
+            solve. Off = single fast machine solve.'
+        default_labor_model:
+          allOf:
+          - $ref: '#/components/schemas/DefaultLaborModelEnum'
+          description: |-
+            The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
+
+            * `off` - Off (no crew constraint)
+            * `pool` - Pool (cap at qualified crew)
+            * `named` - Named (assign a specific operator)
+        default_lockstep_batch:
+          type: boolean
+          description: 'Default lot-cohesion intent for work orders that don''t set
+            their own (`WorkOrder.lockstep_batch`). NOTE: currently informational
+            only — the solver always schedules co-located cohort parts as one cohesive
+            lot and carves a rework straggler into its own lot so the cohort keeps
+            progressing (it does NOT hold the WO); ON and OFF behave identically today.
+            The OFF meaning (allow a large lot to break into transfer batches to pipeline)
+            is reserved for the future transfer-batching work.'
+        shop_rate_per_hour:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Labor + overhead cost per shop hour (objective input).
+        overtime_multiplier:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,2})?$
+        pfd_allowance_pct:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          description: Personal/fatigue/delay allowance added to attended time (%).
+        late_penalty_urgent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        late_penalty_high:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        late_penalty_normal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        late_penalty_low:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        staging_buffer_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'Minutes between a component WO finishing and its parent assembly
+            WO being allowed to start (move/stage time). Assembly-convergence peg
+            — plan #9.'
+        job_change_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'Setup minutes charged when a resource switches to a different
+            work order on the SAME operation — keeps a job''s parts batched together.
+            Kept below operation-change setups by design: staying on the same operation
+            matters more than staying on the same work order.'
+        default_move_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Move/queue time between consecutive operations of a route —
+            the next operation can't start until this many minutes after the prior
+            one finishes (transport + queue). Applied to every intra-route hand-off;
+            0 = parts flow with no transfer delay. (Distinct from staging_buffer,
+            which is the cross-work-order assembly-convergence gap.)
+        auto_resolve:
+          allOf:
+          - $ref: '#/components/schemas/AutoResolveEnum'
+          description: |-
+            Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
+
+            * `off` - Off (flag stale only; planner re-solves by hand)
+            * `live` - Live (auto re-solve and supersede the schedule)
+        auto_resolve_min_interval_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'Anti-churn floor for LIVE auto-resolve: don''t re-solve a
+            schedule sooner than this many minutes after its last solve, so a burst
+            of changes batches into one re-solve.'
     PatchedOrdersRequest:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -47845,6 +50987,37 @@ components:
         notes:
           type: string
         archived:
+          type: boolean
+    PatchedOvertimeWindowRequest:
+      type: object
+      description: |-
+        Additive shop-open time — an extra run of a `shift` (its hours + crew). ONCE runs
+        it on [start_date, end_date]; WEEKLY on days_of_week. The solver adds it to that
+        shift's operators + attended machines (closures still win). Validates the fields the
+        recurrence needs.
+      properties:
+        shift:
+          type: string
+          format: uuid
+          description: The shift being run as overtime — supplies the hours and the
+            crew (operators rostered to it).
+        recurrence:
+          $ref: '#/components/schemas/LaborRecurrenceEnum'
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        days_of_week:
+          type: string
+          maxLength: 20
+        reason:
+          type: string
+          maxLength: 200
+        is_active:
           type: boolean
     PatchedPartApprovalRequest:
       type: object
@@ -47933,6 +51106,26 @@ components:
           description: Require an active PartApproval (PPAP/FAI) covering the (part
             type, supplier) before a received lot of this part type can be accepted
             into stock.
+        can_make:
+          type: boolean
+          description: This part can be produced in-house (has a production process;
+            shortages spawn child work orders).
+        can_buy:
+          type: boolean
+          description: This part can be purchased from a supplier. May be True alongside
+            can_make for dual-sourced parts.
+        purchase_lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to source this part from a supplier when bought — drives
+            the order-by date in the sourcing report (order-by = need-by − lead time).
+        preferred_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default supplier when this part is purchased.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -48093,6 +51286,34 @@ components:
           maxLength: 64
         channels:
           description: List of channel codes, e.g. ['email']. Email-only at launch.
+    PatchedPlantCalendarExceptionRequest:
+      type: object
+      description: |-
+        A dated, plant-wide non-working window — holiday / shutdown / inventory day.
+        The solver blocks EVERY machine and treats operators as absent during it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        kind:
+          $ref: '#/components/schemas/PlantCalendarExceptionKindEnum'
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        recurrence:
+          allOf:
+          - $ref: '#/components/schemas/PlantClosureRecurrenceEnum'
+          description: |-
+            YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+
+            * `ONCE` - One-off (dated)
+            * `YEARLY` - Repeats yearly
+        is_active:
+          type: boolean
     PatchedProcessChangeNoticeRequest:
       type: object
       description: Read/write serializer for PCNs.
@@ -48292,6 +51513,14 @@ components:
           nullable: true
           description: Description of changes from previous version (for approval
             review)
+        default_scrap_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,4})?$
+          description: Default expected scrap fraction (0–1) applied to steps of this
+            process that don't set their own `Steps.scrap_rate`. Used to gross up
+            the started quantity so a work order still finishes the requested number
+            of good parts (release-11-to-ship-10).
     PatchedQualityErrorsListRequest:
       type: object
       description: |-
@@ -49151,6 +52380,17 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_process_lead_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Planned vendor turnaround for this outside-process step, in
+            CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed,
+            no-capacity interval that gates downstream ops. Overrides the supplier's
+            default; if unset, the supplier default then the tenant OptimizationConfig
+            default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return
+            overrides.
         is_decision_point:
           type: boolean
         decision_type:
@@ -49183,6 +52423,16 @@ components:
             = substep N requires N-1 complete; 'free_order' = any order. Choices defined
             in Tracker.models.dwi.SequencingMode.
           maxLength: 20
+        scrap_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,4})?$
+          nullable: true
+          description: Expected fraction of parts scrapped AT this step (0–1). Null
+            inherits the process default. Today this is an authored estimate; the
+            resolution chain (`services.mes.yield_planning`) is built so a statistically-observed
+            rate from StepExecution history can later take precedence when there's
+            enough data to be confident.
         archived:
           type: boolean
     PatchedSubstepCompletionRequest:
@@ -50194,6 +53444,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        expected_start:
+          type: string
+          format: date
+          nullable: true
         expected_completion:
           type: string
           format: date
@@ -50504,6 +53758,121 @@ components:
           type: boolean
       required:
       - is_pinned
+    PlanWorkOrderInputRequest:
+      type: object
+      description: Input for the Gantt 'add work' action — create a WO + spawn its
+        parts.
+      properties:
+        process:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        erp_id:
+          type: string
+          maxLength: 100
+        priority:
+          type: integer
+        expected_start:
+          type: string
+          format: date
+          nullable: true
+        expected_completion:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - process
+      - quantity
+    PlantCalendarException:
+      type: object
+      description: |-
+        A dated, plant-wide non-working window — holiday / shutdown / inventory day.
+        The solver blocks EVERY machine and treats operators as absent during it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        kind:
+          $ref: '#/components/schemas/PlantCalendarExceptionKindEnum'
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        recurrence:
+          allOf:
+          - $ref: '#/components/schemas/PlantClosureRecurrenceEnum'
+          description: |-
+            YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+
+            * `ONCE` - One-off (dated)
+            * `YEARLY` - Repeats yearly
+        is_active:
+          type: boolean
+      required:
+      - end_time
+      - id
+      - name
+      - start_time
+    PlantCalendarExceptionKindEnum:
+      enum:
+      - HOLIDAY
+      - SHUTDOWN
+      - INVENTORY
+      - OTHER
+      type: string
+      description: |-
+        * `HOLIDAY` - Holiday
+        * `SHUTDOWN` - Plant Shutdown
+        * `INVENTORY` - Inventory / Stock-take
+        * `OTHER` - Other
+    PlantCalendarExceptionRequest:
+      type: object
+      description: |-
+        A dated, plant-wide non-working window — holiday / shutdown / inventory day.
+        The solver blocks EVERY machine and treats operators as absent during it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        kind:
+          $ref: '#/components/schemas/PlantCalendarExceptionKindEnum'
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        recurrence:
+          allOf:
+          - $ref: '#/components/schemas/PlantClosureRecurrenceEnum'
+          description: |-
+            YEARLY repeats the closure's month/day span every year (fixed-date holidays like Christmas); the stored year is just the first occurrence.
+
+            * `ONCE` - One-off (dated)
+            * `YEARLY` - Repeats yearly
+        is_active:
+          type: boolean
+      required:
+      - end_time
+      - name
+      - start_time
+    PlantClosureRecurrenceEnum:
+      enum:
+      - ONCE
+      - YEARLY
+      type: string
+      description: |-
+        * `ONCE` - One-off (dated)
+        * `YEARLY` - Repeats yearly
     PresetListResponse:
       type: object
       properties:
@@ -51365,6 +54734,14 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        default_scrap_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,4})?$
+          description: Default expected scrap fraction (0–1) applied to steps of this
+            process that don't set their own `Steps.scrap_rate`. Used to gross up
+            the started quantity so a work order still finishes the requested number
+            of good parts (release-11-to-ship-10).
         part_type_name:
           type: string
           readOnly: true
@@ -51463,6 +54840,14 @@ components:
           nullable: true
           description: Description of changes from previous version (for approval
             review)
+        default_scrap_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,4})?$
+          description: Default expected scrap fraction (0–1) applied to steps of this
+            process that don't set their own `Steps.scrap_rate`. Used to gross up
+            the started quantity so a work order still finishes the requested number
+            of good parts (release-11-to-ship-10).
       required:
       - name
       - part_type
@@ -51478,6 +54863,27 @@ components:
         * `PROCESSING` - Processing
         * `COMPLETED` - Completed
         * `FAILED` - Failed
+    ProduceRequirement:
+      type: object
+      properties:
+        work_order:
+          type: string
+        component:
+          type: string
+        qty:
+          type: integer
+        need_by:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+      required:
+      - component
+      - need_by
+      - qty
+      - status
+      - work_order
     ProposeProcessChangeRequestRequest:
       type: object
       properties:
@@ -52726,6 +56132,25 @@ components:
         * `quarantine` - Quarantine
         * `rework` - Rework
         * `scrap` - Scrap
+    ReassignMachineRequestRequest:
+      type: object
+      description: Move a scheduled task onto a specific machine (planner override).
+      properties:
+        machine_id:
+          type: string
+          format: uuid
+      required:
+      - machine_id
+    ReassignOperatorRequestRequest:
+      type: object
+      description: Assign / re-assign / clear (null) the operator on a scheduled task.
+      properties:
+        operator_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - operator_id
     ReceivingCharacteristic:
       type: object
       description: A measurement definition to capture during receiving inspection.
@@ -54348,6 +57773,17 @@ components:
         solve_time_ms:
           type: integer
           readOnly: true
+          description: Total CP-SAT wall-clock across all phases (ms).
+        machine_solve_ms:
+          type: integer
+          readOnly: true
+          description: Wall-clock of the machine (Layer-1) phase (ms). Equals solve_time_ms
+            for a single-phase solve (match_operators off).
+        operator_solve_ms:
+          type: integer
+          readOnly: true
+          description: Wall-clock of the named-operator (Layer-2 in-solve) phase (ms);
+            0 when match_operators is off and operators come from Dispatch.
         objective_value_cents:
           type: integer
           readOnly: true
@@ -54368,6 +57804,15 @@ components:
           description: Frozen/planner-pinned tasks the solver had to move because
             the world changed under them (machine down, shift edited). >0 means the
             freeze couldn't be fully honored — surface for the planner.
+        relative_gap:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+          description: 'CP-SAT proven optimality gap: (objective − best_bound) / |objective|.
+            0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means
+            the solver proved the schedule is within that fraction of the best possible
+            objective before the time limit. Null when nothing was solved.'
         is_active:
           type: boolean
           readOnly: true
@@ -54395,7 +57840,10 @@ components:
       - is_active
       - is_draft
       - is_stale
+      - machine_solve_ms
       - objective_value_cents
+      - operator_solve_ms
+      - relative_gap
       - relaxed_pin_count
       - solve_time_ms
       - solver_status
@@ -54610,6 +58058,11 @@ components:
           type: string
           nullable: true
           readOnly: true
+        work_order_id:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
         work_center:
           type: string
           nullable: true
@@ -54638,18 +58091,75 @@ components:
           allOf:
           - $ref: '#/components/schemas/FenceZoneEnum'
           readOnly: true
+        material_shortage:
+          type: boolean
+          readOnly: true
+          description: A purchased component this operation consumes is short on hand
+            with no known incoming receipt date — the op is scheduled but flagged
+            for the planner (material-constrained scheduling, buy-side).
+        material_detail:
+          type: string
+          readOnly: true
+          description: Human summary of the material situation for this op — short
+            component(s), shortfall, and any incoming receipt date. Empty when material
+            is on hand. Set post-solve alongside material_shortage.
+        late_cause:
+          type: string
+          readOnly: true
+          description: Heuristic reason this task finishes late — the binding constraint
+            (material / uncovered operator / machine contention / late release / tight
+            lead time). Empty when the task is on time. Set post-solve by services.scheduling.late_cause.
+        in_progress:
+          type: boolean
+          readOnly: true
+          description: This operation was physically running at solve time (open StepExecution)
+            — the solver pinned it at 'now' with only its remaining duration. Distinguishes
+            a running lock from a planner pin on the Gantt.
+        actual_start:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Real start of this operation, stamped from the part/core's
+            StepExecution entry (capture-only; for planned-vs-actual). Null until
+            the unit reaches this step.
+        actual_end:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Real completion, stamped from the StepExecution exit. Null
+            while the op is unstarted or still running.
+        is_makeup:
+          type: boolean
+          readOnly: true
+        cure_window_violation:
+          type: boolean
+          readOnly: true
+          description: 'This op starts later than a max-time-between-operations limit
+            on its incoming edge allows (e.g. a cure/coat/passivation window) — capacity
+            couldn''t meet the window, so it''s scheduled but flagged: the part will
+            scrap or need rework unless expedited. Set post-solve (soft constraint).'
       required:
+      - actual_end
+      - actual_start
       - assigned_operator
       - core
       - core_number
+      - cure_window_violation
       - due_date
       - end_time
       - fence_zone
       - id
+      - in_progress
       - is_late
+      - is_makeup
       - is_pinned
+      - late_cause
       - machine
       - machine_name
+      - material_detail
+      - material_shortage
       - operator_name
       - part
       - part_erp
@@ -54660,6 +58170,7 @@ components:
       - step_name
       - work_center
       - work_order
+      - work_order_id
     ScopeEnum:
       enum:
       - sampled
@@ -55075,14 +58586,35 @@ components:
         * `INFEASIBLE` - Infeasible
         * `MODEL_INVALID` - Model invalid
         * `UNKNOWN` - Unknown
-    SourceEnum:
-      enum:
-      - PURCHASED_LOT
-      - OUTSIDE_PROCESS
-      type: string
-      description: |-
-        * `PURCHASED_LOT` - PURCHASED_LOT
-        * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
+    SourceRequirement:
+      type: object
+      properties:
+        material:
+          type: string
+        qty_short:
+          type: integer
+        need_by:
+          type: string
+          format: date
+          nullable: true
+        lead_time_days:
+          type: integer
+          nullable: true
+        order_by:
+          type: string
+          format: date
+          nullable: true
+        incoming_date:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - incoming_date
+      - lead_time_days
+      - material
+      - need_by
+      - order_by
+      - qty_short
     SourceTypeEnum:
       enum:
       - CUSTOMER_RETURN
@@ -55095,6 +58627,25 @@ components:
         * `PURCHASED` - Purchased Core
         * `WARRANTY` - Warranty Return
         * `TRADE_IN` - Trade-In
+    SourcingRequirements:
+      type: object
+      properties:
+        source:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRequirement'
+        produce:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProduceRequirement'
+        tooling:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolingRequirement'
+      required:
+      - produce
+      - source
+      - tooling
     SplitReasonEnum:
       enum:
       - QUANTITY
@@ -55198,6 +58749,17 @@ components:
           type: string
           readOnly: true
           nullable: true
+        outside_process_lead_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Planned vendor turnaround for this outside-process step, in
+            CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed,
+            no-capacity interval that gates downstream ops. Overrides the supplier's
+            default; if unset, the supplier default then the tenant OptimizationConfig
+            default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return
+            overrides.
         is_terminal:
           type: boolean
         terminal_status:
@@ -55294,6 +58856,17 @@ components:
           pattern: ^-?\d{0,6}(?:\.\d{0,4})?$
           nullable: true
           description: Threshold value for measurement-based routing
+        max_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Scheduling: MAX elapsed minutes allowed between from_step
+            finishing and to_step starting — a process time limit (e.g. ''coat within
+            4h of clean'', passivation dwell, adhesive pot-life). The scheduler treats
+            it as a soft upper bound: it schedules to meet it and FLAGS the op when
+            capacity can''t, rather than blocking the whole solve. Null = no limit
+            (the default).'
       required:
       - from_step
       - from_step_name
@@ -55327,6 +58900,17 @@ components:
           pattern: ^-?\d{0,6}(?:\.\d{0,4})?$
           nullable: true
           description: Threshold value for measurement-based routing
+        max_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Scheduling: MAX elapsed minutes allowed between from_step
+            finishing and to_step starting — a process time limit (e.g. ''coat within
+            4h of clean'', passivation dwell, adhesive pot-life). The scheduler treats
+            it as a soft upper bound: it schedules to meet it and FLAGS the op when
+            capacity can''t, rather than blocking the whole solve. Null = no limit
+            (the default).'
       required:
       - from_step
       - to_step
@@ -56023,6 +59607,17 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_process_lead_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Planned vendor turnaround for this outside-process step, in
+            CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed,
+            no-capacity interval that gates downstream ops. Overrides the supplier's
+            default; if unset, the supplier default then the tenant OptimizationConfig
+            default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return
+            overrides.
         is_terminal:
           type: boolean
         terminal_status:
@@ -56445,6 +60040,17 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_process_lead_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Planned vendor turnaround for this outside-process step, in
+            CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed,
+            no-capacity interval that gates downstream ops. Overrides the supplier's
+            default; if unset, the supplier default then the tenant OptimizationConfig
+            default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return
+            overrides.
         is_decision_point:
           type: boolean
         decision_type:
@@ -56476,6 +60082,16 @@ components:
             = substep N requires N-1 complete; 'free_order' = any order. Choices defined
             in Tracker.models.dwi.SequencingMode.
           maxLength: 20
+        scrap_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,4})?$
+          nullable: true
+          description: Expected fraction of parts scrapped AT this step (0–1). Null
+            inherits the process default. Today this is an authored estimate; the
+            resolution chain (`services.mes.yield_planning`) is built so a statistically-observed
+            rate from StepExecution history can later take precedence when there's
+            enough data to be confident.
         created_at:
           type: string
           format: date-time
@@ -56578,6 +60194,17 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_process_lead_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Planned vendor turnaround for this outside-process step, in
+            CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed,
+            no-capacity interval that gates downstream ops. Overrides the supplier's
+            default; if unset, the supplier default then the tenant OptimizationConfig
+            default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return
+            overrides.
         is_decision_point:
           type: boolean
         decision_type:
@@ -56610,6 +60237,16 @@ components:
             = substep N requires N-1 complete; 'free_order' = any order. Choices defined
             in Tracker.models.dwi.SequencingMode.
           maxLength: 20
+        scrap_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,4})?$
+          nullable: true
+          description: Expected fraction of parts scrapped AT this step (0–1). Null
+            inherits the process default. Today this is an authored estimate; the
+            resolution chain (`services.mes.yield_planning`) is built so a statistically-observed
+            rate from StepExecution history can later take precedence when there's
+            enough data to be confident.
         archived:
           type: boolean
       required:
@@ -59180,6 +62817,30 @@ components:
         * `SHIFT` - On Shift
         * `BREAK` - Break
         * `LUNCH` - Lunch
+    ToolingRequirement:
+      type: object
+      properties:
+        fixture:
+          type: string
+        kind:
+          type: string
+        need_by:
+          type: string
+          format: date
+          nullable: true
+        lead_time_days:
+          type: integer
+          nullable: true
+        order_by:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - fixture
+      - kind
+      - lead_time_days
+      - need_by
+      - order_by
     TrainingMatrix:
       type: object
       description: Operators x training-types competency matrix.
@@ -60814,6 +64475,10 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        expected_start:
+          type: string
+          format: date
+          nullable: true
         expected_completion:
           type: string
           format: date
@@ -60996,6 +64661,28 @@ components:
             additionalProperties: {}
       required:
       - results
+    WorkOrderCreateMakeupResponse:
+      type: object
+      properties:
+        created:
+          type: integer
+        target_good:
+          type: integer
+        alive:
+          type: integer
+        good:
+          type: integer
+        scrapped:
+          type: integer
+        shortfall:
+          type: integer
+      required:
+      - alive
+      - created
+      - good
+      - scrapped
+      - shortfall
+      - target_good
     WorkOrderList:
       type: object
       description: Lightweight serializer for work order list views - avoids N+1 queries.
@@ -61119,6 +64806,90 @@ components:
       - split_at
       - split_reason
       - updated_at
+    WorkOrderMakeupStatus:
+      type: object
+      properties:
+        target_good:
+          type: integer
+        alive:
+          type: integer
+        good:
+          type: integer
+        scrapped:
+          type: integer
+        shortfall:
+          type: integer
+      required:
+      - alive
+      - good
+      - scrapped
+      - shortfall
+      - target_good
+    WorkOrderMaterialRequirementRow:
+      type: object
+      properties:
+        component:
+          type: string
+        kind:
+          type: string
+        source:
+          type: string
+        quantity:
+          type: number
+          format: double
+        unit_of_measure:
+          type: string
+        consumed_at_step:
+          type: string
+          nullable: true
+        on_hand:
+          type: number
+          format: double
+        incoming:
+          type: number
+          format: double
+        short_qty:
+          type: number
+          format: double
+        status:
+          type: string
+        is_optional:
+          type: boolean
+        lead_time_days:
+          type: integer
+          nullable: true
+        need_by:
+          type: string
+          format: date
+          nullable: true
+        order_by:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - component
+      - consumed_at_step
+      - incoming
+      - is_optional
+      - kind
+      - lead_time_days
+      - need_by
+      - on_hand
+      - order_by
+      - quantity
+      - short_qty
+      - source
+      - status
+      - unit_of_measure
+    WorkOrderMaterialRequirements:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderMaterialRequirementRow'
+      required:
+      - rows
     WorkOrderPlaceOnHoldInputRequest:
       type: object
       properties:
@@ -61179,6 +64950,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        expected_start:
+          type: string
+          format: date
+          nullable: true
         expected_completion:
           type: string
           format: date
@@ -61200,6 +64975,27 @@ components:
           type: boolean
       required:
       - ERP_id
+    WorkOrderSetQuantityInputRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 0
+      required:
+      - quantity
+    WorkOrderSetQuantityResponse:
+      type: object
+      properties:
+        quantity:
+          type: integer
+        added:
+          type: integer
+        cancelled:
+          type: integer
+      required:
+      - added
+      - cancelled
+      - quantity
     WorkOrderSplitInputRequest:
       type: object
       properties:
@@ -61316,11 +65112,22 @@ components:
           type: string
           format: date-time
           nullable: true
+        scheduled_start:
+          type: string
+          format: date-time
+          nullable: true
         work_center:
           type: string
           format: uuid
           nullable: true
         work_center_kind:
+          type: string
+          nullable: true
+        machine:
+          type: string
+          format: uuid
+          nullable: true
+        machine_name:
           type: string
           nullable: true
         readiness:
@@ -61331,10 +65138,13 @@ components:
       - earliest_entered_at
       - expected_completion
       - is_held
+      - machine
+      - machine_name
       - part_type_name
       - priority
       - qty_ready
       - readiness
+      - scheduled_start
       - step
       - step_name
       - work_center

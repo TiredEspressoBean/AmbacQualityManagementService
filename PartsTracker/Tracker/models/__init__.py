@@ -174,6 +174,10 @@ from .mes_standard import (
     Shift,
     ScheduleSlot,
     DowntimeEvent,
+    PlantCalendarException,
+    LaborCalendarBlock,
+    OvertimeWindow,
+    Material,
 )
 
 # Remanufacturing add-on
@@ -484,6 +488,10 @@ __all__ = [
     'Shift',
     'ScheduleSlot',
     'DowntimeEvent',
+    'PlantCalendarException',
+    'LaborCalendarBlock',
+    'OvertimeWindow',
+    'Material',
 
     # Remanufacturing Add-on
     'Core',

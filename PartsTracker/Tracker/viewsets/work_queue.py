@@ -13,7 +13,9 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.response import Response
 
-from Tracker.models import StepExecution, WorkOrder, WorkOrderHold
+from Tracker.models import (
+    ScheduledTask, ScheduleResult, StepExecution, WorkOrder, WorkOrderHold,
+)
 from Tracker.serializers.work_queue import WorkQueueRowSerializer
 from Tracker.viewsets.base import TenantScopedMixin
 
@@ -25,6 +27,8 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     row is a view onto WorkOrder work, not a first-class model). Filters:
       - `readiness=ready|blocked` (default: both, blocked sunk last)
       - `wo=<uuid>` — rows for a single WO
+      - `machine=<uuid>` / `machine__in=<csv>` — station pull: only rows the live
+        schedule assigned to that machine (unscheduled rows drop out)
       - `search=<term>` — matches WO ERP id or step name
       - standard `?limit=&offset=` pagination
     """
@@ -34,6 +38,39 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     # WorkOrder is the natural gate (broad grant). The actual rows are computed
     # by _rows() below — no queryset filtering paths from DRF are used.
     queryset = WorkOrder.unscoped.none()
+
+    def _scheduled_meta(self):
+        """Map (work_order_id, step_id) -> {start, machine_id, machine_name} on the live
+        committed schedule — the earliest planned start for the cohort and the machine that
+        start is assigned to (so the floor sees *which machine* to run it on). Empty when
+        there is no active schedule, so the queue falls back to the heuristic order. Bulk
+        read outside a request path uses `.unscoped` with an explicit tenant filter."""
+        tenant = self.tenant
+        active = (
+            ScheduleResult.unscoped
+            .filter(tenant=tenant, is_active=True, is_draft=False)
+            .order_by("-created_at").first()
+        )
+        if active is None:
+            return {}
+        meta: dict = {}
+        # Ordered by start_time, so the first row seen per (WO, step) is the earliest —
+        # its machine is the representative one to label (a cohort normally runs together).
+        for r in (
+            ScheduledTask.unscoped
+            .filter(tenant=tenant, schedule=active, part__isnull=False)
+            .values("part__work_order_id", "step_id", "start_time",
+                    "machine_id", "machine__name")
+            .order_by("start_time")
+        ):
+            key = (r["part__work_order_id"], r["step_id"])
+            if key not in meta:
+                meta[key] = {
+                    "start": r["start_time"],
+                    "machine_id": r["machine_id"],
+                    "machine_name": r["machine__name"],
+                }
+        return meta
 
     def _rows(self):
         """Compute the ranked aggregate as a Python list of row dicts."""
@@ -104,14 +141,24 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 | Q(step__name__icontains=term)
             )
 
-        # Rank: blocked rows sink last; then priority (1=Urgent .. 4=Low), then
-        # due date, then aging.
+        # Fallback rank (rows the planner hasn't scheduled): blocked sink last;
+        # then priority (1=Urgent .. 4=Low), due date, aging.
         rows_qs = rows_qs.order_by(
             "is_held",
             "part__work_order__priority",
             "part__work_order__expected_completion",
             "earliest_entered_at",
         )
+
+        # APS schedule order: the earliest planned start per (WO, step) on the
+        # live committed schedule. Scheduled rows lead in planned order; anything
+        # the solver didn't place keeps the heuristic order above. So the floor
+        # works the plan when there is one and degrades gracefully when there
+        # isn't. (Assignment-driven "your work today" is a later, bigger shift.)
+        sched_meta = self._scheduled_meta()
+
+        def _meta(wo_id, step_id):
+            return sched_meta.get((wo_id, step_id)) or {}
 
         rows = [
             {
@@ -128,13 +175,38 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "readiness": "blocked" if r["is_held"] else "ready",
                 "work_center": r["step__work_center_id"],
                 "work_center_kind": r["step__work_center__kind"],
+                "scheduled_start": _meta(r["part__work_order_id"], r["step_id"]).get("start"),
+                # The machine the schedule assigned this cohort to (null = none / unscheduled).
+                "machine": _meta(r["part__work_order_id"], r["step_id"]).get("machine_id"),
+                "machine_name": _meta(r["part__work_order_id"], r["step_id"]).get("machine_name"),
             }
             for r in rows_qs
         ]
 
+        # Stable re-rank onto the schedule: blocked still sink last; scheduled
+        # rows lead, ordered by planned start; unscheduled rows keep their
+        # heuristic order (Python sort is stable). The mixed int/datetime third
+        # key is safe — it's only compared within a same-`scheduled?` group.
+        rows.sort(key=lambda row: (
+            row["is_held"],
+            0 if row["scheduled_start"] is not None else 1,
+            row["scheduled_start"] if row["scheduled_start"] is not None else 0,
+        ))
+
         readiness = params.get("readiness")
         if readiness in ("ready", "blocked"):
             rows = [row for row in rows if row["readiness"] == readiness]
+
+        # Machine scoping (station pull): the assigned machine comes from the schedule map,
+        # not the StepExecution grain, so filter in Python after the rows are built. A row
+        # the solver didn't place (machine=None) is excluded by a machine filter.
+        machine = params.get("machine")
+        if machine:
+            rows = [row for row in rows if row["machine"] and str(row["machine"]) == machine]
+        machines_csv = params.get("machine__in")
+        if machines_csv:
+            mids = {m for m in machines_csv.split(",") if m}
+            rows = [row for row in rows if row["machine"] and str(row["machine"]) in mids]
 
         return rows
 

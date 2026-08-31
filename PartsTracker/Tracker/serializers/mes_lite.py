@@ -630,7 +630,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         model = WorkOrder
         fields = (
         'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info', 'related_order_detail',
-        'process', 'process_info', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
+        'process', 'process_info', 'expected_start', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
         'notes', 'parts_summary', 'current_hold',
         'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
         'created_at', 'updated_at', 'archived')
@@ -891,7 +891,7 @@ class StepsSerializer(SecureModelMixin):
             # Workflow engine - step type
             'step_type',
             # Outside processing (subcontract op — Flow B)
-            'is_outside_process', 'outside_supplier',
+            'is_outside_process', 'outside_supplier', 'outside_process_lead_days',
             # Workflow engine - branching type (edges defined separately in StepEdge)
             'is_decision_point', 'decision_type',
             # Workflow engine - terminal
@@ -900,6 +900,8 @@ class StepsSerializer(SecureModelMixin):
             'max_visits', 'revisit_assignment', 'revisit_role',
             # DWI substep sequencing (Phase 1)
             'sequencing_mode',
+            # Expected scrap fraction at this step (null = inherit process default)
+            'scrap_rate',
             # Timestamps
             'created_at', 'updated_at', 'archived',
             # Versioning
@@ -1135,6 +1137,7 @@ class StepSerializer(SecureModelMixin):
             "step_type", "is_decision_point", "decision_type",
             # Outside processing (subcontract op — Flow B)
             "is_outside_process", "outside_supplier", "outside_supplier_name",
+            "outside_process_lead_days",
             # Workflow engine - terminal
             "is_terminal", "terminal_status",
             # Workflow engine - cycle control
@@ -1163,6 +1166,7 @@ class StepEdgeSerializer(SecureModelMixin):
             "id", "from_step", "to_step", "edge_type",
             "from_step_name", "to_step_name",
             "condition_measurement", "condition_operator", "condition_value",
+            "max_minutes",
         ]
 
 
@@ -1178,12 +1182,17 @@ class PartTypesSerializer(SecureModelMixin):
     # trigger a new version.
     _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
+    preferred_supplier_name = serializers.CharField(
+        source='preferred_supplier.name', read_only=True, allow_null=True)
+
     class Meta:
         model = PartTypes
         fields = [
             'id', 'tenant', 'external_id', 'created_at', 'updated_at', 'archived',
             'name', 'ID_prefix', 'ERP_id',
             'requires_supplier_qualification', 'requires_part_approval',
+            'can_make', 'can_buy', 'purchase_lead_time_days',
+            'preferred_supplier', 'preferred_supplier_name',
             'itar_controlled', 'eccn', 'usml_category',
             'default_disassembly_process',
             'version', 'is_current_version', 'previous_version',
@@ -1237,6 +1246,7 @@ class ProcessesSerializer(SecureModelMixin):
             'id', 'tenant', 'external_id', 'created_at', 'updated_at',
             'name', 'is_remanufactured', 'is_disassembly', 'part_type',
             'status', 'category', 'change_description', 'approved_at', 'approved_by',
+            'default_scrap_rate',
             # Serializer-specific fields
             'part_type_name', 'process_steps', 'step_edges', 'num_steps',
         ]
@@ -1361,14 +1371,15 @@ class EquipmentsSerializer(SecureModelMixin):
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
             "serial_number", "manufacturer", "model_number", "location", "status",
-            "is_schedulable", "notes",
+            "is_schedulable", "batch_capacity", "batch_mode", "notes",
             "created_at", "updated_at", "archived", "version",
         ]
         read_only_fields = ("created_at", "updated_at", "version")
 
-    # status and is_schedulable are operational states (calibration/maintenance,
-    # scheduling toggle), not configuration content changes.
-    _NON_VERSIONING_FIELDS = frozenset({'archived', 'status', 'is_schedulable'})
+    # status, is_schedulable, batch_capacity/mode are operational/scheduling states
+    # (calibration/maintenance, scheduling toggle, batch load), not config content.
+    _NON_VERSIONING_FIELDS = frozenset(
+        {'archived', 'status', 'is_schedulable', 'batch_capacity', 'batch_mode'})
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let

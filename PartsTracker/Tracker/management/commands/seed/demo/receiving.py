@@ -107,12 +107,21 @@ class DemoReceivingSeeder(BaseSeeder):
         # --- MaterialLots across the lifecycle ---
         today = timezone.now().date()
 
+        # This part type is dual-sourced: normally made in-house, but also bought
+        # from a supplier — so received lots run receiving inspection against the
+        # RECEIVING step above (which is keyed to this part type). Flipping can_buy
+        # also demonstrates the make/buy sourcing attribute.
+        if not part_type.can_buy:
+            part_type.can_buy = True
+            part_type.purchase_lead_time_days = part_type.purchase_lead_time_days or 14
+            part_type.save(update_fields=['can_buy', 'purchase_lead_time_days'])
+
         def make_lot(suffix, qty, days_ago, late=False):
             received = today - timedelta(days=days_ago)
             # On-time: promised on/after receipt. Late: promised before receipt.
             promised = received - timedelta(days=2) if late else received + timedelta(days=1)
             lot, _ = MaterialLot.objects.update_or_create(
-                tenant=self.tenant, lot_number=f"RCV-{part_type.ID_prefix or 'LOT'}-{suffix}",
+                tenant=self.tenant, lot_number=f"RCV-MAT-{suffix}",
                 defaults={
                     'material_type': part_type, 'supplier': supplier,
                     'supplier_lot_number': f"SUP-{suffix}",

@@ -195,22 +195,21 @@ def create_new_step_version(
                 expected_duration=sub.expected_duration,
                 sampling_rule=getattr(sub, 'sampling_rule', None),
             )
+            # tenant-safe: cloned from an in-tenant SubstepResource (FK chain to Step).
             for res in SubstepResource.objects.filter(substep=sub):
                 SubstepResource.objects.create(
                     substep=new_sub,
-                    kind=res.kind,
-                    document=res.document,
-                    threed_model=res.threed_model,
-                    annotation_filter=res.annotation_filter,
-                    order=res.order,
-                    caption=res.caption,
+                    equipment_type=res.equipment_type,
+                    quantity=res.quantity,
+                    notes=res.notes,
+                    required=res.required,
                 )
             # tenant-safe: filtered by substep (FK chain to in-tenant Step).
             for tr in SubstepTranslation.objects.filter(substep=sub):
                 # tenant-safe: cloned from in-tenant SubstepTranslation row.
                 SubstepTranslation.objects.create(
                     substep=new_sub,
-                    locale=tr.locale,
+                    language=tr.language,
                     title=tr.title,
                     body_blocks=tr.body_blocks,
                 )

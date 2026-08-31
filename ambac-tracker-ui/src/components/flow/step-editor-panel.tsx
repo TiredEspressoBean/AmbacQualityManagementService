@@ -26,6 +26,7 @@ import { MeasurementsEditor } from './measurements-editor';
 import { StepSamplingEditor } from './step-sampling-editor';
 import { StepDocumentsEditor } from './step-documents-editor';
 import { StepTrainingRequirementsEditor } from './step-training-requirements-editor';
+import { StepBomSection } from './StepBomSection';
 import { useTrainingRequirements } from '@/hooks/useTrainingRequirements';
 import { parseDurationToMinutes, formatMinutesToDuration, formatDurationDisplay } from '@/lib/duration-utils';
 
@@ -443,6 +444,45 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
           </>
         )}
 
+        {/* Expected scrap at this step — grosses up the started quantity so the work order
+            still finishes the requested number of good parts. Producing steps only. */}
+        {!isDecisionType && !isTerminalType && !isStartType && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
+              <Label htmlFor="scrap-rate">Expected scrap (%)</Label>
+              {editable ? (
+                <Input
+                  id="scrap-rate"
+                  type="number"
+                  min={0}
+                  max={99}
+                  step="0.5"
+                  value={data.scrapRate != null ? +(data.scrapRate * 100).toFixed(2) : ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    onUpdate(node.id, {
+                      scrap_rate: v === '' ? null
+                        : Math.max(0, Math.min(99, parseFloat(v) || 0)) / 100,
+                    });
+                  }}
+                  placeholder="Inherit process default"
+                />
+              ) : (
+                <p className="text-sm">
+                  {data.scrapRate != null
+                    ? `${+(data.scrapRate * 100).toFixed(2)}%`
+                    : 'Inherit process default'}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Blank inherits the process default. Grosses up the started quantity so the WO
+                still finishes the requested good count.
+              </p>
+            </div>
+          </>
+        )}
+
         {/* RECEIVING step: an outside-process (subcontract) node owns the whole
             step — send parts out to a vendor, receive them back, inspect on return.
             The flag + vendor turn this receiving node into that OSP operation. */}
@@ -491,9 +531,41 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                   <p className="text-xs text-muted-foreground">
                     Overridable per shipment when parts are sent out.
                   </p>
+
+                  <Label className="text-sm font-normal">Turnaround (calendar days)</Label>
+                  {editable ? (
+                    <Input
+                      type="number"
+                      min={1}
+                      value={data.outsideProcessLeadDays ?? ''}
+                      placeholder="e.g. 5"
+                      onChange={(e) =>
+                        onUpdate(node.id, {
+                          outside_process_lead_days: e.target.value === '' ? null : parseInt(e.target.value),
+                        })
+                      }
+                    />
+                  ) : (
+                    <Badge variant="outline">
+                      {data.outsideProcessLeadDays != null ? `${data.outsideProcessLeadDays} d` : 'Vendor / tenant default'}
+                    </Badge>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Vendor turnaround the scheduler reserves as elapsed time (ship-out → return),
+                    gating downstream ops. Blank = the vendor's default, then the tenant default.
+                  </p>
                 </div>
               )}
             </div>
+          </>
+        )}
+
+        {/* Materials consumed at this step — the BOM allocation, from the op's side.
+            Working steps with a persisted step id (UUID) and an owning process. */}
+        {showConfiguration && stepIdIsUuid && (
+          <>
+            <Separator />
+            <StepBomSection stepId={stepId!} processId={processId} editable={editable} />
           </>
         )}
 

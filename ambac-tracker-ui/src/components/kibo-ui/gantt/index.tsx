@@ -34,6 +34,7 @@ import type {
   CSSProperties,
   FC,
   KeyboardEventHandler,
+  MouseEvent as ReactMouseEvent,
   MouseEventHandler,
   ReactNode,
   RefObject,
@@ -920,7 +921,7 @@ export const GanttFeatureItemCard: FC<GanttFeatureItemCardProps> = ({
 
 export type GanttFeatureItemProps = GanttFeature & {
   onMove?: (id: string, startDate: Date, endDate: Date | null) => void;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, event: ReactMouseEvent) => void;
   resizable?: boolean;
   /** Render only the positioned bar (no full-width row wrapper), so several bars
    * can share one lane row — used by the collapsed resource-lane view. */
@@ -1055,7 +1056,7 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
           "pointer-events-auto absolute top-0.5",
           onSelect && "cursor-pointer"
         )}
-        onClick={onSelect ? () => onSelect(feature.id) : undefined}
+        onClick={onSelect ? (e) => onSelect(feature.id, e) : undefined}
         style={{
           height: "calc(var(--gantt-row-height) - 4px)",
           width: hourly ? `calc(var(--gantt-column-width) * ${widthFraction})` : Math.round(width),

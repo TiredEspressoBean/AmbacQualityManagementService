@@ -146,6 +146,12 @@ def submit_substep(
         )
     is_batch = batch_execution is not None
 
+    # Server-side sequencing gate. `Steps.sequencing_mode='sequential'` means a
+    # substep can't be completed until the earlier *required* substeps are done —
+    # previously a UI-only convenience, now enforced here so an API caller can't
+    # jump the sequence. See `_enforce_sequencing`.
+    _enforce_sequencing(substep, step_execution, batch_execution)
+
     if marked_not_applicable:
         if substep.is_critical:
             raise ValidationError(
@@ -158,6 +164,17 @@ def submit_substep(
         if not (na_reason_code and na_reason_code.strip()):
             raise ValidationError(
                 f"Substep '{substep.title}' requires an N/A reason code."
+            )
+    else:
+        # Required-field capture gate. A substep marked N/A skips it (the whole
+        # substep is declared inapplicable); otherwise every engineer-required
+        # capture node must carry a satisfactory value in this payload.
+        missing = find_missing_required(substep, captures)
+        if missing:
+            detail = '; '.join(f"{m['type']} ({m['reason']})" for m in missing[:5])
+            more = '' if len(missing) <= 5 else f" (+{len(missing) - 5} more)"
+            raise ValidationError(
+                f"Substep '{substep.title}' has required fields not captured: {detail}{more}."
             )
 
     with transaction.atomic():
@@ -300,6 +317,167 @@ def submit_substep(
             response_count=response_count,
             quality_report_id=str(report.id) if report else None,
             measurement_count=measurement_count,
+        )
+
+
+# -------------------------------------------------------------------------
+# Required-field enforcement
+# -------------------------------------------------------------------------
+
+def find_missing_required(substep, captures: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Server-side mirror of the FE `findMissingRequired` (build-captures.ts).
+
+    Walks the substep's `body_blocks`, and for every capture node the engineer
+    marked ``required`` (plus inspection-signature ``require_detected`` /
+    ``require_verified``), verifies the operator's submitted `captures` payload
+    carries a satisfactory value for it. Returns a list of ``{node_id, type,
+    reason}`` for the nodes still missing — empty when everything required is
+    present. The FE blocks "Confirm & next" on the same rule; this is the
+    authoritative backstop so an API caller can't complete a substep with a
+    required field blank.
+    """
+    nodes: list = []
+    _collect_capture_nodes(substep.body_blocks, nodes)
+    cap_by_node = {c.get("node_id"): c for c in captures if c.get("node_id")}
+
+    out: list[dict[str, str]] = []
+    for node_type, attrs in nodes:
+        required = attrs.get("required") is True
+        is_sig = node_type == "inspectionSignatures"
+        require_detected = attrs.get("require_detected") is True
+        require_verified = attrs.get("require_verified") is True
+        if not required and not (is_sig and (require_detected or require_verified)):
+            continue
+        node_id = attrs.get("node_id")
+        cap = cap_by_node.get(node_id)
+        reason = _capture_missing_reason(node_type, attrs, cap)
+        if reason is not None:
+            out.append({"node_id": str(node_id), "type": node_type, "reason": reason})
+    return out
+
+
+def _nonempty_str(v) -> bool:
+    return isinstance(v, str) and v.strip() != ""
+
+
+def _capture_missing_reason(node_type, attrs, cap) -> Optional[str]:
+    """Return None if the submitted `cap` satisfies this required node, else a
+    short reason. `cap` is the capture dict for this node_id (or None if the
+    operator submitted nothing for it). Mirrors FE `checkSatisfied` semantics
+    against the `buildCaptures` payload shape."""
+    if node_type in ("textInput", "choiceInput", "scanInput"):
+        if cap and _nonempty_str(cap.get("value_text")):
+            return None
+        return "No value captured"
+
+    if node_type in ("photoCapture", "fileCapture"):
+        if cap and (cap.get("document_id") or _nonempty_str(cap.get("value_text"))):
+            return None
+        return "No file uploaded"
+
+    if node_type == "measurementInput":
+        if cap and (cap.get("value_numeric") is not None
+                    or _nonempty_str(cap.get("value_string"))):
+            return None
+        return "No measurement recorded"
+
+    if node_type == "timer":
+        return None if (cap and isinstance(cap.get("value_json"), dict)) else "Timer not run"
+
+    if node_type == "computedValue":
+        payload = cap.get("value_json") if cap else None
+        if not isinstance(payload, dict):
+            return "Computation not run"
+        variables = attrs.get("variables") or []
+        inputs = payload.get("inputs") or {}
+        missing = [v.get("name") for v in variables
+                   if v.get("name") not in inputs or inputs.get(v.get("name")) == ""]
+        return None if not missing else f"Missing variables: {', '.join(m for m in missing if m)}"
+
+    if node_type == "attestationCheckpoint":
+        if not cap:
+            return "Not confirmed"
+        if attrs.get("kind") == "signature":
+            return None if isinstance(cap.get("signature"), dict) else "Not signed"
+        return None if cap.get("confirm") is True else "Not confirmed"
+
+    if node_type == "qualityStatusField":
+        if cap and _nonempty_str(cap.get("status")):
+            return None
+        return "Status not picked"
+
+    if node_type in ("equipmentRolesField", "personnelRolesField", "errorTypesField"):
+        min_rows = attrs.get("min_rows")
+        min_rows = min_rows if isinstance(min_rows, int) and min_rows >= 0 else 1
+        rows = cap.get("rows") if cap and isinstance(cap.get("rows"), list) else []
+        return None if len(rows) >= min_rows else f"Needs at least {min_rows} row(s)"
+
+    if node_type == "inspectionSignatures":
+        r = cap or {}
+        if attrs.get("require_detected") is True and not r.get("detected"):
+            return "Detected-by signature missing"
+        if attrs.get("require_verified") is True and not r.get("verified"):
+            return "Verified-by signature missing"
+        return None
+
+    # partAnnotation and unknown nodes: treated as satisfied (FE parity).
+    return None
+
+
+# -------------------------------------------------------------------------
+# Sequencing enforcement
+# -------------------------------------------------------------------------
+
+def _enforce_sequencing(substep, step_execution=None, batch_execution=None) -> None:
+    """Reject completing `substep` while an earlier *required* substep of the
+    same Op is still incomplete, when the Op is in SEQUENTIAL mode.
+
+    Design choices:
+    - Only enforced when `Steps.sequencing_mode == 'sequential'`; FREE_ORDER Ops
+      skip the gate (the Op-signoff completeness check catches gaps there).
+    - Only *required* prior substeps (``is_optional=False``) block. An optional
+      substep left undone never blocks a later one — that's what "optional" means.
+      A completed-or-N/A prior satisfies the gate (both land a SubstepCompletion).
+    - Scoped to the execution keying being submitted: a per-part (SAMPLED) submit
+      is gated only by earlier SAMPLED substeps' per-part completions, and a
+      per-batch (BATCH) submit only by earlier BATCH completions. Cross-scope
+      ordering isn't well-defined (the two keyings live on different execution
+      rows), so we don't invent it here.
+    """
+    from django.core.exceptions import ValidationError
+    from Tracker.models import SequencingMode, SubstepScope
+
+    step = substep.step
+    if getattr(step, 'sequencing_mode', SequencingMode.SEQUENTIAL) != SequencingMode.SEQUENTIAL:
+        return
+
+    prior = Substep.objects.filter(
+        step=step, order__lt=substep.order, is_optional=False,
+    ).exclude(pk=substep.pk)
+
+    if batch_execution is not None:
+        prior = prior.filter(scope=SubstepScope.BATCH)
+        done_ids = set(
+            SubstepCompletion.objects
+            .filter(batch_execution=batch_execution)
+            .values_list('substep_id', flat=True)
+        )
+    else:
+        prior = prior.exclude(scope=SubstepScope.BATCH)
+        done_ids = set(
+            SubstepCompletion.objects
+            .filter(step_execution=step_execution)
+            .values_list('substep_id', flat=True)
+        )
+
+    missing = [s for s in prior.order_by('order') if s.id not in done_ids]
+    if missing:
+        names = ', '.join(f"'{s.title}'" for s in missing[:3])
+        more = '' if len(missing) <= 3 else f" (+{len(missing) - 3} more)"
+        raise ValidationError(
+            f"Substep '{substep.title}' can't be completed yet: this Op runs in "
+            f"sequential mode and earlier required substeps are still open — "
+            f"{names}{more}."
         )
 
 

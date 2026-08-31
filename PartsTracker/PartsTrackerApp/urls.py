@@ -303,6 +303,7 @@ router.register(r'ShiftNotes', ShiftNoteViewSet, basename='ShiftNotes')
 router.register(r'WorkQueue', WorkQueueViewSet, basename='WorkQueue')
 
 # Material Lots & Usage
+router.register(r'Materials', MaterialViewSet, basename='Materials')
 router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
 router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
 
@@ -329,6 +330,10 @@ router.register(r'HarvestedComponents', HarvestedComponentViewSet, basename='Har
 router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
 router.register(r'Schedules', ScheduleViewSet, basename='Schedules')
 router.register(r'ScheduledTasks', ScheduledTaskViewSet, basename='ScheduledTasks')
+router.register(r'Fixtures', FixtureViewSet, basename='Fixtures')
+router.register(r'PlantCalendarExceptions', PlantCalendarExceptionViewSet, basename='PlantCalendarExceptions')
+router.register(r'LaborCalendarBlocks', LaborCalendarBlockViewSet, basename='LaborCalendarBlocks')
+router.register(r'OvertimeWindows', OvertimeWindowViewSet, basename='OvertimeWindows')
 
 # ===== DWI VIEWSETS =====
 router.register(r'Substeps', SubstepViewSet, basename='Substeps')

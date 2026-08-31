@@ -59,7 +59,7 @@ def open_scar_for_lot(lot, user=None, severity="MAJOR"):
     report = lot.quality_reports.order_by("-created_at").first()
     problem = (
         f"Receiving inspection issue on lot {lot.lot_number} "
-        f"({lot.material_type.name if lot.material_type else lot.material_description})."
+        f"({lot.item_name})."
     )
     return open_scar(supplier=lot.supplier, problem_statement=problem,
                      severity=severity, quality_report=report, material_lot=lot, user=user)

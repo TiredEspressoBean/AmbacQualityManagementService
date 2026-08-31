@@ -58,6 +58,8 @@ const formSchema = schemas.EquipmentsRequest.pick({
     location: true,
     status: true,
     is_schedulable: true,
+    batch_capacity: true,
+    batch_mode: true,
     notes: true,
 });
 
@@ -102,6 +104,8 @@ export default function EquipmentFormPage() {
             location: "",
             status: undefined,
             is_schedulable: false,
+            batch_capacity: 1,
+            batch_mode: "concurrent",
             notes: "",
         },
     });
@@ -118,6 +122,8 @@ export default function EquipmentFormPage() {
                 location: equipment.location ?? "",
                 status: equipment.status ?? undefined,
                 is_schedulable: equipment.is_schedulable ?? false,
+                batch_capacity: equipment.batch_capacity ?? 1,
+                batch_mode: equipment.batch_mode ?? "concurrent",
                 notes: equipment.notes ?? "",
             });
         }
@@ -136,6 +142,8 @@ export default function EquipmentFormPage() {
             location: values.location || undefined,
             status: values.status || undefined,
             is_schedulable: values.is_schedulable,
+            batch_capacity: values.batch_capacity ?? 1,
+            batch_mode: values.batch_mode || "concurrent",
             notes: values.notes || undefined,
         };
 
@@ -421,6 +429,65 @@ export default function EquipmentFormPage() {
                             </FormItem>
                         )}
                     />
+
+                    {form.watch("is_schedulable") && (
+                        <>
+                            <FormField
+                                control={form.control}
+                                name="batch_capacity"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Batch capacity</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                {...field}
+                                                value={field.value ?? 1}
+                                                onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            How many jobs/parts this resource handles at once. 1 = a normal
+                                            one-at-a-time machine; &gt;1 = a batch/process resource (furnace,
+                                            plating tank, wash line).
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {(form.watch("batch_capacity") ?? 1) > 1 && (
+                                <FormField
+                                    control={form.control}
+                                    name="batch_mode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Batch mode</FormLabel>
+                                            <Select
+                                                key={field.value ?? "concurrent"}
+                                                value={field.value ?? "concurrent"}
+                                                onValueChange={field.onChange}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="concurrent">Concurrent — up to N independent jobs at once (parallel stations)</SelectItem>
+                                                    <SelectItem value="cycle">Cycle — one shared load at a time, N parts, fixed cycle time (furnace/oven)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>
+                                                Cycle: a job of N parts takes ceil(N / capacity) loads, each the
+                                                full cycle time regardless of how full it is.
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                        </>
+                    )}
 
                     <FormField
                         control={form.control}

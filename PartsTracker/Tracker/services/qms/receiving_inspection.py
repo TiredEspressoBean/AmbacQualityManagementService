@@ -37,8 +37,11 @@ HOLD_GAUGE_UNAVAILABLE = "GAUGE_UNAVAILABLE"        # manual: required gauge out
 
 
 def resolve_receiving_step(part_type):
-    """The current RECEIVING step for a part type, or None."""
-    from Tracker.models import Steps
+    """The current RECEIVING step for a part type, or None. Receiving plans (RIPs) are
+    keyed to PartTypes; a purchased Material has none, so return None (dock-to-stock)."""
+    from Tracker.models import PartTypes, Steps
+    if not isinstance(part_type, PartTypes):
+        return None
     qs = Steps.objects.filter(part_type=part_type, step_type="RECEIVING")
     # Prefer the current version when the versioning flag is present.
     return qs.filter(is_current_version=True).first() or qs.first()
@@ -133,6 +136,10 @@ def route_received_lot(lot, user):
     # life so downstream gates and the queue read is_blocked, not the raw scalar.
     from Tracker.services.life_tracking.shelf_life import attach_shelf_life
     attach_shelf_life(lot)
+    # Raw-material lots (lot.material set, no material_type part) have no PartTypes-keyed
+    # receiving plan / supplier-qual / part-approval gate yet — the gates below are keyed
+    # to lot.material_type (a buyable part), so a raw material simply falls through to the
+    # "no RECEIVING step" dock-to-stock path. (Raw-material incoming gates are a follow-on.)
     # Supplier-qualification gate (soft hold): a lot from a supplier not qualified
     # for this part type is quarantined and flagged rather than flowing to stock.
     if _held_for_unqualified_supplier(lot):

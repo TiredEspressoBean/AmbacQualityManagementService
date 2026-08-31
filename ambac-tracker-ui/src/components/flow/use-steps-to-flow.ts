@@ -28,6 +28,7 @@ export interface StepData {
   description?: string;
   max_visits?: number | null;
   expected_duration?: string | null;
+  scrap_rate?: number | string | null;
   // QA settings
   requires_qa_signoff?: boolean;
   sampling_required?: boolean;
@@ -43,6 +44,7 @@ export interface StepData {
   is_outside_process?: boolean;
   outside_supplier?: string | null;
   outside_supplier_name?: string | null;
+  outside_process_lead_days?: number | null;
   // Routing/surface discriminator (Documents/WORK_CENTER_DESIGN.md). Determines
   // which operator/QA/receiving/OSP surface this step lands on.
   work_center?: string | null;
@@ -152,6 +154,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         description: step.description,
         maxVisits: step.max_visits,
         expectedDuration: step.expected_duration,
+        scrapRate: step.scrap_rate != null ? Number(step.scrap_rate) : null,
         isStart: isEntryPoint,
         // QA settings
         requiresQaSignoff: step.requires_qa_signoff,
@@ -165,6 +168,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         isOutsideProcess: step.is_outside_process,
         outsideSupplier: step.outside_supplier,
         outsideSupplierName: step.outside_supplier_name,
+        outsideProcessLeadDays: step.outside_process_lead_days,
         // 4c — live overlay (always-on when present; not demo-gated).
         liveMetrics: step.liveMetrics,
       },

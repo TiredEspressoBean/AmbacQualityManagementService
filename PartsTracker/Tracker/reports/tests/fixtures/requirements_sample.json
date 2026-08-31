@@ -1,0 +1,14 @@
+{
+  "generated_date": "2026-08-27",
+  "tenant_name": "Demo Company",
+  "source": [
+    {"material": "Seal & O-Ring Kit", "qty_short": 40, "need_by": "2026-09-11", "lead_time_days": 14, "order_by": "2026-08-28", "incoming_date": null},
+    {"material": "Solenoid Coil", "qty_short": 5, "need_by": "2026-09-05", "lead_time_days": null, "order_by": "2026-09-05", "incoming_date": "2026-09-02"}
+  ],
+  "produce": [
+    {"work_order": "WO-2026-0042", "component": "Injector Nozzle Assembly", "qty": 3, "need_by": "2026-09-01", "status": "PENDING"}
+  ],
+  "tooling": [
+    {"fixture": "Weld Jig", "kind": "FIXTURE", "need_by": "2026-08-27", "lead_time_days": 7, "order_by": "2026-08-20"}
+  ]
+}

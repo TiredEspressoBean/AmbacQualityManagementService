@@ -19,7 +19,7 @@ from django.db import transaction
 
 from Tracker.models import (
     WorkCenter, Shift, ScheduleSlot, DowntimeEvent,
-    MaterialLot, MaterialUsage, TimeEntry,
+    Material, MaterialLot, MaterialUsage, TimeEntry,
     BOM, BOMLine, AssemblyUsage,
     UserWorkCenterMembership,
 )
@@ -29,6 +29,7 @@ from Tracker.serializers.mes_standard import (
     ShiftSerializer,
     ScheduleSlotSerializer,
     DowntimeEventSerializer,
+    MaterialSerializer,
     MaterialLotSerializer, MaterialLotSplitSerializer,
     ExtendShelfLifeSerializer,
     MaterialUsageSerializer,
@@ -46,7 +47,7 @@ from Tracker.services.qms import receiving_inspection
 from Tracker.services.qms import incoming_inspection
 from Tracker.services.qms import inspection_inbox
 from .base import TenantScopedMixin
-from .core import ExcelExportMixin
+from .core import ExcelExportMixin, ListMetadataMixin
 
 
 # ===== WORK CENTER VIEWSETS =====
@@ -113,13 +114,32 @@ class UserWorkCenterMembershipViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 # ===== SHIFT VIEWSETS =====
 
 class ShiftViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-    """Shift definition management"""
-    queryset = Shift.unscoped.all()
+    """Shift definition management.
+
+    `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
+    edits mutate via `create_new_version` — never a raw save — and the list is scoped
+    to current versions. Delete is the SecureModel soft-delete (archive).
+    """
+    queryset = Shift.unscoped.filter(is_current_version=True)
     serializer_class = ShiftSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['is_active']
     ordering_fields = ['start_time', 'name']
     ordering = ['start_time']
+
+    def perform_update(self, serializer):
+        """Version the shift instead of mutating it in place, so labor-hour changes
+        keep an audit trail. The validated changes become field overrides on the new
+        current version; the response reflects that new version."""
+        instance = serializer.instance
+        updates = {k: v for k, v in serializer.validated_data.items() if k != 'tenant'}
+        if not updates:
+            return  # nothing changed — don't spin a no-op version
+        serializer.instance = instance.create_new_version(
+            user=self.request.user,
+            change_description="Edited via scheduling settings",
+            **updates,
+        )
 
 
 # ===== SCHEDULE SLOT VIEWSETS =====
@@ -206,6 +226,18 @@ class DowntimeEventViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelVi
 
 
 # ===== MATERIAL LOT VIEWSETS =====
+
+class MaterialViewSet(TenantScopedMixin, ExcelExportMixin, ListMetadataMixin, viewsets.ModelViewSet):
+    """Purchased items — raw materials / bought components (O-rings, seals, fasteners).
+    The buy-side item list, distinct from in-house PartTypes; holds purchase lead time."""
+    queryset = Material.unscoped.select_related('preferred_supplier').all()
+    serializer_class = MaterialSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    search_fields = ['name', 'part_number', 'description']
+    filterset_fields = ['is_active', 'preferred_supplier']
+    ordering_fields = ['name', 'part_number']
+    ordering = ['name']
+
 
 class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""

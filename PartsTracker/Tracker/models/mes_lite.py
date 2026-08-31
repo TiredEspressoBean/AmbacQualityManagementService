@@ -131,6 +131,40 @@ class PartTypes(SecureModel):
     """When True, receiving soft-holds lots whose (part type, supplier) has no active part approval."""
 
     # =========================================================================
+    # Sourcing (make / buy) — a part can be produced in-house, purchased, or both.
+    # Make/buy is a *sourcing attribute* of the one part, not a separate identity:
+    # a part may be dual-sourced (made normally, bought when slammed), so both flags
+    # can be True. Raw materials / consumables that are never parts live on `Material`.
+    # =========================================================================
+    can_make = models.BooleanField(
+        default=True,
+        help_text="This part can be produced in-house (has a production process; "
+                  "shortages spawn child work orders)."
+    )
+    """Whether this part is made in-house."""
+
+    can_buy = models.BooleanField(
+        default=False,
+        help_text="This part can be purchased from a supplier. May be True alongside "
+                  "can_make for dual-sourced parts."
+    )
+    """Whether this part can be bought (purchasing attributes below apply when set)."""
+
+    purchase_lead_time_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Days to source this part from a supplier when bought — drives the "
+                  "order-by date in the sourcing report (order-by = need-by − lead time)."
+    )
+    """Purchase lead time, used when the part is bought."""
+
+    preferred_supplier = models.ForeignKey(
+        'Tracker.Companies', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='supplied_part_types',
+        help_text="Default supplier when this part is purchased.",
+    )
+    """Preferred supplier for the buy path."""
+
+    # =========================================================================
     # ITAR / Export Control Fields (inherited by Parts of this type)
     # =========================================================================
     itar_controlled = models.BooleanField(
@@ -257,6 +291,15 @@ class Processes(SecureModel):
         help_text="Process category for workflow engine routing"
     )
     """Category classification for routing and reporting."""
+
+    default_scrap_rate = models.DecimalField(
+        max_digits=5, decimal_places=4, default=0,
+        help_text="Default expected scrap fraction (0–1) applied to steps of this process "
+                  "that don't set their own `Steps.scrap_rate`. Used to gross up the started "
+                  "quantity so a work order still finishes the requested number of good "
+                  "parts (release-11-to-ship-10).",
+    )
+    """Process-wide default expected scrap fraction; per-step `scrap_rate` overrides it."""
 
     # Note: Lineage tracking uses SecureModel's `previous_version` field instead of a separate field.
     # This provides: version number, previous_version FK, is_current_version flag.
@@ -647,6 +690,16 @@ class Steps(SecureModel):
     )
     """Per-step dual-resource labor model; null = inherit the tenant default."""
 
+    scrap_rate = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True,
+        help_text="Expected fraction of parts scrapped AT this step (0–1). Null inherits "
+                  "the process default. Today this is an authored estimate; the resolution "
+                  "chain (`services.mes.yield_planning`) is built so a statistically-observed "
+                  "rate from StepExecution history can later take precedence when there's "
+                  "enough data to be confident.",
+    )
+    """Per-step expected scrap fraction; null = inherit the process default."""
+
     FPI_SCOPE_CHOICES = [
         ('PER_WORKORDER', 'Per Work Order'),
         ('PER_SHIFT', 'Per Shift'),
@@ -710,6 +763,16 @@ class Steps(SecureModel):
         'Tracker.Companies', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='outside_process_steps',
         help_text="Default subcontract vendor for this outside-process op (overridable per shipment).",
+    )
+    outside_process_lead_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text=(
+            "Planned vendor turnaround for this outside-process step, in CALENDAR days "
+            "(ship-out → return). The scheduler reserves this as an elapsed, no-capacity "
+            "interval that gates downstream ops. Overrides the supplier's default; if unset, "
+            "the supplier default then the tenant OptimizationConfig default is used. Once a "
+            "part is actually shipped, its OutsideProcessShipment.promised_return overrides."
+        ),
     )
 
     # ===== STEP TYPE (Visual representation in flow editor) =====
@@ -1485,6 +1548,15 @@ class StepEdge(models.Model):
         help_text="Scheduling: whether from→to must be run by the same operator "
                   "(SAME), a different one (DIFFERENT — e.g. independent verification), "
                   "or ANY.",
+    )
+
+    max_minutes = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Scheduling: MAX elapsed minutes allowed between from_step finishing and "
+                  "to_step starting — a process time limit (e.g. 'coat within 4h of clean', "
+                  "passivation dwell, adhesive pot-life). The scheduler treats it as a soft "
+                  "upper bound: it schedules to meet it and FLAGS the op when capacity can't, "
+                  "rather than blocking the whole solve. Null = no limit (the default).",
     )
 
     # For measurement-based decision routing (edge-level override)
@@ -2614,6 +2686,16 @@ class WorkOrder(SecureModel):
     """Priority level for scheduling and queue ordering."""
 
     quantity = models.IntegerField(default=1)
+    """Parts STARTED for this work order (grossed up for expected scrap when planned
+    with yield). See `target_good_quantity` for the number of GOOD parts owed."""
+
+    target_good_quantity = models.IntegerField(
+        null=True, blank=True,
+        help_text="The number of GOOD parts this work order owes (the ordered quantity, "
+                  "before yield gross-up). `quantity` is what was started to hit it. "
+                  "Make-up planning tops parts back up to this when actual scrap outruns "
+                  "the expected gross-up. Null on legacy WOs (falls back to `quantity`).")
+    """Ordered good-part count; make-up planning replaces scrap to keep parts alive up to it."""
 
     documents = GenericRelation('Tracker.Documents')
     """Optional document relating to this Work Order"""
@@ -3009,6 +3091,12 @@ class Parts(SecureModel):
     work_order = models.ForeignKey(WorkOrder, on_delete=models.SET_NULL, null=True, blank=True, related_name='parts')
     """Optional reference to the internal Work Order this part is attached to."""
 
+    is_makeup = models.BooleanField(
+        default=False,
+        help_text="This part was created by make-up planning to replace scrapped units "
+                  "and keep the work order on track for its ordered good quantity.")
+    """True for a make-up/replacement part spawned to cover scrap over the expected yield."""
+
     requires_sampling = models.BooleanField(default=False)
     """Whether this part requires quality inspection at its current step, determined by SamplingRule evaluation."""
 
@@ -3072,6 +3160,7 @@ class Parts(SecureModel):
             "immutable genealogy record of the detour (rework/quarantine) the part took."
         ),
     )
+
     """Set when a reworked/cleared part re-converges with its siblings. The part
     re-enters cohort gating (`try_advance_lot`) and the scheduler re-collapses it into
     the lot, while its quality genealogy (lot_split_reason, lot_split_at, rework counts)

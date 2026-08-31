@@ -250,6 +250,23 @@ DEMO_EQUIPMENT_TYPES = [
         'is_portable': True,
         'track_downtime': False,
     },
+    # Manual/mechanical production stations — finite, scheduled, no calibration.
+    {
+        'name': 'Press',
+        'description': 'Hydraulic teardown / disassembly press',
+        'requires_calibration': False,
+        'default_calibration_interval_days': None,
+        'is_portable': False,
+        'track_downtime': True,
+    },
+    {
+        'name': 'Workstation',
+        'description': 'Manual production bench (grading, rework, packaging)',
+        'requires_calibration': False,
+        'default_calibration_interval_days': None,
+        'is_portable': False,
+        'track_downtime': True,
+    },
 ]
 
 # Demo equipment
@@ -265,6 +282,12 @@ DEMO_EQUIPMENT = [
     {'name': 'Torque Wrench TW-26', 'type': 'Torque Tool', 'serial': 'TW-026', 'calibration_days': 45, 'location': 'Tool Crib', 'schedulable': True},
     {'name': 'Ultrasonic Cleaner UC-1', 'type': 'Cleaning Station', 'serial': 'UC-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},  # No calibration needed
     {'name': 'Final Test Bench FTB-1', 'type': 'Test Bench', 'serial': 'FTB-001', 'calibration_days': 25, 'location': 'QA Lab', 'schedulable': True},
+    # Manual production stations — give teardown / grading / rework / packaging steps a
+    # scheduled machine so they're not left machine-less on the Gantt.
+    {'name': 'Disassembly Press DP-1', 'type': 'Press', 'serial': 'DP-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},
+    {'name': 'Grading Bench GB-1', 'type': 'Workstation', 'serial': 'GB-001', 'calibration_days': None, 'location': 'QA Lab', 'schedulable': True},
+    {'name': 'Rework Station RW-1', 'type': 'Workstation', 'serial': 'RW-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},
+    {'name': 'Packaging Station PK-1', 'type': 'Workstation', 'serial': 'PK-001', 'calibration_days': None, 'location': 'Shipping', 'schedulable': True},
 
     # Specific measuring stations — finite + scheduled as secondary resources.
     {'name': 'CMM Zeiss-1', 'type': 'CMM', 'serial': 'CMM-001', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True},

@@ -75,6 +75,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_shiftnote', 'view_shiftnoteack',
     # BOM & Materials
     'view_bom', 'view_bomline', 'view_assemblyusage', 'view_disassemblybomline',
+    'view_material',
     'view_materiallot', 'view_materialusage', 'view_harvestedcomponent',
     'view_core',
     # Equipment & Calibration
@@ -87,6 +88,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_scheduleresult', 'view_scheduledtask', 'view_steptiming',
     'view_stepequipmentaffinity', 'view_workcenterchangeover', 'view_fixture',
     'view_optimizationconfig', 'view_continuousmachine',
+    'view_laborcalendarblock', 'view_overtimewindow', 'view_plantcalendarexception',
     # Milestones & life tracking
     'view_milestone', 'view_milestonetemplate',
     'view_lifelimitdefinition', 'view_parttypelifelimit', 'view_lifetracking',
@@ -298,6 +300,8 @@ AUTHORING_PERMISSIONS = [
     'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation',
     # Specs
     'add_parttypes', 'change_parttypes', 'delete_parttypes',
+    # Raw-material master data (like part-type master data — change-controlled)
+    'add_material', 'change_material', 'delete_material',
     'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition',
     'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement',
     # BOM definitions
@@ -472,6 +476,10 @@ SCHEDULING_PLANNER_PERMISSIONS = [
     'add_fixture', 'change_fixture',
     'add_optimizationconfig', 'change_optimizationconfig',
     'add_continuousmachine', 'change_continuousmachine',
+    # Labor/plant calendar inputs the solver reads (shifts overtime, holidays/shutdowns)
+    'add_laborcalendarblock', 'change_laborcalendarblock',
+    'add_overtimewindow', 'change_overtimewindow',
+    'add_plantcalendarexception', 'change_plantcalendarexception',
 ]
 
 GROUP_PRESETS = {

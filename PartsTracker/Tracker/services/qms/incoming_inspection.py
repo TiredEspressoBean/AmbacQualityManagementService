@@ -25,14 +25,13 @@ def _lot_rows():
           .filter(archived=False)  # .objects doesn't exclude soft-deleted; the per-model queue does
           .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
                   | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
-          .select_related("material_type", "supplier"))
+          .select_related("material_type", "material", "supplier"))
     for lot in qs:
         yield {
             "source": "PURCHASED_LOT",
             "id": str(lot.id),
             "reference": lot.lot_number or "",
-            "item": (lot.material_type.name if lot.material_type_id else "")
-                    or lot.material_description or "",
+            "item": lot.item_name,
             "supplier": lot.supplier.name if lot.supplier_id else "",
             "quantity": float(lot.quantity) if lot.quantity is not None else None,
             "status": lot.status,

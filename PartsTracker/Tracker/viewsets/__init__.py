@@ -172,7 +172,8 @@ from .mes_standard import (
     # Downtime
     DowntimeEventViewSet,
 
-    # Material Lots
+    # Materials & Lots
+    MaterialViewSet,
     MaterialLotViewSet,
     MaterialUsageViewSet,
     IncomingInspectionViewSet,
@@ -200,6 +201,10 @@ from .reman import (
 from .scheduling import (
     ScheduleViewSet,
     ScheduledTaskViewSet,
+    FixtureViewSet,
+    PlantCalendarExceptionViewSet,
+    LaborCalendarBlockViewSet,
+    OvertimeWindowViewSet,
 )
 
 # Digital Work Instructions ViewSets
@@ -393,6 +398,7 @@ __all__ = [
     'DowntimeEventViewSet',
 
     # MES Standard - Material Lots
+    'MaterialViewSet',
     'MaterialLotViewSet',
     'IncomingInspectionViewSet',
     'InspectionInboxViewSet',
@@ -416,6 +422,10 @@ __all__ = [
     # Scheduling (CP-SAT solver + dispatch)
     'ScheduleViewSet',
     'ScheduledTaskViewSet',
+    'FixtureViewSet',
+    'PlantCalendarExceptionViewSet',
+    'LaborCalendarBlockViewSet',
+    'OvertimeWindowViewSet',
 
     # Digital Work Instructions
     'SubstepViewSet',
@@ -550,6 +560,7 @@ def register_viewsets(router):
     router.register(r'DowntimeEvents', DowntimeEventViewSet, basename='DowntimeEvents')
 
     # Material Lots & Usage
+    router.register(r'Materials', MaterialViewSet, basename='Materials')
     router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
     router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
     router.register(r'IncomingInspection', IncomingInspectionViewSet, basename='IncomingInspection')
@@ -571,6 +582,10 @@ def register_viewsets(router):
     router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
     router.register(r'Schedules', ScheduleViewSet, basename='Schedules')
     router.register(r'ScheduledTasks', ScheduledTaskViewSet, basename='ScheduledTasks')
+    router.register(r'Fixtures', FixtureViewSet, basename='Fixtures')
+    router.register(r'PlantCalendarExceptions', PlantCalendarExceptionViewSet, basename='PlantCalendarExceptions')
+    router.register(r'LaborCalendarBlocks', LaborCalendarBlockViewSet, basename='LaborCalendarBlocks')
+    router.register(r'OvertimeWindows', OvertimeWindowViewSet, basename='OvertimeWindows')
 
     # ===== TRAINING VIEWSETS =====
     router.register(r'TrainingTypes', TrainingTypeViewSet, basename='TrainingTypes')

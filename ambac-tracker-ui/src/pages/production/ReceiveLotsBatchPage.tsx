@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
+import { useMaterialOptions } from "@/hooks/useMaterials";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useBulkCreateLots, type LotBulkRow } from "@/hooks/useReceivingMutations";
 
@@ -44,12 +44,12 @@ export function ReceiveLotsBatchPage() {
     const [rows, setRows] = useState<Row[]>([emptyRow()]);
     const [serverErrors, setServerErrors] = useState<Record<number, unknown>>({});
     const mutation = useBulkCreateLots();
-    const { data: partTypes } = useRetrievePartTypes({ limit: 500 } as never);
+    const { data: materials } = useMaterialOptions();
     const { data: companies } = useRetrieveCompanies({ limit: 500 } as never);
 
-    const partTypeByName = useMemo(
-        () => new Map((partTypes?.results ?? []).filter((p) => p.name).map((p) => [p.name.toLowerCase(), String(p.id)])),
-        [partTypes],
+    const materialByName = useMemo(
+        () => new Map((materials?.results ?? []).filter((p) => p.name).map((p) => [p.name.toLowerCase(), String(p.id)])),
+        [materials],
     );
     const companyByName = useMemo(
         () => new Map((companies?.results ?? []).filter((c) => c.name).map((c) => [c.name.toLowerCase(), String(c.id)])),
@@ -71,7 +71,7 @@ export function ReceiveLotsBatchPage() {
                 const key = PASTE_COLUMNS[ci];
                 if (!key) return;
                 const v = val.trim();
-                if (key === "material_type") r.material_type = partTypeByName.get(v.toLowerCase()) ?? NONE;
+                if (key === "material_type") r.material_type = (materialByName.get(v.toLowerCase()) as string) ?? NONE;
                 else if (key === "supplier") r.supplier = companyByName.get(v.toLowerCase()) ?? NONE;
                 else (r as Record<string, string>)[key] = v;
             });
@@ -164,7 +164,7 @@ export function ReceiveLotsBatchPage() {
                                                 <SelectTrigger className="min-w-32"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value={NONE}>—</SelectItem>
-                                                    {partTypes?.results?.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                                                    {materials?.results?.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>

@@ -125,7 +125,7 @@ def _receiving_rows():
           .filter(archived=False)
           .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
                   | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
-          .select_related("material_type", "supplier"))
+          .select_related("material_type", "material", "supplier"))
     for lot in qs:
         received_dt = None
         if lot.received_date is not None:
@@ -133,8 +133,7 @@ def _receiving_rows():
             received_dt = timezone.make_aware(datetime.combine(lot.received_date, time.min))
         age = _hours_since(received_dt)
         blocked = lot.hold_reason if lot.status == "QUARANTINE" else None
-        item = ((lot.material_type.name if lot.material_type_id else "")
-                or lot.material_description or "")
+        item = lot.item_name
         yield {
             "type": "receiving",
             "subject_kind": "material_lot",

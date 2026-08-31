@@ -130,22 +130,32 @@ class BOMReportAdapter(ReportAdapter):
             )
             .prefetch_related(
                 "lines__component_type",
+                "lines__material",
             )
             .get(id=validated_params["id"])
         )
 
-        lines = [
-            BOMLineContext(
+        # A line is EITHER an in-house component_type (MAKE) or a purchased material
+        # (BUY) — pull the part number / name from whichever it carries.
+        lines = []
+        for line in bom.lines.all():
+            if line.material_id:
+                component_part_number = line.material.part_number or ""
+                component_name = line.material.name
+            elif line.component_type_id:
+                component_part_number = line.component_type.ERP_id or ""
+                component_name = line.component_type.name
+            else:
+                component_part_number, component_name = "", "(unset)"
+            lines.append(BOMLineContext(
                 find_number=line.find_number or "",
-                component_part_number=line.component_type.ERP_id or "",
-                component_name=line.component_type.name,
+                component_part_number=component_part_number,
+                component_name=component_name,
                 quantity=str(line.quantity.normalize()),
                 unit_of_measure=line.unit_of_measure,
                 is_optional=line.is_optional,
                 notes=line.notes or "",
-            )
-            for line in bom.lines.all()
-        ]
+            ))
 
         return BOMReportContext(
             parent_part_number=bom.part_type.ERP_id or "",

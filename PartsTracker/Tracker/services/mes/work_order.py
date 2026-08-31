@@ -94,6 +94,134 @@ def create_parts_batch(
     return fresh_parts
 
 
+def plan_work_order(
+    *,
+    tenant,
+    process,
+    quantity: int,
+    user=None,
+    erp_id: str | None = None,
+    priority: int | None = None,
+    expected_start=None,
+    expected_completion=None,
+    auto_explode: bool = True,
+    apply_yield: bool = False,
+) -> WorkOrder:
+    """Create a new work order for `process` and spawn its `quantity` parts at the
+    process's first step — the scheduler's "add work" entry point.
+
+    The WO is created PENDING (schedulable but not started) so a Solve picks it up
+    immediately (the solver excludes only COMPLETED / CANCELLED / ON_HOLD). ERP_id is
+    auto-generated from the process name when not supplied. Atomic: WO + parts commit
+    together. Returns the created WorkOrder.
+
+    When `auto_explode` (the default), the WO's released ASSEMBLY BOM is exploded into
+    pegged in-house component WOs in the same transaction (see
+    `services.mes.bom_explosion`); the resulting summary is attached as
+    `wo.explosion_summary`. The explosion sets `auto_explode=False` on the child WOs it
+    creates — it owns the multi-level recursion itself.
+    """
+    from Tracker.models import ProcessStep
+
+    if quantity <= 0:
+        raise ValueError("quantity must be > 0")
+    part_type = process.part_type
+    if part_type is None:
+        raise ValueError("process has no part type")
+
+    # Yield gross-up: when apply_yield, `quantity` is the number of GOOD parts wanted; start
+    # more so the route still finishes that many given expected scrap (release-11-to-ship-10).
+    good_quantity = quantity
+    yield_summary = None
+    if apply_yield:
+        from Tracker.services.mes.yield_planning import start_quantity_for_good
+        started = start_quantity_for_good(process, quantity)
+        if started != quantity:
+            yield_summary = {'target_good': good_quantity, 'started': started}
+        quantity = started
+    first_ps = (
+        ProcessStep.objects.filter(process=process).order_by('order').first()
+    )
+    if first_ps is None:
+        raise ValueError("process has no steps to schedule")
+
+    if not erp_id:
+        slug = ''.join(ch for ch in (process.name or 'WO') if ch.isalnum())[:6].upper() or 'WO'
+        base = f"WO-{slug}"
+        n = WorkOrder.objects.filter(ERP_id__startswith=base).count() + 1
+        erp_id = f"{base}-{n:03d}"
+
+    fields = dict(
+        tenant=tenant,
+        ERP_id=erp_id,
+        process=process,
+        quantity=quantity,
+        target_good_quantity=good_quantity,  # ordered good count; drives make-up planning
+        workorder_status=WorkOrderStatus.PENDING,
+        expected_start=expected_start,
+        expected_completion=expected_completion,
+    )
+    if priority is not None:
+        fields['priority'] = priority
+
+    with transaction.atomic():
+        # tenant-safe: `fields` sets tenant=tenant explicitly above.
+        wo = WorkOrder.objects.create(**fields)
+        bulk_add_parts_to_workorder(wo, part_type, first_ps.step, quantity)
+        summary = None
+        if auto_explode:
+            from Tracker.services.mes.bom_explosion import explode_work_order
+            summary = explode_work_order(wo, user=user, create=True).as_summary()
+    wo.explosion_summary = summary
+    wo.yield_summary = yield_summary  # {'target_good', 'started'} when yield grossed up, else None
+    logger.info("Planned work order %s (%s parts on %s) by user=%s",
+                wo.ERP_id, quantity, process.name, getattr(user, 'id', None))
+    return wo
+
+
+def reduce_work_order_quantity(work_order: WorkOrder, new_quantity: int, user=None) -> int:
+    """Shrink a work order to `new_quantity` by CANCELLING its excess *unstarted* parts
+    (PENDING, with no StepExecution) — never worked/terminal ones. The mirror of
+    `bulk_add_parts_to_workorder`. Cancelled parts drop out of scheduling (a terminal
+    status). Returns the number of parts cancelled. Raises ValueError if the reduction
+    can't be met from unstarted parts.
+    """
+    from Tracker.models import StepExecution
+
+    if new_quantity < 0:
+        raise ValueError("quantity must be >= 0")
+    live = Parts.objects.filter(work_order=work_order).exclude(
+        part_status__in=[PartsStatus.CANCELLED, PartsStatus.SCRAPPED])
+    current = live.count()
+    if new_quantity >= current:
+        raise ValueError("new quantity is not a reduction; use bulk_add_parts to increase")
+    to_remove = current - new_quantity
+
+    worked_ids = set(
+        StepExecution.objects.filter(part__work_order=work_order)
+        .values_list('part_id', flat=True)
+    )
+    removable = [
+        p for p in live.filter(part_status=PartsStatus.PENDING).order_by('-ERP_id')
+        if p.id not in worked_ids
+    ]
+    if len(removable) < to_remove:
+        raise ValueError(
+            f"Can only remove {len(removable)} unstarted part(s); the rest have been "
+            f"worked and can't be cancelled by a quantity change."
+        )
+
+    with transaction.atomic():
+        for p in removable[:to_remove]:
+            p.part_status = PartsStatus.CANCELLED
+            p.save(update_fields=['part_status'])
+        work_order.quantity = new_quantity
+        work_order.save(update_fields=['quantity'])
+    logger.info("Reduced WO %s to qty %s (cancelled %s unstarted parts) by user=%s",
+                work_order.ERP_id, new_quantity, to_remove, getattr(user, 'id', None))
+    return to_remove
+
+
 def bulk_add_parts_to_workorder(
     work_order: WorkOrder,
     part_type,

@@ -128,6 +128,7 @@ SOFT_DELETE_MODELS = {
     # ScheduledTask rows are regenerated each solve — never hard-deleted via a role.
     'scheduledtask', 'steptiming', 'stepequipmentaffinity', 'workcenterchangeover',
     'fixture', 'optimizationconfig', 'continuousmachine',
+    'laborcalendarblock', 'overtimewindow', 'plantcalendarexception',
 }
 
 # Burn-down: operational perms that SHOULD be granted to roles but aren't yet.

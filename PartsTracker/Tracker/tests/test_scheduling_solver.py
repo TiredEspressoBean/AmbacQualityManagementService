@@ -1,22 +1,29 @@
 """Phase 2 CP-SAT solver — minimal slice: precedence, machine capacity (no-overlap
 per machine), makespan objective, and the active-schedule supersede.
 """
-from datetime import date, time as dtime, timedelta as _td
+from datetime import date, datetime, time as dtime, timedelta as _td
 from decimal import Decimal
 
 from django.test import TestCase
 from django.utils import timezone
 
+from django.contrib.auth import get_user_model
+
 from Tracker.models import (
+    BOM,
+    BOMLine,
     Equipments,
     Fixture,
+    MaterialLot,
     MeasurementDefinition,
     Parts,
     PartTypes,
+    PlantCalendarException,
     Processes,
     ProcessStep,
     ScheduledTask,
     ScheduleResult,
+    Shift,
     StepEquipmentAffinity,
     Steps,
     StepTiming,
@@ -26,6 +33,8 @@ from Tracker.models import (
     WorkOrderStatus,
 )
 from Tracker.models.scheduling import SolverStatus
+from Tracker.services.scheduling import data as sched_data
+from Tracker.services.scheduling.data import HorizonData
 from Tracker.services.scheduling.solver import solve_schedule
 from Tracker.tests.base import TenantContextMixin
 
@@ -100,6 +109,168 @@ class SolverTests(TenantContextMixin, TestCase):
         )
         self.assertLessEqual(switches, 2, f"WOs not batched: {switches} same-op switches")
 
+    def test_outside_process_scheduled_as_elapsed_and_gates_downstream(self):
+        # step1 (in-house machine) → step2 → OSP plating (2-day turnaround) → grind (in-house).
+        osp_step = Steps.objects.create(
+            tenant=self.tenant, part_type=self.pt, name="Plating", step_type="TASK",
+            is_outside_process=True, outside_process_lead_days=2)
+        grind = Steps.objects.create(
+            tenant=self.tenant, part_type=self.pt, name="Grind", step_type="TASK")
+        ProcessStep.objects.create(process=self.process, step=osp_step, order=3)
+        ProcessStep.objects.create(process=self.process, step=grind, order=4)
+        StepTiming.objects.create(tenant=self.tenant, step=grind, cycle_time_minutes=30)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=grind, equipment=self.machine,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        self._wo("WO-OSP", 1)
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        by_step = {t.step_id: t for t in ScheduledTask.objects.filter(schedule=result)}
+        osp_task = by_step[osp_step.id]
+        # Elapsed vendor turnaround: ~2 calendar days, no machine, no operator.
+        dur_min = (osp_task.end_time - osp_task.start_time).total_seconds() / 60
+        self.assertAlmostEqual(dur_min, 2 * 24 * 60, delta=1)
+        self.assertIsNone(osp_task.machine_id)
+        # Downstream op cannot start until the part is back from the vendor.
+        self.assertGreaterEqual(by_step[grind.id].start_time, osp_task.end_time)
+
+    def test_batch_capacity_runs_lots_concurrently(self):
+        # A batch/process resource (batch_capacity=3) runs up to 3 jobs at once, unlike a
+        # normal one-at-a-time machine. Bake-only process so upstream doesn't stagger them.
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Seal")
+        proc = Processes.objects.create(tenant=self.tenant, name="Bake-only", part_type=pt)
+        furnace = Equipments.objects.create(
+            tenant=self.tenant, name="Furnace", is_schedulable=True, batch_capacity=3)
+        bake = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Bake", step_type="TASK")
+        ProcessStep.objects.create(process=proc, step=bake, order=1)
+        StepTiming.objects.create(tenant=self.tenant, step=bake, cycle_time_minutes=120)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=bake, equipment=furnace,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        for i in range(3):
+            wo = WorkOrder.objects.create(
+                tenant=self.tenant, ERP_id=f"BK{i}", workorder_status=WorkOrderStatus.IN_PROGRESS,
+                quantity=1, process=proc)
+            Parts.objects.create(
+                tenant=self.tenant, ERP_id=f"BK{i}-P", part_type=pt, work_order=wo, step=bake)
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        tasks = list(ScheduledTask.objects.filter(schedule=result, step=bake))
+        self.assertEqual(len(tasks), 3)
+        # capacity 3 → all three loads co-run on the furnace (a no-overlap machine → peak 1).
+        self.assertEqual(self._peak_concurrency(tasks), 3)
+
+    def test_cycle_batch_splits_job_into_fixed_time_loads(self):
+        # CYCLE furnace (cap 4, fixed 120-min cycle): a 10-part job = ceil(10/4)=3 loads =
+        # 360 min, NOT 10 × 120 per-part, and NOT one impossible 10-part load.
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Ring")
+        proc = Processes.objects.create(tenant=self.tenant, name="Cure-only", part_type=pt)
+        oven = Equipments.objects.create(
+            tenant=self.tenant, name="Cure Oven", is_schedulable=True,
+            batch_capacity=4, batch_mode=Equipments.BatchMode.CYCLE)
+        cure = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Cure", step_type="TASK")
+        ProcessStep.objects.create(process=proc, step=cure, order=1)
+        StepTiming.objects.create(tenant=self.tenant, step=cure, cycle_time_minutes=120)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=cure, equipment=oven,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="CURE-10", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=10, process=proc)
+        for i in range(10):
+            Parts.objects.create(
+                tenant=self.tenant, ERP_id=f"CURE-10-P{i}", part_type=pt, work_order=wo, step=cure)
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        tasks = list(ScheduledTask.objects.filter(schedule=result, step=cure))
+        self.assertTrue(tasks)
+        dur = (tasks[0].end_time - tasks[0].start_time).total_seconds() / 60
+        self.assertAlmostEqual(dur, 3 * 120, delta=1)  # 3 fixed-time loads
+
+    def _clean_coat_process(self, max_minutes):
+        """A clean→coat process with a max-time edge; returns (proc, pt, clean, coat, machine)."""
+        from Tracker.models import StepEdge
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Coated")
+        proc = Processes.objects.create(tenant=self.tenant, name="Clean-Coat", part_type=pt)
+        m = Equipments.objects.create(tenant=self.tenant, name="Line", is_schedulable=True)
+        clean = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Clean", step_type="TASK")
+        coat = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Coat", step_type="TASK")
+        ProcessStep.objects.create(process=proc, step=clean, order=1)
+        ProcessStep.objects.create(process=proc, step=coat, order=2)
+        StepEdge.objects.create(process=proc, from_step=clean, to_step=coat,
+                                edge_type="DEFAULT", max_minutes=max_minutes)
+        StepTiming.objects.create(tenant=self.tenant, step=clean, cycle_time_minutes=60)
+        StepTiming.objects.create(tenant=self.tenant, step=coat, cycle_time_minutes=30)
+        for s in (clean, coat):
+            StepEquipmentAffinity.objects.create(
+                tenant=self.tenant, step=s, equipment=m,
+                affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        return proc, pt, clean, coat, m
+
+    def test_max_time_between_ops_met_not_flagged(self):
+        proc, pt, clean, coat, _ = self._clean_coat_process(max_minutes=240)
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="CC", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=1, process=proc)
+        Parts.objects.create(tenant=self.tenant, ERP_id="CC-P", part_type=pt, work_order=wo, step=clean)
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        by_step = {t.step_id: t for t in ScheduledTask.objects.filter(schedule=result)}
+        gap = (by_step[coat.id].start_time - by_step[clean.id].end_time).total_seconds() / 60
+        self.assertLessEqual(gap, 240)                        # window met
+        self.assertFalse(by_step[coat.id].cure_window_violation)
+
+    def test_max_time_between_ops_violation_flagged(self):
+        # An in-progress clean is pinned (can't move); the coater is down through the cure
+        # window → coat is forced past the limit. Soft constraint: it still schedules, but
+        # the op is flagged (cure_window_violation), not a hard INFEASIBLE.
+        from Tracker.models import StepEdge, StepExecution, PartsStatus, DowntimeEvent
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Coated2")
+        proc = Processes.objects.create(tenant=self.tenant, name="CC2", part_type=pt)
+        washer = Equipments.objects.create(tenant=self.tenant, name="Washer", is_schedulable=True)
+        coater = Equipments.objects.create(tenant=self.tenant, name="Coater", is_schedulable=True)
+        clean = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Clean2", step_type="TASK")
+        coat = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Coat2", step_type="TASK")
+        ProcessStep.objects.create(process=proc, step=clean, order=1)
+        ProcessStep.objects.create(process=proc, step=coat, order=2)
+        StepEdge.objects.create(process=proc, from_step=clean, to_step=coat,
+                                edge_type="DEFAULT", max_minutes=30)
+        StepTiming.objects.create(tenant=self.tenant, step=clean, cycle_time_minutes=60)
+        StepTiming.objects.create(tenant=self.tenant, step=coat, cycle_time_minutes=30)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=clean, equipment=washer,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=coat, equipment=coater,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        now = timezone.now()
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="CC2", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=1, process=proc)
+        part = Parts.objects.create(
+            tenant=self.tenant, ERP_id="CC2-P", part_type=pt, work_order=wo, step=clean,
+            part_status=PartsStatus.IN_PROGRESS)
+        prev = ScheduleResult.objects.create(
+            tenant=self.tenant, horizon_start=now, horizon_end=now + _td(days=2),
+            is_active=True, is_stale=False)
+        ScheduledTask.objects.create(
+            tenant=self.tenant, schedule=prev, part=part, step=clean, machine=washer,
+            start_time=now - _td(minutes=40), end_time=now + _td(minutes=20))
+        se = StepExecution.objects.create(tenant=self.tenant, part=part, step=clean)
+        StepExecution.objects.filter(pk=se.pk).update(entered_at=now - _td(minutes=40))
+        dt_user = get_user_model().objects.create_user(
+            username="dt", email="dt@c.test", password="x", tenant=self.tenant)
+        DowntimeEvent.objects.create(
+            tenant=self.tenant, equipment=coater, category="PLANNED", reason="PM",
+            reported_by=dt_user, start_time=now, end_time=now + _td(minutes=300))
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        coat_task = ScheduledTask.objects.get(schedule=result, step=coat)
+        self.assertTrue(coat_task.cure_window_violation)  # flagged, not infeasible
+
     def test_empty_tenant_returns_empty_optimal(self):
         result = solve_schedule(self.tenant)
         self.assertEqual(result.solver_status, SolverStatus.OPTIMAL)
@@ -117,6 +288,84 @@ class SolverTests(TenantContextMixin, TestCase):
         # durations reflect the timings (60 / 30 min).
         s1 = tasks[self.step1.id]
         self.assertEqual((s1.end_time - s1.start_time).total_seconds(), 60 * 60)
+
+    def test_in_progress_op_pinned_now_with_remaining_duration(self):
+        # A part whose current step is physically running (open StepExecution, started
+        # 40 min ago; full step1 = 60 min) must be scheduled to start "now" with only its
+        # REMAINING (~20 min) duration, on the machine it's running on — not re-planned
+        # later at full duration.
+        from Tracker.models import PartsStatus, StepExecution
+        wo, parts = self._wo("WO-IP", 1)
+        part = parts[0]
+        part.part_status = PartsStatus.IN_PROGRESS
+        part.save(update_fields=['part_status'])
+        now = timezone.now()
+        # previous active schedule tells the solver which machine it's running on
+        prev = ScheduleResult.objects.create(
+            tenant=self.tenant, horizon_start=now, horizon_end=now + _td(days=2),
+            is_active=True, is_stale=False)
+        ScheduledTask.objects.create(
+            tenant=self.tenant, schedule=prev, part=part, step=self.step1,
+            machine=self.machine, start_time=now - _td(minutes=40),
+            end_time=now + _td(minutes=20))
+        # open execution started 40 min ago (auto_now_add → override via .update())
+        se = StepExecution.objects.create(tenant=self.tenant, part=part, step=self.step1)
+        StepExecution.objects.filter(pk=se.pk).update(entered_at=now - _td(minutes=40))
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        t1 = ScheduledTask.objects.get(schedule=result, part=part, step=self.step1)
+        # starts ~now (minute 0 of the horizon)
+        self.assertLess(abs((t1.start_time - result.horizon_start).total_seconds()), 120)
+        # only the remaining ~20 min is booked, not the full 60
+        dur_min = (t1.end_time - t1.start_time).total_seconds() / 60
+        self.assertLess(dur_min, 40)
+        self.assertGreaterEqual(dur_min, 10)
+        # pinned on the machine it was running on, and flagged in-progress
+        self.assertEqual(t1.machine_id, self.machine.id)
+        self.assertTrue(t1.in_progress)
+        # the next step still follows the (shortened) running op
+        t2 = ScheduledTask.objects.get(schedule=result, part=part, step=self.step2)
+        self.assertGreaterEqual(t2.start_time, t1.end_time)
+
+    def test_move_time_gap_between_operations(self):
+        # With a 30-min inter-op move/queue time, step2 can't start until 30 min after
+        # step1 finishes (vs 0 with the default).
+        from Tracker.models import OptimizationConfig
+        OptimizationConfig.objects.create(tenant=self.tenant, default_move_minutes=30)
+        _, parts = self._wo("WO-MV", 1)
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        tasks = {t.step_id: t for t in result.tasks.filter(part=parts[0])}
+        gap_min = (tasks[self.step2.id].start_time
+                   - tasks[self.step1.id].end_time).total_seconds() / 60
+        self.assertGreaterEqual(gap_min, 30)
+
+    def test_shared_tool_serializes_ops(self):
+        # A scarce shared resource (a cutting tool, quantity 1) required at step1 forces two
+        # WOs' step1 ops to serialize even though a second machine would let them run in
+        # parallel — tools/dies are finite resources like fixtures.
+        m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.step1, equipment=m2,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        tool = Fixture.objects.create(
+            tenant=self.tenant, name="Broach", kind="TOOL", quantity=1)
+        tool.steps.add(self.step1)
+        self._wo("WT-A", 1)
+        self._wo("WT-B", 1)
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        s1 = list(ScheduledTask.objects.filter(schedule=result, step=self.step1)
+                  .order_by('start_time'))
+        self.assertEqual(len(s1), 2)
+        self.assertFalse(self._overlaps(s1[0], s1[1]),
+                         "a shared quantity-1 tool must serialize the two ops")
+
+    def test_not_started_op_uses_full_duration(self):
+        # Control: same setup WITHOUT an open StepExecution → step1 books its full 60 min.
+        _, parts = self._wo("WO-NS", 1)
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        t1 = ScheduledTask.objects.get(schedule=result, part=parts[0], step=self.step1)
+        self.assertEqual((t1.end_time - t1.start_time).total_seconds(), 60 * 60)
 
     def test_machine_capacity_no_overlap(self):
         # Two lots (one part each) contend for the same machine at step1 → their
@@ -649,3 +898,197 @@ class LockStepBatchTests(TenantContextMixin, TestCase):
         self.assertEqual(len(step1_tasks), 3)
         starts = {t.start_time for t in step1_tasks}
         self.assertEqual(len(starts), 1, "one lot → all parts share a single start")
+
+
+class CalendarTests(TenantContextMixin, TestCase):
+    """E5 — per-machine operating calendars + plant closures (holidays/shutdowns)."""
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Cal", slug="sched-cal", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        base = timezone.make_aware(datetime(2026, 9, 7, 0, 0))  # a Monday, 00:00
+        self.horizon = HorizonData(start=base, end=base + _td(days=3),
+                                   frozen_end=base, slushy_end=base)
+        self.day = Shift.objects.create(
+            tenant=self.tenant, name="Day", code="DAY",
+            start_time=dtime(6, 0), end_time=dtime(14, 0), days_of_week="0,1,2,3,4,5,6")
+        self.night = Shift.objects.create(
+            tenant=self.tenant, name="Night", code="NGT",
+            start_time=dtime(22, 0), end_time=dtime(6, 0), days_of_week="0,1,2,3,4,5,6")
+
+    @staticmethod
+    def _covered(wins, dt):
+        return any(w.start <= dt < w.end for w in wins)
+
+    @staticmethod
+    def _covered_tuples(wins, dt):
+        return any(s <= dt < e for s, e in wins)
+
+    def test_per_machine_operating_calendar(self):
+        # Default machine inherits the tenant calendar (Day+Night); the night machine
+        # gets its OWN calendar (Night only) and is unavailable during the day.
+        eq_def = Equipments.objects.create(tenant=self.tenant, name="M-Def", is_schedulable=True)
+        eq_night = Equipments.objects.create(tenant=self.tenant, name="M-Night", is_schedulable=True)
+        eq_night.operating_shifts.add(self.night)
+
+        avail = sched_data.get_machine_availability(self.tenant, self.horizon)
+        mon_day = timezone.make_aware(datetime(2026, 9, 7, 10, 0))   # Mon 10:00 (Day)
+        tue_night = timezone.make_aware(datetime(2026, 9, 8, 2, 0))  # Tue 02:00 (Night)
+
+        self.assertTrue(self._covered(avail[eq_def.id], mon_day))     # default runs daytime
+        self.assertFalse(self._covered(avail[eq_night.id], mon_day))  # night machine does NOT
+        self.assertTrue(self._covered(avail[eq_night.id], tue_night)) # but runs at night
+
+    def test_calendar_closure_removes_working_time(self):
+        # An all-day Tuesday holiday drops that day's working windows but not Monday's.
+        hol = timezone.make_aware(datetime(2026, 9, 8, 0, 0))
+        PlantCalendarException.objects.create(
+            tenant=self.tenant, name="Holiday", start_time=hol, end_time=hol + _td(days=1))
+
+        closures = sched_data.get_calendar_closures(self.tenant, self.horizon)
+        self.assertEqual(len(closures), 1)
+
+        wins = sched_data.get_working_windows(self.tenant, self.horizon.start, self.horizon.end)
+        self.assertFalse(self._covered_tuples(
+            wins, timezone.make_aware(datetime(2026, 9, 8, 10, 0))))  # Tue holiday: closed
+        self.assertTrue(self._covered_tuples(
+            wins, timezone.make_aware(datetime(2026, 9, 7, 10, 0))))  # Mon: still open
+
+    def test_holiday_blocks_machine_scheduling(self):
+        # A 120-min job on an attended machine must not be scheduled across a closure window.
+        pt = PartTypes.objects.create(tenant=self.tenant, name="PT")
+        proc = Processes.objects.create(tenant=self.tenant, name="P", part_type=pt)
+        m = Equipments.objects.create(tenant=self.tenant, name="M", is_schedulable=True,
+                                      runs_unattended=False)
+        st = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Op", step_type="TASK")
+        ProcessStep.objects.create(process=proc, step=st, order=1)
+        StepTiming.objects.create(tenant=self.tenant, step=st, cycle_time_minutes=120)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=st, equipment=m,
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        Shift.objects.create(tenant=self.tenant, name="AllDay", code="ALL",
+                             start_time=dtime(0, 0), end_time=dtime(23, 59),
+                             days_of_week="0,1,2,3,4,5,6")
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-H", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=1, process=proc)
+        Parts.objects.create(tenant=self.tenant, ERP_id="WO-H-P0", part_type=pt,
+                             work_order=wo, step=st)
+        now = timezone.now()
+        c_start, c_end = now + _td(hours=1), now + _td(hours=3)
+        PlantCalendarException.objects.create(
+            tenant=self.tenant, name="Closure", start_time=c_start, end_time=c_end)
+
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        t = ScheduledTask.objects.get(schedule=result, part__work_order=wo, step=st)
+        # no overlap with the closure window
+        self.assertFalse(t.start_time < c_end and c_start < t.end_time,
+                         "task was scheduled across the plant closure")
+
+
+class MaterialGateTests(TenantContextMixin, TestCase):
+    """E2 — buy-side material availability: net BOM BUY-line demand vs on-hand stock;
+    gate the consuming op on an incoming receipt, else flag a shortage."""
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Mat", slug="sched-mat", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        self.user = get_user_model().objects.create_user(
+            username="mu", email="mu@c.test", password="x", tenant=self.tenant)
+        from Tracker.models import Material
+        self.asm = PartTypes.objects.create(tenant=self.tenant, name="Asm")
+        self.comp = Material.objects.create(tenant=self.tenant, name="Oring")
+        self.proc = Processes.objects.create(
+            tenant=self.tenant, name="P", part_type=self.asm,
+            status="APPROVED", is_current_version=True)
+        self.s1 = Steps.objects.create(tenant=self.tenant, part_type=self.asm,
+                                       name="Prep", step_type="TASK")
+        self.s2 = Steps.objects.create(tenant=self.tenant, part_type=self.asm,
+                                       name="Install", step_type="TASK")
+        ProcessStep.objects.create(process=self.proc, step=self.s1, order=1)
+        ProcessStep.objects.create(process=self.proc, step=self.s2, order=2)
+        StepTiming.objects.create(tenant=self.tenant, step=self.s1, cycle_time_minutes=30)
+        StepTiming.objects.create(tenant=self.tenant, step=self.s2, cycle_time_minutes=30)
+        self.machine = Equipments.objects.create(
+            tenant=self.tenant, name="M", is_schedulable=True)
+        for s in (self.s1, self.s2):
+            StepEquipmentAffinity.objects.create(
+                tenant=self.tenant, step=s, equipment=self.machine,
+                affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        self.bom = BOM.objects.create(
+            tenant=self.tenant, part_type=self.asm, revision="A", bom_type="ASSEMBLY",
+            status="RELEASED", is_current_version=True)
+
+    def _buy_line(self, qty=2, allow_harvested=False):
+        return BOMLine.objects.create(
+            tenant=self.tenant, bom=self.bom, material=self.comp, quantity=qty,
+            source="BUY", consumed_at_step=self.s2, allow_harvested=allow_harvested,
+            line_number=1)
+
+    def _lot(self, qty, status="ACCEPTED", promised=None):
+        return MaterialLot.objects.create(
+            tenant=self.tenant, lot_number=f"L-{qty}-{status}", material=self.comp,
+            received_date=timezone.now().date(), received_by=self.user,
+            quantity=qty, quantity_remaining=qty, unit_of_measure="EA",
+            status=status, promised_date=promised)
+
+    def _wo(self, q=3):
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-M", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=q, process=self.proc)
+        Parts.objects.create(tenant=self.tenant, ERP_id="WO-M-P0", part_type=self.asm,
+                             work_order=wo, step=self.s1)
+        return wo
+
+    def test_enough_on_hand_no_gate(self):
+        self._buy_line(qty=2)       # need 2×3 = 6
+        self._lot(10)               # plenty accepted
+        self._wo(3)
+        hz = sched_data.get_schedule_horizon(self.tenant)
+        rel, short, detail = sched_data.get_material_gates(self.tenant, hz)
+        self.assertEqual(rel, {})
+        self.assertEqual(short, set())
+
+    def test_short_with_receipt_gates_consuming_step(self):
+        self._buy_line(qty=2)       # need 6
+        self._lot(1)                # only 1 on hand
+        self._lot(10, status="RECEIVED", promised=(timezone.now() + _td(days=2)).date())
+        wo = self._wo(3)
+        hz = sched_data.get_schedule_horizon(self.tenant)
+        rel, short, detail = sched_data.get_material_gates(self.tenant, hz)
+        self.assertGreater(rel.get((wo.id, self.s2.id), 0), 0)
+        self.assertEqual(short, set())
+        # detail names the component, shortfall, and receipt date
+        self.assertIn("Oring", detail[(wo.id, self.s2.id)])
+        self.assertIn("due", detail[(wo.id, self.s2.id)])
+
+    def test_short_no_receipt_flags_shortage(self):
+        self._buy_line(qty=2)
+        self._lot(1)                # short, no incoming
+        wo = self._wo(3)
+        hz = sched_data.get_schedule_horizon(self.tenant)
+        rel, short, detail = sched_data.get_material_gates(self.tenant, hz)
+        self.assertEqual(rel, {})
+        self.assertIn((wo.id, self.s2.id), short)
+        self.assertIn("no incoming receipt", detail[(wo.id, self.s2.id)])
+
+    def test_allow_harvested_does_not_skip_newbuild(self):
+        # allow_harvested only skips for REMAN (a WO with cores); a new-build WO is still gated.
+        self._buy_line(qty=2, allow_harvested=True)
+        self._lot(1)
+        wo = self._wo(3)
+        hz = sched_data.get_schedule_horizon(self.tenant)
+        _, short, detail = sched_data.get_material_gates(self.tenant, hz)
+        self.assertIn((wo.id, self.s2.id), short)
+
+    def test_solve_flags_only_the_consuming_step(self):
+        self._buy_line(qty=2)
+        self._lot(1)                # short, no receipt
+        wo = self._wo(3)
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        s2t = ScheduledTask.objects.filter(schedule=result, part__work_order=wo, step=self.s2).first()
+        s1t = ScheduledTask.objects.filter(schedule=result, part__work_order=wo, step=self.s1).first()
+        self.assertTrue(s2t.material_shortage)
+        self.assertFalse(s1t.material_shortage)

@@ -128,6 +128,8 @@ class DemoSupplierQualitySeeder(BaseSeeder):
                 result["part_approvals"].append(a)
 
         # --- Certificate of Conformance on accepted lots ---
+        # Received lots are stock of the dual-sourced part type (receiving.py flips
+        # can_buy and receives lots of it), so CoCs attach to those accepted lots.
         accepted = MaterialLot.objects.filter(material_type=part_type, status="ACCEPTED",
                                               certificate_of_conformance="")
         for lot in accepted:
@@ -141,11 +143,8 @@ class DemoSupplierQualitySeeder(BaseSeeder):
         # --- Qualification hold: unqualified supplier soft-holds on receipt ---
         recv_step = receiving.get("step") if isinstance(receiving, dict) else None
         if recv_step is not None and user is not None:
-            if not part_type.requires_supplier_qualification:
-                part_type.requires_supplier_qualification = True
-                part_type.save(update_fields=["requires_supplier_qualification"])
             held, created = MaterialLot.objects.update_or_create(
-                tenant=self.tenant, lot_number=f"RCV-{part_type.ID_prefix or 'LOT'}-HOLD",
+                tenant=self.tenant, lot_number="RCV-MAT-HOLD",
                 defaults={
                     "material_type": part_type, "supplier": bargain,
                     "supplier_lot_number": "SUP-HOLD-001",

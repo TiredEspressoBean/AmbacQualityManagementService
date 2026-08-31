@@ -33,6 +33,9 @@ from Tracker.models import (
     Steps,
     StepMeasurementRequirement,
     StepRequirement,
+    Substep,
+    SubstepResource,
+    SubstepTranslation,
     TrainingRequirement,
     TrainingType,
 )
@@ -256,6 +259,77 @@ class StepRequirementCopyTestCase(TenantTestCase):
             self.step, user=self.user_a, change_description='Rev',
         )
         self.assertEqual(StepRequirement.objects.filter(step=v2).count(), 2)
+
+
+# ---------------------------------------------------------------------------
+# Substep + SubstepResource / SubstepTranslation child copy
+# ---------------------------------------------------------------------------
+
+class SubstepCopyOnStepVersioningTestCase(TenantTestCase):
+    """Substeps and their child rows (SubstepResource, SubstepTranslation) are
+    copied to the new Step version. Regression guard: the SubstepResource copy
+    previously referenced fields that don't exist on the model
+    (`kind`/`document`/`threed_model`/…), a latent AttributeError that only
+    fired when a versioned step actually had a resource row."""
+
+    def setUp(self):
+        super().setUp()
+        self.part_type = PartTypes.objects.create(name='Sub_PT', ID_prefix='SUB-')
+        self.step = _make_step(self.part_type, name='Sub Step')
+        self.eq_type = EquipmentType.objects.create(
+            name='Digital micrometer 0-1 in', description='Micrometer',
+        )
+        self.sub = Substep.objects.create(
+            tenant=self.tenant_a, step=self.step, order=0, title='Measure OD',
+            is_optional=False,
+        )
+        self.res = SubstepResource.objects.create(
+            tenant=self.tenant_a, substep=self.sub, equipment_type=self.eq_type,
+            quantity='1.0000', notes='Calibrated gage required', required=True,
+        )
+        self.tr = SubstepTranslation.objects.create(
+            tenant=self.tenant_a, substep=self.sub, language='es',
+            title='Medir DE', body_blocks=[],
+        )
+
+    def test_substep_and_resource_copied_to_new_version(self):
+        v2 = create_new_step_version(
+            self.step, user=self.user_a, change_description='Rev',
+        )
+        v2_subs = Substep.objects.filter(step=v2)
+        self.assertEqual(v2_subs.count(), 1)
+        v2_sub = v2_subs.first()
+        self.assertNotEqual(v2_sub.pk, self.sub.pk)
+        self.assertEqual(v2_sub.title, 'Measure OD')
+
+        # Regression: this copy used to raise AttributeError on nonexistent fields.
+        v2_resources = SubstepResource.objects.filter(substep=v2_sub)
+        self.assertEqual(v2_resources.count(), 1)
+        v2_res = v2_resources.first()
+        self.assertNotEqual(v2_res.pk, self.res.pk)
+        self.assertEqual(v2_res.equipment_type_id, self.eq_type.pk)
+        self.assertEqual(v2_res.notes, 'Calibrated gage required')
+        self.assertTrue(v2_res.required)
+
+    def test_substep_translation_copied_to_new_version(self):
+        v2 = create_new_step_version(
+            self.step, user=self.user_a, change_description='Rev',
+        )
+        v2_sub = Substep.objects.filter(step=v2).first()
+        v2_trs = SubstepTranslation.objects.filter(substep=v2_sub)
+        self.assertEqual(v2_trs.count(), 1)
+        self.assertNotEqual(v2_trs.first().pk, self.tr.pk)
+        self.assertEqual(v2_trs.first().language, 'es')
+        self.assertEqual(v2_trs.first().title, 'Medir DE')
+
+    def test_old_version_retains_its_substep_rows(self):
+        create_new_step_version(
+            self.step, user=self.user_a, change_description='Rev',
+        )
+        self.assertEqual(Substep.objects.filter(step=self.step).count(), 1)
+        self.assertEqual(
+            SubstepResource.objects.filter(substep=self.sub).count(), 1,
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import { QaRightPanel } from "@/components/qa-right-panel";
 import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { WorkOrderPartsTable } from "@/components/work-order-parts-table";
+import { WorkOrderMaterialsPanel } from "@/components/workorder/WorkOrderMaterialsPanel";
 import { ReportButton } from "@/components/reports/ReportButton";
 import { StatusBadge } from "@/components/flow/overlays/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -184,9 +185,10 @@ export function WorkOrderDetailPage() {
                 {/* Left Panel - Work Order Info & Forms */}
                 <ResizablePanel defaultSize={40} minSize={30} className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-                        <TabsList className="grid w-full grid-cols-2">
+                        <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="overview">Overview</TabsTrigger>
                             <TabsTrigger value="parts">Parts</TabsTrigger>
+                            <TabsTrigger value="materials">Materials</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="overview" className="mt-6 h-full overflow-auto">
@@ -206,6 +208,10 @@ export function WorkOrderDetailPage() {
                                 statusFilter={partsStatusFilter}
                                 onStatusFilterChange={setPartsStatusFilter}
                             />
+                        </TabsContent>
+
+                        <TabsContent value="materials" className="mt-6 h-full overflow-auto">
+                            <WorkOrderMaterialsPanel workOrderId={workOrderId} />
                         </TabsContent>
                     </Tabs>
                 </ResizablePanel>

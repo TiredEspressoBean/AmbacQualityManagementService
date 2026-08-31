@@ -773,7 +773,6 @@ class DemoOrdersSeeder(BaseSeeder):
         "this cycle reading came from the load you shared with N parts".
         One load runs hot (out of spec) so the FAIL verdict has demo data too.
         """
-        from uuid import uuid4
         from Tracker.models import (
             BatchExecution, MeasurementDefinition, Substep,
             StepExecutionMeasurement, QualityReports,
@@ -796,6 +795,25 @@ class DemoOrdersSeeder(BaseSeeder):
 
         operator = (users.get('employees') or users.get('managers') or [None])[0]
 
+        # Collect the substep's schema nodes once (the wash cycle also carries a
+        # required "Cycle complete" attestation alongside the bath-temp reading);
+        # submit_substep validates captures against these node_ids, so every
+        # required node must be answered.
+        schema_nodes = []
+
+        def _collect(node):
+            if isinstance(node, dict):
+                attrs = node.get('attrs') or {}
+                if node.get('type') and attrs.get('node_id'):
+                    schema_nodes.append((node['type'], attrs))
+                for v in node.values():
+                    _collect(v)
+            elif isinstance(node, list):
+                for v in node:
+                    _collect(v)
+
+        _collect(substep.body_blocks)
+
         batches = list(BatchExecution.objects.filter(
             tenant=self.tenant, step__name='Cleaning', sealed_at__isnull=False,
         ).order_by('started_at'))
@@ -807,10 +825,21 @@ class DemoOrdersSeeder(BaseSeeder):
             # no individual part (the batch spans the whole load).
             hot = (i == len(batches) - 1 and len(batches) > 1)
             temp = 71.0 if hot else 58.0 + (i % 5)
+            caps = []
+            for node_type, attrs in schema_nodes:
+                if node_type == 'measurementInput':
+                    caps.append({
+                        "node_id": attrs['node_id'], "kind": "measurement",
+                        "measurement_definition_id": attrs.get('measurement_definition_id') or str(md.id),
+                        "value_numeric": temp,
+                    })
+                elif node_type == 'attestationCheckpoint':
+                    caps.append({
+                        "node_id": attrs['node_id'], "kind": "attestation",
+                        "confirm": True, "meaning": attrs.get('label') or 'Confirmed',
+                    })
             submit_substep(
-                substep=substep, batch_execution=be, user=operator,
-                captures=[{"node_id": str(uuid4()), "kind": "measurement",
-                           "measurement_definition_id": str(md.id), "value_numeric": temp}],
+                substep=substep, batch_execution=be, user=operator, captures=caps,
             )
             # Backdate the reading + report to the load's date (submit_substep
             # stamps 'now'); .update() bypasses auto_now.

@@ -91,6 +91,18 @@ def run_solve_task(self, tenant_id: str, time_limit_seconds: int = 180, draft: b
             'is_draft': result.is_draft}
 
 
+@shared_task
+def tick_auto_resolve():
+    """Periodic: queue a live re-solve for each tenant whose live schedule has
+    drifted stale and who opted into automatic rescheduling
+    (`OptimizationConfig.auto_resolve = LIVE`). This is the half that acts on the
+    staleness flag the signals set — without it, `is_stale` only ever lights up a
+    UI badge. Runs every 15 min (celery_app.py beat_schedule)."""
+    from Tracker.services.scheduling.auto_resolve import run_due_auto_resolves
+    ids = run_due_auto_resolves()
+    return {'queued': len(ids)}
+
+
 @shared_task(bind=True, soft_time_limit=600, time_limit=660)
 def run_dispatch_task(self, tenant_id: str, time_limit_seconds: int = 180):
     """Run the Layer-2 operator dispatch for a tenant; returns the coverage summary."""
