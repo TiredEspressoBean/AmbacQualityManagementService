@@ -20,7 +20,7 @@ from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, extend_schema_field, inline_serializer
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
 from Tracker.permissions import TenantAccessPermission
@@ -131,12 +131,31 @@ def _error_response(message: str, status_code: int, **extra) -> Response:
 # ---------------------------------------------------------------------------
 
 
+class CanExportReports(BasePermission):
+    """Reports are internal work-product (BOMs, travelers, labor hours, buy
+    lists). Tenant *membership* alone is not enough — customer-portal accounts
+    are tenant members too, and the adapters scope their queries by tenant, not
+    by the requesting user's row visibility. Gate on the staff export perm
+    (`export_data`, granted via STAFF_VIEW_PERMISSIONS; absent from the
+    Customer preset)."""
+
+    message = "You don't have permission to generate reports."
+
+    def has_permission(self, request, view):
+        u = request.user
+        if not (u and u.is_authenticated):
+            return False
+        if u.is_superuser or getattr(u, "is_staff", False):
+            return True
+        return u.has_tenant_perm("export_data")
+
+
 class ReportViewSet(viewsets.GenericViewSet):
     """
     API surface for Typst-based PDF reports.
     """
 
-    permission_classes = [IsAuthenticated, TenantAccessPermission]
+    permission_classes = [IsAuthenticated, TenantAccessPermission, CanExportReports]
     queryset = GeneratedReport.unscoped.none()  # drf-spectacular schema
 
     # ---- Async path ------------------------------------------------------

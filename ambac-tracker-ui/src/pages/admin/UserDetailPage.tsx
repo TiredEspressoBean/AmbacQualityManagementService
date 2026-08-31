@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { ArrowLeft, Factory, GraduationCap, Pencil, Plus, Star, User as UserIcon, X } from "lucide-react";
 import { ReportButton } from "@/components/reports/ReportButton";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 type Kind = "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
 const KIND_TONE: Record<Kind, string> = {
@@ -36,6 +37,9 @@ const KIND_TONE: Record<Kind, string> = {
 function WorkCentersTab({ userId }: { userId: number }) {
     const qc = useQueryClient();
     const [addWcId, setAddWcId] = useState<string>("");
+    // Memberships are access administration (team-access/manager tier).
+    const canManage = usePermissionSet().hasAny(
+        "add_userworkcentermembership", "change_userworkcentermembership");
 
     const membersKey = ["userwc-memberships", userId] as const;
     const { data: page, isLoading } = useQuery({
@@ -101,7 +105,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Add row */}
-                <div className="flex items-center gap-2">
+                {canManage && (<div className="flex items-center gap-2">
                     <Select value={addWcId} onValueChange={setAddWcId} disabled={availableWcs.length === 0}>
                         <SelectTrigger className="max-w-sm">
                             <SelectValue placeholder={
@@ -125,7 +129,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
                     >
                         <Plus className="mr-1 h-4 w-4" /> Add
                     </Button>
-                </div>
+                </div>)}
 
                 <Table>
                     <TableHeader>
@@ -166,7 +170,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
                                         <Badge className="gap-1 bg-amber-500 text-white hover:bg-amber-500">
                                             <Star className="h-3 w-3" /> Primary
                                         </Badge>
-                                    ) : (
+                                    ) : canManage ? (
                                         <Button
                                             size="sm"
                                             variant="ghost"
@@ -176,18 +180,20 @@ function WorkCentersTab({ userId }: { userId: number }) {
                                         >
                                             Set primary
                                         </Button>
-                                    )}
+                                    ) : null}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 px-2 text-xs text-muted-foreground"
-                                        disabled={removeMut.isPending}
-                                        onClick={() => removeMut.mutate(m.id)}
-                                    >
-                                        <X className="mr-1 h-3.5 w-3.5" /> Remove
-                                    </Button>
+                                    {canManage && (
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 px-2 text-xs text-muted-foreground"
+                                            disabled={removeMut.isPending}
+                                            onClick={() => removeMut.mutate(m.id)}
+                                        >
+                                            <X className="mr-1 h-3.5 w-3.5" /> Remove
+                                        </Button>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}

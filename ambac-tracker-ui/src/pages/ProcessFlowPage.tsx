@@ -680,8 +680,11 @@ export default function ProcessFlowPage() {
   const canProposeChange = hasPerm('add_processchangerequest') && hasPerm('add_processes');
   const canSubmitPcr = hasPerm('change_processchangerequest');
 
-  // Allow editing in template mode (both demo and real DRAFT processes)
-  const canEdit = (demoMode === 'template' || !isDemo) && isProcessEditable;
+  // Allow editing in template mode (both demo and real DRAFT processes).
+  // Status alone isn't enough: editing writes Steps/Processes (authoring tier),
+  // so a viewer without change_steps gets the read-only surface even on a DRAFT.
+  const canEdit =
+    (demoMode === 'template' || !isDemo) && isProcessEditable && hasPerm('change_steps');
 
   // Compute validation for the current process flow
   const validation = useMemo((): ValidationResult => {

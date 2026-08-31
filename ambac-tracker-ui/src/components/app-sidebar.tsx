@@ -117,14 +117,10 @@ const toolsPages = [
     { name: "AI Chat", url: "/ai-chat", icon: Bot },
 ]
 
-// Admin - Configuration/CRUD (staff only, collapsible)
-const adminPages = [
-    { name: "Settings", url: "/settings", icon: Settings },
-    { name: "User Management", url: "/admin/users", icon: Users },
-    { name: "Work Centers", url: "/admin/work-centers", icon: Factory },
-    { name: "Data Management", url: "/Edit", icon: Database },
-    { name: "Audit Log", url: "/admin/audit-log", icon: History },
-]
+// Admin - Configuration/CRUD (collapsible). Items are individually
+// permission-gated in the component — e.g. Work Centers is shop-floor master
+// data a Production Manager maintains (change_workcenter) without holding the
+// user-management perms the rest of the section needs.
 
 // Help - available to all authenticated users (at top of nav)
 const helpPages: Page[] = [
@@ -153,7 +149,24 @@ export function AppSidebar({
     const showQuality = isPlatformStaff || hasAny('view_qualityreports', 'view_capa', 'view_trainingrecord')
     const showApprovals = isPlatformStaff || hasAny('view_approvalrequest', 'respond_to_approval')
     const showTools = isPlatformStaff || hasAny('view_documents', 'view_chatsession')
-    const showAdmin = isPlatformStaff || hasAny('change_tenantgroup', 'add_user', 'change_user')
+
+    // Admin items gate individually: user/tenant admin needs the management
+    // perms, but Work Centers is floor master data (a Production Manager holds
+    // change_workcenter without add_user), and audit viewing is staff-wide.
+    const isUserAdmin = isPlatformStaff || hasAny('change_tenantgroup', 'add_user', 'change_user')
+    const adminPages = useMemo(() => [
+        ...(isUserAdmin ? [
+            { name: "Settings", url: "/settings", icon: Settings },
+            { name: "User Management", url: "/admin/users", icon: Users },
+        ] : []),
+        ...(isPlatformStaff || hasAny('change_workcenter', 'add_workcenter')
+            ? [{ name: "Work Centers", url: "/admin/work-centers", icon: Factory }] : []),
+        ...(isUserAdmin ? [{ name: "Data Management", url: "/Edit", icon: Database }] : []),
+        ...(isPlatformStaff || hasAny('view_auditlog', 'view_logentry')
+            ? [{ name: "Audit Log", url: "/admin/audit-log", icon: History }] : []),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- hasAny is stable per permission load
+    ], [isUserAdmin, isPlatformStaff, permissionsLoading])
+    const showAdmin = adminPages.length > 0
 
     // Calculate inbox badge count (pending tasks + pending approvals)
     const inboxCount = useMemo(() => {

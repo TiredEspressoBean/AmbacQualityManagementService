@@ -56,7 +56,9 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         'run_dispatch': ['change_scheduledtask'],
         'commit': ['add_scheduleresult'],
         'discard': ['add_scheduleresult'],
-        'config': ['change_optimizationconfig'],
+        # NOTE: 'config' is deliberately absent — it serves GET (anyone with
+        # view_optimizationconfig, i.e. all staff) and PATCH (planner) from one
+        # action, so the PATCH gate is enforced inside the action body.
         'plan_work_order': ['add_workorder'],
         'explode_work_order': ['add_workorder'],
     }
@@ -81,10 +83,16 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     @action(detail=False, methods=['get', 'patch'])
     def config(self, request):
         """The tenant's solver knobs (time limit, fence zones, penalties, labor model).
-        GET reads them; PATCH updates the subset provided. Gated on
-        change_optimizationconfig — the scheduling settings dialog."""
+        GET reads them (any staff viewer — the Gantt renders fences from them);
+        PATCH updates the subset provided, gated on change_optimizationconfig
+        (the scheduling settings dialog). Method-split gate lives here because
+        action_permissions applies per action, not per HTTP method."""
         config = self._get_config()
         if request.method == 'PATCH':
+            if not request.user.has_tenant_perm('change_optimizationconfig'):
+                return Response(
+                    {"detail": "You don't have permission to change the solver configuration."},
+                    status=403)
             ser = OptimizationConfigSerializer(config, data=request.data, partial=True)
             ser.is_valid(raise_exception=True)
             ser.save()

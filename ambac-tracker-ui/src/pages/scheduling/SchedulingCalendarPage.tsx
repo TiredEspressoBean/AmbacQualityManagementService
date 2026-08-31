@@ -43,6 +43,7 @@ import {
 } from "@/hooks/useCalendar";
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
 import { useShifts } from "@/hooks/useScheduling";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 const KIND_COLOR: Record<string, string> = {
   // closures
@@ -118,6 +119,12 @@ export function SchedulingCalendarPage() {
   const createOvertime = useCreateOvertime();
   const delOvertime = useDeleteOvertime();
 
+  // Calendar inputs (closures / labor blocks / overtime) are solver working-window
+  // data — planner tier. Everyone can view the calendar; only planners author it.
+  const { hasAny } = usePermissionSet();
+  const canPlan = hasAny(
+    "add_plantcalendarexception", "add_laborcalendarblock", "add_overtimewindow");
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [add, setAdd] = useState<AddState>(initialAdd);
   const [viewedYear] = useCalendarYear();
@@ -179,7 +186,7 @@ export function SchedulingCalendarPage() {
     const k = dayKey(d);
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(k) ? next.delete(k) : next.add(k);
+      if (next.has(k)) next.delete(k); else next.add(k);
       return next;
     });
   };
@@ -297,14 +304,18 @@ export function SchedulingCalendarPage() {
             : `${selected.size} day${selected.size === 1 ? "" : "s"} selected`}
         </span>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="outline" disabled={selected.size === 0}
-            onClick={() => openAdd("closure")}>Add closure</Button>
-          <Button size="sm" variant="outline" disabled={selected.size === 0}
-            onClick={() => openAdd("labor")}>Add absence / meeting</Button>
-          <Button size="sm" variant="outline" disabled={selected.size === 0}
-            onClick={() => openAdd("overtime")}>Add overtime</Button>
-          <Button size="sm" variant="ghost" onClick={() => openAdd("labor")}
-            title="Add a recurring block without picking days">Add recurring…</Button>
+          {canPlan && (
+            <>
+              <Button size="sm" variant="outline" disabled={selected.size === 0}
+                onClick={() => openAdd("closure")}>Add closure</Button>
+              <Button size="sm" variant="outline" disabled={selected.size === 0}
+                onClick={() => openAdd("labor")}>Add absence / meeting</Button>
+              <Button size="sm" variant="outline" disabled={selected.size === 0}
+                onClick={() => openAdd("overtime")}>Add overtime</Button>
+              <Button size="sm" variant="ghost" onClick={() => openAdd("labor")}
+                title="Add a recurring block without picking days">Add recurring…</Button>
+            </>
+          )}
           {selected.size > 0 && (
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
           )}
@@ -337,7 +348,7 @@ export function SchedulingCalendarPage() {
                 label={c.name || "Closure"}
                 sub={`${c.kind} · ${fmtDate(c.start_time)}${sameDay(c.start_time, c.end_time) ? "" : `–${fmtDate(c.end_time)}`}${c.recurrence === "YEARLY" ? " · yearly" : ""}`}
                 color={KIND_COLOR[c.kind || "HOLIDAY"]}
-                onDelete={() => delClosure.mutate(String(c.id))} />
+                onDelete={() => delClosure.mutate(String(c.id))} canDelete={canPlan} />
             ))}
           </ListCard>
 
@@ -347,7 +358,7 @@ export function SchedulingCalendarPage() {
                 label={`${userName(b.user)}: ${b.kind}`}
                 sub={`Weekly ${weeklyDays(b.days_of_week)} · ${b.window_start ?? ""}–${b.window_end ?? ""}`}
                 color={KIND_COLOR[b.kind || "OTHER"]}
-                onDelete={() => delBlock.mutate(String(b.id))} />
+                onDelete={() => delBlock.mutate(String(b.id))} canDelete={canPlan} />
             ))}
           </ListCard>
 
@@ -357,7 +368,7 @@ export function SchedulingCalendarPage() {
                 label={`${userName(b.user)}: ${b.kind}`}
                 sub={`${fmtDate(b.start_time)}${sameDay(b.start_time, b.end_time) ? "" : `–${fmtDate(b.end_time)}`}`}
                 color={KIND_COLOR[b.kind || "OTHER"]}
-                onDelete={() => delBlock.mutate(String(b.id))} />
+                onDelete={() => delBlock.mutate(String(b.id))} canDelete={canPlan} />
             ))}
           </ListCard>
 
@@ -369,7 +380,7 @@ export function SchedulingCalendarPage() {
                   ? `Weekly ${weeklyDays(o.days_of_week)}`
                   : `${fmtDate(o.start_date)}${o.start_date === o.end_date ? "" : `–${fmtDate(o.end_date)}`}`}
                 color={KIND_COLOR.OVERTIME}
-                onDelete={() => delOvertime.mutate(String(o.id))} />
+                onDelete={() => delOvertime.mutate(String(o.id))} canDelete={canPlan} />
             ))}
           </ListCard>
         </div>
@@ -440,7 +451,7 @@ export function SchedulingCalendarPage() {
                           className="h-8 w-11 px-0"
                           onClick={() => setAdd((a) => {
                             const days = new Set(a.days);
-                            on ? days.delete(d.n) : days.add(d.n);
+                            if (on) days.delete(d.n); else days.add(d.n);
                             return { ...a, days };
                           })}>{d.label}</Button>
                       );
@@ -492,7 +503,7 @@ export function SchedulingCalendarPage() {
                             className="h-8 w-11 px-0"
                             onClick={() => setAdd((a) => {
                               const days = new Set(a.days);
-                              on ? days.delete(d.n) : days.add(d.n);
+                              if (on) days.delete(d.n); else days.add(d.n);
                               return { ...a, days };
                             })}>{d.label}</Button>
                         );
@@ -575,8 +586,8 @@ function ListCard({ title, empty, children }: {
   );
 }
 
-function Row({ label, sub, color, onDelete }: {
-  label: string; sub: string; color: string; onDelete: () => void;
+function Row({ label, sub, color, onDelete, canDelete = true }: {
+  label: string; sub: string; color: string; onDelete: () => void; canDelete?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2 text-sm">
@@ -585,9 +596,11 @@ function Row({ label, sub, color, onDelete }: {
         <div className="truncate">{label}</div>
         <div className="truncate text-[11px] text-muted-foreground">{sub}</div>
       </div>
-      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={onDelete}>
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+      {canDelete && (
+        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={onDelete}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
 }

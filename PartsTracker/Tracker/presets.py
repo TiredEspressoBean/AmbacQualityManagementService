@@ -200,9 +200,9 @@ STAFF_OPERATIONAL_WRITE = [
     'add_equipments', 'change_equipments',
     'add_equipmenttype', 'change_equipmenttype',
     'add_calibrationrecord', 'change_calibrationrecord',
-    # Scheduling & time
-    'add_workcenter', 'change_workcenter',
-    'add_shift', 'change_shift',
+    # Scheduling & time. NOT here: work-centers (routing master data → AUTHORING;
+    # changing a WC's kind re-routes whole surfaces) and shifts (solver working
+    # windows → SCHEDULING_PLANNER, with the rest of the calendar inputs).
     'add_scheduleslot', 'change_scheduleslot',
     'add_downtimeevent', 'change_downtimeevent',
     'add_timeentry', 'change_timeentry',
@@ -302,6 +302,11 @@ AUTHORING_PERMISSIONS = [
     'add_parttypes', 'change_parttypes', 'delete_parttypes',
     # Raw-material master data (like part-type master data — change-controlled)
     'add_material', 'change_material', 'delete_material',
+    # Work-centers: routing master data — a WC's `kind` is the surface
+    # discriminator (operator queue / QA inbox / receiving / OSP), so editing
+    # one re-routes work the way editing a process does. Authoring tier, not
+    # broad operational write. (delete_workcenter stays manager-tier.)
+    'add_workcenter', 'change_workcenter',
     'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition',
     'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement',
     # BOM definitions
@@ -476,7 +481,10 @@ SCHEDULING_PLANNER_PERMISSIONS = [
     'add_fixture', 'change_fixture',
     'add_optimizationconfig', 'change_optimizationconfig',
     'add_continuousmachine', 'change_continuousmachine',
-    # Labor/plant calendar inputs the solver reads (shifts overtime, holidays/shutdowns)
+    # Labor/plant calendar inputs the solver reads (shifts, overtime,
+    # holidays/shutdowns). Shifts define the solver's working windows, so they
+    # sit with the other calendar inputs rather than broad operational write.
+    'add_shift', 'change_shift',
     'add_laborcalendarblock', 'change_laborcalendarblock',
     'add_overtimewindow', 'change_overtimewindow',
     'add_plantcalendarexception', 'change_plantcalendarexception',
@@ -560,6 +568,10 @@ GROUP_PRESETS = {
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Formally raise a CAPA
             'initiate_capa',
+            # Management schedule-touch: pin/move/reassign scheduled tasks (e.g.
+            # holding work for a quality issue). Solving/authoring stay with the
+            # planner roles.
+            'change_scheduledtask',
         ],
     },
 
@@ -658,6 +670,11 @@ GROUP_PRESETS = {
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Formally raise a CAPA
             'initiate_capa',
+            # Schedule floor authority: pin/move/reassign/dispatch scheduled
+            # tasks on their shift (the Gantt's direct-manipulation verbs).
+            # NOT the full planner bundle — solving, committing, and authoring
+            # solver inputs stay with Production Manager / Tenant Admin.
+            'change_scheduledtask',
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],

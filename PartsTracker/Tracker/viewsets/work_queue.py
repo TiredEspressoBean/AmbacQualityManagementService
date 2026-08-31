@@ -38,6 +38,12 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     # WorkOrder is the natural gate (broad grant). The actual rows are computed
     # by _rows() below — no queryset filtering paths from DRF are used.
     queryset = WorkOrder.unscoped.none()
+    # Additive gate: `view_workorder` alone also belongs to customer-portal
+    # accounts, whose WO visibility is relationship-filtered (for_user) — but
+    # _rows() computes tenant-wide floor rows with no row scoping. `view_steps`
+    # is staff-wide and absent from the Customer preset, keeping the floor
+    # queue an internal surface.
+    action_permissions = {'list': ['view_steps']}
 
     def _scheduled_meta(self):
         """Map (work_order_id, step_id) -> {start, machine_id, machine_name} on the live

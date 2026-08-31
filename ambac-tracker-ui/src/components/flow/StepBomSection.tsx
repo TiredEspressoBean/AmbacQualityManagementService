@@ -15,6 +15,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { useEffectiveBom, useUpdateBomLine } from "@/hooks/useBom";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 const lineLabel = (l: any) =>
   (l.source === "BUY" ? l.material_name : l.component_type_name) || "component";
@@ -36,13 +37,17 @@ export function StepBomSection({
   const partTypeId = (proc as any)?.part_type ?? null;
   const { bom, isDraft, isLoading } = useEffectiveBom(partTypeId);
   const updateLine = useUpdateBomLine();
+  // Allocation edits BOM lines — BOM authoring tier, on top of the flow
+  // editor's editable flag and the BOM being a DRAFT. (Hook stays above the
+  // early return per rules-of-hooks.)
+  const canEditBom = usePermissionSet().has("change_bomline");
 
   if (!partTypeId) return null; // unsaved process / no part type — nothing to allocate
 
   const lines: any[] = bom?.lines ?? [];
   const here = lines.filter((l) => String(l.consumed_at_step) === stepId);
   const assignable = lines.filter((l) => String(l.consumed_at_step) !== stepId);
-  const canEdit = editable && isDraft;
+  const canEdit = editable && isDraft && canEditBom;
 
   const assign = (id: string) => updateLine.mutate({ id, consumed_at_step: stepId });
   const unassign = (id: string) => updateLine.mutate({ id, consumed_at_step: null });

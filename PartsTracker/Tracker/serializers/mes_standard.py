@@ -31,21 +31,40 @@ class WorkCenterSerializer(SecureModelMixin):
     `create_new_version`. Archiving goes through a plain save.
     """
     equipment_names = serializers.SerializerMethodField()
+    step_count = serializers.SerializerMethodField()
+    member_count = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkCenter
         fields = (
             'id', 'name', 'code', 'description', 'kind', 'capacity_units',
             'default_efficiency', 'equipment', 'equipment_names', 'cost_center',
+            'step_count', 'member_count',
             'created_at', 'updated_at', 'archived', 'version',
         )
-        read_only_fields = ('created_at', 'updated_at', 'equipment_names', 'version')
+        read_only_fields = ('created_at', 'updated_at', 'equipment_names',
+                            'step_count', 'member_count', 'version')
 
-    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+    # `equipment` is station *placement* (operational master data, like
+    # Steps.work_center) — editing what's at a station shouldn't fork a new
+    # configuration version. Identity/config fields (name, code, kind,
+    # capacity, cost center) still version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'equipment'})
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_equipment_names(self, obj):
         return [eq.name for eq in obj.equipment.all()]
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_step_count(self, obj):
+        # Current routing steps stationed here. tenant-safe: reverse FK from an
+        # in-tenant WorkCenter row.
+        return obj.steps.filter(is_current_version=True).count()
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_member_count(self, obj):
+        # tenant-safe: reverse FK from an in-tenant WorkCenter row.
+        return obj.member_memberships.count()
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let

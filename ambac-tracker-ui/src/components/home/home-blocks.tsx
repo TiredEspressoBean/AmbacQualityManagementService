@@ -1352,12 +1352,31 @@ export function primaryPersona(user: AuthUser): string | null {
     return PERSONA_ORDER.find((p) => names.has(p.group))?.group ?? null;
 }
 
+/** Supervisory preview: roles that oversee a floor surface can switch Home to
+ *  it without being members of that group — the one Home link is everyone's
+ *  home (an admin/lead reaches the operator surface via the persona picker,
+ *  not a separate nav entry). */
+const SUPERVISOR_PREVIEW: Record<string, string[]> = {
+    "Tenant Admin": ["Operator", "QA Inspector"],
+    "Production Manager": ["Operator"],
+    "Shift Lead": ["Operator"],
+    "QA Manager": ["QA Inspector"],
+};
+
 /** Every persona the user is eligible for, in PERSONA_ORDER sequence. Powers
  *  the header persona picker for users with multiple group memberships (a
- *  QA-Manager-also-Engineer chooses which landing to see). */
+ *  QA-Manager-also-Engineer chooses which landing to see). Includes the floor
+ *  personas a supervisory role may preview (SUPERVISOR_PREVIEW). */
 export function candidatePersonas(user: AuthUser): string[] {
     const names = new Set((user.groups ?? []).map((g) => g.name));
-    return PERSONA_ORDER.filter((p) => names.has(p.group)).map((p) => p.group);
+    const eligible = new Set<string>();
+    for (const p of PERSONA_ORDER) {
+        if (names.has(p.group)) eligible.add(p.group);
+    }
+    for (const [supervisor, previews] of Object.entries(SUPERVISOR_PREVIEW)) {
+        if (names.has(supervisor)) previews.forEach((p) => eligible.add(p));
+    }
+    return PERSONA_ORDER.filter((p) => eligible.has(p.group)).map((p) => p.group);
 }
 
 export function resolveHomeBlocks(user: AuthUser, overridePersona?: string | null): BlockDef[] {

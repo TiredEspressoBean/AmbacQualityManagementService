@@ -941,6 +941,16 @@ class WorkCenter(SecureModel):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.mes.work_centers.
+        create_new_work_center_version`, which carries the equipment M2M and
+        repoints live references (steps, memberships, operational records) to
+        the new current row."""
+        from Tracker.services.mes.work_centers import create_new_work_center_version
+        return create_new_work_center_version(
+            self, user=user, change_description=change_description, **field_updates,
+        )
+
 
 class UserWorkCenterMembership(SecureModel):
     """Which work-centers a user is eligible to work at.

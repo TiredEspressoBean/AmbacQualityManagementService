@@ -2520,6 +2520,9 @@ class StepFilterSet(django_filters.FilterSet):
             "process_memberships__process__part_type": ["exact"],
             "part_type": ["exact"],
             "step_type": ["exact"],
+            # Station mapping: steps at a work-center, or unmapped (isnull=true —
+            # the "no station" bucket the mapping UI surfaces).
+            "work_center": ["exact", "isnull"],
         }
 
 

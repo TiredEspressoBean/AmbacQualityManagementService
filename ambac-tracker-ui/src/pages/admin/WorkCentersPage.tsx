@@ -27,6 +27,8 @@ import {
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { StationDialog } from "@/components/stations/StationDialog";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 type WorkCenter = components["schemas"]["WorkCenter"];
 type Kind = "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
@@ -61,6 +63,12 @@ export default function WorkCentersPage() {
     const qc = useQueryClient();
     const [search, setSearch] = useState("");
     const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
+    const [detail, setDetail] = useState<WorkCenter | null>(null);
+    // Work centers are routing master data (authoring tier). Everyone can view;
+    // create/edit/archive render only for holders of the WC authoring perms.
+    const { has } = usePermissionSet();
+    const canCreate = has("add_workcenter");
+    const canEdit = has("change_workcenter");
 
     const { data: page, isLoading } = useQuery({
         queryKey: ["work-centers", "admin", search] as const,
@@ -97,6 +105,7 @@ export default function WorkCentersPage() {
             qc.invalidateQueries({ queryKey: ["work-centers"] });
             toast.success("Archived.");
         },
+        onError: (e: unknown) => toast.error(`Couldn't archive: ${(e as Error).message}`),
     });
 
     const openCreate = () => setDraft({ ...EMPTY_DRAFT, open: true });
@@ -137,9 +146,11 @@ export default function WorkCentersPage() {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-                <Button onClick={openCreate}>
-                    <Plus className="mr-1 h-4 w-4" /> New work center
-                </Button>
+                {canCreate && (
+                    <Button onClick={openCreate}>
+                        <Plus className="mr-1 h-4 w-4" /> New work center
+                    </Button>
+                )}
             </div>
 
             <p className="text-sm text-muted-foreground">
@@ -155,24 +166,39 @@ export default function WorkCentersPage() {
                             <th className="px-3 py-2">Code</th>
                             <th className="px-3 py-2">Name</th>
                             <th className="px-3 py-2">Kind</th>
+                            <th className="px-3 py-2 text-right">Steps</th>
+                            <th className="px-3 py-2 text-right">Equipment</th>
+                            <th className="px-3 py-2 text-right">People</th>
                             <th className="px-3 py-2">Description</th>
                             <th className="w-10 px-3 py-2"></th>
                         </tr>
                     </thead>
                     <tbody>
                         {isLoading && (
-                            <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">Loading…</td></tr>
+                            <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Loading…</td></tr>
                         )}
                         {!isLoading && rows.length === 0 && (
-                            <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+                            <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                                 No work centers yet. Click "New work center" to add one.
                             </td></tr>
                         )}
                         {rows.map((wc) => {
-                            const kind = (((wc as unknown) as { kind?: Kind }).kind ?? "PRODUCTION");
-                            const archived = ((wc as unknown) as { archived?: boolean }).archived;
+                            const w = (wc as unknown) as WorkCenter & {
+                                kind?: Kind; archived?: boolean;
+                                step_count?: number; member_count?: number; equipment?: string[];
+                            };
+                            const kind = w.kind ?? "PRODUCTION";
+                            const archived = w.archived;
+                            const num = (n: number | undefined) =>
+                                (n ?? 0) > 0
+                                    ? <span className="tabular-nums">{n}</span>
+                                    : <span className="tabular-nums text-muted-foreground">—</span>;
                             return (
-                                <tr key={wc.id} className={`border-t ${archived ? "opacity-50" : ""}`}>
+                                <tr
+                                    key={wc.id}
+                                    className={`cursor-pointer border-t hover:bg-muted/30 ${archived ? "opacity-50" : ""}`}
+                                    onClick={() => setDetail(wc)}
+                                >
                                     <td className="px-3 py-2 font-mono text-xs">{wc.code}</td>
                                     <td className="px-3 py-2 font-medium">
                                         {wc.name}
@@ -181,8 +207,11 @@ export default function WorkCentersPage() {
                                     <td className="px-3 py-2">
                                         <Badge className={KIND_TONE[kind]}>{KIND_LABELS[kind]}</Badge>
                                     </td>
-                                    <td className="px-3 py-2 text-muted-foreground">{wc.description || "—"}</td>
-                                    <td className="px-3 py-2">
+                                    <td className="px-3 py-2 text-right">{num(w.step_count)}</td>
+                                    <td className="px-3 py-2 text-right">{num(w.equipment?.length)}</td>
+                                    <td className="px-3 py-2 text-right">{num(w.member_count)}</td>
+                                    <td className="max-w-64 truncate px-3 py-2 text-muted-foreground">{wc.description || "—"}</td>
+                                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -190,8 +219,13 @@ export default function WorkCentersPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => openEdit(wc)}>Edit</DropdownMenuItem>
-                                                {!archived && (
+                                                <DropdownMenuItem onClick={() => setDetail(wc)}>
+                                                    {canEdit ? "Manage station" : "View station"}
+                                                </DropdownMenuItem>
+                                                {canEdit && (
+                                                    <DropdownMenuItem onClick={() => openEdit(wc)}>Edit</DropdownMenuItem>
+                                                )}
+                                                {canEdit && !archived && (
                                                     <DropdownMenuItem
                                                         className="text-destructive"
                                                         onClick={() => archiveMut.mutate(wc.id)}
@@ -208,6 +242,12 @@ export default function WorkCentersPage() {
                     </tbody>
                 </table>
             </div>
+
+            <StationDialog
+                station={detail as never}
+                open={detail != null}
+                onOpenChange={(v) => !v && setDetail(null)}
+            />
 
             <Dialog open={draft.open} onOpenChange={(v) => !v && setDraft(EMPTY_DRAFT)}>
                 <DialogContent className="sm:max-w-md">

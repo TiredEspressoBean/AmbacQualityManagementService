@@ -29,6 +29,7 @@ import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 import {api, schemas} from "@/lib/api/generated";
 import {ReportButton} from "@/components/reports/ReportButton";
 import {isFieldRequired} from "@/lib/zod-config";
+import {usePermissionSet} from "@/hooks/useMyPermissions";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -48,6 +49,9 @@ const formSchema = schemas.PartTypesRequest.pick({
     name: true,
     ID_prefix: true,
     ERP_id: true,
+    can_make: true,
+    can_buy: true,
+    purchase_lead_time_days: true,
     itar_controlled: true,
     eccn: true,
     usml_category: true,
@@ -77,11 +81,25 @@ export default function PartTypeFormPage() {
             name: "",
             ID_prefix: "",
             ERP_id: "",
+            can_make: true,
+            can_buy: false,
+            purchase_lead_time_days: null,
             itar_controlled: false,
             eccn: "",
             usml_category: "",
         },
     });
+
+    // Preferred-supplier combobox (nullable FK) — kept out of RHF like the
+    // material/fixture forms.
+    const [supplierId, setSupplierId] = useState<string | null>(null);
+    const {data: companiesPage} = useQuery({
+        queryKey: ["companies", "part-type-supplier-picker"] as const,
+        queryFn: () => api.api_Companies_list({queries: {limit: 500, ordering: "name"}} as never) as Promise<{
+            results?: Array<{ id: string | number; name: string }>
+        }>,
+    });
+    const suppliers = (companiesPage?.results ?? []).map((c) => ({id: String(c.id), name: c.name}));
 
     useEffect(() => {
         if (mode === "edit" && partType) {
@@ -89,17 +107,24 @@ export default function PartTypeFormPage() {
                 name: partType.name ?? "",
                 ID_prefix: partType.ID_prefix ?? "",
                 ERP_id: partType.ERP_id ?? "",
+                can_make: (partType as { can_make?: boolean }).can_make ?? true,
+                can_buy: (partType as { can_buy?: boolean }).can_buy ?? false,
+                purchase_lead_time_days:
+                    (partType as { purchase_lead_time_days?: number | null }).purchase_lead_time_days ?? null,
                 itar_controlled: partType.itar_controlled ?? false,
                 eccn: partType.eccn ?? "",
                 usml_category: partType.usml_category ?? "",
             });
+            const ps = (partType as { preferred_supplier?: string | null }).preferred_supplier;
+            setSupplierId(ps != null ? String(ps) : null);
         }
     }, [mode, partType, form]);
 
     const createPartType = useCreatePartType();
     const updatePartType = useUpdatePartType();
 
-    function onSubmit(values: FormValues) {
+    function onSubmit(raw: FormValues) {
+        const values = {...raw, preferred_supplier: supplierId} as FormValues;
         if (mode === "edit" && partTypeId) {
             updatePartType.mutate({id: partTypeId, data: values}, {
                 onSuccess: () => {
@@ -166,6 +191,86 @@ export default function PartTypeFormPage() {
                             </FormItem>
                         )}
                     />
+                </div>
+
+                {/* Sourcing — make/buy is an attribute of the part, not an identity:
+                    a dual-sourced part (made normally, bought when slammed) sets both. */}
+                <div className="space-y-3 rounded-md border p-4">
+                    <div>
+                        <h3 className="text-sm font-medium">Sourcing</h3>
+                        <p className="text-sm text-muted-foreground">
+                            How this part is obtained. Both may be checked for a dual-sourced part.
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="can_make"
+                            render={({field}) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                        <Checkbox checked={field.value ?? true} onCheckedChange={field.onChange}/>
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>Made in-house</FormLabel>
+                                        <FormDescription>Produced via a process; shortages spawn child work orders</FormDescription>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="can_buy"
+                            render={({field}) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                        <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange}/>
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>Purchased</FormLabel>
+                                        <FormDescription>Bought from a supplier; received lots run the incoming-quality gates</FormDescription>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    {form.watch("can_buy") && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="purchase_lead_time_days"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Purchase lead time (days)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number" min={0} placeholder="e.g. 14"
+                                                value={field.value ?? ""}
+                                                onChange={(e) => field.onChange(
+                                                    e.target.value === "" ? null : Number(e.target.value))}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>Drives the order-by date on the sourcing report</FormDescription>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormItem>
+                                <FormLabel>Preferred supplier</FormLabel>
+                                <select
+                                    className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs"
+                                    value={supplierId ?? ""}
+                                    onChange={(e) => setSupplierId(e.target.value || null)}
+                                >
+                                    <option value="">None</option>
+                                    {suppliers.map((s) => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                                <FormDescription>Default supplier when this part is bought</FormDescription>
+                            </FormItem>
+                        </div>
+                    )}
                 </div>
 
                 <FormField
@@ -282,7 +387,10 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
     });
 
     const lines = bom?.lines ?? [];
-    const isDraft = chosen?.status === "DRAFT";
+    // BOM authoring is change-control tier: status gates *which* BOM is
+    // editable (DRAFT only); the perm gates *who* sees authoring controls.
+    const canAuthor = usePermissionSet().hasAny("add_bom", "change_bom", "change_bomline");
+    const isDraft = chosen?.status === "DRAFT" && canAuthor;
 
     // The assembly's own process steps — the ops a line can be "consumed at".
     const {data: stepsData} = useRetrieveSteps({ part_type: partTypeId, limit: 500 } as never);
@@ -310,7 +418,7 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                     <CardTitle className="text-lg">Bill of Materials</CardTitle>
                     <div className="flex items-center gap-2">
                         {/* Lifecycle action depends on the chosen BOM's status. */}
-                        {!chosen && !listLoading && (
+                        {!chosen && !listLoading && canAuthor && (
                             <Button size="sm" onClick={() => createBom.mutate(partTypeId)} disabled={createBom.isPending}>
                                 <Plus className="mr-1 h-4 w-4" /> Create BOM
                             </Button>
@@ -326,7 +434,7 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                                 Release
                             </Button>
                         )}
-                        {chosen && !isDraft && (
+                        {chosen && chosen.status !== "DRAFT" && canAuthor && (
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -353,7 +461,7 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                         </Badge>
                         <span>·</span>
                         <span>{chosen.line_count} line{chosen.line_count === 1 ? "" : "s"}</span>
-                        {!isDraft && chosen.status === "RELEASED" && (
+                        {canAuthor && !isDraft && chosen.status === "RELEASED" && (
                             <span className="italic">· released BOMs are read-only — use “New revision” to edit</span>
                         )}
                     </div>

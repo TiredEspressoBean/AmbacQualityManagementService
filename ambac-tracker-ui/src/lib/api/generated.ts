@@ -9141,6 +9141,8 @@ export type WorkCenter = {
    * @maxLength 50
    */
   string | undefined;
+  step_count: number;
+  member_count: number;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -20369,6 +20371,8 @@ const WorkCenter = z.object({
   equipment: z.array(z.string().uuid()).optional(),
   equipment_names: z.array(z.string()),
   cost_center: z.string().max(50).optional(),
+  step_count: z.number().int(),
+  member_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -42060,6 +42064,16 @@ Usage:
             "TIMER",
           ])
           .optional(),
+      },
+      {
+        name: "work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: PaginatedStepsList,

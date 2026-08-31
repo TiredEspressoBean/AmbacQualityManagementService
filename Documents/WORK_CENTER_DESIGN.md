@@ -88,6 +88,7 @@ We're modeling *eligibility* (who CAN work at this station), not *presence* (who
 - Model additions: `WorkCenter.kind` (enum), `Step.work_center` (nullable FK), `UserWorkCenterMembership` (through-table).
 - Migration.
 - Demo seed: create ~5 work-centers for the injector process (Assembly, Cleaning, Flow Test, Nozzle Inspection, Receiving Dock, OSP Dispatch). Map existing seeded steps by `step_type` + `is_outside_process`. `admin@demo` gets membership in all; role-scoped demo users get selective memberships.
+  - **Superseded (2026-08): the demo now seeds a station-level layout** — Teardown Bay, Grading Bench, Wash Line, Test Cell, Assembly Cell, Rework Bay, Pack & Ship (all PRODUCTION), plus Inspection Bench / Receiving Dock / OSP Dispatch, and a PROD-01 catch-all for unmapped steps. Steps map by *name* (kind heuristic as fallback), `WorkCenter.equipment` is populated (explicit gauge placement ∪ step-affinity derivation), and floor users' primary stations spread round-robin across the production cells. One-WC-per-kind proved too coarse for per-station readiness/dispatch/staging (work-center Phase 0).
 - Endpoints (`WorkQueue`, `my_workload`) accept `?kind=` and `?work_center=` filters.
 - Tests: filter correctness, seed produces expected splits, tenant isolation.
 - Perms: reuse `view_workorder` on WorkQueue (no change); WorkCenter reads existing `view_workcenter` (already granted in `STAFF_VIEW_PERMISSIONS`).

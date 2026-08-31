@@ -46,6 +46,7 @@ import {
   useBatchMembership,
   useWorkingWindows,
 } from "@/hooks/useScheduling";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { SchedulingSettingsDialog } from "@/components/scheduling/SchedulingSettingsDialog";
 import { NewWorkOrderDialog } from "@/components/scheduling/NewWorkOrderDialog";
 import { TaskReassignControls } from "@/components/scheduling/TaskReassignControls";
@@ -128,12 +129,15 @@ function DraftCompareBar({
   discarding,
   onCommit,
   onDiscard,
+  canDecide,
 }: {
   compare?: CompareResult;
   committing: boolean;
   discarding: boolean;
   onCommit: () => void;
   onDiscard: () => void;
+  /** add_scheduleresult — whether commit/discard controls render at all. */
+  canDecide: boolean;
 }) {
   const l = compare?.live;
   const d = compare?.draft;
@@ -179,14 +183,16 @@ function DraftCompareBar({
           <span className="text-muted-foreground">moves {compare.moved.toLocaleString()} tasks</span>
         )}
       </div>
-      <div className="flex items-center gap-2">
-        <Button size="sm" onClick={onCommit} disabled={committing}>
-          {committing ? "Committing…" : "Commit draft"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={onDiscard} disabled={discarding}>
-          {discarding ? "Discarding…" : "Discard"}
-        </Button>
-      </div>
+      {canDecide && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={onCommit} disabled={committing}>
+            {committing ? "Committing…" : "Commit draft"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={onDiscard} disabled={discarding}>
+            {discarding ? "Discarding…" : "Discard"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -226,6 +232,18 @@ export function SchedulingGanttPage() {
   const moveBatch = useMoveBatch();
   const pinBatch = usePinBatch();
   const batchMembership = useBatchMembership();
+
+  // Permission-derived capability flags. The backend enforces all of these —
+  // the point here is to not render controls that would only 403:
+  //   canTouch  — pin/move/merge/break/reassign/dispatch (shift lead & up)
+  //   canSolve  — solve / what-if / commit / discard (planner: PM + admin)
+  //   canConfig — solver settings (planner)
+  //   canPlanWo — create/edit work orders from the board
+  const { has } = usePermissionSet();
+  const canTouch = has("change_scheduledtask");
+  const canSolve = has("add_scheduleresult");
+  const canConfig = has("change_optimizationconfig");
+  const canPlanWo = has("add_workorder");
 
   // Zoom = fidelity. Ctrl/⌘ + wheel (what a trackpad pinch emits) zooms; so do the
   // toolbar buttons. Higher zoom widens the day columns so hourly detail is legible.
@@ -415,8 +433,11 @@ export function SchedulingGanttPage() {
     ) : null;
 
   // Props shared by every rendered bar (drag, select, late-highlight, multi-select ring).
+  // Drag is wired only for users who can actually reschedule (change_scheduledtask) —
+  // without onMove the bar renders statically, so viewers can't "move" a bar that
+  // would never persist.
   const barProps = (f: { id: string; is_late: boolean }) => ({
-    onMove: onMoveTask,
+    onMove: canTouch ? onMoveTask : undefined,
     onSelect: handleSelect,
     cardClassName: selectedIds.has(f.id)
       ? "ring-2 ring-inset ring-sky-500 ring-offset-1"
@@ -429,7 +450,7 @@ export function SchedulingGanttPage() {
   // parts); a single-task bar drags per-task.
   const laneBarProps = (f: { id: string; is_late: boolean }) => ({
     ...barProps(f),
-    onMove: isBatchId(f.id) ? onMoveBatch : onMoveTask,
+    onMove: canTouch ? (isBatchId(f.id) ? onMoveBatch : onMoveTask) : undefined,
   });
 
   // Working windows → Date pairs; the Gantt shades the non-working complement.
@@ -831,58 +852,62 @@ export function SchedulingGanttPage() {
               <span className="px-1 text-xs font-medium text-sky-600 tabular-nums dark:text-sky-400">
                 {selectedTaskIds.length} selected
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => runSelected(true)}
-                disabled={batchMembership.isPending || selectedTaskIds.length < 2}
-                title="Merge the selected parts into their work-order lot(s)"
-              >
-                <Combine className="mr-1 h-3.5 w-3.5" /> Merge
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => runSelected(false)}
-                disabled={batchMembership.isPending || selectedTaskIds.length < 1}
-                title="Break the selected parts into individually-scheduled bars"
-              >
-                <Split className="mr-1 h-3.5 w-3.5" /> Break
-              </Button>
-              <span className="mx-0.5 h-4 w-px bg-sky-500/30" />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => runSelectedPin(true)}
-                disabled={pinBatch.isPending || selectedTaskIds.length < 1}
-                title="Pin the selected parts so the solver keeps them in place"
-              >
-                <Pin className="mr-1 h-3.5 w-3.5" /> Pin
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => runSelectedPin(false)}
-                disabled={pinBatch.isPending || selectedTaskIds.length < 1}
-                title="Unpin the selected parts so the solver can reschedule them"
-              >
-                <PinOff className="mr-1 h-3.5 w-3.5" /> Unpin
-              </Button>
-              <span className="mx-0.5 h-4 w-px bg-sky-500/30" />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setBulkReassignOpen(true)}
-                disabled={selectedTaskIds.length < 1}
-                title="Set a machine and/or operator for all selected tasks"
-              >
-                <ArrowLeftRight className="mr-1 h-3.5 w-3.5" /> Reassign…
-              </Button>
+              {canTouch && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => runSelected(true)}
+                    disabled={batchMembership.isPending || selectedTaskIds.length < 2}
+                    title="Merge the selected parts into their work-order lot(s)"
+                  >
+                    <Combine className="mr-1 h-3.5 w-3.5" /> Merge
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => runSelected(false)}
+                    disabled={batchMembership.isPending || selectedTaskIds.length < 1}
+                    title="Break the selected parts into individually-scheduled bars"
+                  >
+                    <Split className="mr-1 h-3.5 w-3.5" /> Break
+                  </Button>
+                  <span className="mx-0.5 h-4 w-px bg-sky-500/30" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => runSelectedPin(true)}
+                    disabled={pinBatch.isPending || selectedTaskIds.length < 1}
+                    title="Pin the selected parts so the solver keeps them in place"
+                  >
+                    <Pin className="mr-1 h-3.5 w-3.5" /> Pin
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => runSelectedPin(false)}
+                    disabled={pinBatch.isPending || selectedTaskIds.length < 1}
+                    title="Unpin the selected parts so the solver can reschedule them"
+                  >
+                    <PinOff className="mr-1 h-3.5 w-3.5" /> Unpin
+                  </Button>
+                  <span className="mx-0.5 h-4 w-px bg-sky-500/30" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setBulkReassignOpen(true)}
+                    disabled={selectedTaskIds.length < 1}
+                    title="Set a machine and/or operator for all selected tasks"
+                  >
+                    <ArrowLeftRight className="mr-1 h-3.5 w-3.5" /> Reassign…
+                  </Button>
+                </>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -934,44 +959,55 @@ export function SchedulingGanttPage() {
               ))}
             </div>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            title="Create a new work order"
-            onClick={() => setNewWoOpen(true)}
-          >
-            <Plus className="mr-1 h-4 w-4" /> New WO
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            title="Scheduling settings"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-          <Button onClick={solve.run} disabled={solve.isRunning}>
-            {solve.isRunning ? "Solving…" : "Solve"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={solveDraft.run}
-            disabled={solveDraft.isRunning}
-            title="Explore a what-if without touching the live schedule"
-          >
-            {solveDraft.isRunning ? "Solving…" : "What-if"}
-          </Button>
-          <Button variant="secondary" onClick={dispatch.run} disabled={dispatch.isRunning || !live}>
-            {dispatch.isRunning ? "Dispatching…" : "Dispatch"}
-          </Button>
+          {canPlanWo && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              title="Create a new work order"
+              onClick={() => setNewWoOpen(true)}
+            >
+              <Plus className="mr-1 h-4 w-4" /> New WO
+            </Button>
+          )}
+          {canConfig && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              title="Scheduling settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
+          {canSolve && (
+            <>
+              <Button onClick={solve.run} disabled={solve.isRunning}>
+                {solve.isRunning ? "Solving…" : "Solve"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={solveDraft.run}
+                disabled={solveDraft.isRunning}
+                title="Explore a what-if without touching the live schedule"
+              >
+                {solveDraft.isRunning ? "Solving…" : "What-if"}
+              </Button>
+            </>
+          )}
+          {canTouch && (
+            <Button variant="secondary" onClick={dispatch.run} disabled={dispatch.isRunning || !live}>
+              {dispatch.isRunning ? "Dispatching…" : "Dispatch"}
+            </Button>
+          )}
         </div>
       </header>
 
       {draft && (
         <DraftCompareBar
           compare={compareQuery.data as CompareResult | undefined}
+          canDecide={canSolve}
           committing={commitDraft.isPending}
           discarding={discardDraft.isPending}
           onCommit={() =>
@@ -1212,7 +1248,7 @@ export function SchedulingGanttPage() {
                     : "OK"}
                 </dd>
               </dl>
-              {detailTask.part_erp && (
+              {canTouch && detailTask.part_erp && (
                 <TaskReassignControls
                   taskId={detailTask.id}
                   machineId={detailTask.machine}
@@ -1221,15 +1257,17 @@ export function SchedulingGanttPage() {
               )}
               <DialogFooter className="gap-2 sm:justify-between">
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => runBatch([detailTask.id], true, () => setDetailId(null))}
-                    disabled={batchMembership.isPending}
-                    title="Fold this part back into its work-order lot so it batches with its siblings"
-                  >
-                    <Combine className="mr-1 h-4 w-4" /> Merge into batch
-                  </Button>
-                  {detailTask.work_order_id && (
+                  {canTouch && (
+                    <Button
+                      variant="outline"
+                      onClick={() => runBatch([detailTask.id], true, () => setDetailId(null))}
+                      disabled={batchMembership.isPending}
+                      title="Fold this part back into its work-order lot so it batches with its siblings"
+                    >
+                      <Combine className="mr-1 h-4 w-4" /> Merge into batch
+                    </Button>
+                  )}
+                  {canPlanWo && detailTask.work_order_id && (
                     <Button
                       variant="outline"
                       onClick={() => { setEditWoId(detailTask.work_order_id); setDetailId(null); }}
@@ -1239,21 +1277,23 @@ export function SchedulingGanttPage() {
                     </Button>
                   )}
                 </div>
-                <Button
-                  variant={detailTask.is_pinned ? "secondary" : "default"}
-                  onClick={() => togglePin(detailTask.id)}
-                  disabled={pin.isPending}
-                >
-                  {detailTask.is_pinned ? (
-                    <>
-                      <PinOff className="mr-1 h-4 w-4" /> Unpin
-                    </>
-                  ) : (
-                    <>
-                      <Pin className="mr-1 h-4 w-4" /> Pin
-                    </>
-                  )}
-                </Button>
+                {canTouch && (
+                  <Button
+                    variant={detailTask.is_pinned ? "secondary" : "default"}
+                    onClick={() => togglePin(detailTask.id)}
+                    disabled={pin.isPending}
+                  >
+                    {detailTask.is_pinned ? (
+                      <>
+                        <PinOff className="mr-1 h-4 w-4" /> Unpin
+                      </>
+                    ) : (
+                      <>
+                        <Pin className="mr-1 h-4 w-4" /> Pin
+                      </>
+                    )}
+                  </Button>
+                )}
               </DialogFooter>
             </>
           )}
@@ -1294,23 +1334,27 @@ export function SchedulingGanttPage() {
               </p>
               <DialogFooter className="gap-2 sm:justify-between">
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => runBatch(detailBatch.taskIds, false, () => setDetailBatchId(null))}
-                    disabled={batchMembership.isPending}
-                    title="Break this batch into individually-schedulable parts"
-                  >
-                    <Split className="mr-1 h-4 w-4" /> Break apart
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => runBatch(detailBatch.taskIds, true, () => setDetailBatchId(null))}
-                    disabled={batchMembership.isPending}
-                    title="Fold these parts back into their work-order lot, combining with the rest of the batch"
-                  >
-                    <Combine className="mr-1 h-4 w-4" /> Merge into batch
-                  </Button>
-                  {detailBatch.work_order_id && (
+                  {canTouch && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => runBatch(detailBatch.taskIds, false, () => setDetailBatchId(null))}
+                        disabled={batchMembership.isPending}
+                        title="Break this batch into individually-schedulable parts"
+                      >
+                        <Split className="mr-1 h-4 w-4" /> Break apart
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => runBatch(detailBatch.taskIds, true, () => setDetailBatchId(null))}
+                        disabled={batchMembership.isPending}
+                        title="Fold these parts back into their work-order lot, combining with the rest of the batch"
+                      >
+                        <Combine className="mr-1 h-4 w-4" /> Merge into batch
+                      </Button>
+                    </>
+                  )}
+                  {canPlanWo && detailBatch.work_order_id && (
                     <Button
                       variant="outline"
                       onClick={() => { setEditWoId(detailBatch.work_order_id); setDetailBatchId(null); }}
@@ -1320,7 +1364,7 @@ export function SchedulingGanttPage() {
                     </Button>
                   )}
                 </div>
-                <Button
+                {canTouch && (<Button
                   variant={detailBatch.allPinned ? "secondary" : "default"}
                   onClick={toggleBatchPin}
                   disabled={pinBatch.isPending}
@@ -1334,7 +1378,7 @@ export function SchedulingGanttPage() {
                       <Pin className="mr-1 h-4 w-4" /> Pin all
                     </>
                   )}
-                </Button>
+                </Button>)}
               </DialogFooter>
             </>
           )}

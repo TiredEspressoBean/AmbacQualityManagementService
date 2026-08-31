@@ -1077,19 +1077,37 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
             />
           </DndContext>
         )}
-        <DndContext
-          modifiers={[restrictToHorizontalAxis]}
-          onDragEnd={onDragEnd}
-          onDragMove={handleItemDragMove}
-          onDragStart={handleItemDragStart}
-          sensors={[mouseSensor]}
-        >
-          <GanttFeatureItemCard id={feature.id} className={cardClassName}>
-            {children ?? (
-              <p className="flex-1 truncate text-xs">{feature.name}</p>
+        {onMove ? (
+          <DndContext
+            modifiers={[restrictToHorizontalAxis]}
+            onDragEnd={onDragEnd}
+            onDragMove={handleItemDragMove}
+            onDragStart={handleItemDragStart}
+            sensors={[mouseSensor]}
+          >
+            <GanttFeatureItemCard id={feature.id} className={cardClassName}>
+              {children ?? (
+                <p className="flex-1 truncate text-xs">{feature.name}</p>
+              )}
+            </GanttFeatureItemCard>
+          </DndContext>
+        ) : (
+          // No onMove (e.g. viewer lacks schedule-edit permission): render a
+          // static card with no drag wiring at all, so a drag attempt can't
+          // visually displace a bar that will never persist.
+          <Card
+            className={cn(
+              "h-full w-full rounded-md bg-background p-2 text-xs shadow-sm",
+              cardClassName
             )}
-          </GanttFeatureItemCard>
-        </DndContext>
+          >
+            <div className="flex h-full w-full items-center justify-between gap-2 text-left">
+              {children ?? (
+                <p className="flex-1 truncate text-xs">{feature.name}</p>
+              )}
+            </div>
+          </Card>
+        )}
         {onMove && resizable && (
           <DndContext
             modifiers={[restrictToHorizontalAxis]}

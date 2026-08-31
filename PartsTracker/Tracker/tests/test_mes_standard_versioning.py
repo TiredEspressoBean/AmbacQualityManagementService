@@ -228,6 +228,42 @@ class WorkCenterSerializerRoutingTestCase(TenantTestCase):
         self.assertEqual(result.version, 2)
         self.assertEqual(result.description, 'Closed bay')
 
+    def test_equipment_edit_does_not_version(self):
+        """Station placement (equipment M2M) is operational master data —
+        editing what's at the station must not fork a configuration version."""
+        et = EquipmentType.objects.create(tenant=self.tenant_a, name='Bench')
+        eq = Equipments.objects.create(tenant=self.tenant_a, name='Bench B-1', equipment_type=et)
+        s = self._serializer(self.obj, {'equipment': [eq.id]})
+        s.is_valid(raise_exception=True)
+        result = s.save()
+
+        self.assertEqual(result.version, 1)
+        self.assertEqual([e.id for e in result.equipment.all()], [eq.id])
+
+    def test_new_version_carries_live_references(self):
+        """A content edit forks a new version row — steps, memberships, and the
+        equipment M2M must follow the station identity onto the new current row
+        (else work-queue routing silently strands on the superseded version)."""
+        from Tracker.models import Steps, PartTypes, UserWorkCenterMembership
+        et = EquipmentType.objects.create(tenant=self.tenant_a, name='Bench')
+        eq = Equipments.objects.create(tenant=self.tenant_a, name='Bench B-2', equipment_type=et)
+        self.obj.equipment.set([eq])
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name='Widget')
+        step = Steps.objects.create(tenant=self.tenant_a, part_type=pt, name='Fit',
+                                    step_type='TASK', work_center=self.obj)
+        member = UserWorkCenterMembership.objects.create(
+            tenant=self.tenant_a, user=self.user_a, work_center=self.obj)
+
+        s = self._serializer(self.obj, {'name': 'Assembly Bay 2'})
+        s.is_valid(raise_exception=True)
+        new = s.save()
+
+        self.assertEqual(new.version, 2)
+        step.refresh_from_db(); member.refresh_from_db()
+        self.assertEqual(step.work_center_id, new.id)
+        self.assertEqual(member.work_center_id, new.id)
+        self.assertEqual([e.id for e in new.equipment.all()], [eq.id])
+
     def test_empty_update_is_noop(self):
         s = self._serializer(self.obj, {})
         s.is_valid(raise_exception=True)

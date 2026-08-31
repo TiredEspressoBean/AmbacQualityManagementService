@@ -18,8 +18,10 @@ class WorkQueueApiTests(TenantTestCase):
 
     def setUp(self):
         super().setUp()
+        # view_steps: the queue's additive staff gate — view_workorder alone also
+        # belongs to customer accounts, which must not read the floor queue.
         self.grant_tenant_permissions(
-            self.user_a, self.tenant_a, ["view_workorder", "full_tenant_access"]
+            self.user_a, self.tenant_a, ["view_workorder", "view_steps", "full_tenant_access"]
         )
 
     # --- helpers ------------------------------------------------------------
@@ -175,6 +177,19 @@ class WorkQueueApiTests(TenantTestCase):
         # No authenticate_as → anonymous request.
         resp = self.client.get("/api/WorkQueue/")
         self.assertIn(resp.status_code, (401, 403))
+
+    def test_customer_shaped_member_is_403(self):
+        """view_workorder alone (the Customer preset's shape) must not read the
+        floor queue — _rows() is tenant-wide with no for_user row scoping, so
+        the additive view_steps gate keeps it an internal surface."""
+        from Tracker.models import User
+        customer = User.objects.create_user(
+            username="queue-customer", email="queue-customer@x.test",
+            password="testpass123", tenant=self.tenant_a)
+        self.grant_tenant_permissions(customer, self.tenant_a, ["view_workorder"])
+        self.authenticate_as(customer, self.tenant_a)
+        resp = self.client.get("/api/WorkQueue/")
+        self.assertEqual(resp.status_code, 403)
 
     # --- work-center filters ------------------------------------------------
 

@@ -22775,6 +22775,15 @@ paths:
           * `TIMER` - Timer/Wait
           * `TERMINAL` - Terminal
           * `RECEIVING` - Receiving Inspection
+      - in: query
+        name: work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: work_center__isnull
+        schema:
+          type: boolean
       tags:
       - api
       security:
@@ -64328,6 +64337,12 @@ components:
         cost_center:
           type: string
           maxLength: 50
+        step_count:
+          type: integer
+          readOnly: true
+        member_count:
+          type: integer
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -64346,7 +64361,9 @@ components:
       - created_at
       - equipment_names
       - id
+      - member_count
       - name
+      - step_count
       - updated_at
       - version
     WorkCenterKindEnum:

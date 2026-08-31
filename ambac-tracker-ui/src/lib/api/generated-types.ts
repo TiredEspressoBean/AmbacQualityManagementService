@@ -30088,6 +30088,8 @@ export interface components {
             equipment?: string[];
             readonly equipment_names: string[];
             cost_center?: string;
+            readonly step_count: number;
+            readonly member_count: number;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -46535,6 +46537,8 @@ export interface operations {
                  *     * `RECEIVING` - Receiving Inspection
                  */
                 step_type?: "DECISION" | "RECEIVING" | "REWORK" | "START" | "TASK" | "TERMINAL" | "TIMER";
+                work_center?: string;
+                work_center__isnull?: boolean;
             };
             header?: never;
             path?: never;

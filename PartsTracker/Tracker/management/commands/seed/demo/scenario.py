@@ -263,8 +263,9 @@ class DemoScenario(BaseSeeder):
         return seeder.seed(company_list, users, manufacturing)
 
     def _seed_work_centers(self):
-        """Seed the 4 demo work-centers + map Step.work_center by
-        (step_type, is_outside_process) + create User↔WC memberships.
+        """Seed the station-level demo work-centers (Teardown Bay, Wash Line,
+        Test Cell, ...), map Step.work_center by step name (kind-heuristic
+        fallback), place equipment, and create User↔WC memberships.
         See Documents/WORK_CENTER_DESIGN.md."""
         from .work_centers import DemoWorkCenterSeeder
         seeder = DemoWorkCenterSeeder(self.stdout, self.style, self.tenant, scale=self.scale)

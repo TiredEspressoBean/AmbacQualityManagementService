@@ -197,6 +197,17 @@ class SchedulingAPITests(TenantTestCase):
         self.authenticate_as(self.user_a, self.tenant_a)   # no perms granted
         self.assertEqual(self.client.post('/api/Schedules/solve/').status_code, 403)
 
+    def test_config_get_is_viewer_read_but_patch_is_planner_only(self):
+        """The config action serves GET (any staff viewer — the Gantt renders
+        fences from it) and PATCH (planner) from one endpoint; the method-split
+        gate lives in the action body."""
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ["view_optimizationconfig"])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        self.assertEqual(self.client.get('/api/Schedules/config/').status_code, 200)
+        patch = self.client.patch('/api/Schedules/config/',
+                                  {'solver_time_limit_seconds': 60}, format='json')
+        self.assertEqual(patch.status_code, 403)
+
     def test_tenant_isolation(self):
         # tenant A solves; tenant B must not see A's tasks/schedule or pin A's task.
         self.authenticate_superuser(self.tenant_a)
