@@ -58,9 +58,13 @@ const KIND_COLOR: Record<string, string> = {
   MEETING: "#3b82f6", BREAK: "#64748b", OTHER: "#9ca3af",
   // additive
   OVERTIME: "#22c55e",
-  // company-lens aggregate ("N out") — deliberately muted: it's a density
-  // signal, the drill-down (crew/person lens or day click) carries the names
+  // company-lens net-headcount chip ("13/15 · 2 out") — variance coloring:
+  // muted when fully staffed, amber when short, red when badly short (<80%).
+  // The drill-down (crew/person lens or day click) carries the names.
   OUT: "#64748b",
+  HEADCOUNT_OK: "#475569",
+  HEADCOUNT_LOW: "#d97706",
+  HEADCOUNT_CRIT: "#dc2626",
 };
 // Day numbering follows the MODEL/solver convention: 0=Monday .. 6=Sunday
 // (Python `date.weekday()`), matching Shift.days_of_week and the shifts tab.
@@ -239,10 +243,9 @@ export function SchedulingCalendarPage() {
       }
     }
     // Personal absences: named features only under a narrowed scope (crew /
-    // station / person). The company lens collapses them to a per-day density
-    // chip — "N out" — because a specific person's PTO isn't plant-wide news
-    // and the day cell has no room for a roster.
-    const aggregate = new Map<string, number>(); // dayKey -> distinct people out
+    // station / person). The company lens carries them via the per-day net
+    // headcount corner badge instead (see `headcount` below) — a specific
+    // person's PTO isn't plant-wide news and the cell has no room for a roster.
     for (const b of blocks) {
       if (!b.is_active || b.recurrence !== "ONCE" || !b.start_time || !b.end_time) continue;
       if (b.user == null || narrowed) {
@@ -250,31 +253,112 @@ export function SchedulingCalendarPage() {
         const label = b.user == null ? `Everyone: ${b.kind}` : `${userName(b.user)}: ${b.kind}`;
         out.push(...spanFeatures(String(b.id), label, b.kind || "OTHER",
           b.start_time as string, b.end_time as string));
-      } else {
-        const s = startOfDay(new Date(b.start_time as string));
-        const e = startOfDay(new Date(b.end_time as string));
-        if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) continue;
-        for (const d of eachDayOfInterval({ start: s, end: e })) {
-          const k = dayKey(d);
-          aggregate.set(k, (aggregate.get(k) ?? 0) + 1);
-        }
       }
-    }
-    for (const [k, n] of aggregate) {
-      out.push({
-        id: `out-${k}`, name: `${n} out`,
-        startAt: new Date(`${k}T00:00:00`), endAt: new Date(`${k}T00:00:00`),
-        status: { id: "OUT", name: "OUT", color: KIND_COLOR.OUT },
-      });
     }
     for (const o of overtimes) {
       if (!o.is_active || o.recurrence !== "ONCE" || !o.start_date || !o.end_date) continue;
+      // Date-only strings must parse as LOCAL dates (bare "YYYY-MM-DD" is UTC
+      // midnight → the bar lands a day early west of Greenwich).
       out.push(...spanFeatures(String(o.id), `Overtime: ${o.shift_name ?? ""}`.trim(),
-        "OVERTIME", o.start_date as string, o.end_date as string));
+        "OVERTIME", `${o.start_date}T00:00:00`, `${o.end_date}T00:00:00`));
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closures, blocks, overtimes, users, viewedYear, narrowed, shiftFilter, wcFilter, personFilter, wcMemberIds]);
+  }, [closures, blocks, overtimes, users, shifts, viewedYear, viewedMonth,
+      narrowed, shiftFilter, wcFilter, personFilter, wcMemberIds]);
+
+  // ── Net headcount per day (company lens corner badge) ─────────────────────
+  // "avail/rostered" for every WORKING day of the viewed month — the question
+  // the company calendar answers is "is Thursday thin?". A day works when any
+  // rostered shift covers its weekday (model 0=Mon) or overtime runs a shift
+  // on it; closure days get no badge (the closure bar carries the message).
+  // (Business Central's capacity matrix + Snap Schedule's Req/Asg/Var
+  // variance coloring, fused onto a month grid.)
+  const headcount = useMemo(() => {
+    if (narrowed) return null;
+    const map = new Map<string, { avail: number; total: number; out: number; status: string }>();
+    const rostered = users.filter(
+      (u) => (u as { default_shift?: string | null }).default_shift != null);
+    const byShift = new Map<string, number>(); // shift id -> rostered heads
+    for (const u of rostered) {
+      const sid = String((u as { default_shift?: string | null }).default_shift);
+      byShift.set(sid, (byShift.get(sid) ?? 0) + 1);
+    }
+    // People out per day (one-off personal absences).
+    const outByDay = new Map<string, number>();
+    for (const b of blocks) {
+      if (!b.is_active || b.recurrence !== "ONCE" || b.user == null
+        || !b.start_time || !b.end_time) continue;
+      const s = startOfDay(new Date(b.start_time as string));
+      const e = startOfDay(new Date(b.end_time as string));
+      if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) continue;
+      for (const d of eachDayOfInterval({ start: s, end: e })) {
+        const k = dayKey(d);
+        outByDay.set(k, (outByDay.get(k) ?? 0) + 1);
+      }
+    }
+    // Days the plant is closed (closures incl. YEARLY, company-wide blocks).
+    const closedDays = new Set<string>();
+    const closeSpan = (s: Date, e: Date) => {
+      if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) return;
+      for (const d of eachDayOfInterval({ start: startOfDay(s), end: startOfDay(e) })) {
+        closedDays.add(dayKey(d));
+      }
+    };
+    for (const c of closures) {
+      if (!c.is_active) continue;
+      const s = new Date(c.start_time as string);
+      const e = new Date(c.end_time as string);
+      if (c.recurrence === "YEARLY") {
+        const dur = e.getTime() - s.getTime();
+        const os = new Date(s); os.setFullYear(viewedYear);
+        closeSpan(os, new Date(os.getTime() + dur));
+      } else closeSpan(s, e);
+    }
+    for (const b of blocks) {
+      if (!b.is_active || b.user != null || b.recurrence !== "ONCE"
+        || !b.start_time || !b.end_time) continue;
+      closeSpan(new Date(b.start_time as string), new Date(b.end_time as string));
+    }
+    const shiftDays = new Map<string, Set<number>>(); // shift id -> model weekdays
+    for (const s of shifts as Array<{ id: string; days_of_week?: string }>) {
+      shiftDays.set(String(s.id), new Set(
+        (s.days_of_week ?? "").split(",").map((x) => Number(x.trim())).filter((n) => n >= 0 && n <= 6)));
+    }
+    const daysInViewed = new Date(viewedYear, viewedMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInViewed; d++) {
+      const date = new Date(viewedYear, viewedMonth, d);
+      const k = dayKey(date);
+      if (closedDays.has(k)) continue;
+      const modelDow = (date.getDay() + 6) % 7; // JS 0=Sun → model 0=Mon
+      const working = new Set<string>();
+      for (const [sid, days] of shiftDays) {
+        if (days.has(modelDow)) working.add(sid);
+      }
+      for (const o of overtimes) {
+        if (!o.is_active) continue;
+        const sid = String(o.shift);
+        if (o.recurrence === "WEEKLY") {
+          const otDays = (o.days_of_week ?? "").split(",").map((x) => Number(x.trim()));
+          if (otDays.includes(modelDow)) working.add(sid);
+        } else if (o.start_date && o.end_date && o.start_date <= k && k <= o.end_date) {
+          working.add(sid);
+        }
+      }
+      if (working.size === 0) continue; // non-working day — no badge
+      let total = 0;
+      for (const sid of working) total += byShift.get(sid) ?? 0;
+      if (total === 0) continue;
+      const outN = Math.min(outByDay.get(k) ?? 0, total);
+      const avail = total - outN;
+      const ratio = avail / total;
+      map.set(k, {
+        avail, total, out: outN,
+        status: ratio >= 1 ? "HEADCOUNT_OK" : ratio >= 0.8 ? "HEADCOUNT_LOW" : "HEADCOUNT_CRIT",
+      });
+    }
+    return map;
+  }, [narrowed, users, blocks, closures, overtimes, shifts, viewedYear, viewedMonth]);
 
   // ── Wall-chart data (crew/station scope) ──────────────────────────────────
   const wall = useMemo(() => {
@@ -512,7 +596,7 @@ export function SchedulingCalendarPage() {
         </Select>
         {!narrowed && (
           <span className="text-[11px] text-muted-foreground">
-            Company view — absences show as “N out”; pick a crew, station, or person for names.
+            Company view — working days show net headcount (in/rostered); pick a crew, station, or person for names.
           </span>
         )}
       </div>
@@ -521,7 +605,8 @@ export function SchedulingCalendarPage() {
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         {[["HOLIDAY", "Closure"], ["PTO", "PTO"], ["SICK", "Sick"], ["TRAINING", "Training"],
           ["MEETING", "Meeting"], ["BREAK", "Break"], ["OVERTIME", "Overtime"],
-          ...(narrowed ? [] : [["OUT", "People out (count)"]]),
+          ...(narrowed ? [] : [["HEADCOUNT_OK", "Headcount (in/rostered)"],
+            ["HEADCOUNT_LOW", "Short"], ["HEADCOUNT_CRIT", "Very short"]]),
         ].map(([k, label]) => (
           <span key={k} className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: KIND_COLOR[k] }} />
@@ -585,7 +670,24 @@ export function SchedulingCalendarPage() {
             ) : (
               <>
                 <CalendarHeader />
-                <CalendarBody features={features} onDayClick={toggleDay} selectedDates={selectedDates}>
+                <CalendarBody
+                  features={features}
+                  onDayClick={toggleDay}
+                  selectedDates={selectedDates}
+                  dayBadge={headcount ? (date) => {
+                    const hc = headcount.get(dayKey(date));
+                    if (!hc) return null;
+                    return (
+                      <span
+                        className="rounded px-1 text-[10px] font-medium tabular-nums"
+                        style={{ color: KIND_COLOR[hc.status], backgroundColor: `${KIND_COLOR[hc.status]}1f` }}
+                        title={`${hc.avail} of ${hc.total} rostered available${hc.out ? ` · ${hc.out} out` : ""}`}
+                      >
+                        {hc.avail}/{hc.total}
+                      </span>
+                    );
+                  } : undefined}
+                >
                   {({ feature }) => <CalendarItem feature={feature} key={feature.id} />}
                 </CalendarBody>
               </>

@@ -193,6 +193,9 @@ export type CalendarBodyProps = {
   // authoring closures / absences directly on the grid (single or multi-select).
   onDayClick?: (date: Date, event: React.MouseEvent) => void;
   selectedDates?: Date[];
+  // Additive (UQMES): corner badge (top-right, opposite the day number) for
+  // day-level metrics (e.g. net headcount). Return null for no badge.
+  dayBadge?: (date: Date) => ReactNode;
 };
 
 export const CalendarBody = ({
@@ -200,6 +203,7 @@ export const CalendarBody = ({
   children,
   onDayClick,
   selectedDates,
+  dayBadge,
 }: CalendarBodyProps) => {
   const [month] = useCalendarMonth();
   const [year] = useCalendarYear();
@@ -283,6 +287,12 @@ export const CalendarBody = ({
         onClick={onDayClick ? (event) => onDayClick(cellDate, event) : undefined}
       >
         {day}
+        {/* Additive (UQMES): per-day corner badge (top-right, opposite the day
+            number) for day-level metrics like net headcount — a property of the
+            day, not an event, so it stays out of the feature stack. */}
+        {dayBadge && (
+          <div className="absolute right-1 top-1">{dayBadge(cellDate)}</div>
+        )}
         <div>
           {featuresForDay.slice(0, 3).map((feature) => children({ feature }))}
         </div>
