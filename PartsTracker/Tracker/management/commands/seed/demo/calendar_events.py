@@ -103,7 +103,12 @@ class DemoCalendarSeeder(BaseSeeder):
             created['blocks'] += int(was_created)
 
         # --- Overtime -------------------------------------------------------
-        shift = Shift.objects.filter(tenant=self.tenant, is_active=True).first()
+        # Version-pinned: after a UI shift edit forks the row, an unpinned
+        # lookup can attach the OT to the superseded version — the solver
+        # only reads current-version shifts, so the operators' overtime
+        # would silently vanish from solves.
+        shift = Shift.objects.filter(
+            tenant=self.tenant, is_active=True, is_current_version=True).first()
         if shift:
             this_saturday = next_weekday(today - timedelta(days=1), 5)
             _, was_created = OvertimeWindow.objects.get_or_create(

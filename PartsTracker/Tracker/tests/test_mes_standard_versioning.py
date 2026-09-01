@@ -333,6 +333,30 @@ class ShiftSerializerRoutingTestCase(TenantTestCase):
         self.assertEqual(result.break_windows, breaks)
         self.assertEqual(ShiftSerializer(result).data['break_windows'], breaks)
 
+    def test_break_windows_rejects_malformed_shapes(self):
+        """break_windows is a JSONField the solver iterates as a list of
+        {'start','end'} HH:MM dicts — a malformed shape accepted here would
+        crash every subsequent solve (get_break_windows), so the serializer
+        must reject it at the door."""
+        bad_payloads = [
+            {'start': '09:00', 'end': '09:15'},                # dict, not list
+            ['09:00-09:15'],                                   # list of strings
+            [{'start': '09:00'}],                              # missing end
+            [{'start': '09:00', 'end': '09:15', 'x': 1}],      # extra key
+            [{'start': '9am', 'end': '09:15'}],                # not HH:MM
+            [{'start': '09:15', 'end': '09:00'}],              # start >= end
+            [{'start': '', 'end': '09:15'}],                   # empty string
+        ]
+        for payload in bad_payloads:
+            with self.subTest(payload=payload):
+                s = self._serializer(self.obj, {'break_windows': payload})
+                self.assertFalse(s.is_valid(), payload)
+                self.assertIn('break_windows', s.errors)
+
+        # Clearing breaks stays legal.
+        s = self._serializer(self.obj, {'break_windows': []})
+        self.assertTrue(s.is_valid(), s.errors)
+
     def test_new_version_carries_live_references(self):
         """A content edit forks a new row — rostered users, overtime windows,
         and machine operating_shifts must follow the shift identity (else the

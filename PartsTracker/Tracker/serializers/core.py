@@ -230,7 +230,10 @@ class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
     groups = serializers.SerializerMethodField()
     work_center_memberships = serializers.SerializerMethodField()
 
-    default_shift = serializers.PrimaryKeyRelatedField(read_only=True)
+    # allow_null is load-bearing: without it the schema marks default_shift as a
+    # required non-null uuid and the generated zod client rejects /auth/user/ for
+    # any un-rostered user (NULL default_shift) — they appear logged out.
+    default_shift = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
 
     class Meta(BaseUserDetailsSerializer.Meta):
         fields = BaseUserDetailsSerializer.Meta.fields + (

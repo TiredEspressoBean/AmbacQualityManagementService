@@ -146,14 +146,15 @@ class DemoSchedulingSeeder(BaseSeeder):
         # 09:00 and lunches at 12:00 — that's the shift's definition.
         _day_breaks = [{"start": "09:00", "end": "09:15"},
                        {"start": "12:00", "end": "12:30"}]
-        shift, created = Shift.objects.get_or_create(
-            tenant=self.tenant, code="DAY",
+        # Pinned to the current version: a UI shift edit forks the row, and an
+        # unpinned lookup then matches both versions (MultipleObjectsReturned).
+        # Breaks are only set on first seed — a reseed must not clobber operator
+        # edits (which would also bypass create_new_version).
+        shift, _ = Shift.objects.get_or_create(
+            tenant=self.tenant, code="DAY", is_current_version=True,
             defaults={"name": "Day Shift", "start_time": time(6, 0), "end_time": time(18, 0),
                       "days_of_week": "0,1,2,3,4", "is_active": True,
                       "break_windows": _day_breaks})
-        if not created and shift.break_windows != _day_breaks:
-            shift.break_windows = _day_breaks
-            shift.save(update_fields=["break_windows"])
 
         # A sequence-dependent changeover on the shared flow stand (Nozzle ↔ Flow).
         fts1 = machines.get("Flow Test Stand #1")

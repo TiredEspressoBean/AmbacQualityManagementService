@@ -114,7 +114,9 @@ SOFT_DELETE_MODELS = {
     'fpirecord', 'qualityreportequipment', 'qualityreportpersonnel',
     'stepexecutionequipment',
     'batchexecution', 'steprequirement', 'outsideprocessshipment',
-    'milestone', 'milestonetemplate',
+    # ('milestone' moved out: the milestones editor has a delete button, so
+    # delete_milestone is granted to staff — see presets.py.)
+    'milestonetemplate',
     'lifelimitdefinition', 'parttypelifelimit', 'lifetracking',
     'notificationrule', 'notificationschedule',
     # Supplier quality / part approval: records are retired via status
@@ -127,8 +129,12 @@ SOFT_DELETE_MODELS = {
     # Scheduler records: config is retired via void/re-author and the solver's
     # ScheduledTask rows are regenerated each solve — never hard-deleted via a role.
     'scheduledtask', 'steptiming', 'stepequipmentaffinity', 'workcenterchangeover',
-    'fixture', 'optimizationconfig', 'continuousmachine',
-    'laborcalendarblock', 'overtimewindow', 'plantcalendarexception',
+    # ('fixture' moved out: the scheduling settings UI has a fixture delete
+    # button, so delete_fixture is granted to the planner tier — presets.py.)
+    'optimizationconfig', 'continuousmachine',
+    # (Calendar entries — laborcalendarblock/overtimewindow/plantcalendarexception —
+    # are removable planning inputs: delete_ (a soft-archive via SecureModel.delete)
+    # is granted to the planner tier so the calendar UI's remove buttons work.)
 }
 
 # Burn-down: operational perms that SHOULD be granted to roles but aren't yet.

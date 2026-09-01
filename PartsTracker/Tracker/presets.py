@@ -206,8 +206,10 @@ STAFF_OPERATIONAL_WRITE = [
     'add_scheduleslot', 'change_scheduleslot',
     'add_downtimeevent', 'change_downtimeevent',
     'add_timeentry', 'change_timeentry',
-    # Milestones & life tracking
-    'add_milestone', 'change_milestone',
+    # Milestones & life tracking. delete_milestone: the milestones editor has
+    # a remove button (DELETE soft-archives via SecureModel.delete); templates
+    # have no delete UI and stay delete-ungranted.
+    'add_milestone', 'change_milestone', 'delete_milestone',
     'add_milestonetemplate', 'change_milestonetemplate',
     'add_lifelimitdefinition', 'change_lifelimitdefinition',
     'add_parttypelifelimit', 'change_parttypelifelimit',
@@ -478,16 +480,22 @@ SCHEDULING_PLANNER_PERMISSIONS = [
     'add_steptiming', 'change_steptiming',
     'add_stepequipmentaffinity', 'change_stepequipmentaffinity',
     'add_workcenterchangeover', 'change_workcenterchangeover',
-    'add_fixture', 'change_fixture',
+    # delete_fixture: the scheduling settings UI has a fixture remove button
+    # (DELETE soft-archives via SecureModel.delete).
+    'add_fixture', 'change_fixture', 'delete_fixture',
     'add_optimizationconfig', 'change_optimizationconfig',
     'add_continuousmachine', 'change_continuousmachine',
     # Labor/plant calendar inputs the solver reads (shifts, overtime,
     # holidays/shutdowns). Shifts define the solver's working windows, so they
     # sit with the other calendar inputs rather than broad operational write.
     'add_shift', 'change_shift',
-    'add_laborcalendarblock', 'change_laborcalendarblock',
-    'add_overtimewindow', 'change_overtimewindow',
-    'add_plantcalendarexception', 'change_plantcalendarexception',
+    # Calendar entries are lightweight planning inputs: a mis-entered PTO day
+    # or closure is removable from the calendar UI (DELETE soft-archives via
+    # SecureModel.delete; auditlog keeps the trail). Without delete_ the UI's
+    # remove buttons 403 for everyone.
+    'add_laborcalendarblock', 'change_laborcalendarblock', 'delete_laborcalendarblock',
+    'add_overtimewindow', 'change_overtimewindow', 'delete_overtimewindow',
+    'add_plantcalendarexception', 'change_plantcalendarexception', 'delete_plantcalendarexception',
 ]
 
 GROUP_PRESETS = {

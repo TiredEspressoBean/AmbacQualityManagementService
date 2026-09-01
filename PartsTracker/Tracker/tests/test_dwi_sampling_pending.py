@@ -32,6 +32,7 @@ from Tracker.models import (
 from Tracker.models.mes_standard import SamplingRuleType
 from Tracker.services.dwi.advancement_gate import substep_completion_blockers
 from Tracker.services.dwi.sampling_decisions import reconcile_pending_decisions
+from Tracker.tests.base import TenantTestCase
 from Tracker.utils.tenant_context import (
     reset_current_tenant,
     set_current_tenant_id,
@@ -372,3 +373,53 @@ class ReconcilePendingDecisionsTests(DwiSamplingPendingBase):
         # Terminal-step PENDING was left alone.
         self.assertIsNone(pending_term.superseded_by_id)
         self.assertEqual(pending_term.outcome, SamplingOutcome.PENDING)
+
+
+# ============================================================================
+# reconcile endpoint — permission gating
+# ============================================================================
+
+
+class ReconcileEndpointGatingTests(TenantTestCase):
+    """POST /api/SamplingDecisions/reconcile/ is a supervisory runtime action.
+
+    Regression: the default CRUD gate demanded `add_samplingdecision` — a
+    system-written perm granted to NO role — so reconciliation 403'd for
+    everyone (found by the dead-endpoint guard). The action is crud-exempt and
+    gated on `change_stepexecution` instead.
+    """
+
+    def _make_wo(self):
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="RG-Widget")
+        proc = Processes.objects.create(
+            tenant=self.tenant_a, name="RG-Proc", part_type=pt,
+        )
+        return WorkOrder.objects.create(
+            tenant=self.tenant_a, ERP_id="WO-RECON-1", quantity=1,
+            workorder_status=WorkOrderStatus.IN_PROGRESS, process=proc,
+        )
+
+    def test_floor_supervision_perm_suffices_without_add_samplingdecision(self):
+        wo = self._make_wo()
+        self.grant_tenant_permissions(
+            self.user_a, self.tenant_a, ["change_stepexecution"],
+        )
+        self.authenticate_as(self.user_a, self.tenant_a)
+        resp = self.client.post(
+            "/api/SamplingDecisions/reconcile/",
+            {"work_order_id": str(wo.id)}, format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["reconciled"], 0)  # no PENDING rows — noop
+
+    def test_without_floor_supervision_perm_is_403(self):
+        wo = self._make_wo()
+        self.grant_tenant_permissions(
+            self.user_a, self.tenant_a, ["view_samplingdecision"],
+        )
+        self.authenticate_as(self.user_a, self.tenant_a)
+        resp = self.client.post(
+            "/api/SamplingDecisions/reconcile/",
+            {"work_order_id": str(wo.id)}, format="json",
+        )
+        self.assertEqual(resp.status_code, 403, resp.content)

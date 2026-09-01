@@ -28781,7 +28781,7 @@ export interface components {
             readonly groups: components["schemas"]["AuthUserTenantGroup"][];
             readonly work_center_memberships: components["schemas"]["AuthUserWorkCenterMembership"][];
             /** Format: uuid */
-            readonly default_shift: string;
+            readonly default_shift: string | null;
         };
         /**
          * @description dj-rest-auth user-details payload + the fields the frontend needs.

@@ -13787,7 +13787,7 @@ export type TenantAwareUserDetails = {
   is_active: boolean;
   groups: Array<AuthUserTenantGroup>;
   work_center_memberships: Array<AuthUserWorkCenterMembership>;
-  default_shift: string;
+  default_shift: string | null;
 };
 export type AuthUserTenantGroup = {
   id: string;
@@ -22146,7 +22146,7 @@ const TenantAwareUserDetails = z.object({
   is_active: z.boolean(),
   groups: z.array(AuthUserTenantGroup),
   work_center_memberships: z.array(AuthUserWorkCenterMembership),
-  default_shift: z.string().uuid(),
+  default_shift: z.string().uuid().nullable(),
 });
 const TenantAwareUserDetailsRequest = z.object({
   username: z

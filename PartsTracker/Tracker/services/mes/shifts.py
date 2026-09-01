@@ -16,7 +16,13 @@ from django.db import transaction
 def create_new_shift_version(shift, *, user=None, change_description=None, **field_updates):
     """Create a new version of a Shift and migrate its live references:
     rostered users (default_shift), overtime windows, and the machines whose
-    operating_shifts include it."""
+    operating_shifts include it.
+
+    Deliberately NOT repointed: `ScheduleSlot.shift` (PROTECT). Slots are
+    dated historical assignments — "who was slotted under which shift
+    definition" — so they stay on the version that was current when they
+    were written, like any other point-in-time record.
+    """
     from Tracker.models import Shift, User
 
     with transaction.atomic():

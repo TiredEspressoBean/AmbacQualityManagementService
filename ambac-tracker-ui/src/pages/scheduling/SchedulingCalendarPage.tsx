@@ -58,10 +58,9 @@ const KIND_COLOR: Record<string, string> = {
   MEETING: "#3b82f6", BREAK: "#64748b", OTHER: "#9ca3af",
   // additive
   OVERTIME: "#22c55e",
-  // company-lens net-headcount chip ("13/15 · 2 out") — variance coloring:
+  // company-lens net-headcount corner badge ("13/15") — variance coloring:
   // muted when fully staffed, amber when short, red when badly short (<80%).
   // The drill-down (crew/person lens or day click) carries the names.
-  OUT: "#64748b",
   HEADCOUNT_OK: "#475569",
   HEADCOUNT_LOW: "#d97706",
   HEADCOUNT_CRIT: "#dc2626",
@@ -153,7 +152,7 @@ export function SchedulingCalendarPage() {
   const [wcFilter, setWcFilter] = useState<string>("");         // work-center id | ""
   const [personFilter, setPersonFilter] = useState<string>(""); // user id | ""
   const narrowed = Boolean(shiftFilter || wcFilter || personFilter);
-  const myShiftId = (me as { default_shift?: string | null } | undefined)?.default_shift ?? null;
+  const myShiftId = me?.default_shift ?? null;
   const preset: "company" | "crew" | "me" | "custom" =
     !narrowed ? "company"
       : personFilter && String(personFilter) === String(me?.pk ?? "") && !shiftFilter && !wcFilter ? "me"
@@ -280,21 +279,31 @@ export function SchedulingCalendarPage() {
     const rostered = users.filter(
       (u) => (u as { default_shift?: string | null }).default_shift != null);
     const byShift = new Map<string, number>(); // shift id -> rostered heads
+    const shiftOfUser = new Map<number, string>(); // user id -> shift id
     for (const u of rostered) {
       const sid = String((u as { default_shift?: string | null }).default_shift);
       byShift.set(sid, (byShift.get(sid) ?? 0) + 1);
+      shiftOfUser.set(u.id as number, sid);
     }
-    // People out per day (one-off personal absences).
-    const outByDay = new Map<string, number>();
+    // Who's out per day (one-off personal absences), keyed user → shift so the
+    // per-day count only dents shifts actually WORKING that day: a night-shift
+    // PTO must not shrink the day crew's badge, and an un-rostered person
+    // isn't in `total` so they can't be "out" of it either. Map dedupes a
+    // person with overlapping blocks.
+    const outByDay = new Map<string, Map<number, string>>();
     for (const b of blocks) {
       if (!b.is_active || b.recurrence !== "ONCE" || b.user == null
         || !b.start_time || !b.end_time) continue;
+      const sid = shiftOfUser.get(b.user);
+      if (sid == null) continue; // not rostered — not counted in any total
       const s = startOfDay(new Date(b.start_time as string));
       const e = startOfDay(new Date(b.end_time as string));
       if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) continue;
       for (const d of eachDayOfInterval({ start: s, end: e })) {
         const k = dayKey(d);
-        outByDay.set(k, (outByDay.get(k) ?? 0) + 1);
+        const perDay = outByDay.get(k) ?? new Map<number, string>();
+        perDay.set(b.user, sid);
+        outByDay.set(k, perDay);
       }
     }
     // Days the plant is closed (closures incl. YEARLY, company-wide blocks).
@@ -310,9 +319,13 @@ export function SchedulingCalendarPage() {
       const s = new Date(c.start_time as string);
       const e = new Date(c.end_time as string);
       if (c.recurrence === "YEARLY") {
+        // Year ± 1, matching `features`: a Dec–Jan shutdown must also close
+        // the January days when viewing the following year.
         const dur = e.getTime() - s.getTime();
-        const os = new Date(s); os.setFullYear(viewedYear);
-        closeSpan(os, new Date(os.getTime() + dur));
+        for (const y of [viewedYear - 1, viewedYear, viewedYear + 1]) {
+          const os = new Date(s); os.setFullYear(y);
+          closeSpan(os, new Date(os.getTime() + dur));
+        }
       } else closeSpan(s, e);
     }
     for (const b of blocks) {
@@ -322,8 +335,11 @@ export function SchedulingCalendarPage() {
     }
     const shiftDays = new Map<string, Set<number>>(); // shift id -> model weekdays
     for (const s of shifts as Array<{ id: string; days_of_week?: string }>) {
-      shiftDays.set(String(s.id), new Set(
-        (s.days_of_week ?? "").split(",").map((x) => Number(x.trim())).filter((n) => n >= 0 && n <= 6)));
+      const days = new Set(
+        (s.days_of_week ?? "").split(",").map((x) => Number(x.trim())).filter((n) => n >= 0 && n <= 6));
+      // Empty = every day, matching the solver (`_parse_days`: an empty
+      // days_of_week means the shift is active daily, not never).
+      shiftDays.set(String(s.id), days.size ? days : new Set([0, 1, 2, 3, 4, 5, 6]));
     }
     const daysInViewed = new Date(viewedYear, viewedMonth + 1, 0).getDate();
     for (let d = 1; d <= daysInViewed; d++) {
@@ -349,7 +365,11 @@ export function SchedulingCalendarPage() {
       let total = 0;
       for (const sid of working) total += byShift.get(sid) ?? 0;
       if (total === 0) continue;
-      const outN = Math.min(outByDay.get(k) ?? 0, total);
+      let outN = 0;
+      for (const sid of (outByDay.get(k) ?? new Map<number, string>()).values()) {
+        if (working.has(sid)) outN++;
+      }
+      outN = Math.min(outN, total);
       const avail = total - outN;
       const ratio = avail / total;
       map.set(k, {
@@ -419,9 +439,13 @@ export function SchedulingCalendarPage() {
       const s = new Date(c.start_time as string);
       const e = new Date(c.end_time as string);
       if (c.recurrence === "YEARLY") {
+        // Year ± 1, matching `features`/`headcount`: a Dec–Jan shutdown must
+        // band the January days when viewing the following year.
         const dur = e.getTime() - s.getTime();
-        const os = new Date(s); os.setFullYear(viewedYear);
-        pushBand(os, new Date(os.getTime() + dur), "closure", c.name || "Closure");
+        for (const y of [viewedYear - 1, viewedYear, viewedYear + 1]) {
+          const os = new Date(s); os.setFullYear(y);
+          pushBand(os, new Date(os.getTime() + dur), "closure", c.name || "Closure");
+        }
       } else {
         pushBand(s, e, "closure", c.name || "Closure");
       }
@@ -492,7 +516,7 @@ export function SchedulingCalendarPage() {
     if (add.type === "overtime") {
       if (!add.overtimeShift) return;
       const ot: Record<string, unknown> = {
-        shift: Number(add.overtimeShift),
+        shift: add.overtimeShift, // Shift PKs are UUID strings — Number() here made every OT create 400
         recurrence: add.recurrence,
         reason: add.reason,
         is_active: true,
@@ -727,13 +751,19 @@ export function SchedulingCalendarPage() {
                   }
                   for (const c of closures) {
                     if (!c.is_active || !c.start_time) continue;
-                    const s = new Date(c.start_time as string);
-                    if (c.recurrence === "YEARLY") s.setFullYear(now.getFullYear());
-                    if (s < now || s > horizon) continue;
-                    items.push({
-                      key: `c-${c.id}`, when: s, label: c.name || "Closure",
-                      color: KIND_COLOR[c.kind || "HOLIDAY"], sub: fmtDate(s.toISOString()),
-                    });
+                    // YEARLY: check this year AND next — from December, a
+                    // Jan 1 holiday is inside the 45-day horizon.
+                    const years = c.recurrence === "YEARLY"
+                      ? [now.getFullYear(), now.getFullYear() + 1] : [null];
+                    for (const y of years) {
+                      const s = new Date(c.start_time as string);
+                      if (y != null) s.setFullYear(y);
+                      if (s < now || s > horizon) continue;
+                      items.push({
+                        key: `c-${c.id}-${y ?? "once"}`, when: s, label: c.name || "Closure",
+                        color: KIND_COLOR[c.kind || "HOLIDAY"], sub: fmtDate(s.toISOString()),
+                      });
+                    }
                   }
                   return items
                     .sort((a, b2) => a.when.getTime() - b2.when.getTime())
@@ -986,7 +1016,9 @@ export function SchedulingCalendarPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAdd(initialAdd())}>Cancel</Button>
-            <Button onClick={submit} disabled={!canSubmit || createClosure.isPending || createBlock.isPending}>
+            <Button onClick={submit}
+              disabled={!canSubmit || createClosure.isPending || createBlock.isPending
+                || createOvertime.isPending}>
               Save
             </Button>
           </DialogFooter>

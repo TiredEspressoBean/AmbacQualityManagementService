@@ -6,6 +6,7 @@ Serializers for MES Standard tier models:
 - Traceability: MaterialLot, MaterialUsage, BOM, BOMLine, AssemblyUsage
 - Labor: TimeEntry
 """
+import re
 from decimal import Decimal
 
 from rest_framework import serializers
@@ -132,6 +133,31 @@ class ShiftSerializer(SecureModelMixin):
 
     # is_active is a scheduling on/off toggle, not a structural content change.
     _NON_VERSIONING_FIELDS = frozenset({'archived', 'is_active'})
+
+    _HHMM = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
+
+    def validate_break_windows(self, value):
+        """Shape-check the JSONField: the solver iterates it as a list of
+        {'start': 'HH:MM', 'end': 'HH:MM'} dicts (`data.py::get_break_windows`);
+        anything else accepted here would 500 every subsequent solve. Strict on
+        extra keys — the only writer is our own shifts editor."""
+        if value in (None, []):
+            return value or []
+        if not isinstance(value, list):
+            raise serializers.ValidationError(
+                'break_windows must be a list of {"start": "HH:MM", "end": "HH:MM"} objects.')
+        for i, br in enumerate(value):
+            if not isinstance(br, dict) or set(br.keys()) != {'start', 'end'}:
+                raise serializers.ValidationError(
+                    f'break_windows[{i}] must be an object with exactly "start" and "end".')
+            for key in ('start', 'end'):
+                if not isinstance(br[key], str) or not self._HHMM.match(br[key]):
+                    raise serializers.ValidationError(
+                        f'break_windows[{i}].{key} must be a 24-hour "HH:MM" string.')
+            if br['start'] >= br['end']:
+                raise serializers.ValidationError(
+                    f'break_windows[{i}]: start must be before end.')
+        return value
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let

@@ -567,6 +567,15 @@ class SamplingDecisionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['decided_at']
     ordering = ['-decided_at']
 
+    # `reconcile` is a POST, so the default CRUD gate would demand
+    # `add_samplingdecision` — a system-written perm granted to NO role
+    # (decisions are engine-authored), which 403'd reconciliation for
+    # everyone. It's a supervisory runtime action, not decision authoring:
+    # exempt it from the CRUD gate and require the floor-supervision perm
+    # instead (same pattern as SubstepViewSet.submit).
+    crud_exempt_actions = {'reconcile'}
+    action_permissions = {'reconcile': ['change_stepexecution']}
+
     def get_queryset(self):
         # Default to live decisions only (hide superseded rows). Pass
         # `?include_superseded=1` to get the full audit trail.

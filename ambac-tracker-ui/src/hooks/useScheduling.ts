@@ -546,6 +546,12 @@ export function useSaveShift() {
         : api.api_Shifts_create(body as never),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["shifts"] });
+      // A content edit forks the shift to a NEW id and repoints every
+      // User.default_shift server-side — cached user/auth payloads still
+      // hold the old id, which zeroes the calendar's headcount badges and
+      // breaks the "My crew" preset until their 5-min staleTime expires.
+      qc.invalidateQueries({ queryKey: ["user"] });
+      qc.invalidateQueries({ queryKey: ["authUser"] });
       toast.success("Shift saved");
     },
     onError: () => toast.error("Couldn't save shift — is the code unique?"),

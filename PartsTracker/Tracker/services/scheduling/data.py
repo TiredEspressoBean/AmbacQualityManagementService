@@ -848,7 +848,13 @@ def get_break_windows(tenant, horizon: HorizonData) -> list[tuple]:
             active_days = _parse_days(sh.days_of_week)
             if active_days and weekday not in active_days:
                 continue
-            for br in (sh.break_windows or []):
+            # Serializer validates shape on write; the isinstance guards keep a
+            # legacy/hand-edited bad row degrading to "break ignored", not a
+            # crashed solve.
+            windows = sh.break_windows if isinstance(sh.break_windows, list) else []
+            for br in windows:
+                if not isinstance(br, dict):
+                    continue
                 bs, be = _parse_hhmm(br.get('start')), _parse_hhmm(br.get('end'))
                 if bs is None or be is None:
                     continue

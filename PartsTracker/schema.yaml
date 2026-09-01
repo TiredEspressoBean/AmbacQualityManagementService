@@ -61581,6 +61581,7 @@ components:
           type: string
           format: uuid
           readOnly: true
+          nullable: true
       required:
       - default_shift
       - email
