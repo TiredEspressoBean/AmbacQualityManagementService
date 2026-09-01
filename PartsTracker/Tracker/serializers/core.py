@@ -230,12 +230,17 @@ class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
     groups = serializers.SerializerMethodField()
     work_center_memberships = serializers.SerializerMethodField()
 
+    default_shift = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta(BaseUserDetailsSerializer.Meta):
         fields = BaseUserDetailsSerializer.Meta.fields + (
             'is_staff', 'is_superuser', 'is_active', 'groups', 'work_center_memberships',
+            # Crew rostering — the scheduling calendar's "My crew" preset reads it.
+            'default_shift',
         )
         read_only_fields = BaseUserDetailsSerializer.Meta.read_only_fields + (
             'is_staff', 'is_superuser', 'is_active', 'groups', 'work_center_memberships',
+            'default_shift',
         )
 
     @extend_schema_field(AuthUserTenantGroupSerializer(many=True))
@@ -396,7 +401,10 @@ class UserSerializer(SecureModelMixin):
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
             'last_login', 'parent_company', 'parent_company_id', 'groups',
             'tenant', 'user_type', 'user_type_display', 'tenant_membership_status',
-            'job_role', 'job_role_name')
+            'job_role', 'job_role_name',
+            # Crew rostering: the shift this person works (drives the scheduling
+            # calendar's crew lens + the solver's operator windows).
+            'default_shift')
         read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display',
                             'tenant_membership_status', 'job_role_name')
         extra_kwargs = {'password': {'write_only': True}}

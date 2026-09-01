@@ -7063,6 +7063,10 @@ export type Shift = {
    * @maxLength 20
    */
   string | undefined;
+  break_windows?: /**
+   * Scheduled breaks/lunch within the shift, as a list of {"start": "HH:MM", "end": "HH:MM"}. The scheduler keeps attended (full-attention) work out of these windows; actual clock-out/in is captured separately as TimeEntry BREAK/LUNCH entries.
+   */
+  unknown | undefined;
   is_active?: boolean | undefined;
   created_at: string;
   updated_at: string;
@@ -8966,6 +8970,12 @@ export type User = {
     (string | null)
     | undefined;
   job_role_name: string | null;
+  default_shift?:
+    | /**
+     * The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
+     */
+    (string | null)
+    | undefined;
 };
 export type TenantMinimal = {
   id: string;
@@ -13777,6 +13787,7 @@ export type TenantAwareUserDetails = {
   is_active: boolean;
   groups: Array<AuthUserTenantGroup>;
   work_center_memberships: Array<AuthUserWorkCenterMembership>;
+  default_shift: string;
 };
 export type AuthUserTenantGroup = {
   id: string;
@@ -18782,6 +18793,7 @@ const Shift = z.object({
   start_time: z.string(),
   end_time: z.string(),
   days_of_week: z.string().max(20).optional(),
+  break_windows: z.unknown().optional(),
   is_active: z.boolean().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -18800,6 +18812,7 @@ const ShiftRequest = z.object({
   start_time: z.string(),
   end_time: z.string(),
   days_of_week: z.string().min(1).max(20).optional(),
+  break_windows: z.unknown().optional(),
   is_active: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
@@ -18810,6 +18823,7 @@ const PatchedShiftRequest = z
     start_time: z.string(),
     end_time: z.string(),
     days_of_week: z.string().min(1).max(20),
+    break_windows: z.unknown(),
     is_active: z.boolean(),
     archived: z.boolean(),
   })
@@ -20201,6 +20215,7 @@ const User = z.object({
   tenant_membership_status: TenantMembershipStatusEnum,
   job_role: z.string().uuid().nullish(),
   job_role_name: z.string().nullable(),
+  default_shift: z.string().uuid().nullish(),
 });
 const PaginatedUserList = z.object({
   count: z.number().int(),
@@ -20221,6 +20236,7 @@ const UserRequest = z.object({
   is_active: z.boolean().optional(),
   parent_company_id: z.string().uuid().nullish(),
   job_role: z.string().uuid().nullish(),
+  default_shift: z.string().uuid().nullish(),
 });
 const PatchedUserRequest = z
   .object({
@@ -20236,6 +20252,7 @@ const PatchedUserRequest = z
     is_active: z.boolean(),
     parent_company_id: z.string().uuid().nullable(),
     job_role: z.string().uuid().nullable(),
+    default_shift: z.string().uuid().nullable(),
   })
   .partial();
 const BulkUserActivationInputRequest = z.object({
@@ -22129,6 +22146,7 @@ const TenantAwareUserDetails = z.object({
   is_active: z.boolean(),
   groups: z.array(AuthUserTenantGroup),
   work_center_memberships: z.array(AuthUserWorkCenterMembership),
+  default_shift: z.string().uuid(),
 });
 const TenantAwareUserDetailsRequest = z.object({
   username: z
@@ -39472,8 +39490,10 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
     path: "/api/Schedules/config/",
     alias: "api_Schedules_config_retrieve",
     description: `The tenant&#x27;s solver knobs (time limit, fence zones, penalties, labor model).
-GET reads them; PATCH updates the subset provided. Gated on
-change_optimizationconfig — the scheduling settings dialog.`,
+GET reads them (any staff viewer — the Gantt renders fences from them);
+PATCH updates the subset provided, gated on change_optimizationconfig
+(the scheduling settings dialog). Method-split gate lives here because
+action_permissions applies per action, not per HTTP method.`,
     requestFormat: "json",
     response: OptimizationConfig,
   },
@@ -39482,8 +39502,10 @@ change_optimizationconfig — the scheduling settings dialog.`,
     path: "/api/Schedules/config/",
     alias: "api_Schedules_config_partial_update",
     description: `The tenant&#x27;s solver knobs (time limit, fence zones, penalties, labor model).
-GET reads them; PATCH updates the subset provided. Gated on
-change_optimizationconfig — the scheduling settings dialog.`,
+GET reads them (any staff viewer — the Gantt renders fences from them);
+PATCH updates the subset provided, gated on change_optimizationconfig
+(the scheduling settings dialog). Method-split gate lives here because
+action_permissions applies per action, not per HTTP method.`,
     requestFormat: "json",
     parameters: [
       {

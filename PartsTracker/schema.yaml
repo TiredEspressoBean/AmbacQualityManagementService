@@ -20134,8 +20134,10 @@ paths:
       operationId: api_Schedules_config_retrieve
       description: |-
         The tenant's solver knobs (time limit, fence zones, penalties, labor model).
-        GET reads them; PATCH updates the subset provided. Gated on
-        change_optimizationconfig — the scheduling settings dialog.
+        GET reads them (any staff viewer — the Gantt renders fences from them);
+        PATCH updates the subset provided, gated on change_optimizationconfig
+        (the scheduling settings dialog). Method-split gate lives here because
+        action_permissions applies per action, not per HTTP method.
       tags:
       - api
       security:
@@ -20152,8 +20154,10 @@ paths:
       operationId: api_Schedules_config_partial_update
       description: |-
         The tenant's solver knobs (time limit, fence zones, penalties, labor model).
-        GET reads them; PATCH updates the subset provided. Gated on
-        change_optimizationconfig — the scheduling settings dialog.
+        GET reads them (any staff viewer — the Gantt renders fences from them);
+        PATCH updates the subset provided, gated on change_optimizationconfig
+        (the scheduling settings dialog). Method-split gate lives here because
+        action_permissions applies per action, not per HTTP method.
       tags:
       - api
       requestBody:
@@ -52159,6 +52163,11 @@ components:
           minLength: 1
           description: Comma-separated day numbers (0=Monday, 6=Sunday)
           maxLength: 20
+        break_windows:
+          description: 'Scheduled breaks/lunch within the shift, as a list of {"start":
+            "HH:MM", "end": "HH:MM"}. The scheduler keeps attended (full-attention)
+            work out of these windows; actual clock-out/in is captured separately
+            as TimeEntry BREAK/LUNCH entries.'
         is_active:
           type: boolean
         archived:
@@ -53363,6 +53372,13 @@ components:
           nullable: true
           description: Primary job role / position - drives the required-competency
             profile.
+        default_shift:
+          type: string
+          format: uuid
+          nullable: true
+          description: The shift this operator is rostered to. Layer-2 dispatch only
+            assigns work during this shift's windows; an operator with no shift is
+            not dispatchable.
     PatchedUserWorkCenterMembershipRequest:
       type: object
       description: |-
@@ -58298,6 +58314,11 @@ components:
           type: string
           description: Comma-separated day numbers (0=Monday, 6=Sunday)
           maxLength: 20
+        break_windows:
+          description: 'Scheduled breaks/lunch within the shift, as a list of {"start":
+            "HH:MM", "end": "HH:MM"}. The scheduler keeps attended (full-attention)
+            work out of these windows; actual clock-out/in is captured separately
+            as TimeEntry BREAK/LUNCH entries.'
         is_active:
           type: boolean
         created_at:
@@ -58522,6 +58543,11 @@ components:
           minLength: 1
           description: Comma-separated day numbers (0=Monday, 6=Sunday)
           maxLength: 20
+        break_windows:
+          description: 'Scheduled breaks/lunch within the shift, as a list of {"start":
+            "HH:MM", "end": "HH:MM"}. The scheduler keeps attended (full-attention)
+            work out of these windows; actual clock-out/in is captured separately
+            as TimeEntry BREAK/LUNCH entries.'
         is_active:
           type: boolean
         archived:
@@ -61551,7 +61577,12 @@ components:
           items:
             $ref: '#/components/schemas/AuthUserWorkCenterMembership'
           readOnly: true
+        default_shift:
+          type: string
+          format: uuid
+          readOnly: true
       required:
+      - default_shift
       - email
       - groups
       - is_active
@@ -63779,6 +63810,13 @@ components:
           type: string
           nullable: true
           readOnly: true
+        default_shift:
+          type: string
+          format: uuid
+          nullable: true
+          description: The shift this operator is rostered to. Layer-2 dispatch only
+            assigns work during this shift's windows; an operator with no shift is
+            not dispatchable.
       required:
       - date_joined
       - full_name
@@ -64012,6 +64050,13 @@ components:
           nullable: true
           description: Primary job role / position - drives the required-competency
             profile.
+        default_shift:
+          type: string
+          format: uuid
+          nullable: true
+          description: The shift this operator is rostered to. Layer-2 dispatch only
+            assigns work during this shift's windows; an operator with no shift is
+            not dispatchable.
       required:
       - username
     UserSelect:

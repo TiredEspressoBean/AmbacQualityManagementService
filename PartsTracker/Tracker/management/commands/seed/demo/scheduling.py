@@ -141,11 +141,19 @@ class DemoSchedulingSeeder(BaseSeeder):
                         defaults={"affinity": affinity})
                     aff_n += 1
 
-        shift, _ = Shift.objects.get_or_create(
+        # Standing shift breaks live HERE (a shift property the solver subtracts
+        # every day), not on the labor calendar: the whole facility breaks at
+        # 09:00 and lunches at 12:00 — that's the shift's definition.
+        _day_breaks = [{"start": "09:00", "end": "09:15"},
+                       {"start": "12:00", "end": "12:30"}]
+        shift, created = Shift.objects.get_or_create(
             tenant=self.tenant, code="DAY",
             defaults={"name": "Day Shift", "start_time": time(6, 0), "end_time": time(18, 0),
                       "days_of_week": "0,1,2,3,4", "is_active": True,
-                      "break_windows": [{"start": "12:00", "end": "12:30"}]})
+                      "break_windows": _day_breaks})
+        if not created and shift.break_windows != _day_breaks:
+            shift.break_windows = _day_breaks
+            shift.save(update_fields=["break_windows"])
 
         # A sequence-dependent changeover on the shared flow stand (Nozzle ↔ Flow).
         fts1 = machines.get("Flow Test Stand #1")

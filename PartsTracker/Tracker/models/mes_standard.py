@@ -1041,6 +1041,15 @@ class Shift(SecureModel):
     def __str__(self):
         return f"{self.name} ({self.start_time} - {self.end_time})"
 
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.mes.shifts.create_new_shift_version`,
+        which repoints live references (rostered users, overtime windows, machine
+        operating_shifts) to the new current row."""
+        from Tracker.services.mes.shifts import create_new_shift_version
+        return create_new_shift_version(
+            self, user=user, change_description=change_description, **field_updates,
+        )
+
 
 class ScheduleSlot(SecureModel):
     """

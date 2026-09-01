@@ -485,7 +485,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
     are applied separately by the solver, which blocks every machine.)"""
     from Tracker.models import DowntimeEvent, Equipments, Shift
 
-    tenant_shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    tenant_shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
     tenant_base = _expand_shifts(tenant_shifts, horizon.start, horizon.end)
     base_cache: dict[tuple, list] = {}
 
@@ -644,7 +644,7 @@ def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:
     Empty when no shifts are configured (the solver treats that as always-available)."""
     from Tracker.models import PlantCalendarException, Shift
 
-    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
     base = _expand_shifts(shifts, start, end)
     closures = _merge_intervals([
         (max(e.start_time, start), min(e.end_time, end))
@@ -838,7 +838,7 @@ def get_break_windows(tenant, horizon: HorizonData) -> list[tuple]:
     kept out of these; actual clock-out/in lives in TimeEntry BREAK/LUNCH."""
     from Tracker.models import Shift
 
-    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
     intervals: list[tuple] = []
     day = horizon.start.date()
     last = horizon.end.date()
@@ -1076,7 +1076,7 @@ def get_operator_shift_windows(tenant, horizon: HorizonData) -> dict[int, list[t
     closures = get_calendar_closures(tenant, horizon)
     by_shift = {
         s.id: _expand_shifts([s], horizon.start, horizon.end)
-        for s in Shift.objects.filter(tenant=tenant, id__in=shift_ids, is_active=True)
+        for s in Shift.objects.filter(tenant=tenant, id__in=shift_ids, is_active=True, is_current_version=True)
     }
     overtime_by_shift = get_overtime_windows(tenant, horizon)  # {shift_id: [(s,e)]}
     company_blocks, user_blocks = get_labor_calendar_blocks(tenant, horizon)
@@ -1102,7 +1102,7 @@ def get_shift_windows(tenant, horizon: HorizonData) -> list[tuple]:
     per-operator roster exists yet, so this is shared across operators."""
     from Tracker.models import Shift
 
-    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True))
+    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
     return _expand_shifts(shifts, horizon.start, horizon.end)
 
 

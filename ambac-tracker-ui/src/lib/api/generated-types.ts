@@ -8292,8 +8292,10 @@ export interface paths {
         };
         /**
          * @description The tenant's solver knobs (time limit, fence zones, penalties, labor model).
-         *     GET reads them; PATCH updates the subset provided. Gated on
-         *     change_optimizationconfig — the scheduling settings dialog.
+         *     GET reads them (any staff viewer — the Gantt renders fences from them);
+         *     PATCH updates the subset provided, gated on change_optimizationconfig
+         *     (the scheduling settings dialog). Method-split gate lives here because
+         *     action_permissions applies per action, not per HTTP method.
          */
         get: operations["api_Schedules_config_retrieve"];
         put?: never;
@@ -8303,8 +8305,10 @@ export interface paths {
         head?: never;
         /**
          * @description The tenant's solver knobs (time limit, fence zones, penalties, labor model).
-         *     GET reads them; PATCH updates the subset provided. Gated on
-         *     change_optimizationconfig — the scheduling settings dialog.
+         *     GET reads them (any staff viewer — the Gantt renders fences from them);
+         *     PATCH updates the subset provided, gated on change_optimizationconfig
+         *     (the scheduling settings dialog). Method-split gate lives here because
+         *     action_permissions applies per action, not per HTTP method.
          */
         patch: operations["api_Schedules_config_partial_update"];
         trace?: never;
@@ -23746,6 +23750,8 @@ export interface components {
             end_time?: string;
             /** @description Comma-separated day numbers (0=Monday, 6=Sunday) */
             days_of_week?: string;
+            /** @description Scheduled breaks/lunch within the shift, as a list of {"start": "HH:MM", "end": "HH:MM"}. The scheduler keeps attended (full-attention) work out of these windows; actual clock-out/in is captured separately as TimeEntry BREAK/LUNCH entries. */
+            break_windows?: unknown;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -24530,6 +24536,11 @@ export interface components {
              * @description Primary job role / position - drives the required-competency profile.
              */
             job_role?: string | null;
+            /**
+             * Format: uuid
+             * @description The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
+             */
+            default_shift?: string | null;
         };
         /**
          * @description Which stations a user is eligible at (ISA-95 PersonnelClass-style).
@@ -26989,6 +27000,8 @@ export interface components {
             end_time: string;
             /** @description Comma-separated day numbers (0=Monday, 6=Sunday) */
             days_of_week?: string;
+            /** @description Scheduled breaks/lunch within the shift, as a list of {"start": "HH:MM", "end": "HH:MM"}. The scheduler keeps attended (full-attention) work out of these windows; actual clock-out/in is captured separately as TimeEntry BREAK/LUNCH entries. */
+            break_windows?: unknown;
             is_active?: boolean;
             /** Format: date-time */
             readonly created_at: string;
@@ -27104,6 +27117,8 @@ export interface components {
             end_time: string;
             /** @description Comma-separated day numbers (0=Monday, 6=Sunday) */
             days_of_week?: string;
+            /** @description Scheduled breaks/lunch within the shift, as a list of {"start": "HH:MM", "end": "HH:MM"}. The scheduler keeps attended (full-attention) work out of these windows; actual clock-out/in is captured separately as TimeEntry BREAK/LUNCH entries. */
+            break_windows?: unknown;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -28765,6 +28780,8 @@ export interface components {
             readonly is_active: boolean;
             readonly groups: components["schemas"]["AuthUserTenantGroup"][];
             readonly work_center_memberships: components["schemas"]["AuthUserWorkCenterMembership"][];
+            /** Format: uuid */
+            readonly default_shift: string;
         };
         /**
          * @description dj-rest-auth user-details payload + the fields the frontend needs.
@@ -29825,6 +29842,11 @@ export interface components {
              */
             job_role?: string | null;
             readonly job_role_name: string | null;
+            /**
+             * Format: uuid
+             * @description The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
+             */
+            default_shift?: string | null;
         };
         /** @description Detailed user serializer with company info */
         UserDetail: {
@@ -29934,6 +29956,11 @@ export interface components {
              * @description Primary job role / position - drives the required-competency profile.
              */
             job_role?: string | null;
+            /**
+             * Format: uuid
+             * @description The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
+             */
+            default_shift?: string | null;
         };
         /** @description Simplified user serializer for dropdowns and selections */
         UserSelect: {

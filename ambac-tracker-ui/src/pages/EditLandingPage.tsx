@@ -107,17 +107,17 @@ const editors = [
     {
         name: "Documents",
         description: "Manage controlled documents (SOPs, work instructions, drawings, etc.)",
-        path: "/editor/documents",
+        path: "/documents/list",
     },
     {
         name: "Audit Log",
         description: "View system audit trail and change history",
-        path: "/editor/history",
+        path: "/admin/audit-log",
     },
     {
         name: "Cores",
         description: "Manage remanufacturing core inventory and tracking",
-        path: "/editor/cores",
+        path: "/reman/cores",
     },
     {
         name: "Order Milestones",

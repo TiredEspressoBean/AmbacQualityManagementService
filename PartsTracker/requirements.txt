@@ -99,3 +99,7 @@ webencodings==0.5.1
 whitenoise==6.11.0
 dj-database-url==2.3.0
 gunicorn==23.0.0
+# Windows-native WSGI server for the local dev loop: Django's runserver
+# on Windows RSTs ~25% of node:http (Vite proxy) connections under parallel
+# load. `waitress-serve` is deterministic. Linux/prod still uses gunicorn.
+waitress==3.0.2

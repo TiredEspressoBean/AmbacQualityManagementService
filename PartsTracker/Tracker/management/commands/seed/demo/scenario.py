@@ -130,6 +130,17 @@ class DemoScenario(BaseSeeder):
         self.log("\n--- Phase 3d: Scheduler Inputs ---")
         result['scheduling'] = self._seed_scheduling()
 
+        # Phase 3e: Labor time entries — a prior work week of clock history for
+        # floor staff, so the Operator Hours (payroll) screen has data. Needs
+        # work-centers (3c, primary stations) + live WOs (3).
+        self.log("\n--- Phase 3e: Labor Time Entries ---")
+        result['time_entries'] = self._seed_time_entries()
+
+        # Phase 3f: Calendar events — closures, labor blocks, and an overtime
+        # window, anchored to "today" so they sit inside the solve horizon.
+        self.log("\n--- Phase 3f: Calendar Events ---")
+        result['calendar'] = self._seed_calendar_events()
+
         # Phase 4: Quality Events
         self.log("\n--- Phase 4: Quality Events ---")
         result['quality'] = self._seed_quality_events(result['orders'], result['users'], result['manufacturing'])
@@ -261,6 +272,22 @@ class DemoScenario(BaseSeeder):
         seeder._verbose = self._verbose
         company_list = companies.get('customers', []) if isinstance(companies, dict) else []
         return seeder.seed(company_list, users, manufacturing)
+
+    def _seed_calendar_events(self):
+        """Seed plant closures, labor blocks, and an overtime window so the
+        scheduling calendar (and the solver's working windows) have real data."""
+        from .calendar_events import DemoCalendarSeeder
+        seeder = DemoCalendarSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed()
+
+    def _seed_time_entries(self):
+        """Seed a prior work week of SHIFT/LUNCH/PRODUCTION clock entries for
+        shop-floor users, feeding the Operator Hours / labor report."""
+        from .time_entries import DemoTimeEntrySeeder
+        seeder = DemoTimeEntrySeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed()
 
     def _seed_work_centers(self):
         """Seed the station-level demo work-centers (Teardown Bay, Wash Line,

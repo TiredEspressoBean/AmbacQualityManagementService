@@ -125,7 +125,7 @@ class ShiftSerializer(SecureModelMixin):
         model = Shift
         fields = (
             'id', 'name', 'code', 'start_time', 'end_time',
-            'days_of_week', 'is_active',
+            'days_of_week', 'break_windows', 'is_active',
             'created_at', 'updated_at', 'archived', 'version',
         )
         read_only_fields = ('created_at', 'updated_at', 'version')

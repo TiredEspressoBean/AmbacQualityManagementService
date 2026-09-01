@@ -9,11 +9,14 @@ export default defineConfig(({ mode }) => {
     // Dev diagnostic: console.warn('Vite looking for .env in:', process.cwd());
 
     // Fallback to actual process.env if not defined in .env.
+    // 127.0.0.1, NOT localhost: on Windows, Node resolves localhost to ::1
+    // intermittently while Django's runserver binds 127.0.0.1 only — the proxy
+    // then surfaces random empty 500s / connection resets on parallel requests.
     // eslint-disable-next-line no-restricted-syntax -- dev-only default; .env is the real source in production
-    const API_TARGET = env.VITE_API_TARGET || process.env.VITE_API_TARGET || "http://localhost:8000";
+    const API_TARGET = env.VITE_API_TARGET || process.env.VITE_API_TARGET || "http://127.0.0.1:8000";
 
     // eslint-disable-next-line no-restricted-syntax -- dev-only default; .env is the real source in production
-    const LANGGRAPH_API_TARGET = env.VITE_LANGGRAPH_API_URL || "http://localhost:2025"
+    const LANGGRAPH_API_TARGET = env.VITE_LANGGRAPH_API_URL || "http://127.0.0.1:2025"
 
     if (!API_TARGET) {
         throw new Error('VITE_API_TARGET is not defined in .env or process.env');
@@ -52,25 +55,35 @@ export default defineConfig(({ mode }) => {
             host: '0.0.0.0',
             https: false,
             proxy: {
+                // agent:false on every Django-target entry: Node ≥19 enables
+                // keep-alive on the global agent, and Django's runserver on
+                // Windows intermittently RESETs reused sockets under parallel
+                // load — surfacing as random empty 500s (ECONNRESET) that never
+                // appear in Django's log. A fresh connection per request is
+                // cheap on localhost and makes the proxy deterministic.
                 '/api': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
+                    agent: false,
                 },
                 '/auth': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
+                    agent: false,
                 },
                 '/accounts': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
+                    agent: false,
                 },
                 '/media': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
+                    agent: false,
                 },
                 "/lg": {
                     target: LANGGRAPH_API_TARGET,

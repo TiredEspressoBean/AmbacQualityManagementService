@@ -1,7 +1,9 @@
 // Work-hours (Shift calendar) editor — the tab in the scheduling settings dialog.
-// The solver's working windows are derived from these shifts.
+// The solver's working windows are derived from these shifts, including their
+// standing daily breaks (break_windows): the 09:00 facility break and lunch are
+// shift properties subtracted every day, not calendar events.
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { useShifts, useSaveShift, useDeleteShift } from "@/hooks/useScheduling";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // index = day number 0..6
+
+type BreakWindow = { start: string; end: string }; // "HH:MM"
 
 type Row = {
   key: string;        // stable local key (id or draft-n)
@@ -18,12 +22,19 @@ type Row = {
   start_time: string; // "HH:MM"
   end_time: string;   // "HH:MM"
   days: number[];
+  breaks: BreakWindow[];
   is_active: boolean;
 };
 
 const hhmm = (t: string | undefined) => (t ? t.slice(0, 5) : "");
 const parseDays = (s: string | undefined) =>
   (s ?? "").split(",").map((x) => x.trim()).filter(Boolean).map(Number).filter((n) => n >= 0 && n <= 6);
+const parseBreaks = (v: unknown): BreakWindow[] =>
+  Array.isArray(v)
+    ? v
+        .map((b) => ({ start: hhmm((b as BreakWindow)?.start), end: hhmm((b as BreakWindow)?.end) }))
+        .filter((b) => b.start && b.end)
+    : [];
 
 let draftSeq = 0;
 
@@ -45,6 +56,7 @@ export function ShiftsSettingsTab() {
         start_time: hhmm(s.start_time),
         end_time: hhmm(s.end_time),
         days: parseDays(s.days_of_week),
+        breaks: parseBreaks(s.break_windows),
         is_active: s.is_active ?? true,
       }))
     );
@@ -62,6 +74,27 @@ export function ShiftsSettingsTab() {
       )
     );
 
+  const patchBreak = (key: string, i: number, upd: Partial<BreakWindow>) =>
+    setRows((rs) =>
+      rs.map((r) =>
+        r.key === key
+          ? { ...r, breaks: r.breaks.map((b, bi) => (bi === i ? { ...b, ...upd } : b)) }
+          : r
+      )
+    );
+
+  const addBreak = (key: string) =>
+    setRows((rs) =>
+      rs.map((r) =>
+        r.key === key ? { ...r, breaks: [...r.breaks, { start: "09:00", end: "09:15" }] } : r
+      )
+    );
+
+  const removeBreak = (key: string, i: number) =>
+    setRows((rs) =>
+      rs.map((r) => (r.key === key ? { ...r, breaks: r.breaks.filter((_, bi) => bi !== i) } : r))
+    );
+
   const addRow = () =>
     setRows((rs) => [
       ...rs,
@@ -72,6 +105,10 @@ export function ShiftsSettingsTab() {
         start_time: "06:00",
         end_time: "18:00",
         days: [0, 1, 2, 3, 4],
+        breaks: [
+          { start: "09:00", end: "09:15" },
+          { start: "12:00", end: "12:30" },
+        ],
         is_active: true,
       },
     ]);
@@ -85,6 +122,7 @@ export function ShiftsSettingsTab() {
       start_time: r.start_time,
       end_time: r.end_time,
       days_of_week: r.days.join(","),
+      break_windows: r.breaks.filter((b) => b.start && b.end),
       is_active: r.is_active,
     });
   };
@@ -100,7 +138,9 @@ export function ShiftsSettingsTab() {
     <div className="grid gap-3">
       <p className="text-xs text-muted-foreground">
         The solver only schedules attended work inside active shift windows. Times are
-        local; overnight shifts (end ≤ start) roll into the next day.
+        local; overnight shifts (end ≤ start) roll into the next day. Breaks are the
+        shift's standing daily pauses (morning break, lunch) — subtracted from every
+        working day.
       </p>
 
       {rows.length === 0 && (
@@ -153,6 +193,44 @@ export function ShiftsSettingsTab() {
               />
               <Label className="text-[11px]">Active</Label>
             </div>
+          </div>
+
+          {/* Standing daily breaks (facility break, lunch, ...) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Label className="text-[11px] text-muted-foreground">Breaks</Label>
+            {r.breaks.map((b, i) => (
+              <span key={i} className="flex items-center gap-1 rounded border px-1.5 py-0.5">
+                <Input
+                  type="time"
+                  className="h-6 w-24 border-0 p-0 text-[11px] shadow-none"
+                  value={b.start}
+                  onChange={(e) => patchBreak(r.key, i, { start: e.target.value })}
+                />
+                <span className="text-[11px] text-muted-foreground">–</span>
+                <Input
+                  type="time"
+                  className="h-6 w-24 border-0 p-0 text-[11px] shadow-none"
+                  value={b.end}
+                  onChange={(e) => patchBreak(r.key, i, { end: e.target.value })}
+                />
+                <button
+                  type="button"
+                  title="Remove break"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => removeBreak(r.key, i)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-1.5 text-[11px]"
+              onClick={() => addBreak(r.key)}
+            >
+              <Plus className="mr-0.5 h-3 w-3" /> Add break
+            </Button>
           </div>
 
           <div className="flex items-center gap-1">

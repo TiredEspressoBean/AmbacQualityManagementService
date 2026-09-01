@@ -118,8 +118,10 @@ class DemoWorkCenterSeeder(BaseSeeder):
         by_kind = {}        # kind -> [WorkCenter] (spec order)
         step_targets = {}   # step name -> WorkCenter
         for code, name, kind, desc, step_names, _equip in _STATIONS:
+            # WorkCenter is versioned: pin the lookup to the current version so a
+            # superseded/voided row with the same code can't trip get_or_create.
             wc, created = WorkCenter.objects.get_or_create(
-                tenant=self.tenant, code=code,
+                tenant=self.tenant, code=code, is_current_version=True,
                 defaults={'name': name, 'description': desc, 'kind': kind},
             )
             # Idempotent: refresh identity fields on reseed (an existing DB may
