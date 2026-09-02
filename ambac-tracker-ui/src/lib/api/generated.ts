@@ -23427,7 +23427,7 @@ export const schemas = {
   StepRequest,
 };
 
-const endpoints = makeApi([
+const endpoints0 = makeApi([
   {
     method: "post",
     path: "/api/ai/embedding/embed_query/",
@@ -28058,7 +28058,10 @@ Returns documents where review_date &lt;&#x3D; today.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/Documents/my-uploads/",
@@ -32774,7 +32777,10 @@ rules; without it, all customer-scoped rules in the tenant are returned.`,
       },
     ],
     response: CustomerRule,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/notifications/rules/customer/:id/",
@@ -38255,7 +38261,10 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/QuarantineDispositions/:id/",
@@ -43914,7 +43923,10 @@ negative range, then assign the final positive values.`,
       },
     ],
     response: SubstepTranslation,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "patch",
     path: "/api/SubstepTranslations/:id/",
@@ -48276,7 +48288,7 @@ Returns the success/fail message.`,
       },
     ],
     response: z.object({ detail: z.string() }),
-  },
+  }
 ]);
 
 // Helper function to get CSRF token from cookies
@@ -48298,27 +48310,55 @@ function getCsrfToken(): string | null {
 // In production, this will be replaced at build time with the actual backend URL
 const BASE_URL = import.meta.env.VITE_API_TARGET;
 
-export const api = BASE_URL
-  ? new Zodios(BASE_URL, endpoints, {
-      axiosConfig: {
-        withCredentials: true,
-        paramsSerializer: (params) =>
-          qs.stringify(params, { arrayFormat: "repeat" }),
-        headers: {
-          "X-CSRFToken": getCsrfToken() || "",
-        },
+// Endpoint aliases are split across 5 Zodios clients (see
+// scripts/split-api-client.cjs for why). They share one axios instance, so
+// `api.axios`, the interceptors below and CSRF handling are unchanged.
+function zodiosOptions(axiosInstance?: unknown): ZodiosOptions {
+  return {
+    ...(axiosInstance ? { axiosInstance } : {}),
+    axiosConfig: {
+      withCredentials: true,
+      paramsSerializer: (params: unknown) =>
+        qs.stringify(params as Record<string, unknown>, { arrayFormat: "repeat" }),
+      headers: {
+        "X-CSRFToken": getCsrfToken() || "",
       },
-    })
-  : new Zodios(endpoints, {
-      axiosConfig: {
-        withCredentials: true,
-        paramsSerializer: (params) =>
-          qs.stringify(params, { arrayFormat: "repeat" }),
-        headers: {
-          "X-CSRFToken": getCsrfToken() || "",
-        },
-      },
-    });
+    },
+  } as ZodiosOptions;
+}
+
+const client0 = BASE_URL
+  ? new Zodios(BASE_URL, endpoints0, zodiosOptions())
+  : new Zodios(endpoints0, zodiosOptions());
+
+// Later clients reuse client0's axios, so there is exactly one instance to
+// configure and intercept.
+const sharedAxios = client0.axios;
+const client1 = BASE_URL
+  ? new Zodios(BASE_URL, endpoints1, zodiosOptions(sharedAxios))
+  : new Zodios(endpoints1, zodiosOptions(sharedAxios));
+const client2 = BASE_URL
+  ? new Zodios(BASE_URL, endpoints2, zodiosOptions(sharedAxios))
+  : new Zodios(endpoints2, zodiosOptions(sharedAxios));
+const client3 = BASE_URL
+  ? new Zodios(BASE_URL, endpoints3, zodiosOptions(sharedAxios))
+  : new Zodios(endpoints3, zodiosOptions(sharedAxios));
+const client4 = BASE_URL
+  ? new Zodios(BASE_URL, endpoints4, zodiosOptions(sharedAxios))
+  : new Zodios(endpoints4, zodiosOptions(sharedAxios));
+
+export const api = Object.assign(
+  { axios: sharedAxios },
+  client0,
+  client1,
+  client2,
+  client3,
+  client4,
+) as unknown as typeof client0 &
+  typeof client1 &
+  typeof client2 &
+  typeof client3 &
+  typeof client4;
 
 // Axios interceptor to refresh CSRF token before each request
 api.axios.interceptors.request.use((config) => {
@@ -48361,17 +48401,40 @@ api.axios.interceptors.response.use(
 );
 
 export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
-  return new Zodios(baseUrl, endpoints, {
-    axiosConfig: {
-      withCredentials: true,
-      ...options?.axiosConfig,
-      paramsSerializer: (params) =>
-        qs.stringify(params, { arrayFormat: "repeat" }),
-      headers: {
-        "X-CSRFToken": getCsrfToken() || "",
-        ...options?.axiosConfig?.headers,
+  const merge = (o?: ZodiosOptions): ZodiosOptions =>
+    ({
+      ...options,
+      ...o,
+      axiosConfig: {
+        withCredentials: true,
+        ...options?.axiosConfig,
+        paramsSerializer: (params: unknown) =>
+          qs.stringify(params as Record<string, unknown>, { arrayFormat: "repeat" }),
+        headers: {
+          "X-CSRFToken": getCsrfToken() || "",
+          ...options?.axiosConfig?.headers,
+        },
+        ...o?.axiosConfig,
       },
-    },
-    ...options,
-  });
+    }) as ZodiosOptions;
+  // Separate consts, NOT an array literal: collecting the clients into an array
+  // makes TypeScript infer a tuple of every client type at once, which is itself
+  // enough to blow the instantiation budget (TS2589) and undo the split.
+  const c0 = new Zodios(baseUrl, endpoints0, merge());
+  const c1 = new Zodios(baseUrl, endpoints1, merge({ axiosInstance: c0.axios } as ZodiosOptions));
+  const c2 = new Zodios(baseUrl, endpoints2, merge({ axiosInstance: c0.axios } as ZodiosOptions));
+  const c3 = new Zodios(baseUrl, endpoints3, merge({ axiosInstance: c0.axios } as ZodiosOptions));
+  const c4 = new Zodios(baseUrl, endpoints4, merge({ axiosInstance: c0.axios } as ZodiosOptions));
+  return Object.assign(
+    { axios: c0.axios },
+    c0,
+    c1,
+    c2,
+    c3,
+    c4,
+  ) as unknown as typeof client0 &
+    typeof client1 &
+    typeof client2 &
+    typeof client3 &
+    typeof client4;
 }
