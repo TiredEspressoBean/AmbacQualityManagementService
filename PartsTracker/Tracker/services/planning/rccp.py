@@ -56,6 +56,55 @@ def _month_buckets(tenant, start: datetime, months: int) -> list[Bucket]:
     return out
 
 
+def window_bucket(tenant, start: datetime, end: datetime, label: str = "window") -> Bucket:
+    """One arbitrary [start, end) bucket — the same capacity basis as a month bucket,
+    for callers that need a single span (e.g. the solver's horizon) rather than a
+    monthly series."""
+    windows = sched_data.get_working_windows(tenant, start, end)
+    working = sum((b - a).total_seconds() / 3600 for a, b in windows)
+    calendar = (end - start).total_seconds() / 3600
+    return Bucket(label, start, end, working, calendar)
+
+
+def load_and_capacity(tenant, bucket: Bucket) -> dict:
+    """Remaining work content vs available hours over one span, per resource.
+
+    Shares `_load_reference` / `_route_hours` with the monthly view, so the coarse
+    plan and any window-level check can never disagree about how much work an order
+    represents. Returns `{'labor': {...}, 'work_centers': [...]}`, each entry
+    `{name, required_hours, available_hours, overload_hours}`.
+    """
+    import collections
+
+    ref = _load_reference(tenant)
+    labor_req = 0.0
+    wc_req: dict = collections.defaultdict(float)
+    for wo in sched_data.get_active_workorders(tenant):
+        labor_h, wc_h = _route_hours(ref, _route_counts(wo))
+        labor_req += labor_h
+        for wc_id, h in wc_h.items():
+            wc_req[wc_id] += h
+
+    def _entry(name, required, available):
+        return {'name': name,
+                'required_hours': round(required, 1),
+                'available_hours': round(available, 1),
+                'overload_hours': round(max(0.0, required - available), 1)}
+
+    work_centers = []
+    for wc_id, required in wc_req.items():
+        lights_out, attended = ref.wc_machine_hours.get(wc_id, (0, 0))
+        available = lights_out * bucket.calendar_hours + attended * bucket.working_hours
+        work_centers.append(_entry(ref.wc_names.get(wc_id, str(wc_id)), required, available))
+    work_centers.sort(key=lambda e: -e['overload_hours'])
+
+    return {
+        'labor': _entry(f"Labor ({ref.crew_size} crew)", labor_req,
+                        ref.crew_size * bucket.working_hours),
+        'work_centers': work_centers,
+    }
+
+
 def _bucket_index(buckets: list[Bucket], when: date | datetime) -> int | None:
     """Index of the bucket containing `when`, or None if outside the horizon."""
     dt = when if isinstance(when, datetime) else datetime(when.year, when.month, when.day)

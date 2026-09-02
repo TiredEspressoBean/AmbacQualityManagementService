@@ -983,6 +983,17 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             bound = solver.BestObjectiveBound()
             relative_gap = abs(obj_v - bound) / max(1.0, abs(obj_v))
 
+        # An INFEASIBLE solve returns no plan and no reason. Say why in the planner's
+        # terms before writing the (empty) result — an unexplained blank board is the
+        # worst thing this can produce. Diagnosis must never itself break the solve.
+        infeasible_reason = ''
+        if not (tasks and solved):
+            try:
+                from Tracker.services.scheduling.infeasibility import diagnose_infeasible
+                infeasible_reason = diagnose_infeasible(tenant, horizon)['summary']
+            except Exception:  # noqa: BLE001 - advisory only
+                logger.exception("Infeasibility diagnosis failed; reporting without it.")
+
         if draft:
             # A draft is a reviewable what-if; it never supersedes the live schedule.
             # Replace only the prior draft (scratch — cascade-deletes its tasks).
@@ -1002,6 +1013,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             weighted_lateness=weighted_lateness,
             relaxed_pin_count=relaxed,
             relative_gap=relative_gap,
+            infeasible_reason=infeasible_reason,
             is_active=not draft,
             is_draft=draft,
         )

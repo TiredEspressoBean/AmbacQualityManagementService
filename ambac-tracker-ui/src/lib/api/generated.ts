@@ -13148,6 +13148,10 @@ export type ScheduleResult = {
    * CP-SAT proven optimality gap: (objective − best_bound) / |objective|. 0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means the solver proved the schedule is within that fraction of the best possible objective before the time limit. Null when nothing was solved.
    */
   relative_gap: number | null;
+  /**
+   * Why the solve produced no plan, in the planner's terms (usually 'more work than the window holds', naming the short resource). CP-SAT reports INFEASIBLE with no explanation, and an empty board with no reason is the worst result the scheduler can give. Blank on any solve that produced a plan.
+   */
+  infeasible_reason: string;
   is_active: boolean;
   is_stale: boolean;
   /**
@@ -18802,6 +18806,7 @@ const ScheduleResult = z.object({
   weighted_lateness: z.number().int(),
   relaxed_pin_count: z.number().int(),
   relative_gap: z.number().nullable(),
+  infeasible_reason: z.string(),
   is_active: z.boolean(),
   is_stale: z.boolean(),
   is_draft: z.boolean(),

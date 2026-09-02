@@ -250,6 +250,9 @@ export function SchedulingGanttPage() {
   const [viewMode, setViewMode] = useState<"live" | "draft">("live");
   const viewingDraft = viewMode === "draft" && draft != null;
   const schedule = viewingDraft ? draft : live;
+  // Set by the backend only when a solve produced no plan; blank on a healthy one.
+  const infeasibleReason =
+    (schedule as { infeasible_reason?: string } | null)?.infeasible_reason ?? "";
   // Stable Date objects for the horizon — a fresh `new Date()` each render was making
   // the Gantt's scroll-reset effect re-fire on every re-render (snapping scroll back
   // to the start). Memoize so the identity only changes when the schedule does.
@@ -1251,7 +1254,22 @@ export function SchedulingGanttPage() {
       ) : tasksQuery.isLoading ? (
         <BoardStatus title="Loading tasks…" />
       ) : rows.length === 0 ? (
-        <BoardStatus title="This schedule has no tasks." />
+        // An empty board with no reason is the worst thing the scheduler can show.
+        // When the solve came back infeasible the backend explains why (usually more
+        // work than the window holds, naming the short resource) — lead with that.
+        <BoardStatus
+          icon={AlertTriangle}
+          title={
+            infeasibleReason
+              ? "No plan could be produced"
+              : "This schedule has no tasks."
+          }
+          message={infeasibleReason || undefined}
+          actionLabel={infeasibleReason && canConfig ? "Scheduling settings" : undefined}
+          onAction={
+            infeasibleReason && canConfig ? () => setSettingsOpen(true) : undefined
+          }
+        />
       ) : (
         <GanttProvider
           range="hourly"

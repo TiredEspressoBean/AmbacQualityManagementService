@@ -27059,6 +27059,8 @@ export interface components {
              * @description CP-SAT proven optimality gap: (objective − best_bound) / |objective|. 0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means the solver proved the schedule is within that fraction of the best possible objective before the time limit. Null when nothing was solved.
              */
             readonly relative_gap: number | null;
+            /** @description Why the solve produced no plan, in the planner's terms (usually 'more work than the window holds', naming the short resource). CP-SAT reports INFEASIBLE with no explanation, and an empty board with no reason is the worst result the scheduler can give. Blank on any solve that produced a plan. */
+            readonly infeasible_reason: string;
             readonly is_active: boolean;
             readonly is_stale: boolean;
             /** @description A proposed 'what-if' schedule the planner reviews against the live one and then commits or discards. A draft never supersedes the active schedule until committed; committing promotes it to is_active. */

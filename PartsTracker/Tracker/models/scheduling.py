@@ -441,6 +441,14 @@ class ScheduleResult(SecureModel):
                   "world changed under them (machine down, shift edited). >0 means the "
                   "freeze couldn't be fully honored — surface for the planner.",
     )
+    infeasible_reason = models.TextField(
+        blank=True, default='',
+        help_text="Why the solve produced no plan, in the planner's terms (usually "
+                  "'more work than the window holds', naming the short resource). "
+                  "CP-SAT reports INFEASIBLE with no explanation, and an empty board "
+                  "with no reason is the worst result the scheduler can give. Blank "
+                  "on any solve that produced a plan.",
+    )
     is_stale = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=False, db_index=True)
     is_draft = models.BooleanField(
