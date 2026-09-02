@@ -9240,6 +9240,10 @@ export type WorkCenter = {
    * @maxLength 50
    */
   string | undefined;
+  is_constraint?: /**
+   * This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop.
+   */
+  boolean | undefined;
   step_count: number;
   member_count: number;
   created_at: string;
@@ -11997,6 +12001,10 @@ export type PatchedWorkCenterRequest = Partial<{
    * @maxLength 50
    */
   cost_center: string;
+  /**
+   * This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop.
+   */
+  is_constraint: boolean;
   archived: boolean;
 }>;
 export type PatchedWorkOrderRequest = Partial<{
@@ -14446,6 +14454,10 @@ export type WorkCenterRequest = {
    * @maxLength 50
    */
   string | undefined;
+  is_constraint?: /**
+   * This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop.
+   */
+  boolean | undefined;
   archived?: boolean | undefined;
 };
 export type WorkOrder = {
@@ -20679,6 +20691,7 @@ const WorkCenter = z.object({
   equipment: z.array(z.string().uuid()).optional(),
   equipment_names: z.array(z.string()),
   cost_center: z.string().max(50).optional(),
+  is_constraint: z.boolean().optional(),
   step_count: z.number().int(),
   member_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
@@ -20704,6 +20717,7 @@ const WorkCenterRequest = z.object({
     .optional(),
   equipment: z.array(z.string().uuid()).optional(),
   cost_center: z.string().max(50).optional(),
+  is_constraint: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
 const WorkCenterSelect = z.object({
@@ -20721,6 +20735,7 @@ const PatchedWorkCenterRequest = z
     default_efficiency: z.string().regex(/^-?\d{0,3}(?:\.\d{0,2})?$/),
     equipment: z.array(z.string().uuid()),
     cost_center: z.string().max(50),
+    is_constraint: z.boolean(),
     archived: z.boolean(),
   })
   .partial();

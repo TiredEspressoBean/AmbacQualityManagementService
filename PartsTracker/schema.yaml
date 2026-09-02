@@ -53873,6 +53873,14 @@ components:
         cost_center:
           type: string
           maxLength: 50
+        is_constraint:
+          type: boolean
+          description: 'This work centre governs the plant''s output — the bottleneck.
+            Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where
+            order release is paced to these centres and the rest are ignored. Declared
+            by a planner rather than inferred: a resource can look loaded for a month
+            without being the real constraint, and acting on a mis-identified one
+            starves the shop.'
         archived:
           type: boolean
     PatchedWorkOrderRequest:
@@ -65063,6 +65071,14 @@ components:
         cost_center:
           type: string
           maxLength: 50
+        is_constraint:
+          type: boolean
+          description: 'This work centre governs the plant''s output — the bottleneck.
+            Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where
+            order release is paced to these centres and the rest are ignored. Declared
+            by a planner rather than inferred: a resource can look loaded for a month
+            without being the real constraint, and acting on a mis-identified one
+            starves the shop.'
         step_count:
           type: integer
           readOnly: true
@@ -65178,6 +65194,14 @@ components:
         cost_center:
           type: string
           maxLength: 50
+        is_constraint:
+          type: boolean
+          description: 'This work centre governs the plant''s output — the bottleneck.
+            Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where
+            order release is paced to these centres and the rest are ignored. Declared
+            by a planner rather than inferred: a resource can look loaded for a month
+            without being the real constraint, and acting on a mis-identified one
+            starves the shop.'
         archived:
           type: boolean
       required:

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -53,10 +54,12 @@ type DraftState = {
     name: string;
     kind: Kind;
     description: string;
+    isConstraint: boolean;
 };
 
 const EMPTY_DRAFT: DraftState = {
     open: false, editing: null, code: "", name: "", kind: "PRODUCTION", description: "",
+    isConstraint: false,
 };
 
 export default function WorkCentersPage() {
@@ -79,7 +82,7 @@ export default function WorkCentersPage() {
     const rows: WorkCenter[] = page?.results ?? [];
 
     const createMut = useMutation({
-        mutationFn: (payload: { code: string; name: string; kind: Kind; description: string }) =>
+        mutationFn: (payload: { code: string; name: string; kind: Kind; description: string; is_constraint: boolean }) =>
             api.api_WorkCenters_create(payload as never),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["work-centers"] });
@@ -89,7 +92,7 @@ export default function WorkCentersPage() {
         onError: (e: unknown) => toast.error(`Couldn't create: ${(e as Error).message}`),
     });
     const updateMut = useMutation({
-        mutationFn: ({ id, ...payload }: { id: string; code: string; name: string; kind: Kind; description: string }) =>
+        mutationFn: ({ id, ...payload }: { id: string; code: string; name: string; kind: Kind; description: string; is_constraint: boolean }) =>
             api.api_WorkCenters_partial_update(payload as never, { params: { id } }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["work-centers"] });
@@ -116,12 +119,14 @@ export default function WorkCentersPage() {
         // fall back to PRODUCTION defensively.
         kind: (((wc as unknown) as { kind?: Kind }).kind ?? "PRODUCTION"),
         description: wc.description ?? "",
+        isConstraint: !!((wc as unknown) as { is_constraint?: boolean }).is_constraint,
     });
 
     const submit = () => {
         const payload = {
             code: draft.code.trim(), name: draft.name.trim(),
             kind: draft.kind, description: draft.description.trim(),
+            is_constraint: draft.isConstraint,
         };
         if (!payload.code || !payload.name) {
             toast.error("Code and name are required.");
@@ -184,7 +189,7 @@ export default function WorkCentersPage() {
                         )}
                         {rows.map((wc) => {
                             const w = (wc as unknown) as WorkCenter & {
-                                kind?: Kind; archived?: boolean;
+                                kind?: Kind; archived?: boolean; is_constraint?: boolean;
                                 step_count?: number; member_count?: number; equipment?: string[];
                             };
                             const kind = w.kind ?? "PRODUCTION";
@@ -203,6 +208,15 @@ export default function WorkCentersPage() {
                                     <td className="px-3 py-2 font-medium">
                                         {wc.name}
                                         {archived && <Badge variant="outline" className="ml-2 text-[10px]">Archived</Badge>}
+                                        {w.is_constraint && (
+                                            <Badge
+                                                variant="outline"
+                                                className="ml-2 border-amber-500/50 text-[10px] text-amber-700 dark:text-amber-400"
+                                                title="Paces order release under the bottleneck policy"
+                                            >
+                                                Bottleneck
+                                            </Badge>
+                                        )}
                                     </td>
                                     <td className="px-3 py-2">
                                         <Badge className={KIND_TONE[kind]}>{KIND_LABELS[kind]}</Badge>
@@ -293,6 +307,25 @@ export default function WorkCentersPage() {
                             <Textarea id="wc-desc" value={draft.description} rows={2}
                                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                                 placeholder="Optional context — what happens here, who works here…" />
+                        </div>
+                        {/* Only consulted when the tenant's release policy is
+                            "pace to the bottleneck" — a planner judgement about which
+                            station governs output, not a property of the equipment. */}
+                        <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="wc-constraint">This station is our bottleneck</Label>
+                                <p className="text-[11px] text-muted-foreground">
+                                    Paces order release when scheduling is set to “pace to the
+                                    bottleneck”. Mark the station that genuinely governs how much
+                                    the plant can produce — marking several, or the wrong one,
+                                    releases work the shop can’t absorb.
+                                </p>
+                            </div>
+                            <Switch
+                                id="wc-constraint"
+                                checked={draft.isConstraint}
+                                onCheckedChange={(v) => setDraft({ ...draft, isConstraint: v })}
+                            />
                         </div>
                     </div>
                     <DialogFooter>

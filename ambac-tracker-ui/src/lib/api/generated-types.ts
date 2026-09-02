@@ -24813,6 +24813,8 @@ export interface components {
             default_efficiency?: string;
             equipment?: string[];
             cost_center?: string;
+            /** @description This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop. */
+            is_constraint?: boolean;
             archived?: boolean;
         };
         /** @description Full work order serializer for detail views */
@@ -30445,6 +30447,8 @@ export interface components {
             equipment?: string[];
             readonly equipment_names: string[];
             cost_center?: string;
+            /** @description This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop. */
+            is_constraint?: boolean;
             readonly step_count: number;
             readonly member_count: number;
             /** Format: date-time */
@@ -30497,6 +30501,8 @@ export interface components {
             default_efficiency?: string;
             equipment?: string[];
             cost_center?: string;
+            /** @description This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop. */
+            is_constraint?: boolean;
             archived?: boolean;
         };
         /** @description Lightweight serializer for dropdowns */

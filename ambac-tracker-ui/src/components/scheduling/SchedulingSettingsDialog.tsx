@@ -271,11 +271,19 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground">
-                      Balancing suits most shops. Choose “pace to the bottleneck” only
-                      when one work centre genuinely governs your output — mark it as
-                      the constraint on the work centre itself. Recommendations are
-                      advisory; nothing releases without you.
+                      Balancing suits most shops. Recommendations are advisory;
+                      nothing releases without you.
                     </p>
+                    {/* Without a flagged constraint this policy gates on nothing, so
+                        it falls back to balancing — say so rather than let it look
+                        applied while behaving identically to the default. */}
+                    {form.release_policy === "constraint" && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                        Mark the governing station as the bottleneck under Admin → Work
+                        Centers. Until one is marked, this behaves the same as
+                        balancing every resource.
+                      </p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">{NORM.map(numField)}</div>
                 </>

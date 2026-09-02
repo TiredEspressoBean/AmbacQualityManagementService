@@ -191,6 +191,40 @@ class WorkloadControlTests(TenantContextMixin, TestCase):
         norms = policy.norms(None, {'a': 100.0, 'b': 50.0})
         self.assertEqual(set(norms), {'a', 'b'})
 
+    def test_the_constraint_flag_is_reachable_over_the_api(self):
+        """The flag shipped on the model but nowhere else, so the CONSTRAINT policy
+        silently behaved like the default — a setting that does nothing is worse than
+        no setting. This pins the whole path: PATCH the work centre, and the policy
+        gates on it."""
+        from Tracker.serializers.mes_standard import WorkCenterSerializer
+
+        self.assertIn('is_constraint', WorkCenterSerializer.Meta.fields)
+
+        ser = WorkCenterSerializer(self.cell_b, data={'is_constraint': True},
+                                   partial=True)
+        self.assertTrue(ser.is_valid(), ser.errors)
+        ser.save()
+
+        self.config.release_policy = ReleasePolicyChoice.CONSTRAINT
+        self.config.save(update_fields=["release_policy"])
+        policy = build_policy(self.tenant, self.config)
+        norms = policy.norms(None, {self.cell_a.id: 100.0, self.cell_b.id: 50.0})
+        self.assertEqual(set(norms), {self.cell_b.id})
+
+    def test_marking_a_constraint_does_not_fork_a_work_centre_version(self):
+        """It's a planning judgement that changes when you buy a machine or win a
+        contract — versioning the work centre each time would bury real configuration
+        history under scheduling opinion."""
+        from Tracker.serializers.mes_standard import WorkCenterSerializer
+
+        before = self.cell_b.version
+        ser = WorkCenterSerializer(self.cell_b, data={'is_constraint': True},
+                                   partial=True)
+        ser.is_valid(raise_exception=True)
+        saved = ser.save()
+        self.assertEqual(saved.version, before)
+        self.assertTrue(saved.is_constraint)
+
     # --- no planned lead times -------------------------------------------
 
     def test_release_is_driven_by_load_not_by_dates(self):
