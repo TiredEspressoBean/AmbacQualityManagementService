@@ -501,18 +501,41 @@ export type ReleaseQueueRow = {
 };
 export type ReleaseQueue = {
   release_mode: string; count: number; work_orders: ReleaseQueueRow[];
+  recommendation?: ReleaseRecommendation;
 };
 export function useReleaseQueue(enabled = true) {
   return useQuery({
     queryKey: ["work-order", "release-queue"],
     enabled,
-    // Evaluates readiness for the whole queue (routing, timings, training, material),
-    // so it isn't free — the toolbar carries a live count, hence long-lived.
+    // Evaluates readiness AND the workload-control recommendation for the whole
+    // queue, so it isn't free — the toolbar carries a live count, hence long-lived.
+    // Both ride one payload: the dialog needs them together, they share reference
+    // data, and the generated zodios client is at TypeScript's instantiation
+    // ceiling (~1000 endpoints), so adding paths breaks type inference app-wide.
     staleTime: 60_000,
     queryFn: () =>
       api.api_WorkOrders_release_queue_retrieve() as Promise<ReleaseQueue>,
   });
 }
+
+/** What workload control would release now, and why. Advisory — calling this
+ *  releases nothing; it returns a recommended set plus the load arithmetic. */
+export type ReleaseResource = {
+  name: string; committed_hours: number; norm_hours: number;
+  capacity_hours: number; utilization: number | null;
+};
+export type ReleaseRecDecision = {
+  work_order_id: string; erp_id: string; release: boolean; reason: string;
+  blocking_resource: string | null; hours: Record<string, number>;
+};
+export type ReleaseRecommendation = {
+  policy: string; policy_label: string; norm_pct: number; window_days: number;
+  resources: ReleaseResource[]; decisions: ReleaseRecDecision[];
+  released_count: number; held_count: number;
+};
+/* Delivered on the release-queue payload, not its own endpoint — the dialog always
+ * needs both together, and the generated zodios client is at TypeScript's type
+ * instantiation ceiling (see the note in useReleaseQueue). */
 
 /** Release many at once. Per-order outcome — the response reports which went and
  *  which were refused, so a partial batch is a normal result, not an error. */

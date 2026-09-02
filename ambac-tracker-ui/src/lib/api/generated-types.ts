@@ -20060,6 +20060,15 @@ export interface components {
             /** @description How far ahead CP-SAT plans in DETAIL. Work releasing past this window is out of scope for the solve — its capacity is the rough-cut (RCCP) layer's business until the window rolls far enough to reach it. Longer windows plan more but solve slower, and the far end is guesswork anyway: a month out, the routing and the crew are known; a year out they are not. */
             horizon_days?: number;
             /**
+             * @description Which resources gate release. WORKLOAD balances across every resource — the right default, and what the research favours for shops without a dominant bottleneck. CONSTRAINT paces release to the work centres flagged `is_constraint` and ignores the rest, for a shop whose output is genuinely governed by one resource.
+             *
+             *     * `wlc` - Balance every resource
+             *     * `constraint` - Pace to the bottleneck
+             */
+            release_policy?: components["schemas"]["ReleasePolicyEnum"];
+            /** @description Release ceiling per resource, as a percentage of that resource's capacity over the planning window. Orders are released from the pool while no resource they touch would exceed its ceiling. Below 100 keeps deliberate slack for expedites and variability; above 100 admits a queue on purpose. A resource with NO committed work is always fed regardless — a ceiling is a cap on commitment, never a reason to let a resource stand idle. */
+            workload_norm_pct?: number;
+            /**
              * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
              *
              *     * `off` - Off (flag stale only; planner re-solves by hand)
@@ -23200,6 +23209,15 @@ export interface components {
             /** @description How far ahead CP-SAT plans in DETAIL. Work releasing past this window is out of scope for the solve — its capacity is the rough-cut (RCCP) layer's business until the window rolls far enough to reach it. Longer windows plan more but solve slower, and the far end is guesswork anyway: a month out, the routing and the crew are known; a year out they are not. */
             horizon_days?: number;
             /**
+             * @description Which resources gate release. WORKLOAD balances across every resource — the right default, and what the research favours for shops without a dominant bottleneck. CONSTRAINT paces release to the work centres flagged `is_constraint` and ignores the rest, for a shop whose output is genuinely governed by one resource.
+             *
+             *     * `wlc` - Balance every resource
+             *     * `constraint` - Pace to the bottleneck
+             */
+            release_policy?: components["schemas"]["ReleasePolicyEnum"];
+            /** @description Release ceiling per resource, as a percentage of that resource's capacity over the planning window. Orders are released from the pool while no resource they touch would exceed its ceiling. Below 100 keeps deliberate slack for expedites and variability; above 100 admits a queue on purpose. A resource with NO committed work is always fed regardless — a ceiling is a cap on commitment, never a reason to let a resource stand idle. */
+            workload_norm_pct?: number;
+            /**
              * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
              *
              *     * `off` - Off (flag stale only; planner re-solves by hand)
@@ -26244,6 +26262,12 @@ export interface components {
          * @enum {string}
          */
         ReleaseModeEnum: "auto" | "manual";
+        /**
+         * @description * `wlc` - Balance every resource
+         *     * `constraint` - Pace to the bottleneck
+         * @enum {string}
+         */
+        ReleasePolicyEnum: "wlc" | "constraint";
         ReleaseQueue: {
             release_mode: string;
             count: number;

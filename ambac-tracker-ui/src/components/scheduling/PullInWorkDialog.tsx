@@ -20,6 +20,13 @@ import {
   useReleaseQueue, useBulkRelease, type ReleaseQueueRow,
 } from "@/hooks/useScheduling";
 
+/** Utilisation → tone. Banded, not a gradient: the planner's decision changes at
+ *  "room / tight / over", and a smooth ramp makes 88% and 104% look alike. */
+const loadTone = (u: number) =>
+  u > 1 ? "text-red-600 dark:text-red-400"
+    : u > 0.85 ? "text-amber-700 dark:text-amber-400"
+      : "text-muted-foreground";
+
 const shortDate = (iso: string | null) => {
   if (!iso) return "—";
   const d = new Date(`${iso}T00:00:00`);
@@ -40,7 +47,9 @@ type Props = {
 
 export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) {
   const { data, isLoading } = useReleaseQueue(open);
+  const rec = data?.recommendation;
   const bulkRelease = useBulkRelease();
+
 
   // Memoised: `rows` feeds an effect and two memos, and a fresh [] each render
   // would re-run all three every time.
@@ -66,7 +75,31 @@ export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) 
       return next;
     });
 
+  // Live load: committed hours plus whatever is currently ticked. This is the whole
+  // point of the panel — a planner ticking 13 orders otherwise has no idea whether
+  // that's a comfortable week or three times capacity.
+  const projected = useMemo(() => {
+    if (!rec) return [];
+    const added: Record<string, number> = {};
+    for (const d of rec.decisions) {
+      if (!selected.has(d.work_order_id)) continue;
+      for (const [name, h] of Object.entries(d.hours)) {
+        added[name] = (added[name] ?? 0) + h;
+      }
+    }
+    return rec.resources
+      .filter((r) => r.norm_hours > 0)
+      .map((r) => {
+        const projected_hours = r.committed_hours + (added[r.name] ?? 0);
+        return { ...r, projected_hours, util: projected_hours / r.norm_hours };
+      })
+      .sort((a, b) => b.util - a.util);
+  }, [rec, selected]);
+
   const readyRows = useMemo(() => rows.filter((r) => r.ready), [rows]);
+  const recommendedIds = useMemo(
+    () => (rec?.decisions ?? []).filter((d) => d.release).map((d) => d.work_order_id),
+    [rec]);
   const selectedRows = useMemo(
     () => rows.filter((r) => selected.has(r.id)), [rows, selected]);
   const blockedSelected = selectedRows.filter((r) => !r.ready);
@@ -97,6 +130,18 @@ export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) 
         </DialogHeader>
 
         <div className="flex shrink-0 items-center gap-2 border-b pb-2 text-sm">
+          {/* The recommendation is advisory — it pre-selects, it doesn't release.
+              "Select all ready" stays, because a planner overriding the norms is a
+              legitimate act, not an error. */}
+          {recommendedIds.length > 0 && (
+            <Button
+              variant="secondary" size="sm"
+              onClick={() => setSelected(new Set(recommendedIds))}
+              title={rec?.policy_label}
+            >
+              Recommend ({recommendedIds.length})
+            </Button>
+          )}
           <Button
             variant="ghost" size="sm"
             onClick={() => setSelected(new Set(readyRows.map((r) => r.id)))}
@@ -198,6 +243,30 @@ export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) 
               placeholder="e.g. routing lands Thursday"
               onChange={(e) => setOverrideReason(e.target.value)}
             />
+          </div>
+        )}
+
+        {/* Load if you released what's ticked. Only the tightest few — a planner
+            needs to know what's about to break, not read a full census. */}
+        {projected.length > 0 && (
+          <div className="shrink-0 space-y-1 border-t pt-3 text-xs">
+            <div className="flex items-baseline justify-between">
+              <span className="font-medium">
+                Load if released · next {rec?.window_days}d
+              </span>
+              <span className="text-muted-foreground">
+                {rec?.policy_label} @ {rec?.norm_pct}%
+              </span>
+            </div>
+            {projected.slice(0, 4).map((r) => (
+              <div key={r.name} className="flex items-baseline justify-between gap-2">
+                <span className="truncate text-muted-foreground">{r.name}</span>
+                <span className={`shrink-0 tabular-nums ${loadTone(r.util)}`}>
+                  {r.projected_hours.toFixed(0)} / {r.norm_hours.toFixed(0)}h
+                  {" · "}{Math.round(r.util * 100)}%
+                </span>
+              </div>
+            ))}
           </div>
         )}
 

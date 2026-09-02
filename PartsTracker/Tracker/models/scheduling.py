@@ -31,6 +31,20 @@ class AttentionType(models.TextChoices):
     LOAD_UNLOAD = 'load_unload', 'Load/unload only (machine runs unattended between)'
 
 
+class ReleasePolicyChoice(models.TextChoices):
+    """Which resources gate order release from the pre-shop pool.
+
+    Simulation work comparing drum-buffer-rope against workload control found
+    bottleneck SEVERITY to be the determinant: balancing every resource wins in a
+    shop without a dominant constraint, and loses its advantage entirely once one
+    resource governs output. Since a product can't know which shape a tenant is —
+    and a tenant can change shape by buying one machine — this is a setting rather
+    than an assumption, with balancing as the default.
+    """
+    WORKLOAD = 'wlc', 'Balance every resource'
+    CONSTRAINT = 'constraint', 'Pace to the bottleneck'
+
+
 class ReleaseMode(models.TextChoices):
     """Whether the scheduler plans everything open, or only what a planner authorized.
 
@@ -343,6 +357,25 @@ class OptimizationConfig(SecureModel):
                   "enough to reach it. Longer windows plan more but solve slower, "
                   "and the far end is guesswork anyway: a month out, the routing "
                   "and the crew are known; a year out they are not.",
+    )
+    workload_norm_pct = models.PositiveIntegerField(
+        default=100,
+        help_text="Release ceiling per resource, as a percentage of that resource's "
+                  "capacity over the planning window. Orders are released from the "
+                  "pool while no resource they touch would exceed its ceiling. Below "
+                  "100 keeps deliberate slack for expedites and variability; above "
+                  "100 admits a queue on purpose. A resource with NO committed work "
+                  "is always fed regardless — a ceiling is a cap on commitment, never "
+                  "a reason to let a resource stand idle.",
+    )
+    release_policy = models.CharField(
+        max_length=12, choices=ReleasePolicyChoice.choices,
+        default=ReleasePolicyChoice.WORKLOAD,
+        help_text="Which resources gate release. WORKLOAD balances across every "
+                  "resource — the right default, and what the research favours for "
+                  "shops without a dominant bottleneck. CONSTRAINT paces release to "
+                  "the work centres flagged `is_constraint` and ignores the rest, "
+                  "for a shop whose output is genuinely governed by one resource.",
     )
     release_mode = models.CharField(
         max_length=6, choices=ReleaseMode.choices, default=ReleaseMode.AUTO,

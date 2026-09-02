@@ -45948,6 +45948,24 @@ components:
             Longer windows plan more but solve slower, and the far end is guesswork
             anyway: a month out, the routing and the crew are known; a year out they
             are not.'
+        release_policy:
+          allOf:
+          - $ref: '#/components/schemas/ReleasePolicyEnum'
+          description: |-
+            Which resources gate release. WORKLOAD balances across every resource — the right default, and what the research favours for shops without a dominant bottleneck. CONSTRAINT paces release to the work centres flagged `is_constraint` and ignores the rest, for a shop whose output is genuinely governed by one resource.
+
+            * `wlc` - Balance every resource
+            * `constraint` - Pace to the bottleneck
+        workload_norm_pct:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Release ceiling per resource, as a percentage of that resource's
+            capacity over the planning window. Orders are released from the pool while
+            no resource they touch would exceed its ceiling. Below 100 keeps deliberate
+            slack for expedites and variability; above 100 admits a queue on purpose.
+            A resource with NO committed work is always fed regardless — a ceiling
+            is a cap on commitment, never a reason to let a resource stand idle.
         auto_resolve:
           allOf:
           - $ref: '#/components/schemas/AutoResolveEnum'
@@ -51323,6 +51341,24 @@ components:
             Longer windows plan more but solve slower, and the far end is guesswork
             anyway: a month out, the routing and the crew are known; a year out they
             are not.'
+        release_policy:
+          allOf:
+          - $ref: '#/components/schemas/ReleasePolicyEnum'
+          description: |-
+            Which resources gate release. WORKLOAD balances across every resource — the right default, and what the research favours for shops without a dominant bottleneck. CONSTRAINT paces release to the work centres flagged `is_constraint` and ignores the rest, for a shop whose output is genuinely governed by one resource.
+
+            * `wlc` - Balance every resource
+            * `constraint` - Pace to the bottleneck
+        workload_norm_pct:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Release ceiling per resource, as a percentage of that resource's
+            capacity over the planning window. Orders are released from the pool while
+            no resource they touch would exceed its ceiling. Below 100 keeps deliberate
+            slack for expedites and variability; above 100 admits a queue on purpose.
+            A resource with NO committed work is always fed regardless — a ceiling
+            is a cap on commitment, never a reason to let a resource stand idle.
         auto_resolve:
           allOf:
           - $ref: '#/components/schemas/AutoResolveEnum'
@@ -56809,6 +56845,14 @@ components:
       description: |-
         * `auto` - Date-driven (no release step)
         * `manual` - Planner releases work
+    ReleasePolicyEnum:
+      enum:
+      - wlc
+      - constraint
+      type: string
+      description: |-
+        * `wlc` - Balance every resource
+        * `constraint` - Pace to the bottleneck
     ReleaseQueue:
       type: object
       properties:

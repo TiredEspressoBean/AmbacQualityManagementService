@@ -2283,10 +2283,16 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                 "ready": r.ok,
                 "blockers": list(r.blockers), "warnings": list(r.warnings),
             })
+        # The workload-control recommendation ships WITH the queue rather than from
+        # its own endpoint: the dialog always needs both, they compute from the same
+        # reference data (loading it twice would double the cost), and one round trip
+        # beats two. Advisory — returning it releases nothing.
+        from Tracker.services.planning.workload_control import recommend_release
         return Response({
             "release_mode": sched_data._release_mode(self.tenant) or ReleaseMode.AUTO,
             "count": len(rows),
             "work_orders": rows,
+            "recommendation": recommend_release(self.tenant),
         })
 
     @extend_schema(

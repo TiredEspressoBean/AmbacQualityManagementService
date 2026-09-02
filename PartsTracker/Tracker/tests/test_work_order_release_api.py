@@ -127,6 +127,18 @@ class WorkOrderReleaseAPITests(TenantTestCase):
         self.assertFalse(row["ready"])
         self.assertTrue(row["blockers"])
 
+    def test_the_queue_carries_its_workload_control_recommendation(self):
+        """Recommendation rides on the queue payload rather than its own endpoint —
+        the dialog needs both together, they share reference data, and the generated
+        zodios client is at TypeScript's ~1000-endpoint instantiation ceiling."""
+        self.authenticate_superuser(self.tenant_a)
+        rec = self.client.get("/api/WorkOrders/release_queue/").data["recommendation"]
+        self.assertIn("decisions", rec)
+        self.assertIn("resources", rec)
+        self.assertIn(rec["policy"], ("wlc", "constraint"))
+        self.assertEqual(
+            rec["released_count"] + rec["held_count"], len(rec["decisions"]))
+
     def test_released_orders_leave_the_queue(self):
         self.authenticate_superuser(self.tenant_a)
         self.client.post(self._url(self.wo, "release"), {}, format="json")

@@ -904,6 +904,17 @@ class WorkCenter(SecureModel):
         default=WorkCenterKind.PRODUCTION,
     )
 
+    is_constraint = models.BooleanField(
+        default=False,
+        help_text="This work centre governs the plant's output — the bottleneck. Only "
+                  "consulted when OptimizationConfig.release_policy is CONSTRAINT, "
+                  "where order release is paced to these centres and the rest are "
+                  "ignored. Declared by a planner rather than inferred: a resource "
+                  "can look loaded for a month without being the real constraint, and "
+                  "acting on a mis-identified one starves the shop.",
+    )
+    """Planner-declared bottleneck; paces order release under the CONSTRAINT policy."""
+
     # Capacity info
     capacity_units = models.CharField(
         max_length=20,

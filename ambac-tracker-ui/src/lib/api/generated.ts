@@ -3528,6 +3528,20 @@ export type OptimizationConfig = {
    * @maximum 2147483647
    */
   number | undefined;
+  release_policy?: /**
+     * Which resources gate release. WORKLOAD balances across every resource — the right default, and what the research favours for shops without a dominant bottleneck. CONSTRAINT paces release to the work centres flagged `is_constraint` and ignores the rest, for a shop whose output is genuinely governed by one resource.
+    
+    * `wlc` - Balance every resource
+    * `constraint` - Pace to the bottleneck
+     */
+  ReleasePolicyEnum | undefined;
+  workload_norm_pct?: /**
+   * Release ceiling per resource, as a percentage of that resource's capacity over the planning window. Orders are released from the pool while no resource they touch would exceed its ceiling. Below 100 keeps deliberate slack for expedites and variability; above 100 admits a queue on purpose. A resource with NO committed work is always fed regardless — a ceiling is a cap on commitment, never a reason to let a resource stand idle.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
   auto_resolve?: /**
      * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
     
@@ -3560,6 +3574,14 @@ export type ReleaseModeEnum =
    * @enum auto, manual
    */
   "auto" | "manual";
+export type ReleasePolicyEnum =
+  /**
+   * * `wlc` - Balance every resource
+   * `constraint` - Pace to the bottleneck
+   *
+   * @enum wlc, constraint
+   */
+  "wlc" | "constraint";
 export type AutoResolveEnum =
   /**
    * * `off` - Off (flag stale only; planner re-solves by hand)
@@ -10471,6 +10493,20 @@ export type PatchedOptimizationConfigRequest = Partial<{
    * @maximum 2147483647
    */
   horizon_days: number;
+  /**
+     * Which resources gate release. WORKLOAD balances across every resource — the right default, and what the research favours for shops without a dominant bottleneck. CONSTRAINT paces release to the work centres flagged `is_constraint` and ignores the rest, for a shop whose output is genuinely governed by one resource.
+    
+    * `wlc` - Balance every resource
+    * `constraint` - Pace to the bottleneck
+     */
+  release_policy: ReleasePolicyEnum;
+  /**
+   * Release ceiling per resource, as a percentage of that resource's capacity over the planning window. Orders are released from the pool while no resource they touch would exceed its ceiling. Below 100 keeps deliberate slack for expedites and variability; above 100 admits a queue on purpose. A resource with NO committed work is always fed regardless — a ceiling is a cap on commitment, never a reason to let a resource stand idle.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  workload_norm_pct: number;
   /**
      * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
     
@@ -18815,6 +18851,7 @@ const ScheduleResult = z.object({
 });
 const DefaultLaborModelEnum = z.enum(["off", "pool", "named"]);
 const ReleaseModeEnum = z.enum(["auto", "manual"]);
+const ReleasePolicyEnum = z.enum(["wlc", "constraint"]);
 const AutoResolveEnum = z.enum(["off", "live"]);
 const OptimizationConfig = z.object({
   id: z.string().uuid(),
@@ -18865,6 +18902,8 @@ const OptimizationConfig = z.object({
   default_move_minutes: z.number().int().gte(0).lte(2147483647).optional(),
   release_mode: ReleaseModeEnum.optional(),
   horizon_days: z.number().int().gte(0).lte(2147483647).optional(),
+  release_policy: ReleasePolicyEnum.optional(),
+  workload_norm_pct: z.number().int().gte(0).lte(2147483647).optional(),
   auto_resolve: AutoResolveEnum.optional(),
   auto_resolve_min_interval_minutes: z
     .number()
@@ -18900,6 +18939,8 @@ const PatchedOptimizationConfigRequest = z
     default_move_minutes: z.number().int().gte(0).lte(2147483647),
     release_mode: ReleaseModeEnum,
     horizon_days: z.number().int().gte(0).lte(2147483647),
+    release_policy: ReleasePolicyEnum,
+    workload_norm_pct: z.number().int().gte(0).lte(2147483647),
     auto_resolve: AutoResolveEnum,
     auto_resolve_min_interval_minutes: z.number().int().gte(0).lte(2147483647),
   })
@@ -22987,6 +23028,7 @@ export const schemas = {
   ScheduleResult,
   DefaultLaborModelEnum,
   ReleaseModeEnum,
+  ReleasePolicyEnum,
   AutoResolveEnum,
   OptimizationConfig,
   PatchedOptimizationConfigRequest,

@@ -75,6 +75,14 @@ const RELEASE_MODES = [
   { value: "auto", label: "Date-driven (schedule everything open)" },
   { value: "manual", label: "Planner releases work (schedule released only)" },
 ];
+const RELEASE_POLICIES = [
+  { value: "wlc", label: "Balance every resource (recommended)" },
+  { value: "constraint", label: "Pace to the bottleneck" },
+];
+const NORM: FieldSpec[] = [
+  { key: "workload_norm_pct", label: "Release ceiling (% of capacity)", kind: "int",
+    hint: "Release work while no resource it touches would exceed this share of its capacity over the window. Under 100 keeps slack for expedites; a resource with no work at all is always fed regardless." },
+];
 const AUTO_RESOLVE_MODES = [
   { value: "off", label: "Off (flag stale only — planner re-solves by hand)" },
   { value: "live", label: "Live (auto re-solve & supersede the schedule)" },
@@ -132,6 +140,7 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
     if (form.default_labor_model) payload.default_labor_model = form.default_labor_model;
     if (form.auto_resolve) payload.auto_resolve = form.auto_resolve;
     if (form.release_mode) payload.release_mode = form.release_mode;
+    if (form.release_policy) payload.release_policy = form.release_policy;
     update.mutate(payload, { onSuccess: () => onOpenChange(false) });
   };
 
@@ -244,6 +253,33 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
                   under “Not scheduled” with a Release button.
                 </p>
               </div>
+
+              {/* Only meaningful with a pool to release from. */}
+              {form.release_mode === "manual" && (
+                <>
+                  <div className="grid gap-1">
+                    <Label className="text-xs">What paces release</Label>
+                    <Select
+                      value={(form.release_policy as string) ?? "wlc"}
+                      onValueChange={(v) => set("release_policy", v)}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {RELEASE_POLICIES.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Balancing suits most shops. Choose “pace to the bottleneck” only
+                      when one work centre genuinely governs your output — mark it as
+                      the constraint on the work centre itself. Recommendations are
+                      advisory; nothing releases without you.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">{NORM.map(numField)}</div>
+                </>
+              )}
             </section>
 
             <section className="grid gap-3">
