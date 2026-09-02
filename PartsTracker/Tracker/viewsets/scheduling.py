@@ -48,6 +48,14 @@ from .core import ExcelExportMixin, ListMetadataMixin
 # best-so-far when it elapses. See ScheduleViewSet._time_limit.
 
 
+def _int_param(request, name: str, default: int, lo: int, hi: int) -> int:
+    """Clamped integer query param — a bad value falls back rather than 500s."""
+    try:
+        return max(lo, min(hi, int(request.query_params.get(name, default))))
+    except (TypeError, ValueError):
+        return default
+
+
 class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     """Run the solver / dispatch and read the active schedule."""
     queryset = ScheduleResult.unscoped.all()
@@ -343,6 +351,129 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         dates."""
         from Tracker.services.mes.requirements import sourcing_requirements
         return Response(sourcing_requirements(self.tenant))
+
+    @extend_schema(
+        parameters=[OpenApiParameter(
+            name='horizon_days', type=OpenApiTypes.INT, required=False,
+            description="Horizon used to judge 'starts past the horizon' when there is "
+                        "no active schedule yet (default 30).")],
+        responses={200: inline_serializer(name='UnscheduledDiagnosis', fields={
+            'schedule_id': serializers.CharField(allow_null=True),
+            'solved_at': serializers.DateTimeField(allow_null=True),
+            'is_stale': serializers.BooleanField(),
+            'horizon_start': serializers.DateTimeField(),
+            'horizon_end': serializers.DateTimeField(),
+            'open_work_orders': serializers.IntegerField(),
+            'open_units': serializers.IntegerField(),
+            'unscheduled_work_orders': serializers.IntegerField(),
+            'counts': serializers.DictField(child=serializers.IntegerField()),
+            'work_orders': inline_serializer(
+                name='UnscheduledWorkOrder', many=True, fields={
+                    'work_order_id': serializers.CharField(),
+                    'erp_id': serializers.CharField(),
+                    'part_type': serializers.CharField(allow_null=True),
+                    'process': serializers.CharField(allow_null=True),
+                    'status': serializers.CharField(),
+                    'priority': serializers.IntegerField(),
+                    'quantity': serializers.IntegerField(),
+                    'due_date': serializers.DateField(allow_null=True),
+                    'expected_start': serializers.DateField(allow_null=True),
+                    'open_units': serializers.IntegerField(),
+                    'scheduled_units': serializers.IntegerField(),
+                    'reason': serializers.CharField(),
+                    'reason_label': serializers.CharField(),
+                    'detail': serializers.CharField(),
+                    'fix': serializers.CharField(),
+                }),
+        })},
+    )
+    @action(detail=False, methods=['get'], url_path='unscheduled')
+    def unscheduled(self, request):
+        """Why isn't this on the board? — every work order with open units the active
+        schedule doesn't fully cover, each with the single most actionable reason
+        (held / no routing / no timings / unstaffable / material / outside horizon /
+        not solved) and the fix for it."""
+        from Tracker.services.scheduling.diagnostics import diagnose_unscheduled
+        return Response(diagnose_unscheduled(
+            self.tenant, horizon_days=_int_param(request, 'horizon_days', 30, 1, 365)))
+
+    # --- Rough-cut capacity planning (the coarse layer above CP-SAT) ---------
+
+    @extend_schema(
+        parameters=[OpenApiParameter(
+            name='months', type=OpenApiTypes.INT, required=False,
+            description="Monthly buckets to project (1-60, default 12).")],
+        responses={200: inline_serializer(name='CapacityLoad', fields={
+            'buckets': serializers.ListField(child=serializers.CharField()),
+            'labor': inline_serializer(name='LaborCapacity', fields={
+                'name': serializers.CharField(),
+                'crew_size': serializers.IntegerField(),
+                'series': inline_serializer(name='LaborBucket', many=True, fields={
+                    'bucket': serializers.CharField(),
+                    'capacity_hours': serializers.FloatField(),
+                    'load_hours': serializers.FloatField(),
+                    'utilization': serializers.FloatField(allow_null=True)})}),
+            'work_centers': inline_serializer(
+                name='WorkCenterCapacity', many=True, fields={
+                    'id': serializers.CharField(),
+                    'name': serializers.CharField(),
+                    'series': inline_serializer(name='WorkCenterBucket', many=True, fields={
+                        'bucket': serializers.CharField(),
+                        'capacity_hours': serializers.FloatField(),
+                        'load_hours': serializers.FloatField(),
+                        'utilization': serializers.FloatField(allow_null=True)})}),
+        })},
+    )
+    @action(detail=False, methods=['get'], url_path='capacity-load')
+    def capacity_load(self, request):
+        """Rough-cut capacity vs load per resource, in monthly buckets. Aggregate
+        arithmetic, not a solve — this answers "where are we tight next quarter?" over a
+        horizon far past what CP-SAT plans in detail."""
+        from Tracker.services.planning.rccp import build_capacity_load
+        return Response(build_capacity_load(self.tenant, months=_int_param(
+            request, 'months', default=12, lo=1, hi=60)))
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='part_type', type=OpenApiTypes.UUID, required=True,
+                             description="Part type to quote."),
+            OpenApiParameter(name='quantity', type=OpenApiTypes.INT, required=True),
+            OpenApiParameter(name='target_date', type=OpenApiTypes.DATE, required=True,
+                             description="Requested due date (YYYY-MM-DD)."),
+            OpenApiParameter(name='months', type=OpenApiTypes.INT, required=False),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=['get'], url_path='capable-to-promise')
+    def capable_to_promise(self, request):
+        """Could we take this order? Explodes the part type's routing, adds it to the
+        committed load, and reports whether free capacity absorbs it by the target date
+        — plus the binding resource and the earliest date that would work.
+
+        Capacity is CUMULATIVE: an order due in March may use every free hour between
+        now and March, so this doesn't reject anything larger than a single month."""
+        from datetime import date as _date
+        from Tracker.services.planning.rccp import capable_to_promise as ctp
+
+        part_type = request.query_params.get('part_type')
+        if not part_type:
+            return Response({'detail': '`part_type` is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            quantity = int(request.query_params.get('quantity', 0))
+        except (TypeError, ValueError):
+            quantity = 0
+        if quantity <= 0:
+            return Response({'detail': '`quantity` must be a positive integer.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            target = _date.fromisoformat(request.query_params.get('target_date', ''))
+        except ValueError:
+            return Response({'detail': '`target_date` must be YYYY-MM-DD.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(ctp(self.tenant, part_type, quantity, target,
+                            months=_int_param(request, 'months', default=12, lo=1, hi=60)))
 
 
 class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):

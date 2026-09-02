@@ -2714,6 +2714,28 @@ class WorkOrder(SecureModel):
     expected_start = models.DateField(null=True, blank=True)
     """Projected calendar date this work order is scheduled to start."""
 
+    # --- Release gate (only consulted when OptimizationConfig.release_mode is MANUAL) ---
+    released_at = models.DateTimeField(
+        null=True, blank=True, db_index=True,
+        help_text="When a planner authorized this work order for scheduling. Null = "
+                  "not released. Only gates the solver under release_mode=MANUAL; "
+                  "under AUTO it is recorded when set but never filters.")
+    """Timestamp of planner release; the scheduler's admission gate under MANUAL mode."""
+
+    released_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+        help_text="Who released it. Kept for the audit trail even after un-release.")
+    """The planner who released this work order."""
+
+    release_override_reason = models.TextField(
+        blank=True, default='',
+        help_text="Recorded justification when a work order was released despite a "
+                  "failing readiness check. Blank when it released clean. The gate is "
+                  "advisory by design — a planner who knows the shortage is covered "
+                  "must be able to proceed, but the override is on the record.")
+    """Why the planner released over a failing readiness check (blank if it passed)."""
+
     expected_completion = models.DateField(null=True, blank=True)
     """Projected calendar date by which the work order should be complete."""
 

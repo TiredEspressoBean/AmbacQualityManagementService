@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeftRight, ChevronRight, Combine, Pin, PinOff, Plus, RotateCw, Search, Settings, Split, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, ChevronRight, Combine, HelpCircle, Inbox, Pin, PinOff, Plus, RotateCw, Search, Settings, Split, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
 import {
   GanttProvider,
   GanttSidebar,
@@ -45,6 +45,9 @@ import {
   usePinBatch,
   useBatchMembership,
   useWorkingWindows,
+  useUnscheduled,
+  useOptimizationConfig,
+  useReleaseQueue,
 } from "@/hooks/useScheduling";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { SchedulingSettingsDialog } from "@/components/scheduling/SchedulingSettingsDialog";
@@ -52,6 +55,8 @@ import { NewWorkOrderDialog } from "@/components/scheduling/NewWorkOrderDialog";
 import { TaskReassignControls } from "@/components/scheduling/TaskReassignControls";
 import { EditWorkOrderDialog } from "@/components/scheduling/EditWorkOrderDialog";
 import { BulkReassignDialog } from "@/components/scheduling/BulkReassignDialog";
+import { UnscheduledPanel } from "@/components/scheduling/UnscheduledPanel";
+import { PullInWorkDialog } from "@/components/scheduling/PullInWorkDialog";
 
 const FENCE = {
   frozen: { name: "Frozen", color: "#ef4444" },
@@ -295,6 +300,16 @@ export function SchedulingGanttPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [newWoOpen, setNewWoOpen] = useState(false);
   const [editWoId, setEditWoId] = useState<string | null>(null);
+  const [unscheduledOpen, setUnscheduledOpen] = useState(false);
+  const [pullInOpen, setPullInOpen] = useState(false);
+  // Always-on so the toolbar can carry a live count — the board is otherwise silent
+  // about work the solver never placed.
+  const unscheduled = useUnscheduled();
+  const unscheduledCount = unscheduled.data?.unscheduled_work_orders ?? 0;
+  const { data: schedConfig } = useOptimizationConfig();
+  const manualRelease = (schedConfig as any)?.release_mode === "manual";
+  const releaseQueue = useReleaseQueue(manualRelease);
+  const releaseQueueCount = releaseQueue.data?.count ?? 0;
   // Multi-select: ⌘/Ctrl-click bars to select several, then merge/break them in one go.
   // Holds bar ids (a batch bar's id or a single task id) — expanded to task ids on action.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1036,7 +1051,42 @@ export function SchedulingGanttPage() {
               ))}
             </div>
           )}
-          {canPlanWo && (
+          <Button
+            variant={unscheduledCount > 0 ? "outline" : "ghost"}
+            size="sm"
+            className="h-9"
+            title="Open work the board isn't showing, and why"
+            onClick={() => setUnscheduledOpen(true)}
+          >
+            <HelpCircle className="mr-1 h-4 w-4" />
+            Not scheduled
+            {unscheduledCount > 0 && (
+              <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 tabular-nums">
+                {unscheduledCount}
+              </Badge>
+            )}
+          </Button>
+          {/* Under manual release the planner's primary act is choosing which existing
+              work goes on the board, not raising new orders — so the queue takes the
+              slot and "New work order" moves inside it. Under auto there is no queue
+              (everything open is already schedulable), so the create button stands. */}
+          {canPlanWo && (manualRelease ? (
+            <Button
+              variant={releaseQueueCount > 0 ? "default" : "outline"}
+              size="sm"
+              className="h-9"
+              title="Release work orders onto the schedule"
+              onClick={() => setPullInOpen(true)}
+            >
+              <Inbox className="mr-1 h-4 w-4" />
+              Pull in work
+              {releaseQueueCount > 0 && (
+                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 tabular-nums">
+                  {releaseQueueCount}
+                </Badge>
+              )}
+            </Button>
+          ) : (
             <Button
               variant="outline"
               size="sm"
@@ -1046,7 +1096,7 @@ export function SchedulingGanttPage() {
             >
               <Plus className="mr-1 h-4 w-4" /> New WO
             </Button>
-          )}
+          ))}
           {canConfig && (
             <Button
               variant="ghost"
@@ -1515,6 +1565,18 @@ export function SchedulingGanttPage() {
 
       <SchedulingSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <NewWorkOrderDialog open={newWoOpen} onOpenChange={setNewWoOpen} />
+      <PullInWorkDialog
+        open={pullInOpen}
+        onOpenChange={setPullInOpen}
+        onNewWorkOrder={() => { setPullInOpen(false); setNewWoOpen(true); }}
+      />
+
+      <UnscheduledPanel
+        open={unscheduledOpen}
+        onOpenChange={setUnscheduledOpen}
+        onOpenWorkOrder={(id) => { setUnscheduledOpen(false); setEditWoId(id); }}
+      />
+
       <EditWorkOrderDialog workOrderId={editWoId} onOpenChange={(o) => !o && setEditWoId(null)} />
       <BulkReassignDialog
         open={bulkReassignOpen}

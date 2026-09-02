@@ -16,6 +16,7 @@ import {
     Files,
     Flame,
     Gauge,
+    Grid3x3,
     GraduationCap,
     History,
     Home,
@@ -69,10 +70,12 @@ const productionPages = [
 ]
 
 // Scheduling - APS planning surfaces (staff only, collapsible). The Gantt is the
-// board; calendar drives working windows; labor hours + requirements are its reports.
+// board; calendar drives working windows; capacity is the coarse long-range layer
+// above it; labor hours + requirements are its reports.
 const schedulingPages = [
     { name: "Schedule (Gantt)", url: "/production/schedule", icon: CalendarRange },
     { name: "Calendar", url: "/production/calendar", icon: CalendarDays },
+    { name: "Capacity Planning", url: "/production/capacity", icon: Grid3x3 },
     { name: "Labor Hours", url: "/production/labor-hours", icon: Clock },
     { name: "Requirements", url: "/production/requirements", icon: ClipboardList },
 ]

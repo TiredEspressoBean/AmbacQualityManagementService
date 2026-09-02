@@ -69,6 +69,10 @@ const LABOR_MODELS = [
   { value: "named", label: "Named (assign a specific operator)" },
 ];
 
+const RELEASE_MODES = [
+  { value: "auto", label: "Date-driven (schedule everything open)" },
+  { value: "manual", label: "Planner releases work (schedule released only)" },
+];
 const AUTO_RESOLVE_MODES = [
   { value: "off", label: "Off (flag stale only — planner re-solves by hand)" },
   { value: "live", label: "Live (auto re-solve & supersede the schedule)" },
@@ -125,6 +129,7 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
     payload.default_machine_unattended = !!form.default_machine_unattended;
     if (form.default_labor_model) payload.default_labor_model = form.default_labor_model;
     if (form.auto_resolve) payload.auto_resolve = form.auto_resolve;
+    if (form.release_mode) payload.release_mode = form.release_mode;
     update.mutate(payload, { onSuccess: () => onOpenChange(false) });
   };
 
@@ -212,6 +217,30 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
                   checked={!!form.default_machine_unattended}
                   onCheckedChange={(v) => set("default_machine_unattended", v)}
                 />
+              </div>
+            </section>
+
+            <section className="grid gap-3">
+              <h4 className="text-sm font-medium">What the scheduler may plan</h4>
+              <div className="grid gap-1">
+                <Label className="text-xs">Release gate</Label>
+                <Select
+                  value={(form.release_mode as string) ?? "auto"}
+                  onValueChange={(v) => set("release_mode", v)}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RELEASE_MODES.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Date-driven suits a shop where the planner and the scheduler are the
+                  same person. Switch to planner-released when work shouldn't reach the
+                  board until someone has authorized it — unreleased orders then show up
+                  under “Not scheduled” with a Release button.
+                </p>
               </div>
             </section>
 

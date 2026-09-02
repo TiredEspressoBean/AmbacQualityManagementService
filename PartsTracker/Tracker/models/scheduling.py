@@ -31,6 +31,19 @@ class AttentionType(models.TextChoices):
     LOAD_UNLOAD = 'load_unload', 'Load/unload only (machine runs unattended between)'
 
 
+class ReleaseMode(models.TextChoices):
+    """Whether the scheduler plans everything open, or only what a planner authorized.
+
+    Larger ERPs model this as a chain of order objects (planned → firm planned →
+    production order → released). At 50-500 people that ceremony costs more than it
+    buys: the same person plans and schedules, and a second object to convert is pure
+    overhead. So the gate is a flag on the work order, not a new aggregate — AUTO
+    keeps today's date-driven behaviour, MANUAL makes release an explicit act.
+    """
+    AUTO = 'auto', 'Date-driven (no release step)'
+    MANUAL = 'manual', 'Planner releases work'
+
+
 class AutoResolveMode(models.TextChoices):
     """What the periodic re-solve beat does when a tenant's live schedule drifts
     stale (a quality hold, new demand, lost capacity, a receipt, etc.):
@@ -321,6 +334,17 @@ class OptimizationConfig(SecureModel):
                   "progressing (it does NOT hold the WO); ON and OFF behave identically "
                   "today. The OFF meaning (allow a large lot to break into transfer batches "
                   "to pipeline) is reserved for the future transfer-batching work.",
+    )
+    release_mode = models.CharField(
+        max_length=6, choices=ReleaseMode.choices, default=ReleaseMode.AUTO,
+        help_text="Who decides what the scheduler may plan. AUTO (default): every "
+                  "open work order is schedulable as soon as its dates allow — the "
+                  "plan is date-driven, which is right for a shop where the planner "
+                  "and the scheduler are the same person. MANUAL: a work order is "
+                  "invisible to the solver until a planner RELEASES it, so the board "
+                  "only ever shows authorized work. Manual adds a gate, not a "
+                  "hierarchy — there are no separate planned-order objects to "
+                  "convert; releasing stamps `released_at` on the work order itself.",
     )
     auto_resolve = models.CharField(
         max_length=10, choices=AutoResolveMode.choices, default=AutoResolveMode.OFF,

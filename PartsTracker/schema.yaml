@@ -20087,6 +20087,85 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Schedules/capable-to-promise/:
+    get:
+      operationId: api_Schedules_capable_to_promise_retrieve
+      description: |-
+        Could we take this order? Explodes the part type's routing, adds it to the
+        committed load, and reports whether free capacity absorbs it by the target date
+        — plus the binding resource and the earliest date that would work.
+
+        Capacity is CUMULATIVE: an order due in March may use every free hour between
+        now and March, so this doesn't reject anything larger than a single month.
+      parameters:
+      - in: query
+        name: months
+        schema:
+          type: integer
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+        description: Part type to quote.
+        required: true
+      - in: query
+        name: quantity
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: target_date
+        schema:
+          type: string
+          format: date
+        description: Requested due date (YYYY-MM-DD).
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Schedules/capacity-load/:
+    get:
+      operationId: api_Schedules_capacity_load_retrieve
+      description: |-
+        Rough-cut capacity vs load per resource, in monthly buckets. Aggregate
+        arithmetic, not a solve — this answers "where are we tight next quarter?" over a
+        horizon far past what CP-SAT plans in detail.
+      parameters:
+      - in: query
+        name: months
+        schema:
+          type: integer
+        description: Monthly buckets to project (1-60, default 12).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapacityLoad'
+          description: ''
   /api/Schedules/commit/:
     post:
       operationId: api_Schedules_commit_create
@@ -20434,6 +20513,33 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/Schedules/unscheduled/:
+    get:
+      operationId: api_Schedules_unscheduled_retrieve
+      description: |-
+        Why isn't this on the board? — every work order with open units the active
+        schedule doesn't fully cover, each with the single most actionable reason
+        (held / no routing / no timings / unstaffable / material / outside horizon /
+        not solved) and the fix for it.
+      parameters:
+      - in: query
+        name: horizon_days
+        schema:
+          type: integer
+        description: Horizon used to judge 'starts past the horizon' when there is
+          no active schedule yet (default 30).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnscheduledDiagnosis'
           description: ''
   /api/Schedules/working_windows/:
     get:
@@ -30193,6 +30299,79 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkOrder'
           description: ''
+  /api/WorkOrders/{id}/release/:
+    post:
+      operationId: api_WorkOrders_release_create
+      description: |-
+        Authorize this work order for scheduling. Returns 409 with the blockers when
+        it isn't ready and no `override_reason` was supplied — the gate is advisory, so
+        re-POST with a reason to release anyway (the reason is recorded).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseWorkOrderRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReleaseWorkOrderRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReleaseWorkOrderRequestRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/WorkOrders/{id}/release_readiness/:
+    get:
+      operationId: api_WorkOrders_release_readiness_retrieve
+      description: |-
+        Would this work order release clean? `blockers` are conditions that would
+        make the released plan fiction (no routing/timings, unstaffable step);
+        `warnings` (material) inform but don't require an override.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderReleaseReadiness'
+          description: ''
   /api/WorkOrders/{id}/set_quantity/:
     post:
       operationId: api_WorkOrders_set_quantity_create
@@ -30360,6 +30539,32 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/WorkOrders/{id}/unrelease/:
+    post:
+      operationId: api_WorkOrders_unrelease_create
+      description: Withdraw authorization — the solver stops planning it under manual
+        mode.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkOrders/bulk_clear_hold/:
     post:
       operationId: api_WorkOrders_bulk_clear_hold_create
@@ -30429,6 +30634,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderBulkPlaceOnHoldResponse'
+          description: ''
+  /api/WorkOrders/bulk_release/:
+    post:
+      operationId: api_WorkOrders_bulk_release_create
+      description: |-
+        Release many work orders at once. Per-order outcome, never all-or-nothing:
+        releasing 12 where 2 aren't ready releases the 10 and reports the 2.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReleaseRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkReleaseRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkReleaseRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/WorkOrders/bulk_transition/:
     post:
@@ -30646,6 +30882,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/WorkOrders/release_queue/:
+    get:
+      operationId: api_WorkOrders_release_queue_retrieve
+      description: |-
+        Open work orders awaiting release, each with its readiness — the planner's
+        "what can I pull in?" inbox. Readiness is evaluated against ONE shared context,
+        so a 40-order queue costs the same handful of queries as a single order.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseQueue'
           description: ''
   /api/WorkQueue/:
     get:
@@ -38409,6 +38664,18 @@ components:
       required:
       - results
       - summary
+    BulkReleaseRequestRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        override_reason:
+          type: string
+      required:
+      - ids
     BulkRemovePartsInputRequest:
       type: object
       properties:
@@ -39305,6 +39572,23 @@ components:
       - capa
       - verification_criteria
       - verification_method
+    CapacityLoad:
+      type: object
+      properties:
+        buckets:
+          type: array
+          items:
+            type: string
+        labor:
+          $ref: '#/components/schemas/LaborCapacity'
+        work_centers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkCenterCapacity'
+      required:
+      - buckets
+      - labor
+      - work_centers
     ChangeControlModeEnum:
       enum:
       - SIMPLIFIED
@@ -44096,6 +44380,26 @@ components:
       - full_model_name
       - model
       - provider
+    LaborBucket:
+      type: object
+      properties:
+        bucket:
+          type: string
+        capacity_hours:
+          type: number
+          format: double
+        load_hours:
+          type: number
+          format: double
+        utilization:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - bucket
+      - capacity_hours
+      - load_hours
+      - utilization
     LaborCalendarBlock:
       type: object
       description: |-
@@ -44217,6 +44521,21 @@ components:
           maxLength: 200
         is_active:
           type: boolean
+    LaborCapacity:
+      type: object
+      properties:
+        name:
+          type: string
+        crew_size:
+          type: integer
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaborBucket'
+      required:
+      - crew_size
+      - name
+      - series
     LaborRecurrenceEnum:
       enum:
       - ONCE
@@ -45605,6 +45924,14 @@ components:
             one finishes (transport + queue). Applied to every intra-route hand-off;
             0 = parts flow with no transfer delay. (Distinct from staging_buffer,
             which is the cross-work-order assembly-convergence gap.)
+        release_mode:
+          allOf:
+          - $ref: '#/components/schemas/ReleaseModeEnum'
+          description: |-
+            Who decides what the scheduler may plan. AUTO (default): every open work order is schedulable as soon as its dates allow — the plan is date-driven, which is right for a shop where the planner and the scheduler are the same person. MANUAL: a work order is invisible to the solver until a planner RELEASES it, so the board only ever shows authorized work. Manual adds a gate, not a hierarchy — there are no separate planned-order objects to convert; releasing stamps `released_at` on the work order itself.
+
+            * `auto` - Date-driven (no release step)
+            * `manual` - Planner releases work
         auto_resolve:
           allOf:
           - $ref: '#/components/schemas/AutoResolveEnum'
@@ -50962,6 +51289,14 @@ components:
             one finishes (transport + queue). Applied to every intra-route hand-off;
             0 = parts flow with no transfer delay. (Distinct from staging_buffer,
             which is the cross-work-order assembly-convergence gap.)
+        release_mode:
+          allOf:
+          - $ref: '#/components/schemas/ReleaseModeEnum'
+          description: |-
+            Who decides what the scheduler may plan. AUTO (default): every open work order is schedulable as soon as its dates allow — the plan is date-driven, which is right for a shop where the planner and the scheduler are the same person. MANUAL: a work order is invisible to the solver until a planner RELEASES it, so the board only ever shows authorized work. Manual adds a gate, not a hierarchy — there are no separate planned-order objects to convert; releasing stamps `released_at` on the work order itself.
+
+            * `auto` - Date-driven (no release step)
+            * `manual` - Planner releases work
         auto_resolve:
           allOf:
           - $ref: '#/components/schemas/AutoResolveEnum'
@@ -55936,6 +56271,26 @@ components:
           description: Aggregation function
       required:
       - model
+    QueueBlocker:
+      type: object
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+      required:
+      - code
+      - detail
+    QueueWarning:
+      type: object
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+      required:
+      - code
+      - detail
     RaiseScarResponse:
       type: object
       properties:
@@ -56410,6 +56765,102 @@ components:
       - password1
       - password2
       - username
+    ReleaseBlocker:
+      type: object
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+      required:
+      - code
+      - detail
+    ReleaseModeEnum:
+      enum:
+      - auto
+      - manual
+      type: string
+      description: |-
+        * `auto` - Date-driven (no release step)
+        * `manual` - Planner releases work
+    ReleaseQueue:
+      type: object
+      properties:
+        release_mode:
+          type: string
+        count:
+          type: integer
+        work_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseQueueRow'
+      required:
+      - count
+      - release_mode
+      - work_orders
+    ReleaseQueueRow:
+      type: object
+      properties:
+        id:
+          type: string
+        erp_id:
+          type: string
+        part_type:
+          type: string
+          nullable: true
+        process:
+          type: string
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: integer
+        quantity:
+          type: integer
+        open_units:
+          type: integer
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        ready:
+          type: boolean
+        blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueBlocker'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueWarning'
+      required:
+      - blockers
+      - due_date
+      - erp_id
+      - id
+      - open_units
+      - part_type
+      - priority
+      - process
+      - quantity
+      - ready
+      - status
+      - warnings
+    ReleaseWarning:
+      type: object
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+      required:
+      - code
+      - detail
+    ReleaseWorkOrderRequestRequest:
+      type: object
+      properties:
+        override_reason:
+          type: string
     RemoveMemberResponse:
       type: object
       properties:
@@ -63780,6 +64231,104 @@ components:
       description: |-
         * `NUMERIC` - Numeric
         * `PASS_FAIL` - Pass/Fail
+    UnscheduledDiagnosis:
+      type: object
+      properties:
+        schedule_id:
+          type: string
+          nullable: true
+        solved_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_stale:
+          type: boolean
+        horizon_start:
+          type: string
+          format: date-time
+        horizon_end:
+          type: string
+          format: date-time
+        open_work_orders:
+          type: integer
+        open_units:
+          type: integer
+        unscheduled_work_orders:
+          type: integer
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+        work_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnscheduledWorkOrder'
+      required:
+      - counts
+      - horizon_end
+      - horizon_start
+      - is_stale
+      - open_units
+      - open_work_orders
+      - schedule_id
+      - solved_at
+      - unscheduled_work_orders
+      - work_orders
+    UnscheduledWorkOrder:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+        erp_id:
+          type: string
+        part_type:
+          type: string
+          nullable: true
+        process:
+          type: string
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: integer
+        quantity:
+          type: integer
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        expected_start:
+          type: string
+          format: date
+          nullable: true
+        open_units:
+          type: integer
+        scheduled_units:
+          type: integer
+        reason:
+          type: string
+        reason_label:
+          type: string
+        detail:
+          type: string
+        fix:
+          type: string
+      required:
+      - detail
+      - due_date
+      - erp_id
+      - expected_start
+      - fix
+      - open_units
+      - part_type
+      - priority
+      - process
+      - quantity
+      - reason
+      - reason_label
+      - scheduled_units
+      - status
+      - work_order_id
     User:
       type: object
       description: Enhanced user serializer with company and permission info
@@ -64464,6 +65013,41 @@ components:
       - step_count
       - updated_at
       - version
+    WorkCenterBucket:
+      type: object
+      properties:
+        bucket:
+          type: string
+        capacity_hours:
+          type: number
+          format: double
+        load_hours:
+          type: number
+          format: double
+        utilization:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - bucket
+      - capacity_hours
+      - load_hours
+      - utilization
+    WorkCenterCapacity:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkCenterBucket'
+      required:
+      - id
+      - name
+      - series
     WorkCenterKindEnum:
       enum:
       - PRODUCTION
@@ -64621,6 +65205,26 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        released_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When a planner authorized this work order for scheduling. Null
+            = not released. Only gates the solver under release_mode=MANUAL; under
+            AUTO it is recorded when set but never filters.
+        released_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Who released it. Kept for the audit trail even after un-release.
+        release_override_reason:
+          type: string
+          readOnly: true
+          description: Recorded justification when a work order was released despite
+            a failing readiness check. Blank when it released clean. The gate is advisory
+            by design — a planner who knows the shortage is covered must be able to
+            proceed, but the override is on the record.
         parent_workorder_id:
           type: string
           format: uuid
@@ -64661,6 +65265,9 @@ components:
       - process_info
       - related_order_detail
       - related_order_info
+      - release_override_reason
+      - released_at
+      - released_by
       - split_at
       - split_reason
       - updated_at
@@ -64877,6 +65484,14 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        released_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When a planner authorized this work order for scheduling. Null
+            = not released. Only gates the solver under release_mode=MANUAL; under
+            AUTO it is recorded when set but never filters.
         parent_workorder_id:
           type: string
           format: uuid
@@ -64918,6 +65533,7 @@ components:
       - process_info
       - qa_progress
       - related_order_info
+      - released_at
       - split_at
       - split_reason
       - updated_at
@@ -65031,6 +65647,29 @@ components:
         * `2` - High
         * `3` - Normal
         * `4` - Low
+    WorkOrderReleaseReadiness:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+        erp_id:
+          type: string
+        ok:
+          type: boolean
+        blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseBlocker'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseWarning'
+      required:
+      - blockers
+      - erp_id
+      - ok
+      - warnings
+      - work_order_id
     WorkOrderRequest:
       type: object
       description: Full work order serializer for detail views

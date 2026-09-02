@@ -517,13 +517,17 @@ class WorkOrderListSerializer(SecureModelMixin):
             'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info',
             'process', 'process_info', 'expected_completion', 'true_completion',
             'expected_duration', 'true_duration', 'notes', 'parts_count', 'qa_progress',
-            'completed_parts_count', 'current_hold',
+            'completed_parts_count', 'current_hold', 'released_at',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_count', 'qa_progress', 'process_info',
             'completed_parts_count', 'current_hold',
+            # Release goes through its own gated endpoint, never a PATCH — and a list
+            # view needs to SHOW release state (a WO list can't otherwise tell an
+            # authorized order from a queued one).
+            'released_at',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
         )
 
@@ -632,11 +636,15 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info', 'related_order_detail',
         'process', 'process_info', 'expected_start', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
         'notes', 'parts_summary', 'current_hold',
+        'released_at', 'released_by', 'release_override_reason',
         'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
         'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',
             'process_info', 'current_hold',
+            # Release is an authorization act with its own gated endpoints — never a
+            # plain PATCH, or the readiness check and the override record are bypassed.
+            'released_at', 'released_by', 'release_override_reason',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count')
 
     @extend_schema_field(serializers.IntegerField())

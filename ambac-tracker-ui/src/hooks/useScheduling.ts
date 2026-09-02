@@ -281,6 +281,89 @@ export function useRequirements() {
   });
 }
 
+/* --- Rough-cut capacity planning ------------------------------------------
+ * The coarse layer above CP-SAT: monthly capacity-vs-load arithmetic over a horizon
+ * far past what the solver plans in detail, and the "could we take this order?" quote
+ * built on it. */
+
+export type CapacityBucket = {
+  bucket: string; capacity_hours: number; load_hours: number;
+  utilization: number | null;
+};
+export type CapacityLoad = {
+  buckets: string[];
+  labor: { name: string; crew_size: number; series: CapacityBucket[] };
+  work_centers: { id: string; name: string; series: CapacityBucket[] }[];
+};
+export function useCapacityLoad(months = 12) {
+  return useQuery({
+    queryKey: ["planning", "capacity-load", months],
+    queryFn: () =>
+      api.api_Schedules_capacity_load_retrieve({
+        queries: { months },
+      } as never) as Promise<CapacityLoad>,
+  });
+}
+
+export type CtpBinding = {
+  resource: string; need: number; free_through_target: number;
+};
+export type CtpQuote = {
+  feasible: boolean;
+  reason?: string;
+  target_bucket?: string;
+  binding_resources?: CtpBinding[];
+  earliest_feasible_bucket?: string | null;
+  quantity?: number;
+  work_content_hours?: Record<string, number>;
+};
+/** Quote an order against remaining capacity. Disabled until every input is set —
+ *  a half-filled form must not fire a request that can only answer 400. */
+export function useCapableToPromise(
+  args: { part_type: string; quantity: number; target_date: string; months?: number } | null
+) {
+  return useQuery({
+    queryKey: ["planning", "ctp", args],
+    enabled: !!args && !!args.part_type && args.quantity > 0 && !!args.target_date,
+    queryFn: () =>
+      api.api_Schedules_capable_to_promise_retrieve({
+        queries: args,
+      } as never) as Promise<CtpQuote>,
+  });
+}
+
+/** "Why isn't this on the board?" — open work the active schedule doesn't cover, each
+ *  row carrying the single most actionable reason and the fix for it. */
+export type UnscheduledReason =
+  | "on_hold" | "no_process" | "no_open_units" | "no_routing" | "no_timings"
+  | "unstaffable" | "outside_horizon" | "material_gated" | "material_short"
+  | "stale_schedule" | "not_solved";
+export type UnscheduledRow = {
+  work_order_id: string; erp_id: string; part_type: string | null;
+  process: string | null; status: string; priority: number; quantity: number;
+  due_date: string | null; expected_start: string | null;
+  open_units: number; scheduled_units: number;
+  reason: UnscheduledReason; reason_label: string; detail: string; fix: string;
+};
+export type UnscheduledDiagnosis = {
+  schedule_id: string | null; solved_at: string | null; is_stale: boolean;
+  horizon_start: string; horizon_end: string;
+  open_work_orders: number; open_units: number; unscheduled_work_orders: number;
+  counts: Record<string, number>;
+  work_orders: UnscheduledRow[];
+};
+export function useUnscheduled(enabled = true) {
+  return useQuery({
+    queryKey: ["schedule", "unscheduled"],
+    enabled,
+    // Re-derives the solver's inputs (routing, timings, training, material gates), so
+    // it isn't free. The board carries a live count, hence always-on but long-lived.
+    staleTime: 60_000,
+    queryFn: () =>
+      api.api_Schedules_unscheduled_retrieve() as Promise<UnscheduledDiagnosis>,
+  });
+}
+
 /** Per-WO material requirements — the "what this job needs" readout (picklist-lite):
  *  top-level BOM components × WO qty, bucketed by consumed-at-step, with a shortage flag. */
 export type MaterialRequirementRow = {
@@ -357,6 +440,121 @@ export function useSetWorkOrderQuantity() {
 }
 
 /** Put a work order on hold (drops it from the schedule until released). */
+/* --- Release gate ---------------------------------------------------------
+ * Only gates the solver when the tenant's release_mode is "manual"; under "auto"
+ * these still work and record the stamp, they just don't filter anything. */
+
+export type ReleaseCheck = { code: string; detail: string };
+export type ReleaseReadiness = {
+  work_order_id: string; erp_id: string; ok: boolean;
+  blockers: ReleaseCheck[]; warnings: ReleaseCheck[];
+};
+
+/** Would this work order release clean? Fetched when the edit dialog opens. */
+export function useReleaseReadiness(id: string | null) {
+  return useQuery({
+    queryKey: ["work-order", "release-readiness", id],
+    enabled: !!id,
+    queryFn: () =>
+      api.api_WorkOrders_release_readiness_retrieve({
+        params: { id },
+      } as never) as Promise<ReleaseReadiness>,
+  });
+}
+
+/** Authorize a work order for scheduling. A blocked order comes back 409 with its
+ *  blockers — re-call with `override_reason` to release anyway (it's recorded). */
+export function useReleaseForScheduling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, override_reason }: { id: string; override_reason?: string }) =>
+      api.api_WorkOrders_release_create(
+        { override_reason: override_reason ?? "" } as never,
+        { params: { id } } as never
+      ),
+    onSuccess: (_d, v) => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      toast.success(
+        v.override_reason
+          ? "Released with an override — re-solve to plan it"
+          : "Released — re-solve to plan it"
+      );
+    },
+    // 409 is the advisory gate, not a failure: the dialog shows the blockers and
+    // offers the override, so don't shout an error toast over it.
+    onError: (e: any) => {
+      if (e?.response?.status !== 409) {
+        toast.error(e?.response?.data?.detail ?? "Couldn't release the work order");
+      }
+    },
+  });
+}
+
+/** The planner's "what can I pull in?" inbox — open work orders awaiting release,
+ *  each with its readiness already evaluated. */
+export type ReleaseQueueRow = {
+  id: string; erp_id: string; part_type: string | null; process: string | null;
+  status: string; priority: number; quantity: number; open_units: number;
+  due_date: string | null; ready: boolean;
+  blockers: ReleaseCheck[]; warnings: ReleaseCheck[];
+};
+export type ReleaseQueue = {
+  release_mode: string; count: number; work_orders: ReleaseQueueRow[];
+};
+export function useReleaseQueue(enabled = true) {
+  return useQuery({
+    queryKey: ["work-order", "release-queue"],
+    enabled,
+    // Evaluates readiness for the whole queue (routing, timings, training, material),
+    // so it isn't free — the toolbar carries a live count, hence long-lived.
+    staleTime: 60_000,
+    queryFn: () =>
+      api.api_WorkOrders_release_queue_retrieve() as Promise<ReleaseQueue>,
+  });
+}
+
+/** Release many at once. Per-order outcome — the response reports which went and
+ *  which were refused, so a partial batch is a normal result, not an error. */
+export function useBulkRelease() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, override_reason }: { ids: string[]; override_reason?: string }) =>
+      api.api_WorkOrders_bulk_release_create(
+        { ids, override_reason: override_reason ?? "" } as never
+      ) as Promise<{ released: number; blocked: number; results: any[] }>,
+    onSuccess: (d) => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      if (d.blocked > 0) {
+        toast.warning(
+          `Released ${d.released} — ${d.blocked} need a reason before they can go.`
+        );
+      } else {
+        toast.success(`Released ${d.released} — re-solve to plan them`);
+      }
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.detail ?? "Couldn't release the work orders"),
+  });
+}
+
+/** Withdraw authorization — the solver stops planning it under manual mode. */
+export function useUnreleaseForScheduling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.api_WorkOrders_unrelease_create(undefined as never, { params: { id } } as never),
+    onSuccess: () => {
+      invalidateSchedule(qc);
+      qc.invalidateQueries({ queryKey: ["work-order"] });
+      toast.success("Release withdrawn — re-solve to drop it");
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.detail ?? "Couldn't withdraw the release"),
+  });
+}
+
 export function useHoldWorkOrder() {
   const qc = useQueryClient();
   return useMutation({

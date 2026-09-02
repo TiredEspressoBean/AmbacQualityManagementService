@@ -1295,6 +1295,33 @@ export type CapaTasksRequest = {
   completion_notes?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
+export type CapacityLoad = {
+  buckets: Array<string>;
+  labor: LaborCapacity;
+  work_centers: Array<WorkCenterCapacity>;
+};
+export type LaborCapacity = {
+  name: string;
+  crew_size: number;
+  series: Array<LaborBucket>;
+};
+export type LaborBucket = {
+  bucket: string;
+  capacity_hours: number;
+  load_hours: number;
+  utilization: number | null;
+};
+export type WorkCenterCapacity = {
+  id: string;
+  name: string;
+  series: Array<WorkCenterBucket>;
+};
+export type WorkCenterBucket = {
+  bucket: string;
+  capacity_hours: number;
+  load_hours: number;
+  utilization: number | null;
+};
 export type ClockInRequest = {
   entry_type: TimeEntryTypeEnum;
   work_order?: (string | null) | undefined;
@@ -3487,6 +3514,13 @@ export type OptimizationConfig = {
    * @maximum 2147483647
    */
   number | undefined;
+  release_mode?: /**
+     * Who decides what the scheduler may plan. AUTO (default): every open work order is schedulable as soon as its dates allow — the plan is date-driven, which is right for a shop where the planner and the scheduler are the same person. MANUAL: a work order is invisible to the solver until a planner RELEASES it, so the board only ever shows authorized work. Manual adds a gate, not a hierarchy — there are no separate planned-order objects to convert; releasing stamps `released_at` on the work order itself.
+    
+    * `auto` - Date-driven (no release step)
+    * `manual` - Planner releases work
+     */
+  ReleaseModeEnum | undefined;
   auto_resolve?: /**
      * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
     
@@ -3511,6 +3545,14 @@ export type DefaultLaborModelEnum =
    * @enum off, pool, named
    */
   "off" | "pool" | "named";
+export type ReleaseModeEnum =
+  /**
+   * * `auto` - Date-driven (no release step)
+   * `manual` - Planner releases work
+   *
+   * @enum auto, manual
+   */
+  "auto" | "manual";
 export type AutoResolveEnum =
   /**
    * * `off` - Off (flag stale only; planner re-solves by hand)
@@ -9242,6 +9284,10 @@ export type WorkOrderList = {
   qa_progress: {};
   completed_parts_count: number;
   current_hold: {};
+  /**
+   * When a planner authorized this work order for scheduling. Null = not released. Only gates the solver under release_mode=MANUAL; under AUTO it is recorded when set but never filters.
+   */
+  released_at: string | null;
   parent_workorder_id: string | null;
   split_reason: SplitReasonEnum | NullEnum | null;
   split_at: string | null;
@@ -10404,6 +10450,13 @@ export type PatchedOptimizationConfigRequest = Partial<{
    * @maximum 2147483647
    */
   default_move_minutes: number;
+  /**
+     * Who decides what the scheduler may plan. AUTO (default): every open work order is schedulable as soon as its dates allow — the plan is date-driven, which is right for a shop where the planner and the scheduler are the same person. MANUAL: a work order is invisible to the solver until a planner RELEASES it, so the board only ever shows authorized work. Manual adds a gate, not a hierarchy — there are no separate planned-order objects to convert; releasing stamps `released_at` on the work order itself.
+    
+    * `auto` - Date-driven (no release step)
+    * `manual` - Planner releases work
+     */
+  release_mode: ReleaseModeEnum;
   /**
      * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
     
@@ -12397,6 +12450,33 @@ export type RecordInspectionRequestRequest = {
 export type RecordUnitsRequestRequest = {
   units: Array<ReceivingSampleUnitRequest>;
 };
+export type ReleaseQueue = {
+  release_mode: string;
+  count: number;
+  work_orders: Array<ReleaseQueueRow>;
+};
+export type ReleaseQueueRow = {
+  id: string;
+  erp_id: string;
+  part_type: string | null;
+  process: string | null;
+  status: string;
+  priority: number;
+  quantity: number;
+  open_units: number;
+  due_date: string | null;
+  ready: boolean;
+  blockers: Array<QueueBlocker>;
+  warnings: Array<QueueWarning>;
+};
+export type QueueBlocker = {
+  code: string;
+  detail: string;
+};
+export type QueueWarning = {
+  code: string;
+  detail: string;
+};
 export type RootCauseRequest = {
   rca_record: string;
   /**
@@ -14205,6 +14285,35 @@ export type TrainingRequirementRequest = {
   string | undefined;
   archived?: boolean | undefined;
 };
+export type UnscheduledDiagnosis = {
+  schedule_id: string | null;
+  solved_at: string | null;
+  is_stale: boolean;
+  horizon_start: string;
+  horizon_end: string;
+  open_work_orders: number;
+  open_units: number;
+  unscheduled_work_orders: number;
+  counts: {};
+  work_orders: Array<UnscheduledWorkOrder>;
+};
+export type UnscheduledWorkOrder = {
+  work_order_id: string;
+  erp_id: string;
+  part_type: string | null;
+  process: string | null;
+  status: string;
+  priority: number;
+  quantity: number;
+  due_date: string | null;
+  expected_start: string | null;
+  open_units: number;
+  scheduled_units: number;
+  reason: string;
+  reason_label: string;
+  detail: string;
+  fix: string;
+};
 export type UserDetail = {
   id: number;
   /**
@@ -14322,6 +14431,18 @@ export type WorkOrder = {
   notes?: (string | null) | undefined;
   parts_summary: {};
   current_hold: {};
+  /**
+   * When a planner authorized this work order for scheduling. Null = not released. Only gates the solver under release_mode=MANUAL; under AUTO it is recorded when set but never filters.
+   */
+  released_at: string | null;
+  /**
+   * Who released it. Kept for the audit trail even after un-release.
+   */
+  released_by: number | null;
+  /**
+   * Recorded justification when a work order was released despite a failing readiness check. Blank when it released clean. The gate is advisory by design — a planner who knows the shortage is covered must be able to proceed, but the override is on the record.
+   */
+  release_override_reason: string;
   parent_workorder_id: string | null;
   split_reason: SplitReasonEnum | NullEnum | null;
   split_at: string | null;
@@ -14370,6 +14491,21 @@ export type WorkOrderMaterialRequirementRow = {
   lead_time_days: number | null;
   need_by: string | null;
   order_by: string | null;
+};
+export type WorkOrderReleaseReadiness = {
+  work_order_id: string;
+  erp_id: string;
+  ok: boolean;
+  blockers: Array<ReleaseBlocker>;
+  warnings: Array<ReleaseWarning>;
+};
+export type ReleaseBlocker = {
+  code: string;
+  detail: string;
+};
+export type ReleaseWarning = {
+  code: string;
+  detail: string;
 };
 export type WorkOrderRequest = {
   /**
@@ -18605,6 +18741,33 @@ const PinBatchRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
   is_pinned: z.boolean(),
 });
+const LaborBucket = z.object({
+  bucket: z.string(),
+  capacity_hours: z.number(),
+  load_hours: z.number(),
+  utilization: z.number().nullable(),
+});
+const LaborCapacity = z.object({
+  name: z.string(),
+  crew_size: z.number().int(),
+  series: z.array(LaborBucket),
+});
+const WorkCenterBucket = z.object({
+  bucket: z.string(),
+  capacity_hours: z.number(),
+  load_hours: z.number(),
+  utilization: z.number().nullable(),
+});
+const WorkCenterCapacity = z.object({
+  id: z.string(),
+  name: z.string(),
+  series: z.array(WorkCenterBucket),
+});
+const CapacityLoad = z.object({
+  buckets: z.array(z.string()),
+  labor: LaborCapacity,
+  work_centers: z.array(WorkCenterCapacity),
+});
 const SolverStatusEnum = z.enum([
   "OPTIMAL",
   "FEASIBLE",
@@ -18631,6 +18794,7 @@ const ScheduleResult = z.object({
   task_count: z.number().int(),
 });
 const DefaultLaborModelEnum = z.enum(["off", "pool", "named"]);
+const ReleaseModeEnum = z.enum(["auto", "manual"]);
 const AutoResolveEnum = z.enum(["off", "live"]);
 const OptimizationConfig = z.object({
   id: z.string().uuid(),
@@ -18679,6 +18843,7 @@ const OptimizationConfig = z.object({
   staging_buffer_minutes: z.number().int().gte(0).lte(2147483647).optional(),
   job_change_minutes: z.number().int().gte(0).lte(2147483647).optional(),
   default_move_minutes: z.number().int().gte(0).lte(2147483647).optional(),
+  release_mode: ReleaseModeEnum.optional(),
   auto_resolve: AutoResolveEnum.optional(),
   auto_resolve_min_interval_minutes: z
     .number()
@@ -18712,6 +18877,7 @@ const PatchedOptimizationConfigRequest = z
     staging_buffer_minutes: z.number().int().gte(0).lte(2147483647),
     job_change_minutes: z.number().int().gte(0).lte(2147483647),
     default_move_minutes: z.number().int().gte(0).lte(2147483647),
+    release_mode: ReleaseModeEnum,
     auto_resolve: AutoResolveEnum,
     auto_resolve_min_interval_minutes: z.number().int().gte(0).lte(2147483647),
   })
@@ -18761,6 +18927,35 @@ const SourcingRequirements = z.object({
   source: z.array(SourceRequirement),
   produce: z.array(ProduceRequirement),
   tooling: z.array(ToolingRequirement),
+});
+const UnscheduledWorkOrder = z.object({
+  work_order_id: z.string(),
+  erp_id: z.string(),
+  part_type: z.string().nullable(),
+  process: z.string().nullable(),
+  status: z.string(),
+  priority: z.number().int(),
+  quantity: z.number().int(),
+  due_date: z.string().nullable(),
+  expected_start: z.string().nullable(),
+  open_units: z.number().int(),
+  scheduled_units: z.number().int(),
+  reason: z.string(),
+  reason_label: z.string(),
+  detail: z.string(),
+  fix: z.string(),
+});
+const UnscheduledDiagnosis = z.object({
+  schedule_id: z.string().nullable(),
+  solved_at: z.string().datetime({ offset: true }).nullable(),
+  is_stale: z.boolean(),
+  horizon_start: z.string().datetime({ offset: true }),
+  horizon_end: z.string().datetime({ offset: true }),
+  open_work_orders: z.number().int(),
+  open_units: z.number().int(),
+  unscheduled_work_orders: z.number().int(),
+  counts: z.record(z.number().int()),
+  work_orders: z.array(UnscheduledWorkOrder),
 });
 const WorkingWindow = z.object({
   start: z.string().datetime({ offset: true }),
@@ -20500,6 +20695,7 @@ const WorkOrderList = z.object({
   qa_progress: z.object({}).partial().passthrough(),
   completed_parts_count: z.number().int(),
   current_hold: z.object({}).partial().passthrough().nullable(),
+  released_at: z.string().datetime({ offset: true }).nullable(),
   parent_workorder_id: z.string().uuid().nullable(),
   split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
   split_at: z.string().datetime({ offset: true }).nullable(),
@@ -20548,6 +20744,9 @@ const WorkOrder = z.object({
   notes: z.string().nullish(),
   parts_summary: z.object({}).partial().passthrough().nullable(),
   current_hold: z.object({}).partial().passthrough().nullable(),
+  released_at: z.string().datetime({ offset: true }).nullable(),
+  released_by: z.number().int().nullable(),
+  release_override_reason: z.string(),
   parent_workorder_id: z.string().uuid().nullable(),
   split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
   split_at: z.string().datetime({ offset: true }).nullable(),
@@ -20630,6 +20829,18 @@ const QADocumentsResponse = z.object({
   current_step_id: z.string().uuid().nullable(),
   parts_in_qa: z.number().int(),
 });
+const ReleaseWorkOrderRequestRequest = z
+  .object({ override_reason: z.string() })
+  .partial();
+const ReleaseBlocker = z.object({ code: z.string(), detail: z.string() });
+const ReleaseWarning = z.object({ code: z.string(), detail: z.string() });
+const WorkOrderReleaseReadiness = z.object({
+  work_order_id: z.string(),
+  erp_id: z.string(),
+  ok: z.boolean(),
+  blockers: z.array(ReleaseBlocker),
+  warnings: z.array(ReleaseWarning),
+});
 const WorkOrderSetQuantityInputRequest = z.object({
   quantity: z.number().int().gte(0),
 });
@@ -20693,6 +20904,10 @@ const WorkOrderBulkPlaceOnHoldInputRequest = z.object({
 const WorkOrderBulkPlaceOnHoldResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
 });
+const BulkReleaseRequestRequest = z.object({
+  ids: z.array(z.string().uuid()),
+  override_reason: z.string().optional(),
+});
 const WorkOrderBulkTransitionInputRequest = z.object({
   ids: z.array(z.string().uuid()),
   status: WorkOrderStatusEnum,
@@ -20700,6 +20915,27 @@ const WorkOrderBulkTransitionInputRequest = z.object({
 });
 const WorkOrderBulkTransitionResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
+});
+const QueueBlocker = z.object({ code: z.string(), detail: z.string() });
+const QueueWarning = z.object({ code: z.string(), detail: z.string() });
+const ReleaseQueueRow = z.object({
+  id: z.string(),
+  erp_id: z.string(),
+  part_type: z.string().nullable(),
+  process: z.string().nullable(),
+  status: z.string(),
+  priority: z.number().int(),
+  quantity: z.number().int(),
+  open_units: z.number().int(),
+  due_date: z.string().nullable(),
+  ready: z.boolean(),
+  blockers: z.array(QueueBlocker),
+  warnings: z.array(QueueWarning),
+});
+const ReleaseQueue = z.object({
+  release_mode: z.string(),
+  count: z.number().int(),
+  work_orders: z.array(ReleaseQueueRow),
 });
 const WorkQueueRow = z.object({
   work_order: z.string().uuid(),
@@ -22720,9 +22956,15 @@ export const schemas = {
   BulkReassignOperatorRequestRequest,
   MoveBatchRequestRequest,
   PinBatchRequestRequest,
+  LaborBucket,
+  LaborCapacity,
+  WorkCenterBucket,
+  WorkCenterCapacity,
+  CapacityLoad,
   SolverStatusEnum,
   ScheduleResult,
   DefaultLaborModelEnum,
+  ReleaseModeEnum,
   AutoResolveEnum,
   OptimizationConfig,
   PatchedOptimizationConfigRequest,
@@ -22734,6 +22976,8 @@ export const schemas = {
   ProduceRequirement,
   ToolingRequirement,
   SourcingRequirements,
+  UnscheduledWorkOrder,
+  UnscheduledDiagnosis,
   WorkingWindow,
   WorkingWindows,
   ShiftNotePriorityEnum,
@@ -22913,6 +23157,10 @@ export const schemas = {
   WorkOrderMaterialRequirements,
   WorkOrderPlaceOnHoldInputRequest,
   QADocumentsResponse,
+  ReleaseWorkOrderRequestRequest,
+  ReleaseBlocker,
+  ReleaseWarning,
+  WorkOrderReleaseReadiness,
   WorkOrderSetQuantityInputRequest,
   WorkOrderSetQuantityResponse,
   WorkOrderSplitInputRequest,
@@ -22924,8 +23172,13 @@ export const schemas = {
   WorkOrderBulkClearHoldResponse,
   WorkOrderBulkPlaceOnHoldInputRequest,
   WorkOrderBulkPlaceOnHoldResponse,
+  BulkReleaseRequestRequest,
   WorkOrderBulkTransitionInputRequest,
   WorkOrderBulkTransitionResponse,
+  QueueBlocker,
+  QueueWarning,
+  ReleaseQueueRow,
+  ReleaseQueue,
   WorkQueueRow,
   PaginatedWorkQueueRowList,
   EmbedQueryRequestRequest,
@@ -39497,6 +39750,64 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
     response: z.object({}).partial().passthrough(),
   },
   {
+    method: "get",
+    path: "/api/Schedules/capable-to-promise/",
+    alias: "api_Schedules_capable_to_promise_retrieve",
+    description: `Could we take this order? Explodes the part type&#x27;s routing, adds it to the
+committed load, and reports whether free capacity absorbs it by the target date
+— plus the binding resource and the earliest date that would work.
+
+Capacity is CUMULATIVE: an order due in March may use every free hour between
+now and March, so this doesn&#x27;t reject anything larger than a single month.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "months",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "quantity",
+        type: "Query",
+        schema: z.number().int(),
+      },
+      {
+        name: "target_date",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/capacity-load/",
+    alias: "api_Schedules_capacity_load_retrieve",
+    description: `Rough-cut capacity vs load per resource, in monthly buckets. Aggregate
+arithmetic, not a solve — this answers &quot;where are we tight next quarter?&quot; over a
+horizon far past what CP-SAT plans in detail.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "months",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: CapacityLoad,
+  },
+  {
     method: "post",
     path: "/api/Schedules/commit/",
     alias: "api_Schedules_commit_create",
@@ -39687,6 +39998,24 @@ schedule is untouched. Returns a task id; poll &#x60;solve_status?task_id&#x3D;&
 schedule. Returns a task id; poll &#x60;solve_status?task_id&#x3D;&#x60;, then re-read &#x60;current&#x60;.`,
     requestFormat: "json",
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/unscheduled/",
+    alias: "api_Schedules_unscheduled_retrieve",
+    description: `Why isn&#x27;t this on the board? — every work order with open units the active
+schedule doesn&#x27;t fully cover, each with the single most actionable reason
+(held / no routing / no timings / unstaffable / material / outside horizon /
+not solved) and the fix for it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "horizon_days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: UnscheduledDiagnosis,
   },
   {
     method: "get",
@@ -47276,6 +47605,51 @@ Import/Export endpoints (auto-configured from model):
     response: WorkOrder,
   },
   {
+    method: "get",
+    path: "/api/WorkOrders/:id/release_readiness/",
+    alias: "api_WorkOrders_release_readiness_retrieve",
+    description: `Would this work order release clean? &#x60;blockers&#x60; are conditions that would
+make the released plan fiction (no routing/timings, unstaffable step);
+&#x60;warnings&#x60; (material) inform but don&#x27;t require an override.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderReleaseReadiness,
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/release/",
+    alias: "api_WorkOrders_release_create",
+    description: `Authorize this work order for scheduling. Returns 409 with the blockers when
+it isn&#x27;t ready and no &#x60;override_reason&#x60; was supplied — the gate is advisory, so
+re-POST with a reason to release anyway (the reason is recorded).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ override_reason: z.string() }).partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+    errors: [
+      {
+        status: 409,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
     method: "post",
     path: "/api/WorkOrders/:id/set_quantity/",
     alias: "api_WorkOrders_set_quantity_create",
@@ -47380,6 +47754,21 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "post",
+    path: "/api/WorkOrders/:id/unrelease/",
+    alias: "api_WorkOrders_unrelease_create",
+    description: `Withdraw authorization — the solver stops planning it under manual mode.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
     path: "/api/WorkOrders/bulk_clear_hold/",
     alias: "api_WorkOrders_bulk_clear_hold_create",
     description: `Work Orders CRUD with CSV import/export support.
@@ -47419,6 +47808,22 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrderBulkPlaceOnHoldResponse,
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/bulk_release/",
+    alias: "api_WorkOrders_bulk_release_create",
+    description: `Release many work orders at once. Per-order outcome, never all-or-nothing:
+releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BulkReleaseRequestRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "post",
@@ -47544,6 +47949,16 @@ Import/Export endpoints (auto-configured from model):
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/release_queue/",
+    alias: "api_WorkOrders_release_queue_retrieve",
+    description: `Open work orders awaiting release, each with its readiness — the planner&#x27;s
+&quot;what can I pull in?&quot; inbox. Readiness is evaluated against ONE shared context,
+so a 40-order queue costs the same handful of queries as a single order.`,
+    requestFormat: "json",
+    response: ReleaseQueue,
   },
   {
     method: "get",

@@ -311,6 +311,11 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
             if need > free:
                 binding.append({'resource': ref.wc_names.get(wc_id, str(wc_id)),
                                 'need': round(need, 1), 'free_through_target': round(free, 1)})
+        # Worst shortfall first. An order that badly overruns the shop trips EVERY
+        # resource, and an unordered list of seven buries the actual constraint — the
+        # one a planner would add a shift or subcontract to relieve.
+        binding.sort(key=lambda b: -(b['need'] / b['free_through_target']
+                                     if b['free_through_target'] > 0 else float('inf')))
         return (not binding, binding)
 
     tgt = _bucket_index(buckets, target_date)

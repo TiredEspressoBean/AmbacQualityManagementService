@@ -386,15 +386,27 @@ def get_schedule_horizon(tenant, horizon_days: int = 30) -> HorizonData:
 
 # --- Active work orders (the routing graph to schedule) ---------------------
 
+def _release_mode(tenant) -> str:
+    """The tenant's release mode, defaulting to AUTO when unconfigured — an absent
+    config must never hide every work order from the scheduler."""
+    from Tracker.models import OptimizationConfig
+    from Tracker.models.scheduling import ReleaseMode
+
+    cfg = OptimizationConfig.objects.filter(tenant=tenant).only('release_mode').first()
+    return cfg.release_mode if cfg else ReleaseMode.AUTO
+
+
 def get_active_workorders(tenant) -> list[WorkOrderData]:
     """Schedulable work orders with a process, each carrying its schedulable parts
     (current step) and the process routing graph (steps + edges). Excludes finished
     (COMPLETED/CANCELLED) and held (ON_HOLD) WOs, and drops parts in a state that
-    can't be worked (finished, shipped, quarantined). The process graph is resolved
+    can't be worked (finished, shipped, quarantined). Under `release_mode=MANUAL`
+    also drops work orders a planner hasn't released. The process graph is resolved
     once per distinct process and shared across its work orders."""
     from Tracker.models import (
         ProcessStep, StepEdge, StepExecution, WorkOrder, WorkOrderStatus,
     )
+    from Tracker.models.scheduling import ReleaseMode
 
     excluded = [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED,
                 WorkOrderStatus.ON_HOLD]
@@ -404,6 +416,11 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
         .select_related('pegged_to_bom_line')
         .prefetch_related('parts', 'cores')
     )
+    # Release gate. Under MANUAL the solver only plans work a planner authorized, so
+    # the board shows authorized work and nothing else. Under AUTO (the default)
+    # `released_at` is recorded but never filters — the plan stays date-driven.
+    if _release_mode(tenant) == ReleaseMode.MANUAL:
+        wos = wos.filter(released_at__isnull=False)
 
     # In-progress signal: an OPEN StepExecution (not yet exited) means work has physically
     # started on that part's current step. `entered_at` is the actual start; elapsed is

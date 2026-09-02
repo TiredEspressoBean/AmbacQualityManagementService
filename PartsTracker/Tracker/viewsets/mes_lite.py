@@ -1729,6 +1729,16 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
         return qs
 
+    # Release is an authorization act on an existing order, not a creation — gate it on
+    # change_workorder and exempt it from the POST->add_workorder default so a planner
+    # who may re-plan work but not raise it can still release.
+    action_permissions = {
+        'release': ['change_workorder'],
+        'unrelease': ['change_workorder'],
+        'bulk_release': ['change_workorder'],
+    }
+    crud_exempt_actions = {'release', 'unrelease', 'bulk_release'}
+
     def get_serializer_class(self):
         """Use lightweight serializer for list, full serializer for detail/create/update."""
         if self.action == 'list':
@@ -2160,6 +2170,146 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         wo.workorder_status = WorkOrderStatus.CANCELLED
         wo.save(update_fields=["workorder_status"])
         return Response({"id": str(wo.id), "status": wo.workorder_status})
+
+    # --- Release gate --------------------------------------------------------
+
+    @extend_schema(responses={200: inline_serializer(
+        name="WorkOrderReleaseReadiness",
+        fields={
+            "work_order_id": serializers.CharField(),
+            "erp_id": serializers.CharField(),
+            "ok": serializers.BooleanField(),
+            "blockers": inline_serializer(name="ReleaseBlocker", many=True, fields={
+                "code": serializers.CharField(), "detail": serializers.CharField()}),
+            "warnings": inline_serializer(name="ReleaseWarning", many=True, fields={
+                "code": serializers.CharField(), "detail": serializers.CharField()}),
+        })})
+    @action(detail=True, methods=["get"], url_path="release_readiness")
+    def release_readiness(self, request, pk=None):
+        """Would this work order release clean? `blockers` are conditions that would
+        make the released plan fiction (no routing/timings, unstaffable step);
+        `warnings` (material) inform but don't require an override."""
+        from Tracker.services.mes.release import evaluate_release
+        return Response(evaluate_release(self.get_object()).as_dict())
+
+    @extend_schema(
+        request=inline_serializer(name="ReleaseWorkOrderRequest", fields={
+            "override_reason": serializers.CharField(required=False, allow_blank=True)}),
+        responses={200: OpenApiTypes.OBJECT, 409: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["post"], url_path="release")
+    def release(self, request, pk=None):
+        """Authorize this work order for scheduling. Returns 409 with the blockers when
+        it isn't ready and no `override_reason` was supplied — the gate is advisory, so
+        re-POST with a reason to release anyway (the reason is recorded)."""
+        from Tracker.services.mes.release import ReleaseBlocked, release_work_order
+        wo = self.get_object()
+        try:
+            readiness = release_work_order(
+                wo, request.user, request.data.get("override_reason", "") or "")
+        except ReleaseBlocked as exc:
+            return Response({"detail": str(exc), "blockers": exc.blockers},
+                            status=status.HTTP_409_CONFLICT)
+        return Response({
+            "id": str(wo.id), "released_at": wo.released_at,
+            "overridden": bool(wo.release_override_reason),
+            "warnings": list(readiness.warnings),
+        })
+
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["post"], url_path="unrelease")
+    def unrelease(self, request, pk=None):
+        """Withdraw authorization — the solver stops planning it under manual mode."""
+        from Tracker.services.mes.release import unrelease_work_order
+        wo = unrelease_work_order(self.get_object(), request.user)
+        return Response({"id": str(wo.id), "released_at": wo.released_at})
+
+    @extend_schema(responses={200: inline_serializer(
+        name="ReleaseQueue",
+        fields={
+            "release_mode": serializers.CharField(),
+            "count": serializers.IntegerField(),
+            "work_orders": inline_serializer(
+                name="ReleaseQueueRow", many=True, fields={
+                    "id": serializers.CharField(),
+                    "erp_id": serializers.CharField(),
+                    "part_type": serializers.CharField(allow_null=True),
+                    "process": serializers.CharField(allow_null=True),
+                    "status": serializers.CharField(),
+                    "priority": serializers.IntegerField(),
+                    "quantity": serializers.IntegerField(),
+                    "open_units": serializers.IntegerField(),
+                    "due_date": serializers.DateField(allow_null=True),
+                    "ready": serializers.BooleanField(),
+                    "blockers": inline_serializer(
+                        name="QueueBlocker", many=True, fields={
+                            "code": serializers.CharField(),
+                            "detail": serializers.CharField()}),
+                    "warnings": inline_serializer(
+                        name="QueueWarning", many=True, fields={
+                            "code": serializers.CharField(),
+                            "detail": serializers.CharField()}),
+                }),
+        })})
+    @action(detail=False, methods=["get"], url_path="release_queue")
+    def release_queue(self, request):
+        """Open work orders awaiting release, each with its readiness — the planner's
+        "what can I pull in?" inbox. Readiness is evaluated against ONE shared context,
+        so a 40-order queue costs the same handful of queries as a single order."""
+        from Tracker.models.scheduling import ReleaseMode
+        from Tracker.services.mes.release import (
+            build_release_context, evaluate_release, releasable_work_orders,
+        )
+        from Tracker.services.scheduling import data as sched_data
+
+        ctx = build_release_context(self.tenant)
+        rows = []
+        for wo in releasable_work_orders(self.tenant):
+            r = evaluate_release(wo, ctx)
+            open_units = (
+                sum(1 for p in wo.parts.all()
+                    if p.part_status not in sched_data._UNSCHEDULABLE_PART_STATUSES)
+                + sum(1 for c in wo.cores.all()
+                      if c.status not in sched_data._UNSCHEDULABLE_CORE_STATUSES)
+            )
+            rows.append({
+                "id": str(wo.id), "erp_id": wo.ERP_id,
+                "part_type": (wo.process.part_type.name
+                              if wo.process and wo.process.part_type else None),
+                "process": wo.process.name if wo.process else None,
+                "status": wo.workorder_status,
+                "priority": wo.priority, "quantity": wo.quantity,
+                "open_units": open_units,
+                "due_date": wo.expected_completion,
+                "ready": r.ok,
+                "blockers": list(r.blockers), "warnings": list(r.warnings),
+            })
+        return Response({
+            "release_mode": sched_data._release_mode(self.tenant) or ReleaseMode.AUTO,
+            "count": len(rows),
+            "work_orders": rows,
+        })
+
+    @extend_schema(
+        request=inline_serializer(name="BulkReleaseRequest", fields={
+            "ids": serializers.ListField(child=serializers.UUIDField()),
+            "override_reason": serializers.CharField(required=False, allow_blank=True)}),
+        responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"], url_path="bulk_release")
+    def bulk_release(self, request):
+        """Release many work orders at once. Per-order outcome, never all-or-nothing:
+        releasing 12 where 2 aren't ready releases the 10 and reports the 2."""
+        from Tracker.services.mes.release import bulk_release as svc
+        ids = request.data.get("ids") or []
+        if not isinstance(ids, list):
+            return Response({"detail": "`ids` must be a list."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        results = svc(self.tenant, ids, request.user,
+                      request.data.get("override_reason", "") or "")
+        return Response({
+            "results": results,
+            "released": sum(1 for r in results if r["ok"]),
+            "blocked": sum(1 for r in results if not r["ok"]),
+        })
 
     @extend_schema(responses={200: inline_serializer(
         name="WorkOrderMakeupStatus",

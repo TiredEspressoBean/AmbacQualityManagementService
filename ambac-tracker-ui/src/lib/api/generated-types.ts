@@ -8249,6 +8249,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Schedules/capable-to-promise/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Could we take this order? Explodes the part type's routing, adds it to the
+         *     committed load, and reports whether free capacity absorbs it by the target date
+         *     — plus the binding resource and the earliest date that would work.
+         *
+         *     Capacity is CUMULATIVE: an order due in March may use every free hour between
+         *     now and March, so this doesn't reject anything larger than a single month.
+         */
+        get: operations["api_Schedules_capable_to_promise_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/capacity-load/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Rough-cut capacity vs load per resource, in monthly buckets. Aggregate
+         *     arithmetic, not a solve — this answers "where are we tight next quarter?" over a
+         *     horizon far past what CP-SAT plans in detail.
+         */
+        get: operations["api_Schedules_capacity_load_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Schedules/commit/": {
         parameters: {
             query?: never;
@@ -8520,6 +8565,28 @@ export interface paths {
          *     SUCCESS, or FAILURE; on SUCCESS `result` carries the task's return value.
          */
         get: operations["api_Schedules_solve_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/unscheduled/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Why isn't this on the board? — every work order with open units the active
+         *     schedule doesn't fully cover, each with the single most actionable reason
+         *     (held / no routing / no timings / unstaffable / material / outside horizon /
+         *     not solved) and the fix for it.
+         */
+        get: operations["api_Schedules_unscheduled_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12057,6 +12124,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkOrders/{id}/release/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Authorize this work order for scheduling. Returns 409 with the blockers when
+         *     it isn't ready and no `override_reason` was supplied — the gate is advisory, so
+         *     re-POST with a reason to release anyway (the reason is recorded).
+         */
+        post: operations["api_WorkOrders_release_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/release_readiness/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Would this work order release clean? `blockers` are conditions that would
+         *     make the released plan fiction (no routing/timings, unstaffable step);
+         *     `warnings` (material) inform but don't require an override.
+         */
+        get: operations["api_WorkOrders_release_readiness_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkOrders/{id}/set_quantity/": {
         parameters: {
             query?: never;
@@ -12166,6 +12275,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkOrders/{id}/unrelease/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Withdraw authorization — the solver stops planning it under manual mode. */
+        post: operations["api_WorkOrders_unrelease_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkOrders/bulk_clear_hold/": {
         parameters: {
             query?: never;
@@ -12210,6 +12336,26 @@ export interface paths {
          *     - GET /export/ - Export filtered data to CSV/Excel
          */
         post: operations["api_WorkOrders_bulk_place_on_hold_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/bulk_release/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Release many work orders at once. Per-order outcome, never all-or-nothing:
+         *     releasing 12 where 2 aren't ready releases the 10 and reports the 2.
+         */
+        post: operations["api_WorkOrders_bulk_release_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12327,6 +12473,27 @@ export interface paths {
         };
         /** @description Return searchable/filterable/orderable field information with filter options. */
         get: operations["api_WorkOrders_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/release_queue/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Open work orders awaiting release, each with its readiness — the planner's
+         *     "what can I pull in?" inbox. Readiness is evaluated against ONE shared context,
+         *     so a 40-order queue costs the same handful of queries as a single order.
+         */
+        get: operations["api_WorkOrders_release_queue_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -16358,6 +16525,10 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        BulkReleaseRequestRequest: {
+            ids: string[];
+            override_reason?: string;
+        };
         BulkRemovePartsInputRequest: {
             ids: string[];
         };
@@ -16770,6 +16941,11 @@ export interface components {
             verification_criteria: string;
             verification_notes?: string | null;
             archived?: boolean;
+        };
+        CapacityLoad: {
+            buckets: string[];
+            labor: components["schemas"]["LaborCapacity"];
+            work_centers: components["schemas"]["WorkCenterCapacity"][];
         };
         /**
          * @description * `SIMPLIFIED` - SIMPLIFIED
@@ -19111,6 +19287,15 @@ export interface components {
             api_key: string;
             base_url: string;
         };
+        LaborBucket: {
+            bucket: string;
+            /** Format: double */
+            capacity_hours: number;
+            /** Format: double */
+            load_hours: number;
+            /** Format: double */
+            utilization: number | null;
+        };
         /**
          * @description Operator non-working time — PTO / sick / training / meeting / break — one-off
          *     (ONCE: start_time+end_time) or weekly (WEEKLY: days_of_week+window_start/end),
@@ -19195,6 +19380,11 @@ export interface components {
             window_end?: string | null;
             reason?: string;
             is_active?: boolean;
+        };
+        LaborCapacity: {
+            name: string;
+            crew_size: number;
+            series: components["schemas"]["LaborBucket"][];
         };
         /**
          * @description * `ONCE` - One-off (dated)
@@ -19857,6 +20047,13 @@ export interface components {
             job_change_minutes?: number;
             /** @description Move/queue time between consecutive operations of a route — the next operation can't start until this many minutes after the prior one finishes (transport + queue). Applied to every intra-route hand-off; 0 = parts flow with no transfer delay. (Distinct from staging_buffer, which is the cross-work-order assembly-convergence gap.) */
             default_move_minutes?: number;
+            /**
+             * @description Who decides what the scheduler may plan. AUTO (default): every open work order is schedulable as soon as its dates allow — the plan is date-driven, which is right for a shop where the planner and the scheduler are the same person. MANUAL: a work order is invisible to the solver until a planner RELEASES it, so the board only ever shows authorized work. Manual adds a gate, not a hierarchy — there are no separate planned-order objects to convert; releasing stamps `released_at` on the work order itself.
+             *
+             *     * `auto` - Date-driven (no release step)
+             *     * `manual` - Planner releases work
+             */
+            release_mode?: components["schemas"]["ReleaseModeEnum"];
             /**
              * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
              *
@@ -22989,6 +23186,13 @@ export interface components {
             /** @description Move/queue time between consecutive operations of a route — the next operation can't start until this many minutes after the prior one finishes (transport + queue). Applied to every intra-route hand-off; 0 = parts flow with no transfer delay. (Distinct from staging_buffer, which is the cross-work-order assembly-convergence gap.) */
             default_move_minutes?: number;
             /**
+             * @description Who decides what the scheduler may plan. AUTO (default): every open work order is schedulable as soon as its dates allow — the plan is date-driven, which is right for a shop where the planner and the scheduler are the same person. MANUAL: a work order is invisible to the solver until a planner RELEASES it, so the board only ever shows authorized work. Manual adds a gate, not a hierarchy — there are no separate planned-order objects to convert; releasing stamps `released_at` on the work order itself.
+             *
+             *     * `auto` - Date-driven (no release step)
+             *     * `manual` - Planner releases work
+             */
+            release_mode?: components["schemas"]["ReleaseModeEnum"];
+            /**
              * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
              *
              *     * `off` - Off (flag stale only; planner re-solves by hand)
@@ -25820,6 +26024,14 @@ export interface components {
             /** @description Aggregation function */
             aggregate?: string;
         };
+        QueueBlocker: {
+            code: string;
+            detail: string;
+        };
+        QueueWarning: {
+            code: string;
+            detail: string;
+        };
         RaiseScarResponse: {
             /** Format: uuid */
             capa_id: string;
@@ -26014,6 +26226,43 @@ export interface components {
             email: string;
             password1: string;
             password2: string;
+        };
+        ReleaseBlocker: {
+            code: string;
+            detail: string;
+        };
+        /**
+         * @description * `auto` - Date-driven (no release step)
+         *     * `manual` - Planner releases work
+         * @enum {string}
+         */
+        ReleaseModeEnum: "auto" | "manual";
+        ReleaseQueue: {
+            release_mode: string;
+            count: number;
+            work_orders: components["schemas"]["ReleaseQueueRow"][];
+        };
+        ReleaseQueueRow: {
+            id: string;
+            erp_id: string;
+            part_type: string | null;
+            process: string | null;
+            status: string;
+            priority: number;
+            quantity: number;
+            open_units: number;
+            /** Format: date */
+            due_date: string | null;
+            ready: boolean;
+            blockers: components["schemas"]["QueueBlocker"][];
+            warnings: components["schemas"]["QueueWarning"][];
+        };
+        ReleaseWarning: {
+            code: string;
+            detail: string;
+        };
+        ReleaseWorkOrderRequestRequest: {
+            override_reason?: string;
         };
         RemoveMemberResponse: {
             status: string;
@@ -29813,6 +30062,42 @@ export interface components {
          * @enum {string}
          */
         TypeEnum: "NUMERIC" | "PASS_FAIL";
+        UnscheduledDiagnosis: {
+            schedule_id: string | null;
+            /** Format: date-time */
+            solved_at: string | null;
+            is_stale: boolean;
+            /** Format: date-time */
+            horizon_start: string;
+            /** Format: date-time */
+            horizon_end: string;
+            open_work_orders: number;
+            open_units: number;
+            unscheduled_work_orders: number;
+            counts: {
+                [key: string]: number;
+            };
+            work_orders: components["schemas"]["UnscheduledWorkOrder"][];
+        };
+        UnscheduledWorkOrder: {
+            work_order_id: string;
+            erp_id: string;
+            part_type: string | null;
+            process: string | null;
+            status: string;
+            priority: number;
+            quantity: number;
+            /** Format: date */
+            due_date: string | null;
+            /** Format: date */
+            expected_start: string | null;
+            open_units: number;
+            scheduled_units: number;
+            reason: string;
+            reason_label: string;
+            detail: string;
+            fix: string;
+        };
         /** @description Enhanced user serializer with company and permission info */
         User: {
             readonly id: number;
@@ -30136,6 +30421,20 @@ export interface components {
             archived?: boolean;
             readonly version: number;
         };
+        WorkCenterBucket: {
+            bucket: string;
+            /** Format: double */
+            capacity_hours: number;
+            /** Format: double */
+            load_hours: number;
+            /** Format: double */
+            utilization: number | null;
+        };
+        WorkCenterCapacity: {
+            id: string;
+            name: string;
+            series: components["schemas"]["WorkCenterBucket"][];
+        };
         /**
          * @description * `PRODUCTION` - Production
          *     * `INSPECTION` - Inspection
@@ -30218,6 +30517,15 @@ export interface components {
             readonly current_hold: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Format: date-time
+             * @description When a planner authorized this work order for scheduling. Null = not released. Only gates the solver under release_mode=MANUAL; under AUTO it is recorded when set but never filters.
+             */
+            readonly released_at: string | null;
+            /** @description Who released it. Kept for the audit trail even after un-release. */
+            readonly released_by: number | null;
+            /** @description Recorded justification when a work order was released despite a failing readiness check. Blank when it released clean. The gate is advisory by design — a planner who knows the shortage is covered must be able to proceed, but the override is on the record. */
+            readonly release_override_reason: string;
             /** Format: uuid */
             readonly parent_workorder_id: string | null;
             readonly split_reason: (components["schemas"]["SplitReasonEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -30324,6 +30632,11 @@ export interface components {
             readonly current_hold: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Format: date-time
+             * @description When a planner authorized this work order for scheduling. Null = not released. Only gates the solver under release_mode=MANUAL; under AUTO it is recorded when set but never filters.
+             */
+            readonly released_at: string | null;
             /** Format: uuid */
             readonly parent_workorder_id: string | null;
             readonly split_reason: (components["schemas"]["SplitReasonEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -30382,6 +30695,13 @@ export interface components {
          * @enum {integer}
          */
         WorkOrderPriorityEnum: 1 | 2 | 3 | 4;
+        WorkOrderReleaseReadiness: {
+            work_order_id: string;
+            erp_id: string;
+            ok: boolean;
+            blockers: components["schemas"]["ReleaseBlocker"][];
+            warnings: components["schemas"]["ReleaseWarning"][];
+        };
         /** @description Full work order serializer for detail views */
         WorkOrderRequest: {
             ERP_id: string;
@@ -44728,6 +45048,66 @@ export interface operations {
             };
         };
     };
+    api_Schedules_capable_to_promise_retrieve: {
+        parameters: {
+            query: {
+                months?: number;
+                /** @description Part type to quote. */
+                part_type: string;
+                quantity: number;
+                /** @description Requested due date (YYYY-MM-DD). */
+                target_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Schedules_capacity_load_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Monthly buckets to project (1-60, default 12). */
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapacityLoad"];
+                };
+            };
+        };
+    };
     api_Schedules_commit_create: {
         parameters: {
             query?: never;
@@ -45070,6 +45450,28 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_Schedules_unscheduled_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Horizon used to judge 'starts past the horizon' when there is no active schedule yet (default 30). */
+                horizon_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnscheduledDiagnosis"];
                 };
             };
         };
@@ -51993,6 +52395,68 @@ export interface operations {
             };
         };
     };
+    api_WorkOrders_release_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReleaseWorkOrderRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReleaseWorkOrderRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReleaseWorkOrderRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_WorkOrders_release_readiness_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderReleaseReadiness"];
+                };
+            };
+        };
+    };
     api_WorkOrders_set_quantity_create: {
         parameters: {
             query?: never;
@@ -52117,6 +52581,30 @@ export interface operations {
             };
         };
     };
+    api_WorkOrders_unrelease_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_WorkOrders_bulk_clear_hold_create: {
         parameters: {
             query?: never;
@@ -52163,6 +52651,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrderBulkPlaceOnHoldResponse"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_bulk_release_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkReleaseRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BulkReleaseRequestRequest"];
+                "multipart/form-data": components["schemas"]["BulkReleaseRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -52365,6 +52880,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_release_queue_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseQueue"];
                 };
             };
         };
