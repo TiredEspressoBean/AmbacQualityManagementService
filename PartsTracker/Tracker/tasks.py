@@ -1380,6 +1380,12 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
 # this import is only here to trigger that registration.
 from Tracker.reports.tasks import generate_and_email_report  # noqa: E402, F401
 
+# Same registration trick for the notification dispatcher's task: without
+# this import the WORKER never loads the nested module, so queued
+# dispatch_outbox_row messages die with KeyError (the web side can .delay()
+# a task it never registered — sending needs no registry, executing does).
+from Tracker.services.core.notifications.tasks import dispatch_outbox_row  # noqa: E402, F401
+
 
 # Thresholds. Not tenant-configurable yet — feature-flag when a real tenant asks.
 WORK_ORDER_HOLD_THRESHOLD_HOURS = 48

@@ -2,6 +2,16 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
+import http from 'node:http';
+
+// Pooled keep-alive agent for the dev proxy → Django. `agent: false` (a fresh,
+// non-pooled socket per request) deadlocks node-http-proxy on Windows loopback
+// when piping a LARGE response body to the client: small responses pass, big
+// ones (e.g. /api/ScheduledTasks/ at ~470KB) hang forever mid-stream while the
+// backend has already sent the whole body (confirmed: direct-to-backend 1.4s,
+// through-proxy never completes). A keep-alive agent streams large bodies
+// reliably and reuses connections.
+const keepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 24 });
 
 export default defineConfig(({ mode }) => {
     // Load from .env files if available
@@ -55,35 +65,35 @@ export default defineConfig(({ mode }) => {
             host: '0.0.0.0',
             https: false,
             proxy: {
-                // agent:false on every Django-target entry: Node ≥19 enables
-                // keep-alive on the global agent, and Django's runserver on
-                // Windows intermittently RESETs reused sockets under parallel
-                // load — surfacing as random empty 500s (ECONNRESET) that never
-                // appear in Django's log. A fresh connection per request is
-                // cheap on localhost and makes the proxy deterministic.
+                // Django-target entries use the pooled keepAliveAgent (defined
+                // above). We previously used `agent: false` (fresh socket per
+                // request) to dodge runserver's keep-alive RSTs, but that
+                // deadlocks large response bodies on Windows loopback — see the
+                // agent comment. Keep-alive both streams big bodies reliably AND
+                // avoids per-request socket churn.
                 '/api': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
-                    agent: false,
+                    agent: keepAliveAgent,
                 },
                 '/auth': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
-                    agent: false,
+                    agent: keepAliveAgent,
                 },
                 '/accounts': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
-                    agent: false,
+                    agent: keepAliveAgent,
                 },
                 '/media': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
-                    agent: false,
+                    agent: keepAliveAgent,
                 },
                 "/lg": {
                     target: LANGGRAPH_API_TARGET,
