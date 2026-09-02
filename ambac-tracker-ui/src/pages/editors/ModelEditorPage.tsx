@@ -27,6 +27,8 @@ import { DataImportDialog } from "@/components/data-import-dialog";
 
 // Link is imported from @tanstack/react-router
 import { Link } from "@tanstack/react-router";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { useAuthUser } from "@/hooks/useAuthUser";
 
 export type SortOption = { label: string; value: string };
 
@@ -53,6 +55,12 @@ export interface ListMetadata {
     ordering_fields_display: string[];
     filterset_fields: string[];
     filters?: Record<string, FilterInfo>;
+    /** Permission codenames for this model, derived server-side from the model so
+     *  they can't drift from what the API actually enforces. Null when the viewset
+     *  exposes no model. */
+    permissions?: {
+        add: string; change: string; delete: string; view: string;
+    } | null;
 }
 
 const modelEditorMetadataOptions = (modelName: string | undefined, apiEndpoint: string | undefined) => queryOptions({
@@ -302,6 +310,26 @@ export function ModelEditorPage<T extends { id: string | number }>({
         enabled: !!apiEndpoint && !disableMetadata,
         staleTime: Infinity, // Metadata rarely changes
     });
+
+    // Hide actions the API would refuse. The server still enforces; this only stops
+    // offering a button that can do nothing but 403. Codenames come from metadata
+    // (derived from the real model), so no per-page mapping to keep in sync.
+    //
+    // Two deliberate defaults:
+    //  - platform staff bypass, because `effective_permissions` is built from
+    //    tenant UserRole groups and is EMPTY for a superuser — gating on it alone
+    //    would hide every button from the one account that can always act;
+    //  - unknown means allowed. While permissions or metadata are still loading, or
+    //    a viewset reports no model, show the button and let the API decide. Failing
+    //    closed here would blank the toolbar on every page load.
+    const { has: hasPerm, isLoading: permsLoading } = usePermissionSet();
+    const { data: authUser } = useAuthUser();
+    const isPlatformStaff = (authUser as { is_staff?: boolean } | undefined)?.is_staff ?? false;
+    const allows = (codename: string | undefined) => {
+        if (!codename || permsLoading || isPlatformStaff) return true;
+        return hasPerm(codename);
+    };
+    const canCreate = allows(metadata?.permissions?.add);
 
     // Convert filter values to proper types based on metadata
     const typedFilters = useMemo(() => {
@@ -571,7 +599,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                         </>
                     )}
                     {extraToolbarContent}
-                    {onCreate && (
+                    {onCreate && canCreate && (
                         <Button onClick={onCreate}>
                             <Plus className="mr-1 h-4 w-4" /> New {title}
                         </Button>

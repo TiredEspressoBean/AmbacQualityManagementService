@@ -42,7 +42,9 @@ export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) 
   const { data, isLoading } = useReleaseQueue(open);
   const bulkRelease = useBulkRelease();
 
-  const rows = data?.work_orders ?? [];
+  // Memoised: `rows` feeds an effect and two memos, and a fresh [] each render
+  // would re-run all three every time.
+  const rows = useMemo(() => data?.work_orders ?? [], [data]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [overrideReason, setOverrideReason] = useState("");
 
@@ -59,7 +61,8 @@ export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) 
   const toggle = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
 

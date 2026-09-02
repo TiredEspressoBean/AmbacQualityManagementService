@@ -14718,6 +14718,7 @@ const ListMetadataResponse = z.object({
   ordering_fields_display: z.array(z.string()),
   filterset_fields: z.array(z.string()),
   filters: z.object({}).partial().passthrough(),
+  permissions: z.record(z.string()).nullable(),
 });
 const PaginatedApprovalResponseList = z.object({
   count: z.number().int(),

@@ -70,6 +70,8 @@ class ListMetadataMixin:
                 'ordering_fields_display': serializers.ListField(child=serializers.CharField()),
                 'filterset_fields': serializers.ListField(child=serializers.CharField()),
                 'filters': serializers.DictField(),
+                'permissions': serializers.DictField(
+                    child=serializers.CharField(), allow_null=True),
             }
         )
     )
@@ -172,6 +174,17 @@ class ListMetadataMixin:
             'ordering_fields_display': [field_to_display(f) for f in ordering_fields],
             'filterset_fields': filter_field_names,
             'filters': filters,
+            # Permission codenames for THIS model, derived from the model itself so
+            # they can't drift from what TenantModelPermissions actually enforces.
+            # The list UI uses them to hide actions the user can't perform — the
+            # enforcement is still server-side; this only stops offering buttons that
+            # would 403. Null when the viewset exposes no model (metadata still works).
+            'permissions': ({
+                'add': f'add_{model._meta.model_name}',
+                'change': f'change_{model._meta.model_name}',
+                'delete': f'delete_{model._meta.model_name}',
+                'view': f'view_{model._meta.model_name}',
+            } if model is not None else None),
         })
 
 

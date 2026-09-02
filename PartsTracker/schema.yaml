@@ -44570,11 +44570,17 @@ components:
         filters:
           type: object
           additionalProperties: {}
+        permissions:
+          type: object
+          additionalProperties:
+            type: string
+          nullable: true
       required:
       - filters
       - filterset_fields
       - ordering_fields
       - ordering_fields_display
+      - permissions
       - search_fields
       - search_fields_display
     LoginRequest:

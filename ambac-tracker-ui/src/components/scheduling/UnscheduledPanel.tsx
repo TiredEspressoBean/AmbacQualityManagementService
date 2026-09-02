@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUnscheduled, type UnscheduledReason, type UnscheduledRow } from "@/hooks/useScheduling";
 
 // Severity drives the accent only — the ordering itself is the backend's.
@@ -70,7 +69,9 @@ export function UnscheduledPanel({ open, onOpenChange, onOpenWorkOrder }: Props)
             <Button
               variant="ghost"
               size="icon"
-              className="ml-auto h-7 w-7"
+              // mr-6 clears SheetContent's own absolutely-positioned close button,
+              // which otherwise sits directly on top of this one.
+              className="ml-auto mr-6 h-7 w-7"
               title="Re-check"
               onClick={() => refetch()}
               disabled={isFetching}
@@ -85,7 +86,12 @@ export function UnscheduledPanel({ open, onOpenChange, onOpenWorkOrder }: Props)
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
+        {/* A native scroll container, not Radix ScrollArea: its viewport is sized
+            `h-full`, which needs a DEFINITE parent height — a flex child defaults to
+            min-height:auto, so the viewport grows to its content and (the root not
+            clipping) the list escapes the sheet. Only ever looked right here because
+            the demo had five rows; fifteen overflow. Same fix as PullInWorkDialog. */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-5 px-5 py-4">
             {isLoading && (
               <p className="text-sm text-muted-foreground">Checking the schedule…</p>
@@ -164,7 +170,7 @@ export function UnscheduledPanel({ open, onOpenChange, onOpenWorkOrder }: Props)
               </section>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </SheetContent>
     </Sheet>
   );

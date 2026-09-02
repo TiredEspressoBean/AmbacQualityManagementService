@@ -15,7 +15,7 @@ const editors = [
         path: "/editor/parts",
     },
     {
-        name: "Parts Types",
+        name: "Part Types",
         description: "Manage part types, and their information.",
         path: "/editor/partTypes",
     },
@@ -45,7 +45,10 @@ const editors = [
         path: "/editor/tooling",
     },
     {
-        name: "Materials",
+        // "Purchased Materials", not "Materials": Supply's "Materials" entry is the
+        // received LOTS on hand. Two nav entries both reading "Materials" for the
+        // catalogue and the stock is the kind of thing you only learn by clicking.
+        name: "Purchased Materials",
         description: "Manage purchased components (O-rings, seals, coils) with suppliers and lead times — the BUY side of a BOM. Part Types stay in-house SKUs.",
         path: "/editor/materials",
     },
@@ -129,7 +132,7 @@ const editors = [
 export default function EditLandingPage() {
     return (
         <div className="p-6">
-            <h1 className="text-3xl font-bold mb-2">Manage System Data</h1>
+            <h1 className="text-3xl font-bold mb-2">Data Management</h1>
             <p className="text-muted-foreground mb-6">
                 Select a category below to view, edit, or update records.
             </p>

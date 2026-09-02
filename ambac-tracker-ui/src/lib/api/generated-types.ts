@@ -19401,6 +19401,9 @@ export interface components {
             filters: {
                 [key: string]: unknown;
             };
+            permissions: {
+                [key: string]: string;
+            } | null;
         };
         LoginRequest: {
             username?: string;

@@ -65,7 +65,7 @@ export function CapacityPlanningPage() {
   const { data, isLoading } = useCapacityLoad(months);
 
   const { data: partTypesData } = useRetrievePartTypes({ limit: 200 } as never);
-  const partTypes = (partTypesData as any)?.results ?? [];
+  const partTypes = partTypesData?.results ?? [];
 
   const [partType, setPartType] = useState("");
   const [quantity, setQuantity] = useState("100");
@@ -75,7 +75,8 @@ export function CapacityPlanningPage() {
   } | null>(null);
   const quote = useCapableToPromise(submitted);
 
-  const buckets = data?.buckets ?? [];
+  // Memoised: `buckets` is a dependency of the pinch-point memo below.
+  const buckets = useMemo(() => data?.buckets ?? [], [data]);
 
   // Where it gets tight first — the one line a planner actually acts on.
   const firstOverload = useMemo(() => {

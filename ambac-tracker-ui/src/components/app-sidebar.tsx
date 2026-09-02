@@ -76,7 +76,7 @@ const schedulingPages = [
     { name: "Schedule (Gantt)", url: "/production/schedule", icon: CalendarRange },
     { name: "Calendar", url: "/production/calendar", icon: CalendarDays },
     { name: "Capacity Planning", url: "/production/capacity", icon: Grid3x3 },
-    { name: "Labor Hours", url: "/production/labor-hours", icon: Clock },
+    { name: "Operator Hours", url: "/production/labor-hours", icon: Clock },
     { name: "Requirements", url: "/production/requirements", icon: ClipboardList },
 ]
 
