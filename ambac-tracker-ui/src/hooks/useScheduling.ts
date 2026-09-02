@@ -73,12 +73,15 @@ function invalidateSchedule(qc: ReturnType<typeof useQueryClient>) {
  * runs on the server for as long as it needs, so the UI stays responsive. */
 function useAsyncScheduleTask(
   trigger: () => Promise<{ task_id: string }>,
-  labels: { done: (result: any) => string; verb: string }
+  labels: { done: (result: any) => string; verb: string },
+  onDone?: (result: any) => void
 ) {
   const qc = useQueryClient();
   const [taskId, setTaskId] = useState<string | null>(null);
   const labelsRef = useRef(labels);
   labelsRef.current = labels;
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   const start = useMutation({
     mutationFn: trigger,
@@ -105,6 +108,7 @@ function useAsyncScheduleTask(
       invalidateSchedule(qc);
       toast.success(labelsRef.current.done(d.result));
       setTaskId(null);
+      onDoneRef.current?.(d.result);
     } else if (d.state === "FAILURE") {
       toast.error(d.detail ?? `${labelsRef.current.verb} failed`);
       setTaskId(null);
@@ -122,11 +126,14 @@ export function useSolveSchedule() {
   );
 }
 
-/** Run a what-if solve in the background — produces a draft, live untouched. */
-export function useSolveDraft() {
+/** Run a what-if solve in the background — produces a draft, live untouched.
+ * `onReady` fires when the draft is solved (used to auto-switch the board to the
+ * draft view, so the what-if shows itself instead of hiding behind a toggle). */
+export function useSolveDraft(onReady?: () => void) {
   return useAsyncScheduleTask(
     () => api.api_Schedules_solve_draft_create(undefined as never) as Promise<{ task_id: string }>,
-    { verb: "the what-if", done: () => "What-if draft ready — review it below" }
+    { verb: "the what-if", done: () => "What-if draft ready — showing it now" },
+    onReady
   );
 }
 

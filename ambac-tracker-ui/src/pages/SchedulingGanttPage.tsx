@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { toast } from "sonner";
-import { ArrowLeftRight, ChevronRight, Combine, Pin, PinOff, Plus, Search, Settings, Split, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, ChevronRight, Combine, Pin, PinOff, Plus, RotateCw, Search, Settings, Split, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
 import {
   GanttProvider,
   GanttSidebar,
@@ -97,6 +97,9 @@ type Task = {
   work_order_id: string | null;
   work_center: string | null;
   requires_operator: boolean;
+  // Subcontracted op: its span is vendor turnaround (elapsed), not shop capacity.
+  is_outside_process: boolean;
+  outside_supplier: string | null;
   due_date: string | null;
   is_late: boolean;
   material_shortage: boolean;
@@ -197,6 +200,41 @@ function DraftCompareBar({
   );
 }
 
+/** Centered board-status panel: loading / empty / error+retry. Fills the Gantt
+ * area so a failed request reads as a real state, not a silently blank board.
+ * (Reset/500 from the dev server surfaces here as "couldn't load" + Retry,
+ * distinct from the legitimate "no schedule yet" empty.) */
+function BoardStatus({
+  icon: Icon, title, message, onRetry, retrying, actionLabel, onAction,
+}: {
+  icon?: LucideIcon;
+  title: string;
+  message?: string;
+  onRetry?: () => void;
+  retrying?: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-10 text-center">
+      {Icon && <Icon className="h-8 w-8 text-muted-foreground" />}
+      <div className="space-y-1">
+        <p className="font-medium">{title}</p>
+        {message && <p className="max-w-sm text-sm text-muted-foreground">{message}</p>}
+      </div>
+      {onRetry && (
+        <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
+          <RotateCw className={`mr-1.5 h-3.5 w-3.5 ${retrying ? "animate-spin" : ""}`} />
+          {retrying ? "Retrying…" : "Retry"}
+        </Button>
+      )}
+      {onAction && actionLabel && (
+        <Button size="sm" onClick={onAction}>{actionLabel}</Button>
+      )}
+    </div>
+  );
+}
+
 export function SchedulingGanttPage() {
   const current = useCurrentSchedule();
   const live = current.data ?? null;
@@ -223,7 +261,9 @@ export function SchedulingGanttPage() {
   const windowsQuery = useWorkingWindows(schedule?.id);
   const compareQuery = useCompareDraft(draft != null);
   const solve = useSolveSchedule();
-  const solveDraft = useSolveDraft();
+  // Auto-switch the board to the draft the moment a what-if finishes — otherwise it
+  // silently stays on live and the what-if looks like it did nothing.
+  const solveDraft = useSolveDraft(() => setViewMode("draft"));
   const commitDraft = useCommitDraft();
   const discardDraft = useDiscardDraft();
   const dispatch = useDispatchSchedule();
@@ -341,7 +381,12 @@ export function SchedulingGanttPage() {
     const read = () =>
       setViewport((v) => {
         const scrollLeft = el.scrollLeft;
-        const clientWidth = el.clientWidth;
+        // clientWidth is 0 when the timeline is measured before layout settles
+        // (the seed read / a ResizeObserver tick firing pre-layout). Storing 0
+        // collapses vizWindow to [0,0], and inWindow then filters out EVERY bar
+        // → a blank board even though the tasks loaded. Keep the last good width
+        // until a real measurement arrives.
+        const clientWidth = el.clientWidth || v.clientWidth;
         return v.scrollLeft === scrollLeft && v.clientWidth === clientWidth
           ? v
           : { scrollLeft, clientWidth };
@@ -368,11 +413,14 @@ export function SchedulingGanttPage() {
   const vizWindow = useMemo(() => {
     if (!schedule) return null;
     const dayPx = (720 * zoom) / 100; // hourly column width × zoom
-    const buffer = viewport.clientWidth;
+    // Belt-and-suspenders: a 0 width (unmeasured timeline) would collapse the
+    // window and hide every bar. Treat it as a wide default so bars still show.
+    const width = viewport.clientWidth > 0 ? viewport.clientWidth : 4000;
+    const buffer = width;
     return {
       origin: startOfDay(horizonStart!),
       startFrac: (viewport.scrollLeft - buffer) / dayPx,
-      endFrac: (viewport.scrollLeft + viewport.clientWidth + buffer) / dayPx,
+      endFrac: (viewport.scrollLeft + width + buffer) / dayPx,
     };
   }, [schedule, zoom, viewport]);
   const inWindow = (f: { startAt: Date; endAt: Date | null }) => {
@@ -503,12 +551,20 @@ export function SchedulingGanttPage() {
 
   // Group the schedule by machine, by operator (people), or by product (part/core).
   const groupData = useMemo(() => {
-    const key = (t: Task) =>
+    const key = (t: Task): string | null =>
       groupBy === "operator"
-        ? t.operator_name ?? "— Unassigned —"
+        // The People view is about who's doing what. Show a person's name when
+        // assigned, "— Unassigned —" for work that NEEDS an operator but has none
+        // (the real gap a planner acts on), and DROP work that needs no person at
+        // all (outside-process, lights-out machine time) — else the view fills with
+        // work-center rows and reads like an equipment list, not people.
+        ? (t.operator_name ?? (t.requires_operator ? "— Unassigned —" : null))
         : groupBy === "workorder"
           ? t.work_order ?? t.part_erp ?? t.core_number ?? "— No WO —"
-          : t.machine_name ?? "— Unassigned —";
+          // Machine view: steps with no machine (shipping / outside-process) aren't
+          // "unassigned machines" — they don't use one. Lane them under their work
+          // center (e.g. "OSP Dispatch") so they read as what they are.
+          : t.machine_name ?? t.work_center ?? "— No machine —";
     // Bars are labelled for the lane: a machine row shows the WORK ORDER it's
     // running, an operator row shows the WORK CENTER they're at, and a work-order row
     // (the WO IS the lane) shows the step (+ the part / machine).
@@ -548,6 +604,14 @@ export function SchedulingGanttPage() {
     // collapses to one ×N cell, and a break (staggered onto separate slots) shows as
     // separate bars — immediately, and consistent with what the solver produces.
     const batchKey = (t: Task) => {
+      // Outside processing is a SHIPMENT, not a machine slot: a shop this size ships
+      // out once a day, so everything going to the same vendor for the same operation
+      // on the same day is one truck — collapse it to one bar regardless of the
+      // per-part start times the solver assigned.
+      if (t.is_outside_process) {
+        const day = (t.start_time ?? "").slice(0, 10);
+        return `osp::${t.step_name ?? "—"}::${t.outside_supplier ?? "vendor"}::${day}`;
+      }
       const lane = groupBy === "workorder" ? t.step_name ?? "—" : woOf(t);
       return `${lane}::${t.start_time}::${t.machine_name ?? "—"}`;
     };
@@ -575,11 +639,16 @@ export function SchedulingGanttPage() {
           const anyLate = run.some((t) => t.is_late);
           const allPinned = run.every((t) => t.is_pinned);
           const zone = FENCE[first.fence_zone] ?? FENCE.liquid;
+          // An OSP bar is one shipment to one vendor — name it that way (the parts
+          // may span several WOs, so the WO prefix would be wrong/misleading).
+          const name = first.is_outside_process
+            ? `${allPinned ? "📌 " : ""}${anyLate ? "⏰ " : ""}🚚 ${first.outside_supplier ?? "vendor"} · ${first.step_name ?? ""} ×${run.length}`
+            : `${allPinned ? "📌 " : ""}${anyLate ? "⏰ " : ""}${
+                groupBy === "workorder" ? "" : woOf(first) + " · "
+              }${first.step_name ?? ""} ×${run.length}`;
           out.push({
             id,
-            name: `${allPinned ? "📌 " : ""}${anyLate ? "⏰ " : ""}${
-              groupBy === "workorder" ? "" : woOf(first) + " · "
-            }${first.step_name ?? ""} ×${run.length}`,
+            name,
             startAt,
             endAt,
             status: { id: first.fence_zone, name: zone.name, color: zone.color },
@@ -613,6 +682,7 @@ export function SchedulingGanttPage() {
     const byKey = new Map<string, Task[]>();
     for (const t of rows) {
       const k = key(t);
+      if (k === null) continue;  // dropped from this view (e.g. no-operator work in People)
       (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(t);
     }
     const list = [...byKey.entries()]
@@ -621,10 +691,17 @@ export function SchedulingGanttPage() {
         machine: name,
         features: tasks.map(toFeature),  // expanded: one bar per task (part-op)
         batches: mergeBatches(tasks),    // collapsed: WO batches (machine/people) or step batches (WO lane)
+        // Lane load = work this shop performs. Outside-process spans are VENDOR
+        // turnaround (elapsed calendar days at a subcontractor), so summing them here
+        // reported OSP as by far the biggest "load" on the board — 3,120 h of other
+        // people's time. Excluded; the OSP bars still render, they just don't count
+        // as our capacity.
         loadMinutes: tasks.reduce(
-          (s, t) => s + (new Date(t.end_time).getTime() - new Date(t.start_time).getTime()) / 60000,
+          (s, t) => t.is_outside_process ? s
+            : s + (new Date(t.end_time).getTime() - new Date(t.start_time).getTime()) / 60000,
           0
         ),
+        ospTasks: tasks.filter((t) => t.is_outside_process).length,
       }));
     return { list, batchMeta: meta };
   }, [rows, groupBy]);
@@ -1081,10 +1158,50 @@ export function SchedulingGanttPage() {
         </div>
       )}
 
-      {!schedule ? null : tasksQuery.isLoading ? (
-        <p className="text-muted-foreground">Loading tasks…</p>
+      {/* Board state machine. A failed request (dev-server reset / 500) must read
+          as "couldn't load — retry", NOT as an empty board — the old `!schedule
+          ? null` silently blanked the Gantt on every transient failure. Order:
+          draft errors (when viewing draft) → schedule errors → no schedule →
+          task errors → loading → empty → the board. */}
+      {viewMode === "draft" && draftQuery.isError ? (
+        <BoardStatus
+          icon={AlertTriangle}
+          title="Couldn't load the draft"
+          message="The request failed — the backend may have reset the connection. Retry, or switch back to the live schedule."
+          onRetry={() => draftQuery.refetch()}
+          retrying={draftQuery.isFetching}
+        />
+      ) : current.isError ? (
+        <BoardStatus
+          icon={AlertTriangle}
+          title="Couldn't load the schedule"
+          message="The request failed — check the backend is running, then retry."
+          onRetry={() => current.refetch()}
+          retrying={current.isFetching}
+        />
+      ) : current.isLoading ? (
+        <BoardStatus title="Loading schedule…" />
+      ) : !schedule ? (
+        <BoardStatus
+          title="No schedule yet"
+          message={canSolve
+            ? "Run the solver to generate a production schedule."
+            : "No schedule has been solved yet."}
+          actionLabel={canSolve ? "Solve" : undefined}
+          onAction={canSolve ? () => solve.run() : undefined}
+        />
+      ) : tasksQuery.isError ? (
+        <BoardStatus
+          icon={AlertTriangle}
+          title="Couldn't load the tasks"
+          message="The schedule loaded but its tasks didn't — the connection may have reset. Retry."
+          onRetry={() => tasksQuery.refetch()}
+          retrying={tasksQuery.isFetching}
+        />
+      ) : tasksQuery.isLoading ? (
+        <BoardStatus title="Loading tasks…" />
       ) : rows.length === 0 ? (
-        <p className="text-muted-foreground">This schedule has no tasks.</p>
+        <BoardStatus title="This schedule has no tasks." />
       ) : (
         <GanttProvider
           range="hourly"
@@ -1110,7 +1227,18 @@ export function SchedulingGanttPage() {
                       className={`h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`}
                     />
                     <span className="flex-1 truncate">{g.machine}</span>
-                    {loadBar(g.loadMinutes)}
+                    {/* A lane that's purely outside processing has no shop load to show —
+                        label it as vendor time so an empty load bar doesn't read as idle. */}
+                    {g.loadMinutes === 0 && g.ospTasks > 0 ? (
+                      <span
+                        className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal"
+                        title={`${g.ospTasks} part-op(s) at an outside vendor — elapsed turnaround, not shop capacity`}
+                      >
+                        🚚 at vendor
+                      </span>
+                    ) : (
+                      loadBar(g.loadMinutes)
+                    )}
                   </button>
                   {isExpanded && (
                     <div className="divide-y divide-border/50">
