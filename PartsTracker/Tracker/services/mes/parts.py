@@ -164,6 +164,36 @@ def _cascade_work_order_completion_for_subject(wo) -> None:
     wo.save(update_fields=['workorder_status', 'true_completion'])
 
 
+def _consume_step_material(part, step, operator) -> None:
+    """Record the BOM material this step consumed. Never raises — see
+    `services/mes/consumption.py` for why consumption doesn't gate advancement.
+
+    Idempotent within one visit: a part that re-enters a step on a rework loop
+    consumes again (it really does use more material), but re-running the advance for
+    the same visit must not double-draw. The current execution's `entered_at` bounds
+    the visit.
+
+    A part that was never *advanced into* its current step has no execution to bound
+    — a freshly created part sitting on step 1, which is the common case for a new
+    work order. There the guard falls back to "has this part ever drawn here", which
+    is safe precisely because re-entry via rework DOES create an execution
+    (`advance_part_step` opens one on entry), so the strict form can't suppress a
+    legitimate second draw.
+    """
+    from Tracker.models import MaterialUsage, StepExecution
+    from Tracker.services.mes.consumption import consume_for_step_safely
+
+    if operator is None or step is None:
+        return
+    drawn_here = MaterialUsage.objects.filter(part=part, step=step)
+    execution = StepExecution.get_current_execution(part)
+    if execution is not None and execution.entered_at is not None:
+        drawn_here = drawn_here.filter(consumed_at__gte=execution.entered_at)
+    if drawn_here.exists():
+        return
+    consume_for_step_safely(part, step, operator)
+
+
 def advance_part_step(
     part: Parts, operator=None, decision_result=None, skip_gate_check: bool = False,
     decided_by=None,
@@ -236,6 +266,12 @@ def advance_part_step(
         current_execution.completed_by = operator
         current_execution.status = 'COMPLETED'
         current_execution.decision_result = str(decision_result) if decision_result else ''
+
+    # Draw the material this step consumes, now that the step is done. Hooked to the
+    # step the part is LEAVING (not the one it enters) because that's the work that
+    # actually used it. Deliberately after the gate check and execution close, and
+    # deliberately un-raising: bookkeeping must never strand a finished part.
+    _consume_step_material(part, part.step, operator)
 
     next_step = part.get_next_step(decision_result)
 
