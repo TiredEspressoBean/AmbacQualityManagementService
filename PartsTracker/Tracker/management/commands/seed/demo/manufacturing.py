@@ -280,7 +280,7 @@ DEMO_EQUIPMENT = [
     {'name': 'Flow Test Stand #2', 'type': 'Flow Bench', 'serial': 'FTS-002', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True},
     {'name': 'Torque Wrench TW-25', 'type': 'Torque Tool', 'serial': 'TW-025', 'calibration_days': -15, 'location': 'Tool Crib', 'schedulable': True},  # OVERDUE → is_operational excludes from solve
     {'name': 'Torque Wrench TW-26', 'type': 'Torque Tool', 'serial': 'TW-026', 'calibration_days': 45, 'location': 'Tool Crib', 'schedulable': True},
-    {'name': 'Ultrasonic Cleaner UC-1', 'type': 'Cleaning Station', 'serial': 'UC-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},  # No calibration needed
+    {'name': 'Ultrasonic Cleaner UC-1', 'type': 'Cleaning Station', 'serial': 'UC-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True, 'lights_out': True},  # timed wash cycle runs unattended
     {'name': 'Final Test Bench FTB-1', 'type': 'Test Bench', 'serial': 'FTB-001', 'calibration_days': 25, 'location': 'QA Lab', 'schedulable': True},
     # Manual production stations — give teardown / grading / rework / packaging steps a
     # scheduled machine so they're not left machine-less on the Gantt.
@@ -290,8 +290,8 @@ DEMO_EQUIPMENT = [
     {'name': 'Packaging Station PK-1', 'type': 'Workstation', 'serial': 'PK-001', 'calibration_days': None, 'location': 'Shipping', 'schedulable': True},
 
     # Specific measuring stations — finite + scheduled as secondary resources.
-    {'name': 'CMM Zeiss-1', 'type': 'CMM', 'serial': 'CMM-001', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True},
-    {'name': 'Keyence Vision IM-7020', 'type': 'Vision System', 'serial': 'KV-7020', 'calibration_days': 90, 'location': 'QA Lab', 'schedulable': True},
+    {'name': 'CMM Zeiss-1', 'type': 'CMM', 'serial': 'CMM-001', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True, 'lights_out': True},  # programmed inspection runs unattended
+    {'name': 'Keyence Vision IM-7020', 'type': 'Vision System', 'serial': 'KV-7020', 'calibration_days': 90, 'location': 'QA Lab', 'schedulable': True, 'lights_out': True},  # automated vision runs unattended
 
     # Go/no-go gauges — specific attribute tools, plentiful in the crib → not scheduled.
     {'name': 'Go/No-Go Thread Gauge M8x1', 'type': 'Thread Gauge', 'serial': 'GNG-M8', 'calibration_days': 120, 'location': 'Tool Crib'},
@@ -475,6 +475,10 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'status': EquipmentStatus.IN_SERVICE,  # Enum member from EquipmentStatus
                     'location': eq_data.get('location', ''),
                     'is_schedulable': eq_data.get('schedulable', False),  # solver reserves only these
+                    # Lights-out: only genuinely-continuous processes run unattended (wash
+                    # cycle, automated CMM/vision inspection). Everything else is None →
+                    # inherits the facility default (attended) — realistic for this shop.
+                    'runs_unattended': eq_data.get('lights_out'),
                     'calibration_interval_days': None,  # Inherit from equipment_type
                     '_requires_calibration_override': None,  # Inherit from equipment_type
                     'manufacturer': '',

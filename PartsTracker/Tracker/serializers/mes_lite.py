@@ -1371,15 +1371,16 @@ class EquipmentsSerializer(SecureModelMixin):
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
             "serial_number", "manufacturer", "model_number", "location", "status",
-            "is_schedulable", "batch_capacity", "batch_mode", "notes",
+            "is_schedulable", "runs_unattended", "batch_capacity", "batch_mode", "notes",
             "created_at", "updated_at", "archived", "version",
         ]
         read_only_fields = ("created_at", "updated_at", "version")
 
-    # status, is_schedulable, batch_capacity/mode are operational/scheduling states
-    # (calibration/maintenance, scheduling toggle, batch load), not config content.
+    # status, is_schedulable, runs_unattended, batch_capacity/mode are operational/
+    # scheduling states (calibration/maintenance, scheduling toggles, batch load), not
+    # config content — a plain save, not a new version.
     _NON_VERSIONING_FIELDS = frozenset(
-        {'archived', 'status', 'is_schedulable', 'batch_capacity', 'batch_mode'})
+        {'archived', 'status', 'is_schedulable', 'runs_unattended', 'batch_capacity', 'batch_mode'})
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let

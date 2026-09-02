@@ -576,15 +576,23 @@ def get_step_operator_pools(tenant) -> dict[UUID, frozenset]:
 
 
 def get_attended_only_machines(tenant) -> frozenset:
-    """Machines that CANNOT run lights-out (`runs_unattended=False`): their Layer-1
-    work is confined to the shift calendar (an operator must be present). Everything
-    else runs 24/7, gated only by downtime — a lot-operation may span nights."""
-    from Tracker.models import Equipments
+    """Machines that CANNOT run lights-out: their Layer-1 work is confined to the shift
+    calendar (an operator must be present). Everything else runs 24/7, gated only by
+    downtime — a lot-operation may span nights.
 
-    return frozenset(
-        Equipments.objects.filter(tenant=tenant, runs_unattended=False)
-        .values_list('id', flat=True)
-    )
+    Tri-state resolution: a machine's `runs_unattended` overrides; NULL inherits the
+    facility default (`OptimizationConfig.default_machine_unattended`, itself defaulting
+    to attended — the safe choice)."""
+    from Tracker.models import Equipments, OptimizationConfig
+
+    cfg = OptimizationConfig.objects.filter(tenant=tenant).first()
+    default_unattended = bool(cfg.default_machine_unattended) if cfg else False
+    attended = set()
+    for eid, ru in Equipments.objects.filter(tenant=tenant).values_list('id', 'runs_unattended'):
+        effective_unattended = ru if ru is not None else default_unattended
+        if not effective_unattended:
+            attended.add(eid)
+    return frozenset(attended)
 
 
 def get_machine_downtime(tenant, horizon: HorizonData) -> dict[UUID, list[tuple]]:
@@ -639,19 +647,30 @@ def get_calendar_closures(tenant, horizon: HorizonData) -> list[tuple]:
 
 def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:
     """Tenant-wide working windows (merged, sorted) over [start, end] — the active
-    shift calendar expanded to datetimes, minus plant closures (holidays/shutdowns). The
-    complement is non-working time (nights/weekends/holidays), which the Gantt shades.
-    Empty when no shifts are configured (the solver treats that as always-available)."""
+    shift calendar expanded to datetimes, PLUS overtime (extra/weekend runs), minus
+    plant closures (holidays/shutdowns). The complement is non-working time
+    (nights/weekends/holidays), which the Gantt shades. Overtime is unioned in so the
+    Gantt doesn't shade an overtime day as non-working while the solver schedules
+    operators on it (get_operator_shift_windows counts the same overtime). Empty when
+    no shifts are configured (the solver treats that as always-available)."""
     from Tracker.models import PlantCalendarException, Shift
 
     shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
-    base = _expand_shifts(shifts, start, end)
+    horizon = HorizonData(start=start, end=end, frozen_end=start, slushy_end=start)
+    base = _merge_intervals(
+        _expand_shifts(shifts, start, end) + get_overtime_machine_windows(tenant, horizon))
     closures = _merge_intervals([
         (max(e.start_time, start), min(e.end_time, end))
         for e in PlantCalendarException.objects.filter(tenant=tenant, is_active=True)
         .filter(start_time__lt=end).exclude(end_time__lt=start)
     ])
     return _subtract_intervals(base, closures)
+
+
+# Fallback purchase lead time (days) for a BUY component whose Material/PartTypes
+# record has no purchase_lead_time_days set. Only the order-by window for
+# unconfigured items depends on it; a real lead time on the master data overrides.
+_DEFAULT_LEAD_DAYS = 14
 
 
 def get_material_gates(tenant, horizon: HorizonData):
@@ -700,8 +719,9 @@ def get_material_gates(tenant, horizon: HorizonData):
             # tenant-safe: `bom` is a tenant-scoped row; its lines belong to the same tenant.
             bom_cache[pt_id] = (
                 list(BOMLine.objects.filter(bom=bom).values(
-                    'material_id', 'material__name', 'quantity', 'source',
-                    'consumed_at_step_id', 'allow_harvested', 'is_optional'))
+                    'material_id', 'material__name', 'material__purchase_lead_time_days',
+                    'quantity', 'source', 'consumed_at_step_id', 'allow_harvested',
+                    'is_optional'))
                 if bom else [])
         return bom_cache[pt_id]
 
@@ -742,6 +762,16 @@ def get_material_gates(tenant, horizon: HorizonData):
                 release[key] = max(release.get(key, 0), rmin)
                 msg = f"{comp}: short {short_qty} of {need} (due {d:%b %d})"
             else:
+                # Time-phased: a short BUY line with no incoming receipt is only a
+                # shortage EXCEPTION once we're at/after the order-by date
+                # (need-by − purchase lead time) — i.e. too late to procure normally.
+                # Demand further out simply hasn't been ordered yet: normal, not a
+                # shortage. Same need-by − lead-time basis as the sourcing report.
+                # An undated active WO reads as imminent (flagged).
+                lead = line.get('material__purchase_lead_time_days') or _DEFAULT_LEAD_DAYS
+                need_by = wo.expected_start or wo.expected_completion
+                if need_by is not None and hstart_date < need_by - timedelta(days=lead):
+                    continue  # before order-by → still time to procure, not short
                 short.add(key)
                 msg = f"{comp}: short {short_qty} of {need} (no incoming receipt)"
             detail.setdefault(key, []).append(msg)

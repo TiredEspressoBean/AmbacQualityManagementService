@@ -9,7 +9,10 @@ Creates a deterministic dataset that exercises the whole competency matrix:
     * meets-role vs role gaps (below required level, and expired = level 0)
     * a trainee (L1) and experts (L4)
     * expiring-soon (Mike's NOZ in 7 days) and expired (Dave's FLOW)
-    * a single-point-of-failure skill (only one Torque-qualified operator)
+    * a single-point-of-failure skill: Flow Testing — only Mike is a qualified
+      DISPATCHABLE Flow operator (Dave's Flow cert is expired above), so the
+      solver can't cover Flow if Mike is out. Assembly is deliberately broadened
+      (Mike + Dave + Casey) so it is NOT a bottleneck; Flow is the demo SPOF.
 """
 
 from datetime import timedelta
@@ -71,10 +74,18 @@ DEMO_TRAINING_RECORDS = [
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 3, 'expires_days': 250, 'completed_days_ago': 115},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': 180, 'completed_days_ago': 185},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
-    # Dave Wilson (Flow Test Technician) — FLOW expired => role gap
+    # Dave Wilson (Flow Test Technician) — FLOW expired => role gap (and keeps Flow
+    # as Mike's single-person skill). Cross-trained on Assembly + Torque so the
+    # assembler pool isn't a single-point bottleneck.
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': -15, 'completed_days_ago': 380},
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 2, 'expires_days': 100, 'completed_days_ago': 265},
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 3, 'expires_days': 200, 'completed_days_ago': 165},
+    {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'ASSEMBLY-CERT', 'level': 3, 'expires_days': 300, 'completed_days_ago': 60},
+    {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'TORQUE-CERT', 'level': 3, 'expires_days': 120, 'completed_days_ago': 60},
+    # Casey (dual-role floor operator) — Assembly + Torque + Safety, third assembler.
+    {'user': 'casey.dual@demo.ambac.com', 'training_type': 'ASSEMBLY-CERT', 'level': 3, 'expires_days': 300, 'completed_days_ago': 60},
+    {'user': 'casey.dual@demo.ambac.com', 'training_type': 'TORQUE-CERT', 'level': 3, 'expires_days': 120, 'completed_days_ago': 60},
+    {'user': 'casey.dual@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 60},
     # Sarah Chen (Nozzle Inspector) — meets role, expert on NOZ
     {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 4, 'expires_days': 300, 'completed_days_ago': 65},
     {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': 280, 'completed_days_ago': 85},
@@ -176,7 +187,13 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
                 training_type=training_type,
                 step=step,
                 equipment_type=eq_type,
-                defaults={'notes': req_data.get('notes', '')},
+                # min_level 1 — step/equipment gates mean "holds a current cert"
+                # (authorization per the WI), NOT "is a level-3 expert". Left at
+                # the model default (3), no dispatchable floor operator qualified
+                # for Assembly/Nozzle Inspection and the solver's labor preflight
+                # refused every solve (LaborInfeasible). The level-3 drama lives
+                # on the JOB-ROLE profiles (competency-matrix demo), not here.
+                defaults={'notes': req_data.get('notes', ''), 'min_level': 1},
             )
             requirements.append(req)
         return requirements

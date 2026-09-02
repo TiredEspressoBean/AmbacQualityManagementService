@@ -230,15 +230,16 @@ class Equipments(SecureModel):
     """CONCURRENT = parallel jobs (cumulative); CYCLE = one shared load-fire-unload at a time."""
 
     runs_unattended = models.BooleanField(
-        default=True,
-        help_text="Whether this machine can run lights-out (unattended) between staffed "
-                  "shifts. True (default): the Layer-1 scheduler runs it 24/7, gated only "
-                  "by downtime — a lot-operation can span nights/weekends. False: its work "
-                  "is confined to the shift calendar (an operator must be present to run "
-                  "it). Operator presence for the attended portions is handled by Layer-2 "
-                  "dispatch regardless of this flag.",
+        null=True, blank=True, default=None,
+        help_text="Whether this machine runs lights-out (unattended) between staffed shifts. "
+                  "NULL (default): inherit the facility default (OptimizationConfig."
+                  "default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, "
+                  "gated only by downtime — a lot-operation can span nights/weekends. False: "
+                  "its work is confined to the shift calendar (an operator must be present). "
+                  "Operator presence for the attended portions is handled by Layer-2 dispatch "
+                  "regardless of this flag.",
     )
-    """Lights-out capable (default). False confines Layer-1 work to shift windows."""
+    """Tri-state lights-out: True/False override, NULL inherits the tenant default."""
 
     operating_shifts = models.ManyToManyField(
         'Tracker.Shift', blank=True, related_name='equipment',

@@ -187,6 +187,16 @@ class DemoSchedulingSeeder(BaseSeeder):
             tenant=self.tenant, user_type="INTERNAL", is_active=True,
             default_shift__isnull=True).update(default_shift=shift)
 
+        # Turn on named-operator matching so a solve assigns operators (not just
+        # machine time) — otherwise the Gantt shows no operators until Dispatch and
+        # it looks like the solver ignores crew. (solver_time_limit_seconds keeps its
+        # default; bump it when actually demoing — the operator phase needs headroom.)
+        from Tracker.models import OptimizationConfig
+        cfg, _ = OptimizationConfig.objects.get_or_create(tenant=self.tenant)
+        if not cfg.match_operators:
+            cfg.match_operators = True
+            cfg.save(update_fields=["match_operators"])
+
         self.log(f"  {len(machines)} machines schedulable, {aff_n} affinities, "
                  f"{tim_n} timings, {sec_n} secondary-gauge resources, "
                  f"{rostered} operators rostered to {shift.code}.")

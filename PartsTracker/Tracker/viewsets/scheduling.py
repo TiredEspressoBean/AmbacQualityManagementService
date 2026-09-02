@@ -349,7 +349,7 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     """Read the scheduled tasks (Gantt rows); pin/unpin a task."""
     queryset = ScheduledTask.unscoped.select_related(
         'part__work_order', 'core__work_order', 'step__work_center',
-        'machine', 'assigned_operator')
+        'step__outside_supplier', 'machine', 'assigned_operator')
     serializer_class = ScheduledTaskSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['schedule', 'machine', 'assigned_operator', 'is_pinned', 'fence_zone']

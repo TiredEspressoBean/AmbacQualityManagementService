@@ -52,7 +52,7 @@ class OptimizationConfigSerializer(serializers.ModelSerializer):
             'id',
             'solver_time_limit_seconds', 'relative_gap_limit',
             'frozen_zone_days', 'slushy_zone_days',
-            'default_outside_process_turnaround_days',
+            'default_outside_process_turnaround_days', 'default_machine_unattended',
             'match_operators', 'default_labor_model', 'default_lockstep_batch',
             'shop_rate_per_hour', 'overtime_multiplier', 'pfd_allowance_pct',
             'late_penalty_urgent', 'late_penalty_high',
@@ -95,6 +95,8 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
     due_date = serializers.SerializerMethodField()
     is_late = serializers.SerializerMethodField()
     is_makeup = serializers.SerializerMethodField()
+    is_outside_process = serializers.SerializerMethodField()
+    outside_supplier = serializers.SerializerMethodField()
 
     class Meta:
         model = ScheduledTask
@@ -106,6 +108,7 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
             'start_time', 'end_time', 'is_pinned', 'fence_zone', 'material_shortage',
             'material_detail', 'late_cause', 'in_progress', 'actual_start', 'actual_end',
             'is_makeup', 'cure_window_violation',
+            'is_outside_process', 'outside_supplier',
         )
         read_only_fields = fields
 
@@ -172,6 +175,22 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
     def get_is_makeup(self, obj):
         """True when this task's part is a make-up/replacement (spawned to cover scrap)."""
         return bool(obj.part.is_makeup) if obj.part_id else False
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_outside_process(self, obj):
+        """True when this op is subcontracted. Its span is VENDOR turnaround (elapsed
+        calendar time), not shop capacity — so the board must not sum it into a work
+        center's load, and its bars group by shipment rather than by machine slot."""
+        return bool(obj.step.is_outside_process) if obj.step_id else False
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_outside_supplier(self, obj):
+        """The subcontractor this op ships to — bars for the same vendor on the same
+        day are one shipment."""
+        if not obj.step_id or not obj.step.is_outside_process:
+            return None
+        sup = obj.step.outside_supplier
+        return sup.name if sup else None
 
 
 class PinRequestSerializer(serializers.Serializer):

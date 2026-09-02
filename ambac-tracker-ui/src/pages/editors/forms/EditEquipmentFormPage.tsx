@@ -58,6 +58,7 @@ const formSchema = schemas.EquipmentsRequest.pick({
     location: true,
     status: true,
     is_schedulable: true,
+    runs_unattended: true,
     batch_capacity: true,
     batch_mode: true,
     notes: true,
@@ -104,6 +105,7 @@ export default function EquipmentFormPage() {
             location: "",
             status: undefined,
             is_schedulable: false,
+            runs_unattended: null,
             batch_capacity: 1,
             batch_mode: "concurrent",
             notes: "",
@@ -122,6 +124,7 @@ export default function EquipmentFormPage() {
                 location: equipment.location ?? "",
                 status: equipment.status ?? undefined,
                 is_schedulable: equipment.is_schedulable ?? false,
+                runs_unattended: equipment.runs_unattended ?? null,
                 batch_capacity: equipment.batch_capacity ?? 1,
                 batch_mode: equipment.batch_mode ?? "concurrent",
                 notes: equipment.notes ?? "",
@@ -142,6 +145,7 @@ export default function EquipmentFormPage() {
             location: values.location || undefined,
             status: values.status || undefined,
             is_schedulable: values.is_schedulable,
+            runs_unattended: values.runs_unattended,
             batch_capacity: values.batch_capacity ?? 1,
             batch_mode: values.batch_mode || "concurrent",
             notes: values.notes || undefined,
@@ -432,6 +436,37 @@ export default function EquipmentFormPage() {
 
                     {form.watch("is_schedulable") && (
                         <>
+                            <FormField
+                                control={form.control}
+                                name="runs_unattended"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Lights-out (unattended running)</FormLabel>
+                                        <Select
+                                            value={field.value === true ? "on" : field.value === false ? "off" : "inherit"}
+                                            onValueChange={(v) =>
+                                                field.onChange(v === "on" ? true : v === "off" ? false : null)}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="inherit">Use facility default</SelectItem>
+                                                <SelectItem value="on">Lights-out (runs 24/7)</SelectItem>
+                                                <SelectItem value="off">Attended (on shift only)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormDescription>
+                                            Whether this machine keeps running between shifts. Lights-out lets a
+                                            job span nights/weekends; Attended confines it to staffed shift hours.
+                                            "Use facility default" follows the shop-wide setting in Scheduling
+                                            settings.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
                             <FormField
                                 control={form.control}
                                 name="batch_capacity"

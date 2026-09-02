@@ -441,7 +441,15 @@ class DemoShowcaseSeeder(BaseSeeder):
 
         from decimal import Decimal
         from Tracker.models.mes_lite import PartTypes
-        from Tracker.models.mes_standard import BOM, BOMLine, Material
+        from Tracker.models.mes_standard import BOM, BOMLine, Material, MaterialLot
+
+        # Purchase lead times (days) for the BUY components — real master data that
+        # drives the sourcing report AND the time-phased material gate (a shortage is
+        # only flagged once we're within need-by − lead time). Without these the gate
+        # falls back to a blanket default and can't distinguish urgent from far-off.
+        BUY_LEAD_DAYS = {
+            "Injector Spring": 21, "Solenoid Coil": 30, "Seal & O-Ring Kit": 14,
+        }
 
         # (name, ERP_id, ID_prefix, find_number, qty, uom, optional, source)
         # In-house sub-assemblies are MAKE (PartTypes); purchased items are BUY (Material).
@@ -463,7 +471,24 @@ class DemoShowcaseSeeder(BaseSeeder):
             else:
                 buy_materials[name], _ = Material.objects.update_or_create(
                     tenant=self.tenant, name=name,
-                    defaults={'part_number': erp, 'unit_of_measure': uom})
+                    defaults={'part_number': erp, 'unit_of_measure': uom,
+                              'purchase_lead_time_days': BUY_LEAD_DAYS.get(name)})
+
+        # On-hand accepted stock for the BUY components, so the material gate is
+        # covered for near-term demand and the demo board isn't blanketed with
+        # false "material short" flags. Realistic quantity (not fake-huge); the
+        # time-phased gate handles far-off demand on its own. Idempotent.
+        for name, mat in buy_materials.items():
+            MaterialLot.objects.get_or_create(
+                tenant=self.tenant,
+                lot_number=f"STOCK-{(mat.part_number or name[:8]).upper()}",
+                defaults=dict(
+                    material=mat, material_description=f"On-hand stock: {name}",
+                    supplier_lot_number="STOCK", erp_po_number="PO-STOCK",
+                    received_date=(self.today - timedelta(days=30)).date(),
+                    received_by=admin_user, quantity=Decimal("400"),
+                    quantity_remaining=Decimal("400"), unit_of_measure="EA",
+                    hold_reason="", storage_location="Main Stores", status="ACCEPTED"))
 
         bom = BOM.objects.filter(
             tenant=self.tenant, part_type=part_type, revision="A", bom_type="ASSEMBLY",

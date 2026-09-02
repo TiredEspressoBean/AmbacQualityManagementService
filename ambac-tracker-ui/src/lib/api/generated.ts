@@ -2178,6 +2178,12 @@ export type Equipments = {
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
   boolean | undefined;
+  runs_unattended?:
+    | /**
+     * Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag.
+     */
+    (boolean | null)
+    | undefined;
   batch_capacity?: /**
    * How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`.
    *
@@ -2249,6 +2255,12 @@ export type EquipmentsRequest = {
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
   boolean | undefined;
+  runs_unattended?:
+    | /**
+     * Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag.
+     */
+    (boolean | null)
+    | undefined;
   batch_capacity?: /**
    * How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`.
    *
@@ -3402,6 +3414,10 @@ export type OptimizationConfig = {
    * @maximum 2147483647
    */
   number | undefined;
+  default_machine_unattended?: /**
+   * This facility's operating model: whether machines run lights-out (unattended, 24/7) BY DEFAULT. False (default): machines only run on shift unless a specific machine is marked lights-out — the safe choice, since assuming capacity a shop can't staff produces an unexecutable plan. True: an automated shop where machines run overnight by default. Each machine's `runs_unattended` overrides this; a machine left unset inherits it.
+   */
+  boolean | undefined;
   match_operators?: /**
    * Two-phase solve: first schedule machines (fast, pooled labor), then re-solve assigning a SPECIFIC operator to every attended op, warm-started from the machine plan. Guarantees a real operator↔operation matching (scarce skills push work late, never silently uncovered) at the cost of a longer solve. Off = single fast machine solve.
    */
@@ -7016,6 +7032,8 @@ export type ScheduledTask = {
    * This op starts later than a max-time-between-operations limit on its incoming edge allows (e.g. a cure/coat/passivation window) — capacity couldn't meet the window, so it's scheduled but flagged: the part will scrap or need rework unless expedited. Set post-solve (soft constraint).
    */
   cure_window_violation: boolean;
+  is_outside_process: boolean;
+  outside_supplier: string | null;
 };
 export type FenceZoneEnum =
   /**
@@ -10023,6 +10041,10 @@ export type PatchedEquipmentsRequest = Partial<{
    */
   is_schedulable: boolean;
   /**
+   * Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag.
+   */
+  runs_unattended: boolean | null;
+  /**
    * How many jobs/parts this resource handles at once. 1 (default) = a normal one-at-a-time machine. >1 = a batch/process resource — see `batch_mode`.
    *
    * @minimum 0
@@ -10309,6 +10331,10 @@ export type PatchedOptimizationConfigRequest = Partial<{
    * @maximum 2147483647
    */
   default_outside_process_turnaround_days: number;
+  /**
+   * This facility's operating model: whether machines run lights-out (unattended, 24/7) BY DEFAULT. False (default): machines only run on shift unless a specific machine is marked lights-out — the safe choice, since assuming capacity a shop can't staff produces an unexecutable plan. True: an automated shop where machines run overnight by default. Each machine's `runs_unattended` overrides this; a machine left unset inherits it.
+   */
+  default_machine_unattended: boolean;
   /**
    * Two-phase solve: first schedule machines (fast, pooled labor), then re-solve assigning a SPECIFIC operator to every attended op, warm-started from the machine plan. Guarantees a real operator↔operation matching (scarce skills push work late, never silently uncovered) at the cost of a longer solve. Off = single fast machine solve.
    */
@@ -15936,6 +15962,7 @@ const Equipments = z.object({
   location: z.string().max(100).optional(),
   status: EquipmentsStatusEnum.optional(),
   is_schedulable: z.boolean().optional(),
+  runs_unattended: z.boolean().nullish(),
   batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
   batch_mode: BatchModeEnum.optional(),
   notes: z.string().optional(),
@@ -15959,6 +15986,7 @@ const EquipmentsRequest = z.object({
   location: z.string().max(100).optional(),
   status: EquipmentsStatusEnum.optional(),
   is_schedulable: z.boolean().optional(),
+  runs_unattended: z.boolean().nullish(),
   batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
   batch_mode: BatchModeEnum.optional(),
   notes: z.string().optional(),
@@ -16034,6 +16062,7 @@ const PatchedEquipmentsRequest = z
     location: z.string().max(100),
     status: EquipmentsStatusEnum,
     is_schedulable: z.boolean(),
+    runs_unattended: z.boolean().nullable(),
     batch_capacity: z.number().int().gte(0).lte(2147483647),
     batch_mode: BatchModeEnum,
     notes: z.string(),
@@ -18537,6 +18566,8 @@ const ScheduledTask = z.object({
   actual_end: z.string().datetime({ offset: true }).nullable(),
   is_makeup: z.boolean(),
   cure_window_violation: z.boolean(),
+  is_outside_process: z.boolean(),
+  outside_supplier: z.string().nullable(),
 });
 const PaginatedScheduledTaskList = z.object({
   count: z.number().int(),
@@ -18613,6 +18644,7 @@ const OptimizationConfig = z.object({
     .gte(0)
     .lte(2147483647)
     .optional(),
+  default_machine_unattended: z.boolean().optional(),
   match_operators: z.boolean().optional(),
   default_labor_model: DefaultLaborModelEnum.optional(),
   default_lockstep_batch: z.boolean().optional(),
@@ -18666,6 +18698,7 @@ const PatchedOptimizationConfigRequest = z
       .int()
       .gte(0)
       .lte(2147483647),
+    default_machine_unattended: z.boolean(),
     match_operators: z.boolean(),
     default_labor_model: DefaultLaborModelEnum,
     default_lockstep_batch: z.boolean(),

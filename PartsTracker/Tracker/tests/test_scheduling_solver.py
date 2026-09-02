@@ -229,8 +229,10 @@ class SolverTests(TenantContextMixin, TestCase):
         from Tracker.models import StepEdge, StepExecution, PartsStatus, DowntimeEvent
         pt = PartTypes.objects.create(tenant=self.tenant, name="Coated2")
         proc = Processes.objects.create(tenant=self.tenant, name="CC2", part_type=pt)
-        washer = Equipments.objects.create(tenant=self.tenant, name="Washer", is_schedulable=True)
-        coater = Equipments.objects.create(tenant=self.tenant, name="Coater", is_schedulable=True)
+        # Lights-out machines: the ONLY thing forcing coat past the cure window is the
+        # coater downtime, not shift confinement (default is now attended).
+        washer = Equipments.objects.create(tenant=self.tenant, name="Washer", is_schedulable=True, runs_unattended=True)
+        coater = Equipments.objects.create(tenant=self.tenant, name="Coater", is_schedulable=True, runs_unattended=True)
         clean = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Clean2", step_type="TASK")
         coat = Steps.objects.create(tenant=self.tenant, part_type=pt, name="Coat2", step_type="TASK")
         ProcessStep.objects.create(process=proc, step=clean, order=1)

@@ -131,13 +131,25 @@ class DemoOutsideProcessSeeder(BaseSeeder):
                 "description": "Send injector bodies out for nitride coating, then inspect on return.",
                 "is_outside_process": True,
                 "outside_supplier": vendor,
+                # Vendor turnaround for this OSP step (calendar days). Explicit so the
+                # solver uses 2 days here, not the tenant fallback (config default).
+                "outside_process_lead_days": 2,
+                # No shop operator during the vendor turnaround — the subcontractor does
+                # the coating. Without this the step defaults to 'pool' and shows dozens
+                # of phantom "unassigned" operator tasks (the return inspection is its
+                # own DWI content, not this scheduled span).
+                "labor_model": "off",
             },
         )
-        # Ensure the flag/vendor stick even if the step pre-existed.
-        if not osp_step.is_outside_process or osp_step.outside_supplier_id != vendor.id:
+        # Ensure the flag/vendor/turnaround/labor stick even if the step pre-existed.
+        if (not osp_step.is_outside_process or osp_step.outside_supplier_id != vendor.id
+                or osp_step.outside_process_lead_days != 2 or osp_step.labor_model != "off"):
             osp_step.is_outside_process = True
             osp_step.outside_supplier = vendor
-            osp_step.save(update_fields=["is_outside_process", "outside_supplier"])
+            osp_step.outside_process_lead_days = 2
+            osp_step.labor_model = "off"
+            osp_step.save(update_fields=["is_outside_process", "outside_supplier",
+                                         "outside_process_lead_days", "labor_model"])
         result["step"] = osp_step
 
         # Return-inspection characteristic (measured when parts come back).

@@ -253,6 +253,15 @@ class OptimizationConfig(SecureModel):
         help_text="Fallback outside-process turnaround (calendar days) when neither the step "
                   "nor the vendor specifies one — so an OSP step always reserves elapsed time.",
     )
+    default_machine_unattended = models.BooleanField(
+        default=False,
+        help_text="This facility's operating model: whether machines run lights-out "
+                  "(unattended, 24/7) BY DEFAULT. False (default): machines only run on shift "
+                  "unless a specific machine is marked lights-out — the safe choice, since "
+                  "assuming capacity a shop can't staff produces an unexecutable plan. True: "
+                  "an automated shop where machines run overnight by default. Each machine's "
+                  "`runs_unattended` overrides this; a machine left unset inherits it.",
+    )
     pfd_allowance_pct = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal('15.00'),
         help_text="Personal/fatigue/delay allowance added to attended time (%).",

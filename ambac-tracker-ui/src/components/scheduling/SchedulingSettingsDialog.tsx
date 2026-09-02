@@ -122,6 +122,7 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
     }
     payload.match_operators = !!form.match_operators;
     payload.default_lockstep_batch = !!form.default_lockstep_batch;
+    payload.default_machine_unattended = !!form.default_machine_unattended;
     if (form.default_labor_model) payload.default_labor_model = form.default_labor_model;
     if (form.auto_resolve) payload.auto_resolve = form.auto_resolve;
     update.mutate(payload, { onSuccess: () => onOpenChange(false) });
@@ -196,6 +197,20 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
                 <Switch
                   checked={!!form.default_lockstep_batch}
                   onCheckedChange={(v) => set("default_lockstep_batch", v)}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <Label className="text-sm">Machines run lights-out by default</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    This facility's operating model. Off (default): machines only run on shift
+                    unless a specific machine is set to lights-out — the safe choice. On: an
+                    automated shop where machines run 24/7 by default. Per-machine settings override.
+                  </p>
+                </div>
+                <Switch
+                  checked={!!form.default_machine_unattended}
+                  onCheckedChange={(v) => set("default_machine_unattended", v)}
                 />
               </div>
             </section>
