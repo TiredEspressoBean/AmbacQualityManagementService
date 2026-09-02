@@ -335,6 +335,15 @@ class OptimizationConfig(SecureModel):
                   "today. The OFF meaning (allow a large lot to break into transfer batches "
                   "to pipeline) is reserved for the future transfer-batching work.",
     )
+    horizon_days = models.PositiveIntegerField(
+        default=30,
+        help_text="How far ahead CP-SAT plans in DETAIL. Work releasing past this "
+                  "window is out of scope for the solve — its capacity is the "
+                  "rough-cut (RCCP) layer's business until the window rolls far "
+                  "enough to reach it. Longer windows plan more but solve slower, "
+                  "and the far end is guesswork anyway: a month out, the routing "
+                  "and the crew are known; a year out they are not.",
+    )
     release_mode = models.CharField(
         max_length=6, choices=ReleaseMode.choices, default=ReleaseMode.AUTO,
         help_text="Who decides what the scheduler may plan. AUTO (default): every "

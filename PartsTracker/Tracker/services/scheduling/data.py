@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q
 from django.utils import timezone
 
 
@@ -365,15 +365,20 @@ def get_fixture_availability(tenant) -> dict[UUID, FixtureData]:
 
 # --- Horizon ----------------------------------------------------------------
 
-def get_schedule_horizon(tenant, horizon_days: int = 30) -> HorizonData:
-    """The planning window and time-fence boundaries. Frozen/slushy widths come
-    from `OptimizationConfig` (defaults 2 / 7 days); the slushy zone follows the
-    frozen zone."""
+def get_schedule_horizon(tenant, horizon_days: int | None = None) -> HorizonData:
+    """The detailed planning window and its time-fence boundaries.
+
+    Width comes from `OptimizationConfig.horizon_days` (default 30) unless a caller
+    overrides it — reports and what-ifs pass their own. Frozen/slushy widths come
+    from the same config (defaults 2 / 7 days); the slushy zone follows the frozen
+    zone."""
     from Tracker.models import OptimizationConfig
 
     cfg = OptimizationConfig.objects.filter(tenant=tenant).first()
     frozen_days = cfg.frozen_zone_days if cfg else 2
     slushy_days = cfg.slushy_zone_days if cfg else 7
+    if horizon_days is None:
+        horizon_days = cfg.horizon_days if cfg else 30
 
     start = timezone.now()
     return HorizonData(
@@ -400,9 +405,10 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     """Schedulable work orders with a process, each carrying its schedulable parts
     (current step) and the process routing graph (steps + edges). Excludes finished
     (COMPLETED/CANCELLED) and held (ON_HOLD) WOs, and drops parts in a state that
-    can't be worked (finished, shipped, quarantined). Under `release_mode=MANUAL`
-    also drops work orders a planner hasn't released. The process graph is resolved
-    once per distinct process and shared across its work orders."""
+    can't be worked (finished, shipped, quarantined). Also drops work releasing past
+    the detailed horizon, and — under `release_mode=MANUAL` — work a planner hasn't
+    released. The process graph is resolved once per distinct process and shared
+    across its work orders."""
     from Tracker.models import (
         ProcessStep, StepEdge, StepExecution, WorkOrder, WorkOrderStatus,
     )
@@ -421,6 +427,20 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     # `released_at` is recorded but never filters — the plan stays date-driven.
     if _release_mode(tenant) == ReleaseMode.MANUAL:
         wos = wos.filter(released_at__isnull=False)
+
+    # Rolling horizon. Work that cannot start inside the detailed window is out of
+    # scope for this solve — the rough-cut (RCCP) layer carries it until the window
+    # rolls far enough to reach it.
+    #
+    # This is not merely an optimisation. `_release_minutes` clamps expected_start
+    # into [0, H], so a far-dated order arrived as `release_min == H`; the solver
+    # then held `start >= H` on an op whose start/end are bounded by H and whose
+    # duration is non-zero — arithmetically impossible. ONE order dated past the
+    # window made the whole tenant's schedule INFEASIBLE, emptying the board with no
+    # explanation. An undated order means "as soon as possible" and is never dropped.
+    horizon_end_date = get_schedule_horizon(tenant).end.date()
+    wos = wos.filter(
+        Q(expected_start__isnull=True) | Q(expected_start__lt=horizon_end_date))
 
     # In-progress signal: an OPEN StepExecution (not yet exited) means work has physically
     # started on that part's current step. `entered_at` is the actual start; elapsed is

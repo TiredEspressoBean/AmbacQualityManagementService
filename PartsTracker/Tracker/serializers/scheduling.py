@@ -58,7 +58,7 @@ class OptimizationConfigSerializer(serializers.ModelSerializer):
             'late_penalty_urgent', 'late_penalty_high',
             'late_penalty_normal', 'late_penalty_low',
             'staging_buffer_minutes', 'job_change_minutes', 'default_move_minutes',
-            'release_mode',
+            'release_mode', 'horizon_days',
             'auto_resolve', 'auto_resolve_min_interval_minutes',
         )
         read_only_fields = ('id',)

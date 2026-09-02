@@ -3521,6 +3521,13 @@ export type OptimizationConfig = {
     * `manual` - Planner releases work
      */
   ReleaseModeEnum | undefined;
+  horizon_days?: /**
+   * How far ahead CP-SAT plans in DETAIL. Work releasing past this window is out of scope for the solve — its capacity is the rough-cut (RCCP) layer's business until the window rolls far enough to reach it. Longer windows plan more but solve slower, and the far end is guesswork anyway: a month out, the routing and the crew are known; a year out they are not.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
   auto_resolve?: /**
      * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
     
@@ -10457,6 +10464,13 @@ export type PatchedOptimizationConfigRequest = Partial<{
     * `manual` - Planner releases work
      */
   release_mode: ReleaseModeEnum;
+  /**
+   * How far ahead CP-SAT plans in DETAIL. Work releasing past this window is out of scope for the solve — its capacity is the rough-cut (RCCP) layer's business until the window rolls far enough to reach it. Longer windows plan more but solve slower, and the far end is guesswork anyway: a month out, the routing and the crew are known; a year out they are not.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  horizon_days: number;
   /**
      * Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
     
@@ -18844,6 +18858,7 @@ const OptimizationConfig = z.object({
   job_change_minutes: z.number().int().gte(0).lte(2147483647).optional(),
   default_move_minutes: z.number().int().gte(0).lte(2147483647).optional(),
   release_mode: ReleaseModeEnum.optional(),
+  horizon_days: z.number().int().gte(0).lte(2147483647).optional(),
   auto_resolve: AutoResolveEnum.optional(),
   auto_resolve_min_interval_minutes: z
     .number()
@@ -18878,6 +18893,7 @@ const PatchedOptimizationConfigRequest = z
     job_change_minutes: z.number().int().gte(0).lte(2147483647),
     default_move_minutes: z.number().int().gte(0).lte(2147483647),
     release_mode: ReleaseModeEnum,
+    horizon_days: z.number().int().gte(0).lte(2147483647),
     auto_resolve: AutoResolveEnum,
     auto_resolve_min_interval_minutes: z.number().int().gte(0).lte(2147483647),
   })

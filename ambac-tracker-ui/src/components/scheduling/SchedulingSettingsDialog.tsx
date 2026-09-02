@@ -40,6 +40,8 @@ const SOLVER: FieldSpec[] = [
     hint: "Stop when within this optimality gap (0.02 = 2%)." },
 ];
 const FENCES: FieldSpec[] = [
+  { key: "horizon_days", label: "Planning horizon (days)", kind: "int",
+    hint: "How far ahead to plan in detail. Work releasing past this window is left to rough-cut capacity until the horizon rolls forward to reach it." },
   { key: "frozen_zone_days", label: "Frozen zone (days)", kind: "int",
     hint: "Near-term window whose tasks the solver keeps fixed." },
   { key: "slushy_zone_days", label: "Slushy zone (days)", kind: "int",

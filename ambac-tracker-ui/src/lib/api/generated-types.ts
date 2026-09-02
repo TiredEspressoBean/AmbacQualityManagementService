@@ -20054,6 +20054,8 @@ export interface components {
              *     * `manual` - Planner releases work
              */
             release_mode?: components["schemas"]["ReleaseModeEnum"];
+            /** @description How far ahead CP-SAT plans in DETAIL. Work releasing past this window is out of scope for the solve — its capacity is the rough-cut (RCCP) layer's business until the window rolls far enough to reach it. Longer windows plan more but solve slower, and the far end is guesswork anyway: a month out, the routing and the crew are known; a year out they are not. */
+            horizon_days?: number;
             /**
              * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
              *
@@ -23192,6 +23194,8 @@ export interface components {
              *     * `manual` - Planner releases work
              */
             release_mode?: components["schemas"]["ReleaseModeEnum"];
+            /** @description How far ahead CP-SAT plans in DETAIL. Work releasing past this window is out of scope for the solve — its capacity is the rough-cut (RCCP) layer's business until the window rolls far enough to reach it. Longer windows plan more but solve slower, and the far end is guesswork anyway: a month out, the routing and the crew are known; a year out they are not. */
+            horizon_days?: number;
             /**
              * @description Automatic rescheduling when the live plan drifts stale. OFF (default): the plan is only flagged for a planner to re-solve by hand — nothing on the floor changes automatically. LIVE: a background beat re-solves and supersedes the live schedule; the frozen zone + planner pins protect committed near-term work, so only the drifted tail moves.
              *
