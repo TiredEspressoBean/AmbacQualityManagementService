@@ -47347,6 +47347,28 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
   },
   {
     method: "get",
+    path: "/api/WorkCenters/staging-list/",
+    alias: "api_WorkCenters_staging_list_retrieve",
+    description: `What to put at each bench before the operator arrives: the next few hours
+of scheduled work per station, with the material each job consumes there,
+whether it&#x27;s on hand, and the fixtures needed.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "hours",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
     path: "/api/WorkOrders/",
     alias: "api_WorkOrders_list",
     description: `Work Orders CRUD with CSV import/export support.

@@ -11855,6 +11855,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkCenters/staging-list/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What to put at each bench before the operator arrives: the next few hours
+         *     of scheduled work per station, with the material each job consumes there,
+         *     whether it's on hand, and the fixtures needed.
+         */
+        get: operations["api_WorkCenters_staging_list_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkOrders/": {
         parameters: {
             query?: never;
@@ -52036,6 +52057,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_WorkCenters_staging_list_retrieve: {
+        parameters: {
+            query?: {
+                /** @description How far ahead to stage (1-72, default 8). */
+                hours?: number;
+                /** @description Narrow to one station. */
+                work_center?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

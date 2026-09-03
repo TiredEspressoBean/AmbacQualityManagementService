@@ -8,7 +8,8 @@ ViewSets for MES Standard tier models:
 """
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -60,6 +61,27 @@ class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewS
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['name', 'code', 'created_at']
     ordering = ['code']
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='work_center', type=OpenApiTypes.UUID, required=False,
+                             description="Narrow to one station."),
+            OpenApiParameter(name='hours', type=OpenApiTypes.INT, required=False,
+                             description="How far ahead to stage (1-72, default 8)."),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=['get'], url_path='staging-list')
+    def staging_list(self, request):
+        """What to put at each bench before the operator arrives: the next few hours
+        of scheduled work per station, with the material each job consumes there,
+        whether it's on hand, and the fixtures needed."""
+        from Tracker.services.mes.staging import staging_list as svc
+        try:
+            hours = max(1, min(72, int(request.query_params.get('hours', 8))))
+        except (TypeError, ValueError):
+            hours = 8
+        return Response(svc(self.tenant, request.query_params.get('work_center'), hours))
 
 
 class WorkCenterSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):

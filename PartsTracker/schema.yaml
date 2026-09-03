@@ -29754,6 +29754,38 @@ paths:
                 format: binary
                 description: Excel file download
           description: ''
+  /api/WorkCenters/staging-list/:
+    get:
+      operationId: api_WorkCenters_staging_list_retrieve
+      description: |-
+        What to put at each bench before the operator arrives: the next few hours
+        of scheduled work per station, with the material each job consumes there,
+        whether it's on hand, and the fixtures needed.
+      parameters:
+      - in: query
+        name: hours
+        schema:
+          type: integer
+        description: How far ahead to stage (1-72, default 8).
+      - in: query
+        name: work_center
+        schema:
+          type: string
+          format: uuid
+        description: Narrow to one station.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkOrders/:
     get:
       operationId: api_WorkOrders_list
