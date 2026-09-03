@@ -4,7 +4,6 @@
   "part_name": "Turbocharger Center Housing Assembly",
   "qty_to_produce": 50,
   "due_date": "2026-05-15",
-
   "items": [
     {
       "find_number": "10",
@@ -13,7 +12,11 @@
       "qty_per_assembly": "1",
       "qty_required": "50",
       "unit_of_measure": "EA",
-      "is_optional": false
+      "is_optional": false,
+      "consumed_at_step": "Assembly",
+      "storage_location": "Main Stores",
+      "lots": "L-2024-018, L-2024-022",
+      "qty_short": ""
     },
     {
       "find_number": "20",
@@ -22,7 +25,11 @@
       "qty_per_assembly": "1",
       "qty_required": "50",
       "unit_of_measure": "EA",
-      "is_optional": false
+      "is_optional": false,
+      "consumed_at_step": "Assembly",
+      "storage_location": "Main Stores",
+      "lots": "L-2024-007",
+      "qty_short": "12"
     },
     {
       "find_number": "30",
@@ -31,7 +38,11 @@
       "qty_per_assembly": "2",
       "qty_required": "100",
       "unit_of_measure": "EA",
-      "is_optional": false
+      "is_optional": false,
+      "consumed_at_step": "",
+      "storage_location": "",
+      "lots": "",
+      "qty_short": ""
     },
     {
       "find_number": "40",
@@ -40,7 +51,11 @@
       "qty_per_assembly": "4",
       "qty_required": "200",
       "unit_of_measure": "EA",
-      "is_optional": false
+      "is_optional": false,
+      "consumed_at_step": "",
+      "storage_location": "",
+      "lots": "",
+      "qty_short": ""
     },
     {
       "find_number": "50",
@@ -49,7 +64,11 @@
       "qty_per_assembly": "1",
       "qty_required": "50",
       "unit_of_measure": "EA",
-      "is_optional": false
+      "is_optional": false,
+      "consumed_at_step": "",
+      "storage_location": "",
+      "lots": "",
+      "qty_short": ""
     },
     {
       "find_number": "60",
@@ -58,7 +77,11 @@
       "qty_per_assembly": "2",
       "qty_required": "100",
       "unit_of_measure": "EA",
-      "is_optional": false
+      "is_optional": false,
+      "consumed_at_step": "",
+      "storage_location": "",
+      "lots": "",
+      "qty_short": ""
     },
     {
       "find_number": "70",
@@ -67,10 +90,13 @@
       "qty_per_assembly": "1",
       "qty_required": "50",
       "unit_of_measure": "EA",
-      "is_optional": true
+      "is_optional": true,
+      "consumed_at_step": "",
+      "storage_location": "",
+      "lots": "",
+      "qty_short": ""
     }
   ],
-
   "total_line_count": 7,
   "tenant_name": "Ambac International",
   "generated_date": "2026-04-15"

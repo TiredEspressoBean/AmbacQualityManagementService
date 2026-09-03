@@ -9,7 +9,7 @@
  * run. That's also the point: the scheduler makes time-specific promises, and this is
  * what makes them true.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,13 +74,23 @@ function JobCard({ job }: { job: StagingJob }) {
                 <td className="w-20 py-1 text-right tabular-nums">
                   <strong>{m.needed}</strong>
                 </td>
-                <td className="w-28 py-1 pl-2 text-right tabular-nums">
+                <td className="w-56 py-1 pl-2 text-right">
                   {m.short > 0 ? (
-                    <span className="text-amber-700 dark:text-amber-400">
+                    <span className="tabular-nums text-amber-700 dark:text-amber-400">
                       short {m.short}
                     </span>
-                  ) : (
+                  ) : m.lots.length > 0 ? (
+                    // Naming the lot matters: consumption records oldest-expiry, so a
+                    // picker grabbing a different one desynchronises the traceability
+                    // record from what physically went in.
                     <span className="text-muted-foreground">
+                      {m.lots.map((l) => l.lot_number).join(", ")}
+                      {m.lots[0].storage_location && (
+                        <span className="ml-1">· {m.lots[0].storage_location}</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="tabular-nums text-muted-foreground">
                       {m.on_hand} on hand
                     </span>
                   )}
@@ -105,6 +115,10 @@ function JobCard({ job }: { job: StagingJob }) {
 }
 
 export function StagingPage() {
+  // Two lenses on the same data. "Deliver" groups by station — right for dropping
+  // material off. "Pick" groups by material — right for the walk TO the crib, where
+  // visiting the seal bin once for six jobs beats six trips.
+  const [lens, setLens] = useState<"deliver" | "pick">("deliver");
   const [station, setStation] = useState<string>(ALL);
   const [hours, setHours] = useState(8);
   const { data, isLoading, isError, refetch, isFetching } = useStagingList(
@@ -117,6 +131,31 @@ export function StagingPage() {
     queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
   });
   const workCenters: { id: string; name: string }[] = wcData?.results ?? [];
+
+  // One row per material across every station, with where each portion goes.
+  const pickRows = useMemo(() => {
+    const by = new Map<string, {
+      material: string; total: number; short: number; location: string;
+      lots: string[]; drops: { qty: number; station: string; erp: string }[];
+    }>();
+    for (const st of data?.stations ?? []) {
+      for (const j of st.jobs) {
+        for (const m of j.materials) {
+          const row = by.get(m.material) ?? {
+            material: m.material, total: 0, short: 0,
+            location: m.lots[0]?.storage_location ?? "",
+            lots: [], drops: [],
+          };
+          row.total += m.needed;
+          row.short += m.short;
+          for (const l of m.lots) if (!row.lots.includes(l.lot_number)) row.lots.push(l.lot_number);
+          row.drops.push({ qty: m.needed, station: st.name, erp: j.erp_id });
+          by.set(m.material, row);
+        }
+      }
+    }
+    return [...by.values()].sort((a, b) => (b.short - a.short) || a.material.localeCompare(b.material));
+  }, [data]);
 
   const totalJobs = (data?.stations ?? []).reduce((n, s) => n + s.jobs.length, 0);
   const totalShort = (data?.stations ?? []).reduce((n, s) => n + s.short_count, 0);
@@ -132,6 +171,20 @@ export function StagingPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border p-0.5">
+            {([["deliver", "By station"], ["pick", "By material"]] as const).map(
+              ([v, label]) => (
+                <Button
+                  key={v}
+                  variant={lens === v ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setLens(v)}
+                >
+                  {label}
+                </Button>
+              ))}
+          </div>
           <Select value={station} onValueChange={setStation}>
             <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -223,7 +276,51 @@ export function StagingPage() {
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {lens === "pick" && pickRows.length > 0 && (
+        <div className="overflow-hidden rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Pick</th>
+                <th className="w-20 px-3 py-2 text-right font-medium">Qty</th>
+                <th className="px-3 py-2 text-left font-medium">Lot · location</th>
+                <th className="px-3 py-2 text-left font-medium">Deliver to</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pickRows.map((r) => (
+                <tr key={r.material} className="border-t align-top">
+                  <td className="px-3 py-2">
+                    {r.material}
+                    {r.short > 0 && (
+                      <span className="ml-2 text-xs text-amber-700 dark:text-amber-400">
+                        short {r.short}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right font-medium tabular-nums">
+                    {r.total}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {r.lots.join(", ") || "—"}
+                    {r.location && <div>{r.location}</div>}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {r.drops.map((d, i) => (
+                      <div key={i}>
+                        <span className="tabular-nums">{d.qty}</span> → {d.station}
+                        {" "}<span className="font-mono">{d.erp}</span>
+                      </div>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className={`grid gap-5 lg:grid-cols-2 ${lens === "pick" ? "hidden" : ""}`}>
         {(data?.stations ?? []).map((s) => (
           <section key={s.work_center_id} className="space-y-2">
             <h2 className="flex items-center gap-2 text-sm font-semibold">

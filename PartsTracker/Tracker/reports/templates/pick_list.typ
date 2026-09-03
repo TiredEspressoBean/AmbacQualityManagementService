@@ -86,7 +86,7 @@
   // Table header
   #table-header[
     #grid(
-      columns: (0.7fr, 1.5fr, 2.4fr, 0.65fr, 0.85fr, 0.55fr, 0.55fr, 1fr),
+      columns: (0.6fr, 1.3fr, 2.1fr, 0.6fr, 0.8fr, 0.5fr, 2.1fr, 0.5fr, 0.9fr),
       column-gutter: 6pt,
       text(weight: "semibold", font: sans-font)[Find \#],
       text(weight: "semibold", font: sans-font)[Part Number],
@@ -94,6 +94,7 @@
       align(right)[#text(weight: "semibold", font: sans-font)[Qty/Ea]],
       align(right)[#text(weight: "semibold", font: sans-font)[Qty Req'd]],
       text(weight: "semibold", font: sans-font)[UoM],
+      text(weight: "semibold", font: sans-font)[Pull from],
       align(center)[#text(weight: "semibold", font: sans-font)[Opt]],
       align(center)[#text(weight: "semibold", font: sans-font)[Picked]],
     )
@@ -103,7 +104,7 @@
   #for (idx, item) in data.items.enumerate() [
     #table-row(idx)[
       #grid(
-        columns: (0.7fr, 1.5fr, 2.4fr, 0.65fr, 0.85fr, 0.55fr, 0.55fr, 1fr),
+        columns: (0.6fr, 1.3fr, 2.1fr, 0.6fr, 0.8fr, 0.5fr, 2.1fr, 0.5fr, 0.9fr),
         column-gutter: 6pt,
         align(horizon)[
           #text(fill: muted, font: mono-font)[#item.find_number]
@@ -122,6 +123,31 @@
         ],
         align(horizon)[
           #text(fill: muted)[#item.unit_of_measure]
+        ],
+        // Lot + location: pull THESE lots. Consumption records oldest-expiry first,
+        // so picking a different lot desynchronises the traceability record from
+        // what physically went into the unit. A shortage is called out here rather
+        // than discovered at an empty bin.
+        align(horizon)[
+          #if item.qty_short != "" [
+            #text(size: 8pt, fill: warn, weight: "semibold")[SHORT #item.qty_short]
+            #if item.lots != "" [
+              #linebreak()
+              #text(size: 7.5pt, fill: muted, font: mono-font)[#item.lots]
+            ]
+          ] else if item.lots != "" [
+            #text(size: 8pt, font: mono-font)[#item.lots]
+            #if item.storage_location != "" [
+              #linebreak()
+              #text(size: 7.5pt, fill: muted, font: sans-font)[#item.storage_location]
+            ]
+          ] else [
+            #text(size: 8pt, fill: muted)[—]
+          ]
+          #if item.consumed_at_step != "" [
+            #linebreak()
+            #text(size: 7pt, fill: muted, font: sans-font)[at #item.consumed_at_step]
+          ]
         ],
         align(horizon + center)[
           #optional-badge(item.is_optional)

@@ -336,9 +336,16 @@ export function useCapableToPromise(
  * What to put at each bench before the operator arrives. Reads the SCHEDULE, so it
  * only says anything once a solve has run. */
 
+export type StagingLot = {
+  lot_number: string; storage_location: string;
+  expiration_date: string | null; take: number;
+};
 export type StagingMaterial = {
   material: string; needed: number; on_hand: number; short: number;
   optional: boolean;
+  /** The lots consumption WILL draw (FEFO). Pull these so the traceability record
+   *  matches what physically went into the unit. */
+  lots: StagingLot[];
 };
 export type StagingJob = {
   work_order_id: string; erp_id: string; part_type: string | null;

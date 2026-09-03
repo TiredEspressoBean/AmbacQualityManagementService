@@ -95,7 +95,7 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     for job in sorted(jobs.values(), key=lambda j: j['starts_at']):
         pt_id = job.pop('_part_type_id')
         job['materials'] = _materials_for(pt_id, job['step_id'], job['units'],
-                                          onhand, bom_cache)
+                                          onhand, bom_cache, tenant)
         job['fixtures'] = sorted(fixtures.get(job['step_id'], ()))
         job['short_count'] = sum(1 for m in job['materials'] if m['short'] > 0)
         stations[(job['work_center_id'], job['work_center'])].append(job)
@@ -123,14 +123,14 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
 
 
 def _materials_for(part_type_id, step_id, units: int, onhand: dict,
-                   bom_cache: dict) -> list:
+                   bom_cache: dict, tenant) -> list:
     """BOM lines consumed at this step, scaled to the units landing here.
 
     Scaled to the UNITS AT THIS STATION, not the work order's quantity — a lot that
     arrives in two batches shouldn't have its whole order's material staged for the
     first one.
     """
-    from Tracker.services.mes.consumption import _released_bom_lines
+    from Tracker.services.mes.consumption import _released_bom_lines, plan_draw
 
     out = []
     for line in _released_bom_lines(part_type_id, bom_cache):
@@ -146,6 +146,9 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
             'on_hand': float(have),
             'short': float(max(Decimal('0'), needed - have)),
             'optional': bool(line.is_optional),
+            # The lots consumption WILL draw, so the picker pulls those and the
+            # traceability record matches what physically went in.
+            'lots': plan_draw(line.material_id, tenant, needed),
         })
     return sorted(out, key=lambda m: (-m['short'], m['material']))
 

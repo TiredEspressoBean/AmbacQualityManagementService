@@ -53,6 +53,15 @@ class PickListItem(BaseModel):
     unit_of_measure: str
     is_optional: bool
 
+    # Where the picker goes and what they pull. `lots` names the lots consumption
+    # will actually draw (FEFO) — pulling those keeps the traceability record
+    # matching what physically went into the unit, which is the claim an AS9100
+    # audit tests. Blank for MAKE lines: those are built, not picked.
+    consumed_at_step: str = ""
+    storage_location: str = ""
+    lots: str = ""
+    qty_short: str = ""       # blank when fully covered
+
 
 class PickListContext(BaseModel):
     """Top-level shape passed to the pick_list.typ template."""
@@ -152,6 +161,7 @@ class PickListAdapter(ReportAdapter):
     def build_context(self, validated_params, user, tenant) -> PickListContext:
         from Tracker.models.mes_lite import WorkOrder
         from Tracker.models.mes_standard import BOM
+        from Tracker.services.mes.consumption import plan_draw
 
         today = datetime.date.today()
 
@@ -185,7 +195,8 @@ class PickListAdapter(ReportAdapter):
                     part_type=part_type,
                     status="RELEASED",
                 )
-                .prefetch_related("lines__component_type", "lines__material")
+                .prefetch_related("lines__component_type", "lines__material",
+                                  "lines__consumed_at_step")
                 .order_by("-revision")
                 .first()
             )
@@ -205,6 +216,19 @@ class PickListAdapter(ReportAdapter):
                         component_name = line.component_type.name
                     else:
                         component_part_number, component_name = "", "(unset)"
+                    # Purchased lines get a pick plan; MAKE lines are built, not
+                    # picked, so they stay blank rather than showing a false shortage.
+                    location, lot_text, short_text = "", "", ""
+                    if line.material_id:
+                        plan = plan_draw(line.material_id, tenant, qty_req)
+                        planned = sum(Decimal(str(p['take'])) for p in plan)
+                        lot_text = ", ".join(p['lot_number'] for p in plan)
+                        location = next(
+                            (p['storage_location'] for p in plan
+                             if p['storage_location']), "")
+                        if planned < qty_req:
+                            short_text = _fmt_qty(qty_req - planned)
+
                     items.append(PickListItem(
                         find_number=line.find_number or "",
                         component_part_number=component_part_number,
@@ -213,6 +237,11 @@ class PickListAdapter(ReportAdapter):
                         qty_required=_fmt_qty(qty_req),
                         unit_of_measure=line.unit_of_measure,
                         is_optional=line.is_optional,
+                        consumed_at_step=(line.consumed_at_step.name
+                                          if line.consumed_at_step_id else ""),
+                        storage_location=location,
+                        lots=lot_text,
+                        qty_short=short_text,
                     ))
 
         return PickListContext(

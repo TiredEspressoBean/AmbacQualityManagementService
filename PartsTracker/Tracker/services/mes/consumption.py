@@ -88,6 +88,43 @@ def _usable_lots(material_id, tenant):
     )
 
 
+def plan_draw(material_id, tenant, needed) -> list:
+    """Which lots a draw of `needed` WOULD take, without taking them.
+
+    Shares `_usable_lots` with the real consumption, so a pick list and the record
+    written on step completion name the same lots. That correspondence is the point:
+    if a picker grabs whatever is nearest while consumption records oldest-expiry,
+    the traceability record says one lot went into the unit and another physically
+    did — which is exactly the claim an AS9100 audit tests.
+
+    Returns `[{lot_number, storage_location, expiration_date, take}]`, shortest-dated
+    first. Expired lots are skipped, as consumption skips them.
+    """
+    from Tracker.services.life_tracking.shelf_life import assert_lot_usable
+
+    needed = Decimal(str(needed))
+    plan: list = []
+    drawn = Decimal('0')
+    for lot in _usable_lots(material_id, tenant):
+        if drawn >= needed:
+            break
+        try:
+            assert_lot_usable(lot)
+        except ValueError:
+            continue
+        take = min(lot.quantity_remaining, needed - drawn)
+        if take <= 0:
+            continue
+        plan.append({
+            'lot_number': lot.lot_number,
+            'storage_location': lot.storage_location or '',
+            'expiration_date': lot.expiration_date,
+            'take': float(take),
+        })
+        drawn += take
+    return plan
+
+
 @transaction.atomic
 def consume_for_step(part, step, operator, bom_cache: dict | None = None
                      ) -> ConsumptionResult:
