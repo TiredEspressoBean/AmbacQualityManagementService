@@ -160,29 +160,49 @@ export function StagingPage() {
   const workCenters: { id: string; name: string }[] = wcData?.results ?? [];
 
   // One row per material across every station, with where each portion goes.
+  // Every material across every station, with each portion's destination AND
+  // whether it's already at the bench. Staged rows STAY on the list, ticked —
+  // a pick sheet you can't see your own progress on is worse than paper.
   const pickRows = useMemo(() => {
     const by = new Map<string, {
-      material: string; total: number; short: number; location: string;
-      lots: string[]; drops: { qty: number; station: string; erp: string }[];
+      material: string; total: number; remaining: number; short: number;
+      location: string; lots: string[];
+      drops: { qty: number; station: string; erp: string; staged: boolean }[];
     }>();
     for (const st of data?.stations ?? []) {
       for (const j of st.jobs) {
+        const staged = !!j.staged_at;
         for (const m of j.materials) {
           const row = by.get(m.material) ?? {
-            material: m.material, total: 0, short: 0,
-            location: m.lots[0]?.storage_location ?? "",
-            lots: [], drops: [],
+            material: m.material, total: 0, remaining: 0, short: 0,
+            location: m.lots[0]?.storage_location ?? "", lots: [], drops: [],
           };
           row.total += m.needed;
-          row.short += m.short;
-          for (const l of m.lots) if (!row.lots.includes(l.lot_number)) row.lots.push(l.lot_number);
-          row.drops.push({ qty: m.needed, station: st.name, erp: j.erp_id });
+          if (!staged) {
+            row.remaining += m.needed;
+            row.short += m.short;
+            for (const l of m.lots) {
+              if (!row.lots.includes(l.lot_number)) row.lots.push(l.lot_number);
+            }
+          }
+          row.drops.push({ qty: m.needed, station: st.name, erp: j.erp_id, staged });
           by.set(m.material, row);
         }
       }
     }
-    return [...by.values()].sort((a, b) => (b.short - a.short) || a.material.localeCompare(b.material));
+    return [...by.values()].sort(
+      (a, b) => (b.short - a.short)
+        || (b.remaining > 0 ? 1 : 0) - (a.remaining > 0 ? 1 : 0)
+        || a.material.localeCompare(b.material));
   }, [data]);
+
+  // How many scheduled jobs contribute nothing to this lens. Without this the
+  // by-station and by-material tabs look wildly inconsistent for no stated
+  // reason — 15 jobs on one, two lines on the other.
+  const noMaterialJobs = useMemo(
+    () => (data?.stations ?? []).reduce(
+      (n, s) => n + s.jobs.filter((j) => j.materials.length === 0).length, 0),
+    [data]);
 
   const totalJobs = (data?.stations ?? []).reduce((n, s) => n + s.jobs.length, 0);
   const totalShort = (data?.stations ?? []).reduce((n, s) => n + s.short_count, 0);
@@ -308,62 +328,98 @@ export function StagingPage() {
         </div>
       )}
 
-      {/* Jobs exist but none carry material, so the by-material lens has nothing to
-          show. Without this the page renders completely blank — the station grid is
-          hidden and the "nothing scheduled" state doesn't apply. */}
+      {/* Jobs exist but none carry material. Staged rows STAY in pickRows, so an
+          empty list can only mean this — not "it's all been picked". Without the
+          state the page renders blank: the station grid is hidden and the
+          "nothing scheduled" state doesn't apply. */}
       {lens === "pick" && pickRows.length === 0 && totalJobs > 0 && (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
           <PackageCheck className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-medium">Nothing to pick in this window.</p>
           <p className="max-w-md text-xs text-muted-foreground">
-            {totalJobs} job{totalJobs === 1 ? " is" : "s are"} scheduled, but none of
-            them consume material at their step — so there is nothing to fetch from
-            stores. Switch to <strong>By station</strong> to see the work itself.
+            All {totalJobs} scheduled job{totalJobs === 1 ? "" : "s"} consume no
+            material at their step, so there is nothing to fetch from stores. Switch
+            to <strong>By station</strong> to see the work itself.
           </p>
         </div>
       )}
 
       {lens === "pick" && pickRows.length > 0 && (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">Pick</th>
-                <th className="w-20 px-3 py-2 text-right font-medium">Qty</th>
-                <th className="px-3 py-2 text-left font-medium">Lot · location</th>
-                <th className="px-3 py-2 text-left font-medium">Deliver to</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pickRows.map((r) => (
-                <tr key={r.material} className="border-t align-top">
-                  <td className="px-3 py-2">
-                    {r.material}
-                    {r.short > 0 && (
-                      <span className="ml-2 text-xs text-amber-700 dark:text-amber-400">
-                        short {r.short}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right font-medium tabular-nums">
-                    {r.total}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {r.lots.join(", ") || "—"}
-                    {r.location && <div>{r.location}</div>}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {r.drops.map((d, i) => (
-                      <div key={i}>
-                        <span className="tabular-nums">{d.qty}</span> → {d.station}
-                        {" "}<span className="font-mono">{d.erp}</span>
-                      </div>
-                    ))}
-                  </td>
+        <div className="space-y-2">
+          {noMaterialJobs > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {noMaterialJobs} of {totalJobs} scheduled job
+              {totalJobs === 1 ? "" : "s"} consume no material at their step, so
+              they don&rsquo;t appear here — see <strong>By station</strong> for the
+              work itself.
+            </p>
+          )}
+          <div className="overflow-hidden rounded-lg border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Pick</th>
+                  <th className="w-24 px-3 py-2 text-right font-medium">Qty</th>
+                  <th className="px-3 py-2 text-left font-medium">Lot · location</th>
+                  <th className="px-3 py-2 text-left font-medium">Deliver to</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pickRows.map((r) => {
+                  const done = r.remaining === 0;
+                  return (
+                    <tr key={r.material}
+                        className={`border-t align-top ${done ? "bg-muted/30" : ""}`}>
+                      <td className="px-3 py-2">
+                        <span className={done ? "text-muted-foreground line-through" : ""}>
+                          {r.material}
+                        </span>
+                        {r.short > 0 && (
+                          <span className="ml-2 text-xs text-amber-700 dark:text-amber-400">
+                            short {r.short}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium tabular-nums">
+                        {done ? (
+                          <span className="text-xs font-normal text-muted-foreground">
+                            all staged
+                          </span>
+                        ) : r.remaining === r.total ? (
+                          r.total
+                        ) : (
+                          // Remaining vs total, so the handler sees both what's
+                          // left to fetch and what the job actually needs.
+                          <>
+                            {r.remaining}
+                            <span className="text-xs font-normal text-muted-foreground">
+                              {" "}of {r.total}
+                            </span>
+                          </>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {done ? "—" : (r.lots.join(", ") || "—")}
+                        {!done && r.location && <div>{r.location}</div>}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {r.drops.map((d, i) => (
+                          <div key={i} className={d.staged ? "text-muted-foreground/60" : ""}>
+                            <span className="inline-block w-3">{d.staged ? "✓" : ""}</span>
+                            <span className={`tabular-nums ${d.staged ? "line-through" : ""}`}>
+                              {d.qty}
+                            </span>{" "}
+                            → {d.station}{" "}
+                            <span className="font-mono">{d.erp}</span>
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
