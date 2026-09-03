@@ -332,6 +332,45 @@ export function useCapableToPromise(
   });
 }
 
+/* --- Staging pick list ----------------------------------------------------
+ * What to put at each bench before the operator arrives. Reads the SCHEDULE, so it
+ * only says anything once a solve has run. */
+
+export type StagingMaterial = {
+  material: string; needed: number; on_hand: number; short: number;
+  optional: boolean;
+};
+export type StagingJob = {
+  work_order_id: string; erp_id: string; part_type: string | null;
+  step_id: string; step_name: string;
+  work_center_id: string; work_center: string;
+  starts_at: string; units: number; machine: string | null;
+  materials: StagingMaterial[]; fixtures: string[]; short_count: number;
+};
+export type StagingStation = {
+  work_center_id: string; name: string; jobs: StagingJob[]; short_count: number;
+};
+export type StagingUnmapped = {
+  erp_id: string; part_type: string | null; components: string[];
+};
+export type StagingList = {
+  from: string; to: string; window_hours: number;
+  schedule_id: string | null; is_stale: boolean; note: string | null;
+  /** BUY components whose BOM line has no consumed-at-step: the job needs them but
+   *  nothing says at which bench, so they can't appear on any station's list. */
+  unmapped: StagingUnmapped[];
+  stations: StagingStation[];
+};
+export function useStagingList(workCenterId?: string, hours = 8) {
+  return useQuery({
+    queryKey: ["staging-list", workCenterId ?? null, hours],
+    queryFn: () =>
+      api.api_WorkCenters_staging_list_retrieve({
+        queries: { ...(workCenterId ? { work_center: workCenterId } : {}), hours },
+      } as never) as Promise<StagingList>,
+  });
+}
+
 /** "Why isn't this on the board?" — open work the active schedule doesn't cover, each
  *  row carrying the single most actionable reason and the fix for it. */
 export type UnscheduledReason =

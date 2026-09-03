@@ -510,6 +510,12 @@ class DemoShowcaseSeeder(BaseSeeder):
         elif bom.status != "RELEASED":
             BOM.objects.filter(pk=bom.pk).update(status="RELEASED")
 
+        # Where each purchased component is actually consumed. Without this the
+        # material gate can only reason about the whole work order, nothing is drawn
+        # from stock on step completion, and the staging list has no bench to put
+        # anything on — the components are needed but nothing says WHERE.
+        consumed_at = self._consumption_steps(part_type)
+
         if created or bom.lines.count() == 0:
             for name, erp, prefix, find, qty, uom, optional, source in components:
                 line_kwargs = dict(
@@ -521,10 +527,42 @@ class DemoShowcaseSeeder(BaseSeeder):
                     line_kwargs['component_type'] = make_types[name]
                 else:
                     line_kwargs['material'] = buy_materials[name]
+                    step = consumed_at.get(name)
+                    if step is not None:
+                        line_kwargs['consumed_at_step'] = step
                 BOMLine.objects.create(**line_kwargs)
 
         self.log(f"  BOM {bom.revision} ({bom.status}) with {bom.lines.count()} lines for {part_type.name}")
         return bom
+
+    def _consumption_steps(self, part_type):
+        """Which step each purchased component goes in at, by component name.
+
+        Matched on step NAME rather than an id map so a re-seeded or renamed process
+        degrades to "unmapped" (which the staging list reports) instead of pointing a
+        BOM line at the wrong operation.
+        """
+        from Tracker.models import Steps
+
+        steps = {
+            s.name.lower(): s
+            for s in Steps.objects.filter(
+                tenant=self.tenant, part_type=part_type, is_current_version=True)
+        }
+
+        def pick(*names):
+            for n in names:
+                hit = steps.get(n.lower())
+                if hit is not None:
+                    return hit
+            return None
+
+        assembly = pick("Assembly")
+        return {
+            "Seal & O-Ring Kit": assembly,
+            "Solenoid Coil": assembly,
+            "Injector Spring": assembly,
+        }
 
     def _annotation_error_type(self):
         """An ErrorType flagged requires_3d_annotation=True for this tenant."""

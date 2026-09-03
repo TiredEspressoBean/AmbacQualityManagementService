@@ -24,6 +24,7 @@ import {
     LineChart,
     MapPin,
     Package,
+    PackageCheck,
     PackageSearch,
     BadgeCheck,
     Recycle,
@@ -76,6 +77,7 @@ const schedulingPages = [
     { name: "Schedule (Gantt)", url: "/production/schedule", icon: CalendarRange },
     { name: "Calendar", url: "/production/calendar", icon: CalendarDays },
     { name: "Capacity Planning", url: "/production/capacity", icon: Grid3x3 },
+    { name: "Staging List", url: "/production/staging", icon: PackageCheck },
     { name: "Operator Hours", url: "/production/labor-hours", icon: Clock },
     { name: "Requirements", url: "/production/requirements", icon: ClipboardList },
 ]

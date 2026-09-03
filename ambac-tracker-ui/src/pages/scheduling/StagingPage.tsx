@@ -1,0 +1,253 @@
+/** Staging pick list (/production/staging).
+ *
+ * A materials handler's worksheet, not a report. They read it walking the floor with
+ * a cart, so it's ordered the way the work arrives and says what to pick, in what
+ * quantity, for which bench — and flags what isn't there so they escalate before the
+ * operator discovers it.
+ *
+ * Everything here comes off the SCHEDULE, so it only says anything once a solve has
+ * run. That's also the point: the scheduler makes time-specific promises, and this is
+ * what makes them true.
+ */
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, PackageCheck, Wrench } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
+import { useStagingList, type StagingJob } from "@/hooks/useScheduling";
+
+const WINDOWS = [4, 8, 12, 24];
+const ALL = "__all__";
+
+/** "in 20m" / "in 3h" / "09:40" — a handler cares how soon, not the timestamp. */
+function whenLabel(iso: string): string {
+  const t = new Date(iso).getTime();
+  const mins = Math.round((t - Date.now()) / 60000);
+  if (mins <= 0) return "now";
+  if (mins < 60) return `in ${mins}m`;
+  if (mins < 8 * 60) return `in ${Math.round(mins / 60)}h`;
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function JobCard({ job }: { job: StagingJob }) {
+  const short = job.short_count > 0;
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        short ? "border-l-4 border-l-amber-500" : ""
+      }`}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="font-mono text-sm font-medium">{job.erp_id}</span>
+        <span className="text-xs text-muted-foreground">{job.step_name}</span>
+        {job.part_type && (
+          <span className="truncate text-xs text-muted-foreground">
+            · {job.part_type}
+          </span>
+        )}
+        <span className="ml-auto shrink-0 text-xs tabular-nums">
+          <strong>{job.units}</strong> unit{job.units === 1 ? "" : "s"}
+          {" · "}
+          <span className={short ? "text-amber-700 dark:text-amber-400" : ""}>
+            {whenLabel(job.starts_at)}
+          </span>
+        </span>
+      </div>
+
+      {job.materials.length > 0 ? (
+        <table className="mt-2 w-full text-xs">
+          <tbody>
+            {job.materials.map((m) => (
+              <tr key={m.material} className="border-t first:border-t-0">
+                <td className="py-1 pr-2">
+                  {m.material}
+                  {m.optional && (
+                    <span className="ml-1 text-muted-foreground">(optional)</span>
+                  )}
+                </td>
+                <td className="w-20 py-1 text-right tabular-nums">
+                  <strong>{m.needed}</strong>
+                </td>
+                <td className="w-28 py-1 pl-2 text-right tabular-nums">
+                  {m.short > 0 ? (
+                    <span className="text-amber-700 dark:text-amber-400">
+                      short {m.short}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {m.on_hand} on hand
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          No material consumed at this step.
+        </p>
+      )}
+
+      {job.fixtures.length > 0 && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Wrench className="h-3 w-3" /> {job.fixtures.join(" · ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function StagingPage() {
+  const [station, setStation] = useState<string>(ALL);
+  const [hours, setHours] = useState(8);
+  const { data, isLoading, isError, refetch, isFetching } = useStagingList(
+    station === ALL ? undefined : station, hours);
+
+  // Station picker options. Queried directly rather than through a hook, matching
+  // how the work-centre admin page reads the same list.
+  const { data: wcData } = useQuery({
+    queryKey: ["work-centers", "staging-picker"] as const,
+    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
+  });
+  const workCenters: { id: string; name: string }[] = wcData?.results ?? [];
+
+  const totalJobs = (data?.stations ?? []).reduce((n, s) => n + s.jobs.length, 0);
+  const totalShort = (data?.stations ?? []).reduce((n, s) => n + s.short_count, 0);
+
+  return (
+    <div className="space-y-5 p-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Staging list</h1>
+          <p className="text-sm text-muted-foreground">
+            What to put at each bench before the operator gets there — the next{" "}
+            {data?.window_hours ?? hours} hours of scheduled work.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={station} onValueChange={setStation}>
+            <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All stations</SelectItem>
+              {workCenters.map((w) => (
+                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(hours)} onValueChange={(v) => setHours(Number(v))}>
+            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {WINDOWS.map((h) => (
+                <SelectItem key={h} value={String(h)}>next {h}h</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={() => refetch()}
+                  disabled={isFetching}>
+            {isFetching ? "Refreshing…" : "Refresh"}
+          </Button>
+        </div>
+      </header>
+
+      {/* A stale plan means these times have already moved — say so before someone
+          stages to them. */}
+      {data?.is_stale && (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+          The schedule is stale — these times may have moved. Re-solve before staging
+          to them.
+        </p>
+      )}
+
+      {totalShort > 0 && (
+        <p className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+          <span>
+            <strong>{totalShort}</strong> line{totalShort === 1 ? "" : "s"} can&rsquo;t
+            be picked in full. Escalate now rather than at the bench.
+          </span>
+        </p>
+      )}
+
+      {/* Can't be staged anywhere, so it would otherwise read as "nothing to pick"
+          — surface it as a BOM to fix instead. */}
+      {(data?.unmapped?.length ?? 0) > 0 && (
+        <div className="rounded-md border border-sky-500/40 bg-sky-500/5 px-3 py-2 text-sm">
+          <p className="font-medium">Some components aren&rsquo;t mapped to a step</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            These are needed but the BOM doesn&rsquo;t say at which operation, so they
+            can&rsquo;t be put on a bench list. Set <em>consumed at step</em> on the BOM
+            line to have them picked here.
+          </p>
+          <ul className="mt-1.5 space-y-0.5 text-xs">
+            {data!.unmapped.map((u) => (
+              <li key={u.erp_id}>
+                <span className="font-mono">{u.erp_id}</span>{" — "}
+                <span className="text-muted-foreground">{u.components.join(", ")}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+      {isError && (
+        <div className="space-y-2 text-sm">
+          <p className="text-destructive">Couldn&rsquo;t load the staging list.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
+        </div>
+      )}
+
+      {/* "Nothing to stage" and "there is no plan" are different facts. */}
+      {data?.note && (
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
+          <PackageCheck className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-medium">{data.note}</p>
+        </div>
+      )}
+
+      {data && !data.note && totalJobs === 0 && (
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
+          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+          <p className="text-sm font-medium">Nothing scheduled in this window.</p>
+          <p className="text-xs text-muted-foreground">
+            Try a longer window, or check the schedule board.
+          </p>
+        </div>
+      )}
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        {(data?.stations ?? []).map((s) => (
+          <section key={s.work_center_id} className="space-y-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              {s.name}
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                {s.jobs.length} job{s.jobs.length === 1 ? "" : "s"}
+              </Badge>
+              {s.short_count > 0 && (
+                <Badge
+                  variant="outline"
+                  className="h-5 border-amber-500/50 px-1.5 text-[10px] text-amber-700 dark:text-amber-400"
+                >
+                  {s.short_count} short
+                </Badge>
+              )}
+            </h2>
+            <div className="space-y-2">
+              {s.jobs.map((j) => (
+                <JobCard key={`${j.work_order_id}-${j.step_id}`} job={j} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}

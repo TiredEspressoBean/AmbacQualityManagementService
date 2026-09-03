@@ -91,6 +91,7 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     bom_cache: dict = {}
     fixtures = _fixtures_by_step(tenant)
     stations: dict = defaultdict(list)
+    unmapped: dict = {}
     for job in sorted(jobs.values(), key=lambda j: j['starts_at']):
         pt_id = job.pop('_part_type_id')
         job['materials'] = _materials_for(pt_id, job['step_id'], job['units'],
@@ -98,11 +99,21 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         job['fixtures'] = sorted(fixtures.get(job['step_id'], ()))
         job['short_count'] = sum(1 for m in job['materials'] if m['short'] > 0)
         stations[(job['work_center_id'], job['work_center'])].append(job)
+        # A BUY line with no consumed-at-step can't be staged anywhere: we know the
+        # job needs it, not WHERE. Reporting that beats an empty bench list that
+        # looks like "nothing to pick" — the same reason the solver explains an
+        # infeasible run instead of showing a blank board.
+        missing = _unmapped_components(pt_id, bom_cache)
+        if missing and job['erp_id'] not in unmapped:
+            unmapped[job['erp_id']] = {'erp_id': job['erp_id'],
+                                       'part_type': job['part_type'],
+                                       'components': missing}
 
     return {
         'from': now, 'to': until, 'window_hours': hours,
         'schedule_id': str(schedule.id), 'is_stale': bool(schedule.is_stale),
         'note': None,
+        'unmapped': sorted(unmapped.values(), key=lambda u: u['erp_id']),
         'stations': [
             {'work_center_id': wc_id, 'name': name, 'jobs': jobs_,
              'short_count': sum(j['short_count'] for j in jobs_)}
@@ -139,6 +150,23 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
     return sorted(out, key=lambda m: (-m['short'], m['material']))
 
 
+def _unmapped_components(part_type_id, bom_cache: dict) -> list:
+    """BUY components the BOM never says WHERE to consume.
+
+    These can't appear on any bench list — the job needs them, but nothing records at
+    which operation. Surfaced so the gap reads as a BOM to fix rather than as a
+    station with nothing to pick.
+    """
+    from Tracker.services.mes.consumption import _released_bom_lines
+
+    return sorted(
+        (line.material.name if line.material else str(line.material_id))
+        for line in _released_bom_lines(part_type_id, bom_cache)
+        if line.source == 'BUY' and line.material_id is not None
+        and line.consumed_at_step_id is None
+    )
+
+
 def _fixtures_by_step(tenant) -> dict:
     """step_id (str) -> fixture names the step needs."""
     from Tracker.models import Fixture
@@ -152,4 +180,4 @@ def _fixtures_by_step(tenant) -> dict:
 
 def _empty(now, until, hours, note) -> dict:
     return {'from': now, 'to': until, 'window_hours': hours, 'schedule_id': None,
-            'is_stale': False, 'note': note, 'stations': []}
+            'is_stale': False, 'note': note, 'unmapped': [], 'stations': []}
