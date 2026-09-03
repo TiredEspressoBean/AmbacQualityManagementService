@@ -32,15 +32,11 @@
 
 // ── Title block ──────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    PPAP ELEMENT 16
-  ]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[Checking Aids]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[Measurement Equipment List]
-]
+#report-title(
+  [PPAP ELEMENT 16],
+  [Checking Aids],
+  [Measurement Equipment List],
+)
 
 #v(14pt)
 

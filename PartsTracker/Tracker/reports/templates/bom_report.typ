@@ -46,17 +46,14 @@
 
 // ── Title block ──────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    BILL OF MATERIALS
-  ]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[#data.parent_part_name]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(6pt)
-  #status-badge(data.status)
-]
+#report-title(
+  [BILL OF MATERIALS],
+  data.parent_part_name,
+  data.tenant_name,
+  trailing: [
+    #status-badge(data.status)
+  ],
+)
 
 #v(14pt)
 

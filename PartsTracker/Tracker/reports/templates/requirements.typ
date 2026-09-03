@@ -42,15 +42,15 @@
   inset: (x: 6pt, y: 5pt), width: 100%,
 )[#set text(size: 9pt); #grid(columns: cols, column-gutter: 6pt, ..cells)]
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[SOURCING & PRODUCTION REQUIREMENTS]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[What To Buy, Build & Procure]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font)[Generated: #data.generated_date · red = order by now]
-]
+#report-title(
+  [SOURCING & PRODUCTION REQUIREMENTS],
+  [What To Buy, Build & Procure],
+  data.tenant_name,
+  trailing-gap: 4pt,
+  trailing: [
+    #text(size: 9pt, fill: muted, font: sans-font)[Generated: #data.generated_date · red = order by now]
+  ],
+)
 
 #v(10pt)
 

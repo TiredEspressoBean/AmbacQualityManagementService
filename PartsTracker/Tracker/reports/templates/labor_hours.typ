@@ -13,17 +13,17 @@
   classification: "Internal — Payroll",
 )
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[OPERATOR HOURS]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[Shop Hours by Operator]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font)[
-    Period: #data.start_date — #data.end_date · Generated: #data.generated_date
-  ]
-]
+#report-title(
+  [OPERATOR HOURS],
+  [Shop Hours by Operator],
+  data.tenant_name,
+  trailing-gap: 4pt,
+  trailing: [
+    #text(size: 9pt, fill: muted, font: sans-font)[
+        Period: #data.start_date — #data.end_date · Generated: #data.generated_date
+      ]
+  ],
+)
 
 #v(14pt)
 

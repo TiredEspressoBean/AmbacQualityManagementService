@@ -56,26 +56,25 @@
 )
 
 // Title block
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    NON-CONFORMANCE REPORT
-  ]
-  #v(2pt)
-  #text(size: 22pt, weight: "bold", font: sans-font)[#data.disposition_number]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[Tenant: #data.tenant_name]
-  #v(4pt)
-  #state-badge(data.current_state) #h(6pt)
-  #severity-badge(data.severity)
-  #if data.disposition_type != none {
-    h(6pt)
-    badge(
-      data.disposition_type.replace("_", " "),
-      ink,
-      rgb("#f1f5f9"),
-    )
-  }
-]
+#report-title(
+  [NON-CONFORMANCE REPORT],
+  data.disposition_number,
+  [Tenant: #data.tenant_name],
+  title-size: 22pt,
+  trailing-gap: 4pt,
+  trailing: [
+    #state-badge(data.current_state) #h(6pt)
+      #severity-badge(data.severity)
+      #if data.disposition_type != none {
+        h(6pt)
+        badge(
+          data.disposition_type.replace("_", " "),
+          ink,
+          rgb("#f1f5f9"),
+        )
+      }
+  ],
+)
 
 #v(10pt)
 

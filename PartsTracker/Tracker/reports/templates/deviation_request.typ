@@ -57,25 +57,23 @@
 
 // ── Title block ───────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    DEVIATION REQUEST / USE-AS-IS AUTHORIZATION
-  ]
-  #v(2pt)
-  #text(size: 22pt, weight: "bold", font: sans-font)[#data.disposition_number]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(6pt)
-  #disposition-badge(data.disposition_type)
-  #h(8pt)
-  #severity-badge(data.severity)
-  #h(8pt)
-  #state-badge(data.current_state)
-  #v(2pt)
-  #text(size: 9pt, fill: muted)[
-    Date Opened: #str(data.created_at).slice(0, 10)
-  ]
-]
+#report-title(
+  [DEVIATION REQUEST / USE-AS-IS AUTHORIZATION],
+  data.disposition_number,
+  data.tenant_name,
+  title-size: 22pt,
+  trailing: [
+    #disposition-badge(data.disposition_type)
+      #h(8pt)
+      #severity-badge(data.severity)
+      #h(8pt)
+      #state-badge(data.current_state)
+      #v(2pt)
+      #text(size: 9pt, fill: muted)[
+        Date Opened: #str(data.created_at).slice(0, 10)
+      ]
+  ],
+)
 
 #v(14pt)
 

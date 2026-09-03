@@ -49,17 +49,14 @@
 
 // ── Title block ───────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    STATISTICAL PROCESS CONTROL REPORT
-  ]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[#data.measurement_label]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(6pt)
-  #mode-badge(data.chart_mode)
-]
+#report-title(
+  [STATISTICAL PROCESS CONTROL REPORT],
+  data.measurement_label,
+  data.tenant_name,
+  trailing: [
+    #mode-badge(data.chart_mode)
+  ],
+)
 
 #v(12pt)
 

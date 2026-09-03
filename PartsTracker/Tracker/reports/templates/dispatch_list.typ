@@ -75,19 +75,12 @@
 
 // ── Title block ──────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    DISPATCH LIST
-  ]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[What's Running Today]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font)[
-    Generated: #data.generated_date
-  ]
-]
+#report-title(
+  [DISPATCH LIST],
+  [What's Running Today],
+  data.tenant_name,
+  generated: data.generated_date,
+)
 
 #v(14pt)
 

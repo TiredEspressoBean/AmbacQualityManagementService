@@ -36,19 +36,12 @@
 
 // ── Title block ──────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    PICK LIST / MATERIAL REQUISITION
-  ]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[#data.part_name]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font)[
-    Generated: #data.generated_date
-  ]
-]
+#report-title(
+  [PICK LIST / MATERIAL REQUISITION],
+  data.part_name,
+  data.tenant_name,
+  generated: data.generated_date,
+)
 
 #v(14pt)
 
@@ -86,8 +79,8 @@
   // Table header
   #table-header[
     #grid(
-      columns: (0.6fr, 1.3fr, 2.1fr, 0.6fr, 0.8fr, 0.5fr, 2.1fr, 0.5fr, 0.9fr),
-      column-gutter: 6pt,
+      columns: (0.5fr, 1.7fr, 2.0fr, 0.55fr, 0.75fr, 0.45fr, 1.9fr, 0.45fr, 0.85fr),
+      column-gutter: 9pt,
       text(weight: "semibold", font: sans-font)[Find \#],
       text(weight: "semibold", font: sans-font)[Part Number],
       text(weight: "semibold", font: sans-font)[Description],
@@ -104,8 +97,8 @@
   #for (idx, item) in data.items.enumerate() [
     #table-row(idx)[
       #grid(
-        columns: (0.6fr, 1.3fr, 2.1fr, 0.6fr, 0.8fr, 0.5fr, 2.1fr, 0.5fr, 0.9fr),
-        column-gutter: 6pt,
+        columns: (0.5fr, 1.7fr, 2.0fr, 0.55fr, 0.75fr, 0.45fr, 1.9fr, 0.45fr, 0.85fr),
+        column-gutter: 9pt,
         align(horizon)[
           #text(fill: muted, font: mono-font)[#item.find_number]
         ],

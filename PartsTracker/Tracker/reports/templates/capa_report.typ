@@ -110,19 +110,17 @@
 
 // ── Title block ───────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    CORRECTIVE & PREVENTIVE ACTION REPORT
-  ]
-  #v(2pt)
-  #text(size: 22pt, weight: "bold", font: sans-font)[#data.capa_number]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(6pt)
-  #status-badge(data.status)
-  #h(6pt)
-  #severity-badge(data.severity)
-]
+#report-title(
+  [CORRECTIVE & PREVENTIVE ACTION REPORT],
+  data.capa_number,
+  data.tenant_name,
+  title-size: 22pt,
+  trailing: [
+    #status-badge(data.status)
+      #h(6pt)
+      #severity-badge(data.severity)
+  ],
+)
 
 #v(12pt)
 

@@ -46,19 +46,12 @@
 
 // ── Title block ──────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    TRAINING RECORD
-  ]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[Training History]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font)[
-    Generated: #data.generated_date
-  ]
-]
+#report-title(
+  [TRAINING RECORD],
+  [Training History],
+  data.tenant_name,
+  generated: data.generated_date,
+)
 
 #v(14pt)
 

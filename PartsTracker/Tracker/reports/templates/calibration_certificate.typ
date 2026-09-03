@@ -53,17 +53,15 @@
 
 // ── Title block ──────────────────────────────────────────────────────────────
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    CALIBRATION CERTIFICATE
-  ]
-  #v(2pt)
-  #text(size: 22pt, weight: "bold", font: sans-font)[#data.certificate_number]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(6pt)
-  #result-badge(data.result)
-]
+#report-title(
+  [CALIBRATION CERTIFICATE],
+  data.certificate_number,
+  data.tenant_name,
+  title-size: 22pt,
+  trailing: [
+    #result-badge(data.result)
+  ],
+)
 
 #v(12pt)
 

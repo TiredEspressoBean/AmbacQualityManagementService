@@ -35,19 +35,17 @@
   classification: "Internal — Shop Floor",
 )
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[STAGING LIST]
-  #v(2pt)
-  #text(size: 20pt, weight: "bold", font: sans-font)[
-    #if data.station_filter != "" [#data.station_filter] else [All stations]
-  ]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#data.tenant_name]
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font)[
-    #data.window_from — #data.window_to (next #data.window_hours h) · printed #data.generated_date
-  ]
-]
+#report-title(
+  [STAGING LIST],
+  if data.station_filter != "" [#data.station_filter] else [All stations],
+  data.tenant_name,
+  trailing-gap: 4pt,
+  trailing: [
+    #text(size: 9pt, fill: muted, font: sans-font)[
+        #data.window_from — #data.window_to (next #data.window_hours h) · printed #data.generated_date
+      ]
+  ],
+)
 
 #v(10pt)
 
@@ -101,7 +99,17 @@
               align(right)[#text(size: 9pt, weight: "semibold")[#m.qty]],
               // Shortage wins the cell: better to read it here than at the bin.
               if m.is_short {
-                text(size: 8.5pt, fill: bad, weight: "semibold")[SHORT #m.short_qty]
+                // Short, but partial stock may still exist — say where, or the
+                // picker can't fetch the part they could have had.
+                [
+                  #text(size: 8.5pt, fill: bad, weight: "semibold")[SHORT #m.short_qty]
+                  #if m.lots != "" [
+                    #linebreak()
+                    #text(size: 8pt, fill: muted, font: mono-font)[
+                      #m.lots#if m.storage_location != "" [ · #m.storage_location]
+                    ]
+                  ]
+                ]
               } else if m.lots != "" {
                 text(size: 8.5pt, fill: muted, font: mono-font)[
                   #m.lots#if m.storage_location != "" [ · #m.storage_location]

@@ -143,7 +143,11 @@
 
 // Centred report title block: letter-spaced eyebrow, bold title, tenant, and
 // an optional "Generated: <date>" line or a trailing badge (pass via `trailing`).
-#let report-title(eyebrow, title, tenant, generated: none, trailing: none, title-size: 20pt) = align(center)[
+// `trailing-gap` exists because templates historically used 4pt or 6pt before their
+// badge/date line; parameterising it let all of them adopt this helper without a
+// single pixel moving.
+#let report-title(eyebrow, title, tenant, generated: none, trailing: none,
+                  title-size: 20pt, trailing-gap: 6pt) = align(center)[
   #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[#upper(eyebrow)]
   #v(2pt)
   #text(size: title-size, weight: "bold", font: sans-font)[#title]
@@ -154,7 +158,7 @@
     text(size: 9pt, fill: muted, font: sans-font)[Generated: #generated]
   }
   #if trailing != none {
-    v(6pt)
+    v(trailing-gap)
     trailing
   }
 ]
