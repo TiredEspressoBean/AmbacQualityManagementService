@@ -109,6 +109,17 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
                                        'part_type': job['part_type'],
                                        'components': missing}
 
+    # Staged state for exactly the jobs on this list, in one query.
+    staged = _staged_map(
+        tenant, [(j['work_order_id'], j['step_id'])
+                 for js in stations.values() for j in js])
+    for js in stations.values():
+        for j in js:
+            st = staged.get((j['work_order_id'], j['step_id']), {})
+            j['staged_at'] = st.get('staged_at')
+            j['staged_by'] = st.get('staged_by')
+            j['staging_note'] = st.get('note', '')
+
     return {
         'from': now, 'to': until, 'window_hours': hours,
         'schedule_id': str(schedule.id), 'is_stale': bool(schedule.is_stale),
@@ -116,7 +127,8 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         'unmapped': sorted(unmapped.values(), key=lambda u: u['erp_id']),
         'stations': [
             {'work_center_id': wc_id, 'name': name, 'jobs': jobs_,
-             'short_count': sum(j['short_count'] for j in jobs_)}
+             'short_count': sum(j['short_count'] for j in jobs_),
+             'staged_count': sum(1 for j in jobs_ if j.get('staged_at'))}
             for (wc_id, name), jobs_ in sorted(stations.items(), key=lambda kv: kv[0][1])
         ],
     }
@@ -184,3 +196,51 @@ def _fixtures_by_step(tenant) -> dict:
 def _empty(now, until, hours, note) -> dict:
     return {'from': now, 'to': until, 'window_hours': hours, 'schedule_id': None,
             'is_stale': False, 'note': note, 'unmapped': [], 'stations': []}
+
+
+def set_staged(tenant, work_order_id, step_id, staged: bool, user, note: str = ""):
+    """Mark a job's material staged (or not) at one step.
+
+    Idempotent by design — a handler double-tapping the same row, or two people
+    working the same cart, must not produce a second record or move the timestamp
+    on already-staged work.
+    """
+    from django.utils import timezone
+    from Tracker.models import MaterialStaging
+
+    row, _ = MaterialStaging.objects.get_or_create(
+        tenant=tenant, work_order_id=work_order_id, step_id=step_id)
+    if staged:
+        if row.staged_at is None:
+            row.staged_at = timezone.now()
+            row.staged_by = user if getattr(user, 'is_authenticated', False) else None
+    else:
+        row.staged_at = None
+        row.staged_by = None
+    row.note = note or ""
+    row.save(update_fields=['staged_at', 'staged_by', 'note', 'updated_at'])
+    return row
+
+
+def _staged_map(tenant, keys) -> dict:
+    """(work_order_id, step_id) -> {staged_at, staged_by, note} for the jobs shown.
+
+    One query for the whole list rather than one per job.
+    """
+    from Tracker.models import MaterialStaging
+
+    if not keys:
+        return {}
+    wo_ids = {k[0] for k in keys}
+    step_ids = {k[1] for k in keys}
+    out = {}
+    for r in (MaterialStaging.objects
+              .filter(tenant=tenant, work_order_id__in=wo_ids, step_id__in=step_ids)
+              .select_related('staged_by')):
+        out[(str(r.work_order_id), str(r.step_id))] = {
+            'staged_at': r.staged_at,
+            'staged_by': (r.staged_by.get_full_name() or r.staged_by.username
+                          if r.staged_by else None),
+            'note': r.note,
+        }
+    return out

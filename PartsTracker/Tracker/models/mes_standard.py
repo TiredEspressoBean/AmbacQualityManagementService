@@ -1678,6 +1678,53 @@ class MaterialUsage(SecureModel):
         super().save(*args, **kwargs)
 
 
+class MaterialStaging(SecureModel):
+    """Whether a job's material has been put at its bench, per (work order, step).
+
+    Deliberately NOT a flag on ScheduledTask: the solver replaces every task row on
+    each solve, so staging state recorded there would vanish the next time a planner
+    re-solved — losing exactly the work a handler had already done on the floor.
+    (work_order, step) is the durable identity of "this job at this operation", and
+    nothing else in the schema carries it, so it earns its own small table.
+
+    `staged_at` null means not staged: the row is a toggle rather than an event log,
+    so un-staging can't collide with the uniqueness constraint on re-staging.
+    """
+
+    work_order = models.ForeignKey(
+        'Tracker.WorkOrder', on_delete=models.CASCADE, related_name='material_stagings')
+    step = models.ForeignKey(
+        'Tracker.Steps', on_delete=models.CASCADE, related_name='material_stagings')
+
+    staged_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When the material was put at the bench. Null = not staged.")
+    staged_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='material_stagings',
+        help_text="Who staged it — the shift-handover question is 'who has this'.")
+    note = models.TextField(
+        blank=True, default='',
+        help_text="Anything the next person needs: part-picked, substituted lot, "
+                  "left on the blue cart.")
+
+    class Meta:
+        verbose_name = 'Material Staging'
+        verbose_name_plural = 'Material Stagings'
+        ordering = ['-staged_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'work_order', 'step'],
+                name='unique_material_staging_per_job_step',
+            )
+        ]
+        indexes = [models.Index(fields=['tenant', 'staged_at'])]
+
+    def __str__(self):
+        state = "staged" if self.staged_at else "not staged"
+        return f"{self.work_order} @ {self.step} ({state})"
+
+
 class TimeEntry(SecureModel):
     """
     Labor time tracking - single flexible table with entry_type.

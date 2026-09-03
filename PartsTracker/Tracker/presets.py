@@ -76,7 +76,8 @@ STAFF_VIEW_PERMISSIONS = [
     # BOM & Materials
     'view_bom', 'view_bomline', 'view_assemblyusage', 'view_disassemblybomline',
     'view_material',
-    'view_materiallot', 'view_materialusage', 'view_harvestedcomponent',
+    'view_materiallot', 'view_materialusage', 'view_materialstaging',
+    'view_harvestedcomponent',
     'view_core',
     # Equipment & Calibration
     'view_equipments', 'view_equipmenttype',
@@ -195,6 +196,7 @@ STAFF_OPERATIONAL_WRITE = [
     # Materials & BOM usage
     'add_materiallot', 'change_materiallot',
     'add_materialusage', 'change_materialusage',
+    'add_materialstaging', 'change_materialstaging',
     'add_assemblyusage', 'change_assemblyusage',
     # Equipment & Calibration
     'add_equipments', 'change_equipments',
@@ -400,7 +402,8 @@ MANAGER_DELETE_PERMISSIONS = [
     'delete_stepexecution',
     'delete_substepcompletion', 'delete_substepgatecompletion', 'delete_substepresponse',
     'delete_core', 'delete_harvestedcomponent',
-    'delete_materiallot', 'delete_materialusage', 'delete_assemblyusage',
+    'delete_materiallot', 'delete_materialusage', 'delete_materialstaging',
+    'delete_assemblyusage',
     'delete_equipments', 'delete_equipmenttype',
     'delete_calibrationrecord',
     'delete_workcenter', 'delete_shift', 'delete_scheduleslot',

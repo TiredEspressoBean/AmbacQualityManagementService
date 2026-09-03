@@ -12,13 +12,15 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
-import { useStagingList, type StagingJob } from "@/hooks/useScheduling";
+import { useStagingList, useMarkStaged, type StagingJob } from "@/hooks/useScheduling";
 
 const WINDOWS = [4, 8, 12, 24];
 const ALL = "__all__";
@@ -35,16 +37,30 @@ function whenLabel(iso: string): string {
   });
 }
 
-function JobCard({ job }: { job: StagingJob }) {
+function JobCard({ job, onToggle, busy }: {
+  job: StagingJob;
+  onToggle: (job: StagingJob, staged: boolean) => void;
+  busy: boolean;
+}) {
   const short = job.short_count > 0;
+  const staged = !!job.staged_at;
   return (
     <div
       className={`rounded-lg border p-3 ${
         short ? "border-l-4 border-l-amber-500" : ""
-      }`}
+      } ${staged ? "bg-muted/30" : ""}`}
     >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="font-mono text-sm font-medium">{job.erp_id}</span>
+        <Checkbox
+          className="mr-0.5 translate-y-0.5"
+          checked={staged}
+          disabled={busy}
+          aria-label={staged ? "Mark not staged" : "Mark staged"}
+          onCheckedChange={(v) => onToggle(job, v === true)}
+        />
+        <span className={`font-mono text-sm font-medium ${staged ? "line-through opacity-60" : ""}`}>
+          {job.erp_id}
+        </span>
         <span className="text-xs text-muted-foreground">{job.step_name}</span>
         {job.part_type && (
           <span className="truncate text-xs text-muted-foreground">
@@ -110,6 +126,13 @@ function JobCard({ job }: { job: StagingJob }) {
           <Wrench className="h-3 w-3" /> {job.fixtures.join(" · ")}
         </p>
       )}
+
+      {/* Who has it — the shift-handover question. */}
+      {staged && job.staged_by && (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Staged by {job.staged_by}
+        </p>
+      )}
     </div>
   );
 }
@@ -126,6 +149,10 @@ export function StagingPage() {
 
   // Station picker options. Queried directly rather than through a hook, matching
   // how the work-centre admin page reads the same list.
+  const markStaged = useMarkStaged();
+  const toggleStaged = (job: StagingJob, staged: boolean) =>
+    markStaged.mutate({ work_order: job.work_order_id, step: job.step_id, staged });
+
   const { data: wcData } = useQuery({
     queryKey: ["work-centers", "staging-picker"] as const,
     queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
@@ -202,6 +229,11 @@ export function StagingPage() {
               ))}
             </SelectContent>
           </Select>
+          <ReportButton
+            reportType="staging_list"
+            label="PDF"
+            params={{ hours, ...(station === ALL ? {} : { work_center: station }) }}
+          />
           <Button variant="outline" size="sm" onClick={() => refetch()}
                   disabled={isFetching}>
             {isFetching ? "Refreshing…" : "Refresh"}
@@ -276,6 +308,21 @@ export function StagingPage() {
         </div>
       )}
 
+      {/* Jobs exist but none carry material, so the by-material lens has nothing to
+          show. Without this the page renders completely blank — the station grid is
+          hidden and the "nothing scheduled" state doesn't apply. */}
+      {lens === "pick" && pickRows.length === 0 && totalJobs > 0 && (
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
+          <PackageCheck className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-medium">Nothing to pick in this window.</p>
+          <p className="max-w-md text-xs text-muted-foreground">
+            {totalJobs} job{totalJobs === 1 ? " is" : "s are"} scheduled, but none of
+            them consume material at their step — so there is nothing to fetch from
+            stores. Switch to <strong>By station</strong> to see the work itself.
+          </p>
+        </div>
+      )}
+
       {lens === "pick" && pickRows.length > 0 && (
         <div className="overflow-hidden rounded-lg border">
           <table className="w-full text-sm">
@@ -328,6 +375,9 @@ export function StagingPage() {
               <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                 {s.jobs.length} job{s.jobs.length === 1 ? "" : "s"}
               </Badge>
+              <span className="text-xs font-normal text-muted-foreground">
+                {s.staged_count}/{s.jobs.length} staged
+              </span>
               {s.short_count > 0 && (
                 <Badge
                   variant="outline"
@@ -339,7 +389,12 @@ export function StagingPage() {
             </h2>
             <div className="space-y-2">
               {s.jobs.map((j) => (
-                <JobCard key={`${j.work_order_id}-${j.step_id}`} job={j} />
+                <JobCard
+                  key={`${j.work_order_id}-${j.step_id}`}
+                  job={j}
+                  onToggle={toggleStaged}
+                  busy={markStaged.isPending}
+                />
               ))}
             </div>
           </section>

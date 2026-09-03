@@ -21,7 +21,7 @@ from Tracker.models import (
     ProcessStep, ScheduledTask, ScheduleResult, Steps, Tenant, WorkCenter, WorkOrder,
     WorkOrderStatus,
 )
-from Tracker.services.mes.staging import staging_list
+from Tracker.services.mes.staging import set_staged, staging_list
 from Tracker.tests.base import TenantContextMixin
 
 
@@ -153,3 +153,74 @@ class StagingListTests(TenantContextMixin, TestCase):
         out = staging_list(self.tenant)
         self.assertEqual(out['stations'], [])
         self.assertIn("solve", out['note'].lower())
+
+
+class MarkStagedTests(StagingListTests):
+    """Marking a job's material as staged at its bench."""
+
+    def _first_job(self):
+        out = staging_list(self.tenant)
+        return out['stations'][0]['jobs'][0]
+
+    def test_marking_staged_records_who_and_when(self):
+        self._job("WO-A", units=2)
+        j = self._first_job()
+        set_staged(self.tenant, j['work_order_id'], j['step_id'], True, self.user)
+
+        after = self._first_job()
+        self.assertIsNotNone(after['staged_at'])
+        self.assertEqual(after['staged_by'], self.user.get_full_name() or self.user.username)
+
+    def test_staging_survives_a_re_solve(self):
+        """The reason this isn't a flag on ScheduledTask. The solver replaces every
+        task row each run; staging recorded there would vanish the moment a planner
+        re-solved, throwing away work already done on the floor."""
+        from Tracker.models import ScheduledTask
+
+        wo = self._job("WO-A", units=2)
+        j = self._first_job()
+        set_staged(self.tenant, j['work_order_id'], j['step_id'], True, self.user)
+
+        # Simulate a re-solve: every scheduled task is replaced.
+        ScheduledTask.objects.filter(schedule=self.schedule).delete()
+        now = timezone.now()
+        for p in wo.parts.all():
+            ScheduledTask.objects.create(
+                tenant=self.tenant, schedule=self.schedule, part=p, step=self.step,
+                machine=self.machine, start_time=now + timedelta(hours=2),
+                end_time=now + timedelta(hours=3))
+
+        self.assertIsNotNone(self._first_job()['staged_at'],
+                             "staging must outlive the tasks it was recorded against")
+
+    def test_unstaging_clears_it(self):
+        self._job("WO-A", units=1)
+        j = self._first_job()
+        set_staged(self.tenant, j['work_order_id'], j['step_id'], True, self.user)
+        set_staged(self.tenant, j['work_order_id'], j['step_id'], False, self.user)
+        after = self._first_job()
+        self.assertIsNone(after['staged_at'])
+        self.assertIsNone(after['staged_by'])
+
+    def test_marking_twice_is_idempotent(self):
+        """Two handlers working the same cart, or a double tap, must not create a
+        second record or move the timestamp on work already staged."""
+        from Tracker.models import MaterialStaging
+
+        self._job("WO-A", units=1)
+        j = self._first_job()
+        set_staged(self.tenant, j['work_order_id'], j['step_id'], True, self.user)
+        first = self._first_job()['staged_at']
+        set_staged(self.tenant, j['work_order_id'], j['step_id'], True, self.user)
+
+        self.assertEqual(self._first_job()['staged_at'], first)
+        self.assertEqual(MaterialStaging.objects.filter(tenant=self.tenant).count(), 1)
+
+    def test_station_reports_staged_progress(self):
+        self._job("WO-A", units=1)
+        self._job("WO-B", units=1)
+        j = self._first_job()
+        set_staged(self.tenant, j['work_order_id'], j['step_id'], True, self.user)
+        station = staging_list(self.tenant)['stations'][0]
+        self.assertEqual(station['staged_count'], 1)
+        self.assertEqual(len(station['jobs']), 2)

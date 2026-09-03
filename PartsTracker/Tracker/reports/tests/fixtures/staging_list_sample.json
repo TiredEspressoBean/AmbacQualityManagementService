@@ -1,0 +1,90 @@
+{
+  "window_hours": 8,
+  "window_from": "Sep 03 09:00",
+  "window_to": "Sep 03 17:00",
+  "station_filter": "",
+  "is_stale": true,
+  "note": "",
+  "unmapped": [
+    "WO-2024-0042-A — Injector Spring"
+  ],
+  "stations": [
+    {
+      "name": "Assembly Cell",
+      "job_count": 2,
+      "short_count": 1,
+      "jobs": [
+        {
+          "erp_id": "WO-TRAIN-PM-001",
+          "step_name": "Assembly",
+          "part_type": "Common Rail Injector",
+          "units": 5,
+          "starts_at": "Sep 03 09:40",
+          "machine": "TW-26",
+          "fixtures": "Torque fixture A",
+          "staged": true,
+          "materials": [
+            {
+              "material": "Seal & O-Ring Kit",
+              "qty": "5",
+              "lots": "L-2024-018",
+              "storage_location": "Main Stores",
+              "is_short": false,
+              "short_qty": ""
+            },
+            {
+              "material": "Solenoid Coil",
+              "qty": "5",
+              "lots": "L-2024-007",
+              "storage_location": "Main Stores",
+              "is_short": true,
+              "short_qty": "2"
+            }
+          ]
+        },
+        {
+          "erp_id": "WO-TRAIN-BOTTLE",
+          "step_name": "Assembly",
+          "part_type": "Common Rail Injector",
+          "units": 6,
+          "starts_at": "Sep 03 13:15",
+          "machine": "",
+          "fixtures": "",
+          "staged": false,
+          "materials": [
+            {
+              "material": "Seal & O-Ring Kit",
+              "qty": "6",
+              "lots": "L-2024-018, L-2024-022",
+              "storage_location": "Main Stores",
+              "is_short": false,
+              "short_qty": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wash Line",
+      "job_count": 1,
+      "short_count": 0,
+      "jobs": [
+        {
+          "erp_id": "WO-ASSESS-001",
+          "step_name": "Cleaning",
+          "part_type": "Common Rail Injector",
+          "units": 2,
+          "starts_at": "Sep 03 10:05",
+          "machine": "UC-1",
+          "fixtures": "",
+          "staged": false,
+          "materials": []
+        }
+      ]
+    }
+  ],
+  "total_jobs": 3,
+  "total_short": 1,
+  "tenant_name": "Demo Company",
+  "generated_date": "2026-09-03"
+}

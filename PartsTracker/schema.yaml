@@ -29754,6 +29754,39 @@ paths:
                 format: binary
                 description: Excel file download
           description: ''
+  /api/WorkCenters/mark-staged/:
+    post:
+      operationId: api_WorkCenters_mark_staged_create
+      description: |-
+        Record that a job's material is at the bench (or take it back).
+
+        Survives a re-solve: staging is kept per (work order, step), not on the
+        scheduled tasks the solver replaces each run.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkStagedInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MarkStagedInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MarkStagedInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkCenters/staging-list/:
     get:
       operationId: api_WorkCenters_staging_list_retrieve
@@ -44628,6 +44661,23 @@ components:
           minLength: 1
       required:
       - password
+    MarkStagedInputRequest:
+      type: object
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        staged:
+          type: boolean
+        note:
+          type: string
+      required:
+      - staged
+      - step
+      - work_order
     Material:
       type: object
       description: |-

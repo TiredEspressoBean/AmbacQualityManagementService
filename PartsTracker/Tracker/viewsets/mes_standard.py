@@ -63,6 +63,31 @@ class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewS
     ordering = ['code']
 
     @extend_schema(
+        request=inline_serializer(name="MarkStagedInput", fields={
+            "work_order": serializers.UUIDField(),
+            "step": serializers.UUIDField(),
+            "staged": serializers.BooleanField(),
+            "note": serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=['post'], url_path='mark-staged')
+    def mark_staged(self, request):
+        """Record that a job's material is at the bench (or take it back).
+
+        Survives a re-solve: staging is kept per (work order, step), not on the
+        scheduled tasks the solver replaces each run."""
+        from Tracker.services.mes.staging import set_staged
+        wo, step = request.data.get('work_order'), request.data.get('step')
+        if not wo or not step:
+            return Response({"detail": "work_order and step are required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        row = set_staged(self.tenant, wo, step, bool(request.data.get('staged', True)),
+                         request.user, request.data.get('note', '') or '')
+        return Response({'work_order': str(row.work_order_id), 'step': str(row.step_id),
+                         'staged_at': row.staged_at, 'note': row.note})
+
+    @extend_schema(
         parameters=[
             OpenApiParameter(name='work_center', type=OpenApiTypes.UUID, required=False,
                              description="Narrow to one station."),

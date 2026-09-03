@@ -11855,6 +11855,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkCenters/mark-staged/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Record that a job's material is at the bench (or take it back).
+         *
+         *     Survives a re-solve: staging is kept per (work order, step), not on the
+         *     scheduled tasks the solver replaces each run.
+         */
+        post: operations["api_WorkCenters_mark_staged_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkCenters/staging-list/": {
         parameters: {
             query?: never;
@@ -19431,6 +19453,14 @@ export interface components {
             /** Format: email */
             email?: string;
             password: string;
+        };
+        MarkStagedInputRequest: {
+            /** Format: uuid */
+            work_order: string;
+            /** Format: uuid */
+            step: string;
+            staged: boolean;
+            note?: string;
         };
         /**
          * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
@@ -52057,6 +52087,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_WorkCenters_mark_staged_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkStagedInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MarkStagedInputRequest"];
+                "multipart/form-data": components["schemas"]["MarkStagedInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

@@ -20739,6 +20739,12 @@ const PatchedWorkCenterRequest = z
     archived: z.boolean(),
   })
   .partial();
+const MarkStagedInputRequest = z.object({
+  work_order: z.string().uuid(),
+  step: z.string().uuid(),
+  staged: z.boolean(),
+  note: z.string().optional(),
+});
 const WorkOrderStatusEnum = z.enum([
   "PENDING",
   "IN_PROGRESS",
@@ -23220,6 +23226,7 @@ export const schemas = {
   WorkCenterRequest,
   WorkCenterSelect,
   PatchedWorkCenterRequest,
+  MarkStagedInputRequest,
   WorkOrderStatusEnum,
   WorkOrderPriorityEnum,
   SplitReasonEnum,
@@ -47346,6 +47353,24 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/WorkCenters/mark-staged/",
+    alias: "api_WorkCenters_mark_staged_create",
+    description: `Record that a job&#x27;s material is at the bench (or take it back).
+
+Survives a re-solve: staging is kept per (work order, step), not on the
+scheduled tasks the solver replaces each run.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MarkStagedInputRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "get",
     path: "/api/WorkCenters/staging-list/",
     alias: "api_WorkCenters_staging_list_retrieve",
@@ -48295,7 +48320,10 @@ frontend client&#x27;s response validation lets them through.`,
       },
     ],
     response: TenantAwareUserDetails,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/password/reset/confirm/:uidb64/:token/",
@@ -48347,7 +48375,7 @@ function getCsrfToken(): string | null {
 // In production, this will be replaced at build time with the actual backend URL
 const BASE_URL = import.meta.env.VITE_API_TARGET;
 
-// Endpoint aliases are split across 5 Zodios clients (see
+// Endpoint aliases are split across 6 Zodios clients (see
 // scripts/split-api-client.cjs for why). They share one axios instance, so
 // `api.axios`, the interceptors below and CSRF handling are unchanged.
 function zodiosOptions(axiosInstance?: unknown): ZodiosOptions {
@@ -48383,6 +48411,9 @@ const client3 = BASE_URL
 const client4 = BASE_URL
   ? new Zodios(BASE_URL, endpoints4, zodiosOptions(sharedAxios))
   : new Zodios(endpoints4, zodiosOptions(sharedAxios));
+const client5 = BASE_URL
+  ? new Zodios(BASE_URL, endpoints5, zodiosOptions(sharedAxios))
+  : new Zodios(endpoints5, zodiosOptions(sharedAxios));
 
 export const api = Object.assign(
   { axios: sharedAxios },
@@ -48391,11 +48422,13 @@ export const api = Object.assign(
   client2,
   client3,
   client4,
+  client5,
 ) as unknown as typeof client0 &
   typeof client1 &
   typeof client2 &
   typeof client3 &
-  typeof client4;
+  typeof client4 &
+  typeof client5;
 
 // Axios interceptor to refresh CSRF token before each request
 api.axios.interceptors.request.use((config) => {
@@ -48462,6 +48495,7 @@ export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
   const c2 = new Zodios(baseUrl, endpoints2, merge({ axiosInstance: c0.axios } as ZodiosOptions));
   const c3 = new Zodios(baseUrl, endpoints3, merge({ axiosInstance: c0.axios } as ZodiosOptions));
   const c4 = new Zodios(baseUrl, endpoints4, merge({ axiosInstance: c0.axios } as ZodiosOptions));
+  const c5 = new Zodios(baseUrl, endpoints5, merge({ axiosInstance: c0.axios } as ZodiosOptions));
   return Object.assign(
     { axios: c0.axios },
     c0,
@@ -48469,9 +48503,11 @@ export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
     c2,
     c3,
     c4,
+    c5,
   ) as unknown as typeof client0 &
     typeof client1 &
     typeof client2 &
     typeof client3 &
-    typeof client4;
+    typeof client4 &
+    typeof client5;
 }

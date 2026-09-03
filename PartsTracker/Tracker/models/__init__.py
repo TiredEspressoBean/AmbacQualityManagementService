@@ -158,6 +158,7 @@ from .mes_standard import (
     # Material lot tracking (Standard tier)
     MaterialLot,
     MaterialUsage,
+    MaterialStaging,
 
     # Time tracking (Standard tier)
     TimeEntry,
@@ -478,6 +479,7 @@ __all__ = [
     'SamplingAnalytics',
     'MaterialLot',
     'MaterialUsage',
+    'MaterialStaging',
     'TimeEntry',
     'BOM',
     'BOMLine',

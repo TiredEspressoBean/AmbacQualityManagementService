@@ -353,9 +353,13 @@ export type StagingJob = {
   work_center_id: string; work_center: string;
   starts_at: string; units: number; machine: string | null;
   materials: StagingMaterial[]; fixtures: string[]; short_count: number;
+  /** Kept per (work order, step), so it survives a re-solve — the solver replaces
+   *  every ScheduledTask row and staging must not vanish with them. */
+  staged_at: string | null; staged_by: string | null; staging_note: string;
 };
 export type StagingStation = {
-  work_center_id: string; name: string; jobs: StagingJob[]; short_count: number;
+  work_center_id: string; name: string; jobs: StagingJob[];
+  short_count: number; staged_count: number;
 };
 export type StagingUnmapped = {
   erp_id: string; part_type: string | null; components: string[];
@@ -375,6 +379,18 @@ export function useStagingList(workCenterId?: string, hours = 8) {
       api.api_WorkCenters_staging_list_retrieve({
         queries: { ...(workCenterId ? { work_center: workCenterId } : {}), hours },
       } as never) as Promise<StagingList>,
+  });
+}
+
+/** Mark a job's material staged at its bench (or take it back). */
+export function useMarkStaged() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { work_order: string; step: string; staged: boolean; note?: string }) =>
+      api.api_WorkCenters_mark_staged_create(v as never),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["staging-list"] }),
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.detail ?? "Couldn't update staging"),
   });
 }
 
