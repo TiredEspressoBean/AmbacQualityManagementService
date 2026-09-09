@@ -166,11 +166,32 @@ warning that ships a wrong contract to the frontend.
 
 ### If you run the `production` profile
 
+**It needs a TLS certificate pair first.** `conf/Caddyfile` mounts `./certs`
+read-only and expects `cert.crt` / `cert.key` (override the paths with
+`TLS_CERT` / `TLS_KEY`). Without them Caddy fails to start. `certs/` is
+gitignored -- never commit real keys. For a local trial run:
+
+```bash
+mkdir -p certs
+openssl req -x509 -newkey rsa:2048 -nodes -days 30 \
+  -keyout certs/cert.key -out certs/cert.crt \
+  -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost"
+```
+
+**Switching profiles needs an explicit down.** A bare `docker compose down`
+leaves profiled services running, so `caddy-local` keeps :80/:443 and the
+production `caddy` comes up with no port bindings:
+
+```bash
+docker compose --profile local down
+docker compose --profile production up -d
+```
+
 Initialize the pgBackRest stanza once, before leaving it running:
 
 ```bash
-docker compose exec postgres pgbackrest --stanza=tracker stanza-create
-docker compose exec postgres pgbackrest --stanza=tracker backup --type=full
+docker compose exec -u postgres postgres pgbackrest --stanza=tracker stanza-create
+docker compose exec -u postgres postgres pgbackrest --stanza=tracker backup --type=full
 ```
 
 Postgres starts with `archive_mode=on`, so until the stanza exists every WAL

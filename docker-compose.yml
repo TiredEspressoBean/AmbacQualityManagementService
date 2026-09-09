@@ -336,16 +336,20 @@ services:
     networks:
       - db-net
 
-  # pgBackRest runs inside postgres container via exec
+  # pgBackRest runs inside postgres container via exec.
+  # NOTE the `-u postgres`: `docker compose exec` defaults to root, and pgbackrest
+  # refuses to run as root ([031] "must not be run as the root user"), so every one
+  # of these commands fails without it. The container's own entrypoint runs as
+  # postgres, which is why the daemon works but an exec'd command does not.
   # Commands:
-  #   Initialize (once):  docker compose exec postgres pgbackrest --stanza=tracker stanza-create
-  #   Full backup:        docker compose exec postgres pgbackrest --stanza=tracker backup --type=full
-  #   Diff backup:        docker compose exec postgres pgbackrest --stanza=tracker backup --type=diff
-  #   Check status:       docker compose exec postgres pgbackrest --stanza=tracker info
+  #   Initialize (once):  docker compose exec -u postgres postgres pgbackrest --stanza=tracker stanza-create
+  #   Full backup:        docker compose exec -u postgres postgres pgbackrest --stanza=tracker backup --type=full
+  #   Diff backup:        docker compose exec -u postgres postgres pgbackrest --stanza=tracker backup --type=diff
+  #   Check status:       docker compose exec -u postgres postgres pgbackrest --stanza=tracker info
   #   Restore:            docker compose stop postgres && docker compose run --rm pgbackrest-restore
   #
   # Full system backup (database + media):
-  #   docker compose exec postgres pgbackrest --stanza=tracker backup --type=full
+  #   docker compose exec -u postgres postgres pgbackrest --stanza=tracker backup --type=full
   #   docker compose --profile backup run --rm media-backup
 
   # pgBackRest restore - for disaster recovery (runs with postgres stopped)
@@ -411,13 +415,53 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        echo "=== Backup Scheduler Starting ===" &&
-        echo "0 2 * * * pgbackrest --stanza=tracker backup --type=diff >> /var/log/pgbackrest/scheduled.log 2>&1" > /tmp/crontab &&
-        echo "0 3 * * 0 pgbackrest --stanza=tracker backup --type=full >> /var/log/pgbackrest/scheduled.log 2>&1" >> /tmp/crontab &&
-        echo "0 4 * * * mkdir -p /backup/media && cp -ru /media/* /backup/media/ 2>/dev/null; echo 'Media backup:' \$$(date) >> /var/log/pgbackrest/scheduled.log" >> /tmp/crontab &&
-        crontab /tmp/crontab &&
-        echo "Cron schedule:" && crontab -l &&
-        crond -f -l 2
+        # No cron here, deliberately. Dockerfile.postgres builds on
+        # ankane/pgvector (Debian 12) and installs neither cron nor busybox, so
+        # the previous `crontab`/`crond` version exited 127 on every boot and
+        # crash-looped under restart: unless-stopped -- these backups had never
+        # once run. Installing Debian's cron would not be enough either: this
+        # service runs as `postgres` (pgbackrest must), and cron wants root to
+        # read /var/spool/cron/crontabs and setuid.
+        #
+        # This loop is also better suited to backups than cron. Cron fires at an
+        # instant: a container restarting across 02:00 silently skips that day
+        # entirely. Each job here is "has this run today/this week yet", checked
+        # every 5 minutes against a stamp file on the pgbackrest log volume, so a
+        # missed window is caught up on the next tick and a failure is retried
+        # instead of waiting 24h. Stamps survive restarts; they are only written
+        # after the command succeeds.
+        set -u
+        LOG=/var/log/pgbackrest/scheduled.log
+        STAMPS=/var/log/pgbackrest/.schedule
+        mkdir -p "$$STAMPS"
+        log() { echo "[$$(date -u +%Y-%m-%dT%H:%M:%SZ)] $$*" >> "$$LOG"; }
+        run_once() {
+          name=$$1; want=$$2; shift 2
+          f="$$STAMPS/$$name"
+          if [ -f "$$f" ] && [ "$$(cat "$$f")" = "$$want" ]; then return 0; fi
+          log "$$name: starting ($$want)"
+          if "$$@" >> "$$LOG" 2>&1; then
+            echo "$$want" > "$$f"; log "$$name: ok"
+          else
+            log "$$name: FAILED (rc=$$?) - will retry next tick"
+          fi
+        }
+        sync_media() { mkdir -p /backup/media && cp -ru /media/. /backup/media/; }
+        log "=== Backup scheduler started (diff>=02:00 daily, full>=03:00 Sun, media>=04:00 daily) ==="
+        while true; do
+          H=$$(date +%H); H=$${H#0}; [ -n "$$H" ] || H=0
+          TODAY=$$(date +%Y-%m-%d); WEEK=$$(date +%G-%V); DOW=$$(date +%u)
+          if [ "$$H" -ge 2 ]; then
+            run_once diff "$$TODAY" pgbackrest --stanza=tracker backup --type=diff
+          fi
+          if [ "$$DOW" -eq 7 ] && [ "$$H" -ge 3 ]; then
+            run_once full "$$WEEK" pgbackrest --stanza=tracker backup --type=full
+          fi
+          if [ "$$H" -ge 4 ]; then
+            run_once media "$$TODAY" sync_media
+          fi
+          sleep 300
+        done
     depends_on:
       postgres:
         condition: service_healthy

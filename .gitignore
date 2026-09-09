@@ -110,3 +110,7 @@ pytestdebug.log
 
 certs/
 conf/certs/
+
+# Default ${BACKUP_PATH} target -- media-backup and backup-scheduler write
+# copies of PartsTracker/media here. Backup output, not source.
+backups/
