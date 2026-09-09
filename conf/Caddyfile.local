@@ -43,13 +43,29 @@ localhost {
         file_server
     }
 
+    # Ollama passthrough for the in-progress AI feature set. NOT YET WIRED UP --
+    # nothing in the app calls /ai/ today; this is the route reserved for it.
+    # Leave it in place: it is intentional scaffolding, not dead config.
+    #
+    # The one thing that was actually broken here: the upstream was 127.0.0.1,
+    # which inside this container is Caddy itself, not Ollama on the host.
+    # host.docker.internal is the host, same as the /lg/* block above.
+    #
+    # Position is cosmetic -- Caddy sorts `handle` blocks by matcher specificity
+    # and always evaluates the matcher-less catch-all last, so this works above
+    # or below it (verified with `caddy adapt`: identical compiled route order).
+    # Kept above for readability.
+    #
+    # strip_prefix maps /ai/api/chat -> /api/chat, matching Ollama's own routes.
+    # Revisit that convention when the feature is actually built.
+    handle /ai/* {
+        reverse_proxy host.docker.internal:11434
+        uri strip_prefix /ai
+    }
+
     handle {
         root * /usr/share/caddy
         try_files {path} /index.html
         file_server
-    }
-
-    handle /ai/* {
-        reverse_proxy 127.0.0.1:11434
     }
 }
