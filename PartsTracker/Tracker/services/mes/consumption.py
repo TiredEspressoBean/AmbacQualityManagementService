@@ -80,12 +80,76 @@ def _usable_lots(material_id, tenant):
     from django.db.models import F
     from Tracker.models import MaterialLot
 
+    # Returns lots EXACTLY as stored. Reservation netting deliberately does not happen
+    # here: `MaterialUsage.save()` decrements `self.lot.quantity_remaining` and saves
+    # the instance, so handing consumption a lot whose in-memory quantity had been
+    # reduced would persist the reduction — silently destroying the reserved units.
+    #
+    # It is also the wrong place conceptually. A reservation stops the system offering
+    # a lot to SOMEONE ELSE; it must not stop the reserver consuming it, which is the
+    # whole point of having reserved. Netting therefore lives in `plan_draw`, which
+    # makes suggestions, not in the path that draws stock down.
     return list(
         MaterialLot.objects.filter(
             tenant=tenant, material_id=material_id,
             status__in=('ACCEPTED', 'IN_USE'), quantity_remaining__gt=0,
         ).order_by(F('expiration_date').asc(nulls_last=True), 'received_date')
     )
+
+
+def reserved_by_lot(material_id, tenant) -> dict:
+    """`{lot_id: quantity}` picked to a bench and not yet consumed, per lot.
+
+    Read out of `MaterialStagingLine.picked_lots`, which is what the picker actually
+    recorded taking. The aggregate `reserved_quantity` makes totals honest; this makes
+    the LOT SUGGESTION honest, which is the half a traceability record depends on.
+    """
+    from Tracker.models import MaterialStagingLine
+
+    held: dict = {}
+    # tenant-safe: explicit tenant filter
+    for row in (MaterialStagingLine.objects
+                .filter(tenant=tenant, material_id=material_id, issued_at__isnull=True)
+                .values_list('picked_lots', flat=True)):
+        for entry in (row or []):
+            lot_id = entry.get('lot_id')
+            if not lot_id:
+                continue
+            held[str(lot_id)] = held.get(str(lot_id), Decimal('0')) + Decimal(
+                str(entry.get('qty') or 0))
+    return held
+
+
+def reserved_quantity(material_id, tenant) -> Decimal:
+    """Stock already pulled to a bench but not yet consumed.
+
+    A `MaterialStagingLine` with a `qty_picked` and no `issued_at` is material that
+    physically left the shelf. `MaterialLot.quantity_remaining` doesn't move until
+    consumption, so without netting this out every reader — pick sheets, the shortage
+    banner, the capacity page's material lane — treats a full cart as available stock
+    and confidently promises it twice.
+    """
+    from django.db.models import Sum
+    from Tracker.models import MaterialStagingLine
+
+    # tenant-safe: explicit tenant filter
+    total = (MaterialStagingLine.objects
+             .filter(tenant=tenant, material_id=material_id, issued_at__isnull=True)
+             .aggregate(q=Sum('qty_picked'))['q'])
+    return Decimal(str(total or 0))
+
+
+def available_quantity(material_id, tenant) -> Decimal:
+    """On-hand minus what's already reserved on a cart. The number to promise against."""
+    from django.db.models import Sum
+    from Tracker.models import MaterialLot
+
+    # tenant-safe: explicit tenant filter
+    on_hand = (MaterialLot.objects
+               .filter(tenant=tenant, material_id=material_id,
+                       status__in=('ACCEPTED', 'IN_USE'))
+               .aggregate(q=Sum('quantity_remaining'))['q'])
+    return max(Decimal('0'), Decimal(str(on_hand or 0)) - reserved_quantity(material_id, tenant))
 
 
 def plan_draw(material_id, tenant, needed) -> list:
@@ -105,6 +169,11 @@ def plan_draw(material_id, tenant, needed) -> list:
     needed = Decimal(str(needed))
     plan: list = []
     drawn = Decimal('0')
+    # Stock already on someone's cart. Netted HERE rather than in `_usable_lots` because
+    # this function only suggests — nothing it returns gets saved. Without it two sheets
+    # print correct totals against the same lot number and the second picker walks to a
+    # bin that was emptied this morning.
+    held = reserved_by_lot(material_id, tenant)
     for lot in _usable_lots(material_id, tenant):
         if drawn >= needed:
             break
@@ -112,10 +181,15 @@ def plan_draw(material_id, tenant, needed) -> list:
             assert_lot_usable(lot)
         except ValueError:
             continue
-        take = min(lot.quantity_remaining, needed - drawn)
+        # Local only: never written back to the instance, which is what makes this safe.
+        free = Decimal(str(lot.quantity_remaining)) - held.get(str(lot.id), Decimal('0'))
+        take = min(free, needed - drawn)
         if take <= 0:
             continue
         plan.append({
+            # The id, not just the number: confirming a pick has to name the row, and a
+            # lot number is only unique by convention.
+            'lot_id': str(lot.id),
             'lot_number': lot.lot_number,
             'storage_location': lot.storage_location or '',
             'expiration_date': lot.expiration_date,
@@ -159,12 +233,20 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
             continue
         if is_reman and line.allow_harvested:
             continue
+        # A BUY line on a purchased part has no material_id. Those aren't consumed
+        # through this path (staging/reservation is Material-keyed) — the same position
+        # in-house MAKE components are in, which flow through pegging instead.
         if line.material_id is None:
             continue
 
         needed = Decimal(str(line.quantity))
         drawn = Decimal('0')
-        for lot in _usable_lots(line.material_id, tenant):
+        # Prefer the lots the picker actually put in the tote over re-deriving FEFO.
+        # This is the whole point of recording them: the sheet named what the plan
+        # WOULD draw, the picker took what was really on the shelf, and the record has
+        # to say what happened rather than what was intended.
+        for lot in (_picked_lots_for(part, step, line.material_id, tenant)
+                    or _usable_lots(line.material_id, tenant)):
             if drawn >= needed:
                 break
             try:
@@ -180,6 +262,8 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
             )
             result.usages.append(usage)
             drawn += take
+
+        _mark_line_issued(part, step, line.material_id, tenant)
 
         if drawn < needed:
             # Recorded, not raised: the part was built, so the shortfall is a stock
@@ -211,3 +295,47 @@ def consume_for_step_safely(part, step, operator, bom_cache: dict | None = None)
             "Material shortfall consuming for part=%s step=%s: %s",
             part.id, step.id, result.shortfalls)
     return result
+
+
+def _staging_line(part, step, material_id, tenant):
+    """The staging line for this part's job at this operation, if a picker recorded one."""
+    from Tracker.models import MaterialStagingLine
+
+    wo_id = getattr(part, 'work_order_id', None)
+    if wo_id is None:
+        return None
+    # tenant-safe: explicit tenant filter
+    return (MaterialStagingLine.objects
+            .filter(tenant=tenant, staging__work_order_id=wo_id,
+                    staging__step_id=step.id, material_id=material_id)
+            .first())
+
+
+def _picked_lots_for(part, step, material_id, tenant) -> list:
+    """The actual lots pulled for this line, in the order recorded — or [] if none.
+
+    Returning [] rather than None-as-sentinel keeps the caller's `or` fallback honest:
+    no recorded pick means fall back to FEFO, which is the old behaviour and still
+    correct when nobody wrote anything down.
+    """
+    from Tracker.models import MaterialLot
+
+    row = _staging_line(part, step, material_id, tenant)
+    if row is None or not row.picked_lots:
+        return []
+    ids = [e.get('lot_id') for e in row.picked_lots if e.get('lot_id')]
+    if not ids:
+        return []
+    # tenant-safe: explicit tenant filter
+    by_id = {str(l.id): l for l in MaterialLot.objects.filter(tenant=tenant, id__in=ids)}
+    return [by_id[str(i)] for i in ids if str(i) in by_id]
+
+
+def _mark_line_issued(part, step, material_id, tenant) -> None:
+    """Release the reservation: the material is in the unit now, not on a cart."""
+    from django.utils import timezone
+
+    row = _staging_line(part, step, material_id, tenant)
+    if row is not None and row.issued_at is None:
+        row.issued_at = timezone.now()
+        row.save(update_fields=['issued_at'])

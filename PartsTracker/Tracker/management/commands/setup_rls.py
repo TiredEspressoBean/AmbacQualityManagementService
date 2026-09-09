@@ -117,6 +117,7 @@ class Command(BaseCommand):
         'Tracker_materiallot',
         'Tracker_materialusage',
         'Tracker_materialstaging',
+        'Tracker_materialstagingline',
         'Tracker_material',
         'Tracker_laborcalendarblock',
         'Tracker_overtimewindow',

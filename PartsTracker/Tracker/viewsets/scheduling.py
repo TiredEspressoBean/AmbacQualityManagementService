@@ -40,6 +40,9 @@ from Tracker.services.scheduling.scenario import (
     commit_draft, compare_draft, discard_draft,
 )
 from Tracker.tasks import run_dispatch_task, run_solve_task
+from Tracker.services.scheduling.run_status import (
+    current_run, mark_finished, mark_started,
+)
 from .base import TenantScopedMixin
 from .core import ExcelExportMixin, ListMetadataMixin
 
@@ -232,6 +235,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """Kick off the Layer-1 machine solve in the background, replacing the live
         schedule. Returns a task id; poll `solve_status?task_id=`, then re-read `current`."""
         task = run_solve_task.delay(str(self.tenant.id), self._time_limit())
+        mark_started(self._get_config(), task.id, 'solve')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
     @extend_schema(request=None, responses={202: OpenApiTypes.OBJECT})
@@ -241,11 +245,14 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         schedule is untouched. Returns a task id; poll `solve_status?task_id=`, then read
         `draft` / `compare` and `commit` or `discard`."""
         task = run_solve_task.delay(str(self.tenant.id), self._time_limit(), draft=True)
+        mark_started(self._get_config(), task.id, 'draft')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
     @extend_schema(
         request=None,
-        parameters=[OpenApiParameter('task_id', str, required=True)],
+        # Optional: omit it to ask what THIS TENANT has in flight, which is how a client
+        # that didn't start the run finds out one is happening.
+        parameters=[OpenApiParameter('task_id', str, required=False)],
         responses={200: OpenApiTypes.OBJECT},
     )
     @action(detail=False, methods=['get'])
@@ -253,15 +260,23 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """Poll a background solve/dispatch task. `state` is PENDING (queued/running),
         SUCCESS, or FAILURE; on SUCCESS `result` carries the task's return value."""
         from celery.result import AsyncResult
+        config = self._get_config()
         task_id = request.query_params.get('task_id')
         if not task_id:
-            return Response({'detail': 'task_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            # No id: answer for the TENANT. The id used to live only in the requesting
+            # tab's state, so a running solve was invisible to every other client —
+            # a second planner just saw a board that wasn't changing.
+            return Response(current_run(config))
         res = AsyncResult(task_id)
         data = {'task_id': task_id, 'state': res.state, 'ready': res.ready()}
         if res.successful():
             data['result'] = res.result
         elif res.failed():
             data['detail'] = str(res.result)[:500]
+        # Whoever notices it finished clears the tenant marker, so a client that stopped
+        # polling (tab closed mid-solve) can't leave the board claiming it's still going.
+        if res.ready() and config.active_run_task_id == task_id:
+            mark_finished(config)
         return Response(data)
 
     @extend_schema(request=None, responses={202: OpenApiTypes.OBJECT})
@@ -270,6 +285,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """Kick off Layer-2 operator dispatch in the background. Returns a task id; poll
         `solve_status?task_id=` for the coverage summary."""
         task = run_dispatch_task.delay(str(self.tenant.id), self._time_limit())
+        mark_started(self._get_config(), task.id, 'dispatch')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
     @extend_schema(
@@ -322,7 +338,12 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         fields={
             "source": inline_serializer(name="SourceRequirement", many=True, fields={
                 "material": serializers.CharField(),
+                # MATERIAL (raw material / consumable) vs PART_TYPE (a bought part).
+                # Only the part carries a receiving-inspection plan and supplier
+                # qualification, so purchasing treats the two differently.
+                "buy_kind": serializers.CharField(),
                 "qty_short": serializers.IntegerField(),
+                "safety_stock": serializers.FloatField(),
                 "need_by": serializers.DateField(allow_null=True),
                 "lead_time_days": serializers.IntegerField(allow_null=True),
                 "order_by": serializers.DateField(allow_null=True),
@@ -422,6 +443,42 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         'capacity_hours': serializers.FloatField(),
                         'load_hours': serializers.FloatField(),
                         'utilization': serializers.FloatField(allow_null=True)})}),
+            # Back-scheduled release dates — the actionable half of this endpoint. The
+            # heatmap says WHERE it is tight; this says what has to start, and what is
+            # already late to. `is_estimate` marks a derived date rather than one a
+            # planner set: RCCP suggests, it never writes `expected_start`.
+            'planned_releases': inline_serializer(
+                name='PlannedRelease', many=True, fields={
+                    'work_order_id': serializers.CharField(),
+                    'erp_id': serializers.CharField(),
+                    'planned_start': serializers.DateField(),
+                    'due_date': serializers.DateField(allow_null=True),
+                    'overdue': serializers.BooleanField(),
+                    'is_estimate': serializers.BooleanField(),
+                    'released': serializers.BooleanField()}),
+            # Orders containing an operation with no timing at all. Such a step costs
+            # zero hours and zero lead days, so it reads as free rather than unknown —
+            # everything above is a floor for these, not an estimate.
+            'untimed_orders': inline_serializer(
+                name='UntimedOrder', many=True, fields={
+                    'erp_id': serializers.CharField(),
+                    'step_count': serializers.IntegerField()}),
+            # Material demand on the same buckets. A separate shape from the capacity
+            # lanes on purpose: a material has no hourly capacity, it has a balance, so
+            # the comparison is cumulative demand against on-hand plus what arrives by
+            # then. Calling those fields "hours" would be a lie the UI then repeats.
+            'materials': inline_serializer(
+                name='MaterialLoad', many=True, fields={
+                    'id': serializers.CharField(),
+                    'name': serializers.CharField(),
+                    'series': inline_serializer(
+                        name='MaterialBucket', many=True, fields={
+                            'bucket': serializers.CharField(),
+                            'demand': serializers.FloatField(),
+                            'cumulative_demand': serializers.FloatField(),
+                            'available': serializers.FloatField(),
+                            'remaining_cover': serializers.FloatField(),
+                            'short': serializers.BooleanField()})}),
         })},
     )
     @action(detail=False, methods=['get'], url_path='capacity-load')
@@ -442,7 +499,29 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                              description="Requested due date (YYYY-MM-DD)."),
             OpenApiParameter(name='months', type=OpenApiTypes.INT, required=False),
         ],
-        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+        # Typed, unlike the `OpenApiTypes.OBJECT` blob this used to declare. An untyped
+        # response means the generated client has nothing to check, so the contract lived
+        # in a Python dict literal and a hand-written TS type with nothing tying them —
+        # rename a key here and the page silently renders undefined.
+        responses={200: inline_serializer(name='CapableToPromise', fields={
+            'feasible': serializers.BooleanField(),
+            # Present only on the refusals that never got as far as an arithmetic answer
+            # (no routing, no process, target outside the horizon).
+            'reason': serializers.CharField(required=False),
+            'target_bucket': serializers.CharField(required=False, allow_null=True),
+            'binding_resources': inline_serializer(
+                name='CtpBindingResource', many=True, required=False, fields={
+                    'resource': serializers.CharField(),
+                    'need': serializers.FloatField(),
+                    'free_through_target': serializers.FloatField()}),
+            'earliest_feasible_bucket': serializers.CharField(
+                required=False, allow_null=True),
+            'quantity': serializers.IntegerField(required=False),
+            # Keyed by resource name ("labor", then each work centre), so the shape is a
+            # map rather than a fixed set of fields.
+            'work_content_hours': serializers.DictField(
+                child=serializers.FloatField(), required=False),
+        }), 400: OpenApiTypes.OBJECT},
     )
     @action(detail=False, methods=['get'], url_path='capable-to-promise')
     def capable_to_promise(self, request):

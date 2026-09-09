@@ -87,6 +87,17 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
             tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
         .values('material').annotate(q=Sum('quantity_remaining'))
     }
+    # Net out stock already pulled to a bench and not yet consumed. `quantity_remaining`
+    # doesn't move until consumption, so without this a loaded cart still reads as
+    # available and the same units get promised to a second job.
+    from Tracker.models import MaterialStagingLine
+    # tenant-safe: explicit tenant filter
+    for row in (MaterialStagingLine.objects
+                .filter(tenant=tenant, issued_at__isnull=True)
+                .values('material').annotate(q=Sum('qty_picked'))):
+        if row['material'] in onhand:
+            onhand[row['material']] = max(
+                Decimal('0'), onhand[row['material']] - Decimal(str(row['q'] or 0)))
 
     bom_cache: dict = {}
     fixtures = _fixtures_by_step(tenant)
@@ -113,12 +124,26 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     staged = _staged_map(
         tenant, [(j['work_order_id'], j['step_id'])
                  for js in stations.values() for j in js])
+    picked = _picked_map(tenant, [(j['work_order_id'], j['step_id'])
+                                  for js in stations.values() for j in js])
     for js in stations.values():
         for j in js:
             st = staged.get((j['work_order_id'], j['step_id']), {})
             j['staged_at'] = st.get('staged_at')
             j['staged_by'] = st.get('staged_by')
             j['staging_note'] = st.get('note', '')
+            # Per-material pick state, so the sheet shows what's already been
+            # confirmed instead of asking again — and so a deviation stays visible
+            # rather than being overwritten by the next render of the plan.
+            for m in j['materials']:
+                p = picked.get((j['work_order_id'], j['step_id'], m['material_id']))
+                m['picked_qty'] = float(p['qty_picked']) if p else None
+                m['picked_lots'] = p['picked_lots'] if p else []
+                # A pick whose lots differ from the plan is the case worth seeing: the
+                # named lot was empty, short, or already taken.
+                m['deviated'] = bool(
+                    p and {l.get('lot_id') for l in (p['picked_lots'] or [])}
+                    != {l.get('lot_id') for l in m.get('lots', [])})
 
     return {
         'from': now, 'to': until, 'window_hours': hours,
@@ -148,11 +173,17 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
     for line in _released_bom_lines(part_type_id, bom_cache):
         if str(line.consumed_at_step_id) != str(step_id):
             continue
+        # Raw materials only. A BUY line pointing at a purchased *part* is procured
+        # and planned like any other bought item, but MaterialStagingLine is keyed to
+        # Material, so parts aren't kitted through staging yet — they're omitted here
+        # the same way MAKE lines are, rather than half-shown with no pick plan.
         if line.source != 'BUY' or line.material_id is None:
             continue
         needed = Decimal(str(line.quantity)) * units
         have = onhand.get(line.material_id, Decimal('0'))
         out.append({
+            # Confirming a pick has to name the material, not just show it.
+            'material_id': str(line.material_id),
             'material': line.material.name if line.material else str(line.material_id),
             'needed': float(needed),
             'on_hand': float(have),
@@ -244,3 +275,144 @@ def _staged_map(tenant, keys) -> dict:
             'note': r.note,
         }
     return out
+
+
+def consolidated_pick(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS) -> dict:
+    """The shelf sweep: everything to pull from stores for the next `hours`, by material.
+
+    The companion to `staging_list`, not a rival. `staging_list` answers "what goes to
+    each bench" (the put); this answers "what do I pull from the shelves" (the pull).
+    Batch-picking one material for six jobs beats six trips to the same bin, and the
+    literature puts the travel saving at 27-40%.
+
+    The whole cost of batching is sortation, so every row carries its `drops` — which
+    kit each portion belongs to. Without that the picker ends up holding 200 seals and
+    no way to split them.
+
+    Lots are planned ONCE against the combined total rather than per job. Per-job
+    planning hands the same lot to every job that needs the material, because nothing
+    reserves; planning against the total at least makes one sheet internally consistent.
+    """
+    data = staging_list(tenant, work_center_id, hours)
+    if data.get('note'):
+        return {**data, 'materials': []}
+
+    from Tracker.services.mes.consumption import plan_draw
+    from Tracker.models import Material
+
+    rows: dict = {}
+    for st in data['stations']:
+        for job in st['jobs']:
+            for m in job['materials']:
+                row = rows.get(m['material'])
+                if row is None:
+                    row = rows[m['material']] = {
+                        'material': m['material'], 'needed': 0.0, 'on_hand': m['on_hand'],
+                        'material_id': None, 'drops': [],
+                    }
+                row['needed'] += m['needed']
+                # `material_id` isn't on the staging row; recover it from the lot plan
+                # when there is one so the combined draw can be re-planned below.
+                row['drops'].append({
+                    'qty': m['needed'], 'station': st['name'], 'erp_id': job['erp_id'],
+                    'step_name': job['step_name'], 'staged': bool(job.get('staged_at')),
+                })
+
+    # Re-plan each material's lots against the combined quantity.
+    by_name = {}
+    if rows:
+        # tenant-safe: explicit tenant filter
+        by_name = {m.name: m.id for m in Material.objects.filter(
+            tenant=tenant, name__in=list(rows))}
+    out = []
+    for name, row in rows.items():
+        mid = by_name.get(name)
+        needed = Decimal(str(row['needed']))
+        plan = plan_draw(mid, tenant, needed) if mid else []
+        planned = sum(Decimal(str(p['take'])) for p in plan)
+        out.append({
+            'material': name,
+            'needed': float(needed),
+            'on_hand': row['on_hand'],
+            'short': float(max(Decimal('0'), needed - planned)),
+            'lots': plan,
+            'storage_location': next(
+                (p['storage_location'] for p in plan if p['storage_location']), ''),
+            'drops': sorted(row['drops'], key=lambda d: (d['station'], d['erp_id'])),
+        })
+
+    # Grouped by where it lives, so the sheet reads as a walk rather than a list.
+    # With one storage location this degrades to a single group, which is today's
+    # behaviour and costs nothing.
+    out.sort(key=lambda r: (r['storage_location'], r['material']))
+    return {**data, 'materials': out}
+
+
+def _picked_map(tenant, keys) -> dict:
+    """(work_order_id, step_id, material_id) -> the recorded pick, for the jobs shown.
+
+    One query for the whole sheet rather than one per material.
+    """
+    from Tracker.models import MaterialStagingLine
+
+    if not keys:
+        return {}
+    wo_ids = {k[0] for k in keys}
+    step_ids = {k[1] for k in keys}
+    out = {}
+    # tenant-safe: explicit tenant filter
+    for r in (MaterialStagingLine.objects
+              .filter(tenant=tenant, staging__work_order_id__in=wo_ids,
+                      staging__step_id__in=step_ids)
+              .select_related('staging')):
+        out[(str(r.staging.work_order_id), str(r.staging.step_id),
+             str(r.material_id))] = {
+            'qty_picked': r.qty_picked,
+            'picked_lots': r.picked_lots or [],
+        }
+    return out
+
+
+def record_pick(tenant, work_order_id, step_id, material_id, qty, lots, user,
+                qty_required=None):
+    """Record what a picker actually pulled for one material on one job-operation.
+
+    `lots` is `[{lot_id, lot_number, qty}]` — what physically went in the tote, which is
+    routinely NOT what the sheet named: the printed lot is empty, short, or someone got
+    there first. Recording it does two things at once.
+
+    It reserves: until consumption draws the line down, `qty_picked` is netted out of
+    on-hand everywhere, so a second sheet can't promise the same units.
+
+    And it corrects the traceability record: `consume_for_step` reads these lots instead
+    of re-deriving FEFO, so what the system says went into the unit is what did.
+    """
+    from django.utils import timezone
+    from Tracker.models import MaterialStaging, MaterialStagingLine
+
+    staging, _ = MaterialStaging.objects.get_or_create(
+        tenant=tenant, work_order_id=work_order_id, step_id=step_id)
+
+    line, _ = MaterialStagingLine.objects.update_or_create(
+        tenant=tenant, staging=staging, material_id=material_id,
+        defaults={
+            'qty_picked': Decimal(str(qty)),
+            # What the picker was working to, as the sheet presented it. Without this
+            # the line records what was taken but not what was asked for, so a short
+            # pick and a complete one look identical — which is the one comparison the
+            # line exists to make.
+            'qty_required': Decimal(str(qty_required if qty_required is not None else qty)),
+            'picked_lots': list(lots or []),
+            'picked_by': user,
+            # A re-pick after issue starts a fresh reservation rather than silently
+            # topping up a line the system already believes was consumed.
+            'issued_at': None,
+        })
+
+    # Picking IS staging for this job-operation — the handler shouldn't have to say so
+    # twice, and a sheet reprinted mid-shift must show the work already done.
+    if staging.staged_at is None:
+        staging.staged_at = timezone.now()
+        staging.staged_by = user
+        staging.save(update_fields=['staged_at', 'staged_by'])
+    return line

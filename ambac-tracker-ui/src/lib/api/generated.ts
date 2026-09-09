@@ -526,14 +526,14 @@ export type BOMLine = {
   bom: string;
   component_type?:
     | /**
-     * In-house component (source=MAKE). Mutually exclusive with `material`.
+     * A part (not a raw material). With source=MAKE it spawns a child work order; with source=BUY it is purchased instead, which requires the part type's can_buy flag. Mutually exclusive with `material`.
      */
     (string | null)
     | undefined;
   component_type_name: string | null;
   material?:
     | /**
-     * Purchased component (source=BUY). Mutually exclusive with `component_type`.
+     * Purchased raw material / consumable (source=BUY) — something never produced in-house. Mutually exclusive with `component_type`.
      */
     (string | null)
     | undefined;
@@ -599,13 +599,13 @@ export type BOMLineRequest = {
   bom: string;
   component_type?:
     | /**
-     * In-house component (source=MAKE). Mutually exclusive with `material`.
+     * A part (not a raw material). With source=MAKE it spawns a child work order; with source=BUY it is purchased instead, which requires the part type's can_buy flag. Mutually exclusive with `material`.
      */
     (string | null)
     | undefined;
   material?:
     | /**
-     * Purchased component (source=BUY). Mutually exclusive with `component_type`.
+     * Purchased raw material / consumable (source=BUY) — something never produced in-house. Mutually exclusive with `component_type`.
      */
     (string | null)
     | undefined;
@@ -1295,10 +1295,27 @@ export type CapaTasksRequest = {
   completion_notes?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
+export type CapableToPromise = {
+  feasible: boolean;
+  reason?: string | undefined;
+  target_bucket?: (string | null) | undefined;
+  binding_resources?: Array<CtpBindingResource> | undefined;
+  earliest_feasible_bucket?: (string | null) | undefined;
+  quantity?: number | undefined;
+  work_content_hours?: {} | undefined;
+};
+export type CtpBindingResource = {
+  resource: string;
+  need: number;
+  free_through_target: number;
+};
 export type CapacityLoad = {
   buckets: Array<string>;
   labor: LaborCapacity;
   work_centers: Array<WorkCenterCapacity>;
+  planned_releases: Array<PlannedRelease>;
+  untimed_orders: Array<UntimedOrder>;
+  materials: Array<MaterialLoad>;
 };
 export type LaborCapacity = {
   name: string;
@@ -1321,6 +1338,32 @@ export type WorkCenterBucket = {
   capacity_hours: number;
   load_hours: number;
   utilization: number | null;
+};
+export type PlannedRelease = {
+  work_order_id: string;
+  erp_id: string;
+  planned_start: string;
+  due_date: string | null;
+  overdue: boolean;
+  is_estimate: boolean;
+  released: boolean;
+};
+export type UntimedOrder = {
+  erp_id: string;
+  step_count: number;
+};
+export type MaterialLoad = {
+  id: string;
+  name: string;
+  series: Array<MaterialBucket>;
+};
+export type MaterialBucket = {
+  bucket: string;
+  demand: number;
+  cumulative_demand: number;
+  available: number;
+  remaining_cover: number;
+  short: boolean;
 };
 export type ClockInRequest = {
   entry_type: TimeEntryTypeEnum;
@@ -3010,8 +3053,9 @@ export type MaterialLot = {
      */
     (string | null)
     | undefined;
-  received_date: string;
-  received_by: number;
+  received_date?: (string | null) | undefined;
+  received_by: number | null;
+  received_by_name: string | null;
   /**
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
    */
@@ -3044,7 +3088,8 @@ export type MaterialLot = {
 };
 export type MaterialLotStatusEnum =
   /**
-   * * `RECEIVED` - Received
+   * * `ON_ORDER` - On Order
+   * `RECEIVED` - Received
    * `AWAITING_INSPECTION` - Awaiting Inspection
    * `ACCEPTED` - Accepted
    * `REJECTED` - Rejected
@@ -3053,8 +3098,9 @@ export type MaterialLotStatusEnum =
    * `SCRAPPED` - Scrapped
    * `QUARANTINE` - Quarantine
    *
-   * @enum RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE
+   * @enum ON_ORDER, RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE
    */
+  | "ON_ORDER"
   | "RECEIVED"
   | "AWAITING_INSPECTION"
   | "ACCEPTED"
@@ -3142,7 +3188,7 @@ export type MaterialLotRequest = {
      */
     (string | null)
     | undefined;
-  received_date: string;
+  received_date?: (string | null) | undefined;
   /**
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
    */
@@ -3456,7 +3502,7 @@ export type OptimizationConfig = {
     * `pool` - Pool (cap at qualified crew)
     * `named` - Named (assign a specific operator)
      */
-  DefaultLaborModelEnum | undefined;
+  LaborModelEnum | undefined;
   default_lockstep_batch?: /**
    * Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work.
    */
@@ -3557,7 +3603,7 @@ export type OptimizationConfig = {
    */
   number | undefined;
 };
-export type DefaultLaborModelEnum =
+export type LaborModelEnum =
   /**
    * * `off` - Off (no crew constraint)
    * `pool` - Pool (cap at qualified crew)
@@ -4798,6 +4844,14 @@ export type Material = {
      * @maximum 2147483647
      */
     (number | null)
+    | undefined;
+  safety_stock?:
+    | /**
+     * Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
     | undefined;
   preferred_supplier?: (string | null) | undefined;
   preferred_supplier_name: string | null;
@@ -7730,11 +7784,65 @@ export type Steps = {
      */
     (string | null)
     | undefined;
+  labor_model?:
+    | /**
+     * How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+    
+    * `off` - Off (no crew constraint)
+    * `pool` - Pool (cap at qualified crew)
+    * `named` - Named (assign a specific operator)
+     */
+    (LaborModelEnum | BlankEnum | NullEnum | null)
+    | undefined;
+  timing?: StepTiming | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
   version: number;
 };
+export type StepTiming = Partial<{
+  /**
+   * Internal (machine-stopped) setup / changeover minutes.
+   *
+   * @minimum 0
+   */
+  setup_minutes: number;
+  /**
+   * Deterministic per-piece machine cycle time (minutes).
+   *
+   * @minimum 0
+   */
+  cycle_time_minutes: number;
+  /**
+   * Operator touch time to load/unload one piece (minutes).
+   *
+   * @minimum 0
+   */
+  load_unload_per_piece: number;
+  /**
+     * Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+    
+    * `full` - Full attention (operator tied to the machine)
+    * `load_unload` - Load/unload only (machine runs unattended between)
+    * `unattended` - Unattended (robot/cobot fed — setup only)
+     */
+  attention_type: AttentionTypeEnum;
+  /**
+   * SMED external setup that can overlap the previous op's run time.
+   *
+   * @minimum 0
+   */
+  external_setup_minutes: number;
+}>;
+export type AttentionTypeEnum =
+  /**
+   * * `full` - Full attention (operator tied to the machine)
+   * `load_unload` - Load/unload only (machine runs unattended between)
+   * `unattended` - Unattended (robot/cobot fed — setup only)
+   *
+   * @enum full, load_unload, unattended
+   */
+  "full" | "load_unload" | "unattended";
 export type PaginatedSubstepCompletionList = {
   /**
    * @example 123
@@ -9676,11 +9784,11 @@ export type PatchedApprovalTemplateRequest = Partial<{
 export type PatchedBOMLineRequest = Partial<{
   bom: string;
   /**
-   * In-house component (source=MAKE). Mutually exclusive with `material`.
+   * A part (not a raw material). With source=MAKE it spawns a child work order; with source=BUY it is purchased instead, which requires the part type's can_buy flag. Mutually exclusive with `material`.
    */
   component_type: string | null;
   /**
-   * Purchased component (source=BUY). Mutually exclusive with `component_type`.
+   * Purchased raw material / consumable (source=BUY) — something never produced in-house. Mutually exclusive with `component_type`.
    */
   material: string | null;
   /**
@@ -10310,7 +10418,7 @@ export type PatchedMaterialLotRequest = Partial<{
    * Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
    */
   promised_date: string | null;
-  received_date: string;
+  received_date: string | null;
   /**
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
    */
@@ -10425,7 +10533,7 @@ export type PatchedOptimizationConfigRequest = Partial<{
     * `pool` - Pool (cap at qualified crew)
     * `named` - Named (assign a specific operator)
      */
-  default_labor_model: DefaultLaborModelEnum;
+  default_labor_model: LaborModelEnum;
   /**
    * Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work.
    */
@@ -11427,7 +11535,50 @@ export type PatchedStepsRequest = Partial<{
    * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
    */
   scrap_rate: string | null;
+  /**
+     * How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+    
+    * `off` - Off (no crew constraint)
+    * `pool` - Pool (cap at qualified crew)
+    * `named` - Named (assign a specific operator)
+     */
+  labor_model: LaborModelEnum | BlankEnum | NullEnum | null;
+  timing: StepTimingRequest;
   archived: boolean;
+}>;
+export type StepTimingRequest = Partial<{
+  /**
+   * Internal (machine-stopped) setup / changeover minutes.
+   *
+   * @minimum 0
+   */
+  setup_minutes: number;
+  /**
+   * Deterministic per-piece machine cycle time (minutes).
+   *
+   * @minimum 0
+   */
+  cycle_time_minutes: number;
+  /**
+   * Operator touch time to load/unload one piece (minutes).
+   *
+   * @minimum 0
+   */
+  load_unload_per_piece: number;
+  /**
+     * Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+    
+    * `full` - Full attention (operator tied to the machine)
+    * `load_unload` - Load/unload only (machine runs unattended between)
+    * `unattended` - Unattended (robot/cobot fed — setup only)
+     */
+  attention_type: AttentionTypeEnum;
+  /**
+   * SMED external setup that can overlap the previous op's run time.
+   *
+   * @minimum 0
+   */
+  external_setup_minutes: number;
 }>;
 export type PatchedSubstepCompletionRequest = Partial<{
   /**
@@ -12505,6 +12656,19 @@ export type ReceivingSampleUnitRequest = {
 export type RecordInspectionRequestRequest = {
   measurements: Array<ReceivingMeasurementInputRequest>;
 };
+export type RecordPickInputRequest = {
+  work_order: string;
+  step: string;
+  material: string;
+  qty: number;
+  qty_required?: number | undefined;
+  lots?: Array<PickedLotRequest> | undefined;
+};
+export type PickedLotRequest = {
+  lot_id: string;
+  lot_number?: string | undefined;
+  qty: number;
+};
 export type RecordUnitsRequestRequest = {
   units: Array<ReceivingSampleUnitRequest>;
 };
@@ -13256,7 +13420,9 @@ export type SourcingRequirements = {
 };
 export type SourceRequirement = {
   material: string;
+  buy_kind: string;
   qty_short: number;
+  safety_stock: number;
   need_by: string | null;
   lead_time_days: number | null;
   order_by: string | null;
@@ -13648,6 +13814,17 @@ export type StepsRequest = {
      */
     (string | null)
     | undefined;
+  labor_model?:
+    | /**
+     * How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+    
+    * `off` - Off (no crew constraint)
+    * `pool` - Pool (cap at qualified crew)
+    * `named` - Named (assign a specific operator)
+     */
+    (LaborModelEnum | BlankEnum | NullEnum | null)
+    | undefined;
+  timing?: StepTimingRequest | undefined;
   archived?: boolean | undefined;
 };
 export type SubmitProcessForApprovalResponse = {
@@ -14545,6 +14722,8 @@ export type WorkOrderMaterialRequirements = {
 export type WorkOrderMaterialRequirementRow = {
   component: string;
   kind: string;
+  buy_kind: string | null;
+  safety_stock: number;
   source: string;
   quantity: number;
   unit_of_measure: string;
@@ -16750,6 +16929,7 @@ const PatchedLaborCalendarBlockRequest = z
   })
   .partial();
 const MaterialLotStatusEnum = z.enum([
+  "ON_ORDER",
   "RECEIVED",
   "AWAITING_INSPECTION",
   "ACCEPTED",
@@ -16775,8 +16955,9 @@ const MaterialLot = z.object({
   supplier_lot_number: z.string().max(100).optional(),
   erp_po_number: z.string().max(100).optional(),
   promised_date: z.string().nullish(),
-  received_date: z.string(),
-  received_by: z.number().int(),
+  received_date: z.string().nullish(),
+  received_by: z.number().int().nullable(),
+  received_by_name: z.string().nullable(),
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   quantity_remaining: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().max(20),
@@ -16808,7 +16989,7 @@ const MaterialLotRequest = z.object({
   supplier_lot_number: z.string().max(100).optional(),
   erp_po_number: z.string().max(100).optional(),
   promised_date: z.string().nullish(),
-  received_date: z.string(),
+  received_date: z.string().nullish(),
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().min(1).max(20),
   status: MaterialLotStatusEnum.optional(),
@@ -16829,7 +17010,7 @@ const PatchedMaterialLotRequest = z
     supplier_lot_number: z.string().max(100),
     erp_po_number: z.string().max(100),
     promised_date: z.string().nullable(),
-    received_date: z.string(),
+    received_date: z.string().nullable(),
     quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
     unit_of_measure: z.string().min(1).max(20),
     status: MaterialLotStatusEnum,
@@ -16945,6 +17126,14 @@ const RaiseScarResponse = z.object({
   capa_id: z.string().uuid(),
   capa_number: z.string(),
 });
+const ReceiveExpectedLotRequest = z.object({
+  lot_number: z.string().min(1),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  received_date: z.string().nullish(),
+});
 const RecordBulkRequestRequest = z.object({
   defectives_found: z.number().int().gte(0),
 });
@@ -17019,6 +17208,15 @@ const MaterialLotBulkCreateError = z
     errors: z.array(z.object({}).partial().passthrough()),
   })
   .partial();
+const ExpectedReceiptRequest = z.object({
+  material: z.string().uuid(),
+  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  promised_date: z.string(),
+  supplier: z.string().uuid().nullish(),
+  erp_po_number: z.string().optional().default(""),
+  unit_of_measure: z.string().optional().default(""),
+  lot_number: z.string().optional().default(""),
+});
 const MaterialUsage = z.object({
   id: z.string().uuid(),
   lot: z.string().uuid().nullish(),
@@ -17051,6 +17249,10 @@ const Material = z.object({
   description: z.string().max(255).optional(),
   unit_of_measure: z.string().max(20).optional(),
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  safety_stock: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
   preferred_supplier: z.string().uuid().nullish(),
   preferred_supplier_name: z.string().nullable(),
   is_active: z.boolean().optional(),
@@ -17070,6 +17272,10 @@ const MaterialRequest = z.object({
   description: z.string().max(255).optional(),
   unit_of_measure: z.string().min(1).max(20).optional(),
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  safety_stock: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
   preferred_supplier: z.string().uuid().nullish(),
   is_active: z.boolean().optional(),
   archived: z.boolean().optional(),
@@ -17081,6 +17287,10 @@ const PatchedMaterialRequest = z
     description: z.string().max(255),
     unit_of_measure: z.string().min(1).max(20),
     purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
+    safety_stock: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
     preferred_supplier: z.string().uuid().nullable(),
     is_active: z.boolean(),
     archived: z.boolean(),
@@ -18808,6 +19018,20 @@ const PinBatchRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
   is_pinned: z.boolean(),
 });
+const CtpBindingResource = z.object({
+  resource: z.string(),
+  need: z.number(),
+  free_through_target: z.number(),
+});
+const CapableToPromise = z.object({
+  feasible: z.boolean(),
+  reason: z.string().optional(),
+  target_bucket: z.string().nullish(),
+  binding_resources: z.array(CtpBindingResource).optional(),
+  earliest_feasible_bucket: z.string().nullish(),
+  quantity: z.number().int().optional(),
+  work_content_hours: z.record(z.number()).optional(),
+});
 const LaborBucket = z.object({
   bucket: z.string(),
   capacity_hours: z.number(),
@@ -18830,10 +19054,39 @@ const WorkCenterCapacity = z.object({
   name: z.string(),
   series: z.array(WorkCenterBucket),
 });
+const PlannedRelease = z.object({
+  work_order_id: z.string(),
+  erp_id: z.string(),
+  planned_start: z.string(),
+  due_date: z.string().nullable(),
+  overdue: z.boolean(),
+  is_estimate: z.boolean(),
+  released: z.boolean(),
+});
+const UntimedOrder = z.object({
+  erp_id: z.string(),
+  step_count: z.number().int(),
+});
+const MaterialBucket = z.object({
+  bucket: z.string(),
+  demand: z.number(),
+  cumulative_demand: z.number(),
+  available: z.number(),
+  remaining_cover: z.number(),
+  short: z.boolean(),
+});
+const MaterialLoad = z.object({
+  id: z.string(),
+  name: z.string(),
+  series: z.array(MaterialBucket),
+});
 const CapacityLoad = z.object({
   buckets: z.array(z.string()),
   labor: LaborCapacity,
   work_centers: z.array(WorkCenterCapacity),
+  planned_releases: z.array(PlannedRelease),
+  untimed_orders: z.array(UntimedOrder),
+  materials: z.array(MaterialLoad),
 });
 const SolverStatusEnum = z.enum([
   "OPTIMAL",
@@ -18861,7 +19114,7 @@ const ScheduleResult = z.object({
   created_at: z.string().datetime({ offset: true }),
   task_count: z.number().int(),
 });
-const DefaultLaborModelEnum = z.enum(["off", "pool", "named"]);
+const LaborModelEnum = z.enum(["off", "pool", "named"]);
 const ReleaseModeEnum = z.enum(["auto", "manual"]);
 const ReleasePolicyEnum = z.enum(["wlc", "constraint"]);
 const AutoResolveEnum = z.enum(["off", "live"]);
@@ -18879,7 +19132,7 @@ const OptimizationConfig = z.object({
     .optional(),
   default_machine_unattended: z.boolean().optional(),
   match_operators: z.boolean().optional(),
-  default_labor_model: DefaultLaborModelEnum.optional(),
+  default_labor_model: LaborModelEnum.optional(),
   default_lockstep_batch: z.boolean().optional(),
   shop_rate_per_hour: z
     .string()
@@ -18937,7 +19190,7 @@ const PatchedOptimizationConfigRequest = z
       .lte(2147483647),
     default_machine_unattended: z.boolean(),
     match_operators: z.boolean(),
-    default_labor_model: DefaultLaborModelEnum,
+    default_labor_model: LaborModelEnum,
     default_lockstep_batch: z.boolean(),
     shop_rate_per_hour: z.string().regex(/^-?\d{0,8}(?:\.\d{0,2})?$/),
     overtime_multiplier: z.string().regex(/^-?\d{0,2}(?:\.\d{0,2})?$/),
@@ -18978,7 +19231,9 @@ const PlanWorkOrderInputRequest = z.object({
 });
 const SourceRequirement = z.object({
   material: z.string(),
+  buy_kind: z.string(),
   qty_short: z.number().int(),
+  safety_stock: z.number(),
   need_by: z.string().nullable(),
   lead_time_days: z.number().int().nullable(),
   order_by: z.string().nullable(),
@@ -19401,6 +19656,16 @@ const PatchedStepOverrideRequest = z
     archived: z.boolean(),
   })
   .partial();
+const AttentionTypeEnum = z.enum(["full", "load_unload", "unattended"]);
+const StepTiming = z
+  .object({
+    setup_minutes: z.number().gte(0),
+    cycle_time_minutes: z.number().gte(0),
+    load_unload_per_piece: z.number().gte(0),
+    attention_type: AttentionTypeEnum,
+    external_setup_minutes: z.number().gte(0),
+  })
+  .partial();
 const Steps = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -19434,6 +19699,8 @@ const Steps = z.object({
     .string()
     .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
     .nullish(),
+  labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
+  timing: StepTiming.nullish(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -19445,6 +19712,15 @@ const PaginatedStepsList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(Steps),
 });
+const StepTimingRequest = z
+  .object({
+    setup_minutes: z.number().gte(0),
+    cycle_time_minutes: z.number().gte(0),
+    load_unload_per_piece: z.number().gte(0),
+    attention_type: AttentionTypeEnum,
+    external_setup_minutes: z.number().gte(0),
+  })
+  .partial();
 const StepsRequest = z.object({
   name: z.string().min(1).max(50),
   operation_number: z.string().max(20).optional(),
@@ -19474,6 +19750,8 @@ const StepsRequest = z.object({
     .string()
     .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
     .nullish(),
+  labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
+  timing: StepTimingRequest.nullish(),
   archived: z.boolean().optional(),
 });
 const PatchedStepsRequest = z
@@ -19511,6 +19789,8 @@ const PatchedStepsRequest = z
       .string()
       .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
       .nullable(),
+    labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullable(),
+    timing: StepTimingRequest.nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -20745,6 +21025,19 @@ const MarkStagedInputRequest = z.object({
   staged: z.boolean(),
   note: z.string().optional(),
 });
+const PickedLotRequest = z.object({
+  lot_id: z.string().uuid(),
+  lot_number: z.string().optional(),
+  qty: z.number(),
+});
+const RecordPickInputRequest = z.object({
+  work_order: z.string().uuid(),
+  step: z.string().uuid(),
+  material: z.string().uuid(),
+  qty: z.number(),
+  qty_required: z.number().optional(),
+  lots: z.array(PickedLotRequest).optional(),
+});
 const WorkOrderStatusEnum = z.enum([
   "PENDING",
   "IN_PROGRESS",
@@ -20885,6 +21178,8 @@ const WorkOrderMakeupStatus = z.object({
 const WorkOrderMaterialRequirementRow = z.object({
   component: z.string(),
   kind: z.string(),
+  buy_kind: z.string().nullable(),
+  safety_stock: z.number(),
   source: z.string(),
   quantity: z.number(),
   unit_of_measure: z.string(),
@@ -22842,6 +23137,7 @@ export const schemas = {
   ReceivingVerdict,
   ExtendShelfLifeRequest,
   RaiseScarResponse,
+  ReceiveExpectedLotRequest,
   RecordBulkRequestRequest,
   ReceivingMeasurementInputRequest,
   RecordInspectionRequestRequest,
@@ -22854,6 +23150,7 @@ export const schemas = {
   MaterialLotBulkCreateRequest,
   MaterialLotBulkCreateResponse,
   MaterialLotBulkCreateError,
+  ExpectedReceiptRequest,
   MaterialUsage,
   PaginatedMaterialUsageList,
   Material,
@@ -23040,14 +23337,20 @@ export const schemas = {
   BulkReassignOperatorRequestRequest,
   MoveBatchRequestRequest,
   PinBatchRequestRequest,
+  CtpBindingResource,
+  CapableToPromise,
   LaborBucket,
   LaborCapacity,
   WorkCenterBucket,
   WorkCenterCapacity,
+  PlannedRelease,
+  UntimedOrder,
+  MaterialBucket,
+  MaterialLoad,
   CapacityLoad,
   SolverStatusEnum,
   ScheduleResult,
-  DefaultLaborModelEnum,
+  LaborModelEnum,
   ReleaseModeEnum,
   ReleasePolicyEnum,
   AutoResolveEnum,
@@ -23099,8 +23402,11 @@ export const schemas = {
   PaginatedStepOverrideList,
   StepOverrideRequest,
   PatchedStepOverrideRequest,
+  AttentionTypeEnum,
+  StepTiming,
   Steps,
   PaginatedStepsList,
+  StepTimingRequest,
   StepsRequest,
   PatchedStepsRequest,
   StepWithResolvedRules,
@@ -23227,6 +23533,8 @@ export const schemas = {
   WorkCenterSelect,
   PatchedWorkCenterRequest,
   MarkStagedInputRequest,
+  PickedLotRequest,
+  RecordPickInputRequest,
   WorkOrderStatusEnum,
   WorkOrderPriorityEnum,
   SplitReasonEnum,
@@ -31436,6 +31744,7 @@ keep running (only PlantCalendarException stops machines).`,
             "AWAITING_INSPECTION",
             "CONSUMED",
             "IN_USE",
+            "ON_ORDER",
             "QUARANTINE",
             "RECEIVED",
             "REJECTED",
@@ -31618,6 +31927,27 @@ keep running (only PlantCalendarException stops machines).`,
   },
   {
     method: "post",
+    path: "/api/MaterialLots/:id/receive/",
+    alias: "api_MaterialLots_receive_create",
+    description: `Book in an ON_ORDER lot that has physically arrived (→ RECEIVED, then routed
+to incoming inspection like any other receipt).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ReceiveExpectedLotRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
     path: "/api/MaterialLots/:id/record_bulk/",
     alias: "api_MaterialLots_record_bulk_create",
     description: `Material lot tracking with split capability`,
@@ -31746,6 +32076,25 @@ keep running (only PlantCalendarException stops machines).`,
         schema: MaterialLotBulkCreateError,
       },
     ],
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/expected-receipt/",
+    alias: "api_MaterialLots_expected_receipt_create",
+    description: `Record stock ordered but not yet delivered, so netting can see it.
+
+Not a plain create: &#x60;perform_create&#x60; routes every new lot to receiving inspection,
+which is wrong for something that has not arrived. This goes through the service
+so the lot lands ON_ORDER with a generated placeholder lot number.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ExpectedReceiptRequest,
+      },
+    ],
+    response: MaterialLot,
   },
   {
     method: "get",
@@ -32748,7 +33097,10 @@ COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
     description: `Number of unread in-app notifications for the current user.`,
     requestFormat: "json",
     response: z.object({ unread: z.number().int() }),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/notifications/rules/customer/",
@@ -32799,10 +33151,7 @@ rules; without it, all customer-scoped rules in the tenant are returned.`,
       },
     ],
     response: CustomerRule,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/notifications/rules/customer/:id/",
@@ -38122,7 +38471,10 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/QuarantineDispositions/",
@@ -38283,10 +38635,7 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/QuarantineDispositions/:id/",
@@ -39877,7 +40226,7 @@ now and March, so this doesn&#x27;t reject anything larger than a single month.`
         schema: z.string(),
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: CapableToPromise,
     errors: [
       {
         status: 400,
@@ -40070,7 +40419,7 @@ SUCCESS, or FAILURE; on SUCCESS &#x60;result&#x60; carries the task&#x27;s retur
       {
         name: "task_id",
         type: "Query",
-        schema: z.string(),
+        schema: z.string().optional(),
       },
     ],
     response: z.object({}).partial().passthrough(),
@@ -43910,7 +44259,10 @@ negative range, then assign the final positive values.`,
       },
     ],
     response: SubstepTranslation,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/SubstepTranslations/:id/",
@@ -43945,10 +44297,7 @@ negative range, then assign the final positive values.`,
       },
     ],
     response: SubstepTranslation,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/SubstepTranslations/:id/",
@@ -47371,6 +47720,40 @@ scheduled tasks the solver replaces each run.`,
     response: z.object({}).partial().passthrough(),
   },
   {
+    method: "post",
+    path: "/api/WorkCenters/record-pick/",
+    alias: "api_WorkCenters_record_pick_create",
+    description: `Record what was ACTUALLY pulled for one material on one job-operation.
+
+Does two jobs at once, both of which the system got wrong without it.
+
+It reserves: until consumption draws the line down, the picked quantity is
+netted out of on-hand everywhere, so a second sheet can&#x27;t promise the same
+units. &#x60;MaterialLot.quantity_remaining&#x60; doesn&#x27;t move until consumption, so a
+loaded cart otherwise still reads as available stock.
+
+And it corrects traceability: consumption reads these lots instead of
+re-deriving FEFO. The sheet names the lots the plan WOULD draw; the picker
+regularly takes another because the named one is empty, short, or already gone.
+Recording it is the difference between the record saying what happened and
+saying what was intended.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RecordPickInputRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/WorkCenters/staging-list/",
     alias: "api_WorkCenters_staging_list_retrieve",
@@ -48270,7 +48653,10 @@ Accepts the following POST parameter: key.`,
       },
     ],
     response: z.object({ detail: z.string() }),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/auth/user/",
@@ -48320,10 +48706,7 @@ frontend client&#x27;s response validation lets them through.`,
       },
     ],
     response: TenantAwareUserDetails,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/password/reset/confirm/:uidb64/:token/",

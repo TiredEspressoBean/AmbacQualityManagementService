@@ -244,7 +244,8 @@ class MaterialSerializer(SecureModelMixin):
         model = Material
         fields = (
             'id', 'name', 'part_number', 'description', 'unit_of_measure',
-            'purchase_lead_time_days', 'preferred_supplier', 'preferred_supplier_name',
+            'purchase_lead_time_days', 'safety_stock',
+            'preferred_supplier', 'preferred_supplier_name',
             'is_active', 'created_at', 'updated_at', 'archived',
         )
         read_only_fields = ('created_at', 'updated_at')
@@ -266,6 +267,8 @@ class MaterialLotSerializer(SecureModelMixin):
     item_name = serializers.CharField(read_only=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
     parent_lot_number = serializers.CharField(source='parent_lot.lot_number', read_only=True, allow_null=True)
+    # Who booked the material in. Null while a lot is ON_ORDER — nobody has received it.
+    received_by_name = serializers.SerializerMethodField()
     child_lot_count = serializers.SerializerMethodField()
     # Live calendar shelf-life status (OK/WARNING/EXPIRED), or null when the lot
     # has no shelf life. Reads the LifeTracking record, not the raw scalar.
@@ -279,7 +282,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'material', 'material_name', 'item_name', 'material_description',
             'supplier', 'supplier_name', 'supplier_lot_number',
             'erp_po_number', 'promised_date',
-            'received_date', 'received_by',
+            'received_date', 'received_by', 'received_by_name',
             'quantity', 'quantity_remaining', 'unit_of_measure',
             'status', 'hold_reason', 'manufacture_date', 'expiration_date',
             'shelf_life_status',
@@ -292,6 +295,10 @@ class MaterialLotSerializer(SecureModelMixin):
             'parent_lot_number', 'child_lot_count', 'received_by',
             'hold_reason',
         )
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_received_by_name(self, obj):
+        return obj.received_by.display_name if obj.received_by_id else None
 
     @extend_schema_field(serializers.IntegerField())
     def get_child_lot_count(self, obj):
@@ -312,6 +319,41 @@ class MaterialLotSplitSerializer(serializers.Serializer):
         help_text="Quantity to split off (must be positive)"
     )
     reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ExpectedReceiptSerializer(serializers.Serializer):
+    """Stock ordered but not yet delivered, so planning can see it as incoming supply.
+
+    Purchasing itself lives in the ERP — `erp_po_number` is a reference, not an order."""
+    material = TenantScopedPrimaryKeyRelatedField(queryset=Material.unscoped.all())
+    quantity = serializers.DecimalField(
+        max_digits=12, decimal_places=4, min_value=Decimal('0.0001'),
+        help_text="Quantity on order.")
+    promised_date = serializers.DateField(
+        help_text="Supplier's promised delivery date. Required — an undated receipt "
+                  "cannot be placed in a planning bucket, so it would count as cover "
+                  "without ever landing anywhere.")
+    supplier = TenantScopedPrimaryKeyRelatedField(
+        queryset=Companies.unscoped.all(), required=False, allow_null=True,
+        help_text="Defaults to the material's preferred supplier.")
+    erp_po_number = serializers.CharField(required=False, allow_blank=True, default="")
+    unit_of_measure = serializers.CharField(required=False, allow_blank=True, default="")
+    lot_number = serializers.CharField(
+        required=False, allow_blank=True, default="",
+        help_text="Usually unknown until the supplier ships. Left blank, a placeholder "
+                  "is generated and replaced with the real number at receipt.")
+
+
+class ReceiveExpectedLotSerializer(serializers.Serializer):
+    """Book in an ON_ORDER lot that has physically arrived."""
+    lot_number = serializers.CharField(
+        allow_blank=False, help_text="The supplier's actual lot/batch number.")
+    quantity = serializers.DecimalField(
+        max_digits=12, decimal_places=4, min_value=Decimal('0.0001'),
+        required=False, allow_null=True,
+        help_text="Quantity actually delivered, when it differs from what was ordered. "
+                  "Omit to keep the ordered quantity.")
+    received_date = serializers.DateField(required=False, allow_null=True)
 
 
 class ExtendShelfLifeSerializer(serializers.Serializer):
@@ -395,8 +437,11 @@ class ClockInSerializer(serializers.Serializer):
 # ===== BOM SERIALIZERS =====
 
 class BOMLineSerializer(SecureModelMixin):
-    """BOM line item serializer. A line's component is EITHER an in-house `component_type`
-    (source=MAKE) OR a purchased `material` (source=BUY) — exactly one."""
+    """BOM line item serializer.
+
+    Exactly one of `component_type` (a part) / `material` (a raw material) is set, and
+    `source` is independent of that choice: a part can be MADE here or BOUGHT, and a
+    raw material is only ever bought."""
     component_type_name = serializers.CharField(
         source='component_type.name', read_only=True, allow_null=True)
     material_name = serializers.CharField(
@@ -419,11 +464,26 @@ class BOMLineSerializer(SecureModelMixin):
     def validate(self, attrs):
         def pick(name):
             return attrs.get(name, getattr(self.instance, name, None))
-        has_ct = pick('component_type') is not None
-        has_mat = pick('material') is not None
-        if has_ct == has_mat:
+        component_type = pick('component_type')
+        material = pick('material')
+        if (component_type is not None) == (material is not None):
             raise serializers.ValidationError(
-                "Set exactly one of component_type (in-house/MAKE) or material (purchased/BUY).")
+                "Set exactly one of component_type (a part) or material (a raw material).")
+
+        source = pick('source')
+        if source == 'BUY' and component_type is not None and not component_type.can_buy:
+            # Caught here rather than downstream: a BUY line on a make-only part resolves
+            # to nothing purchasable, so it would silently vanish from the sourcing report
+            # and the material gate instead of failing where it was authored.
+            raise serializers.ValidationError(
+                f"{component_type.name} isn't marked purchasable — set the part type's "
+                f"'can buy' flag, or make this a MAKE line."
+            )
+        if source == 'MAKE' and material is not None:
+            raise serializers.ValidationError(
+                "A raw material can't be made in-house — use source=BUY, or point the "
+                "line at a part type."
+            )
         return attrs
 
 

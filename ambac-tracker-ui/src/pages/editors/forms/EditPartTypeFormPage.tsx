@@ -498,12 +498,12 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                                 </TableHeader>
                                 <TableBody>
                                     {lines.map((line) => {
-                                        // A line is EITHER an in-house component_type (MAKE) or a
-                                        // purchased material (BUY) — show whichever it carries.
+                                        // Which column a line carries is independent of MAKE/BUY:
+                                        // a BUY line can point at a raw material OR at a part
+                                        // we're sourcing outside. Read the name off whichever
+                                        // is set, not off the source, or bought parts show blank.
                                         const isBuy = line.source === "BUY";
-                                        const label = isBuy
-                                            ? line.material_name
-                                            : line.component_type_name;
+                                        const label = line.material_name || line.component_type_name;
                                         return (
                                             <TableRow key={line.id}>
                                                 <TableCell>{line.find_number || "—"}</TableCell>

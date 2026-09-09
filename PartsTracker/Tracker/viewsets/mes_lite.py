@@ -2358,6 +2358,10 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             fields={
                 "component": serializers.CharField(),
                 "kind": serializers.CharField(),           # BUY / MAKE
+                # On a BUY row: MATERIAL (raw material) vs PART_TYPE (a bought part).
+                # Null on MAKE rows — nothing is being purchased.
+                "buy_kind": serializers.CharField(allow_null=True),
+                "safety_stock": serializers.FloatField(),
                 "source": serializers.CharField(),
                 "quantity": serializers.FloatField(),      # required = line qty × WO qty
                 "unit_of_measure": serializers.CharField(),

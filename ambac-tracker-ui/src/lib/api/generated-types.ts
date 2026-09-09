@@ -3954,6 +3954,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/receive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Book in an ON_ORDER lot that has physically arrived (→ RECEIVED, then routed
+         *     to incoming inspection like any other receipt).
+         */
+        post: operations["api_MaterialLots_receive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/record_bulk/": {
         parameters: {
             query?: never;
@@ -4067,6 +4087,29 @@ export interface paths {
         put?: never;
         /** @description Receive N lots from a shipment (paste-grid). All-or-nothing - any row error rolls back. */
         post: operations["api_MaterialLots_bulk_create_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/expected-receipt/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Record stock ordered but not yet delivered, so netting can see it.
+         *
+         *     Not a plain create: `perform_create` routes every new lot to receiving inspection,
+         *     which is wrong for something that has not arrived. This goes through the service
+         *     so the lot lands ON_ORDER with a generated placeholder lot number.
+         */
+        post: operations["api_MaterialLots_expected_receipt_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11877,6 +11920,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkCenters/record-pick/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Record what was ACTUALLY pulled for one material on one job-operation.
+         *
+         *     Does two jobs at once, both of which the system got wrong without it.
+         *
+         *     It reserves: until consumption draws the line down, the picked quantity is
+         *     netted out of on-hand everywhere, so a second sheet can't promise the same
+         *     units. `MaterialLot.quantity_remaining` doesn't move until consumption, so a
+         *     loaded cart otherwise still reads as available stock.
+         *
+         *     And it corrects traceability: consumption reads these lots instead of
+         *     re-deriving FEFO. The sheet names the lots the plan WOULD draw; the picker
+         *     regularly takes another because the named one is empty, short, or already gone.
+         *     Recording it is the difference between the record saying what happened and
+         *     saying what was intended.
+         */
+        post: operations["api_WorkCenters_record_pick_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkCenters/staging-list/": {
         parameters: {
             query?: never;
@@ -16178,6 +16253,13 @@ export interface components {
             step?: string | null;
             archived?: boolean;
         };
+        /**
+         * @description * `full` - Full attention (operator tied to the machine)
+         *     * `load_unload` - Load/unload only (machine runs unattended between)
+         *     * `unattended` - Unattended (robot/cobot fed — setup only)
+         * @enum {string}
+         */
+        AttentionTypeEnum: "full" | "load_unload" | "unattended";
         /** @description Enhanced audit log serializer */
         AuditLog: {
             readonly id: number;
@@ -16257,8 +16339,11 @@ export interface components {
             archived?: boolean;
         };
         /**
-         * @description BOM line item serializer. A line's component is EITHER an in-house `component_type`
-         *     (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+         * @description BOM line item serializer.
+         *
+         *     Exactly one of `component_type` (a part) / `material` (a raw material) is set, and
+         *     `source` is independent of that choice: a part can be MADE here or BOUGHT, and a
+         *     raw material is only ever bought.
          */
         BOMLine: {
             /** Format: uuid */
@@ -16267,13 +16352,13 @@ export interface components {
             bom: string;
             /**
              * Format: uuid
-             * @description In-house component (source=MAKE). Mutually exclusive with `material`.
+             * @description A part (not a raw material). With source=MAKE it spawns a child work order; with source=BUY it is purchased instead, which requires the part type's can_buy flag. Mutually exclusive with `material`.
              */
             component_type?: string | null;
             readonly component_type_name: string | null;
             /**
              * Format: uuid
-             * @description Purchased component (source=BUY). Mutually exclusive with `component_type`.
+             * @description Purchased raw material / consumable (source=BUY) — something never produced in-house. Mutually exclusive with `component_type`.
              */
             material?: string | null;
             readonly material_name: string | null;
@@ -16309,20 +16394,23 @@ export interface components {
             archived?: boolean;
         };
         /**
-         * @description BOM line item serializer. A line's component is EITHER an in-house `component_type`
-         *     (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+         * @description BOM line item serializer.
+         *
+         *     Exactly one of `component_type` (a part) / `material` (a raw material) is set, and
+         *     `source` is independent of that choice: a part can be MADE here or BOUGHT, and a
+         *     raw material is only ever bought.
          */
         BOMLineRequest: {
             /** Format: uuid */
             bom: string;
             /**
              * Format: uuid
-             * @description In-house component (source=MAKE). Mutually exclusive with `material`.
+             * @description A part (not a raw material). With source=MAKE it spawns a child work order; with source=BUY it is purchased instead, which requires the part type's can_buy flag. Mutually exclusive with `material`.
              */
             component_type?: string | null;
             /**
              * Format: uuid
-             * @description Purchased component (source=BUY). Mutually exclusive with `component_type`.
+             * @description Purchased raw material / consumable (source=BUY) — something never produced in-house. Mutually exclusive with `component_type`.
              */
             material?: string | null;
             /**
@@ -16985,10 +17073,24 @@ export interface components {
             verification_notes?: string | null;
             archived?: boolean;
         };
+        CapableToPromise: {
+            feasible: boolean;
+            reason?: string;
+            target_bucket?: string | null;
+            binding_resources?: components["schemas"]["CtpBindingResource"][];
+            earliest_feasible_bucket?: string | null;
+            quantity?: number;
+            work_content_hours?: {
+                [key: string]: number;
+            };
+        };
         CapacityLoad: {
             buckets: string[];
             labor: components["schemas"]["LaborCapacity"];
             work_centers: components["schemas"]["WorkCenterCapacity"][];
+            planned_releases: components["schemas"]["PlannedRelease"][];
+            untimed_orders: components["schemas"]["UntimedOrder"][];
+            materials: components["schemas"]["MaterialLoad"][];
         };
         /**
          * @description * `SIMPLIFIED` - SIMPLIFIED
@@ -17377,6 +17479,13 @@ export interface components {
         CreateStepRevisionInputRequest: {
             change_description: string;
         };
+        CtpBindingResource: {
+            resource: string;
+            /** Format: double */
+            need: number;
+            /** Format: double */
+            free_through_target: number;
+        };
         /**
          * @description * `OPEN` - Open
          *     * `IN_PROGRESS` - In Progress
@@ -17620,13 +17729,6 @@ export interface components {
          * @enum {string}
          */
         DecisionTypeEnum: "QA_RESULT" | "MEASUREMENT" | "MANUAL" | "AGGREGATE";
-        /**
-         * @description * `off` - Off (no crew constraint)
-         *     * `pool` - Pool (cap at qualified crew)
-         *     * `named` - Named (assign a specific operator)
-         * @enum {string}
-         */
-        DefaultLaborModelEnum: "off" | "pool" | "named";
         DefectParetoResponse: {
             data: {
                 [key: string]: unknown;
@@ -18337,6 +18439,39 @@ export interface components {
             results: {
                 [key: string]: unknown;
             }[];
+        };
+        /**
+         * @description Stock ordered but not yet delivered, so planning can see it as incoming supply.
+         *
+         *     Purchasing itself lives in the ERP — `erp_po_number` is a reference, not an order.
+         */
+        ExpectedReceiptRequest: {
+            /** Format: uuid */
+            material: string;
+            /**
+             * Format: decimal
+             * @description Quantity on order.
+             */
+            quantity: string;
+            /**
+             * Format: date
+             * @description Supplier's promised delivery date. Required — an undated receipt cannot be placed in a planning bucket, so it would count as cover without ever landing anywhere.
+             */
+            promised_date: string;
+            /**
+             * Format: uuid
+             * @description Defaults to the material's preferred supplier.
+             */
+            supplier?: string | null;
+            /** @default  */
+            erp_po_number: string;
+            /** @default  */
+            unit_of_measure: string;
+            /**
+             * @description Usually unknown until the supplier ships. Left blank, a placeholder is generated and replaced with the real number at receipt.
+             * @default
+             */
+            lot_number: string;
         };
         /** @description (Re)explode an existing work order's BOM. `create=false` previews without writing. */
         ExplodeWorkOrderInputRequest: {
@@ -19430,6 +19565,13 @@ export interface components {
             series: components["schemas"]["LaborBucket"][];
         };
         /**
+         * @description * `off` - Off (no crew constraint)
+         *     * `pool` - Pool (cap at qualified crew)
+         *     * `named` - Named (assign a specific operator)
+         * @enum {string}
+         */
+        LaborModelEnum: "off" | "pool" | "named";
+        /**
          * @description * `ONCE` - One-off (dated)
          *     * `WEEKLY` - Weekly (recurring)
          * @enum {string}
@@ -19476,6 +19618,11 @@ export interface components {
             unit_of_measure?: string;
             /** @description Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
             purchase_lead_time_days?: number | null;
+            /**
+             * Format: decimal
+             * @description Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
+             */
+            safety_stock?: string | null;
             /** Format: uuid */
             preferred_supplier?: string | null;
             readonly preferred_supplier_name: string | null;
@@ -19485,6 +19632,23 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             archived?: boolean;
+        };
+        MaterialBucket: {
+            bucket: string;
+            /** Format: double */
+            demand: number;
+            /** Format: double */
+            cumulative_demand: number;
+            /** Format: double */
+            available: number;
+            /** Format: double */
+            remaining_cover: number;
+            short: boolean;
+        };
+        MaterialLoad: {
+            id: string;
+            name: string;
+            series: components["schemas"]["MaterialBucket"][];
         };
         /**
          * @description Material lot serializer.
@@ -19527,8 +19691,9 @@ export interface components {
              */
             promised_date?: string | null;
             /** Format: date */
-            received_date: string;
-            readonly received_by: number;
+            received_date?: string | null;
+            readonly received_by: number | null;
+            readonly received_by_name: string | null;
             /** Format: decimal */
             quantity: string;
             /** Format: decimal */
@@ -19623,7 +19788,7 @@ export interface components {
              */
             promised_date?: string | null;
             /** Format: date */
-            received_date: string;
+            received_date?: string | null;
             /** Format: decimal */
             quantity: string;
             unit_of_measure: string;
@@ -19648,7 +19813,8 @@ export interface components {
             reason: string;
         };
         /**
-         * @description * `RECEIVED` - Received
+         * @description * `ON_ORDER` - On Order
+         *     * `RECEIVED` - Received
          *     * `AWAITING_INSPECTION` - Awaiting Inspection
          *     * `ACCEPTED` - Accepted
          *     * `REJECTED` - Rejected
@@ -19658,7 +19824,7 @@ export interface components {
          *     * `QUARANTINE` - Quarantine
          * @enum {string}
          */
-        MaterialLotStatusEnum: "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
+        MaterialLotStatusEnum: "ON_ORDER" | "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
         /**
          * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
          *     Holds the purchase lead time used by the sourcing report.
@@ -19671,6 +19837,11 @@ export interface components {
             unit_of_measure?: string;
             /** @description Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
             purchase_lead_time_days?: number | null;
+            /**
+             * Format: decimal
+             * @description Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
+             */
+            safety_stock?: string | null;
             /** Format: uuid */
             preferred_supplier?: string | null;
             is_active?: boolean;
@@ -20072,7 +20243,7 @@ export interface components {
              *     * `pool` - Pool (cap at qualified crew)
              *     * `named` - Named (assign a specific operator)
              */
-            default_labor_model?: components["schemas"]["DefaultLaborModelEnum"];
+            default_labor_model?: components["schemas"]["LaborModelEnum"];
             /** @description Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work. */
             default_lockstep_batch?: boolean;
             /**
@@ -22379,20 +22550,23 @@ export interface components {
             archived?: boolean;
         };
         /**
-         * @description BOM line item serializer. A line's component is EITHER an in-house `component_type`
-         *     (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+         * @description BOM line item serializer.
+         *
+         *     Exactly one of `component_type` (a part) / `material` (a raw material) is set, and
+         *     `source` is independent of that choice: a part can be MADE here or BOUGHT, and a
+         *     raw material is only ever bought.
          */
         PatchedBOMLineRequest: {
             /** Format: uuid */
             bom?: string;
             /**
              * Format: uuid
-             * @description In-house component (source=MAKE). Mutually exclusive with `material`.
+             * @description A part (not a raw material). With source=MAKE it spawns a child work order; with source=BUY it is purchased instead, which requires the part type's can_buy flag. Mutually exclusive with `material`.
              */
             component_type?: string | null;
             /**
              * Format: uuid
-             * @description Purchased component (source=BUY). Mutually exclusive with `component_type`.
+             * @description Purchased raw material / consumable (source=BUY) — something never produced in-house. Mutually exclusive with `component_type`.
              */
             material?: string | null;
             /**
@@ -23104,7 +23278,7 @@ export interface components {
              */
             promised_date?: string | null;
             /** Format: date */
-            received_date?: string;
+            received_date?: string | null;
             /** Format: decimal */
             quantity?: string;
             unit_of_measure?: string;
@@ -23130,6 +23304,11 @@ export interface components {
             unit_of_measure?: string;
             /** @description Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
             purchase_lead_time_days?: number | null;
+            /**
+             * Format: decimal
+             * @description Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
+             */
+            safety_stock?: string | null;
             /** Format: uuid */
             preferred_supplier?: string | null;
             is_active?: boolean;
@@ -23221,7 +23400,7 @@ export interface components {
              *     * `pool` - Pool (cap at qualified crew)
              *     * `named` - Named (assign a specific operator)
              */
-            default_labor_model?: components["schemas"]["DefaultLaborModelEnum"];
+            default_labor_model?: components["schemas"]["LaborModelEnum"];
             /** @description Default lot-cohesion intent for work orders that don't set their own (`WorkOrder.lockstep_batch`). NOTE: currently informational only — the solver always schedules co-located cohort parts as one cohesive lot and carves a rework straggler into its own lot so the cohort keeps progressing (it does NOT hold the WO); ON and OFF behave identically today. The OFF meaning (allow a large lot to break into transfer batches to pipeline) is reserved for the future transfer-batching work. */
             default_lockstep_batch?: boolean;
             /**
@@ -24231,6 +24410,15 @@ export interface components {
              * @description Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
              */
             scrap_rate?: string | null;
+            /**
+             * @description How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+             *
+             *     * `off` - Off (no crew constraint)
+             *     * `pool` - Pool (cap at qualified crew)
+             *     * `named` - Named (assign a specific operator)
+             */
+            labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            timing?: components["schemas"]["StepTimingRequest"] | null;
             archived?: boolean;
         };
         /** @description Per-execution completion record. */
@@ -25041,6 +25229,13 @@ export interface components {
             /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
             channels?: unknown;
         };
+        PickedLotRequest: {
+            /** Format: uuid */
+            lot_id: string;
+            lot_number?: string;
+            /** Format: double */
+            qty: number;
+        };
         /** @description Pin/unpin every part of a batch. */
         PinBatchRequestRequest: {
             task_ids: string[];
@@ -25060,6 +25255,17 @@ export interface components {
             expected_start?: string | null;
             /** Format: date */
             expected_completion?: string | null;
+        };
+        PlannedRelease: {
+            work_order_id: string;
+            erp_id: string;
+            /** Format: date */
+            planned_start: string;
+            /** Format: date */
+            due_date: string | null;
+            overdue: boolean;
+            is_estimate: boolean;
+            released: boolean;
         };
         /**
          * @description A dated, plant-wide non-working window — holiday / shutdown / inventory day.
@@ -26230,6 +26436,18 @@ export interface components {
             /** Format: uuid */
             operator_id: string | null;
         };
+        /** @description Book in an ON_ORDER lot that has physically arrived. */
+        ReceiveExpectedLotRequest: {
+            /** @description The supplier's actual lot/batch number. */
+            lot_number: string;
+            /**
+             * Format: decimal
+             * @description Quantity actually delivered, when it differs from what was ordered. Omit to keep the ordered quantity.
+             */
+            quantity?: string | null;
+            /** Format: date */
+            received_date?: string | null;
+        };
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
             /** Format: uuid */
@@ -26283,6 +26501,19 @@ export interface components {
         /** @description Request body for recording receiving-inspection measurement results. */
         RecordInspectionRequestRequest: {
             measurements: components["schemas"]["ReceivingMeasurementInputRequest"][];
+        };
+        RecordPickInputRequest: {
+            /** Format: uuid */
+            work_order: string;
+            /** Format: uuid */
+            step: string;
+            /** Format: uuid */
+            material: string;
+            /** Format: double */
+            qty: number;
+            /** Format: double */
+            qty_required?: number;
+            lots?: components["schemas"]["PickedLotRequest"][];
         };
         /** @description Request body for recording per-unit measurements across the sample. */
         RecordUnitsRequestRequest: {
@@ -27500,7 +27731,10 @@ export interface components {
         SolverStatusEnum: "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN";
         SourceRequirement: {
             material: string;
+            buy_kind: string;
             qty_short: number;
+            /** Format: double */
+            safety_stock: number;
             /** Format: date */
             need_by: string | null;
             lead_time_days: number | null;
@@ -28137,6 +28371,80 @@ export interface components {
             parts_at_supplier: number;
         };
         /**
+         * @description The step's time elements — what the scheduler and RCCP size everything from.
+         *
+         *     Nested on the step rather than exposed as its own resource: `StepTiming.step` is a
+         *     OneToOne, and a planner sets cycle and setup in the same place they set
+         *     `labor_model` and the outside-process fields.
+         */
+        StepTiming: {
+            /**
+             * Format: double
+             * @description Internal (machine-stopped) setup / changeover minutes.
+             */
+            setup_minutes?: number;
+            /**
+             * Format: double
+             * @description Deterministic per-piece machine cycle time (minutes).
+             */
+            cycle_time_minutes?: number;
+            /**
+             * Format: double
+             * @description Operator touch time to load/unload one piece (minutes).
+             */
+            load_unload_per_piece?: number;
+            /**
+             * @description Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+             *
+             *     * `full` - Full attention (operator tied to the machine)
+             *     * `load_unload` - Load/unload only (machine runs unattended between)
+             *     * `unattended` - Unattended (robot/cobot fed — setup only)
+             */
+            attention_type?: components["schemas"]["AttentionTypeEnum"];
+            /**
+             * Format: double
+             * @description SMED external setup that can overlap the previous op's run time.
+             */
+            external_setup_minutes?: number;
+        };
+        /**
+         * @description The step's time elements — what the scheduler and RCCP size everything from.
+         *
+         *     Nested on the step rather than exposed as its own resource: `StepTiming.step` is a
+         *     OneToOne, and a planner sets cycle and setup in the same place they set
+         *     `labor_model` and the outside-process fields.
+         */
+        StepTimingRequest: {
+            /**
+             * Format: double
+             * @description Internal (machine-stopped) setup / changeover minutes.
+             */
+            setup_minutes?: number;
+            /**
+             * Format: double
+             * @description Deterministic per-piece machine cycle time (minutes).
+             */
+            cycle_time_minutes?: number;
+            /**
+             * Format: double
+             * @description Operator touch time to load/unload one piece (minutes).
+             */
+            load_unload_per_piece?: number;
+            /**
+             * @description Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+             *
+             *     * `full` - Full attention (operator tied to the machine)
+             *     * `load_unload` - Load/unload only (machine runs unattended between)
+             *     * `unattended` - Unattended (robot/cobot fed — setup only)
+             */
+            attention_type?: components["schemas"]["AttentionTypeEnum"];
+            /**
+             * Format: double
+             * @description SMED external setup that can overlap the previous op's run time.
+             */
+            external_setup_minutes?: number;
+        };
+        /**
          * @description * `TASK` - Task
          *     * `START` - Start
          *     * `DECISION` - Decision
@@ -28298,6 +28606,15 @@ export interface components {
              * @description Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
              */
             scrap_rate?: string | null;
+            /**
+             * @description How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+             *
+             *     * `off` - Off (no crew constraint)
+             *     * `pool` - Pool (cap at qualified crew)
+             *     * `named` - Named (assign a specific operator)
+             */
+            labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            timing?: components["schemas"]["StepTiming"] | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -28380,6 +28697,15 @@ export interface components {
              * @description Expected fraction of parts scrapped AT this step (0–1). Null inherits the process default. Today this is an authored estimate; the resolution chain (`services.mes.yield_planning`) is built so a statistically-observed rate from StepExecution history can later take precedence when there's enough data to be confident.
              */
             scrap_rate?: string | null;
+            /**
+             * @description How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+             *
+             *     * `off` - Off (no crew constraint)
+             *     * `pool` - Pool (cap at qualified crew)
+             *     * `named` - Named (assign a specific operator)
+             */
+            labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            timing?: components["schemas"]["StepTimingRequest"] | null;
             archived?: boolean;
         };
         /**
@@ -30184,6 +30510,10 @@ export interface components {
             detail: string;
             fix: string;
         };
+        UntimedOrder: {
+            erp_id: string;
+            step_count: number;
+        };
         /** @description Enhanced user serializer with company and permission info */
         User: {
             readonly id: number;
@@ -30749,6 +31079,9 @@ export interface components {
         WorkOrderMaterialRequirementRow: {
             component: string;
             kind: string;
+            buy_kind: string | null;
+            /** Format: double */
+            safety_stock: number;
             source: string;
             /** Format: double */
             quantity: number;
@@ -38623,7 +38956,8 @@ export interface operations {
                 /** @description A search term. */
                 search?: string;
                 /**
-                 * @description * `RECEIVED` - Received
+                 * @description * `ON_ORDER` - On Order
+                 *     * `RECEIVED` - Received
                  *     * `AWAITING_INSPECTION` - Awaiting Inspection
                  *     * `ACCEPTED` - Accepted
                  *     * `REJECTED` - Rejected
@@ -38632,7 +38966,7 @@ export interface operations {
                  *     * `SCRAPPED` - Scrapped
                  *     * `QUARANTINE` - Quarantine
                  */
-                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "SCRAPPED";
                 supplier?: string;
             };
             header?: never;
@@ -38891,6 +39225,34 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_receive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiveExpectedLotRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReceiveExpectedLotRequest"];
+                "multipart/form-data": components["schemas"]["ReceiveExpectedLotRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
     api_MaterialLots_record_bulk_create: {
         parameters: {
             query?: never;
@@ -39076,6 +39438,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialLotBulkCreateError"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_expected_receipt_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedReceiptRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExpectedReceiptRequest"];
+                "multipart/form-data": components["schemas"]["ExpectedReceiptRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
                 };
             };
         };
@@ -45159,9 +45546,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CapableToPromise"];
                 };
             };
             400: {
@@ -45523,8 +45908,8 @@ export interface operations {
     };
     api_Schedules_solve_status_retrieve: {
         parameters: {
-            query: {
-                task_id: string;
+            query?: {
+                task_id?: string;
             };
             header?: never;
             path?: never;
@@ -52107,6 +52492,43 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_WorkCenters_record_pick_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPickInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordPickInputRequest"];
+                "multipart/form-data": components["schemas"]["RecordPickInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
+from Tracker.models.scheduling import StepTiming
 from Tracker.models import (
     # MES Lite models
     Orders, OrdersStatus, Parts, PartsStatus, WorkOrder, WorkOrderStatus,
@@ -863,6 +864,20 @@ class PartTravelerResponseSerializer(serializers.Serializer):
 
 # ===== STEP AND PROCESS SERIALIZERS =====
 
+class StepTimingSerializer(serializers.ModelSerializer):
+    """The step's time elements — what the scheduler and RCCP size everything from.
+
+    Nested on the step rather than exposed as its own resource: `StepTiming.step` is a
+    OneToOne, and a planner sets cycle and setup in the same place they set
+    `labor_model` and the outside-process fields.
+    """
+
+    class Meta:
+        model = StepTiming
+        fields = ('setup_minutes', 'cycle_time_minutes', 'load_unload_per_piece',
+                  'attention_type', 'external_setup_minutes')
+
+
 class StepsSerializer(SecureModelMixin):
     """
     Steps serializer - represents step node properties.
@@ -877,6 +892,7 @@ class StepsSerializer(SecureModelMixin):
     part_type_info = serializers.SerializerMethodField()
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     work_center_name = serializers.CharField(source="work_center.name", read_only=True, allow_null=True)
+    timing = StepTimingSerializer(required=False, allow_null=True)
 
     # Fields whose edits are metadata-only and should NOT trigger a new version.
     # operation_number is a shop-floor routing label, not process behaviour — a
@@ -910,6 +926,11 @@ class StepsSerializer(SecureModelMixin):
             'sequencing_mode',
             # Expected scrap fraction at this step (null = inherit process default)
             'scrap_rate',
+            # Whether this step consumes crew at all (null = inherit the tenant default).
+            # WHO may run it is decided by the step's training requirements, not here.
+            'labor_model',
+            # Time elements the scheduler and RCCP size work from (nested one-to-one)
+            'timing',
             # Timestamps
             'created_at', 'updated_at', 'archived',
             # Versioning
@@ -931,16 +952,49 @@ class StepsSerializer(SecureModelMixin):
         unaffected — that's how multi-PCR isolation works.
         """
         from Tracker.services.core.versioning import apply_versioned_update
+        # `timing` is a nested one-to-one on a different model, so it can't ride through
+        # apply_versioned_update with the scalar fields. Pull it out first, then write it
+        # to whatever row comes back — a version fork returns a NEW step, and the timing
+        # must land on that one or the edit silently applies to a superseded row.
+        timing_data = validated_data.pop('timing', serializers.empty)
+
         version_kwargs = {}
         process = self._resolve_editing_process()
         if process is not None:
             version_kwargs['process'] = process
-        return apply_versioned_update(
+        updated = apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
             version_kwargs=version_kwargs,
         )
+        if timing_data is not serializers.empty:
+            self._write_timing(updated, timing_data)
+        return updated
+
+    def create(self, validated_data):
+        timing_data = validated_data.pop('timing', None)
+        step = super().create(validated_data)
+        if timing_data:
+            self._write_timing(step, timing_data)
+        return step
+
+    @staticmethod
+    def _write_timing(step, data):
+        """Create-or-update the step's timing row.
+
+        `null` clears it — an untimed step is a real state (the solver sizes it to zero
+        and RCCP reads it as free), so it has to be expressible, not just unreachable.
+        """
+        if data is None:
+            StepTiming.objects.filter(step=step).delete()
+            return
+        # `archived: False` revives a previously-cleared row: the FK is a OneToOne,
+        # so a soft-deleted row still occupies the slot and a plain create would
+        # collide.
+        StepTiming.objects.update_or_create(
+            step=step, defaults={'tenant': step.tenant, 'archived': False,
+                                 'deleted_at': None, **data})
 
     def _resolve_editing_process(self):
         """Read `?process=<uuid>` and return the Process row if it exists

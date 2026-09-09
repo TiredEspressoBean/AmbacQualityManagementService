@@ -10386,11 +10386,13 @@ paths:
           - AWAITING_INSPECTION
           - CONSUMED
           - IN_USE
+          - ON_ORDER
           - QUARANTINE
           - RECEIVED
           - REJECTED
           - SCRAPPED
         description: |-
+          * `ON_ORDER` - On Order
           * `RECEIVED` - Received
           * `AWAITING_INSPECTION` - Awaiting Inspection
           * `ACCEPTED` - Accepted
@@ -10691,6 +10693,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/RaiseScarResponse'
           description: ''
+  /api/MaterialLots/{id}/receive/:
+    post:
+      operationId: api_MaterialLots_receive_create
+      description: |-
+        Book in an ON_ORDER lot that has physically arrived (→ RECEIVED, then routed
+        to incoming inspection like any other receipt).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveExpectedLotRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReceiveExpectedLotRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReceiveExpectedLotRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/{id}/record_bulk/:
     post:
       operationId: api_MaterialLots_record_bulk_create
@@ -10918,6 +10958,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MaterialLotBulkCreateError'
+          description: ''
+  /api/MaterialLots/expected-receipt/:
+    post:
+      operationId: api_MaterialLots_expected_receipt_create
+      description: |-
+        Record stock ordered but not yet delivered, so netting can see it.
+
+        Not a plain create: `perform_create` routes every new lot to receiving inspection,
+        which is wrong for something that has not arrived. This goes through the service
+        so the lot lands ON_ORDER with a generated placeholder lot number.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpectedReceiptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExpectedReceiptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExpectedReceiptRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
           description: ''
   /api/MaterialLots/export-excel/:
     get:
@@ -20131,8 +20204,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/CapableToPromise'
           description: ''
         '400':
           content:
@@ -20500,7 +20572,6 @@ paths:
         name: task_id
         schema:
           type: string
-        required: true
       tags:
       - api
       security:
@@ -29787,6 +29858,56 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/WorkCenters/record-pick/:
+    post:
+      operationId: api_WorkCenters_record_pick_create
+      description: |-
+        Record what was ACTUALLY pulled for one material on one job-operation.
+
+        Does two jobs at once, both of which the system got wrong without it.
+
+        It reserves: until consumption draws the line down, the picked quantity is
+        netted out of on-hand everywhere, so a second sheet can't promise the same
+        units. `MaterialLot.quantity_remaining` doesn't move until consumption, so a
+        loaded cart otherwise still reads as available stock.
+
+        And it corrects traceability: consumption reads these lots instead of
+        re-deriving FEFO. The sheet names the lots the plan WOULD draw; the picker
+        regularly takes another because the named one is empty, short, or already gone.
+        Recording it is the difference between the record saying what happened and
+        saying what was intended.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordPickInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordPickInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordPickInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkCenters/staging-list/:
     get:
       operationId: api_WorkCenters_staging_list_retrieve
@@ -37999,6 +38120,16 @@ components:
       required:
       - assembly
       - component
+    AttentionTypeEnum:
+      enum:
+      - full
+      - load_unload
+      - unattended
+      type: string
+      description: |-
+        * `full` - Full attention (operator tied to the machine)
+        * `load_unload` - Load/unload only (machine runs unattended between)
+        * `unattended` - Unattended (robot/cobot fed — setup only)
     AuditLog:
       type: object
       description: Enhanced audit log serializer
@@ -38191,8 +38322,11 @@ components:
     BOMLine:
       type: object
       description: |-
-        BOM line item serializer. A line's component is EITHER an in-house `component_type`
-        (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+        BOM line item serializer.
+
+        Exactly one of `component_type` (a part) / `material` (a raw material) is set, and
+        `source` is independent of that choice: a part can be MADE here or BOUGHT, and a
+        raw material is only ever bought.
       properties:
         id:
           type: string
@@ -38205,7 +38339,9 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: In-house component (source=MAKE). Mutually exclusive with `material`.
+          description: A part (not a raw material). With source=MAKE it spawns a child
+            work order; with source=BUY it is purchased instead, which requires the
+            part type's can_buy flag. Mutually exclusive with `material`.
         component_type_name:
           type: string
           readOnly: true
@@ -38214,7 +38350,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Purchased component (source=BUY). Mutually exclusive with `component_type`.
+          description: Purchased raw material / consumable (source=BUY) — something
+            never produced in-house. Mutually exclusive with `component_type`.
         material_name:
           type: string
           readOnly: true
@@ -38286,8 +38423,11 @@ components:
     BOMLineRequest:
       type: object
       description: |-
-        BOM line item serializer. A line's component is EITHER an in-house `component_type`
-        (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+        BOM line item serializer.
+
+        Exactly one of `component_type` (a part) / `material` (a raw material) is set, and
+        `source` is independent of that choice: a part can be MADE here or BOUGHT, and a
+        raw material is only ever bought.
       properties:
         bom:
           type: string
@@ -38296,12 +38436,15 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: In-house component (source=MAKE). Mutually exclusive with `material`.
+          description: A part (not a raw material). With source=MAKE it spawns a child
+            work order; with source=BUY it is purchased instead, which requires the
+            part type's can_buy flag. Mutually exclusive with `material`.
         material:
           type: string
           format: uuid
           nullable: true
-          description: Purchased component (source=BUY). Mutually exclusive with `component_type`.
+          description: Purchased raw material / consumable (source=BUY) — something
+            never produced in-house. Mutually exclusive with `component_type`.
         source:
           allOf:
           - $ref: '#/components/schemas/BOMLineSourceEnum'
@@ -39637,6 +39780,32 @@ components:
       - capa
       - verification_criteria
       - verification_method
+    CapableToPromise:
+      type: object
+      properties:
+        feasible:
+          type: boolean
+        reason:
+          type: string
+        target_bucket:
+          type: string
+          nullable: true
+        binding_resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/CtpBindingResource'
+        earliest_feasible_bucket:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+        work_content_hours:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+      required:
+      - feasible
     CapacityLoad:
       type: object
       properties:
@@ -39650,9 +39819,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WorkCenterCapacity'
+        planned_releases:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlannedRelease'
+        untimed_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/UntimedOrder'
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialLoad'
       required:
       - buckets
       - labor
+      - materials
+      - planned_releases
+      - untimed_orders
       - work_centers
     ChangeControlModeEnum:
       enum:
@@ -40397,6 +40581,21 @@ components:
           minLength: 1
       required:
       - change_description
+    CtpBindingResource:
+      type: object
+      properties:
+        resource:
+          type: string
+        need:
+          type: number
+          format: double
+        free_through_target:
+          type: number
+          format: double
+      required:
+      - free_through_target
+      - need
+      - resource
     CurrentStateEnum:
       enum:
       - OPEN
@@ -40916,16 +41115,6 @@ components:
         * `MEASUREMENT` - Based on Measurement Threshold
         * `MANUAL` - Manual Operator Selection
         * `AGGREGATE` - Based on Quality Gate (aggregate signal)
-    DefaultLaborModelEnum:
-      enum:
-      - 'off'
-      - pool
-      - named
-      type: string
-      description: |-
-        * `off` - Off (no crew constraint)
-        * `pool` - Pool (cap at qualified crew)
-        * `named` - Named (assign a specific operator)
     DefectParetoResponse:
       type: object
       properties:
@@ -42319,6 +42508,47 @@ components:
       - limit
       - model
       - results
+    ExpectedReceiptRequest:
+      type: object
+      description: |-
+        Stock ordered but not yet delivered, so planning can see it as incoming supply.
+
+        Purchasing itself lives in the ERP — `erp_po_number` is a reference, not an order.
+      properties:
+        material:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          description: Quantity on order.
+        promised_date:
+          type: string
+          format: date
+          description: Supplier's promised delivery date. Required — an undated receipt
+            cannot be placed in a planning bucket, so it would count as cover without
+            ever landing anywhere.
+        supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Defaults to the material's preferred supplier.
+        erp_po_number:
+          type: string
+          default: ''
+        unit_of_measure:
+          type: string
+          default: ''
+        lot_number:
+          type: string
+          default: ''
+          description: Usually unknown until the supplier ships. Left blank, a placeholder
+            is generated and replaced with the real number at receipt.
+      required:
+      - material
+      - promised_date
+      - quantity
     ExplodeWorkOrderInputRequest:
       type: object
       description: (Re)explode an existing work order's BOM. `create=false` previews
@@ -44601,6 +44831,16 @@ components:
       - crew_size
       - name
       - series
+    LaborModelEnum:
+      enum:
+      - 'off'
+      - pool
+      - named
+      type: string
+      description: |-
+        * `off` - Off (no crew constraint)
+        * `pool` - Pool (cap at qualified crew)
+        * `named` - Named (assign a specific operator)
     LaborRecurrenceEnum:
       enum:
       - ONCE
@@ -44708,6 +44948,15 @@ components:
           nullable: true
           description: Days to source this item from a supplier — drives the order-by
             date in the sourcing report (order-by = need-by − lead time).
+        safety_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Buffer held back from planning. Coverage nets against on-hand
+            MINUS this, so the material lane warns while there is still stock to react
+            with instead of at the last unit. Does not block issuing — a picker can
+            always draw the physical stock.
         preferred_supplier:
           type: string
           format: uuid
@@ -44734,6 +44983,47 @@ components:
       - name
       - preferred_supplier_name
       - updated_at
+    MaterialBucket:
+      type: object
+      properties:
+        bucket:
+          type: string
+        demand:
+          type: number
+          format: double
+        cumulative_demand:
+          type: number
+          format: double
+        available:
+          type: number
+          format: double
+        remaining_cover:
+          type: number
+          format: double
+        short:
+          type: boolean
+      required:
+      - available
+      - bucket
+      - cumulative_demand
+      - demand
+      - remaining_cover
+      - short
+    MaterialLoad:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialBucket'
+      required:
+      - id
+      - name
+      - series
     MaterialLot:
       type: object
       description: |-
@@ -44811,8 +45101,14 @@ components:
         received_date:
           type: string
           format: date
+          nullable: true
         received_by:
           type: integer
+          readOnly: true
+          nullable: true
+        received_by_name:
+          type: string
+          nullable: true
           readOnly: true
         quantity:
           type: string
@@ -44878,7 +45174,7 @@ components:
       - quantity
       - quantity_remaining
       - received_by
-      - received_date
+      - received_by_name
       - shelf_life_status
       - supplier_name
       - unit_of_measure
@@ -45025,6 +45321,7 @@ components:
         received_date:
           type: string
           format: date
+          nullable: true
         quantity:
           type: string
           format: decimal
@@ -45055,7 +45352,6 @@ components:
       required:
       - lot_number
       - quantity
-      - received_date
       - unit_of_measure
     MaterialLotSplitRequest:
       type: object
@@ -45073,6 +45369,7 @@ components:
       - quantity
     MaterialLotStatusEnum:
       enum:
+      - ON_ORDER
       - RECEIVED
       - AWAITING_INSPECTION
       - ACCEPTED
@@ -45083,6 +45380,7 @@ components:
       - QUARANTINE
       type: string
       description: |-
+        * `ON_ORDER` - On Order
         * `RECEIVED` - Received
         * `AWAITING_INSPECTION` - Awaiting Inspection
         * `ACCEPTED` - Accepted
@@ -45119,6 +45417,15 @@ components:
           nullable: true
           description: Days to source this item from a supplier — drives the order-by
             date in the sourcing report (order-by = need-by − lead time).
+        safety_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Buffer held back from planning. Coverage nets against on-hand
+            MINUS this, so the material lane warns while there is still stock to react
+            with instead of at the last unit. Does not block issuing — a picker can
+            always draw the physical stock.
         preferred_supplier:
           type: string
           format: uuid
@@ -45942,7 +46249,7 @@ components:
             solve. Off = single fast machine solve.'
         default_labor_model:
           allOf:
-          - $ref: '#/components/schemas/DefaultLaborModelEnum'
+          - $ref: '#/components/schemas/LaborModelEnum'
           description: |-
             The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
 
@@ -49911,8 +50218,11 @@ components:
     PatchedBOMLineRequest:
       type: object
       description: |-
-        BOM line item serializer. A line's component is EITHER an in-house `component_type`
-        (source=MAKE) OR a purchased `material` (source=BUY) — exactly one.
+        BOM line item serializer.
+
+        Exactly one of `component_type` (a part) / `material` (a raw material) is set, and
+        `source` is independent of that choice: a part can be MADE here or BOUGHT, and a
+        raw material is only ever bought.
       properties:
         bom:
           type: string
@@ -49921,12 +50231,15 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: In-house component (source=MAKE). Mutually exclusive with `material`.
+          description: A part (not a raw material). With source=MAKE it spawns a child
+            work order; with source=BUY it is purchased instead, which requires the
+            part type's can_buy flag. Mutually exclusive with `material`.
         material:
           type: string
           format: uuid
           nullable: true
-          description: Purchased component (source=BUY). Mutually exclusive with `component_type`.
+          description: Purchased raw material / consumable (source=BUY) — something
+            never produced in-house. Mutually exclusive with `component_type`.
         source:
           allOf:
           - $ref: '#/components/schemas/BOMLineSourceEnum'
@@ -51119,6 +51432,7 @@ components:
         received_date:
           type: string
           format: date
+          nullable: true
         quantity:
           type: string
           format: decimal
@@ -51174,6 +51488,15 @@ components:
           nullable: true
           description: Days to source this item from a supplier — drives the order-by
             date in the sourcing report (order-by = need-by − lead time).
+        safety_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Buffer held back from planning. Coverage nets against on-hand
+            MINUS this, so the material lane warns while there is still stock to react
+            with instead of at the last unit. Does not block issuing — a picker can
+            always draw the physical stock.
         preferred_supplier:
           type: string
           format: uuid
@@ -51335,7 +51658,7 @@ components:
             solve. Off = single fast machine solve.'
         default_labor_model:
           allOf:
-          - $ref: '#/components/schemas/DefaultLaborModelEnum'
+          - $ref: '#/components/schemas/LaborModelEnum'
           description: |-
             The labor model applied to steps that don't set their own (`Steps.labor_model`): POOL caps attended work at the qualified crew on shift; OFF drops the crew constraint; NAMED assigns a specific operator in the solve (reserve for specialist bottlenecks).
 
@@ -52973,6 +53296,22 @@ components:
             resolution chain (`services.mes.yield_planning`) is built so a statistically-observed
             rate from StepExecution history can later take precedence when there's
             enough data to be confident.
+        labor_model:
+          nullable: true
+          description: |-
+            How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+
+            * `off` - Off (no crew constraint)
+            * `pool` - Pool (cap at qualified crew)
+            * `named` - Named (assign a specific operator)
+          oneOf:
+          - $ref: '#/components/schemas/LaborModelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        timing:
+          allOf:
+          - $ref: '#/components/schemas/StepTimingRequest'
+          nullable: true
         archived:
           type: boolean
     PatchedSubstepCompletionRequest:
@@ -54292,6 +54631,20 @@ components:
       required:
       - name
       - provider_kind
+    PickedLotRequest:
+      type: object
+      properties:
+        lot_id:
+          type: string
+          format: uuid
+        lot_number:
+          type: string
+        qty:
+          type: number
+          format: double
+      required:
+      - lot_id
+      - qty
     PinBatchRequestRequest:
       type: object
       description: Pin/unpin every part of a batch.
@@ -54340,6 +54693,34 @@ components:
       required:
       - process
       - quantity
+    PlannedRelease:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+        erp_id:
+          type: string
+        planned_start:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        overdue:
+          type: boolean
+        is_estimate:
+          type: boolean
+        released:
+          type: boolean
+      required:
+      - due_date
+      - erp_id
+      - is_estimate
+      - overdue
+      - planned_start
+      - released
+      - work_order_id
     PlantCalendarException:
       type: object
       description: |-
@@ -56726,6 +57107,27 @@ components:
           nullable: true
       required:
       - operator_id
+    ReceiveExpectedLotRequest:
+      type: object
+      description: Book in an ON_ORDER lot that has physically arrived.
+      properties:
+        lot_number:
+          type: string
+          minLength: 1
+          description: The supplier's actual lot/batch number.
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Quantity actually delivered, when it differs from what was
+            ordered. Omit to keep the ordered quantity.
+        received_date:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - lot_number
     ReceivingCharacteristic:
       type: object
       description: A measurement definition to capture during receiving inspection.
@@ -56857,6 +57259,33 @@ components:
             $ref: '#/components/schemas/ReceivingMeasurementInputRequest'
       required:
       - measurements
+    RecordPickInputRequest:
+      type: object
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        material:
+          type: string
+          format: uuid
+        qty:
+          type: number
+          format: double
+        qty_required:
+          type: number
+          format: double
+        lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/PickedLotRequest'
+      required:
+      - material
+      - qty
+      - step
+      - work_order
     RecordUnitsRequestRequest:
       type: object
       description: Request body for recording per-unit measurements across the sample.
@@ -59298,8 +59727,13 @@ components:
       properties:
         material:
           type: string
+        buy_kind:
+          type: string
         qty_short:
           type: integer
+        safety_stock:
+          type: number
+          format: double
         need_by:
           type: string
           format: date
@@ -59316,12 +59750,14 @@ components:
           format: date
           nullable: true
       required:
+      - buy_kind
       - incoming_date
       - lead_time_days
       - material
       - need_by
       - order_by
       - qty_short
+      - safety_stock
     SourceTypeEnum:
       enum:
       - CUSTOMER_RETURN
@@ -60478,6 +60914,84 @@ components:
       - step_id
       - step_name
       - step_order
+    StepTiming:
+      type: object
+      description: |-
+        The step's time elements — what the scheduler and RCCP size everything from.
+
+        Nested on the step rather than exposed as its own resource: `StepTiming.step` is a
+        OneToOne, and a planner sets cycle and setup in the same place they set
+        `labor_model` and the outside-process fields.
+      properties:
+        setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Internal (machine-stopped) setup / changeover minutes.
+        cycle_time_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Deterministic per-piece machine cycle time (minutes).
+        load_unload_per_piece:
+          type: number
+          format: double
+          minimum: 0
+          description: Operator touch time to load/unload one piece (minutes).
+        attention_type:
+          allOf:
+          - $ref: '#/components/schemas/AttentionTypeEnum'
+          description: |-
+            Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+
+            * `full` - Full attention (operator tied to the machine)
+            * `load_unload` - Load/unload only (machine runs unattended between)
+            * `unattended` - Unattended (robot/cobot fed — setup only)
+        external_setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: SMED external setup that can overlap the previous op's run
+            time.
+    StepTimingRequest:
+      type: object
+      description: |-
+        The step's time elements — what the scheduler and RCCP size everything from.
+
+        Nested on the step rather than exposed as its own resource: `StepTiming.step` is a
+        OneToOne, and a planner sets cycle and setup in the same place they set
+        `labor_model` and the outside-process fields.
+      properties:
+        setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Internal (machine-stopped) setup / changeover minutes.
+        cycle_time_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Deterministic per-piece machine cycle time (minutes).
+        load_unload_per_piece:
+          type: number
+          format: double
+          minimum: 0
+          description: Operator touch time to load/unload one piece (minutes).
+        attention_type:
+          allOf:
+          - $ref: '#/components/schemas/AttentionTypeEnum'
+          description: |-
+            Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+
+            * `full` - Full attention (operator tied to the machine)
+            * `load_unload` - Load/unload only (machine runs unattended between)
+            * `unattended` - Unattended (robot/cobot fed — setup only)
+        external_setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: SMED external setup that can overlap the previous op's run
+            time.
     StepTypeEnum:
       enum:
       - TASK
@@ -60799,6 +61313,22 @@ components:
             resolution chain (`services.mes.yield_planning`) is built so a statistically-observed
             rate from StepExecution history can later take precedence when there's
             enough data to be confident.
+        labor_model:
+          nullable: true
+          description: |-
+            How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+
+            * `off` - Off (no crew constraint)
+            * `pool` - Pool (cap at qualified crew)
+            * `named` - Named (assign a specific operator)
+          oneOf:
+          - $ref: '#/components/schemas/LaborModelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        timing:
+          allOf:
+          - $ref: '#/components/schemas/StepTiming'
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -60954,6 +61484,22 @@ components:
             resolution chain (`services.mes.yield_planning`) is built so a statistically-observed
             rate from StepExecution history can later take precedence when there's
             enough data to be confident.
+        labor_model:
+          nullable: true
+          description: |-
+            How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+
+            * `off` - Off (no crew constraint)
+            * `pool` - Pool (cap at qualified crew)
+            * `named` - Named (assign a specific operator)
+          oneOf:
+          - $ref: '#/components/schemas/LaborModelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        timing:
+          allOf:
+          - $ref: '#/components/schemas/StepTimingRequest'
+          nullable: true
         archived:
           type: boolean
       required:
@@ -64498,6 +65044,16 @@ components:
       - scheduled_units
       - status
       - work_order_id
+    UntimedOrder:
+      type: object
+      properties:
+        erp_id:
+          type: string
+        step_count:
+          type: integer
+      required:
+      - erp_id
+      - step_count
     User:
       type: object
       description: Enhanced user serializer with company and permission info
@@ -65748,6 +66304,12 @@ components:
           type: string
         kind:
           type: string
+        buy_kind:
+          type: string
+          nullable: true
+        safety_stock:
+          type: number
+          format: double
         source:
           type: string
         quantity:
@@ -65783,6 +66345,7 @@ components:
           format: date
           nullable: true
       required:
+      - buy_kind
       - component
       - consumed_at_step
       - incoming
@@ -65793,6 +66356,7 @@ components:
       - on_hand
       - order_by
       - quantity
+      - safety_stock
       - short_qty
       - source
       - status

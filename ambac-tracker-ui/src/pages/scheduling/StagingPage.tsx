@@ -20,7 +20,11 @@ import {
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
-import { useStagingList, useMarkStaged, type StagingJob } from "@/hooks/useScheduling";
+import { Input } from "@/components/ui/input";
+import {
+  useStagingList, useMarkStaged, useRecordPick,
+  type StagingJob, type StagingMaterial,
+} from "@/hooks/useScheduling";
 
 const WINDOWS = [4, 8, 12, 24];
 const ALL = "__all__";
@@ -35,6 +39,151 @@ function whenLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, {
     hour: "2-digit", minute: "2-digit",
   });
+}
+
+/** One material on one job-operation, with confirm-or-deviate.
+ *
+ *  Most picks match the sheet, so the common path is one tap: confirm sends the planned
+ *  lots back as the recorded fact. That is a stronger claim than today's, where nothing
+ *  is recorded and consumption asserts FEFO with nobody having looked — but only as
+ *  strong as the person tapping, which is why deviating has to be easy enough that
+ *  confirming isn't the path of least resistance when the bin was empty.
+ *
+ *  Typing lot numbers is not the design. It's the escape hatch for the exception; the
+ *  real fix is a barcode on the lot, at which point this becomes a scan. */
+function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
+  const recordPick = useRecordPick();
+  const [deviating, setDeviating] = useState(false);
+  const [lotText, setLotText] = useState("");
+  const [qty, setQty] = useState(String(m.needed));
+
+  const confirmed = m.picked_qty != null;
+
+  const send = (lots: { lot_id: string; lot_number?: string; qty: number }[],
+                pickedQty: number) =>
+    recordPick.mutate({
+      work_order: job.work_order_id, step: job.step_id, material: m.material_id,
+      qty: pickedQty, qty_required: m.needed, lots,
+    }, { onSuccess: () => { setDeviating(false); setLotText(""); } });
+
+  return (
+    <tr className="border-t align-top first:border-t-0">
+      <td className="py-1 pr-2">
+        {m.material}
+        {m.optional && <span className="ml-1 text-muted-foreground">(optional)</span>}
+        {m.deviated && (
+          <span
+            className="ml-1.5 text-amber-700 dark:text-amber-400"
+            title="A different lot was pulled than the sheet named."
+          >
+            substituted
+          </span>
+        )}
+      </td>
+      <td className="w-20 py-1 text-right tabular-nums">
+        <strong>{m.needed}</strong>
+      </td>
+      <td className="w-72 py-1 pl-2 text-right">
+        {confirmed ? (
+          <span className="text-muted-foreground">
+            took{" "}
+            <span className="tabular-nums">{m.picked_qty}</span>
+            {m.picked_lots.length > 0 &&
+              ` · ${m.picked_lots.map((l) => l.lot_number).join(", ")}`}
+          </span>
+        ) : m.short > 0 ? (
+          <span className="tabular-nums text-amber-700 dark:text-amber-400">
+            short {m.short}
+          </span>
+        ) : m.lots.length > 0 ? (
+          <span className="text-muted-foreground">
+            {m.lots.map((l) => l.lot_number).join(", ")}
+            {m.lots[0].storage_location && (
+              <span className="ml-1">· {m.lots[0].storage_location}</span>
+            )}
+          </span>
+        ) : (
+          <span className="tabular-nums text-muted-foreground">{m.on_hand} on hand</span>
+        )}
+
+        {!confirmed && m.lots.length > 0 && !deviating && (
+          <span className="ml-2 inline-flex gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[11px]"
+              disabled={recordPick.isPending}
+              onClick={() =>
+                send(
+                  m.lots.map((l) => ({
+                    lot_id: l.lot_id, lot_number: l.lot_number, qty: l.take,
+                  })),
+                  m.needed
+                )
+              }
+            >
+              Confirm
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[11px]"
+              onClick={() => setDeviating(true)}
+            >
+              Took another
+            </Button>
+          </span>
+        )}
+
+        {deviating && (
+          <div className="mt-1.5 space-y-1.5 rounded-md border p-2 text-left">
+            <p className="text-[11px] text-muted-foreground">
+              Which lot did you actually take? Free text until lots carry barcodes.
+            </p>
+            <div className="flex gap-1.5">
+              <Input
+                className="h-7 text-xs"
+                placeholder="Lot number"
+                value={lotText}
+                onChange={(e) => setLotText(e.target.value)}
+              />
+              <Input
+                className="h-7 w-20 text-xs"
+                type="number"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-1.5">
+              <Button
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                disabled={!lotText.trim() || recordPick.isPending}
+                onClick={() =>
+                  // No lot_id: the picker named a lot the plan didn't offer, so there's
+                  // nothing to resolve it against yet. Recorded as text so the deviation
+                  // is visible rather than lost — consumption falls back to FEFO for the
+                  // draw, and the note is what an auditor reads.
+                  send([{ lot_id: "", lot_number: lotText.trim(), qty: Number(qty) || 0 }],
+                       Number(qty) || 0)
+                }
+              >
+                Record
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => setDeviating(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
 }
 
 function JobCard({ job, onToggle, busy }: {
@@ -80,38 +229,7 @@ function JobCard({ job, onToggle, busy }: {
         <table className="mt-2 w-full text-xs">
           <tbody>
             {job.materials.map((m) => (
-              <tr key={m.material} className="border-t first:border-t-0">
-                <td className="py-1 pr-2">
-                  {m.material}
-                  {m.optional && (
-                    <span className="ml-1 text-muted-foreground">(optional)</span>
-                  )}
-                </td>
-                <td className="w-20 py-1 text-right tabular-nums">
-                  <strong>{m.needed}</strong>
-                </td>
-                <td className="w-56 py-1 pl-2 text-right">
-                  {m.short > 0 ? (
-                    <span className="tabular-nums text-amber-700 dark:text-amber-400">
-                      short {m.short}
-                    </span>
-                  ) : m.lots.length > 0 ? (
-                    // Naming the lot matters: consumption records oldest-expiry, so a
-                    // picker grabbing a different one desynchronises the traceability
-                    // record from what physically went in.
-                    <span className="text-muted-foreground">
-                      {m.lots.map((l) => l.lot_number).join(", ")}
-                      {m.lots[0].storage_location && (
-                        <span className="ml-1">· {m.lots[0].storage_location}</span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="tabular-nums text-muted-foreground">
-                      {m.on_hand} on hand
-                    </span>
-                  )}
-                </td>
-              </tr>
+              <MaterialRow key={m.material_id} job={job} m={m} />
             ))}
           </tbody>
         </table>

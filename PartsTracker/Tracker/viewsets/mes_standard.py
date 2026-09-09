@@ -32,7 +32,7 @@ from Tracker.serializers.mes_standard import (
     DowntimeEventSerializer,
     MaterialSerializer,
     MaterialLotSerializer, MaterialLotSplitSerializer,
-    ExtendShelfLifeSerializer,
+    ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
     MaterialUsageSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
@@ -62,6 +62,13 @@ class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewS
     ordering_fields = ['name', 'code', 'created_at']
     ordering = ['code']
 
+    # Recording a pick writes a staging line, not a work centre — without this the
+    # inherited CRUD rule would gate it on `add_workcenter`, which has nothing to do
+    # with the act. (`mark_staged` above still inherits that; left alone rather than
+    # changing its gate as a side effect of this work.)
+    action_permissions = {'record_pick': ['add_materialstagingline']}
+    crud_exempt_actions = {'record_pick'}
+
     @extend_schema(
         request=inline_serializer(name="MarkStagedInput", fields={
             "work_order": serializers.UUIDField(),
@@ -86,6 +93,66 @@ class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewS
                          request.user, request.data.get('note', '') or '')
         return Response({'work_order': str(row.work_order_id), 'step': str(row.step_id),
                          'staged_at': row.staged_at, 'note': row.note})
+
+    @extend_schema(
+        request=inline_serializer(name="RecordPickInput", fields={
+            "work_order": serializers.UUIDField(),
+            "step": serializers.UUIDField(),
+            "material": serializers.UUIDField(),
+            "qty": serializers.FloatField(),
+            "qty_required": serializers.FloatField(required=False),
+            "lots": inline_serializer(name="PickedLot", many=True, required=False, fields={
+                "lot_id": serializers.UUIDField(),
+                "lot_number": serializers.CharField(required=False, allow_blank=True),
+                "qty": serializers.FloatField(),
+            }),
+        }),
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=['post'], url_path='record-pick')
+    def record_pick(self, request):
+        """Record what was ACTUALLY pulled for one material on one job-operation.
+
+        Does two jobs at once, both of which the system got wrong without it.
+
+        It reserves: until consumption draws the line down, the picked quantity is
+        netted out of on-hand everywhere, so a second sheet can't promise the same
+        units. `MaterialLot.quantity_remaining` doesn't move until consumption, so a
+        loaded cart otherwise still reads as available stock.
+
+        And it corrects traceability: consumption reads these lots instead of
+        re-deriving FEFO. The sheet names the lots the plan WOULD draw; the picker
+        regularly takes another because the named one is empty, short, or already gone.
+        Recording it is the difference between the record saying what happened and
+        saying what was intended.
+        """
+        from Tracker.services.mes.staging import record_pick as svc
+
+        data = request.data
+        required = ('work_order', 'step', 'material')
+        if not all(data.get(k) for k in required):
+            return Response({"detail": "work_order, step and material are required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            qty = float(data.get('qty', 0))
+        except (TypeError, ValueError):
+            qty = -1
+        if qty < 0:
+            return Response({"detail": "`qty` must be a number >= 0."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        line = svc(
+            self.tenant, data['work_order'], data['step'], data['material'],
+            qty, data.get('lots') or [], request.user,
+            qty_required=data.get('qty_required'),
+        )
+        return Response({
+            'material': str(line.material_id),
+            'qty_picked': float(line.qty_picked),
+            'qty_required': float(line.qty_required),
+            'picked_lots': line.picked_lots,
+            'reserved': line.is_reserved,
+        })
 
     @extend_schema(
         parameters=[
@@ -295,7 +362,8 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['lot_number', 'supplier_lot_number', 'material_description']
     filterset_fields = ['status', 'supplier', 'material_type']
-    ordering_fields = ['received_date', 'lot_number', 'expiration_date']
+    # promised_date is the useful axis for ON_ORDER lots — they have no received_date yet.
+    ordering_fields = ['received_date', 'lot_number', 'expiration_date', 'promised_date']
     ordering = ['-received_date']
 
     def get_queryset(self):
@@ -340,6 +408,58 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
             )
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(request=ExpectedReceiptSerializer, responses={201: MaterialLotSerializer})
+    @action(detail=False, methods=['post'], url_path='expected-receipt')
+    def expected_receipt(self, request):
+        """Record stock ordered but not yet delivered, so netting can see it.
+
+        Not a plain create: `perform_create` routes every new lot to receiving inspection,
+        which is wrong for something that has not arrived. This goes through the service
+        so the lot lands ON_ORDER with a generated placeholder lot number.
+        """
+        ser = ExpectedReceiptSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from Tracker.services.mes.material_lot import record_expected_receipt
+        try:
+            lot = record_expected_receipt(
+                tenant=request.tenant,
+                material=ser.validated_data['material'],
+                quantity=ser.validated_data['quantity'],
+                promised_date=ser.validated_data['promised_date'],
+                unit_of_measure=ser.validated_data.get('unit_of_measure', ''),
+                supplier=ser.validated_data.get('supplier'),
+                erp_po_number=ser.validated_data.get('erp_po_number', ''),
+                lot_number=ser.validated_data.get('lot_number', ''),
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=ReceiveExpectedLotSerializer, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'], url_path='receive')
+    def receive(self, request, pk=None):
+        """Book in an ON_ORDER lot that has physically arrived (→ RECEIVED, then routed
+        to incoming inspection like any other receipt)."""
+        lot = self.get_object()
+        ser = ReceiveExpectedLotSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from Tracker.services.mes.material_lot import receive_expected_lot
+        try:
+            lot = receive_expected_lot(
+                lot,
+                lot_number=ser.validated_data['lot_number'],
+                received_by=request.user,
+                received_date=ser.validated_data.get('received_date'),
+                quantity=ser.validated_data.get('quantity'),
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # Same disposition path a walk-in receipt takes — inspection or dock-to-stock.
+        receiving_inspection.route_received_lot(lot, request.user)
+        lot.refresh_from_db()
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
 
     @extend_schema(request=ExtendShelfLifeSerializer, responses={200: MaterialLotSerializer})
     @action(detail=True, methods=['post'])

@@ -28,6 +28,10 @@ import { isFieldRequired } from "@/lib/zod-config";
 const formSchema = schemas.CompanyRequest.pick({
     name: true,
     description: true,
+    // Tier 2 of the outside-process turnaround chain: step override → THIS supplier
+    // default → tenant default → 7 days. Turnaround is a property of the vendor, so
+    // this is its natural home; without it a planner can only set it per step.
+    default_outside_process_turnaround_days: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -53,6 +57,7 @@ export default function CompanyFormPage() {
         defaultValues: {
             name: "",
             description: "",
+            default_outside_process_turnaround_days: null,
         },
     });
 
@@ -166,6 +171,33 @@ export default function CompanyFormPage() {
                                 </FormControl>
                                 <FormDescription>
                                     Detailed description of the company and its operations
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="default_outside_process_turnaround_days"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Outside-process turnaround (days)</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        placeholder="Leave blank to use the site default"
+                                        value={field.value ?? ""}
+                                        onChange={(e) => field.onChange(
+                                            e.target.value === "" ? null : Number(e.target.value)
+                                        )}
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    Calendar days from ship-out to return when this company runs a
+                                    subcontract operation. Used unless the step sets its own; a
+                                    shipped part's promised return date overrides both.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
