@@ -62,6 +62,19 @@ class PickListItem(BaseModel):
     lots: str = ""
     qty_short: str = ""       # blank when fully covered
 
+    # Why this line has no lot to pull, or "" when it is genuinely pickable.
+    # Without it a line the crib never holds renders exactly like an out-of-stock
+    # one — both a dash — and the picker goes hunting for something that was never
+    # there. Two distinct reasons, and calling both "made in-house" would be a lie
+    # on the second: a MAKE line is built here; a BUY line pointing at a purchased
+    # *part* is bought, but parts aren't kitted through staging yet.
+    not_picked_reason: str = ""
+
+    @property
+    def is_make(self) -> bool:
+        """Back-compat for anything still reading the old flag."""
+        return bool(self.not_picked_reason)
+
 
 class PickListContext(BaseModel):
     """Top-level shape passed to the pick_list.typ template."""
@@ -76,8 +89,13 @@ class PickListContext(BaseModel):
     # ---- Pick items ----
     items: list[PickListItem] = Field(default_factory=list)
     total_line_count: int
+    # Shortages are per-row and easy to miss on a long BOM; the header carries the
+    # count so a picker knows before walking to the crib, not on line 31.
+    short_line_count: int = 0
 
     # ---- Document metadata ----
+    # Code 128 of the work order, so the sheet can be scanned back to the job.
+    barcode_svg: str = ""
     tenant_name: str
     generated_date: datetime.date
 
@@ -161,6 +179,7 @@ class PickListAdapter(ReportAdapter):
     def build_context(self, validated_params, user, tenant) -> PickListContext:
         from Tracker.models.mes_lite import WorkOrder
         from Tracker.models.mes_standard import BOM
+        from Tracker.reports.services.barcodes import render_barcode_svg
         from Tracker.services.mes.consumption import plan_draw
 
         today = datetime.date.today()
@@ -242,6 +261,12 @@ class PickListAdapter(ReportAdapter):
                         storage_location=location,
                         lots=lot_text,
                         qty_short=short_text,
+                        not_picked_reason=(
+                            "made in-house — not picked" if line.source == 'MAKE'
+                            else "" if line.material_id
+                            # A bought part: procured, but staging lines are keyed to
+                            # Material, so it is not kitted from the crib today.
+                            else "purchased part — not kitted here"),
                     ))
 
         return PickListContext(
@@ -252,6 +277,8 @@ class PickListAdapter(ReportAdapter):
             due_date=wo.expected_completion,
             items=items,
             total_line_count=len(items),
+            short_line_count=sum(1 for i in items if i.qty_short),
+            barcode_svg=render_barcode_svg(wo.ERP_id or "UNKNOWN", module_height=7.0),
             tenant_name=tenant.name,
             generated_date=today,
         )

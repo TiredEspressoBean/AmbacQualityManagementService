@@ -23,15 +23,17 @@
 // DO NOT import page-setup.typ — labels use custom page sizes.
 
 // ----------------------------------------------------------------------------
-// Palette & typography (copied from page-setup.typ — labels are standalone)
+// Palette & typography
+//
+// Imported, not copied. A label prints on label stock, so it deliberately skips
+// page-setup's `#show` rule (page geometry, header/footer) — but it should still
+// use the house colours. The previous local copy had drifted: it kept the
+// original screen-light muted/rule, missing the later darkening of the shared
+// palette for shop-floor legibility. Labels go on parts, which is exactly where
+// that fix matters most.
 // ----------------------------------------------------------------------------
 
-#let ink    = rgb("#0f172a")
-#let muted  = rgb("#475569")
-#let rule   = rgb("#cbd5e1")
-
-#let sans-font = ("Noto Sans", "Liberation Sans", "DejaVu Sans")
-#let mono-font = ("Noto Sans Mono", "DejaVu Sans Mono")
+#import "_common/page-setup.typ": ink, muted, rule, sans-font, mono-font
 
 // ----------------------------------------------------------------------------
 // Data
@@ -51,11 +53,8 @@
 // Helpers
 // ----------------------------------------------------------------------------
 
-// Render an SVG string as an image via bytes().
-#let svg-img(svg-str, w) = image(bytes(svg-str), width: w)
-
-// Optional value — render value or em dash if null/empty.
-#let opt(v) = if v == none or v == "" { text(fill: muted)[—] } else { v }
+// svg-img (barcode/QR) and opt (value-or-em-dash) come from the shared kit.
+#import "_common/components.typ": svg-img, opt
 
 // ----------------------------------------------------------------------------
 // Label body — everything in one flow to avoid overflow to second page

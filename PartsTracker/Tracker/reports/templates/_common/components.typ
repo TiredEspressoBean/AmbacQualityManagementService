@@ -10,8 +10,14 @@
 //
 // (import page-setup first — the components depend on its palette + fonts).
 //
-// Existing templates keep their inline copies until migrated; this kit is the
-// forward convention, adopted first by work_order_traveler.typ.
+// Every letter-format template uses this kit. The two label templates
+// (part_id_label*.typ) deliberately don't: they print on label stock and skip
+// page-setup's page geometry entirely, so they import only the palette.
+//
+// Note that Typst shadows silently — a template that defines its own `#let
+// status-badge` after importing this file gets the local one with no warning.
+// That is fine where the local version encodes a domain vocabulary; it is a
+// bug where someone meant to use the shared helper.
 
 #import "page-setup.typ": *
 
@@ -25,7 +31,7 @@
 // Optional value — render the value, or a muted em dash when empty.
 #let opt(v) = if v == none or v == "" { text(fill: muted)[—] } else { v }
 
-// Section divider rule (matches the house `divider()` verbatim).
+// Section divider rule.
 #let divider() = {
   v(6pt)
   line(length: 100%, stroke: 0.6pt + rule)
@@ -64,39 +70,55 @@
 // Badges
 // ---------------------------------------------------------------------------
 
-// Canonical badge (house-identical): coloured pill with semibold label.
+// Low-level badge: coloured pill with semibold label. Prefer `tone-badge` —
+// this stays for the handful of one-off pairings that aren't a palette tone.
 #let badge(label, fg, bg) = box(
   fill: bg, inset: (x: 6pt, y: 2pt), radius: 3pt,
   text(size: 8pt, weight: "semibold", fill: fg, font: sans-font)[#label],
 )
 
-// Status → palette badge, using the shared colour mapping:
-//   pass/approved/released/complete → ok      (green)
-//   fail/rejected                   → bad      (red)
-//   pending/draft/in-progress       → accent   (blue)
-//   otherwise                       → muted    (grey)
-#let status-badge(status) = {
-  let s = upper(status)
-  if s in ("PASS", "APPROVED", "RELEASED", "COMPLETE", "COMPLETED", "ACC") {
-    badge(status, ok, rgb("#dcfce7"))
-  } else if s in ("FAIL", "REJECTED", "REJ") {
-    badge(status, bad, rgb("#fee2e2"))
-  } else if s in ("PENDING", "DRAFT", "IN PROGRESS", "UNDER REVIEW") {
-    badge(status, accent, rgb("#dbeafe"))
-  } else {
-    badge(status, muted, rgb("#e2e8f0"))
-  }
+// Badge by palette tone — "ok" | "warn" | "bad" | "accent" | "muted".
+//
+// Deliberately NOT a status→colour mapper. Each report speaks its own status
+// vocabulary (a BOM is RELEASED/DRAFT/OBSOLETE, a CAPA is OPEN/PENDING_
+// VERIFICATION/CLOSED, a gauge is CURRENT/DUE_SOON/OVERDUE) and the same word
+// can mean different urgency in different documents. A generic matcher has to
+// guess, and anything it doesn't recognise silently renders grey — so the
+// *vocabulary* stays with the template that owns it and only the *palette
+// pairing* is shared. That's the part that was actually being copied.
+#let tone-badge(label, tone) = {
+  let fill-for = (
+    ok: (ok, ok-tint),
+    warn: (warn, warn-tint),
+    bad: (bad, bad-tint),
+    accent: (accent, accent-tint),
+    muted: (muted, muted-tint),
+  )
+  let pair = fill-for.at(tone)
+  badge(label, pair.first(), pair.last())
 }
 
-// Priority → palette badge: high/urgent/critical red, low grey, else amber.
-#let priority-badge(priority) = {
+// Work-order priority badge, keyed to WorkOrderPriority's display labels
+// ("Urgent" / "High" / "Normal" / "Low" — see Tracker/models/mes_lite.py).
+//
+// This one IS shared, unlike status: priority is a single enum that both the
+// traveler and the dispatch list render, and they used to disagree — the same
+// High work order printed red on one sheet and amber on the other. Amber is the
+// gradient that leaves red meaning Urgent alone.
+#let wo-priority-badge(priority) = {
   let p = upper(priority)
-  if p in ("HIGH", "URGENT", "CRITICAL") {
-    badge(priority, bad, rgb("#fee2e2"))
-  } else if p in ("LOW",) {
-    badge(priority, muted, rgb("#e2e8f0"))
+  if p == "URGENT" { tone-badge(upper(priority), "bad") }
+  else if p == "HIGH" { tone-badge(upper(priority), "warn") }
+  else if p == "NORMAL" { tone-badge(upper(priority), "ok") }
+  else { tone-badge(upper(priority), "muted") }
+}
+
+// Optional-component indicator (BOM lineage): an OPT chip, or a muted dash.
+#let optional-badge(is_optional) = {
+  if is_optional {
+    tone-badge("OPT", "warn")
   } else {
-    badge(priority, warn, rgb("#fef3c7"))
+    text(size: 8pt, fill: muted, font: sans-font)[—]
   }
 }
 
@@ -113,10 +135,78 @@
   width: 100%,
 )[#body]
 
+// Paginated report table — the one to reach for.
+//
+// The house table, generalised from work_order_traveler.typ, which was the only
+// template already building a real Typst table and so the only one that never
+// had the page-break bug the stacked-block `table-header`/`table-row` below
+// carry. Its conventions are the defaults here:
+//
+//   * `table.header(repeat: true)` — column headings reprint on every page.
+//     A block cannot repeat, so the stacked-block form drops them: page 2 of a
+//     long list is bare columns of part numbers and lot codes.
+//   * `breakable: false` cells — a row relocates whole to the next page rather
+//     than splitting. Matters wherever a cell stacks several lines (lot numbers
+//     over a location, a spec list, a wet-ink box); half a row's lot codes
+//     stranded at a page break is worse than a short page.
+//   * Horizontal rules only — banded and zebra-striped, no verticals. A real
+//     Typst table rules every column by default, which no house sheet did.
+//
+//   columns  — Typst column spec, e.g. (0.5fr, 2fr, 1fr)
+//   header   — array of header cell bodies (styled semibold sans by this helper;
+//              a caller may wrap one in `text(size: …)` to override)
+//   rows     — array of arrays of cell bodies, one inner array per row
+//   aligns   — optional per-column horizontal alignment, e.g. (left, right, center)
+//   valign   — vertical cell alignment; `top` for tall wet-ink forms so an
+//              operator writes from the top of the cell
+//
+// `column-gutter` is split across the shared cell edge, so it means the same
+// thing it did in the inner grid of the stacked-block version.
+#let report-table(
+  columns,
+  header,
+  rows,
+  column-gutter: 9pt,
+  inset-y: 5pt,
+  edge-inset: 6pt,
+  aligns: none,
+  valign: horizon,
+) = {
+  let ncols = columns.len()
+  let halign = if aligns == none { (left,) * ncols } else { aligns }
+  let c = table.cell.with(breakable: false)
+  table(
+    columns: columns,
+    inset: (x, y) => (
+      left: if x == 0 { edge-inset } else { column-gutter / 2 },
+      right: if x == ncols - 1 { edge-inset } else { column-gutter / 2 },
+      top: inset-y,
+      bottom: inset-y,
+    ),
+    align: (x, y) => halign.at(x) + valign,
+    // y == 0 is the header; body rows zebra from the first data row.
+    fill: (x, y) => if y == 0 { band }
+      else if calc.rem(y - 1, 2) == 0 { white }
+      else { stripe },
+    // Heavier rule under the header, hairline between rows, nothing vertical.
+    stroke: (x, y) => (
+      bottom: if y == 0 { 1pt + rule } else { 0.75pt + rule },
+    ),
+    table.header(
+      repeat: true,
+      ..header.map(h => text(weight: "semibold", font: sans-font)[#h]),
+    ),
+    ..rows.map(r => r.map(cell => c(cell))).flatten(),
+  )
+}
+
 // Table header band (caller supplies the grid of header cells).
 // `spacing: 0pt` so the header + rows abut with no gap — the rows are
 // intentionally top-less and share the border above them (a gap would leave
 // each row open-topped / "U-shaped").
+//
+// Does NOT repeat across pages — prefer `report-table` for anything that can run
+// long. Kept for short fixed-height tables where the block form is simpler.
 #let table-header(body) = block(
   fill: band,
   stroke: 0.9pt + rule,
@@ -164,7 +254,15 @@
 ]
 
 // Small muted footer note preceded by a divider, with a bolded lead word.
-#let footer-note(body, lead: "Note") = {
-  divider()
-  text(size: 8.5pt, fill: muted)[*#lead:* #body]
-}
+//
+// Unbreakable: the rule and the note are one object. Left breakable, Typst will
+// happily fit the divider at the foot of a page and push the note to the next,
+// which reads as a stray rule under the content and an orphaned sentence
+// overleaf. (Same guard the traveler applies to its final-release block.)
+// `below: 0pt` — the note is the last thing on the sheet, so trailing block
+// spacing only eats the margin. Leading spacing is kept: the flow already had it,
+// and zeroing both moved the footer further than the wrapper ever did.
+#let footer-note(body, lead: "Note") = block(breakable: false, below: 0pt)[
+  #divider()
+  #text(size: 8.5pt, fill: muted)[*#lead:* #body]
+]

@@ -17,22 +17,13 @@
 // Helpers — shared kv / badge / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
 
-// Status badge — DRAFT=amber, RELEASED=green, OBSOLETE=red (local mapping
-// differs from the kit's status-badge, so keep it to preserve output).
+// Status badge — the BOM's own vocabulary (DRAFT / RELEASED / OBSOLETE), which
+// no other report shares. `optional-badge` is the kit's.
 #let status-badge(status) = {
-  if status == "RELEASED"  { badge("RELEASED",  ok,   rgb("#dcfce7")) }
-  else if status == "DRAFT" { badge("DRAFT",    warn,  rgb("#fef3c7")) }
-  else if status == "OBSOLETE" { badge("OBSOLETE", bad, rgb("#fee2e2")) }
-  else                     { badge(status,      muted, rgb("#e2e8f0")) }
-}
-
-// Optional indicator badge (uses the shared badge)
-#let optional-badge(is_optional) = {
-  if is_optional {
-    badge("OPT", warn, rgb("#fef3c7"))
-  } else {
-    text(size: 8pt, fill: muted, font: sans-font)[—]
-  }
+  if status == "RELEASED" { tone-badge("RELEASED", "ok") }
+  else if status == "DRAFT" { tone-badge("DRAFT", "warn") }
+  else if status == "OBSOLETE" { tone-badge("OBSOLETE", "bad") }
+  else { tone-badge(status, "muted") }
 }
 
 // ----------------------------------------------------------------------------
@@ -88,51 +79,21 @@
   #set text(size: 9pt)
   #set par(justify: false)
 
-  // Table header
-  #table-header[
-    #grid(
-      columns: (0.7fr, 1.5fr, 2.5fr, 0.6fr, 0.6fr, 0.65fr, 2fr),
-      column-gutter: 6pt,
-      text(weight: "semibold", font: sans-font)[Find \#],
-      text(weight: "semibold", font: sans-font)[Part Number],
-      text(weight: "semibold", font: sans-font)[Description],
-      align(right)[#text(weight: "semibold", font: sans-font)[Qty]],
-      text(weight: "semibold", font: sans-font)[UoM],
-      align(center)[#text(weight: "semibold", font: sans-font)[Opt?]],
-      text(weight: "semibold", font: sans-font)[Notes],
-    )
-  ]
-
-  // Table rows
-  #for (idx, line) in data.lines.enumerate() [
-    #table-row(idx)[
-      #grid(
-        columns: (0.7fr, 1.5fr, 2.5fr, 0.6fr, 0.6fr, 0.65fr, 2fr),
-        column-gutter: 6pt,
-        align(horizon)[
-          #text(fill: muted, font: mono-font)[#line.find_number]
-        ],
-        align(horizon)[
-          #text(font: mono-font)[#line.component_part_number]
-        ],
-        align(horizon)[
-          #text(font: sans-font)[#line.component_name]
-        ],
-        align(horizon + right)[
-          #text(weight: "semibold")[#line.quantity]
-        ],
-        align(horizon)[
-          #text(fill: muted)[#line.unit_of_measure]
-        ],
-        align(horizon + center)[
-          #optional-badge(line.is_optional)
-        ],
-        align(horizon)[
-          #text(fill: muted, size: 8.5pt)[#line.notes]
-        ],
-      )
-    ]
-  ]
+  #report-table(
+    (0.7fr, 1.5fr, 2.5fr, 0.6fr, 0.6fr, 0.65fr, 2fr),
+    ([Find \#], [Part Number], [Description], [Qty], [UoM], [Opt?], [Notes]),
+    data.lines.map(line => (
+      text(fill: muted, font: mono-font)[#line.find_number],
+      text(font: mono-font)[#line.component_part_number],
+      text(font: sans-font)[#line.component_name],
+      text(weight: "semibold")[#line.quantity],
+      text(fill: muted)[#line.unit_of_measure],
+      optional-badge(line.is_optional),
+      text(fill: muted, size: 8.5pt)[#line.notes],
+    )),
+    column-gutter: 6pt,
+    aligns: (left, left, left, right, left, center, left),
+  )
 ]
 
 #v(16pt)

@@ -22,27 +22,27 @@
 // Disposition type badge — USE_AS_IS=blue, REPAIR=amber
 #let disposition-badge(dtype) = {
   if dtype == "USE_AS_IS" {
-    badge("USE AS IS", accent, rgb("#dbeafe"))
+    tone-badge("USE AS IS", "accent")
   } else if dtype == "REPAIR" {
-    badge("REPAIR", warn, rgb("#fef3c7"))
+    tone-badge("REPAIR", "warn")
   } else {
-    badge(dtype, muted, rgb("#e2e8f0"))
+    tone-badge(dtype, "muted")
   }
 }
 
 // Severity badge
 #let severity-badge(sev) = {
-  if sev == "CRITICAL" { badge("CRITICAL", bad, rgb("#fee2e2")) }
-  else if sev == "MAJOR" { badge("MAJOR", warn, rgb("#fef3c7")) }
-  else if sev == "MINOR" { badge("MINOR", ok, rgb("#dcfce7")) }
-  else { badge(sev, muted, rgb("#e2e8f0")) }
+  if sev == "CRITICAL" { tone-badge("CRITICAL", "bad") }
+  else if sev == "MAJOR" { tone-badge("MAJOR", "warn") }
+  else if sev == "MINOR" { tone-badge("MINOR", "ok") }
+  else { tone-badge(sev, "muted") }
 }
 
 // State badge
 #let state-badge(state) = {
-  if state == "CLOSED" { badge("CLOSED", ok, rgb("#dcfce7")) }
-  else if state == "IN_PROGRESS" { badge("IN PROGRESS", warn, rgb("#fef3c7")) }
-  else { badge("OPEN", muted, rgb("#e2e8f0")) }
+  if state == "CLOSED" { tone-badge("CLOSED", "ok") }
+  else if state == "IN_PROGRESS" { tone-badge("IN PROGRESS", "warn") }
+  else { tone-badge("OPEN", "muted") }
 }
 
 // ----------------------------------------------------------------------------
@@ -150,9 +150,9 @@
       #text(fill: muted, font: sans-font, size: 9pt)[*Approval Received*] \
       #v(2pt)
       #if data.customer_approval_received [
-        #badge("APPROVED", ok, rgb("#dcfce7"))
+        #tone-badge("APPROVED", "ok")
       ] else [
-        #badge("PENDING", warn, rgb("#fef3c7"))
+        #tone-badge("PENDING", "warn")
       ]
     ],
     field("Approval Reference", data.customer_approval_reference),

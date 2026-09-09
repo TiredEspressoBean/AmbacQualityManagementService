@@ -20,13 +20,8 @@
 // Helpers — shared badge / divider come from _common/components.typ
 // ----------------------------------------------------------------------------
 
-// Priority badge colouring
-#let priority-badge(p) = {
-  if p == "Urgent"  { badge("URGENT", bad,  rgb("#fee2e2")) }
-  else if p == "High"   { badge("HIGH",   warn, rgb("#fef3c7")) }
-  else if p == "Normal" { badge("NORMAL", ok,   rgb("#dcfce7")) }
-  else                  { badge("LOW",    muted, rgb("#e2e8f0")) }
-}
+// Priority badge comes from the kit (`wo-priority-badge`) — shared with the
+// traveler so one work order can't print two different colours on two sheets.
 
 // Status text colouring (WorkOrderStatus values)
 #let status-color(s) = {
@@ -211,7 +206,7 @@
           ],
           // Priority badge
           align(horizon + center)[
-            #priority-badge(item.priority)
+            #wo-priority-badge(item.priority)
           ],
           // Status
           align(horizon)[

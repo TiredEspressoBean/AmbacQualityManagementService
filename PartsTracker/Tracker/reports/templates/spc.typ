@@ -21,10 +21,10 @@
 // ----------------------------------------------------------------------------
 
 #let mode-badge(m) = {
-  if m == "xbar-r"      { badge("X̄-R", accent, rgb("#dbeafe")) }
-  else if m == "xbar-s" { badge("X̄-S", accent, rgb("#dbeafe")) }
-  else if m == "i-mr"   { badge("I-MR", accent, rgb("#dbeafe")) }
-  else                  { badge(m,      muted,  rgb("#e2e8f0")) }
+  if m == "xbar-r"      { tone-badge("X̄-R", "accent") }
+  else if m == "xbar-s" { tone-badge("X̄-S", "accent") }
+  else if m == "i-mr"   { tone-badge("I-MR", "accent") }
+  else                  { tone-badge(m, "muted") }
 }
 
 // Format optional numeric values (none → em-dash)
@@ -226,26 +226,22 @@
     #v(4pt)
   ]
 
-  #table(
-    columns: (auto, 1fr, auto, auto, auto),
-    align: (left, left, right, center, left),
-    stroke: 0.7pt + rule,
-    inset: 5pt,
-    table.header(
-      [*Timestamp*], [*Part*], [*Value*], [*Spec*], [*Operator*],
-    ),
-    ..for p in data.data_points {
-      (
-        text(size: 9pt)[#p.timestamp],
-        text(size: 9pt)[#p.part_erp_id],
-        text(size: 9pt, font: mono-font)[#str(calc.round(p.value, digits: 4))],
-        if p.is_within_spec {
-          text(size: 9pt, fill: ok)[OK]
-        } else {
-          text(size: 9pt, fill: bad, weight: "semibold")[OOS]
-        },
-        text(size: 9pt)[#if p.operator == none [—] else [#p.operator]],
-      )
-    }
+  #report-table(
+    (auto, 1fr, auto, auto, auto),
+    ([Timestamp], [Part], [Value], [Spec], [Operator]),
+    data.data_points.map(p => (
+      text(size: 9pt)[#p.timestamp],
+      text(size: 9pt)[#p.part_erp_id],
+      text(size: 9pt, font: mono-font)[#str(calc.round(p.value, digits: 4))],
+      if p.is_within_spec {
+        text(size: 9pt, fill: ok)[OK]
+      } else {
+        text(size: 9pt, fill: bad, weight: "semibold")[OOS]
+      },
+      text(size: 9pt)[#if p.operator == none [—] else [#p.operator]],
+    )),
+    column-gutter: 10pt,
+    edge-inset: 5pt,
+    aligns: (left, left, right, center, left),
   )
 ]

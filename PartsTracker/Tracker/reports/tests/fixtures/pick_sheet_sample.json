@@ -1,0 +1,83 @@
+{
+  "window_hours": 8,
+  "window_from": "Apr 15 06:00",
+  "window_to": "Apr 15 14:00",
+  "station_filter": "",
+  "is_stale": false,
+  "note": "",
+  "rows": [
+    {
+      "material": "Seal Kit, Nozzle",
+      "qty": "18",
+      "storage_location": "Main Stores \u00b7 R3-B2",
+      "lots": "L-2024-018, L-2024-022",
+      "is_short": false,
+      "short_qty": "",
+      "drops": [
+        {
+          "qty": "6",
+          "station": "Teardown Bay",
+          "erp_id": "WO-2026-0412",
+          "step_name": "Disassembly",
+          "staged": true
+        },
+        {
+          "qty": "8",
+          "station": "Teardown Bay",
+          "erp_id": "WO-2026-0419",
+          "step_name": "Disassembly",
+          "staged": false
+        },
+        {
+          "qty": "4",
+          "station": "Assembly Cell",
+          "erp_id": "WO-2026-0407",
+          "step_name": "Rebuild",
+          "staged": false
+        }
+      ]
+    },
+    {
+      "material": "Thrust Bearing, Full Floating",
+      "qty": "12",
+      "storage_location": "Main Stores \u00b7 R3-B7",
+      "lots": "L-2024-007",
+      "is_short": true,
+      "short_qty": "4",
+      "drops": [
+        {
+          "qty": "12",
+          "station": "Assembly Cell",
+          "erp_id": "WO-2026-0407",
+          "step_name": "Rebuild",
+          "staged": false
+        }
+      ]
+    },
+    {
+      "material": "PTFE Piston Ring Seal, 18mm",
+      "qty": "24",
+      "storage_location": "Secure Cage \u00b7 C1",
+      "lots": "L-2024-031",
+      "is_short": false,
+      "short_qty": "",
+      "drops": [
+        {
+          "qty": "24",
+          "station": "Assembly Cell",
+          "erp_id": "WO-2026-0407",
+          "step_name": "Rebuild",
+          "staged": false
+        }
+      ]
+    }
+  ],
+  "unmapped": [
+    "WO-2026-0412 \u2014 Retaining Clip, Lapping Compound"
+  ],
+  "total_lines": 3,
+  "total_short": 1,
+  "total_kits": 3,
+  "tenant_name": "Ambac International",
+  "generated_date": "2026-04-15"
+}

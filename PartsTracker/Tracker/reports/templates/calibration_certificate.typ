@@ -23,17 +23,17 @@
 
 // Result badge — PASS=green, FAIL=red, LIMITED=amber
 #let result-badge(result) = {
-  if result == "PASS" { badge("PASS", ok, rgb("#dcfce7")) }
-  else if result == "FAIL" { badge("FAIL", bad, rgb("#fee2e2")) }
-  else if result == "LIMITED" { badge("LIMITED / RESTRICTED USE", warn, rgb("#fef3c7")) }
-  else { badge(result, muted, rgb("#e2e8f0")) }
+  if result == "PASS" { tone-badge("PASS", "ok") }
+  else if result == "FAIL" { tone-badge("FAIL", "bad") }
+  else if result == "LIMITED" { tone-badge("LIMITED / RESTRICTED USE", "warn") }
+  else { tone-badge(result, "muted") }
 }
 
 // Tolerance badge for the as-found status
 #let tolerance-badge(in_tol) = {
-  if in_tol == true { badge("IN TOLERANCE", ok, rgb("#dcfce7")) }
-  else if in_tol == false { badge("OUT OF TOLERANCE", bad, rgb("#fee2e2")) }
-  else { badge("NOT RECORDED", muted, rgb("#e2e8f0")) }
+  if in_tol == true { tone-badge("IN TOLERANCE", "ok") }
+  else if in_tol == false { tone-badge("OUT OF TOLERANCE", "bad") }
+  else { tone-badge("NOT RECORDED", "muted") }
 }
 
 // Calibration type — turn AFTER_REPAIR → "After Repair"
@@ -128,9 +128,9 @@
     #text(fill: muted, font: sans-font, size: 9pt)[*Adjustments Made*] \
     #v(2pt)
     #if data.adjustments_made [
-      #badge("YES — ADJUSTED", warn, rgb("#fef3c7"))
+      #tone-badge("YES — ADJUSTED", "warn")
     ] else [
-      #badge("NO ADJUSTMENT", ok, rgb("#dcfce7"))
+      #tone-badge("NO ADJUSTMENT", "ok")
     ]
   ],
 )

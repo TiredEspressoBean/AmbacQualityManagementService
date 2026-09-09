@@ -21,10 +21,10 @@
 
 // Status badge — CURRENT=green, EXPIRED=red, EXPIRING_SOON=amber, no expiry=muted
 #let status-badge(status) = {
-  if status == "CURRENT"        { badge("CURRENT",        ok,   rgb("#dcfce7")) }
-  else if status == "EXPIRED"   { badge("EXPIRED",        bad,  rgb("#fee2e2")) }
-  else if status == "EXPIRING_SOON" { badge("EXPIRING SOON", warn, rgb("#fef3c7")) }
-  else                          { badge(status,           muted, rgb("#e2e8f0")) }
+  if status == "CURRENT"        { tone-badge("CURRENT", "ok") }
+  else if status == "EXPIRED"   { tone-badge("EXPIRED", "bad") }
+  else if status == "EXPIRING_SOON" { tone-badge("EXPIRING SOON", "warn") }
+  else                          { tone-badge(status, "muted") }
 }
 
 // Signature line
@@ -122,63 +122,39 @@
   #set text(size: 9pt)
   #set par(justify: false)
 
-  // Table header
-  #table-header[
-    #grid(
-      columns: (2.6fr, 1.1fr, 0.9fr, 1.1fr, 1.5fr, 1.0fr),
-      column-gutter: 6pt,
-      text(weight: "semibold", font: sans-font)[Training Topic],
-      text(weight: "semibold", font: sans-font)[Completed],
-      align(center)[#text(weight: "semibold", font: sans-font)[Level]],
-      text(weight: "semibold", font: sans-font)[Expires],
-      text(weight: "semibold", font: sans-font)[Trainer / Provider],
-      align(center)[#text(weight: "semibold", font: sans-font)[Status]],
-    )
-  ]
-
-  // Table rows
-  #for (idx, rec) in data.records.enumerate() [
-    #table-row(idx)[
-      #grid(
-        columns: (2.6fr, 1.1fr, 0.9fr, 1.1fr, 1.5fr, 1.0fr),
-        column-gutter: 6pt,
-        align(horizon)[
-          #text(font: sans-font, weight: "semibold")[#rec.topic]
-          #if rec.notes != "" [
-            #v(1pt)
-            #text(size: 8pt, fill: muted)[#rec.notes]
-          ]
-        ],
-        align(horizon)[
-          #text(fill: muted)[#rec.completed_date]
-        ],
-        align(horizon + center)[
-          #text(font: sans-font, weight: "semibold")[L#rec.level]
-        ],
-        align(horizon)[
-          #if rec.expires_date != none [
-            #text(
-              fill: if rec.status == "EXPIRED" { bad }
-                    else if rec.status == "EXPIRING_SOON" { warn }
-                    else { muted },
-            )[#rec.expires_date]
-          ] else [
-            #text(fill: muted, style: "italic")[—]
-          ]
-        ],
-        align(horizon)[
-          #if rec.trainer != "" [
-            #text(fill: muted)[#rec.trainer]
-          ] else [
-            #text(fill: muted, style: "italic")[—]
-          ]
-        ],
-        align(horizon + center)[
-          #status-badge(rec.status)
-        ],
-      )
-    ]
-  ]
+  #report-table(
+    (2.6fr, 1.1fr, 0.9fr, 1.1fr, 1.5fr, 1.0fr),
+    ([Training Topic], [Completed], [Level], [Expires], [Trainer / Provider],
+     [Status]),
+    data.records.map(rec => (
+      {
+        text(font: sans-font, weight: "semibold")[#rec.topic]
+        if rec.notes != "" [
+          #v(1pt)
+          #text(size: 8pt, fill: muted)[#rec.notes]
+        ]
+      },
+      text(fill: muted)[#rec.completed_date],
+      text(font: sans-font, weight: "semibold")[L#rec.level],
+      if rec.expires_date != none {
+        text(
+          fill: if rec.status == "EXPIRED" { bad }
+                else if rec.status == "EXPIRING_SOON" { warn }
+                else { muted },
+        )[#rec.expires_date]
+      } else {
+        text(fill: muted, style: "italic")[—]
+      },
+      if rec.trainer != "" {
+        text(fill: muted)[#rec.trainer]
+      } else {
+        text(fill: muted, style: "italic")[—]
+      },
+      status-badge(rec.status),
+    )),
+    column-gutter: 6pt,
+    aligns: (left, left, center, left, left, center),
+  )
 ]
 
 #v(16pt)

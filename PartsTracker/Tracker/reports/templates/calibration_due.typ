@@ -19,17 +19,17 @@
 
 // Status badge — OVERDUE=red, DUE_SOON=amber, CURRENT=green
 #let status-badge(status) = {
-  if status == "OVERDUE"  { badge("OVERDUE",  bad,  rgb("#fee2e2")) }
-  else if status == "DUE_SOON" { badge("DUE SOON", warn, rgb("#fef3c7")) }
-  else                    { badge("CURRENT",  ok,   rgb("#dcfce7")) }
+  if status == "OVERDUE"  { tone-badge("OVERDUE", "bad") }
+  else if status == "DUE_SOON" { tone-badge("DUE SOON", "warn") }
+  else                    { tone-badge("CURRENT", "ok") }
 }
 
 // Result badge — PASS=green, FAIL=red, LIMITED=amber
 #let result-badge(result) = {
-  if result == "PASS"    { badge("PASS",    ok,   rgb("#dcfce7")) }
-  else if result == "FAIL" { badge("FAIL",  bad,  rgb("#fee2e2")) }
-  else if result == "LIMITED" { badge("LIMITED", warn, rgb("#fef3c7")) }
-  else                   { badge(result,   muted, rgb("#e2e8f0")) }
+  if result == "PASS"    { tone-badge("PASS", "ok") }
+  else if result == "FAIL" { tone-badge("FAIL", "bad") }
+  else if result == "LIMITED" { tone-badge("LIMITED", "warn") }
+  else                   { tone-badge(result, "muted") }
 }
 
 // ----------------------------------------------------------------------------
@@ -102,60 +102,32 @@
   #set text(size: 9pt)
   #set par(justify: false)
 
-  // Table header
-  #table-header[
-    #grid(
-      columns: (2.5fr, 1.8fr, 1.4fr, 1.1fr, 1.1fr, 0.7fr, 1fr),
-      column-gutter: 6pt,
-      text(weight: "semibold", font: sans-font)[Equipment],
-      text(weight: "semibold", font: sans-font)[Serial],
-      text(weight: "semibold", font: sans-font)[Location],
-      text(weight: "semibold", font: sans-font)[Last Cal],
-      text(weight: "semibold", font: sans-font)[Due Date],
-      align(right)[#text(weight: "semibold", font: sans-font)[Days]],
-      align(center)[#text(weight: "semibold", font: sans-font)[Status]],
-    )
-  ]
-
-  // Table rows
-  #for (idx, item) in data.items.enumerate() [
-    #table-row(idx)[
-      #grid(
-        columns: (2.5fr, 1.8fr, 1.4fr, 1.1fr, 1.1fr, 0.7fr, 1fr),
-        column-gutter: 6pt,
-        align(horizon)[
-          #text(font: sans-font)[#item.equipment_name]
-        ],
-        align(horizon)[
-          #text(fill: muted, font: mono-font)[#item.equipment_serial]
-        ],
-        align(horizon)[
-          #text(fill: muted)[#item.location]
-        ],
-        align(horizon)[
-          #text(fill: muted)[#item.last_cal_date]
-        ],
-        align(horizon)[
-          #text(
-            fill: if item.status == "OVERDUE" { bad }
-                  else if item.status == "DUE_SOON" { warn }
-                  else { ink },
-            weight: if item.status == "OVERDUE" { "semibold" } else { "regular" },
-          )[#item.due_date]
-        ],
-        align(horizon + right)[
-          #let days = item.days_until_due
-          #text(
-            fill: if days < 0 { bad } else if days <= 30 { warn } else { muted },
-            weight: if days < 0 { "semibold" } else { "regular" },
-          )[#if days < 0 [#str(days)] else [+#str(days)]]
-        ],
-        align(horizon + center)[
-          #status-badge(item.status)
-        ],
-      )
-    ]
-  ]
+  #report-table(
+    (2.5fr, 1.8fr, 1.4fr, 1.1fr, 1.1fr, 0.7fr, 1fr),
+    ([Equipment], [Serial], [Location], [Last Cal], [Due Date], [Days], [Status]),
+    data.items.map(item => (
+      text(font: sans-font)[#item.equipment_name],
+      text(fill: muted, font: mono-font)[#item.equipment_serial],
+      text(fill: muted)[#item.location],
+      text(fill: muted)[#item.last_cal_date],
+      text(
+        fill: if item.status == "OVERDUE" { bad }
+              else if item.status == "DUE_SOON" { warn }
+              else { ink },
+        weight: if item.status == "OVERDUE" { "semibold" } else { "regular" },
+      )[#item.due_date],
+      {
+        let days = item.days_until_due
+        text(
+          fill: if days < 0 { bad } else if days <= 30 { warn } else { muted },
+          weight: if days < 0 { "semibold" } else { "regular" },
+        )[#if days < 0 [#str(days)] else [+#str(days)]]
+      },
+      status-badge(item.status),
+    )),
+    column-gutter: 6pt,
+    aligns: (left, left, left, left, left, right, center),
+  )
 ]
 
 #v(16pt)

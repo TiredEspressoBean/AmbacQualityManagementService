@@ -27,45 +27,45 @@
 
 // Status badge (custom OPEN/CLOSED/PENDING_VERIFICATION mapping — kept local)
 #let status-badge(s) = {
-  if s == "OPEN"                  { badge("OPEN",                 accent, rgb("#dbeafe")) }
-  else if s == "IN_PROGRESS"      { badge("IN PROGRESS",          warn,   rgb("#fef3c7")) }
-  else if s == "PENDING_VERIFICATION" { badge("PENDING VERIFICATION", warn, rgb("#fef3c7")) }
-  else if s == "CLOSED"           { badge("CLOSED",               ok,     rgb("#dcfce7")) }
-  else if s == "CANCELLED"        { badge("CANCELLED",            muted,  rgb("#e2e8f0")) }
-  else                            { badge(s,                      muted,  rgb("#e2e8f0")) }
+  if s == "OPEN"                  { tone-badge("OPEN", "accent") }
+  else if s == "IN_PROGRESS"      { tone-badge("IN PROGRESS", "warn") }
+  else if s == "PENDING_VERIFICATION" { tone-badge("PENDING VERIFICATION", "warn") }
+  else if s == "CLOSED"           { tone-badge("CLOSED", "ok") }
+  else if s == "CANCELLED"        { tone-badge("CANCELLED", "muted") }
+  else                            { tone-badge(s, "muted") }
 }
 
 // Severity badge
 #let severity-badge(s) = {
-  if s == "CRITICAL" { badge("CRITICAL", bad,  rgb("#fee2e2")) }
-  else if s == "MAJOR"   { badge("MAJOR",    warn, rgb("#fef3c7")) }
-  else if s == "MINOR"   { badge("MINOR",    ok,   rgb("#dcfce7")) }
-  else                   { badge(s,          muted, rgb("#e2e8f0")) }
+  if s == "CRITICAL" { tone-badge("CRITICAL", "bad") }
+  else if s == "MAJOR"   { tone-badge("MAJOR", "warn") }
+  else if s == "MINOR"   { tone-badge("MINOR", "ok") }
+  else                   { tone-badge(s, "muted") }
 }
 
 // Task status badge
 #let task-badge(s) = {
-  if s == "COMPLETED"     { badge("COMPLETED",   ok,   rgb("#dcfce7")) }
-  else if s == "IN_PROGRESS" { badge("IN PROGRESS", warn, rgb("#fef3c7")) }
-  else if s == "NOT_STARTED" { badge("NOT STARTED", muted, rgb("#e2e8f0")) }
-  else if s == "CANCELLED" { badge("CANCELLED",  muted, rgb("#e2e8f0")) }
-  else                    { badge(s,             muted, rgb("#e2e8f0")) }
+  if s == "COMPLETED"     { tone-badge("COMPLETED", "ok") }
+  else if s == "IN_PROGRESS" { tone-badge("IN PROGRESS", "warn") }
+  else if s == "NOT_STARTED" { tone-badge("NOT STARTED", "muted") }
+  else if s == "CANCELLED" { tone-badge("CANCELLED", "muted") }
+  else                    { tone-badge(s, "muted") }
 }
 
 // Effectiveness result badge
 #let effectiveness-badge(r) = {
-  if r == "CONFIRMED"       { badge("CONFIRMED EFFECTIVE", ok,   rgb("#dcfce7")) }
-  else if r == "NOT_EFFECTIVE" { badge("NOT EFFECTIVE",    bad,  rgb("#fee2e2")) }
-  else if r == "INCONCLUSIVE" { badge("INCONCLUSIVE",     warn,  rgb("#fef3c7")) }
-  else                      { badge(r,                    muted, rgb("#e2e8f0")) }
+  if r == "CONFIRMED"       { tone-badge("CONFIRMED EFFECTIVE", "ok") }
+  else if r == "NOT_EFFECTIVE" { tone-badge("NOT EFFECTIVE", "bad") }
+  else if r == "INCONCLUSIVE" { tone-badge("INCONCLUSIVE", "warn") }
+  else                      { tone-badge(r, "muted") }
 }
 
 // Approval status badge
 #let approval-badge(s) = {
-  if s == "APPROVED"      { badge("APPROVED",     ok,   rgb("#dcfce7")) }
-  else if s == "REJECTED" { badge("REJECTED",     bad,  rgb("#fee2e2")) }
-  else if s == "PENDING"  { badge("PENDING",      warn, rgb("#fef3c7")) }
-  else                    { badge("NOT REQUIRED",  muted, rgb("#e2e8f0")) }
+  if s == "APPROVED"      { tone-badge("APPROVED", "ok") }
+  else if s == "REJECTED" { tone-badge("REJECTED", "bad") }
+  else if s == "PENDING"  { tone-badge("PENDING", "warn") }
+  else                    { tone-badge("NOT REQUIRED", "muted") }
 }
 
 // Format a date string or none → em-dash
@@ -325,43 +325,28 @@
       set text(size: 9pt)
       set par(justify: false)
 
-      // Header row
-      table-header[
-        #grid(
-          columns: (3fr, 1.5fr, 1fr, 1fr, 1.2fr),
-          column-gutter: 6pt,
-          text(weight: "semibold", font: sans-font)[Description],
-          text(weight: "semibold", font: sans-font)[Owner],
-          text(weight: "semibold", font: sans-font)[Due],
-          text(weight: "semibold", font: sans-font)[Completed],
-          align(center)[#text(weight: "semibold", font: sans-font)[Status]],
-        )
-      ]
-
-      // Data rows
-      for (idx, task) in group.enumerate() {
-        table-row(idx)[
-          #grid(
-            columns: (3fr, 1.5fr, 1fr, 1fr, 1.2fr),
-            column-gutter: 6pt,
-            align(horizon)[
-              #text(font: sans-font, size: 8pt, fill: muted)[#task.task_number] \
-              #v(1pt)
-              #task.description
-            ],
-            align(horizon)[
-              #if task.owner == none or task.owner == "" [
-                #text(fill: muted, style: "italic")[—]
-              ] else [
-                #task.owner
-              ]
-            ],
-            align(horizon)[#fmt-date(task.due_date)],
-            align(horizon)[#fmt-date(task.completed_date)],
-            align(horizon + center)[#task-badge(task.status)],
-          )
-        ]
-      }
+      report-table(
+        (3fr, 1.5fr, 1fr, 1fr, 1.2fr),
+        ([Description], [Owner], [Due], [Completed], [Status]),
+        group.map(task => (
+          {
+            text(font: sans-font, size: 8pt, fill: muted)[#task.task_number]
+            linebreak()
+            v(1pt)
+            task.description
+          },
+          if task.owner == none or task.owner == "" {
+            text(fill: muted, style: "italic")[—]
+          } else {
+            task.owner
+          },
+          fmt-date(task.due_date),
+          fmt-date(task.completed_date),
+          task-badge(task.status),
+        )),
+        column-gutter: 6pt,
+        aligns: (left, left, left, left, center),
+      )
 
       v(10pt)
     }

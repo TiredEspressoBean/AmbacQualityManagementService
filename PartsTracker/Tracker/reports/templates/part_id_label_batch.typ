@@ -8,20 +8,16 @@
 // file so the single-part template stays zero-branching and easy to
 // proof against a physical printer.
 
-#let ink    = rgb("#0f172a")
-#let muted  = rgb("#475569")
-
-#let sans-font = ("Noto Sans", "Liberation Sans", "DejaVu Sans")
-#let mono-font = ("Noto Sans Mono", "DejaVu Sans Mono")
+// House palette and helpers, imported rather than copied — see the note in
+// part_id_label.typ. Label stock skips page-setup's `#show` rule, not its colours.
+#import "_common/page-setup.typ": ink, muted, sans-font, mono-font
+#import "_common/components.typ": svg-img, opt
 
 #let data = json.decode(sys.inputs.at("data"))
 
 #set page(width: 4in, height: 2in, margin: 0.1in)
 #set text(font: sans-font, size: 9pt, fill: ink)
 #set par(justify: false, leading: 0.45em)
-
-#let svg-img(svg-str, w) = image(bytes(svg-str), width: w)
-#let opt(v) = if v == none or v == "" { text(fill: muted)[—] } else { v }
 
 #let render-label(label) = [
   #grid(

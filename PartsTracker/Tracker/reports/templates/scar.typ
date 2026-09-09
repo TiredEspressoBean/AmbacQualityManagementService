@@ -18,18 +18,18 @@
 // ── Helpers — shared badge / field / divider come from _common/components.typ ──
 
 #let severity-badge(s) = {
-  if s == "CRITICAL" { badge("CRITICAL", bad, rgb("#fee2e2")) }
-  else if s == "MAJOR" { badge("MAJOR", warn, rgb("#fef3c7")) }
-  else if s == "MINOR" { badge("MINOR", ok, rgb("#dcfce7")) }
-  else { badge(s, muted, rgb("#e2e8f0")) }
+  if s == "CRITICAL" { tone-badge("CRITICAL", "bad") }
+  else if s == "MAJOR" { tone-badge("MAJOR", "warn") }
+  else if s == "MINOR" { tone-badge("MINOR", "ok") }
+  else { tone-badge(s, "muted") }
 }
 
 #let status-badge(s) = {
-  if s == "OPEN" { badge("OPEN", accent, rgb("#dbeafe")) }
-  else if s == "IN_PROGRESS" { badge("IN PROGRESS", warn, rgb("#fef3c7")) }
-  else if s == "PENDING_VERIFICATION" { badge("AWAITING RESPONSE", warn, rgb("#fef3c7")) }
-  else if s == "CLOSED" { badge("CLOSED", ok, rgb("#dcfce7")) }
-  else { badge(s, muted, rgb("#e2e8f0")) }
+  if s == "OPEN" { tone-badge("OPEN", "accent") }
+  else if s == "IN_PROGRESS" { tone-badge("IN PROGRESS", "warn") }
+  else if s == "PENDING_VERIFICATION" { tone-badge("AWAITING RESPONSE", "warn") }
+  else if s == "CLOSED" { tone-badge("CLOSED", "ok") }
+  else { tone-badge(s, "muted") }
 }
 
 #let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #d ]
@@ -58,17 +58,20 @@
   classification: "Confidential — Supplier Corrective Action Request",
 )
 
-#align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-    SUPPLIER CORRECTIVE ACTION REQUEST (SCAR)
-  ]
-  #v(2pt)
-  #text(size: 22pt, weight: "bold", font: sans-font)[#data.scar_number]
-  #v(6pt)
-  #severity-badge(data.severity)
-  #h(6pt)
-  #status-badge(data.status)
-]
+// The issuing org takes the tenant slot: this is the one report that leaves the
+// building, and the supplier reading it needs to know who is asking. Same field
+// the "Issued By" row and the response instructions already use.
+#report-title(
+  [SUPPLIER CORRECTIVE ACTION REQUEST (SCAR)],
+  data.scar_number,
+  data.issued_by_org,
+  title-size: 22pt,
+  trailing: [
+    #severity-badge(data.severity)
+    #h(6pt)
+    #status-badge(data.status)
+  ],
+)
 
 #v(12pt)
 
@@ -86,7 +89,7 @@
 
 #v(8pt)
 #block(
-  width: 100%, fill: rgb("#fef3c7"), stroke: 0.5pt + warn,
+  width: 100%, fill: warn-tint, stroke: 0.5pt + warn,
   inset: (x: 10pt, y: 8pt), radius: 4pt,
 )[
   #text(weight: "semibold", fill: warn, font: sans-font)[Response required] —

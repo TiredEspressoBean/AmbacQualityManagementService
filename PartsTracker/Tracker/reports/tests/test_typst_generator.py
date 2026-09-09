@@ -10,6 +10,7 @@ When this file's tests pass, the Typst infrastructure is functional.
 from django.test import SimpleTestCase
 
 from Tracker.reports.services.typst_generator import generate_typst_pdf
+from Tracker.reports.tests.base import strip_pdf_timestamps
 
 
 class TypstGeneratorSmokeTests(SimpleTestCase):
@@ -45,23 +46,39 @@ class TypstGeneratorSmokeTests(SimpleTestCase):
 
     def test_compile_is_deterministic(self):
         """
-        Two compiles of the same template + context produce
-        byte-identical output. This is the basic requirement for
-        regenerable audit documents.
+        Two compiles of the same template + context produce byte-identical output
+        once Typst's clock-derived bytes are stripped. That is the real requirement
+        for regenerable audit documents: the same inputs must render the same
+        *document*, not the same timestamp.
+
+        Comparing raw bytes here was a coin flip. Typst stamps a creation date and a
+        document id derived from the clock at ~1s granularity, so two compiles inside
+        one second matched and two straddling a tick did not — the same root cause as
+        the old "NCR-adapter determinism" flake, which `strip_pdf_timestamps` exists
+        to handle. This test predated that helper and never adopted it.
         """
         ctx = self._hello_context()
-        first = generate_typst_pdf(self.HELLO_TEMPLATE, ctx)
-        second = generate_typst_pdf(self.HELLO_TEMPLATE, ctx)
+        first = strip_pdf_timestamps(generate_typst_pdf(self.HELLO_TEMPLATE, ctx))
+        second = strip_pdf_timestamps(generate_typst_pdf(self.HELLO_TEMPLATE, ctx))
         self.assertEqual(
             first, second,
             "Typst compile is not deterministic - same inputs produced "
-            "different PDF bytes",
+            "different PDF bytes (ignoring timestamps and document id)",
         )
 
     def test_different_context_produces_different_pdf(self):
-        """Sanity check: sys.inputs actually reaches the template."""
-        a = generate_typst_pdf(self.HELLO_TEMPLATE, {"name": "Alice", "number": 1})
-        b = generate_typst_pdf(self.HELLO_TEMPLATE, {"name": "Bob", "number": 2})
+        """Sanity check: sys.inputs actually reaches the template.
+
+        Timestamps are stripped here too, and for a sharper reason than in the
+        determinism test: two renders always differ by clock-derived bytes, so
+        comparing raw output would pass this assertion even if the context never
+        reached the template at all. Stripping them is what makes the difference
+        attributable to the content.
+        """
+        a = strip_pdf_timestamps(
+            generate_typst_pdf(self.HELLO_TEMPLATE, {"name": "Alice", "number": 1}))
+        b = strip_pdf_timestamps(
+            generate_typst_pdf(self.HELLO_TEMPLATE, {"name": "Bob", "number": 2}))
         self.assertNotEqual(
             a, b,
             "Context does not reach the template - PDFs for different "

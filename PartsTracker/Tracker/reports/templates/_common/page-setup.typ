@@ -28,6 +28,15 @@
 #let stripe     = rgb("#eaeef4")   // zebra alternate row
 #let chip       = rgb("#dbe6f2")   // captured-value highlight (as-built)
 
+// Badge fills — each pairs with the same-named ink above (`ok` on `ok-tint`).
+// A badge is always a status colour on its own tint, so the pair is the unit:
+// use `tone-badge` in components.typ rather than picking a fill by hand.
+#let ok-tint     = rgb("#dcfce7")  // pass / approved / current
+#let warn-tint   = rgb("#fef3c7")  // draft / due soon / marginal
+#let bad-tint    = rgb("#fee2e2")  // fail / rejected / overdue
+#let accent-tint = rgb("#dbeafe")  // open / informational
+#let muted-tint  = rgb("#e2e8f0")  // neutral / cancelled / unrecognised
+
 // ----------------------------------------------------------------------------
 // Typography
 // ----------------------------------------------------------------------------

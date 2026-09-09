@@ -57,7 +57,7 @@ Proves `@preview/cetz` resolves from the vendored package cache:
 #align(center)[
   #canvas(length: 1cm, {
     import draw: *
-    rect((0, 0), (7, 1.2), fill: rgb("#dbeafe"), stroke: 0.5pt + ink, radius: 3pt)
+    rect((0, 0), (7, 1.2), fill: accent-tint, stroke: 0.5pt + ink, radius: 3pt)
     // Circles on the left, text to the right so they don't overlap
     circle((0.5, 0.6), radius: 0.25, fill: ok, stroke: none)
     circle((1.3, 0.6), radius: 0.25, fill: warn, stroke: none)

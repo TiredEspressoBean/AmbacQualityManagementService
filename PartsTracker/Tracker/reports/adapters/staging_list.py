@@ -81,8 +81,11 @@ class StagingListParamsSerializer(serializers.Serializer):
 class StagingListAdapter(ReportAdapter):
     """Renders the staging list for one station, or all of them, as a walk sheet."""
 
+    # `name` is the API identifier and stays put; `title` is what people read.
+    # This is the Kit Sheet — the second half of the round, after the Pick Sheet
+    # (pick_sheet) has pulled everything from the shelves in one walk.
     name = "staging_list"
-    title = "Staging List"
+    title = "Kit Sheet"
     template_path = "staging_list.typ"
     context_model_class = StagingListContext
     param_serializer_class = StagingListParamsSerializer

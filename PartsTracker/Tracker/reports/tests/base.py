@@ -33,21 +33,43 @@ from Tracker.reports.adapters.base import ReportAdapter
 from Tracker.reports.services.typst_generator import generate_typst_pdf
 
 
-# Typst stamps each PDF with fresh timestamps in two places — the PDF
-# info dictionary (/CreationDate, /ModDate) and the XMP metadata stream
-# (<xmp:CreateDate>, <xmp:ModifyDate>). Two consecutive renders straddling
-# a 1-second boundary differ only in those bytes. Strip both before
-# comparing.
+# Typst stamps each PDF with clock-derived values that have nothing to do with the
+# rendered content, in two families:
+#
+#   dates    — the info dictionary (/CreationDate, /ModDate) and the XMP stream
+#              (<xmp:CreateDate>, <xmp:ModifyDate>)
+#   doc id   — one identifier repeated four times: <xmpMM:InstanceID>,
+#              <xmpMM:DocumentID>, and both halves of the trailer's /ID array
+#
+# The document id is derived from a hash including the timestamp at roughly
+# one-second granularity, so two renders inside the same second are byte-identical
+# and two that straddle a tick are not. That is the whole of the long-standing
+# "NCR-adapter determinism" flake: nothing about NCR is special, it is simply slow
+# enough that consecutive renders often land either side of a second boundary.
+# Strip all of it before comparing.
 _PDF_DATE_RE = re.compile(rb"/(?:CreationDate|ModDate) \(D:\d{14}Z\)")
 _XMP_DATE_RE = re.compile(
     rb"<xmp:(?:Create|Modify)Date>[^<]*</xmp:(?:Create|Modify)Date>"
 )
+_XMP_ID_RE = re.compile(
+    rb"<xmpMM:(?:Instance|Document)ID>[^<]*</xmpMM:(?:Instance|Document)ID>"
+)
+# Trailer form: /ID [(<base64>) (<base64>)] — stripping only the XMP pair is not
+# enough, the same value is repeated here and keeps the bytes different.
+_PDF_ID_RE = re.compile(rb"/ID \[\([^)]*\) \([^)]*\)\]")
 
 
-def _strip_pdf_timestamps(pdf: bytes) -> bytes:
-    """Remove non-deterministic timestamps from PDF info dict and XMP stream."""
+def strip_pdf_timestamps(pdf: bytes) -> bytes:
+    """Remove clock-derived bytes (dates and document id) from a rendered PDF.
+
+    Public because every determinism assertion in the suite needs it, not just the
+    adapter mixin below: comparing raw PDF bytes across two renders is a coin flip on
+    whether they straddled a second boundary.
+    """
     pdf = _PDF_DATE_RE.sub(b"", pdf)
     pdf = _XMP_DATE_RE.sub(b"", pdf)
+    pdf = _XMP_ID_RE.sub(b"", pdf)
+    pdf = _PDF_ID_RE.sub(b"", pdf)
     return pdf
 
 
@@ -136,8 +158,8 @@ class ReportAdapterTestMixin:
         once non-deterministic Typst-injected timestamps are stripped.
         Required for regeneration-safe archival.
         """
-        first = _strip_pdf_timestamps(self._render_from_fixture())
-        second = _strip_pdf_timestamps(self._render_from_fixture())
+        first = strip_pdf_timestamps(self._render_from_fixture())
+        second = strip_pdf_timestamps(self._render_from_fixture())
         self.assertEqual(
             first, second,
             f"Template {self.adapter_class.template_path} is not deterministic",

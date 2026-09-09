@@ -7,10 +7,10 @@
 // the WO ERP id sits in the header so an operator/inspector can scan the paper
 // to pull the job up on screen.
 //
-// First adopter of the shared component kit (_common/components.typ): the
-// common helpers (kv, badge, divider, info-box, table-header/row, footer-note,
-// svg-img, opt) come from there; only the landscape-specific wet-ink sign-off
-// cells (signoff / capture) and the barcode title block are defined locally.
+// Common helpers (kv, badge, divider, info-box, footer-note, svg-img, opt,
+// wo-priority-badge) come from the shared kit (_common/components.typ); the
+// landscape-specific wet-ink sign-off cells (signoff / capture), the barcode
+// title block, and the WorkOrderStatus badge are defined locally.
 //
 // Layout:
 //   1. Header — title + tenant (left), WO barcode + S/N (right)
@@ -35,6 +35,17 @@
 // ----------------------------------------------------------------------------
 // Local helpers — landscape wet-ink cells (no house equivalent)
 // ----------------------------------------------------------------------------
+
+// Work-order status, keyed to WorkOrderStatus's display labels (see
+// Tracker/models/mes_lite.py). Local because this vocabulary is the traveler's
+// alone — priority is shared with the dispatch list, status isn't.
+#let status-badge(status) = {
+  let s = upper(status)
+  if s == "COMPLETED" { tone-badge(status, "ok") }
+  else if s in ("PENDING", "IN PROGRESS") { tone-badge(status, "accent") }
+  else if s in ("ON HOLD", "WAITING FOR OPERATOR") { tone-badge(status, "warn") }
+  else { tone-badge(status, "muted") }
+}
 
 // A sign-off cell — blank for wet-ink capture (fixed writing height), or
 // pre-filled (as-built): the box grows to fit its content so text never
@@ -144,7 +155,7 @@
     kv("Drawing #:", data.drawing_number, label-width: auto),
     kv("Drawing Rev:", data.drawing_revision, label-width: auto),
     kv("Qty:", str(data.quantity), label-width: auto),
-    kv("Priority:", priority-badge(data.priority), label-width: auto),
+    kv("Priority:", wo-priority-badge(data.priority), label-width: auto),
 
     kv("Status:", status-badge(data.status), label-width: auto),
     kv("Start:", data.start_date, label-width: auto),
@@ -208,48 +219,35 @@
   // Remarks) on the right. A native table() reprints the column header at the
   // top of every page the routing spans (table.header repeat). Blank fields are
   // bordered boxes to write in; captured as-built values are soft chips.
-  #let cols = (0.45fr, 1.9fr, 0.75fr, 2.2fr, 1.3fr, 1.3fr, 0.42fr, 0.42fr, 1.9fr)
-  #let hdr(body, ..a) = text(weight: "semibold", font: sans-font, ..a)[#body]
-  // Guard: each cell is unbreakable, so an operation's row relocates whole to
-  // the next page rather than splitting its boxes across the page boundary.
-  #let c = table.cell.with(breakable: false)
-
-  #table(
-    columns: cols,
-    inset: (x: 6pt, y: 5pt),
-    align: top + left,
-    // Horizontal rules only (no verticals); a heavier rule under the header.
-    stroke: (x, y) => (bottom: if y == 0 { 1pt + rule } else { 0.75pt + rule }),
-    // Header shaded; data rows zebra-striped (every other row) to help the eye
-    // track across the wide landscape rows.
-    fill: (x, y) => if y == 0 { band } else if calc.even(y) { stripe },
-
-    table.header(
-      repeat: true,
-      hdr[Op], hdr[Operation], hdr[Type], hdr[Controls & Specs],
-      hdr[Operator / Date], hdr[Inspector / Date],
-      hdr(size: 7.5pt)[Acc], hdr(size: 7.5pt)[Rej], hdr[Remarks],
-    ),
-
-    ..data.operations.map(op => (
-      c(text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]]),
-      c[
-        #text(weight: "semibold", font: sans-font)[#op.step_name]
-        #if op.is_outside_process [ #h(4pt) #badge("OSP", warn, rgb("#fef3c7")) ]
-        #if op.description != none [
+  // The routing table's conventions — repeating header, unbreakable cells,
+  // horizontal rules, banded zebra — are now the shared `report-table` defaults,
+  // generalised from this document. `column-gutter: 12pt` + `edge-inset: 6pt`
+  // reproduces the uniform 6pt-per-side cell inset this table has always used;
+  // `valign: top` keeps the operator writing from the top of a 32pt wet-ink box.
+  #report-table(
+    (0.45fr, 1.9fr, 0.75fr, 2.2fr, 1.3fr, 1.3fr, 0.42fr, 0.42fr, 1.9fr),
+    ([Op], [Operation], [Type], [Controls & Specs],
+     [Operator / Date], [Inspector / Date],
+     text(size: 7.5pt)[Acc], text(size: 7.5pt)[Rej], [Remarks]),
+    data.operations.map(op => (
+      text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
+      {
+        text(weight: "semibold", font: sans-font)[#op.step_name]
+        if op.is_outside_process [ #h(4pt) #tone-badge("OSP", "warn") ]
+        if op.description != none [
           #v(1pt)
           #text(size: 7.5pt, fill: muted, font: sans-font)[#op.description]
         ]
-      ],
-      c[
-        #text(fill: muted, font: sans-font)[#op.step_type]
-        #if op.std_time != none [
+      },
+      {
+        text(fill: muted, font: sans-font)[#op.step_type]
+        if op.std_time != none [
           #v(1pt)
           #text(size: 7.5pt, fill: muted, font: sans-font)[⏱ #op.std_time]
         ]
-      ],
-      c[
-        #if op.controls.len() == 0 and op.specs.len() == 0 [
+      },
+      {
+        if op.controls.len() == 0 and op.specs.len() == 0 [
           #text(fill: muted)[—]
         ] else [
           #if op.controls.len() > 0 [
@@ -260,14 +258,17 @@
             #text(size: 7.5pt, fill: muted, font: sans-font)[• #spec]
           ]
         ]
-      ],
+      },
       // Fill-in fields — tall bordered boxes for handwriting; as-built = chip.
-      c(signoff(value: op.operator, h: 32pt)),
-      c(signoff(value: op.inspector, h: 32pt)),
-      c(signoff(h: 32pt)),
-      c(signoff(h: 32pt)),
-      c(signoff(value: op.remarks, h: 32pt)),
-    )).flatten(),
+      signoff(value: op.operator, h: 32pt),
+      signoff(value: op.inspector, h: 32pt),
+      signoff(h: 32pt),
+      signoff(h: 32pt),
+      signoff(value: op.remarks, h: 32pt),
+    )),
+    column-gutter: 12pt,
+    edge-inset: 6pt,
+    valign: top,
   )
 ]
 

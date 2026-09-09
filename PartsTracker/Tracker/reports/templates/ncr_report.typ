@@ -24,17 +24,17 @@
 // ----------------------------------------------------------------------------
 
 #let state-badge(state) = {
-  if state == "OPEN" { badge("OPEN", warn, rgb("#fef3c7")) }
-  else if state == "IN_PROGRESS" { badge("IN PROGRESS", accent, rgb("#dbeafe")) }
-  else if state == "CLOSED" { badge("CLOSED", ok, rgb("#dcfce7")) }
-  else { badge(state, muted, rgb("#e2e8f0")) }
+  if state == "OPEN" { tone-badge("OPEN", "warn") }
+  else if state == "IN_PROGRESS" { tone-badge("IN PROGRESS", "accent") }
+  else if state == "CLOSED" { tone-badge("CLOSED", "ok") }
+  else { tone-badge(state, "muted") }
 }
 
 #let severity-badge(sev) = {
-  if sev == "CRITICAL" { badge("CRITICAL", bad, rgb("#fee2e2")) }
-  else if sev == "MAJOR" { badge("MAJOR", warn, rgb("#fef3c7")) }
-  else if sev == "MINOR" { badge("MINOR", muted, rgb("#e2e8f0")) }
-  else { badge(sev, muted, rgb("#e2e8f0")) }
+  if sev == "CRITICAL" { tone-badge("CRITICAL", "bad") }
+  else if sev == "MAJOR" { tone-badge("MAJOR", "warn") }
+  else if sev == "MINOR" { tone-badge("MINOR", "muted") }
+  else { tone-badge(sev, "muted") }
 }
 
 // Format an ISO datetime string → "2026-04-13 14:22 UTC" (light touch).
@@ -113,11 +113,11 @@
     #v(4pt)
     *#qr.report_number* #h(6pt)
     #if qr.status == "FAIL" {
-      badge("FAIL", bad, rgb("#fee2e2"))
+      tone-badge("FAIL", "bad")
     } else if qr.status == "PASS" {
-      badge("PASS", ok, rgb("#dcfce7"))
+      tone-badge("PASS", "ok")
     } else {
-      badge(qr.status, muted, rgb("#e2e8f0"))
+      tone-badge(qr.status, "muted")
     }
     #h(6pt)
     #if qr.detected_by != none [
@@ -134,18 +134,10 @@
     ]
 
     #if qr.defects.len() > 0 [
-      #table(
-        columns: (2fr, auto, 1fr, auto, 2fr),
-        align: (left, center, left, center, left),
-        stroke: (x, y) => (
-          bottom: if y == 0 { 0.8pt + ink } else { 0.5pt + rule },
-          top: if y == 0 { 0.8pt + ink } else { none },
-        ),
-        inset: (x: 6pt, y: 4pt),
-        fill: (_, row) => if calc.rem(row, 2) == 0 and row > 0 { rgb("#f8fafc") },
-
-        [*Defect*], [*Count*], [*Location*], [*Severity*], [*Notes*],
-        ..qr.defects.map(d => (
+      #report-table(
+        (2fr, auto, 1fr, auto, 2fr),
+        ([Defect], [Count], [Location], [Severity], [Notes]),
+        qr.defects.map(d => (
           [#d.error_name],
           [#d.count],
           if d.location == "" [#text(fill: muted)[—]] else [#d.location],
@@ -154,7 +146,10 @@
           else if d.severity == "MINOR" { text(fill: muted)[#d.severity] }
           else [#d.severity],
           if d.notes == "" [#text(fill: muted)[—]] else [#d.notes],
-        )).flatten()
+        )),
+        column-gutter: 12pt,
+        inset-y: 4pt,
+        aligns: (left, center, left, center, left),
       )
     ] else [
       #text(size: 9pt, fill: muted, style: "italic")[No defects recorded on this report.]

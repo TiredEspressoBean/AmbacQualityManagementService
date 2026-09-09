@@ -71,61 +71,40 @@
   #set text(size: 9pt)
   #set par(justify: false)
 
-  // Table header
-  #table-header[
-    #grid(
-      columns: (1.5fr, 2.2fr, 1.6fr, 1.5fr, 1.1fr),
-      column-gutter: 6pt,
-      text(weight: "semibold", font: sans-font)[Gage ID],
-      text(weight: "semibold", font: sans-font)[Description],
-      text(weight: "semibold", font: sans-font)[Mfr / Model],
-      text(weight: "semibold", font: sans-font)[Cal Cert \#],
-      text(weight: "semibold", font: sans-font)[Cal Date],
-    )
-  ]
-
-  // Table rows
-  #for (idx, item) in data.items.enumerate() [
-    #table-row(idx)[
-      #grid(
-        columns: (1.5fr, 2.2fr, 1.6fr, 1.5fr, 1.1fr),
-        column-gutter: 6pt,
-        align(horizon)[
-          #text(fill: muted, font: mono-font, size: 8.5pt)[#item.gage_id]
-        ],
-        align(horizon)[
-          #text(font: sans-font, weight: "semibold")[#item.name]
-          #if item.equipment_type != none [
-            #linebreak()
-            #text(size: 8pt, fill: muted)[#item.equipment_type]
-          ]
-        ],
-        align(horizon)[
-          #if item.manufacturer != none [
-            #text[#item.manufacturer]
-          ]
-          #if item.model != none [
-            #linebreak()
-            #text(size: 8pt, fill: muted, font: mono-font)[#item.model]
-          ]
-        ],
-        align(horizon)[
-          #if item.cal_cert_number != none {
-            text(font: mono-font, size: 8.5pt)[#item.cal_cert_number]
-          } else {
-            text(fill: muted, style: "italic", size: 8.5pt)[not available]
-          }
-        ],
-        align(horizon)[
-          #if item.cal_date != none {
-            text(font: mono-font, size: 8.5pt)[#str(item.cal_date)]
-          } else {
-            text(fill: muted, style: "italic", size: 8.5pt)[—]
-          }
-        ],
-      )
-    ]
-  ]
+  #report-table(
+    (1.5fr, 2.2fr, 1.6fr, 1.5fr, 1.1fr),
+    ([Gage ID], [Description], [Mfr / Model], [Cal Cert \#], [Cal Date]),
+    data.items.map(item => (
+      text(fill: muted, font: mono-font, size: 8.5pt)[#item.gage_id],
+      {
+        text(font: sans-font, weight: "semibold")[#item.name]
+        if item.equipment_type != none [
+          #linebreak()
+          #text(size: 8pt, fill: muted)[#item.equipment_type]
+        ]
+      },
+      {
+        if item.manufacturer != none [
+          #text[#item.manufacturer]
+        ]
+        if item.model != none [
+          #linebreak()
+          #text(size: 8pt, fill: muted, font: mono-font)[#item.model]
+        ]
+      },
+      if item.cal_cert_number != none {
+        text(font: mono-font, size: 8.5pt)[#item.cal_cert_number]
+      } else {
+        text(fill: muted, style: "italic", size: 8.5pt)[not available]
+      },
+      if item.cal_date != none {
+        text(font: mono-font, size: 8.5pt)[#str(item.cal_date)]
+      } else {
+        text(fill: muted, style: "italic", size: 8.5pt)[—]
+      },
+    )),
+    column-gutter: 6pt,
+  )
 ]
 
 #v(20pt)
