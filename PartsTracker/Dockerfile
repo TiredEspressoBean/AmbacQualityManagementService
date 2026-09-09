@@ -41,13 +41,23 @@ EXPOSE 8000
 
 # SERVICE_TYPE: web (default), worker, or beat
 #
-# gunicorn logs to stdout so the platform captures them. Without these flags
-# gunicorn is silent and a deployed instance has no request-level logging at
-# all -- Railway's logs came back empty, which made a handful of production
-# 5xx impossible to attribute. Matches what docker-compose.yml already passes.
-# NOTE: gives status + path per request, NOT Django tracebacks -- settings.py
-# defines no LOGGING, so Django's default console handler is filtered off
-# whenever DEBUG=False.
+# --access-logfile - puts the request log on STDOUT. Without it gunicorn logs no
+# requests at all, which is what made a handful of production 5xx impossible to
+# attribute: the proxy counted them and nothing recorded which endpoint failed.
+#
+# --log-level warning is about log SEVERITY, not volume. gunicorn's errorlog
+# already defaults to '-' (stderr), and its startup lines are INFO on that
+# logger -- so an ordinary boot wrote 'Starting gunicorn' to stderr and Railway
+# tagged every normal deploy as severity=error. Raising the level drops that
+# chatter and leaves stderr for real problems (worker timeouts, boot failures),
+# so red means something. It does NOT affect request logging: glogging.py pins
+# access_log to INFO unconditionally and writes it to stdout.
+# (No --error-logfile here on purpose: '-'/stderr is already the default.)
+# Django tracebacks are handled separately, by the LOGGING dict in settings.py:
+# its default console handler carries require_debug_true and is off whenever
+# DEBUG=False, so unhandled view exceptions would otherwise go only to
+# mail_admins (unconfigured). Both halves are needed: this flag for which
+# request failed, that dict for why.
 CMD if [ "$SERVICE_TYPE" = "worker" ]; then \
       celery -A PartsTrackerApp worker -l info; \
     elif [ "$SERVICE_TYPE" = "beat" ]; then \
@@ -58,5 +68,5 @@ CMD if [ "$SERVICE_TYPE" = "worker" ]; then \
       python manage.py setup_database && \
       python manage.py collectstatic --noinput && \
       gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4 \
-        --access-logfile - --error-logfile -; \
+        --access-logfile - --log-level warning; \
     fi

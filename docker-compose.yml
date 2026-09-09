@@ -157,7 +157,7 @@ services:
       python manage.py setup_defaults &&
       python manage.py setup_database &&
       python manage.py collectstatic --noinput &&
-      gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --access-logfile - --error-logfile -"
+      gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --access-logfile - --log-level warning"
     env_file:
       - .env.docker
     environment:
