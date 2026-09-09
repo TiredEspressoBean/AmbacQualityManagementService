@@ -24418,6 +24418,8 @@ export interface components {
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             timing?: components["schemas"]["StepTimingRequest"] | null;
+            /** @description Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1). */
+            change_description?: string;
             archived?: boolean;
         };
         /** @description Per-execution completion record. */
@@ -28704,6 +28706,8 @@ export interface components {
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             timing?: components["schemas"]["StepTimingRequest"] | null;
+            /** @description Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1). */
+            change_description?: string;
             archived?: boolean;
         };
         /**

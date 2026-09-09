@@ -11544,6 +11544,10 @@ export type PatchedStepsRequest = Partial<{
      */
   labor_model: LaborModelEnum | BlankEnum | NullEnum | null;
   timing: StepTimingRequest;
+  /**
+   * Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1).
+   */
+  change_description: string;
   archived: boolean;
 }>;
 export type StepTimingRequest = Partial<{
@@ -13825,6 +13829,10 @@ export type StepsRequest = {
     (LaborModelEnum | BlankEnum | NullEnum | null)
     | undefined;
   timing?: StepTimingRequest | undefined;
+  change_description?: /**
+   * Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1).
+   */
+  string | undefined;
   archived?: boolean | undefined;
 };
 export type SubmitProcessForApprovalResponse = {
@@ -19752,6 +19760,7 @@ const StepsRequest = z.object({
     .nullish(),
   labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
   timing: StepTimingRequest.nullish(),
+  change_description: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedStepsRequest = z
@@ -19791,6 +19800,7 @@ const PatchedStepsRequest = z
       .nullable(),
     labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullable(),
     timing: StepTimingRequest.nullable(),
+    change_description: z.string(),
     archived: z.boolean(),
   })
   .partial();

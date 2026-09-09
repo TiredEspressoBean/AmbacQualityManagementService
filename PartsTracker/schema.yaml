@@ -53311,6 +53311,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/StepTimingRequest'
           nullable: true
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for this revision, recorded on the new version (ISO
+            9001 4.4 / IATF 16949 8.5.6.1).
         archived:
           type: boolean
     PatchedSubstepCompletionRequest:
@@ -61498,6 +61503,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/StepTimingRequest'
           nullable: true
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for this revision, recorded on the new version (ISO
+            9001 4.4 / IATF 16949 8.5.6.1).
         archived:
           type: boolean
       required:

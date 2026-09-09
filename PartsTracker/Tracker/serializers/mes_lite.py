@@ -893,6 +893,13 @@ class StepsSerializer(SecureModelMixin):
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     work_center_name = serializers.CharField(source="work_center.name", read_only=True, allow_null=True)
     timing = StepTimingSerializer(required=False, allow_null=True)
+    # Why this revision exists. Write-only: it belongs to the version record, not to
+    # the step. Optional — `update` falls back to a synthesized note rather than
+    # refusing the edit, which is what used to happen.
+    change_description = serializers.CharField(
+        write_only=True, required=False, allow_blank=True,
+        help_text="Reason for this revision, recorded on the new version "
+                  "(ISO 9001 4.4 / IATF 16949 8.5.6.1).")
 
     # Fields whose edits are metadata-only and should NOT trigger a new version.
     # operation_number is a shop-floor routing label, not process behaviour — a
@@ -931,6 +938,8 @@ class StepsSerializer(SecureModelMixin):
             'labor_model',
             # Time elements the scheduler and RCCP size work from (nested one-to-one)
             'timing',
+            # Write-only; recorded on the new version, not on the step.
+            'change_description',
             # Timestamps
             'created_at', 'updated_at', 'archived',
             # Versioning
@@ -958,7 +967,20 @@ class StepsSerializer(SecureModelMixin):
         # must land on that one or the edit silently applies to a superseded row.
         timing_data = validated_data.pop('timing', serializers.empty)
 
-        version_kwargs = {}
+        # `create_new_step_version` requires a change_description (ISO 9001 4.4 /
+        # IATF 16949 8.5.6.1) and this serializer never supplied one, so EVERY content
+        # edit through it raised — the step admin form returned a 500 on saving a
+        # description. The process-flow editor was unaffected because its graph save
+        # synthesizes one of its own; only this surface was broken.
+        #
+        # Accepted from the client when offered, so an author can say what changed, and
+        # otherwise synthesized the same way the graph save does. A generic note that
+        # names the surface beats refusing the edit.
+        change_description = validated_data.pop('change_description', None)
+        version_kwargs = {
+            'change_description': (change_description or '').strip() or 'Edited from the step form',
+            'user': getattr(self.context.get('request'), 'user', None),
+        }
         process = self._resolve_editing_process()
         if process is not None:
             version_kwargs['process'] = process

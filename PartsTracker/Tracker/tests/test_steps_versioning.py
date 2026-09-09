@@ -636,3 +636,50 @@ class StepTimingCopyOnStepVersioningTestCase(TenantTestCase):
         self.assertEqual(resolved.setup_minutes, 0.0)
         self.assertEqual(resolved.cycle_time_minutes, 0.0)
         self.assertEqual(resolved.cycle_source, 'none')
+
+
+class StepSerializerVersioningTestCase(TenantTestCase):
+    """A content edit through `StepsSerializer` has to be able to save.
+
+    `create_new_step_version` requires a change_description (ISO 9001 4.4 /
+    IATF 16949 8.5.6.1) and this serializer supplied none, so EVERY content edit
+    through it raised ValueError — the step admin form returned a 500 on saving a
+    description. The process-flow editor was unaffected: its graph save synthesizes
+    its own note, so only this one surface was broken, which is why it survived.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.part_type = PartTypes.objects.create(name='SerVer_PT', ID_prefix='SV-')
+        self.step = _make_step(self.part_type, name='Bore')
+
+    def _patch(self, **data):
+        from Tracker.serializers.mes_lite import StepsSerializer
+        ser = StepsSerializer(self.step, data=data, partial=True)
+        ser.is_valid(raise_exception=True)
+        return ser.save()
+
+    def test_content_edit_without_a_change_description_still_saves(self):
+        updated = self._patch(description='Now with a torque spec')
+
+        self.assertEqual(updated.version, 2)
+        self.assertNotEqual(updated.pk, self.step.pk)
+        self.assertEqual(updated.description, 'Now with a torque spec')
+
+    def test_author_supplied_change_description_is_accepted(self):
+        updated = self._patch(description='Tighter bore',
+                              change_description='Customer raised the tolerance')
+        self.assertEqual(updated.version, 2)
+
+    def test_change_description_is_write_only(self):
+        """It belongs to the version record, not to the step — it must not come back
+        on the representation as though it were step data."""
+        from Tracker.serializers.mes_lite import StepsSerializer
+        self.assertNotIn('change_description', StepsSerializer(self.step).data)
+
+    def test_non_versioning_edit_still_does_not_fork(self):
+        """`operation_number` is a routing label, not step behaviour. Supplying a
+        change_description path must not have made every edit version."""
+        updated = self._patch(operation_number='20')
+        self.assertEqual(updated.pk, self.step.pk)
+        self.assertEqual(updated.version, 1)
