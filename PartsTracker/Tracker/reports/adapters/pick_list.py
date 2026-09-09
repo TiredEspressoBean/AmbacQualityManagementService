@@ -1,10 +1,15 @@
 """
-Pick List / Material Requisition adapter.
+Material Requisition adapter.
 
-A Pick List is a shop-floor document printed at job release that lists every
-component and raw material required to build a work order quantity.  The picker
-works through the list, pulls each item from inventory, checks off the row, and
-returns the signed sheet to production.
+A Material Requisition is the shop-floor document printed at job release that lists
+every component and raw material required to build a work order quantity, and
+records who pulled it, who checked it and who took delivery.
+
+It is one of three material documents and the only per-JOB one. The shelf walk is
+`pick_sheet` — one row per material across every open job, ordered by location,
+because a picker walks the crib once rather than once per work order. The per-bench
+kit is `staging_list`. This sheet is what authorises issue against a job and carries
+the signatures; calling it a pick list too made three documents claim the same name.
 
 The PDF covers:
 - Title block: work order number, part being built, qty to produce, due date
@@ -163,7 +168,7 @@ class PickListParamsSerializer(serializers.Serializer):
 
 class PickListAdapter(ReportAdapter):
     """
-    Renders a Pick List / Material Requisition PDF for a given WorkOrder.
+    Renders a Material Requisition PDF for a given WorkOrder.
 
     The BOM is resolved via WorkOrder → Process → PartType → released BOM.
     If no released BOM exists the items list will be empty (the template
@@ -171,7 +176,7 @@ class PickListAdapter(ReportAdapter):
     """
 
     name = "pick_list"
-    title = "Pick List / Material Requisition"
+    title = "Material Requisition"
     template_path = "pick_list.typ"
     context_model_class = PickListContext
     param_serializer_class = PickListParamsSerializer

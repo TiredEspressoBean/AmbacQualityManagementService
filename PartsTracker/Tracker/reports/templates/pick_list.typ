@@ -1,4 +1,9 @@
-// Pick List / Material Requisition template.
+// Material Requisition template — the per-work-order document that authorises
+// issue against a job and records who handed the material over.
+//
+// NOT the shelf walk: that is `pick_sheet` (one row per material across jobs,
+// ordered by location), and the per-bench kit is `staging_list`. This one is
+// per work order, which is why it carries the signature block.
 //
 // Context: Tracker/reports/adapters/pick_list.py → PickListContext
 //
@@ -31,7 +36,7 @@
 // ----------------------------------------------------------------------------
 
 #show: page-setup.with(
-  title: "Pick List / Material Requisition",
+  title: "Material Requisition",
   classification: "Internal — Shop Floor",
 )
 

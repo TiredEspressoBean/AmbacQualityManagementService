@@ -1,7 +1,7 @@
 """
 Staging List adapter — the materials handler's walk sheet.
 
-A different document from the Pick List. The Pick List is per WORK ORDER: the whole
+A different document from the Material Requisition, which is per WORK ORDER: the whole
 BOM for a job, printed at release. This is per STATION over a time window: everything
 arriving at each bench in the next few hours, drawn from the live schedule.
 

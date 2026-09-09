@@ -1440,7 +1440,7 @@ export function WorkOrderControlPage() {
                 <div className="flex items-center gap-2">
                     <ReportButton
                         reportType="pick_list"
-                        label="Pick List"
+                        label="Material Requisition"
                         params={workOrderId ? { id: workOrderId } : null}
                     />
                     <ReportButton

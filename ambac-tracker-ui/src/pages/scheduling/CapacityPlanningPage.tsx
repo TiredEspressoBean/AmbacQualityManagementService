@@ -57,12 +57,45 @@ function coverTone(remaining: number, available: number): string {
 /** Trim trailing zeros — a shop reads "18", not "18.00". */
 const qty = (n: number) => Number(n.toFixed(2)).toLocaleString();
 
+/** How many buckets this resource is at/over capacity in, out of how many it has
+ *  numbers for.
+ *
+ *  The pinch-point callout finds the FIRST tight month, which answers "what do I move".
+ *  This answers the other question, and it is the one a long horizon exists for: a
+ *  resource over in 7 of 12 months is not a sequencing problem, it is a capacity
+ *  problem, and that ratio is the argument for a shift, a hire, or a machine. One
+ *  tight month buried among eleven slack ones is noise; seven is a decision.
+ */
+function overloadRatio(series: CapacityBucket[]): { over: number; measured: number } {
+  const measured = series.filter((b) => b.utilization != null);
+  return { over: measured.filter((b) => (b.utilization as number) >= 1).length,
+           measured: measured.length };
+}
+
 function HeatRow({ name, series }: { name: string; series: CapacityBucket[] }) {
+  const { over, measured } = overloadRatio(series);
   return (
     <tr className="border-t">
       <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium">
         {name}
       </th>
+      <td className="px-2 py-1.5 text-center text-[11px] tabular-nums">
+        {measured === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <span
+            className={over === 0 ? "text-muted-foreground"
+              : over / measured >= 0.5 ? "font-semibold text-red-600 dark:text-red-400"
+              : "text-amber-600 dark:text-amber-400"}
+            title={`Over capacity in ${over} of ${measured} month(s) with data.
+`
+              + `Sustained overload is a capacity decision (shift / hire / machine); `
+              + `a single month is a sequencing one.`}
+          >
+            {over}/{measured}
+          </span>
+        )}
+      </td>
       {series.map((b) => (
         <td key={b.bucket} className="p-0.5">
           <div
@@ -345,6 +378,10 @@ export function CapacityPlanningPage() {
                     <th className="sticky left-0 z-10 bg-background px-3 py-2 text-left text-xs font-medium">
                       Resource
                     </th>
+                    <th className="px-2 py-2 text-center text-[11px] font-medium text-muted-foreground"
+                        title="Months at or over capacity, of those with data">
+                      Over
+                    </th>
                     {buckets.map((b) => (
                       <th key={b} className="px-1 py-2 text-center text-[11px] font-medium text-muted-foreground">
                         {b}
@@ -370,7 +407,7 @@ export function CapacityPlanningPage() {
                       <tr className="border-t">
                         <th
                           scope="row"
-                          colSpan={buckets.length + 1}
+                          colSpan={buckets.length + 2}   /* + Resource + Over */
                           className="sticky left-0 bg-background px-3 pb-1 pt-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                         >
                           Materials — stock left after committed work (negative = short)
@@ -381,6 +418,12 @@ export function CapacityPlanningPage() {
                           <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium">
                             {m.name}
                           </th>
+                          {/* A material has no "months over capacity" — it has a balance,
+                              not a rate. Held empty so the buckets stay aligned with the
+                              resource rows above rather than shifting a column left. */}
+                          <td className="px-2 py-1.5 text-center text-[11px] text-muted-foreground">
+                            {m.series.some((b) => b.short) ? "short" : "—"}
+                          </td>
                           {m.series.map((b) => (
                             <td key={b.bucket} className="p-0.5">
                               <div

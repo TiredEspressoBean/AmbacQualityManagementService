@@ -94,6 +94,10 @@ type BatchMeta = {
 
 const isBatchId = (id: string) => id.startsWith("batch:");
 
+/** The People-view lane for subcontracted work. Named, not "—"-prefixed, because it
+ *  is not a gap: the work is progressing, just not here. */
+const OSP_LANE = "At an outside vendor";
+
 
 type Task = {
   id: string;
@@ -581,9 +585,17 @@ export function SchedulingGanttPage() {
         // The People view is about who's doing what. Show a person's name when
         // assigned, "— Unassigned —" for work that NEEDS an operator but has none
         // (the real gap a planner acts on), and DROP work that needs no person at
-        // all (outside-process, lights-out machine time) — else the view fills with
-        // work-center rows and reads like an equipment list, not people.
-        ? (t.operator_name ?? (t.requires_operator ? "— Unassigned —" : null))
+        // all (lights-out machine time) — else the view fills with work-center rows
+        // and reads like an equipment list, not people.
+        //
+        // Outside processing gets its OWN lane rather than either of those. It is
+        // work in progress that no one here is doing: counting it as uncovered
+        // implies a staffing gap that hiring couldn't close, and dropping it hides
+        // days of elapsed time the schedule genuinely depends on. Its own row says
+        // the true thing — it's out at a vendor.
+        ? (t.is_outside_process
+            ? OSP_LANE
+            : (t.operator_name ?? (t.requires_operator ? "— Unassigned —" : null)))
         : groupBy === "workorder"
           ? t.work_order ?? t.part_erp ?? t.core_number ?? "— No WO —"
           // Machine view: steps with no machine (shipping / outside-process) aren't
@@ -711,7 +723,13 @@ export function SchedulingGanttPage() {
       (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(t);
     }
     const list = [...byKey.entries()]
-      .sort(([a], [b]) => (a.startsWith("—") ? 1 : b.startsWith("—") ? -1 : a.localeCompare(b)))
+      // People and machines first; the rows that aren't a person or a machine — the
+      // unassigned pool and the vendor lane — sit at the bottom where they read as
+      // context rather than as resources.
+      .sort(([a], [b]) => {
+        const rank = (n: string) => (n === OSP_LANE ? 2 : n.startsWith("—") ? 1 : 0);
+        return rank(a) - rank(b) || a.localeCompare(b);
+      })
       .map(([name, tasks]) => ({
         machine: name,
         features: tasks.map(toFeature),  // expanded: one bar per task (part-op)
