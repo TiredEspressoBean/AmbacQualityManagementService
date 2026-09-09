@@ -931,3 +931,62 @@ if not DEBUG:
     # X-Frame-Options - DENY prevents all framing
     # Keep SAMEORIGIN if embedding is needed within the app
     X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
+
+# =============================================================================
+# LOGGING
+# =============================================================================
+# Django emits nothing to the console when DEBUG=False: its default console
+# handler carries a require_debug_true filter, and unhandled view exceptions are
+# routed to the `mail_admins` handler -- which needs ADMINS set and a working
+# mail path. With neither configured, production 500s were logged nowhere at all
+# (Railway returned an empty log stream, which made a handful of 5xx impossible
+# to attribute). This sends them to stdout, where gunicorn --error-logfile - and
+# the platform log collector pick them up.
+#
+# Silent under `manage.py test`, which preserves current behaviour: tests already
+# run with DEBUG=False, so the default console handler is filtered off and the
+# suite is quiet today. Without this guard, adding a console handler would make
+# every run noisy. Mirrors the test-mode switch used for PASSWORD_HASHERS above.
+
+_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+_LOG_TARGET = ["null"] if 'test' in _sys.argv else ["console"]
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "app": {
+            "format": "{levelname} {asctime} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "app",
+        },
+        "null": {"class": "logging.NullHandler"},
+    },
+    "loggers": {
+        # The one that matters: unhandled exceptions in views, with traceback.
+        # Django logs 5xx here at ERROR (4xx at WARNING, excluded by the level).
+        "django.request": {
+            "handlers": _LOG_TARGET,
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django": {
+            "handlers": _LOG_TARGET,
+            "level": _LOG_LEVEL,
+            "propagate": False,
+        },
+        # Application code -- modules use logging.getLogger(__name__), which is
+        # "Tracker.<module>", so this catches all of it.
+        "Tracker": {
+            "handlers": _LOG_TARGET,
+            "level": _LOG_LEVEL,
+            "propagate": False,
+        },
+    },
+}
