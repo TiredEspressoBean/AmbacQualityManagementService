@@ -89,18 +89,31 @@ services:
     restart: unless-stopped
     profiles:
       - local
+    # setup_tenant runs BEFORE create_temp_admin deliberately. In dedicated mode
+    # TenantMiddleware creates the default tenant lazily, on the first HTTP request
+    # -- which is after this chain finishes. Without this line create_temp_admin
+    # finds no tenant on a fresh volume and logs "no tenant resolved; will need
+    # manual assignment", leaving the superuser with no tenant and no Tenant Admin
+    # group binding. --no-admin keeps it off the user table (create_temp_admin owns
+    # that, via DJANGO_SUPERUSER_*), but --admin-email is declared required=True in
+    # the command's argparse, so it must be passed even though --no-admin makes it
+    # unused. It is idempotent: an existing tenant logs a warning and continues.
     command: >
       sh -c "
       python manage.py migrate &&
       python manage.py setup_defaults &&
+      python manage.py setup_database &&
+      python manage.py setup_tenant --use-defaults --no-admin --admin-email $${DJANGO_SUPERUSER_EMAIL} &&
       python manage.py create_temp_admin &&
       python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env.docker
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=tracker_AMBAC
+      # Derived from the same ${POSTGRES_*} compose vars the postgres service
+      # uses, so app and server credentials cannot drift. settings.py checks
+      # DATABASE_URL before the individual POSTGRES_* vars, so this is the one
+      # that counts -- see .env.docker.example.
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tracker_AMBAC}
       - NPM_BIN_PATH=/usr/bin/npm
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_CACHE_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
@@ -109,6 +122,9 @@ services:
       - CORS_ALLOW_CREDENTIALS=true
       - CORS_ALLOWED_ORIGINS=https://localhost,https://${SITE_DOMAIN:-localhost},http://localhost,http://${SITE_DOMAIN:-localhost}
       - CSRF_TRUSTED_ORIGINS=https://localhost,https://${SITE_DOMAIN:-localhost},http://localhost,http://${SITE_DOMAIN:-localhost}
+      # Opt back into DEBUG: .env.docker now defaults to False so a newly added
+      # production service inherits the safe value. Local dev wants True.
+      - DJANGO_DEBUG=True
     volumes:
       - ./PartsTracker:/app
     depends_on:
@@ -136,16 +152,20 @@ services:
       - production
     command: >
       sh -c "
+      : $${FIELD_ENCRYPTION_KEY:?not set -- required when DJANGO_DEBUG=False. Generate a Fernet key and add it to .env.docker, see .env.example} &&
       python manage.py migrate &&
       python manage.py setup_defaults &&
+      python manage.py setup_database &&
       python manage.py collectstatic --noinput &&
       gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --access-logfile - --error-logfile -"
     env_file:
       - .env.docker
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=tracker_AMBAC
+      # Derived from the same ${POSTGRES_*} compose vars the postgres service
+      # uses, so app and server credentials cannot drift. settings.py checks
+      # DATABASE_URL before the individual POSTGRES_* vars, so this is the one
+      # that counts -- see .env.docker.example.
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tracker_AMBAC}
       - NPM_BIN_PATH=/usr/bin/npm
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_CACHE_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
@@ -155,6 +175,13 @@ services:
       - CORS_ALLOWED_ORIGINS=https://${SITE_DOMAIN:-localhost}
       - CSRF_TRUSTED_ORIGINS=https://${SITE_DOMAIN:-localhost}
       - DJANGO_DEBUG=False
+    # MEDIA_ROOT (/app/media) must outlive the container: uploads, generated
+    # report PDFs and converted 3D models live there. Bind-mounted rather than a
+    # named volume so `media-backup` / `backup-scheduler` -- which read
+    # ./PartsTracker/media -- actually see what this service writes.
+    # STATIC_ROOT needs no volume: collectstatic reruns on every boot.
+    volumes:
+      - ./PartsTracker/media:/app/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,12 +209,17 @@ services:
     env_file:
       - .env.docker
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=tracker_AMBAC
+      # Derived from the same ${POSTGRES_*} compose vars the postgres service
+      # uses, so app and server credentials cannot drift. settings.py checks
+      # DATABASE_URL before the individual POSTGRES_* vars, so this is the one
+      # that counts -- see .env.docker.example.
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tracker_AMBAC}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
+      # Opt back into DEBUG: .env.docker now defaults to False so a newly added
+      # production service inherits the safe value. Local dev wants True.
+      - DJANGO_DEBUG=True
     volumes:
       - ./PartsTracker:/app
     deploy:
@@ -216,12 +248,18 @@ services:
     env_file:
       - .env.docker
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=tracker_AMBAC
+      # Derived from the same ${POSTGRES_*} compose vars the postgres service
+      # uses, so app and server credentials cannot drift. settings.py checks
+      # DATABASE_URL before the individual POSTGRES_* vars, so this is the one
+      # that counts -- see .env.docker.example.
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tracker_AMBAC}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
+    # Shares backend-prod's MEDIA_ROOT: STEP->GLB conversion and report rendering
+    # happen in the worker, and the web container has to be able to serve the result.
+    volumes:
+      - ./PartsTracker/media:/app/media
     # Memory limit for 3D model processing (STEP conversion can use 500MB+ per file)
     deploy:
       resources:
@@ -249,12 +287,17 @@ services:
     env_file:
       - .env.docker
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=tracker_AMBAC
+      # Derived from the same ${POSTGRES_*} compose vars the postgres service
+      # uses, so app and server credentials cannot drift. settings.py checks
+      # DATABASE_URL before the individual POSTGRES_* vars, so this is the one
+      # that counts -- see .env.docker.example.
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tracker_AMBAC}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
+      # Opt back into DEBUG: .env.docker now defaults to False so a newly added
+      # production service inherits the safe value. Local dev wants True.
+      - DJANGO_DEBUG=True
     volumes:
       - ./PartsTracker:/app
     depends_on:
@@ -277,9 +320,11 @@ services:
     env_file:
       - .env.docker
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=tracker_AMBAC
+      # Derived from the same ${POSTGRES_*} compose vars the postgres service
+      # uses, so app and server credentials cannot drift. settings.py checks
+      # DATABASE_URL before the individual POSTGRES_* vars, so this is the one
+      # that counts -- see .env.docker.example.
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tracker_AMBAC}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
@@ -395,9 +440,9 @@ services:
              mkdocs build --site-dir /output"
 
   # Build frontend for local development
-  # target: builder stops at the node:20-slim stage so `npm run build`
-  # can run at container-start. Without it, the final image is caddy:alpine
-  # which has no Node toolchain, and the command fails with "npm not found".
+  # target: builder stops at the oven/bun:1 stage so `bun run build` can run at
+  # container-start. Without it, the final image is caddy:alpine, which has no
+  # JS toolchain, and the command fails with "bun: not found".
   frontend-builder-local:
     build:
       context: ./ambac-tracker-ui
