@@ -990,12 +990,14 @@ function markHoveredLane(laneId: string | null) {
 export type GanttFeatureItemProps = GanttFeature & {
   /** `laneId` is the lane the bar was dropped on, when that differs from the one it
    *  started in — the drag-to-reassign signal. Null/undefined means a pure time move. */
+  //  Returning a promise is optional, but a handler that REJECTS tells the bar the
+  //  drop was refused, and it rolls back to its previous position.
   onMove?: (
     id: string,
     startDate: Date,
     endDate: Date | null,
     laneId?: string | null,
-  ) => void;
+  ) => void | Promise<unknown>;
   onSelect?: (id: string, event: ReactMouseEvent) => void;
   resizable?: boolean;
   /** Render only the positioned bar (no full-width row wrapper), so several bars
@@ -1025,9 +1027,14 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
   const [startAt, setStartAt] = useState<Date>(feature.startAt);
   const [endAt, setEndAt] = useState<Date | null>(feature.endAt);
 
-  // Keep the rendered position tied to the source data. After a move settles, the
-  // query refetches and hands fresh Date objects — success → the new time, a
-  // rejected drop → unchanged — so this resync also snaps a refused drag back.
+  // Keep the rendered position tied to the source data: when a move succeeds the
+  // refetch hands new Date objects and the bar settles at the new time.
+  //
+  // This does NOT undo a refused drop, though it used to claim it did. React Query's
+  // structural sharing (on by default) returns the SAME object reference when
+  // refetched data is deeply equal — which is exactly the case after a rejected move —
+  // so these deps never change, the effect never runs, and the bar sits at a time the
+  // server refused. The rollback is explicit in `onDragEnd` instead.
   useEffect(() => {
     setStartAt(feature.startAt);
     setEndAt(feature.endAt ?? null);
@@ -1138,13 +1145,22 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
     [gantt, mousePosition.x, previousMouseX, previousStartAt, previousEndAt]
   );
 
-  const onDragEnd = useCallback(() => {
+  const onDragEnd = useCallback(async () => {
     const lane = laneUnderPointer(pointerY.current) ?? hoveredLane.current;
     const movedLane = lane != null && lane !== originLane.current ? lane : null;
     endLaneTracking();
     hoveredLane.current = null;
-    onMove?.(feature.id, startAt, endAt, movedLane);
-  }, [onMove, feature.id, startAt, endAt, endLaneTracking]);
+    try {
+      await onMove?.(feature.id, startAt, endAt, movedLane);
+    } catch {
+      // The drop was refused (precedence, release gate, horizon). Put the bar back
+      // where it came from — leaving it at a time the server rejected shows the
+      // planner a schedule that does not exist. The handler has already explained
+      // why; this is only the visual rollback.
+      setStartAt(feature.startAt);
+      setEndAt(feature.endAt ?? null);
+    }
+  }, [onMove, feature.id, feature.startAt, feature.endAt, startAt, endAt, endLaneTracking]);
 
   // Resize handles report time only — a resize can't change which resource runs it.
   const onResizeEnd = useCallback(

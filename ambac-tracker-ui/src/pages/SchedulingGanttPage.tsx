@@ -102,8 +102,7 @@ type Task = {
   step_name: string | null;
   machine: string | null;
   machine_name: string | null;
-  // A NUMBER at runtime (User pk), despite the generated client typing `operator_id`
-  // as a string on the reassign endpoint. Anything sending it back must stringify.
+  // An integer — `User` is a BigAutoField, unlike the UUID-keyed models around it.
   assigned_operator: number | string | null;
   operator_name: string | null;
   work_order: string | null;
@@ -743,12 +742,13 @@ export function SchedulingGanttPage() {
   // side — an idle machine has no row and so can't be dropped onto — is a real limit
   // of the board, not of this map.)
   const laneTargets = useMemo(() => {
-    const m = new Map<string, { machineId: string | null; operatorId: string | null }>();
+    const m = new Map<string, { machineId: string | null; operatorId: number | null }>();
     for (const g of groups) {
       const src = g.features.length ? rows.find((t) => g.features.some((f) => f.id === t.id)) : null;
       m.set(g.machine, {
         machineId: src?.machine ?? null,
-        operatorId: src?.assigned_operator == null ? null : String(src.assigned_operator),
+        // Machines are UUID-keyed SecureModels; operators are integer-keyed Users.
+        operatorId: src?.assigned_operator == null ? null : Number(src.assigned_operator),
       });
     }
     return m;
@@ -827,62 +827,113 @@ export function SchedulingGanttPage() {
   // Drop onto a different lane row = reassign the resource. Only the Machines and
   // People lenses have reassignable lanes; in the Work-orders lens a lane IS a work
   // order, and dragging a task between work orders isn't a scheduling act.
-  const laneReassign = useCallback((laneId: string | null | undefined, taskIds: string[]) => {
+  //
+  // AWAITED, not fired alongside the move. A diagonal drag changes both the resource
+  // and the time, and dispatching the two as concurrent requests put two transactions
+  // on the same ScheduledTask rows in opposite lock order — Postgres killed one with
+  // `deadlock detected` and the reassign 500'd. They touch the same rows, so they have
+  // to be sequential.
+  const laneReassign = useCallback(async (
+    laneId: string | null | undefined, taskIds: string[],
+  ): Promise<boolean> => {
     if (!laneId || taskIds.length === 0) return false;
     const target = laneTargets.get(laneId);
     if (!target) return false;
-    if (groupBy === "machine") {
-      if (!target.machineId) return false;   // e.g. the "no machine" lane
-      if (taskIds.length === 1) reassignMachine.mutate({ id: taskIds[0], machine_id: target.machineId });
-      else bulkReassignMachine.mutate({ task_ids: taskIds, machine_id: target.machineId });
-      return true;
-    }
-    if (groupBy === "operator") {
-      // The "— Unassigned —" lane has no operator id, and dropping there is a real
-      // intent: hand the task back to the pool.
-      const operatorId = target.operatorId;
-      // Already a string (or null) — `laneTargets` normalises it, because the API
-      // returns operator ids as NUMBERS while the generated client types `operator_id`
-      // as a string, and the zod client rejects a numeric body before it is ever sent.
-      if (taskIds.length === 1) reassignOperator.mutate({ id: taskIds[0], operator_id: operatorId });
-      else bulkReassignOperator.mutate({ task_ids: taskIds, operator_id: operatorId });
-      return true;
+    try {
+      if (groupBy === "machine") {
+        if (!target.machineId) return false;   // e.g. the "no machine" lane
+        if (taskIds.length === 1) {
+          await reassignMachine.mutateAsync({ id: taskIds[0], machine_id: target.machineId });
+        } else {
+          await bulkReassignMachine.mutateAsync({ task_ids: taskIds, machine_id: target.machineId });
+        }
+        return true;
+      }
+      if (groupBy === "operator") {
+        // The "— Unassigned —" lane has no operator id, and dropping there is a real
+        // intent: hand the task back to the pool.
+        //
+        // An integer (or null). `User` is a BigAutoField while the models around it are
+        // UUID-keyed, and the endpoint's serializer declared this a UUIDField — so it
+        // rejected every operator id that exists, from the dropdown as well as a drag.
+        const operatorId = target.operatorId;
+        if (taskIds.length === 1) {
+          await reassignOperator.mutateAsync({ id: taskIds[0], operator_id: operatorId });
+        } else {
+          await bulkReassignOperator.mutateAsync({ task_ids: taskIds, operator_id: operatorId });
+        }
+        return true;
+      }
+      // Work-orders lens: a lane IS a work order, and dragging a task between work
+      // orders isn't a scheduling act. Say so — silently ignoring the drop is
+      // indistinguishable from a bug, and the bar visibly lands on the other row.
+      if (groupBy === "workorder") {
+        toast.info("Lane changes only apply in the Machines and People views.");
+      }
+    } catch {
+      // The hook already toasted. Fall through to the time move: the drop's horizontal
+      // component is a separate intent and shouldn't be lost with the reassign.
+      return false;
     }
     return false;
   }, [laneTargets, groupBy, reassignMachine, reassignOperator,
       bulkReassignMachine, bulkReassignOperator]);
 
-  const onMoveTask = useCallback((id: string, start: Date, _end: Date | null, laneId?: string | null) => {
-    const reassigned = laneReassign(laneId, [id]);
-    move.mutate(
-      { id, start_time: start.toISOString() },
-      {
-        // One toast per drag: the reassign mutation reports the resource change
-        // (including its eligibility warning), so the move only speaks when it's
-        // the whole story.
-        onSuccess: () => { if (!reassigned) toast.success("Task moved & pinned"); },
-        onError: (e: any) =>
-          toast.error(e?.response?.data?.detail ?? "Couldn't move the task there"),
-      }
-    );
-  }, [move, laneReassign]);
+  /** Did this drag actually change the time, or only the lane?
+   *
+   *  A drag straight down is a pure RESOURCE change, but the bar still reports a
+   *  start — a pixel or two of horizontal drift becomes a move request the planner
+   *  never asked for. Those requests can legitimately fail (precedence, release,
+   *  horizon), so the user gets an error about a time change they didn't make while
+   *  the reassign they DID make succeeds. One drag, two outcomes, and the visible
+   *  result looks fine. Anything under a minute is drift, not intent. */
+  const timeChanged = useCallback((taskId: string, start: Date) => {
+    const t = rows.find((r) => r.id === taskId);
+    if (!t) return true;   // unknown: send it and let the server decide
+    return Math.abs(start.getTime() - new Date(t.start_time).getTime()) >= 60_000;
+  }, [rows]);
+
+  const onMoveTask = useCallback(async (id: string, start: Date, _end: Date | null, laneId?: string | null) => {
+    const reassigned = await laneReassign(laneId, [id]);
+    if (!timeChanged(id, start)) return;   // lane-only drag; the reassign already spoke
+    // mutateAsync + rethrow: the bar rolls itself back when this rejects. Swallowing
+    // the error left it parked at a time the server had refused.
+    try {
+      await move.mutateAsync({ id, start_time: start.toISOString() });
+      // One toast per drag: the reassign mutation reports the resource change
+      // (including its eligibility warning), so the move only speaks when it's
+      // the whole story.
+      if (!reassigned) toast.success("Task moved & pinned");
+    } catch (e: any) {
+      const why = e?.response?.data?.detail ?? "the new time wasn't allowed";
+      // Say the outcome is PARTIAL. The resource change stuck and is visible on the
+      // board, so an error alone reads as "nothing happened" and a success alone
+      // reads as "it all worked" — neither is true.
+      toast.error(reassigned
+        ? `Reassigned, but kept its original time — ${why}`
+        : (e?.response?.data?.detail ?? "Couldn't move the task there"));
+      throw e;
+    }
+  }, [move, laneReassign, timeChanged]);
 
   // Drag a merged WO-batch bar: re-anchor all its parts to the drop time.
-  const onMoveBatch = useCallback((id: string, start: Date, _end: Date | null, laneId?: string | null) => {
+  const onMoveBatch = useCallback(async (id: string, start: Date, _end: Date | null, laneId?: string | null) => {
     const meta = batchMeta.get(id);
     if (!meta) return;
-    const reassigned = laneReassign(laneId, meta.taskIds);
-    moveBatch.mutate(
-      { task_ids: meta.taskIds, start_time: start.toISOString() },
-      {
-        onSuccess: (r: any) => {
-          if (!reassigned) toast.success(`Moved ${r?.moved ?? meta.count} parts & pinned`);
-        },
-        onError: (e: any) =>
-          toast.error(e?.response?.data?.detail ?? "Couldn't move the batch there"),
-      }
-    );
-  }, [moveBatch, batchMeta]);
+    const reassigned = await laneReassign(laneId, meta.taskIds);
+    if (!timeChanged(meta.taskIds[0], start)) return;   // lane-only drag
+    try {
+      const r: any = await moveBatch.mutateAsync(
+        { task_ids: meta.taskIds, start_time: start.toISOString() });
+      if (!reassigned) toast.success(`Moved ${r?.moved ?? meta.count} parts & pinned`);
+    } catch (e: any) {
+      const why = e?.response?.data?.detail ?? "the new time wasn't allowed";
+      toast.error(reassigned
+        ? `Reassigned, but kept the original time — ${why}`
+        : (e?.response?.data?.detail ?? "Couldn't move the batch there"));
+      throw e;   // rolls the bar back
+    }
+  }, [moveBatch, batchMeta, laneReassign, timeChanged]);
 
   const toggleBatchPin = () => {
     if (!detailBatch) return;
@@ -1534,8 +1585,8 @@ export function SchedulingGanttPage() {
                     ? null : String(detailTask.assigned_operator)}
                 />
               )}
-              <DialogFooter className="gap-2 sm:justify-between">
-                <div className="flex gap-2">
+              <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+                <div className="flex min-w-0 flex-wrap gap-2">
                   {canTouch && (
                     <Button
                       variant="outline"
@@ -1611,8 +1662,8 @@ export function SchedulingGanttPage() {
                 Drag the batch bar to re-anchor all {detailBatch.count} parts; expand the
                 lane (▸) to move or pin individual parts.
               </p>
-              <DialogFooter className="gap-2 sm:justify-between">
-                <div className="flex gap-2">
+              <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+                <div className="flex min-w-0 flex-wrap gap-2">
                   {canTouch && (
                     <>
                       <Button

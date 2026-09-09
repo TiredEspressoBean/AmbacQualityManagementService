@@ -231,7 +231,11 @@ class ReassignMachineRequestSerializer(serializers.Serializer):
 
 class ReassignOperatorRequestSerializer(serializers.Serializer):
     """Assign / re-assign / clear (null) the operator on a scheduled task."""
-    operator_id = serializers.UUIDField(allow_null=True)
+    # IntegerField, not UUIDField: `User` is a BigAutoField, unlike the UUID-keyed
+    # SecureModels around it. Declared as a UUID, this field rejected every operator id
+    # that exists, so both reassign endpoints failed validation before reaching the
+    # service — from the detail dialog's dropdown as well as from a lane drag.
+    operator_id = serializers.IntegerField(allow_null=True)
 
 
 class ExplodeWorkOrderInputSerializer(serializers.Serializer):
@@ -249,7 +253,11 @@ class BulkReassignMachineRequestSerializer(serializers.Serializer):
 class BulkReassignOperatorRequestSerializer(serializers.Serializer):
     """Assign / clear (null) one operator across several scheduled tasks at once."""
     task_ids = serializers.ListField(child=serializers.UUIDField(), allow_empty=False)
-    operator_id = serializers.UUIDField(allow_null=True)
+    # IntegerField, not UUIDField: `User` is a BigAutoField, unlike the UUID-keyed
+    # SecureModels around it. Declared as a UUID, this field rejected every operator id
+    # that exists, so both reassign endpoints failed validation before reaching the
+    # service — from the detail dialog's dropdown as well as from a lane drag.
+    operator_id = serializers.IntegerField(allow_null=True)
 
 
 class PlantCalendarExceptionSerializer(serializers.ModelSerializer):

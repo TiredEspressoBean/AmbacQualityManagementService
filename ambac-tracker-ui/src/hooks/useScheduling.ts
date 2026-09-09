@@ -41,6 +41,8 @@ export function useMoveBatch() {
     mutationFn: ({ task_ids, start_time }: { task_ids: string[]; start_time: string }) =>
       api.api_ScheduledTasks_move_batch_create({ task_ids, start_time } as never),
     onSettled: () => invalidateSchedule(qc),
+    // The drag handler toasts the reason and rolls the bars back.
+    meta: { suppressGlobalError: true },
   });
 }
 
@@ -87,6 +89,8 @@ function useAsyncScheduleTask(
     mutationFn: trigger,
     onSuccess: (r: any) => setTaskId(r.task_id),
     onError: () => toast.error(`Couldn't start ${labelsRef.current.verb}`),
+    // Own message is specific; the global handler would add a vaguer duplicate.
+    meta: { suppressGlobalError: true },
   });
 
   const status = useQuery({
@@ -806,6 +810,8 @@ export function useReassignMachine() {
       else toast.success("Machine reassigned");
     },
     onError: () => toast.error("Couldn't reassign machine"),
+    // Own message is specific; the global handler would add a vaguer duplicate.
+    meta: { suppressGlobalError: true },
   });
 }
 
@@ -813,7 +819,7 @@ export function useReassignMachine() {
 export function useReassignOperator() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, operator_id }: { id: string; operator_id: string | null }) =>
+    mutationFn: ({ id, operator_id }: { id: string; operator_id: number | null }) =>
       api.api_ScheduledTasks_reassign_operator_create(
         { operator_id } as never, { params: { id } } as never),
     onSuccess: (r: any) => {
@@ -822,6 +828,8 @@ export function useReassignOperator() {
       else toast.success("Operator updated");
     },
     onError: () => toast.error("Couldn't update operator"),
+    // Own message is specific; the global handler would add a vaguer duplicate.
+    meta: { suppressGlobalError: true },
   });
 }
 
@@ -838,6 +846,8 @@ export function useBulkReassignMachine() {
       else toast.success(`Reassigned ${r?.changed ?? 0} tasks`);
     },
     onError: () => toast.error("Couldn't reassign the selection"),
+    // Own message is specific; the global handler would add a vaguer duplicate.
+    meta: { suppressGlobalError: true },
   });
 }
 
@@ -845,7 +855,7 @@ export function useBulkReassignMachine() {
 export function useBulkReassignOperator() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ task_ids, operator_id }: { task_ids: string[]; operator_id: string | null }) =>
+    mutationFn: ({ task_ids, operator_id }: { task_ids: string[]; operator_id: number | null }) =>
       api.api_ScheduledTasks_bulk_reassign_operator_create({ task_ids, operator_id } as never),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
@@ -1068,8 +1078,12 @@ export function useMoveTask() {
       api.api_ScheduledTasks_move_create({ start_time } as never, {
         params: { id },
       } as never),
-    // Refetch on both success and failure so bars settle to the server's truth
-    // (a rejected move leaves data unchanged → the bar snaps back).
+    // Refetch on both outcomes so a SUCCESSFUL move settles to the server's truth.
+    // A rejected one is not undone here: the refetched data is deeply equal, and
+    // React Query's structural sharing then returns the same object reference, so
+    // nothing downstream re-renders. The bar's own rollback handles that case.
     onSettled: () => invalidateSchedule(qc),
+    // The drag handler toasts the reason and rolls the bar back.
+    meta: { suppressGlobalError: true },
   });
 }

@@ -38,6 +38,18 @@ def _step_setup_cycle(step_id):
     return (float(t.setup_minutes or 0), float(t.cycle_time_minutes))
 
 
+def _lock_order(tasks) -> list:
+    """The same rows in the same order, every time — so concurrent bulk writes take
+    their row locks in one consistent sequence.
+
+    Without this, each caller updated rows in whatever order its client happened to
+    list them. Two overlapping writes then grabbed each other's rows and Postgres
+    killed one with `deadlock detected` mid-transaction, which surfaced as a 500 on a
+    perfectly ordinary drag. Ordering makes them queue instead of collide.
+    """
+    return sorted(tasks, key=lambda t: str(t.pk))
+
+
 class MoveRejected(Exception):
     """A drag-drop violated a cheap local constraint; the move is refused."""
 
@@ -154,7 +166,7 @@ def move_batch(tasks, new_start: datetime):
     the batch's internal spacing. Validates each part against its own neighbours and
     rejects the WHOLE move if any part fails (atomic). Pins the parts and marks the
     schedule stale. Returns the number of parts moved. Raises `MoveRejected`."""
-    tasks = list(tasks)
+    tasks = _lock_order(tasks)
     if not tasks:
         raise MoveRejected("No tasks in the batch.")
     schedule = tasks[0].schedule
@@ -181,7 +193,7 @@ def move_batch(tasks, new_start: datetime):
 def pin_batch(tasks, is_pinned: bool):
     """Pin or unpin every part of a batch and mark the schedule stale. Returns the
     count."""
-    tasks = list(tasks)
+    tasks = _lock_order(tasks)
     if not tasks:
         return 0
     schedule = tasks[0].schedule
@@ -295,7 +307,7 @@ def bulk_reassign_machine(tasks, machine, user=None) -> dict:
     affected schedule(s) stale. Returns {'changed': int, 'warnings': [str]}."""
     from Tracker.models import StepEquipmentAffinity
 
-    tasks = list(tasks)
+    tasks = _lock_order(tasks)
     if not tasks:
         return {'changed': 0, 'warnings': []}
     step_ids = {t.step_id for t in tasks}
@@ -328,7 +340,7 @@ def bulk_reassign_operator(tasks, operator, user=None) -> dict:
     manual coverage of a multi-selection. Applies immediately; warns once, listing the
     steps the operator isn't trained for (never blocks). Marks the affected schedule(s)
     stale. Returns {'changed': int, 'warnings': [str]}."""
-    tasks = list(tasks)
+    tasks = _lock_order(tasks)
     if not tasks:
         return {'changed': 0, 'warnings': []}
     warnings = []

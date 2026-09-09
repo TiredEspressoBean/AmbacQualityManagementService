@@ -223,3 +223,63 @@ class SchedulingAPITests(TenantTestCase):
         pin = self.client.post(f'/api/ScheduledTasks/{a_task_id}/pin/',
                                {'is_pinned': True}, format='json')
         self.assertEqual(pin.status_code, 404, "can't pin another tenant's task")
+
+    # --- reassign ----------------------------------------------------------
+
+    def test_reassign_operator_accepts_an_integer_user_id(self):
+        """`User` is a BigAutoField while the models around it are UUID-keyed, and both
+        reassign serializers declared `operator_id` as a UUIDField — so the endpoint
+        rejected every operator id that exists. Nothing caught it: it shipped broken
+        through the detail dialog's dropdown AND drag-to-lane, because the failure is a
+        400 the UI reported as a generic "couldn't update operator".
+        """
+        self.authenticate_superuser(self.tenant_a)
+        self.client.post('/api/Schedules/solve/')
+        task_id = self._rows(self.client.get('/api/ScheduledTasks/').data)[0]['id']
+
+        r = self.client.post(f'/api/ScheduledTasks/{task_id}/reassign-operator/',
+                             {'operator_id': self.user_a.pk}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.data['assigned_operator'], self.user_a.pk)
+
+    def test_reassign_operator_clears_with_null(self):
+        """Handing a task back to the pool is a real intent, not just an absence."""
+        self.authenticate_superuser(self.tenant_a)
+        self.client.post('/api/Schedules/solve/')
+        task_id = self._rows(self.client.get('/api/ScheduledTasks/').data)[0]['id']
+
+        self.client.post(f'/api/ScheduledTasks/{task_id}/reassign-operator/',
+                         {'operator_id': self.user_a.pk}, format='json')
+        r = self.client.post(f'/api/ScheduledTasks/{task_id}/reassign-operator/',
+                             {'operator_id': None}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIsNone(r.data['assigned_operator'])
+
+    def test_bulk_reassign_operator_accepts_integer_ids(self):
+        self.authenticate_superuser(self.tenant_a)
+        self.client.post('/api/Schedules/solve/')
+        ids = [t['id'] for t in self._rows(self.client.get('/api/ScheduledTasks/').data)]
+
+        r = self.client.post('/api/ScheduledTasks/bulk-reassign-operator/',
+                             {'task_ids': ids, 'operator_id': self.user_a.pk},
+                             format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.data['changed'], len(ids))
+
+    def test_bulk_writes_take_row_locks_in_a_stable_order(self):
+        """Two overlapping bulk writes used to update rows in whatever order each client
+        listed them, so Postgres caught them holding each other's rows and killed one
+        with `deadlock detected` — surfacing as a 500 on an ordinary drag. Ordering by
+        pk makes concurrent writes queue instead of colliding."""
+        from Tracker.services.scheduling.manual_move import _lock_order
+
+        self.authenticate_superuser(self.tenant_a)
+        self.client.post('/api/Schedules/solve/')
+        from Tracker.models import ScheduledTask
+        tasks = list(ScheduledTask.objects.filter(tenant=self.tenant_a))
+        self.assertGreaterEqual(len(tasks), 2, "need at least two tasks to order")
+
+        forward = [t.pk for t in _lock_order(tasks)]
+        backward = [t.pk for t in _lock_order(list(reversed(tasks)))]
+        self.assertEqual(forward, backward,
+                         "lock order must not depend on the caller's argument order")

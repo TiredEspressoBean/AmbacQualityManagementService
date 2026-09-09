@@ -59,7 +59,7 @@ export function BulkReassignDialog({ open, onOpenChange, taskIds, repTaskId, onD
     if (operatorId)
       bulkOperator.mutate({
         task_ids: taskIds,
-        operator_id: operatorId === UNASSIGNED ? null : operatorId,
+        operator_id: operatorId === UNASSIGNED ? null : Number(operatorId),
       });
     onOpenChange(false);
     onDone?.();

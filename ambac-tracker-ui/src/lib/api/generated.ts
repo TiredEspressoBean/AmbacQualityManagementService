@@ -18996,7 +18996,7 @@ const ReassignMachineRequestRequest = z.object({
   machine_id: z.string().uuid(),
 });
 const ReassignOperatorRequestRequest = z.object({
-  operator_id: z.string().uuid().nullable(),
+  operator_id: z.number().int().nullable(),
 });
 const BatchMembershipRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
@@ -19008,7 +19008,7 @@ const BulkReassignMachineRequestRequest = z.object({
 });
 const BulkReassignOperatorRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
-  operator_id: z.string().uuid().nullable(),
+  operator_id: z.number().int().nullable(),
 });
 const MoveBatchRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
@@ -40076,7 +40076,7 @@ Applies now; warns if the operator isn&#x27;t qualified for the step.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ operator_id: z.string().uuid().nullable() }),
+        schema: z.object({ operator_id: z.number().int().nullable() }),
       },
       {
         name: "id",

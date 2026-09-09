@@ -16634,8 +16634,7 @@ export interface components {
         /** @description Assign / clear (null) one operator across several scheduled tasks at once. */
         BulkReassignOperatorRequestRequest: {
             task_ids: string[];
-            /** Format: uuid */
-            operator_id: string | null;
+            operator_id: number | null;
         };
         BulkReconcileSummary: {
             total: number;
@@ -26433,8 +26432,7 @@ export interface components {
         };
         /** @description Assign / re-assign / clear (null) the operator on a scheduled task. */
         ReassignOperatorRequestRequest: {
-            /** Format: uuid */
-            operator_id: string | null;
+            operator_id: number | null;
         };
         /** @description Book in an ON_ORDER lot that has physically arrived. */
         ReceiveExpectedLotRequest: {

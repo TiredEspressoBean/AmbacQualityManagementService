@@ -38824,8 +38824,7 @@ components:
             type: string
             format: uuid
         operator_id:
-          type: string
-          format: uuid
+          type: integer
           nullable: true
       required:
       - operator_id
@@ -57102,8 +57101,7 @@ components:
       description: Assign / re-assign / clear (null) the operator on a scheduled task.
       properties:
         operator_id:
-          type: string
-          format: uuid
+          type: integer
           nullable: true
       required:
       - operator_id

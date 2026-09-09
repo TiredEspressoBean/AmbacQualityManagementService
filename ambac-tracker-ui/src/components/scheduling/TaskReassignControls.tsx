@@ -69,7 +69,9 @@ export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
           value={operatorId ?? UNASSIGNED}
           disabled={isLoading || reassignOperator.isPending}
           onValueChange={(v) =>
-            reassignOperator.mutate({ id: taskId, operator_id: v === UNASSIGNED ? null : v })
+            // Number(): a Select value is always a string, but `User` is a
+            // BigAutoField so the endpoint wants the integer pk.
+            reassignOperator.mutate({ id: taskId, operator_id: v === UNASSIGNED ? null : Number(v) })
           }
         >
           <SelectTrigger className="h-8 w-full min-w-0 [&>span]:truncate">
