@@ -280,6 +280,137 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
           )}
         </div>
 
+        {/* Timing — what the scheduler and rough-cut capacity size every number from.
+            An untimed step costs zero hours and zero lead days, so it reads as FREE
+            rather than unknown: utilisation, release dates and capable-to-promise all
+            quietly understate. This is the only place to fix that. */}
+        <Separator />
+        <div className="space-y-3">
+          <div>
+            <Label className="text-sm font-medium">Timing</Label>
+            <p className="text-xs text-muted-foreground">
+              Setup is charged once per batch, cycle per piece.
+              {!data.timing && ' Not set — this step is treated as taking no time.'}
+            </p>
+          </div>
+
+          {/* The one part of `labor_model` that's a fact about the step rather than a
+              solver-tuning choice. WHO can run it already comes from the step's training
+              requirements; whether the solver matches them by count or by name is a
+              tenant-level setting, because that trade is about solve cost. */}
+          {editable && (
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="step-needs-operator" className="text-xs">
+                  Needs an operator
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Turn off for a cell that runs with nobody — it still occupies its
+                  machine but competes for no crew.
+                </p>
+              </div>
+              <Switch
+                id="step-needs-operator"
+                checked={data.labor_model !== 'off'}
+                onCheckedChange={(on) => onUpdate(node.id, {
+                  labor_model: on ? null : 'off',
+                })}
+              />
+            </div>
+          )}
+
+          {editable ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="step-setup" className="text-xs">Setup (min)</Label>
+                  <Input
+                    id="step-setup"
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={data.timing?.setup_minutes ?? ''}
+                    placeholder="0"
+                    onChange={(e) => onUpdate(node.id, {
+                      timing: { ...data.timing, setup_minutes: Number(e.target.value) || 0 },
+                    })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="step-cycle" className="text-xs">Cycle, per piece (min)</Label>
+                  <Input
+                    id="step-cycle"
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={data.timing?.cycle_time_minutes ?? ''}
+                    placeholder="0"
+                    onChange={(e) => onUpdate(node.id, {
+                      timing: { ...data.timing, cycle_time_minutes: Number(e.target.value) || 0 },
+                    })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="step-attention" className="text-xs">Operator attention</Label>
+                <Select
+                  value={data.timing?.attention_type ?? 'full'}
+                  onValueChange={(v) => onUpdate(node.id, {
+                    timing: {
+                      ...data.timing,
+                      attention_type: v as 'full' | 'load_unload' | 'unattended',
+                    },
+                  })}
+                >
+                  <SelectTrigger id="step-attention">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full">Tied to the machine (whole run)</SelectItem>
+                    <SelectItem value="load_unload">Load / unload only</SelectItem>
+                    <SelectItem value="unattended">Unattended — robot or cobot fed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Decides how much of the run occupies a person. Only the whole-run option
+                  charges the full cycle to the crew.
+                </p>
+              </div>
+
+              {/* Only meaningful when the operator isn't tied to the machine — for a
+                  full-attention step the whole cycle is already their time. */}
+              {data.timing?.attention_type === 'load_unload' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="step-touch" className="text-xs">
+                    Load / unload, per piece (min)
+                  </Label>
+                  <Input
+                    id="step-touch"
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={data.timing?.load_unload_per_piece ?? ''}
+                    placeholder="0"
+                    onChange={(e) => onUpdate(node.id, {
+                      timing: {
+                        ...data.timing,
+                        load_unload_per_piece: Number(e.target.value) || 0,
+                      },
+                    })}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {data.timing
+                ? `${data.timing.setup_minutes ?? 0} min setup · ${data.timing.cycle_time_minutes ?? 0} min per piece`
+                : 'Not set'}
+            </p>
+          )}
+        </div>
+
         {/* DECISION / gate steps: decision type + where rejects go. The node
             being a Decision step already implies "decision point" — no toggle. */}
         {actsAsDecision && (

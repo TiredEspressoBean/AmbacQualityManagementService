@@ -919,8 +919,83 @@ export const GanttFeatureItemCard: FC<GanttFeatureItemCardProps> = ({
   );
 };
 
+/** The lane a drag ended over, found by hit-testing the pointer against elements
+ *  tagged `data-gantt-lane`.
+ *
+ *  Why hit-test rather than dnd-kit droppables: every bar owns its *own*
+ *  `DndContext` (see below), and a droppable only registers with the context it is
+ *  rendered inside. Making lanes droppable would mean hoisting one context to the
+ *  Gantt root and re-plumbing every drag in this file. The pointer already tells us
+ *  what is under it, so we ask the DOM instead.
+ */
+function laneUnderPointer(clientY: number): string | null {
+  // Vertical band test, not `elementsFromPoint`. A lane row is `w-max` inside a
+  // horizontally-scrolled timeline, so its box frequently does NOT span the cursor's
+  // x — a point-hit misses the row it is visually inside. What identifies a lane is
+  // its vertical band; x is the time axis and says nothing about which resource.
+  for (const el of document.querySelectorAll<HTMLElement>("[data-gantt-lane]")) {
+    const r = el.getBoundingClientRect();
+    if (clientY >= r.top && clientY <= r.bottom) return el.dataset.ganttLane ?? null;
+  }
+  return null;
+}
+
+const LANE_OVERLAY_ID = "gantt-lane-drop-overlay";
+
+/** Highlight the lane a drag is currently over, as a positioned overlay rather than a
+ *  class on the lane row.
+ *
+ *  The row itself cannot show this: it is `w-max` and every bar inside it is absolutely
+ *  positioned, so its max-content width resolves to ZERO. Styling it computes real
+ *  values and paints nothing. (The same zero width is why the lane hit-test above is
+ *  vertical-only — a row with no width can never contain the cursor's x.)
+ *
+ *  So we borrow the row's vertical band and the timeline's horizontal extent, and draw
+ *  one reusable, pointer-transparent strip. Written straight to the DOM because the lane
+ *  rows are rendered by the consumer, outside this component's tree.
+ */
+function markHoveredLane(laneId: string | null) {
+  const existing = document.getElementById(LANE_OVERLAY_ID);
+  if (laneId == null) {
+    existing?.remove();
+    return;
+  }
+  const lane = [...document.querySelectorAll<HTMLElement>("[data-gantt-lane]")].find(
+    (l) => l.dataset.ganttLane === laneId
+  );
+  const board = document.querySelector(".gantt");
+  if (!lane || !board) {
+    existing?.remove();
+    return;
+  }
+  const r = lane.getBoundingClientRect();
+  const b = board.getBoundingClientRect();
+  const el = existing ?? document.createElement("div");
+  if (!existing) {
+    el.id = LANE_OVERLAY_ID;
+    el.style.position = "fixed";
+    el.style.pointerEvents = "none";
+    el.style.zIndex = "40";
+    el.style.borderRadius = "4px";
+    el.style.background = "rgba(14, 165, 233, 0.16)";
+    el.style.boxShadow = "inset 0 0 0 2px rgba(14, 165, 233, 0.75)";
+    document.body.appendChild(el);
+  }
+  el.style.top = `${r.top}px`;
+  el.style.height = `${r.height}px`;
+  el.style.left = `${b.left}px`;
+  el.style.width = `${b.width}px`;
+}
+
 export type GanttFeatureItemProps = GanttFeature & {
-  onMove?: (id: string, startDate: Date, endDate: Date | null) => void;
+  /** `laneId` is the lane the bar was dropped on, when that differs from the one it
+   *  started in — the drag-to-reassign signal. Null/undefined means a pure time move. */
+  onMove?: (
+    id: string,
+    startDate: Date,
+    endDate: Date | null,
+    laneId?: string | null,
+  ) => void;
   onSelect?: (id: string, event: ReactMouseEvent) => void;
   resizable?: boolean;
   /** Render only the positioned bar (no full-width row wrapper), so several bars
@@ -995,14 +1070,51 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
     },
   });
 
+  // The lane the drag started in, so a drop back onto the same row reads as a pure
+  // time move rather than a no-op "reassignment".
+  const originLane = useRef<string | null>(null);
+  const hoveredLane = useRef<string | null>(null);
+  // Live pointer Y, read straight off the native event rather than from `useMouse`.
+  // That hook's value is React state and lags a frame — the same staleness the hourly
+  // branch below already works around — and a lane test one frame behind drops the
+  // task on the row above the one under the cursor.
+  const pointerY = useRef<number>(0);
+  const trackPointer = useRef<((e: PointerEvent) => void) | null>(null);
+
   const handleItemDragStart = useCallback(() => {
     setPreviousMouseX(mousePosition.x);
     setPreviousStartAt(startAt);
     setPreviousEndAt(endAt);
-  }, [mousePosition.x, startAt, endAt]);
+    const onPointer = (e: PointerEvent) => { pointerY.current = e.clientY; };
+    trackPointer.current = onPointer;
+    document.addEventListener("pointermove", onPointer, { passive: true });
+    pointerY.current = mousePosition.y - window.scrollY;
+    originLane.current = laneUnderPointer(pointerY.current);
+    hoveredLane.current = originLane.current;
+  }, [mousePosition.x, mousePosition.y, startAt, endAt]);
+
+  /** Stop tracking the pointer and clear any lane highlight. */
+  const endLaneTracking = useCallback(() => {
+    if (trackPointer.current) {
+      document.removeEventListener("pointermove", trackPointer.current);
+      trackPointer.current = null;
+    }
+    markHoveredLane(null);
+  }, []);
+
+  useEffect(() => endLaneTracking, [endLaneTracking]);
 
   const handleItemDragMove = useCallback(
     (event?: { delta?: { x: number } }) => {
+      // Track the lane under the cursor so the planner can see where the drop lands.
+      // The bar itself stays in its row (the drag is restricted to the horizontal
+      // axis so vertical travel can't perturb the time), which is exactly why the
+      // target has to be shown some other way.
+      const lane = laneUnderPointer(pointerY.current);
+      if (lane !== hoveredLane.current) {
+        hoveredLane.current = lane;
+        markHoveredLane(lane === originLane.current ? null : lane);
+      }
       // Hourly: derive the shift from dnd-kit's own cumulative pixel delta rather
       // than the useMouse position — the latter is stale (0,0) on the first drag
       // before any mousemove flushes, which sent the bar flying to the horizon end.
@@ -1026,7 +1138,16 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
     [gantt, mousePosition.x, previousMouseX, previousStartAt, previousEndAt]
   );
 
-  const onDragEnd = useCallback(
+  const onDragEnd = useCallback(() => {
+    const lane = laneUnderPointer(pointerY.current) ?? hoveredLane.current;
+    const movedLane = lane != null && lane !== originLane.current ? lane : null;
+    endLaneTracking();
+    hoveredLane.current = null;
+    onMove?.(feature.id, startAt, endAt, movedLane);
+  }, [onMove, feature.id, startAt, endAt, endLaneTracking]);
+
+  // Resize handles report time only — a resize can't change which resource runs it.
+  const onResizeEnd = useCallback(
     () => onMove?.(feature.id, startAt, endAt),
     [onMove, feature.id, startAt, endAt]
   );
@@ -1066,7 +1187,7 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
         {onMove && resizable && (
           <DndContext
             modifiers={[restrictToHorizontalAxis]}
-            onDragEnd={onDragEnd}
+            onDragEnd={onResizeEnd}
             onDragMove={handleLeftDragMove}
             sensors={[mouseSensor]}
           >
@@ -1111,7 +1232,7 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
         {onMove && resizable && (
           <DndContext
             modifiers={[restrictToHorizontalAxis]}
-            onDragEnd={onDragEnd}
+            onDragEnd={onResizeEnd}
             onDragMove={handleRightDragMove}
             sensors={[mouseSensor]}
           >

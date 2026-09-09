@@ -29,6 +29,19 @@ export interface StepData {
   max_visits?: number | null;
   expected_duration?: string | null;
   scrap_rate?: number | string | null;
+  /** Whether this step consumes crew, and how it's assigned. Null inherits the tenant's
+   *  `default_labor_model`. `off` drops the constraint entirely — the step still
+   *  occupies its machine but charges nobody. */
+  labor_model?: 'off' | 'pool' | 'named' | null;
+  /** Time elements the scheduler and RCCP size all work from. Null = untimed, which is
+   *  a real state: the solver sizes the op to zero and it reads as free capacity. */
+  timing?: {
+    setup_minutes?: number;
+    cycle_time_minutes?: number;
+    load_unload_per_piece?: number;
+    attention_type?: 'full' | 'load_unload' | 'unattended';
+    external_setup_minutes?: number;
+  } | null;
   // QA settings
   requires_qa_signoff?: boolean;
   sampling_required?: boolean;

@@ -8,6 +8,7 @@ from Tracker.models import (
     PartsStatus,
     PartTypes,
     Processes,
+    ProcessStatus,
     ProcessStep,
     Steps,
     Tenant,
@@ -23,7 +24,11 @@ class PlanWorkOrderTests(TenantContextMixin, TestCase):
         self.tenant = Tenant.objects.create(name="Plan", slug="plan-wo", tier="PRO")
         self.set_tenant_context(self.tenant)
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="Nozzle", ID_prefix="NZ")
-        self.process = Processes.objects.create(tenant=self.tenant, name="Injector Line", part_type=self.pt)
+        # APPROVED, not the model default of DRAFT: work is only released against an
+        # approved routing (see `plan_work_order`), which is what the floor builds to.
+        self.process = Processes.objects.create(
+            tenant=self.tenant, name="Injector Line", part_type=self.pt,
+            status=ProcessStatus.APPROVED)
         self.s1 = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Op1")
         self.s2 = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Op2")
         ProcessStep.objects.create(process=self.process, step=self.s1, order=1)
@@ -62,9 +67,36 @@ class PlanWorkOrderTests(TenantContextMixin, TestCase):
             plan_work_order(tenant=self.tenant, process=self.process, quantity=0)
 
     def test_rejects_process_without_steps(self):
-        empty = Processes.objects.create(tenant=self.tenant, name="Empty", part_type=self.pt)
+        empty = Processes.objects.create(
+            tenant=self.tenant, name="Empty", part_type=self.pt,
+            status=ProcessStatus.APPROVED)
         with self.assertRaises(ValueError):
             plan_work_order(tenant=self.tenant, process=empty, quantity=1)
+
+    def test_rejects_unapproved_process(self):
+        """Work is only released against an approved routing. A DRAFT process is one
+        somebody is still editing — its steps can change under a job already running,
+        and the parts would be built to an uncontrolled process."""
+        draft = Processes.objects.create(
+            tenant=self.tenant, name="Draft Line", part_type=self.pt,
+            status=ProcessStatus.DRAFT)
+        ProcessStep.objects.create(process=draft, step=self.s1, order=1)
+
+        with self.assertRaises(ValueError) as ctx:
+            plan_work_order(tenant=self.tenant, process=draft, quantity=1)
+        self.assertIn("DRAFT", str(ctx.exception))
+        # Nothing partially created — the guard runs before the WO is written.
+        self.assertFalse(Parts.objects.filter(work_order__process=draft).exists())
+
+    def test_rejects_deprecated_process(self):
+        """The same rule at the other end of the lifecycle: a superseded routing is
+        not something to start new work against."""
+        old = Processes.objects.create(
+            tenant=self.tenant, name="Old Line", part_type=self.pt,
+            status=ProcessStatus.DEPRECATED)
+        ProcessStep.objects.create(process=old, step=self.s1, order=1)
+        with self.assertRaises(ValueError):
+            plan_work_order(tenant=self.tenant, process=old, quantity=1)
 
 
 class ReduceWorkOrderQuantityTests(TenantContextMixin, TestCase):
@@ -73,7 +105,9 @@ class ReduceWorkOrderQuantityTests(TenantContextMixin, TestCase):
         self.tenant = Tenant.objects.create(name="RQ", slug="reduce-qty", tier="PRO")
         self.set_tenant_context(self.tenant)
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="Nz", ID_prefix="NZ")
-        self.process = Processes.objects.create(tenant=self.tenant, name="Line", part_type=self.pt)
+        self.process = Processes.objects.create(
+            tenant=self.tenant, name="Line", part_type=self.pt,
+            status=ProcessStatus.APPROVED)
         self.s1 = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Op1")
         ProcessStep.objects.create(process=self.process, step=self.s1, order=1)
         self.wo = plan_work_order(tenant=self.tenant, process=self.process, quantity=5)

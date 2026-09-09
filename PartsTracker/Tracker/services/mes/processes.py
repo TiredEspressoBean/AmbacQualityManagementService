@@ -23,6 +23,11 @@ from Tracker.models import (
 from Tracker.models.mes_lite import EdgeType
 
 
+# `timing` absent from a node payload means "leave it alone"; an explicit null means
+# "clear it". A plain None default cannot express both.
+_UNSET = object()
+
+
 def approve_process(process: Processes, user=None) -> Processes:
     """Approve a draft or pending process for production use.
 
@@ -444,6 +449,11 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
         temp_id = node.pop("_temp_id", None)
         order = node.pop("order", None)
         is_entry_point = node.pop("is_entry_point", False)
+        # Timing lives on a related one-to-one, not on Steps, so it must come out before
+        # the diff below — `_changed` does `getattr(step, k)`, which would compare a
+        # StepTiming instance against a dict, call it changed on every save, and then
+        # hand `timing=` to create_new_step_version as though it were a model field.
+        timing = node.pop("timing", _UNSET)
 
         # Existing step: node_id is a UUID matching a Steps row. New
         # step: node_id is None, a negative int legacy sentinel, or any
@@ -513,6 +523,12 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                     is_entry_point=is_entry_point,
                 )
 
+            # Timing lands on whatever row we ended up on — `step` is the NEW version
+            # when the diff forked it, and writing to the superseded row would look
+            # like it saved and then vanish on the next read.
+            if timing is not _UNSET:
+                _apply_step_timing(step, timing)
+
             # Edges reference Step rows directly. When a Step versioned
             # above, edges must rebuild against the new Step id —
             # `_build_edges` reads `temp_id_map` so we stamp the new id
@@ -527,6 +543,8 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                 **node,
             )
             incoming_step_ids.add(str(step.id))
+            if timing is not _UNSET:
+                _apply_step_timing(step, timing)
             if node_id is not None:
                 temp_id_map[node_id] = step.id
             # Edges from the canvas reference a new node by its _temp_id; map it
@@ -543,3 +561,26 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
     instance.step_edges.all().delete()
     _build_edges(instance, edges_data, temp_id_map)
     return instance
+
+
+def _apply_step_timing(step, data):
+    """Create-or-update a step's `StepTiming`; `None` clears it.
+
+    An untimed step is a real state — the solver sizes it to zero minutes and RCCP reads
+    it as free — so it has to be expressible, not merely unreachable.
+    """
+    from Tracker.models.scheduling import StepTiming
+
+    if data is None:
+        StepTiming.objects.filter(step=step).delete()
+        return
+    allowed = {'setup_minutes', 'cycle_time_minutes', 'load_unload_per_piece',
+               'attention_type', 'external_setup_minutes'}
+    fields = {k: v for k, v in (data or {}).items() if k in allowed}
+    if not fields:
+        return
+    # `archived: False` revives a previously-cleared row — the FK is a OneToOne, so a
+    # soft-deleted row still occupies the slot and would collide with a fresh create.
+    StepTiming.objects.update_or_create(
+        step=step, defaults={'tenant': step.tenant, 'archived': False,
+                             'deleted_at': None, **fields})

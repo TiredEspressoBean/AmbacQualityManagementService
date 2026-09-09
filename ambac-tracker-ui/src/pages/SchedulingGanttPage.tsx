@@ -48,6 +48,10 @@ import {
   useUnscheduled,
   useOptimizationConfig,
   useReleaseQueue,
+  useReassignMachine,
+  useReassignOperator,
+  useBulkReassignMachine,
+  useBulkReassignOperator,
 } from "@/hooks/useScheduling";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { SchedulingSettingsDialog } from "@/components/scheduling/SchedulingSettingsDialog";
@@ -57,6 +61,7 @@ import { EditWorkOrderDialog } from "@/components/scheduling/EditWorkOrderDialog
 import { BulkReassignDialog } from "@/components/scheduling/BulkReassignDialog";
 import { UnscheduledPanel } from "@/components/scheduling/UnscheduledPanel";
 import { PullInWorkDialog } from "@/components/scheduling/PullInWorkDialog";
+import { ActiveRunBanner } from "@/components/scheduling/ActiveRunBanner";
 
 const FENCE = {
   frozen: { name: "Frozen", color: "#ef4444" },
@@ -89,6 +94,7 @@ type BatchMeta = {
 
 const isBatchId = (id: string) => id.startsWith("batch:");
 
+
 type Task = {
   id: string;
   part_erp: string | null;
@@ -96,7 +102,9 @@ type Task = {
   step_name: string | null;
   machine: string | null;
   machine_name: string | null;
-  assigned_operator: string | null;
+  // A NUMBER at runtime (User pk), despite the generated client typing `operator_id`
+  // as a string on the reassign endpoint. Anything sending it back must stringify.
+  assigned_operator: number | string | null;
   operator_name: string | null;
   work_order: string | null;
   work_order_id: string | null;
@@ -723,7 +731,28 @@ export function SchedulingGanttPage() {
       }));
     return { list, batchMeta: meta };
   }, [rows, groupBy]);
+  const reassignMachine = useReassignMachine();
+  const reassignOperator = useReassignOperator();
+  const bulkReassignMachine = useBulkReassignMachine();
+  const bulkReassignOperator = useBulkReassignOperator();
   const groups = groupData.list;
+
+  // Lane name -> the resource id behind it, for drag-to-reassign. Sourced from the
+  // tasks already in the lane rather than from a resource list: only lanes that carry
+  // work are rendered as rows, so every drop target necessarily has one. (The flip
+  // side — an idle machine has no row and so can't be dropped onto — is a real limit
+  // of the board, not of this map.)
+  const laneTargets = useMemo(() => {
+    const m = new Map<string, { machineId: string | null; operatorId: string | null }>();
+    for (const g of groups) {
+      const src = g.features.length ? rows.find((t) => g.features.some((f) => f.id === t.id)) : null;
+      m.set(g.machine, {
+        machineId: src?.machine ?? null,
+        operatorId: src?.assigned_operator == null ? null : String(src.assigned_operator),
+      });
+    }
+    return m;
+  }, [groups, rows]);
   const batchMeta = groupData.batchMeta;
   const detailBatch = detailBatchId ? batchMeta.get(detailBatchId) ?? null : null;
 
@@ -795,26 +824,60 @@ export function SchedulingGanttPage() {
   // Drag-to-reschedule: pin the task at the dropped start. The server keeps its
   // duration and 422s (with a reason) if the drop breaks a local constraint; the
   // bar snaps back on refetch.
-  const onMoveTask = useCallback((id: string, start: Date) => {
+  // Drop onto a different lane row = reassign the resource. Only the Machines and
+  // People lenses have reassignable lanes; in the Work-orders lens a lane IS a work
+  // order, and dragging a task between work orders isn't a scheduling act.
+  const laneReassign = useCallback((laneId: string | null | undefined, taskIds: string[]) => {
+    if (!laneId || taskIds.length === 0) return false;
+    const target = laneTargets.get(laneId);
+    if (!target) return false;
+    if (groupBy === "machine") {
+      if (!target.machineId) return false;   // e.g. the "no machine" lane
+      if (taskIds.length === 1) reassignMachine.mutate({ id: taskIds[0], machine_id: target.machineId });
+      else bulkReassignMachine.mutate({ task_ids: taskIds, machine_id: target.machineId });
+      return true;
+    }
+    if (groupBy === "operator") {
+      // The "— Unassigned —" lane has no operator id, and dropping there is a real
+      // intent: hand the task back to the pool.
+      const operatorId = target.operatorId;
+      // Already a string (or null) — `laneTargets` normalises it, because the API
+      // returns operator ids as NUMBERS while the generated client types `operator_id`
+      // as a string, and the zod client rejects a numeric body before it is ever sent.
+      if (taskIds.length === 1) reassignOperator.mutate({ id: taskIds[0], operator_id: operatorId });
+      else bulkReassignOperator.mutate({ task_ids: taskIds, operator_id: operatorId });
+      return true;
+    }
+    return false;
+  }, [laneTargets, groupBy, reassignMachine, reassignOperator,
+      bulkReassignMachine, bulkReassignOperator]);
+
+  const onMoveTask = useCallback((id: string, start: Date, _end: Date | null, laneId?: string | null) => {
+    const reassigned = laneReassign(laneId, [id]);
     move.mutate(
       { id, start_time: start.toISOString() },
       {
-        onSuccess: () => toast.success("Task moved & pinned"),
+        // One toast per drag: the reassign mutation reports the resource change
+        // (including its eligibility warning), so the move only speaks when it's
+        // the whole story.
+        onSuccess: () => { if (!reassigned) toast.success("Task moved & pinned"); },
         onError: (e: any) =>
           toast.error(e?.response?.data?.detail ?? "Couldn't move the task there"),
       }
     );
-  }, [move]);
+  }, [move, laneReassign]);
 
   // Drag a merged WO-batch bar: re-anchor all its parts to the drop time.
-  const onMoveBatch = useCallback((id: string, start: Date) => {
+  const onMoveBatch = useCallback((id: string, start: Date, _end: Date | null, laneId?: string | null) => {
     const meta = batchMeta.get(id);
     if (!meta) return;
+    const reassigned = laneReassign(laneId, meta.taskIds);
     moveBatch.mutate(
       { task_ids: meta.taskIds, start_time: start.toISOString() },
       {
-        onSuccess: (r: any) =>
-          toast.success(`Moved ${r?.moved ?? meta.count} parts & pinned`),
+        onSuccess: (r: any) => {
+          if (!reassigned) toast.success(`Moved ${r?.moved ?? meta.count} parts & pinned`);
+        },
         onError: (e: any) =>
           toast.error(e?.response?.data?.detail ?? "Couldn't move the batch there"),
       }
@@ -921,25 +984,34 @@ export function SchedulingGanttPage() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative mr-1">
+        {/* Wraps rather than clips. This row grows with the board's state — a focus
+            chip, a selection counter, the draft toggle — and without wrapping the
+            right-hand actions (Solve / What-if / Dispatch) simply run off the page
+            on a narrower window. The search field shrinks first. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="relative mr-1 min-w-0 flex-1 basis-48">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search WO / part / step / machine / operator…"
-              className="h-8 w-64 pl-8"
+              className="h-8 w-full min-w-0 pl-8"
             />
           </div>
           {focusTask && (
             <button
               type="button"
               onClick={() => setFocusId(null)}
-              className="mr-1 flex h-8 items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 text-xs text-sky-600 hover:bg-sky-500/20 dark:text-sky-400"
-              title="Clear the focused job (peg lines)"
+              // Fixed height + a part number long enough to wrap = content taller than
+              // the box. Keep it on one line and let the identifier truncate; the ✕
+              // must not be what gets pushed out.
+              className="mr-1 flex h-8 min-w-0 max-w-[10rem] items-center gap-1 whitespace-nowrap rounded-md border border-sky-500/40 bg-sky-500/10 px-2 text-xs text-sky-600 hover:bg-sky-500/20 dark:text-sky-400"
+              title={`Clear the focused job (peg lines): ${focusTask.part_erp ?? focusTask.core_number ?? "job"}`}
             >
-              ◉ {focusTask.part_erp ?? focusTask.core_number ?? "job"}
-              <span className="text-muted-foreground">✕</span>
+              <span className="truncate">
+                ◉ {focusTask.part_erp ?? focusTask.core_number ?? "job"}
+              </span>
+              <span className="shrink-0 text-muted-foreground">✕</span>
             </button>
           )}
           {selectedIds.size > 0 && (
@@ -1161,6 +1233,10 @@ export function SchedulingGanttPage() {
         />
       )}
 
+      {/* Above the plan-quality warnings on purpose: "this board is mid-refresh" changes
+          how you read everything below it, including those warnings. */}
+      <ActiveRunBanner />
+
       {schedule && schedule.relaxed_pin_count > 0 && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
           ⚠ {schedule.relaxed_pin_count} frozen task(s) had to move — the world changed under
@@ -1333,16 +1409,22 @@ export function SchedulingGanttPage() {
             <GanttFeatureList>
               {groups.map((g) =>
                 expanded.has(g.machine) ? (
-                  <GanttFeatureListGroup key={g.machine}>
-                    {g.features.map((f) => (
-                      <GanttFeatureItem key={f.id} {...f} {...barProps(f)} />
-                    ))}
-                  </GanttFeatureListGroup>
+                  // data-gantt-lane: the drop target for drag-to-reassign. The bar
+                  // primitive hit-tests the pointer against these, so a lane is only
+                  // a reassignment target while it is on screen as a row.
+                  <div key={g.machine} data-gantt-lane={g.machine}>
+                    <GanttFeatureListGroup>
+                      {g.features.map((f) => (
+                        <GanttFeatureItem key={f.id} {...f} {...barProps(f)} />
+                      ))}
+                    </GanttFeatureListGroup>
+                  </div>
                 ) : (
                   // Collapsed: all of this resource's bars on ONE packed lane row.
                   // They never overlap (machine/operator/part runs one thing at a time).
                   <div
                     key={g.machine}
+                    data-gantt-lane={g.machine}
                     className="relative w-max min-w-full py-0.5"
                     style={{ height: "var(--gantt-row-height)" }}
                   >
@@ -1448,7 +1530,8 @@ export function SchedulingGanttPage() {
                 <TaskReassignControls
                   taskId={detailTask.id}
                   machineId={detailTask.machine}
-                  operatorId={detailTask.assigned_operator}
+                  operatorId={detailTask.assigned_operator == null
+                    ? null : String(detailTask.assigned_operator)}
                 />
               )}
               <DialogFooter className="gap-2 sm:justify-between">

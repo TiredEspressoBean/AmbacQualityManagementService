@@ -168,6 +168,14 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
         sched_horizon = data.HorizonData(
             start=H0, end=schedule.horizon_end, frozen_end=H0, slushy_end=H0)
         timings = data.get_step_timings(tenant)
+        # Whether a step needs a person at all. Without this, dispatch decides from
+        # TIMING alone: a step with no StepTiming row defaults to full attention, so an
+        # outside-process operation — off at a vendor for a fortnight, `labor_model='off'`
+        # — is judged to need an operator for its whole elapsed duration, then counted as
+        # uncovered because nobody was assigned to stand at the plating shop. The solver
+        # already gets this right (`requires_operator: lm != 'off'`); dispatch was
+        # overwriting its answer.
+        labor_models = data.get_step_labor_models(tenant)
         operators = data.get_dispatchable_operators(tenant)
         op_ids = {o.user_id for o in operators}
         op_primary = {o.user_id: o.primary_work_center_ids for o in operators}
@@ -230,6 +238,11 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
             timing = timings.get(rep.step_id)
             attention = timing.attention_type if timing else 'full'
             dur_total = max(1, int((rep.end_time - rep.start_time).total_seconds() // 60))
+            # `off` means no crew constraint at all — vendor time, or a cell that runs
+            # with nobody. Such a lot is not "uncovered"; there is nothing to cover.
+            if labor_models.get(rep.step_id, 'pool') == 'off':
+                lot_meta.append({'rows': rows, 'lits': {}, 'requires_op': False})
+                continue
             if timing is not None and attention != 'full':
                 # Load/unload: one operator handles the whole lot's front touch.
                 attended = max(0, int(round(timing.operator_attended_time(count))))

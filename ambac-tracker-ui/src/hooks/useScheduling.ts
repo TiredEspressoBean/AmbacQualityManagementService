@@ -193,6 +193,36 @@ export function useDispatchSchedule() {
   );
 }
 
+export type ActiveRun = {
+  running: boolean;
+  stale?: boolean;
+  kind?: "solve" | "draft" | "dispatch";
+  task_id?: string;
+  /** PENDING = queued and waiting for a worker; STARTED = a worker has it. */
+  state?: string;
+  seconds_elapsed?: number;
+  seconds_remaining?: number;
+  limit_seconds?: number;
+  last_state?: string;
+};
+
+/** What this TENANT has in flight — not just what this tab started.
+ *
+ *  The task id used to live only in the requesting tab's state, so a colleague looking
+ *  at the same board saw it not changing and no reason why. Polling without a task id
+ *  answers for the tenant, so every client shows the same thing.
+ *
+ *  Polls quickly while something is running and slowly otherwise, so another planner's
+ *  solve shows up here within a few seconds without hammering the endpoint all day. */
+export function useActiveRun() {
+  return useQuery({
+    queryKey: ["schedule", "active-run"],
+    queryFn: () => api.api_Schedules_solve_status_retrieve() as Promise<ActiveRun>,
+    refetchInterval: (q) => ((q.state.data as ActiveRun)?.running ? 2000 : 10000),
+    refetchOnWindowFocus: true,
+  });
+}
+
 /** The tenant's solver knobs (time limit, fences, penalties, labor model). */
 export function useOptimizationConfig() {
   return useQuery({
@@ -290,10 +320,44 @@ export type CapacityBucket = {
   bucket: string; capacity_hours: number; load_hours: number;
   utilization: number | null;
 };
+/** A back-scheduled release date: when this order has to START to hit its due date.
+ *  `is_estimate` marks a date RCCP derived (due date minus lead time) rather than one a
+ *  planner set — RCCP suggests, it never writes `expected_start`. */
+export type PlannedRelease = {
+  work_order_id: string;
+  erp_id: string;
+  planned_start: string;
+  due_date: string | null;
+  overdue: boolean;
+  is_estimate: boolean;
+  released: boolean;
+};
 export type CapacityLoad = {
   buckets: string[];
   labor: { name: string; crew_size: number; series: CapacityBucket[] };
   work_centers: { id: string; name: string; series: CapacityBucket[] }[];
+  planned_releases: PlannedRelease[];
+  /** Orders with an operation nobody has timed. Such a step costs zero hours and zero
+   *  lead days, so it reads as free rather than unknown — their load and release dates
+   *  are a floor. */
+  untimed_orders: { erp_id: string; step_count: number }[];
+  /** Material demand on the same buckets. Separate shape from the capacity lanes: a
+   *  material has a balance rather than an hourly capacity, so the cell carries what is
+   *  LEFT rather than a ratio — a percentage of a stock level reads as a consumption
+   *  rate on a row where it is nothing of the sort. */
+  materials: {
+    id: string;
+    name: string;
+    series: {
+      bucket: string;
+      demand: number;
+      cumulative_demand: number;
+      available: number;
+      /** Stock left after everything committed through this bucket. Negative = short. */
+      remaining_cover: number;
+      short: boolean;
+    }[];
+  }[];
 };
 export function useCapacityLoad(months = 12) {
   return useQuery({
@@ -337,12 +401,20 @@ export function useCapableToPromise(
  * only says anything once a solve has run. */
 
 export type StagingLot = {
-  lot_number: string; storage_location: string;
+  lot_id: string; lot_number: string; storage_location: string;
   expiration_date: string | null; take: number;
 };
 export type StagingMaterial = {
+  material_id: string;
   material: string; needed: number; on_hand: number; short: number;
   optional: boolean;
+  /** What was actually recorded as pulled. Null = nobody has confirmed this line yet,
+   *  so consumption will fall back to FEFO and assert the plan rather than the fact. */
+  picked_qty: number | null;
+  picked_lots: { lot_id: string; lot_number: string; qty: number }[];
+  /** Recorded lots differ from the planned ones — the named lot was empty, short, or
+   *  already gone. The case worth seeing. */
+  deviated: boolean;
   /** The lots consumption WILL draw (FEFO). Pull these so the traceability record
    *  matches what physically went into the unit. */
   lots: StagingLot[];
@@ -391,6 +463,30 @@ export function useMarkStaged() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["staging-list"] }),
     onError: (e: any) =>
       toast.error(e?.response?.data?.detail ?? "Couldn't update staging"),
+  });
+}
+
+/** Record what was ACTUALLY pulled for one material on one job-operation.
+ *
+ *  Confirming sends the planned lots back; deviating sends what was really taken. Both
+ *  are the same call — the difference is only which lots go in it. Recording either
+ *  reserves the stock (so a second sheet can't promise the same units) and makes
+ *  consumption draw those lots instead of re-deriving FEFO. */
+export function useRecordPick() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: {
+      work_order: string; step: string; material: string;
+      qty: number; qty_required?: number;
+      lots: { lot_id: string; lot_number?: string; qty: number }[];
+    }) => api.api_WorkCenters_record_pick_create(v as never),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["staging-list"] });
+      // Reserved stock changes what every other planning surface can promise.
+      qc.invalidateQueries({ queryKey: ["planning"] });
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.detail ?? "Couldn't record the pick"),
   });
 }
 
@@ -537,6 +633,9 @@ export function useReleaseForScheduling() {
     onSuccess: (_d, v) => {
       invalidateSchedule(qc);
       qc.invalidateQueries({ queryKey: ["work-order"] });
+      // Releasing changes what the rough-cut layer shows — the order leaves the
+      // release list and its load stops being provisional.
+      qc.invalidateQueries({ queryKey: ["planning"] });
       toast.success(
         v.override_reason
           ? "Released with an override — re-solve to plan it"
@@ -758,11 +857,18 @@ export function useBulkReassignOperator() {
   });
 }
 
-/** Processes available to plan a new work order against. */
+/** Processes available to plan a new work order against.
+ *
+ *  APPROVED only. An unapproved routing is a draft someone is still editing — releasing
+ *  real production against it means building to an uncontrolled process, and the steps
+ *  can change underneath the running job. The server enforces this too; filtering here
+ *  keeps the choice out of the picker rather than failing after the planner picks it.
+ */
 export function useProcesses() {
   return useQuery({
     queryKey: ["processes", "for-planning"],
-    queryFn: () => api.api_Processes_list({ queries: { limit: 500 } } as never),
+    queryFn: () =>
+      api.api_Processes_list({ queries: { limit: 500, status: "APPROVED" } } as never),
   });
 }
 

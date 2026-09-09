@@ -15,6 +15,7 @@ from Tracker.models import (
     Parts,
     PartTypes,
     Processes,
+    ProcessStatus,
     ProcessStep,
     ScheduledTask,
     ScheduleResult,
@@ -32,7 +33,11 @@ class RegroupBatchTests(TenantContextMixin, TestCase):
         self.tenant = Tenant.objects.create(name="RG", slug="regroup", tier="PRO")
         self.set_tenant_context(self.tenant)
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="Nz", ID_prefix="NZ")
-        self.process = Processes.objects.create(tenant=self.tenant, name="Line", part_type=self.pt)
+        # APPROVED, not the model default of DRAFT: `plan_work_order` only releases
+        # work against an approved routing.
+        self.process = Processes.objects.create(
+            tenant=self.tenant, name="Line", part_type=self.pt,
+            status=ProcessStatus.APPROVED)
         self.step = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Op1")
         ProcessStep.objects.create(process=self.process, step=self.step, order=1)
         self.machine = Equipments.objects.create(tenant=self.tenant, name="CNC-1")

@@ -33,6 +33,7 @@ from Tracker.models import (
     Steps,
     StepMeasurementRequirement,
     StepRequirement,
+    StepTiming,
     Substep,
     SubstepResource,
     SubstepTranslation,
@@ -532,3 +533,106 @@ class RevisionSignalTestCase(TenantTestCase):
         self.assertEqual(kwargs['new_version'].pk, v2.pk)
         self.assertEqual(kwargs['user'], self.user_a)
         self.assertEqual(kwargs['change_description'], 'Added new requirement')
+
+
+class StepTimingCopyOnStepVersioningTestCase(TenantTestCase):
+    """StepTiming is child copy 4 in `create_new_step_version`.
+
+    Timing is step behaviour, so it forks with the step. Before it joined the copy
+    list a new version had no timing row at all, and that failure is silent rather
+    than loud: the solver sizes an untimed op to zero minutes and `rccp._step_hours`
+    returns 0.0, so a versioned step simply becomes free.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.part_type = PartTypes.objects.create(name='Timing_PT', ID_prefix='TIM-')
+        self.step = _make_step(self.part_type, name='Bore')
+        self.timing = StepTiming.objects.create(
+            step=self.step,
+            setup_minutes=25.0,
+            cycle_time_minutes=4.5,
+            load_unload_per_piece=1.25,
+            attention_type='load_unload',
+            external_setup_minutes=10.0,
+        )
+
+    def test_new_version_carries_every_timing_field(self):
+        v2 = create_new_step_version(
+            self.step, user=self.user_a, change_description='Rev B')
+
+        t2 = StepTiming.objects.get(step=v2)
+        self.assertEqual(t2.setup_minutes, 25.0)
+        self.assertEqual(t2.cycle_time_minutes, 4.5)
+        self.assertEqual(t2.load_unload_per_piece, 1.25)
+        self.assertEqual(t2.attention_type, 'load_unload')
+        self.assertEqual(t2.external_setup_minutes, 10.0)
+
+    def test_timing_is_copied_not_moved(self):
+        """`StepTiming.step` is a OneToOne, so a MOVE would strip v1 of its timing and
+        make the superseded version read as free — which is what history is for."""
+        v2 = create_new_step_version(
+            self.step, user=self.user_a, change_description='Rev B')
+
+        self.assertNotEqual(StepTiming.objects.get(step=v2).pk, self.timing.pk)
+        self.timing.refresh_from_db()
+        self.assertEqual(self.timing.step_id, self.step.pk)
+        self.assertEqual(StepTiming.objects.filter(step_id__in=[self.step.pk, v2.pk]).count(), 2)
+
+    def test_step_without_timing_versions_cleanly(self):
+        """An untimed step is a real state, not a broken one — versioning it must not
+        raise, and must not invent a row."""
+        bare = _make_step(self.part_type, name='Deburr')
+        v2 = create_new_step_version(
+            bare, user=self.user_a, change_description='Rev B')
+        self.assertFalse(StepTiming.objects.filter(step=v2).exists())
+
+    def test_serializer_timing_edit_lands_on_the_row_the_update_returns(self):
+        """`timing` is popped out before the versioning diff, so a timing-only edit has
+        no versioning field to fork on and updates the step in place. What matters is
+        that the write follows whatever row `apply_versioned_update` hands back — when a
+        fork does happen (a versioned scalar changed too), timing must land on the NEW
+        row or the edit silently applies to a superseded one.
+        """
+        from Tracker.serializers.mes_lite import StepsSerializer
+
+        ser = StepsSerializer(
+            self.step,
+            data={'timing': {'setup_minutes': 99.0, 'cycle_time_minutes': 7.0}},
+            partial=True,
+        )
+        ser.is_valid(raise_exception=True)
+        updated = ser.save()
+
+        self.assertEqual(updated.pk, self.step.pk, "timing alone should not fork")
+        t = StepTiming.objects.get(step=updated)
+        self.assertEqual(t.setup_minutes, 99.0)
+        self.assertEqual(t.cycle_time_minutes, 7.0)
+        # Untouched keys survive a partial write rather than resetting to the default.
+        self.assertEqual(t.attention_type, 'load_unload')
+
+    def test_serializer_null_timing_clears_the_row(self):
+        """`timing: null` has to be expressible: the solver sizes an untimed op to zero
+        and RCCP reads it as free, so "no timing" is a state a planner may intend."""
+        from Tracker.serializers.mes_lite import StepsSerializer
+
+        from Tracker.services.scheduling.data import get_step_timings
+
+        ser = StepsSerializer(self.step, data={'timing': None}, partial=True)
+        ser.is_valid(raise_exception=True)
+        updated = ser.save()
+
+        # Asserted against what PLANNING sees, not against row existence. Hard delete is
+        # disabled repo-wide, so the clear soft-deletes; the row is still there. What has
+        # to be true is that the solver and RCCP stop reading it — which is exactly what
+        # was broken: every reader took `.objects` unfiltered, so a cleared timing kept
+        # sizing the op and the clear silently did nothing.
+        self.assertTrue(StepTiming.objects.filter(step=updated, archived=True).exists())
+        # Every step gets an entry (the chain falls back to history, then to defaults),
+        # so the test is on the VALUES: the cleared row must stop supplying its 25-minute
+        # setup. That is what silently kept working before — the clear saved, and the
+        # solver went on sizing the op exactly as it had.
+        resolved = get_step_timings(self.tenant_a)[updated.pk]
+        self.assertEqual(resolved.setup_minutes, 0.0)
+        self.assertEqual(resolved.cycle_time_minutes, 0.0)
+        self.assertEqual(resolved.cycle_source, 'none')

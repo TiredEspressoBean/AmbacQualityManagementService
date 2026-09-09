@@ -27,8 +27,25 @@ from .core import SecureModel
 
 
 class AttentionType(models.TextChoices):
+    """How much of a step's run time occupies an operator.
+
+    Orthogonal to `Steps.labor_model`, which says WHETHER a crew constraint applies at
+    all (off / pool / named); this says how much of the run one occupies when it does.
+    """
     FULL = 'full', 'Full attention (operator tied to the machine)'
     LOAD_UNLOAD = 'load_unload', 'Load/unload only (machine runs unattended between)'
+    # Arithmetically this is LOAD_UNLOAD with a zero touch time, which the model could
+    # already express. It exists because that zero was ambiguous: "a cobot feeds it" and
+    # "nobody entered the touch time" looked identical, and only one of them is a fact.
+    # Stating it explicitly also makes `operator_attended_time` ignore any stale
+    # per-piece value rather than quietly charging it.
+    #
+    # Setup is still charged — someone sets the job and the robot up. A step needing NO
+    # operator at all, setup included, is `labor_model = OFF`.
+    # Note this governs LABOR only. The capacity win for a robot-fed cell — running
+    # nights and weekends — comes from `Equipments.runs_unattended`, which switches the
+    # work centre from shift hours to calendar hours.
+    UNATTENDED = 'unattended', 'Unattended (robot/cobot fed — setup only)'
 
 
 class ReleasePolicyChoice(models.TextChoices):
@@ -303,6 +320,28 @@ class OptimizationConfig(SecureModel):
                   "when it elapses. With match_operators on it's split across the "
                   "machine (~40%) and operator (~60%) phases.",
     )
+    # --- in-flight background run (tenant-wide, so every client can see it) -------
+    # The task id used to live only in the requesting tab's React state, so a solve was
+    # invisible to everyone else: a second planner saw a stale board with no explanation
+    # of why it wasn't changing. Kept here because OptimizationConfig is already
+    # per-tenant and already polled by the board.
+    active_run_task_id = models.CharField(
+        max_length=64, blank=True, default='',
+        help_text="Celery id of the solve/dispatch currently in flight, or blank.",
+    )
+    active_run_kind = models.CharField(
+        max_length=16, blank=True, default='',
+        help_text="What's running: 'solve', 'draft' or 'dispatch'.",
+    )
+    active_run_started_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When it was QUEUED (not when a worker picked it up). Combined with "
+                  "the time limit this bounds the wait — CP-SAT runs to a cap, so the "
+                  "end is known rather than guessed. Also how a dead run is detected: "
+                  "past the cap plus a grace period with no result means the worker "
+                  "died, and the board must stop claiming a solve is running.",
+    )
+
     staging_buffer_minutes = models.PositiveIntegerField(
         default=0,
         help_text="Minutes between a component WO finishing and its parent assembly "

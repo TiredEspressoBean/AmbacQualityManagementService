@@ -125,6 +125,17 @@ def plan_work_order(
 
     if quantity <= 0:
         raise ValueError("quantity must be > 0")
+    # Only build to an approved routing. A DRAFT process is one somebody is still
+    # editing — its steps can change under a job that is already running, and releasing
+    # production against an uncontrolled process is exactly what AS9100 §8.5.1 forbids.
+    # `bom_explosion._build_process` already holds child components to this standard;
+    # the top-level process had no such check, so the stricter rule applied to the
+    # components of a job but not to the job itself.
+    if process.status != 'APPROVED':
+        raise ValueError(
+            f"Process '{process.name}' is {process.get_status_display().upper()}, not "
+            f"approved — approve it before releasing work against it."
+        )
     part_type = process.part_type
     if part_type is None:
         raise ValueError("process has no part type")
@@ -272,6 +283,11 @@ def cascade_order_status(work_order: WorkOrder) -> None:
     reaches one of those statuses. No-op when the WO has no parent order,
     when some WOs are still in progress, or when the order is already
     COMPLETED.
+
+    **A cancelled work order ends a job; it does not fulfil an order.** Cancelling
+    every WO on an order therefore leaves nothing incomplete, and this used to read
+    that as "all done" and tell the customer their order was COMPLETED when nothing
+    had been built. At least one WO must have actually completed.
     """
     order = work_order.related_order
     if not order:
@@ -282,6 +298,11 @@ def cascade_order_status(work_order: WorkOrder) -> None:
     )
     if incomplete_wos.exists():
         return
+
+    if not order.related_orders.filter(
+        workorder_status=WorkOrderStatus.COMPLETED
+    ).exists():
+        return  # every job was cancelled — the order was abandoned, not fulfilled
 
     if order.order_status != OrdersStatus.COMPLETED:
         order.order_status = OrdersStatus.COMPLETED

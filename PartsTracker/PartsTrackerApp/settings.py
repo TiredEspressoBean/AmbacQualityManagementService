@@ -389,6 +389,10 @@ SPECTACULAR_SETTINGS = {
         # name; name them explicitly so drf-spectacular doesn't hash-suffix them.
         "PlantClosureRecurrenceEnum": "Tracker.models.mes_standard.PlantCalendarException.RECURRENCE_CHOICES",
         "LaborRecurrenceEnum": "Tracker.models.mes_standard.LaborCalendarBlock.RECURRENCE_CHOICES",
+        # off/pool/named appears twice under different field names — per step as
+        # `Steps.labor_model` and tenant-wide as `OptimizationConfig.default_labor_model`.
+        # Same choice set, so name it once rather than letting it get hash-suffixed.
+        "LaborModelEnum": "Tracker.models.scheduling.LaborModel.choices",
         # Pin the historical TypeEnum name to MeasurementDefinition.type so
         # future 'type'-named fields can't rename it out from under the FE.
         "TypeEnum": "Tracker.models.mes_lite.MEASUREMENT_TYPE_CHOICES",
@@ -712,6 +716,12 @@ CELERY_TIMEZONE = "America/New_York"
 CELERY_TASK_ALWAYS_EAGER = False
 
 # Timeouts & reliability
+# Emit a STARTED state when a worker picks a task up. Without it Celery reports only
+# PENDING, which conflates "queued, waiting for a worker" with "actually running" — and
+# those need different words on screen. A solve queued four minutes ago that has never
+# started means the worker is down, which is worth saying rather than spinning forever.
+CELERY_TASK_TRACK_STARTED = True
+
 CELERY_TASK_TIME_LIMIT = 30 * 60        # hard limit
 CELERY_TASK_SOFT_TIME_LIMIT = 20 * 60   # soft limit
 broker_transport_options = {"visibility_timeout": 60 * 60}  # > hard limit

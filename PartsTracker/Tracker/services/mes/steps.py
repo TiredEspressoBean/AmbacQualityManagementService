@@ -112,6 +112,10 @@ def create_new_step_version(
        process__isnull=True, equipment_type__isnull=True)`. Rows linked via
        `process` or `equipment_type` belong to those aggregates' version
        lifecycles — copying them here would duplicate them.
+    4. StepTiming (OneToOne `step`, related_name='timing') — setup, cycle,
+       load/unload, attention type. Timing is step behaviour, so it forks with
+       the step; a new version without it reads as zero-duration to the solver
+       and zero-hours to RCCP.
 
     Documents attached via GenericRelation are copied as fresh Document rows
     pointing at the new version, sharing the same file storage blob (no
@@ -254,6 +258,24 @@ def create_new_step_version(
                 training_type=tr.training_type,
                 notes=tr.notes,
                 tenant=tr.tenant,
+            )
+
+        # --- Child copy 4: StepTiming (OneToOne, related_name='timing') ---
+        # Timing is step behaviour, so it forks with the step. Without this the new
+        # version has no timing row at all: the solver sizes the op to zero minutes and
+        # rccp._step_hours returns 0.0, so a versioned step silently becomes free.
+        from Tracker.models.scheduling import StepTiming
+        # tenant-safe: cloned from an in-tenant StepTiming (OneToOne to Step).
+        src_timing = StepTiming.objects.filter(step=step, archived=False).first()
+        if src_timing is not None:
+            StepTiming.objects.create(
+                step=new_version,
+                tenant=src_timing.tenant,
+                setup_minutes=src_timing.setup_minutes,
+                cycle_time_minutes=src_timing.cycle_time_minutes,
+                load_unload_per_piece=src_timing.load_unload_per_piece,
+                attention_type=src_timing.attention_type,
+                external_setup_minutes=src_timing.external_setup_minutes,
             )
 
         # --- Documents (GenericRelation) ---

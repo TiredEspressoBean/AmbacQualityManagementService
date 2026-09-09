@@ -31,7 +31,8 @@ def _step_setup_cycle(step_id):
     of N ≈ setup + N×cycle (one setup); a broken part ≈ setup + cycle. Approximate — the
     solver refines the exact number (PFD / machine-override / continuous) on re-solve."""
     from Tracker.models import StepTiming
-    t = StepTiming.objects.filter(step_id=step_id).first()
+    # archived=False — a cleared timing is soft-deleted, not removed. See data.py.
+    t = StepTiming.objects.filter(step_id=step_id, archived=False).first()
     if t is None or not t.cycle_time_minutes:
         return None
     return (float(t.setup_minutes or 0), float(t.cycle_time_minutes))

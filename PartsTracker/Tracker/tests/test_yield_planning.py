@@ -8,7 +8,9 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from Tracker.models import Parts, PartTypes, Processes, ProcessStep, Steps, Tenant
+from Tracker.models import (
+    Parts, PartTypes, Processes, ProcessStatus, ProcessStep, Steps, Tenant,
+)
 from Tracker.services.mes.work_order import plan_work_order
 from Tracker.services.mes.yield_planning import process_yield, start_quantity_for_good
 from Tracker.tests.base import TenantContextMixin
@@ -22,8 +24,11 @@ class YieldPlanningTests(TenantContextMixin, TestCase):
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="PT")
 
     def _process(self, default_scrap="0", step_scraps=(None, None)):
+        # # APPROVED, not the model default of DRAFT: `plan_work_order` only releases
+        # work against an approved routing.
         proc = Processes.objects.create(
             tenant=self.tenant, name="P", part_type=self.pt,
+            status=ProcessStatus.APPROVED,
             default_scrap_rate=Decimal(default_scrap))
         for i, sc in enumerate(step_scraps, start=1):
             step = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name=f"Op{i}")

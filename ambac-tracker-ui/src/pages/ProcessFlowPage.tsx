@@ -449,6 +449,12 @@ export default function ProcessFlowPage() {
         is_outside_process: step.is_outside_process || false,
         // FK by id — the graph-save applies node keys to the Step directly.
         outside_supplier_id: step.outside_supplier || null,
+        // Null means "inherit the tenant default"; 'off' means this step needs nobody.
+        labor_model: step.labor_model ?? null,
+        // Nested one-to-one, popped out of the node diff server-side and applied to
+        // whichever Step row the save lands on. Omitted entirely when untouched, so a
+        // node that never opened the timing section can't blank an existing row.
+        ...(step.timing !== undefined ? { timing: step.timing } : {}),
       });
       });
 
