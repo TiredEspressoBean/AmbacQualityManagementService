@@ -48,17 +48,17 @@ export function AppSidebarHeader() {
         <img
             src={tenant.logo_url}
             alt={tenant.name}
-            className="size-9 rounded-lg object-contain"
+            className="size-9 rounded-lg object-contain group-data-[collapsible=icon]:size-8"
         />
     ) : (
-        <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-9 items-center justify-center rounded-lg">
+        <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-9 items-center justify-center rounded-lg group-data-[collapsible=icon]:size-8">
             <Building2 className="size-4" />
         </div>
     );
 
     // Wrapper with visual distinction
     const headerWrapper = (children: React.ReactNode) => (
-        <div className="border-b border-sidebar-border bg-sidebar-accent/30 px-2 py-3">
+        <div className="border-b border-sidebar-border bg-sidebar-accent/30 px-2 py-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">
             <SidebarMenu>
                 <SidebarMenuItem>{children}</SidebarMenuItem>
             </SidebarMenu>
@@ -74,7 +74,7 @@ export function AppSidebarHeader() {
             >
                 <div className="flex items-center gap-3 min-w-0">
                     {logoContent}
-                    <div className="flex flex-col min-w-0">
+                    <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
                         <span className="font-semibold text-sm truncate">
                             {tenant?.name || DEFAULT_BRANDING.appName}
                         </span>
@@ -99,7 +99,7 @@ export function AppSidebarHeader() {
                 >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         {logoContent}
-                        <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex flex-col min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                             <span className="font-semibold text-sm truncate">
                                 {tenant?.name || DEFAULT_BRANDING.appName}
                             </span>
@@ -110,7 +110,7 @@ export function AppSidebarHeader() {
                             )}
                         </div>
                     </div>
-                    <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+                    <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
                 </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent

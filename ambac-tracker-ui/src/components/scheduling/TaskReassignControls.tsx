@@ -38,18 +38,22 @@ export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
   );
 
   return (
+    // `grid-cols-2` is minmax(auto, 1fr): a column will not shrink below its
+    // content's min-content width, so a long machine name pushes its trigger past the
+    // column and over the neighbouring one. `min-w-0` on each cell (and on the
+    // trigger) lets the track shrink; the value then truncates instead of overflowing.
     <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
       <div className="col-span-2 text-xs font-medium text-muted-foreground">
         Reassign — applies now, re-solve to optimize
       </div>
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1">
         <Label className="text-[11px]">Machine</Label>
         <Select
           value={machineId ?? ""}
           disabled={isLoading || reassignMachine.isPending}
           onValueChange={(v) => reassignMachine.mutate({ id: taskId, machine_id: v })}
         >
-          <SelectTrigger className="h-8">
+          <SelectTrigger className="h-8 w-full min-w-0 [&>span]:truncate">
             <SelectValue placeholder={isLoading ? "Loading…" : "Pick a machine"} />
           </SelectTrigger>
           <SelectContent>
@@ -59,7 +63,7 @@ export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1">
         <Label className="text-[11px]">Operator</Label>
         <Select
           value={operatorId ?? UNASSIGNED}
@@ -68,7 +72,7 @@ export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
             reassignOperator.mutate({ id: taskId, operator_id: v === UNASSIGNED ? null : v })
           }
         >
-          <SelectTrigger className="h-8">
+          <SelectTrigger className="h-8 w-full min-w-0 [&>span]:truncate">
             <SelectValue placeholder={isLoading ? "Loading…" : "Pick an operator"} />
           </SelectTrigger>
           <SelectContent>

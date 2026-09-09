@@ -82,7 +82,7 @@ export function BulkReassignDialog({ open, onOpenChange, taskIds, repTaskId, onD
           <div className="grid gap-1">
             <Label className="text-xs">Machine</Label>
             <Select value={machineId} onValueChange={setMachineId} disabled={isLoading}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 w-full min-w-0 [&>span]:truncate">
                 <SelectValue placeholder={isLoading ? "Loading…" : "— keep as-is —"} />
               </SelectTrigger>
               <SelectContent>
@@ -95,7 +95,7 @@ export function BulkReassignDialog({ open, onOpenChange, taskIds, repTaskId, onD
           <div className="grid gap-1">
             <Label className="text-xs">Operator</Label>
             <Select value={operatorId} onValueChange={setOperatorId} disabled={isLoading}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9 w-full min-w-0 [&>span]:truncate">
                 <SelectValue placeholder={isLoading ? "Loading…" : "— keep as-is —"} />
               </SelectTrigger>
               <SelectContent>
