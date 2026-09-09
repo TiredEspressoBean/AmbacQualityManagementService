@@ -58,10 +58,18 @@ class TimingData:
 
     def operator_attended_time(self, quantity: int) -> float:
         """Operator-attention minutes: full attention = the whole machine run;
-        load/unload = setup + a touch per piece (machine runs unattended)."""
+        load/unload = setup + a touch per piece (machine runs unattended);
+        unattended = setup only, a robot does the handling.
+
+        Unattended deliberately ignores `load_unload_per_piece` rather than relying on
+        it being zero — the whole point of the value is to state the fact, so a stale
+        touch time left on the row must not quietly re-charge the operator.
+        """
         quantity = max(0, quantity)
         if self.attention_type == 'full':
             return self.machine_wall_time(quantity)
+        if self.attention_type == 'unattended':
+            return self.setup_minutes
         return self.setup_minutes + self.load_unload_per_piece * quantity
 
 
@@ -193,7 +201,12 @@ def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
     from Tracker.models import StepExecution, Steps, StepTiming
     from Tracker.models.scheduling import AttentionType
 
-    timings = {t.step_id: t for t in StepTiming.objects.filter(tenant=tenant)}
+    # `archived=False`: clearing a step's timing (`timing: null`) soft-deletes the
+    # row, because hard delete is disabled repo-wide. Without this filter the solver
+    # and RCCP kept reading a timing the planner had explicitly cleared — the clear
+    # appeared to save and changed nothing.
+    timings = {t.step_id: t
+               for t in StepTiming.objects.filter(tenant=tenant, archived=False)}
 
     dur = ExpressionWrapper(F('exited_at') - F('entered_at'), output_field=DurationField())
     hist = {
@@ -234,6 +247,33 @@ def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
     return result
 
 
+def get_outside_process_step_days(tenant, config) -> dict:
+    """`{step_id: planned vendor turnaround in CALENDAR days}` for outside-process steps.
+
+    Resolution, most specific first: `Steps.outside_process_lead_days` →
+    `outside_supplier.default_outside_process_turnaround_days` →
+    `OptimizationConfig.default_outside_process_turnaround_days` → 7.
+
+    Split out of `get_outside_process_data` so the rough-cut layer can reuse the chain
+    without needing a horizon: RCCP wants only the days, not the minute offsets, and a
+    second copy of a four-tier fallback is a second place for it to drift.
+    """
+    from Tracker.models import Steps
+
+    default_days = int(getattr(config, 'default_outside_process_turnaround_days', 7) or 7)
+    step_days: dict = {}
+    for s in (Steps.objects.filter(tenant=tenant, is_current_version=True,
+                                   is_outside_process=True)
+              .select_related('outside_supplier')):
+        days = s.outside_process_lead_days
+        if days is None and s.outside_supplier_id:
+            days = s.outside_supplier.default_outside_process_turnaround_days
+        if days is None:
+            days = default_days
+        step_days[s.id] = max(1, int(days))
+    return step_days
+
+
 def get_outside_process_data(tenant, config, horizon) -> dict:
     """Outside-processing (subcontract) scheduling inputs.
 
@@ -250,20 +290,13 @@ def get_outside_process_data(tenant, config, horizon) -> dict:
     from datetime import timedelta
     from Tracker.models import Steps, OutsideProcessShipment, StepExecution
 
+    step_days = get_outside_process_step_days(tenant, config)
+    step_minutes = {sid: d * 24 * 60 for sid, d in step_days.items()}  # calendar → minutes
+
+    # Same tenant fallback the per-step resolution ends on. Needed here too: a shipment
+    # can reference a step that resolved to nothing (archived, or not a current version),
+    # and that must not take the solver down.
     default_days = int(getattr(config, 'default_outside_process_turnaround_days', 7) or 7)
-    step_days: dict = {}
-    step_minutes: dict = {}
-    for s in (Steps.objects.filter(tenant=tenant, is_current_version=True,
-                                   is_outside_process=True)
-              .select_related('outside_supplier')):
-        days = s.outside_process_lead_days
-        if days is None and s.outside_supplier_id:
-            days = s.outside_supplier.default_outside_process_turnaround_days
-        if days is None:
-            days = default_days
-        days = max(1, int(days))
-        step_days[s.id] = days
-        step_minutes[s.id] = days * 24 * 60  # calendar days → elapsed minutes
 
     return_min: dict = {}
     for sh in (OutsideProcessShipment.objects.filter(tenant=tenant, status='SENT')
@@ -401,14 +434,19 @@ def _release_mode(tenant) -> str:
     return cfg.release_mode if cfg else ReleaseMode.AUTO
 
 
-def get_active_workorders(tenant) -> list[WorkOrderData]:
+def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrderData]:
     """Schedulable work orders with a process, each carrying its schedulable parts
     (current step) and the process routing graph (steps + edges). Excludes finished
     (COMPLETED/CANCELLED) and held (ON_HOLD) WOs, and drops parts in a state that
     can't be worked (finished, shipped, quarantined). Also drops work releasing past
     the detailed horizon, and — under `release_mode=MANUAL` — work a planner hasn't
     released. The process graph is resolved once per distinct process and shared
-    across its work orders."""
+    across its work orders.
+
+    `within_horizon=False` keeps work releasing beyond the detailed window. The
+    rough-cut layer (RCCP/CTP) must pass it: those surfaces exist precisely to see
+    past the solver's horizon, and the filter below is a solver-arithmetic guard, not
+    a statement that far-dated work is unreal. See the comment on the filter."""
     from Tracker.models import (
         ProcessStep, StepEdge, StepExecution, WorkOrder, WorkOrderStatus,
     )
@@ -425,7 +463,15 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     # Release gate. Under MANUAL the solver only plans work a planner authorized, so
     # the board shows authorized work and nothing else. Under AUTO (the default)
     # `released_at` is recorded but never filters — the plan stays date-driven.
-    if _release_mode(tenant) == ReleaseMode.MANUAL:
+    #
+    # Gated on `within_horizon` for the same reason as the horizon filter below: this
+    # is a statement about what the DETAILED solve may place, not about what is real.
+    # Release is a short-horizon act — nobody authorizes work a year out — so applying
+    # it to the rough-cut layer collapsed a 12-month capacity view down to whatever
+    # happened to be released this week, which is the exact inverse of what RCCP is
+    # for. Worse, it hit only tenants on MANUAL: the shops running workload control,
+    # who need the long view most.
+    if within_horizon and _release_mode(tenant) == ReleaseMode.MANUAL:
         wos = wos.filter(released_at__isnull=False)
 
     # Rolling horizon. Work that cannot start inside the detailed window is out of
@@ -438,9 +484,13 @@ def get_active_workorders(tenant) -> list[WorkOrderData]:
     # duration is non-zero — arithmetically impossible. ONE order dated past the
     # window made the whole tenant's schedule INFEASIBLE, emptying the board with no
     # explanation. An undated order means "as soon as possible" and is never dropped.
-    horizon_end_date = get_schedule_horizon(tenant).end.date()
-    wos = wos.filter(
-        Q(expected_start__isnull=True) | Q(expected_start__lt=horizon_end_date))
+    # Only the detailed solve needs this. A monthly bucket sum has no such arithmetic,
+    # and applying it there hid far-dated work from the one layer meant to carry it —
+    # worse for CTP, which then promised capacity it had not counted the load against.
+    if within_horizon:
+        horizon_end_date = get_schedule_horizon(tenant).end.date()
+        wos = wos.filter(
+            Q(expected_start__isnull=True) | Q(expected_start__lt=horizon_end_date))
 
     # In-progress signal: an OPEN StepExecution (not yet exited) means work has physically
     # started on that part's current step. `entered_at` is the actual start; elapsed is
@@ -727,22 +777,35 @@ def get_material_gates(tenant, horizon: HorizonData):
     """
     from collections import defaultdict
     from datetime import datetime as _dt, time as _time
-    from django.db.models import Sum
     from Tracker.models import BOM, BOMLine, MaterialLot, WorkOrder, WorkOrderStatus
+    from Tracker.services.mes.bom import buy_item_from_values
 
-    onhand = {
-        row['material']: float(row['q'] or 0)
-        for row in MaterialLot.objects.filter(tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
-        .values('material').annotate(q=Sum('quantity_remaining'))
-    }
+    # Keyed (kind, id): a BUY line points at a raw Material or a buyable PartType, and
+    # their stock hangs off different columns of the same lot table.
+    def _lot_key(row):
+        if row['material_id'] is not None:
+            return ('MATERIAL', row['material_id'])
+        if row['material_type_id'] is not None:
+            return ('PART_TYPE', row['material_type_id'])
+        return None
+
+    onhand: dict = {}
+    for row in (MaterialLot.objects.filter(tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
+                .values('material_id', 'material_type_id', 'quantity_remaining')):
+        k = _lot_key(row)
+        if k is not None:
+            onhand[k] = onhand.get(k, 0.0) + float(row['quantity_remaining'] or 0)
+
     receipts: dict = defaultdict(list)
     for lot in (
         MaterialLot.objects.filter(tenant=tenant, promised_date__isnull=False,
                                    quantity_remaining__gt=0)
         .exclude(status__in=('CONSUMED', 'SCRAPPED', 'REJECTED'))
-        .values('material_id', 'promised_date')
+        .values('material_id', 'material_type_id', 'promised_date')
     ):
-        receipts[lot['material_id']].append(lot['promised_date'])
+        k = _lot_key(lot)
+        if k is not None:
+            receipts[k].append(lot['promised_date'])
 
     bom_cache: dict = {}
 
@@ -757,6 +820,8 @@ def get_material_gates(tenant, horizon: HorizonData):
             bom_cache[pt_id] = (
                 list(BOMLine.objects.filter(bom=bom).values(
                     'material_id', 'material__name', 'material__purchase_lead_time_days',
+                    'component_type_id', 'component_type__name',
+                    'component_type__can_buy', 'component_type__purchase_lead_time_days',
                     'quantity', 'source', 'consumed_at_step_id', 'allow_harvested',
                     'is_optional'))
                 if bom else [])
@@ -779,18 +844,19 @@ def get_material_gates(tenant, horizon: HorizonData):
                 continue
             if is_reman and line['allow_harvested']:
                 continue  # a harvested component from teardown covers this line
-            mat_id = line['material_id']
-            if mat_id is None:
-                continue  # BUY line without a Material set (misconfigured) — nothing to net
+            item = buy_item_from_values(line)
+            if item is None:
+                continue  # BUY line with no purchasable component — nothing to net
             required = float(line['quantity']) * wo.quantity
-            have = onhand.get(mat_id, 0.0)
+            have = onhand.get(item, 0.0)
             if have >= required:
                 continue  # enough on hand → no gate
             key = (wo.id, line['consumed_at_step_id'])  # step_id, or None = whole WO
-            comp = line['material__name'] or "component"
+            comp = (line['material__name'] if item[0] == 'MATERIAL'
+                    else line['component_type__name']) or "component"
             short_qty = int(round(required - have))
             need = int(round(required))
-            future = [d for d in receipts.get(mat_id, []) if d >= hstart_date]
+            future = [d for d in receipts.get(item, []) if d >= hstart_date]
             if future:
                 d = min(future)
                 naive = _dt.combine(d, _time.min)
@@ -805,7 +871,10 @@ def get_material_gates(tenant, horizon: HorizonData):
                 # Demand further out simply hasn't been ordered yet: normal, not a
                 # shortage. Same need-by − lead-time basis as the sourcing report.
                 # An undated active WO reads as imminent (flagged).
-                lead = line.get('material__purchase_lead_time_days') or _DEFAULT_LEAD_DAYS
+                lead = (line.get('material__purchase_lead_time_days')
+                        if item[0] == 'MATERIAL'
+                        else line.get('component_type__purchase_lead_time_days')
+                        ) or _DEFAULT_LEAD_DAYS
                 need_by = wo.expected_start or wo.expected_completion
                 if need_by is not None and hstart_date < need_by - timedelta(days=lead):
                     continue  # before order-by → still time to procure, not short

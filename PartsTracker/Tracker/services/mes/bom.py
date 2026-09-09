@@ -6,7 +6,91 @@ delegates here so status-gate checks and child-row copy live in one place.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from Tracker.models import BOM, BOMLine
+
+
+# ── What a BUY line points at ────────────────────────────────────────────────
+# A purchased component is EITHER a raw Material (consumables and stock that are
+# never parts) OR a buyable PartType (`can_buy` — a part we normally make but are
+# sourcing outside, or simply buy). Both are procured and both are stocked as
+# MaterialLot rows; they differ only in which column the lot hangs off:
+# `MaterialLot.material` vs `MaterialLot.material_type`.
+#
+# Keeping the two apart matters because only the PartType side carries the quality
+# apparatus — receiving-inspection plans, supplier qualification, part approval,
+# life limits are all keyed to PartTypes. Routing a purchased *part* through a raw
+# Material is what makes it dock-to-stock with no gate.
+
+@dataclass(frozen=True)
+class BuyItem:
+    """The purchased subject of a BUY line, normalized across both kinds."""
+    kind: str               # 'MATERIAL' | 'PART_TYPE'
+    id: object
+    name: str
+    lead_time_days: int | None
+    safety_stock: float
+    #: MaterialLot column this item's stock hangs off — 'material' or 'material_type'.
+    lot_field: str
+
+    @property
+    def key(self):
+        """Stable identity for dicts that mix both kinds. A Material and a PartType
+        can never share a row, but they can share a uuid space, so the kind is part
+        of the key."""
+        return (self.kind, self.id)
+
+
+def buy_line_item(line) -> BuyItem | None:
+    """Resolve what a BUY line is asking us to purchase, or None when the line isn't
+    a usable BUY line (MAKE, or a BUY line with no component set).
+
+    Works on a BOMLine instance. `select_related('material', 'component_type')` on the
+    caller's queryset keeps this free of extra queries.
+    """
+    if line.source != 'BUY':
+        return None
+    if line.material_id is not None:
+        mat = line.material
+        return BuyItem(
+            kind='MATERIAL', id=line.material_id, name=mat.name,
+            lead_time_days=mat.purchase_lead_time_days,
+            safety_stock=float(mat.safety_stock or 0),
+            lot_field='material',
+        )
+    if line.component_type_id is not None:
+        pt = line.component_type
+        # A part flagged make-only on a BUY line is an authoring mistake, not a
+        # purchase instruction — surfacing it as buyable would quietly put a part we
+        # can't actually source into the sourcing report.
+        if not getattr(pt, 'can_buy', False):
+            return None
+        return BuyItem(
+            kind='PART_TYPE', id=line.component_type_id, name=pt.name,
+            lead_time_days=getattr(pt, 'purchase_lead_time_days', None),
+            # PartTypes has no safety-stock field yet; treated as no buffer rather
+            # than guessed. Adding the field makes this line pick it up unchanged.
+            safety_stock=float(getattr(pt, 'safety_stock', None) or 0),
+            lot_field='material_type',
+        )
+    return None
+
+
+def buy_item_from_values(row) -> tuple | None:
+    """`buy_line_item`'s key for a BOMLine `.values()` row (the scheduling material
+    gate reads dicts, not model instances). Returns (kind, id) or None.
+
+    The `.values()` call must select `material_id`, `component_type_id`,
+    `component_type__can_buy` and `source`.
+    """
+    if row.get('source') != 'BUY':
+        return None
+    if row.get('material_id') is not None:
+        return ('MATERIAL', row['material_id'])
+    if row.get('component_type_id') is not None and row.get('component_type__can_buy'):
+        return ('PART_TYPE', row['component_type_id'])
+    return None
 
 
 def create_new_bom_version(

@@ -1396,6 +1396,12 @@ class Material(SecureModel):
     preferred_supplier = models.ForeignKey(
         Companies, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='supplied_materials')
+    safety_stock = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True,
+        help_text="Buffer held back from planning. Coverage nets against on-hand MINUS "
+                  "this, so the material lane warns while there is still stock to react "
+                  "with instead of at the last unit. Does not block issuing — a picker "
+                  "can always draw the physical stock.")
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -1431,6 +1437,12 @@ class MaterialLot(SecureModel):
     life_tracking = GenericRelation('Tracker.LifeTracking')
 
     LOT_STATUS_CHOICES = [
+        # Ordered but not yet delivered — an expected receipt, not physical stock.
+        # Planning counts it as incoming supply (both the sourcing report and the RCCP
+        # material lane derive "incoming" by excluding the on-hand and terminal statuses,
+        # so this joins them with no change there). Consumption and staging use an
+        # allowlist of ACCEPTED/IN_USE, so ON_ORDER stock can never be picked or issued.
+        ('ON_ORDER', 'On Order'),
         ('RECEIVED', 'Received'),
         ('AWAITING_INSPECTION', 'Awaiting Inspection'),
         ('ACCEPTED', 'Accepted'),
@@ -1499,10 +1511,13 @@ class MaterialLot(SecureModel):
         help_text="Supplier's promised delivery date (from the PO); drives on-time-delivery scoring."
     )
 
-    received_date = models.DateField()
+    # Null while the lot is ON_ORDER: nobody has received it, so there is no receipt date
+    # and no receiver. Both are stamped by `receive_expected_lot` when it actually lands.
+    received_date = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
+        null=True, blank=True,
         related_name='received_lots'
     )
 
@@ -1725,6 +1740,76 @@ class MaterialStaging(SecureModel):
         return f"{self.work_order} @ {self.step} ({state})"
 
 
+class MaterialStagingLine(SecureModel):
+    """One material on a staging record: how much is needed, how much was pulled, and
+    WHICH LOTS actually went in the tote.
+
+    Together with `MaterialStaging` this is the materials requisition the shop
+    documentation calls for — the header says which job and operation, the lines say
+    what and how much. (The header keeps its historical name; renaming the pair is a
+    separate pass.)
+
+    Two problems it exists to solve, both of which show up as wrong numbers elsewhere:
+
+    1. **Nothing reserved stock.** `plan_draw` is computed fresh every time it's asked,
+       so two pick sheets printed the same morning name the same lot, and a shortage
+       count treats material already sitting on a cart as still available. A line with
+       `qty_picked` and no `issued_at` IS the reservation — stock that physically left
+       the shelf but hasn't been consumed yet.
+
+    2. **Planned lot ≠ actual lot.** The sheets print the lots FEFO *will* draw, and the
+       picker regularly takes a different one — the named lot is empty, short, or
+       someone got there first. `picked_lots` records what was really taken, and
+       consumption then reads it instead of re-deriving FEFO. Without that, the
+       traceability record asserts what the plan intended rather than what happened,
+       which is precisely the claim an AS9100 audit tests.
+    """
+
+    staging = models.ForeignKey(
+        MaterialStaging, on_delete=models.CASCADE, related_name='lines')
+    material = models.ForeignKey(
+        'Tracker.Material', on_delete=models.PROTECT, related_name='staging_lines')
+
+    qty_required = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    qty_picked = models.DecimalField(
+        max_digits=12, decimal_places=4, default=0,
+        help_text="What was physically pulled. Reserves stock until issued.")
+
+    # [{lot_id, lot_number, qty}] — what was ACTUALLY taken, in the picker's own words.
+    # A list because one line can legitimately draw from several lots. JSON rather than
+    # a child table: `MaterialUsage` remains the authoritative consumption record with
+    # real FKs, and this is the pick-time note that feeds it.
+    picked_lots = models.JSONField(default=list, blank=True)
+
+    issued_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When consumption drew this line down. Null = picked but not yet "
+                  "consumed, i.e. still reserved against on-hand.")
+    picked_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='staging_lines_picked')
+
+    class Meta:
+        verbose_name = 'Material Staging Line'
+        verbose_name_plural = 'Material Staging Lines'
+        ordering = ['material__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'staging', 'material'],
+                name='unique_staging_line_per_material',
+            )
+        ]
+        indexes = [models.Index(fields=['tenant', 'issued_at'])]
+
+    def __str__(self):
+        return f"{self.material} x{self.qty_picked or self.qty_required}"
+
+    @property
+    def is_reserved(self) -> bool:
+        """Pulled from the shelf, not yet consumed — invisible to on-hand without this."""
+        return self.issued_at is None and (self.qty_picked or 0) > 0
+
+
 class TimeEntry(SecureModel):
     """
     Labor time tracking - single flexible table with entry_type.
@@ -1911,22 +1996,36 @@ class BOMLine(SecureModel):
         on_delete=models.CASCADE,
         related_name='lines'
     )
-    # A line's component is EITHER an in-house PartType (source=MAKE — spawns a child WO)
-    # OR a purchased Material (source=BUY — procured). Exactly one is set (see the Meta
-    # constraint). PartTypes is in-house SKUs only; purchased items live on Material.
+    # Exactly one of component_type / material is set (see the Meta constraint), and
+    # `source` says what we do about it — the two are independent:
+    #
+    #   component_type + MAKE  → build it here; spawns a pegged child work order.
+    #   component_type + BUY   → buy the part (requires PartTypes.can_buy). Procured,
+    #                            never spawns a WO — but it IS a PartType, so it carries
+    #                            the receiving-inspection plan, supplier qualification,
+    #                            part approval and life limits that Material has none of.
+    #   material      + BUY    → buy the raw material / consumable.
+    #   material      + MAKE   → meaningless; a Material is never produced here.
+    #
+    # `services.mes.bom.buy_line_item` is the one place that resolves what a BUY line
+    # points at; go through it rather than testing `material_id` directly, or bought
+    # parts silently drop out of sourcing and the material gate.
     component_type = models.ForeignKey(
         'Tracker.PartTypes',
         null=True, blank=True,
         on_delete=models.PROTECT,
         related_name='used_in_boms',
-        help_text="In-house component (source=MAKE). Mutually exclusive with `material`.",
+        help_text="A part (not a raw material). With source=MAKE it spawns a child work "
+                  "order; with source=BUY it is purchased instead, which requires the "
+                  "part type's can_buy flag. Mutually exclusive with `material`.",
     )
     material = models.ForeignKey(
         'Tracker.Material',
         null=True, blank=True,
         on_delete=models.PROTECT,
         related_name='used_in_boms',
-        help_text="Purchased component (source=BUY). Mutually exclusive with `component_type`.",
+        help_text="Purchased raw material / consumable (source=BUY) — something never "
+                  "produced in-house. Mutually exclusive with `component_type`.",
     )
 
     quantity = models.DecimalField(max_digits=10, decimal_places=4)

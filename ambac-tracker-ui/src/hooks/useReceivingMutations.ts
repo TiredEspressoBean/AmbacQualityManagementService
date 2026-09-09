@@ -42,6 +42,69 @@ export const useBulkCreateLots = () => {
     });
 };
 
+// ----- Expected receipts (ordered, not yet delivered) -----
+// Purchasing lives in the ERP; these record the *supply signal* so netting stops
+// asking for a second order of something already on a truck.
+
+export const useRecordExpectedReceipt = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: {
+            material: string;
+            quantity: string;
+            promised_date: string;
+            supplier?: string | null;
+            erp_po_number?: string;
+        }) =>
+            api.api_MaterialLots_expected_receipt_create(
+                {
+                    material: vars.material,
+                    quantity: vars.quantity,
+                    promised_date: vars.promised_date,
+                    ...(vars.supplier ? { supplier: vars.supplier } : {}),
+                    erp_po_number: vars.erp_po_number ?? "",
+                } as never,
+                { headers: csrf() },
+            ),
+        onSuccess: () => {
+            invalidateReceiving(queryClient);
+            // The sourcing report and the RCCP material lane both count on-order stock
+            // as incoming supply — a new expectation changes what they say.
+            queryClient.invalidateQueries({ queryKey: ["schedule", "requirements"] });
+            queryClient.invalidateQueries({ queryKey: ["planning", "capacity-load"] });
+        },
+    });
+};
+
+export const useReceiveExpectedLot = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: {
+            id: string;
+            lot_number: string;
+            quantity?: string | null;
+            received_date?: string | null;
+        }) =>
+            api.api_MaterialLots_receive_create(
+                {
+                    lot_number: vars.lot_number,
+                    ...(vars.quantity ? { quantity: vars.quantity } : {}),
+                    ...(vars.received_date ? { received_date: vars.received_date } : {}),
+                } as never,
+                { params: { id: vars.id }, headers: csrf() },
+            ),
+        onSuccess: () => {
+            invalidateReceiving(queryClient);
+            queryClient.invalidateQueries({ queryKey: ["schedule", "requirements"] });
+            queryClient.invalidateQueries({ queryKey: ["planning", "capacity-load"] });
+            // On-time delivery is measured as received_date <= promised_date over lots
+            // with a promised date, so booking in an expected receipt is exactly the
+            // event that moves a supplier's OTD number.
+            queryClient.invalidateQueries({ queryKey: ["supplier-scorecard"] });
+        },
+    });
+};
+
 // ----- Certificate of Conformance capture (multipart PATCH of the lot) -----
 // The generated client types certificate_of_conformance as a URL string, so a
 // File upload goes through a raw multipart PATCH (mirrors useDocumentUpload).

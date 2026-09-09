@@ -241,6 +241,17 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
                         attention_type='load_unload', cycle_source='timing')
         self.assertEqual(lu.operator_attended_time(3), 8 + 1 * 3)  # 11 (unattended run)
 
+        # Unattended: a robot does the handling, so setup only — and the stale per-piece
+        # touch time below is IGNORED rather than charged. That is the whole point of the
+        # value: it states a fact about the cell instead of relying on someone having
+        # zeroed a field, which is indistinguishable from never having filled it in.
+        un = TimingData(step_id=self.s_timing.id, cycle_time_minutes=5, setup_minutes=8,
+                        load_unload_per_piece=1, external_setup_minutes=0,
+                        attention_type='unattended', cycle_source='timing')
+        self.assertEqual(un.operator_attended_time(3), 8)
+        self.assertEqual(un.machine_wall_time(3), 23,
+                         "the machine is still occupied for the full run")
+
     def test_affinity_carries_is_schedulable(self):
         sched_eq = Equipments.objects.create(tenant=self.tenant, name="Keyence", is_schedulable=True)
         StepEquipmentAffinity.objects.create(

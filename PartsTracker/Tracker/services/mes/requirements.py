@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from Tracker.services.mes.bom import buy_line_item
+
 # On-hand = usable stock. Incoming = inbound, not-yet-usable receipts. The two must be
 # disjoint or accepted stock double-counts (it's both "on hand" and "promised"): incoming
 # therefore excludes the on-hand statuses as well as the terminal ones.
@@ -70,25 +72,43 @@ def work_order_material_requirements(work_order) -> dict:
             'unit_of_measure': line.unit_of_measure or '',
             'consumed_at_step': step,
             'is_optional': line.is_optional,
+            # Present on every row so the response shape is uniform; the BUY branch
+            # below fills them in. A MAKE line is built, not bought, so it has neither
+            # a purchase kind nor a stocking buffer.
+            'buy_kind': None,
+            'safety_stock': 0.0,
         }
 
-        if line.source == 'BUY' and line.material_id:
-            mat = line.material
+        buy = buy_line_item(line)
+        if buy is not None:
+            # Stock hangs off `material` for a raw Material and `material_type` for a
+            # buyable PartType — same lot table, different column.
+            # `tenant=` stays spelled out on each call rather than folded into the dict:
+            # the tenant-scoping lint reads these literally, and a scoping filter that
+            # only a human can see is exactly the kind it exists to catch.
+            item_q = {f'{buy.lot_field}_id': buy.id}
             on_hand = float(MaterialLot.objects.filter(
-                tenant=tenant, material_id=mat.id, status__in=_ON_HAND_LOT_STATUSES)
+                tenant=tenant, **item_q, status__in=_ON_HAND_LOT_STATUSES)
                 .aggregate(s=Sum('quantity_remaining'))['s'] or 0)
             incoming = float(MaterialLot.objects.filter(
-                tenant=tenant, material_id=mat.id,
+                tenant=tenant, **item_q,
                 promised_date__isnull=False, quantity_remaining__gt=0)
                 .exclude(status__in=_NOT_INCOMING_LOT_STATUSES)  # not already on-hand or terminal
                 .aggregate(s=Sum('quantity_remaining'))['s'] or 0)
-            short = max(0.0, required - on_hand - incoming)
-            lead = mat.purchase_lead_time_days
+            # Safety stock is held back from planning, so coverage nets against what is
+            # free to commit — not the whole shelf. `on_hand` still reports the physical
+            # count; a report that quietly shrinks it would have the picker and the
+            # planner disagreeing about the same bin.
+            safety = buy.safety_stock
+            short = max(0.0, required - (on_hand - safety) - incoming)
+            lead = buy.lead_time_days
             need_by = sched.get((work_order.id, line.consumed_at_step_id)) or wo_need
             order_by = (need_by - timedelta(days=lead)) if lead else need_by
             row.update({
-                'component': mat.name, 'kind': 'BUY',
+                'component': buy.name, 'kind': 'BUY',
+                'buy_kind': buy.kind,
                 'on_hand': on_hand, 'incoming': incoming,
+                'safety_stock': safety,
                 'short_qty': short,
                 'status': 'short' if short > 0 else 'ok',
                 # "When to order" — only meaningful when there's a shortfall to buy.
@@ -159,21 +179,35 @@ def sourcing_requirements(tenant) -> dict:
         return (need_by - timedelta(days=lead_days)) if lead_days else need_by
 
     # --- coverage: on-hand + incoming per Material ---------------------------
-    onhand = {
-        r['material']: float(r['q'] or 0)
-        for r in MaterialLot.objects.filter(tenant=tenant, status__in=_ON_HAND_LOT_STATUSES)
-        .values('material').annotate(q=Sum('quantity_remaining'))
-    }
+    # Keyed by (kind, id): a lot is stock of a raw Material or of a buyable PartType,
+    # and both kinds can appear on the same BOM, so the kind has to be part of the key.
+    def _lot_key(row):
+        if row['material_id'] is not None:
+            return ('MATERIAL', row['material_id'])
+        if row['material_type_id'] is not None:
+            return ('PART_TYPE', row['material_type_id'])
+        return None  # ad-hoc lot named only by description — not a planning subject
+
+    onhand: dict = {}
+    for r in (MaterialLot.objects.filter(tenant=tenant, status__in=_ON_HAND_LOT_STATUSES)
+              .values('material_id', 'material_type_id', 'quantity_remaining')):
+        k = _lot_key(r)
+        if k is not None:
+            onhand[k] = onhand.get(k, 0.0) + float(r['quantity_remaining'] or 0)
+
     incoming: dict = {}
     incoming_date: dict = {}
     for lot in (MaterialLot.objects.filter(tenant=tenant, promised_date__isnull=False,
                                            quantity_remaining__gt=0)
                 .exclude(status__in=_NOT_INCOMING_LOT_STATUSES)  # not already on-hand or terminal
-                .values('material_id', 'promised_date', 'quantity_remaining')):
-        mid = lot['material_id']
-        incoming[mid] = incoming.get(mid, 0.0) + float(lot['quantity_remaining'] or 0)
-        if mid not in incoming_date or lot['promised_date'] < incoming_date[mid]:
-            incoming_date[mid] = lot['promised_date']
+                .values('material_id', 'material_type_id', 'promised_date',
+                        'quantity_remaining')):
+        k = _lot_key(lot)
+        if k is None:
+            continue
+        incoming[k] = incoming.get(k, 0.0) + float(lot['quantity_remaining'] or 0)
+        if k not in incoming_date or lot['promised_date'] < incoming_date[k]:
+            incoming_date[k] = lot['promised_date']
 
     # --- demand: BUY-line materials aggregated across open WOs ----------------
     bom_cache: dict = {}
@@ -185,13 +219,14 @@ def sourcing_requirements(tenant) -> dict:
             bom = (BOM.objects.filter(part_type_id=pt_id, bom_type='ASSEMBLY',
                    status='RELEASED').order_by('-version').first())
             bom_cache[pt_id] = list(
-                BOMLine.objects.filter(bom=bom).select_related('material')
+                BOMLine.objects.filter(bom=bom)
+                .select_related('material', 'component_type')
                 if bom else [])
         return bom_cache[pt_id]
 
-    demand: dict = {}       # material_id -> qty needed
-    need_by: dict = {}      # material_id -> earliest need-by date
-    mat_obj: dict = {}      # material_id -> Material
+    demand: dict = {}       # (kind, id) -> qty needed
+    need_by: dict = {}      # (kind, id) -> earliest need-by date
+    buy_obj: dict = {}      # (kind, id) -> BuyItem
     for wo in (WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
                .exclude(workorder_status__in=excluded).select_related('process')):
         pt_id = wo.process.part_type_id
@@ -199,30 +234,37 @@ def sourcing_requirements(tenant) -> dict:
             continue
         wo_need = sched.get((wo.id, None)) or wo.expected_start or h_date
         for line in _lines(pt_id):
-            if line.source != 'BUY' or line.is_optional or line.material_id is None:
+            if line.is_optional:
                 continue
-            mid = line.material_id
-            demand[mid] = demand.get(mid, 0.0) + float(line.quantity) * wo.quantity
-            mat_obj[mid] = line.material
+            buy = buy_line_item(line)
+            if buy is None:
+                continue
+            k = buy.key
+            demand[k] = demand.get(k, 0.0) + float(line.quantity) * wo.quantity
+            buy_obj[k] = buy
             nb = sched.get((wo.id, line.consumed_at_step_id)) or wo.expected_start or wo_need
-            if mid not in need_by or nb < need_by[mid]:
-                need_by[mid] = nb
+            if k not in need_by or nb < need_by[k]:
+                need_by[k] = nb
 
     source = []
-    for mid, qty in demand.items():
-        short = qty - onhand.get(mid, 0.0) - incoming.get(mid, 0.0)
+    for k, qty in demand.items():
+        buy = buy_obj[k]
+        # Held-back buffer is not available to commit — see the per-WO pass above.
+        safety = buy.safety_stock
+        short = qty - (onhand.get(k, 0.0) - safety) - incoming.get(k, 0.0)
         if short <= 0:
             continue
-        mat = mat_obj[mid]
-        nb = need_by.get(mid, h_date)
-        lead = mat.purchase_lead_time_days
+        nb = need_by.get(k, h_date)
+        lead = buy.lead_time_days
         source.append({
-            'material': mat.name,
+            'material': buy.name,
+            'buy_kind': buy.kind,
             'qty_short': int(round(short)),
+            'safety_stock': safety,
             'need_by': nb,
             'lead_time_days': lead,
             'order_by': order_by(nb, lead),
-            'incoming_date': incoming_date.get(mid),
+            'incoming_date': incoming_date.get(k),
         })
     source.sort(key=lambda r: (r['order_by'] or r['need_by']))
 

@@ -152,10 +152,23 @@ def explode_work_order(work_order, user=None, create: bool = True, _seen=None, _
         required = Decimal(line.quantity) * Decimal(work_order.quantity)
 
         if line.source == 'BUY':
-            mat = line.material
-            if mat is not None:  # purchased component — buy-side pass (material gate) handles it
-                result.buy.append({'component': mat.name, 'material_id': str(mat.id),
+            # Purchased — the buy-side pass (material gate / sourcing report) handles it.
+            # Never spawns a child WO, whether it's a raw Material or a buyable PartType:
+            # a bought part is procured, not produced, even though we could make it.
+            from Tracker.services.mes.bom import buy_line_item
+            buy = buy_line_item(line)
+            if buy is not None:
+                result.buy.append({'component': buy.name, 'buy_kind': buy.kind,
+                                   'material_id': str(buy.id),
                                    'required': float(required)})
+            else:
+                # BUY with no component, or pointing at a make-only part type — an
+                # authoring error that would otherwise vanish silently.
+                result.short.append({
+                    'component': line.component_label,
+                    'required': float(required),
+                    'reason': 'BUY line has no purchasable component set',
+                })
             continue
 
         # --- MAKE line (in-house component / PartType) ----------------------

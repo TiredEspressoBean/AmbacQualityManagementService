@@ -18,7 +18,9 @@ import { useEffectiveBom, useUpdateBomLine } from "@/hooks/useBom";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 const lineLabel = (l: any) =>
-  (l.source === "BUY" ? l.material_name : l.component_type_name) || "component";
+  // Read the name off whichever column the line carries, not off MAKE/BUY: a BUY line
+  // can point at a purchased *part*, whose name lives on component_type_name.
+  l.material_name || l.component_type_name || "component";
 
 export function StepBomSection({
   stepId, processId, editable,

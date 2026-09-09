@@ -10,7 +10,8 @@
  * and March, so a big order isn't rejected just for exceeding one month.
  */
 import { useMemo, useState } from "react";
-import { CalendarClock, Gauge } from "lucide-react";
+import { CalendarClock, Gauge, Rocket } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  useCapacityLoad, useCapableToPromise, type CapacityBucket,
+  useCapacityLoad, useCapableToPromise, useReleaseForScheduling,
+  type CapacityBucket, type PlannedRelease, type ReleaseCheck,
 } from "@/hooks/useScheduling";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { downloadCsv } from "@/lib/csv";
@@ -40,6 +42,21 @@ function tone(u: number | null): string {
 
 const pct = (u: number | null) => (u == null ? "—" : `${Math.round(u * 100)}%`);
 
+/** Material cells carry a quantity, not a ratio — what's LEFT after everything
+ *  committed through that month. Banded like the capacity rows so a shortage catches
+ *  the eye the same way an overload does, but the number itself is the answer. */
+function coverTone(remaining: number, available: number): string {
+  if (remaining < 0) return "bg-red-500/85 text-white";
+  if (available <= 0) return "bg-muted/30 text-muted-foreground";
+  const left = remaining / available;
+  if (left <= 0.15) return "bg-amber-500/80 text-white";
+  if (left <= 0.4) return "bg-emerald-500/60 text-emerald-950 dark:text-emerald-50";
+  return "bg-emerald-500/25";
+}
+
+/** Trim trailing zeros — a shop reads "18", not "18.00". */
+const qty = (n: number) => Number(n.toFixed(2)).toLocaleString();
+
 function HeatRow({ name, series }: { name: string; series: CapacityBucket[] }) {
   return (
     <tr className="border-t">
@@ -56,6 +73,132 @@ function HeatRow({ name, series }: { name: string; series: CapacityBucket[] }) {
           </div>
         </td>
       ))}
+    </tr>
+  );
+}
+
+/** Whole days from today to `iso`. Negative = already past. */
+function daysFromToday(iso: string): number {
+  const d = new Date(`${iso}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
+}
+
+const fmtDate = (iso: string | null) =>
+  iso ? new Date(`${iso}T00:00:00`).toLocaleDateString(undefined,
+    { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+/** One line of the release list. Late-to-release is the state worth acting on, so it
+ *  gets the colour; everything else stays quiet.
+ *
+ *  Release lives here rather than only in the Control Center because this is the one
+ *  surface that knows WHEN an order has to start — which is what makes the readiness
+ *  question urgent in the first place. The gate itself is advisory: a blocked order
+ *  comes back 409 with its reasons, and a planner can still release with a recorded
+ *  override, because the system knowing a job isn't ready doesn't mean it's wrong to
+ *  start it. */
+function ReleaseRow({ r }: { r: PlannedRelease }) {
+  const days = daysFromToday(r.planned_start);
+  const release = useReleaseForScheduling();
+  const [blockers, setBlockers] = useState<ReleaseCheck[] | null>(null);
+  const [reason, setReason] = useState("");
+
+  const doRelease = (override?: string) =>
+    release.mutate(
+      { id: r.work_order_id, override_reason: override },
+      {
+        onSuccess: () => { setBlockers(null); setReason(""); },
+        onError: (e: unknown) => {
+          // 409 = not ready. The blockers are the useful part, so surface them inline
+          // rather than a toast that says "failed" and drops the reasons.
+          const found = (e as { response?: { data?: { blockers?: ReleaseCheck[] } } })
+            ?.response?.data?.blockers;
+          setBlockers(found ?? [{ code: "error", detail: "Release failed." }]);
+        },
+      }
+    );
+
+  return (
+    <tr className="border-t">
+      <td className="px-3 py-2">
+        {/* The legacy detail path — it's the one that exists. Not adding a route in
+            that style, just linking to it until the URL modernisation pass. */}
+        <Link
+          to="/workorder/$workOrderId"
+          params={{ workOrderId: r.work_order_id }}
+          className="font-mono text-xs hover:underline"
+        >
+          {r.erp_id}
+        </Link>
+      </td>
+      <td className="px-3 py-2 text-xs tabular-nums">
+        <span className={r.overdue ? "font-semibold text-red-600 dark:text-red-400" : ""}>
+          {fmtDate(r.planned_start)}
+        </span>
+        {r.is_estimate && (
+          <span
+            className="ml-1.5 text-[10px] text-muted-foreground"
+            title="Derived from the due date and lead time — no release date was set on this order."
+          >
+            est.
+          </span>
+        )}
+      </td>
+      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+        {days < 0 ? `${-days}d late` : days === 0 ? "today" : `in ${days}d`}
+      </td>
+      <td className="px-3 py-2 text-xs tabular-nums text-muted-foreground">
+        {fmtDate(r.due_date)}
+      </td>
+      <td className="px-3 py-2 text-right">
+        {r.released ? (
+          <span className="text-xs text-muted-foreground">Released</span>
+        ) : (
+          <Button
+            size="sm"
+            variant={r.overdue ? "default" : "outline"}
+            disabled={release.isPending}
+            onClick={() => doRelease()}
+          >
+            {release.isPending ? "Releasing…" : "Release"}
+          </Button>
+        )}
+
+        {blockers && (
+          <div className="mt-2 space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-left">
+            <p className="text-xs font-medium">Not ready:</p>
+            <ul className="space-y-0.5">
+              {blockers.map((b) => (
+                <li key={b.code} className="text-[11px] text-muted-foreground">
+                  {b.detail}
+                </li>
+              ))}
+            </ul>
+            {/* Advisory, not blocking — a planner may know something the data doesn't.
+                The reason is required so the override is a decision on the record. */}
+            <Input
+              className="h-7 text-xs"
+              placeholder="Reason to release anyway…"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!reason.trim() || release.isPending}
+                onClick={() => doRelease(reason.trim())}
+              >
+                Release anyway
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setBlockers(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </td>
     </tr>
   );
 }
@@ -100,6 +243,17 @@ export function CapacityPlanningPage() {
     return best;
   }, [data, buckets]);
 
+  // Split rather than sorted: "already late to release" is a different decision from
+  // "coming up", and burying the former in a date-ordered list hides the only rows that
+  // need action today.
+  const { overdue, upcoming } = useMemo(() => {
+    const all = data?.planned_releases ?? [];
+    return {
+      overdue: all.filter((r) => r.overdue),
+      upcoming: all.filter((r) => !r.overdue),
+    };
+  }, [data]);
+
   const exportCsv = () => {
     if (!data) return;
     const rows = [
@@ -137,10 +291,34 @@ export function CapacityPlanningPage() {
         </div>
       </header>
 
+      {/* Sits above the tabs because it qualifies everything on the page, not one view
+          of it. An untimed operation costs zero hours and zero lead days, so it makes
+          both the utilisation and the release dates read low with full confidence. */}
+      {!!data?.untimed_orders?.length && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+          <strong>{data.untimed_orders.length}</strong>{" "}
+          {data.untimed_orders.length === 1 ? "order has" : "orders have"} operations with
+          no cycle time recorded, so their load and release dates below are understated.{" "}
+          <span className="text-muted-foreground">
+            {data.untimed_orders.slice(0, 4).map((o) => o.erp_id).join(", ")}
+            {data.untimed_orders.length > 4 && `, +${data.untimed_orders.length - 4} more`}
+            {" — set cycle and setup times on the step in the process editor."}
+          </span>
+        </div>
+      )}
+
       <Tabs defaultValue="heatmap">
         <TabsList>
           <TabsTrigger value="heatmap">
             <Gauge className="mr-1.5 h-4 w-4" /> Capacity heatmap
+          </TabsTrigger>
+          <TabsTrigger value="releases">
+            <Rocket className="mr-1.5 h-4 w-4" /> What to release
+            {overdue.length > 0 && (
+              <span className="ml-1.5 rounded bg-red-500/85 px-1.5 text-[10px] font-semibold text-white tabular-nums">
+                {overdue.length}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="simulator">
             <CalendarClock className="mr-1.5 h-4 w-4" /> Could we take this order?
@@ -182,6 +360,41 @@ export function CapacityPlanningPage() {
                   {data.work_centers.map((w) => (
                     <HeatRow key={w.id} name={w.name} series={w.series} />
                   ))}
+
+                  {/* Materials share the grid but not the units — these cells are
+                      cumulative demand against stock, not hours against capacity. Same
+                      colour bands so a shortage reads at the same glance as an overload,
+                      with the tooltip carrying the real quantities. */}
+                  {data.materials?.length > 0 && (
+                    <>
+                      <tr className="border-t">
+                        <th
+                          scope="row"
+                          colSpan={buckets.length + 1}
+                          className="sticky left-0 bg-background px-3 pb-1 pt-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                        >
+                          Materials — stock left after committed work (negative = short)
+                        </th>
+                      </tr>
+                      {data.materials.map((m) => (
+                        <tr key={m.id} className="border-t">
+                          <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium">
+                            {m.name}
+                          </th>
+                          {m.series.map((b) => (
+                            <td key={b.bucket} className="p-0.5">
+                              <div
+                                className={`rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${coverTone(b.remaining_cover, b.available)}`}
+                                title={`${m.name} · ${b.bucket}\n${qty(b.demand)} needed this month\n${qty(b.cumulative_demand)} committed to date · ${qty(b.available)} on hand and inbound\n${b.short ? `SHORT by ${qty(-b.remaining_cover)}` : `${qty(b.remaining_cover)} left`}`}
+                              >
+                                {qty(b.remaining_cover)}
+                              </div>
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </>
+                  )}
                 </tbody>
               </table>
             )}
@@ -200,8 +413,96 @@ export function CapacityPlanningPage() {
             <span className="flex items-center gap-1.5">
               <span className="h-3 w-6 rounded bg-red-500/85" /> over capacity
             </span>
-            <span>· Load is spread across each order&rsquo;s start→due window.</span>
+            <span>
+              · Load sits in the run-up to each order&rsquo;s due date &mdash; the months
+              the work actually needs, not spread from today. Material cells show the
+              quantity <em>left</em> after everything committed by that month &mdash; it
+              falls as orders accrue and goes negative exactly when you&rsquo;re short.
+            </span>
           </div>
+        </TabsContent>
+
+        <TabsContent value="releases" className="mt-4 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            When each order has to <strong>start</strong> to hit its due date &mdash;
+            due date less the time the work actually takes: run hours at each resource,
+            vendor turnaround for outside processing, and the queue measured on your own
+            floor. Suggestions only; nothing here changes an order&rsquo;s release date.
+          </p>
+
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Computing release dates&hellip;</p>
+          ) : overdue.length === 0 && upcoming.length === 0 ? (
+            <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+              Nothing to release in this horizon. Orders already in progress aren&rsquo;t
+              listed &mdash; releasing them isn&rsquo;t a decision any more.
+            </p>
+          ) : (
+            <div className="space-y-5">
+              {overdue.length > 0 && (
+                <div>
+                  <h2 className="mb-1.5 text-sm font-semibold text-red-600 dark:text-red-400">
+                    Late to release &mdash; {overdue.length}
+                  </h2>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    The date these needed to start has passed and no work has begun, so
+                    they are behind before they start. Release them, cut scope, or move
+                    the promise.
+                  </p>
+                  <div className="overflow-x-auto rounded-lg border border-red-500/30">
+                    <table className="w-full text-sm">
+                      <thead className="bg-red-500/5 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium">Work order</th>
+                          <th className="px-3 py-2 text-left font-medium">Should have started</th>
+                          <th className="px-3 py-2 text-right font-medium">Slip</th>
+                          <th className="px-3 py-2 text-left font-medium">Due</th>
+                          <th className="px-3 py-2 text-right font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {overdue.map((r) => (
+                          <ReleaseRow key={r.work_order_id} r={r} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {upcoming.length > 0 && (
+                <div>
+                  <h2 className="mb-2 text-sm font-semibold">
+                    Coming up &mdash; {upcoming.length}
+                  </h2>
+                  <div className="overflow-x-auto rounded-lg border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium">Work order</th>
+                          <th className="px-3 py-2 text-left font-medium">Release by</th>
+                          <th className="px-3 py-2 text-right font-medium">When</th>
+                          <th className="px-3 py-2 text-left font-medium">Due</th>
+                          <th className="px-3 py-2 text-right font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {upcoming.map((r) => (
+                          <ReleaseRow key={r.work_order_id} r={r} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[11px] text-muted-foreground">
+                <strong>est.</strong> means the date was derived rather than set on the
+                order. Setting an earliest start on a work order overrides the estimate,
+                and the queue figures sharpen as the floor records more history.
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="simulator" className="mt-4 space-y-4">

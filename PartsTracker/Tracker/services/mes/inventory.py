@@ -34,6 +34,14 @@ def _transition(lot, *, allowed_from, to):
     return lot
 
 
+def mark_expected_lot_received(lot):
+    """ON_ORDER → RECEIVED (an expected receipt physically arrived).
+
+    Deliberately lands at RECEIVED, not ACCEPTED: incoming inspection still owns the
+    decision about whether the stock is usable."""
+    return _transition(lot, allowed_from=("ON_ORDER",), to="RECEIVED")
+
+
 def mark_awaiting_inspection(lot):
     """RECEIVED → AWAITING_INSPECTION (an inspection has been opened for the lot)."""
     return _transition(lot, allowed_from=("RECEIVED",), to="AWAITING_INSPECTION")

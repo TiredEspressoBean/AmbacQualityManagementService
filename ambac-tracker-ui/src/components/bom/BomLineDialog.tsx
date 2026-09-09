@@ -89,10 +89,14 @@ export function BomLineDialog({
     if (line) {
       const src = (line.source as Source) ?? (line.material != null ? "BUY" : "MAKE");
       setSource(src);
+      // Which column the line carries is independent of MAKE/BUY — a BUY line can point
+      // at either — so read the component off whichever is set, not off the source.
       setComponentId(
-        src === "BUY"
-          ? line.material != null ? String(line.material) : null
-          : line.component_type != null ? String(line.component_type) : null
+        line.material != null
+          ? `MATERIAL:${line.material}`
+          : line.component_type != null
+            ? `PART_TYPE:${line.component_type}`
+            : null
       );
       setQuantity(String(line.quantity ?? "1"));
       setUom(line.unit_of_measure ?? "EA");
@@ -116,31 +120,47 @@ export function BomLineDialog({
   const { data: partTypesData } = useRetrievePartTypes({ limit: 500 } as never);
 
   const options = useMemo(() => {
-    // Materials (BUY) and Part Types (MAKE) are different shapes; both carry id + name.
-    const rows: Array<{ id: string | number; name?: string | null }> =
-      source === "BUY"
-        ? (materialsData?.results ?? [])
-        : (partTypesData?.results ?? []);
-    return rows
+    // A component lives in one of two tables, so the picker's value carries which one
+    // ("PART_TYPE:<id>" / "MATERIAL:<id>") rather than a bare id.
+    //
+    // MAKE is always a part type. BUY is *both*: a raw material (seals, adhesives —
+    // never made here) or a part we're sourcing outside this time. That second case is
+    // the one worth offering, because only a part type carries a receiving-inspection
+    // plan, supplier qualification and part approval — buying a part as a "material"
+    // is what sends it to stock with no quality gate.
+    if (source === "MAKE") {
+      return (partTypesData?.results ?? [])
+        .filter((r) => r.name)
+        .map((r) => ({ key: `PART_TYPE:${r.id}`, name: r.name as string, hint: "" }));
+    }
+    const materials = (materialsData?.results ?? [])
       .filter((r) => r.name)
-      .map((r) => ({ id: String(r.id), name: r.name as string }));
+      .map((r) => ({ key: `MATERIAL:${r.id}`, name: r.name as string, hint: "Material" }));
+    const boughtParts = (partTypesData?.results ?? [])
+      .filter((r) => r.name && (r as { can_buy?: boolean }).can_buy)
+      .map((r) => ({ key: `PART_TYPE:${r.id}`, name: r.name as string, hint: "Part" }));
+    return [...materials, ...boughtParts];
   }, [source, materialsData, partTypesData]);
 
-  const selected = options.find((o) => o.id === componentId);
+  const selected = options.find((o) => o.key === componentId);
 
-  // Switching Make/Buy clears the component (it points at a different table).
+  // Switching Make/Buy clears the component (the eligible set changes).
   function pickSource(s: Source) {
     setSource(s);
     setComponentId(null);
   }
 
   function onSubmit() {
+    const [kind, id] = (componentId ?? "").split(":");
     const body: Record<string, unknown> = {
       bom: bomId,
       source,
-      component_type: source === "MAKE" ? componentId : null,
-      material: source === "BUY" ? componentId : null,
-      quantity: Number(quantity) || 0,
+      component_type: kind === "PART_TYPE" ? id : null,
+      material: kind === "MATERIAL" ? id : null,
+      // A string, not a number: quantity is a DecimalField, so the generated client
+      // types it as a string and rejects a numeric body before it ever leaves the
+      // browser. Sending a number silently failed every save this dialog attempted.
+      quantity: String(Number(quantity) || 0),
       unit_of_measure: uom,
       find_number: findNumber,
       reference_designator: refDes,
@@ -164,8 +184,9 @@ export function BomLineDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit BOM line" : "Add BOM line"}</DialogTitle>
           <DialogDescription>
-            A line is either an in-house component you <strong>make</strong> (a Part Type) or a
-            purchased component you <strong>buy</strong> (a Material).
+            A line is a component you <strong>make</strong> in-house, or one you{" "}
+            <strong>buy</strong> &mdash; either a raw material or a part flagged as
+            purchasable.
           </DialogDescription>
         </DialogHeader>
 
@@ -186,18 +207,18 @@ export function BomLineDialog({
                 variant={source === "BUY" ? "default" : "outline"}
                 onClick={() => pickSource("BUY")}
               >
-                Buy (Material)
+                Buy
               </Button>
             </div>
           </div>
 
           {/* Component picker (list depends on source) */}
           <div className="grid gap-1.5">
-            <Label>{source === "BUY" ? "Material" : "Part Type"}</Label>
+            <Label>{source === "BUY" ? "Purchased component" : "Part Type"}</Label>
             <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" role="combobox" className="justify-between">
-                  {selected ? selected.name : `Select a ${source === "BUY" ? "material" : "part type"}…`}
+                  {selected ? selected.name : `Select a ${source === "BUY" ? "component to buy" : "part type"}…`}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -209,12 +230,15 @@ export function BomLineDialog({
                     <CommandGroup>
                       {options.map((o) => (
                         <CommandItem
-                          key={o.id}
+                          key={o.key}
                           value={o.name}
-                          onSelect={() => { setComponentId(o.id); setPickerOpen(false); }}
+                          onSelect={() => { setComponentId(o.key); setPickerOpen(false); }}
                         >
-                          <Check className={cn("mr-2 h-4 w-4", o.id === componentId ? "opacity-100" : "opacity-0")} />
-                          {o.name}
+                          <Check className={cn("mr-2 h-4 w-4", o.key === componentId ? "opacity-100" : "opacity-0")} />
+                          <span className="flex-1">{o.name}</span>
+                          {o.hint && (
+                            <span className="ml-2 text-xs text-muted-foreground">{o.hint}</span>
+                          )}
                         </CommandItem>
                       ))}
                     </CommandGroup>

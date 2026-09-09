@@ -27,6 +27,7 @@ from datetime import date, datetime, timedelta
 from django.utils import timezone
 
 from Tracker.services.scheduling import data as sched_data
+from Tracker.services.planning.material_load import material_series
 
 
 # --- buckets ---------------------------------------------------------------
@@ -79,7 +80,7 @@ def load_and_capacity(tenant, bucket: Bucket) -> dict:
     ref = _load_reference(tenant)
     labor_req = 0.0
     wc_req: dict = collections.defaultdict(float)
-    for wo in sched_data.get_active_workorders(tenant):
+    for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
         labor_h, wc_h = _route_hours(ref, _route_counts(wo))
         labor_req += labor_h
         for wc_id, h in wc_h.items():
@@ -124,6 +125,8 @@ class _RefData:
     labor_models: dict       # step_id -> 'off'|'pool'|'named'
     step_wc: dict            # step_id -> (wc_id, wc_name)
     osp_steps: set           # outside-process steps: vendor time, not our capacity
+    osp_days: dict           # step_id -> planned vendor turnaround, CALENDAR days
+    flow: dict               # wc_id -> {queue_hours, move_hours, samples}; absent = unmeasured
     wc_machine_hours: dict   # wc_id -> (lights_out_count, attended_count)
     crew_size: int
     wc_names: dict           # wc_id -> name
@@ -161,24 +164,48 @@ def _load_reference(tenant) -> _RefData:
             else:
                 lights_out += 1
         wc_machine_hours[wc.id] = (lights_out, attended)
-    return _RefData(timings, labor_models, step_wc, osp_steps, wc_machine_hours, crew_size, wc_names)
+    # Vendor turnaround, resolved by the same four-tier chain the solver uses. It costs
+    # no capacity but consumes calendar time, which is exactly what a back-scheduled
+    # start date has to account for.
+    from Tracker.models import OptimizationConfig
+    # tenant-safe: explicit tenant filter
+    cfg = OptimizationConfig.objects.filter(tenant=tenant).first()
+    osp_days = sched_data.get_outside_process_step_days(tenant, cfg)
+
+    # Measured queue/move per work centre. Absent for a resource with too little
+    # history — an unmeasured centre contributes nothing rather than a guessed constant,
+    # so the estimate is short but never invented.
+    from Tracker.services.planning.flow_times import measure_flow_times
+    flow = measure_flow_times(tenant)
+
+    return _RefData(timings, labor_models, step_wc, osp_steps, osp_days, flow,
+                    wc_machine_hours, crew_size, wc_names)
 
 
-def _step_hours(ref: _RefData, step_id, quantity: int) -> float:
-    """Work content of one step for `quantity` pieces: setup once + cycle per piece.
-    Rough-cut deliberately ignores machine overrides / batching / PFD — the detailed
-    scheduler owns that fidelity. Outside-process steps are vendor time, not our
-    capacity → 0."""
+def _step_hours(ref: _RefData, step_id, quantity: int) -> tuple[float, float]:
+    """`(machine_hours, labor_hours)` for one step at `quantity` pieces.
+
+    These are NOT the same number and used to be treated as one. A machine-tended step
+    occupies the machine for setup + cycle × qty, but the operator only for setup + a
+    touch per piece — they load it, press start and walk away. Charging the full machine
+    run to the labor pool overstates the resource the module docstring calls the usual
+    binding constraint, which is the one most likely to turn a CTP answer into a "no".
+
+    The split is not a new policy: `TimingData.operator_attended_time` already implements
+    it for the solver, keyed on `attention_type` (full / load_unload / unattended). RCCP
+    simply hand-rolled `machine_wall_time` inline and reused it for both lanes.
+
+    Rough-cut still ignores machine overrides / batching / PFD — the detailed scheduler
+    owns that fidelity. Outside-process steps are vendor time, not our capacity → (0, 0);
+    their ELAPSED calendar time is a lead-time concern, not a capacity one.
+    """
     if step_id in ref.osp_steps:
-        return 0.0
+        return 0.0, 0.0
     t = ref.timings.get(step_id)
     if t is None:
-        return 0.0
-    cycle = t.cycle_time_minutes or 0.0
-    setup = t.setup_minutes or 0.0
-    if cycle <= 0 and setup <= 0:
-        return 0.0
-    return (setup + cycle * quantity) / 60.0
+        return 0.0, 0.0
+    return (t.machine_wall_time(quantity) / 60.0,
+            t.operator_attended_time(quantity) / 60.0)
 
 
 # --- load accumulation -----------------------------------------------------
@@ -206,14 +233,16 @@ def _route_hours(ref, counts: dict) -> tuple[float, dict]:
     labor = 0.0
     by_wc: dict = {}
     for step_id, qty in counts.items():
-        hrs = _step_hours(ref, step_id, qty)
-        if hrs <= 0:
+        machine_h, labor_h = _step_hours(ref, step_id, qty)
+        if machine_h <= 0 and labor_h <= 0:
             continue
         wc = ref.step_wc.get(step_id)
-        if wc:
-            by_wc[wc[0]] = by_wc.get(wc[0], 0.0) + hrs
+        if wc and machine_h > 0:
+            by_wc[wc[0]] = by_wc.get(wc[0], 0.0) + machine_h
+        # `labor_model=off` drops the crew constraint entirely; attention_type then
+        # governs how much of the run occupies an operator when it doesn't.
         if ref.labor_models.get(step_id, 'pool') != 'off':
-            labor += hrs
+            labor += labor_h
     return labor, by_wc
 
 
@@ -235,6 +264,113 @@ def _add_spread_load(labor_hrs, wc_hrs: dict, lo, hi, n_buckets, wc_load, labor_
             wc_load[wc_id][i] += h / span
 
 
+def _bucket_capacity(ref, bucket: Bucket, wc_id=None) -> float:
+    """Hours a resource offers in one bucket. `wc_id=None` means the labor pool."""
+    if wc_id is None:
+        return ref.crew_size * bucket.working_hours
+    lights_out, attended = ref.wc_machine_hours.get(wc_id, (0, 0))
+    return lights_out * bucket.calendar_hours + attended * bucket.working_hours
+
+
+def _lead_days(due: Bucket, ref, labor_hrs: float, wc_hrs: dict, counts: dict) -> float:
+    """Elapsed days an order needs between release and its due date.
+
+        work content / daily rate      the hours, at the resource that takes longest
+      + vendor turnaround              calendar days, zero capacity
+      + measured queue and move        per operation on the route
+
+    Only the first term is work; the other two are waiting, and in a job shop the
+    waiting is most of it. Sizing a release date on work content alone is the mistake
+    this replaces — it says "start later" than is safe, which is the wrong direction to
+    be wrong in for a surface whose job is preventing surprises.
+
+    Every quantity-dependent term is computed (`_step_hours` already scales setup once
+    plus cycle per piece); everything stored is quantity-independent. That is what makes
+    the answer differ correctly between one unit and ten thousand — the reason a
+    lead-time constant per part or per process cannot work.
+    """
+    import math
+
+    days_in = max(1, (due.end - due.start).days)
+
+    # Work content -> elapsed days at each resource's average daily rate. Worst resource
+    # sets the pace; a zero-capacity resource can only mean "not inside this bucket".
+    work_days = 0.0
+    if labor_hrs > 0:
+        rate = _bucket_capacity(ref, due) / days_in
+        work_days = max(work_days, labor_hrs / rate if rate > 0 else days_in)
+    for wc_id, hrs in wc_hrs.items():
+        if hrs <= 0:
+            continue
+        rate = _bucket_capacity(ref, due, wc_id) / days_in
+        work_days = max(work_days, hrs / rate if rate > 0 else days_in)
+
+    # Vendor trips: `_step_hours` returns (0, 0) for an outside-process step, so this is
+    # the only place the plating trip exists at all.
+    osp_days = sum(ref.osp_days.get(sid, 0) for sid in (counts or {}))
+
+    # Measured waiting. An unmeasured work centre contributes 0 — the estimate stays
+    # short rather than becoming invented.
+    wait_hours = 0.0
+    for sid in (counts or {}):
+        wc = ref.step_wc.get(sid)
+        f = ref.flow.get(wc[0]) if wc else None
+        if f:
+            wait_hours += f['queue_hours'] + f['move_hours']
+
+    return work_days + osp_days + wait_hours / 24.0
+
+
+def _load_span(buckets, wo, ref, labor_hrs: float, wc_hrs: dict, now,
+               counts: dict | None = None) -> tuple:
+    """`(lo, hi, planned_start)` — the buckets an order occupies, and the DATE it must
+    release to hit its due date.
+
+    Placement matters as much as the hours. Spreading every undated order from TODAY to
+    its due date puts a slice of a job due next year into next month, so near buckets
+    read busy with work nobody will touch and the far view flattens into "uniformly
+    loaded forever" — worst exactly when start dates are sparse, which is when this layer
+    is most relied on.
+
+    In order of what is actually known:
+
+      1. `expected_start` set  — authoritative; a planner said when it releases.
+      2. Work already started  — an OPEN StepExecution means hours are burning now,
+                                 whatever the due date says.
+      3. Otherwise             — back-schedule from the due date by `_lead_days`.
+
+    `planned_start` is a date rather than a bucket label because a bucket is not
+    actionable: "2027-03" cannot be put on a release list, and bucket placement falls out
+    of the date for free. One derivation, two uses.
+
+    Too little runway (needs three months, due in three weeks) clamps at today and the
+    buckets read over capacity, which is the honest answer rather than a rounding of it.
+    """
+    import math
+
+    today = now.date() if hasattr(now, 'date') else now
+    hi = _bucket_index(buckets, wo.expected_completion or now)
+
+    if wo.expected_start is not None:
+        return _bucket_index(buckets, wo.expected_start), hi, wo.expected_start
+
+    now_idx = _bucket_index(buckets, now)
+    started = any(getattr(p, 'in_progress', False) for p in wo.parts)
+    if started or hi is None:
+        return now_idx, hi, today
+
+    lead = _lead_days(buckets[hi], ref, labor_hrs, wc_hrs, counts or {})
+    due_date = wo.expected_completion or today
+    planned_start = due_date - timedelta(days=int(math.ceil(lead)))
+
+    lo = _bucket_index(buckets, planned_start)
+    if lo is None:
+        # Before the horizon opens: it should already be running.
+        lo = 0 if planned_start < buckets[0].start.date() else hi
+    lo = max(0 if now_idx is None else now_idx, lo)
+    return lo, hi, planned_start
+
+
 def build_capacity_load(tenant, months: int = 24) -> dict:
     """Capacity vs load per (resource, monthly bucket) over `months`.
 
@@ -249,12 +385,53 @@ def build_capacity_load(tenant, months: int = 24) -> dict:
 
     labor_load = [0.0] * n
     wc_load: dict = collections.defaultdict(lambda: [0.0] * n)
+    releases: list = []
+    untimed_orders: list = []
+    wo_starts: dict = {}   # wo_id -> bucket its work begins in (for the material lane)
 
-    for wo in sched_data.get_active_workorders(tenant):
-        labor_h, wc_h = _route_hours(ref, _route_counts(wo))
-        lo = _bucket_index(buckets, wo.expected_start or start)
-        hi = _bucket_index(buckets, wo.expected_completion or start)
+    # `WorkOrderData` carries only what the solver needs and `released_at` isn't on it,
+    # so read it once here rather than widening the DTO for one consumer.
+    from Tracker.models import WorkOrder
+    # tenant-safe: explicit tenant filter
+    released_ids = set(
+        WorkOrder.objects.filter(tenant=tenant, released_at__isnull=False)
+        .values_list('id', flat=True))
+
+    today = start.date()
+    for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
+        counts = _route_counts(wo)
+        labor_h, wc_h = _route_hours(ref, counts)
+        lo, hi, planned_start = _load_span(buckets, wo, ref, labor_h, wc_h, start, counts)
         _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load)
+        wo_starts[wo.wo_id] = lo
+
+        # An operation nobody has timed contributes zero hours and zero lead days, so it
+        # reads as FREE rather than as unknown — the order shows a confident utilisation
+        # and a release date that assumes the work takes no time. `cycle_source` already
+        # distinguishes "measured as zero" from "never measured"; without surfacing it
+        # the page reports both identically.
+        untimed = [sid for sid in counts
+                   if getattr(ref.timings.get(sid), 'cycle_source', 'none') == 'none']
+        if untimed:
+            untimed_orders.append({'erp_id': wo.erp_id, 'step_count': len(untimed)})
+
+        # The actionable half. A heatmap says WHERE it is tight; this says what to do
+        # about it. Only work whose release is genuinely still ahead of us or already
+        # overdue — an order that started is not a release decision any more.
+        if planned_start and not any(getattr(p, 'in_progress', False) for p in wo.parts):
+            releases.append({
+                'work_order_id': str(wo.wo_id),
+                'erp_id': wo.erp_id,
+                'planned_start': planned_start,
+                'due_date': wo.expected_completion,
+                # Its release date has passed and nothing has started: it is late before
+                # it begins, which is the one thing on this page worth acting on today.
+                'overdue': planned_start < today,
+                'is_estimate': wo.expected_start is None,
+                # Already authorised: the row is then informational, not a decision.
+                'released': wo.wo_id in released_ids,
+            })
+    releases.sort(key=lambda r: (r['planned_start'], r['erp_id']))
 
     def _labor_cap(b: Bucket) -> float:
         return ref.crew_size * b.working_hours
@@ -286,6 +463,20 @@ def build_capacity_load(tenant, months: int = 24) -> dict:
             for wc_id in sorted(set(ref.wc_names) | set(wc_load),
                                 key=lambda k: ref.wc_names.get(k, str(k)))
         ],
+        # Back-scheduled release dates: what has to START, and what is already late to.
+        # `is_estimate` distinguishes a derived date from one a planner actually set —
+        # RCCP suggests, it never writes `expected_start` (that would make the next run
+        # read back its own guess as authoritative and stop re-evaluating).
+        'planned_releases': releases,
+        # Orders whose routing contains an operation with no timing at all (no authored
+        # cycle, no usable history, no expected_duration). Their hours and their release
+        # dates are understated, so the numbers above are a floor, not an estimate.
+        'untimed_orders': sorted(untimed_orders, key=lambda u: u['erp_id']),
+        # The third lane. Placed at each order's planned START — material is consumed
+        # while the job runs, so a January release for an April ship needs its parts in
+        # January. Reuses `wo_starts` from the capacity pass so the two lanes cannot
+        # disagree about when a job runs.
+        'materials': material_series(tenant, buckets, wo_starts),
     }
 
 
@@ -307,10 +498,10 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     # existing committed load
     labor_load = [0.0] * n
     wc_load: dict = collections.defaultdict(lambda: [0.0] * n)
-    for wo in sched_data.get_active_workorders(tenant):
-        labor_h, wc_h = _route_hours(ref, _route_counts(wo))
-        lo = _bucket_index(buckets, wo.expected_start or start)
-        hi = _bucket_index(buckets, wo.expected_completion or start)
+    for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
+        counts = _route_counts(wo)
+        labor_h, wc_h = _route_hours(ref, counts)
+        lo, hi, _ = _load_span(buckets, wo, ref, labor_h, wc_h, start, counts)
         _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load)
 
     # candidate routing: the part type's current process, walked from its head along
@@ -328,14 +519,17 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     if not cand_steps:
         return {'feasible': False, 'reason': 'The routing has no schedulable (non-terminal) steps.'}
 
-    # Candidate work content, once.
-    cand_labor = sum(_step_hours(ref, s, quantity) for s in cand_steps
-                     if ref.labor_models.get(s, 'pool') != 'off')
+    # Candidate work content, once. Same machine/labor split as committed load — a quote
+    # measured differently from the load it is quoted against is not a comparison.
+    cand_labor = 0.0
     cand_wc: dict = collections.defaultdict(float)
     for s in cand_steps:
+        machine_h, labor_h = _step_hours(ref, s, quantity)
+        if ref.labor_models.get(s, 'pool') != 'off':
+            cand_labor += labor_h
         wc = ref.step_wc.get(s)
-        if wc:
-            cand_wc[wc[0]] += _step_hours(ref, s, quantity)
+        if wc and machine_h > 0:
+            cand_wc[wc[0]] += machine_h
 
     def _fits(upto: int) -> tuple[bool, list]:
         """Can the whole order be absorbed by the free capacity between now and bucket
