@@ -339,7 +339,16 @@ export type PlannedRelease = {
 export type CapacityLoad = {
   buckets: string[];
   labor: { name: string; crew_size: number; series: CapacityBucket[] };
-  work_centers: { id: string; name: string; series: CapacityBucket[] }[];
+  work_centers: {
+    id: string; name: string; series: CapacityBucket[];
+    /** Planner-declared "worth watching". Marks the row when unfiltered, and is what
+     *  `critical_only` filters on. Independent of the release-pacing bottleneck flag. */
+    is_critical: boolean;
+  }[];
+  /** Work centres that exist, before any filter — so a narrowed lane can say what it
+   *  is hiding instead of looking like a two-centre shop. */
+  work_center_total: number;
+  critical_only: boolean;
   planned_releases: PlannedRelease[];
   /** Orders with an operation nobody has timed. Such a step costs zero hours and zero
    *  lead days, so it reads as free rather than unknown — their load and release dates
@@ -363,12 +372,16 @@ export type CapacityLoad = {
     }[];
   }[];
 };
-export function useCapacityLoad(months = 12) {
+/** `criticalOnly` narrows the work-centre lane to the centres a planner flagged.
+ *  It is part of the query key because it changes the response, but NOT part of the
+ *  arithmetic: a row kept by the filter carries the same numbers it carries unfiltered
+ *  (the backend computes load over every centre either way). */
+export function useCapacityLoad(months = 12, criticalOnly = false) {
   return useQuery({
-    queryKey: ["planning", "capacity-load", months],
+    queryKey: ["planning", "capacity-load", months, criticalOnly],
     queryFn: () =>
       api.api_Schedules_capacity_load_retrieve({
-        queries: { months },
+        queries: { months, critical_only: criticalOnly },
       } as never) as Promise<CapacityLoad>,
   });
 }

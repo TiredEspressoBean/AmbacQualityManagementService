@@ -130,6 +130,7 @@ class _RefData:
     wc_machine_hours: dict   # wc_id -> (lights_out_count, attended_count)
     crew_size: int
     wc_names: dict           # wc_id -> name
+    wc_critical: set         # wc_ids a planner flagged worth watching (presentation only)
 
 
 def _load_reference(tenant) -> _RefData:
@@ -153,8 +154,11 @@ def _load_reference(tenant) -> _RefData:
     # so machine capacity uses calendar vs shift hours correctly.
     wc_machine_hours: dict = {}
     wc_names: dict = {}
+    wc_critical: set = set()
     for wc in WorkCenter.objects.filter(tenant=tenant, is_current_version=True).prefetch_related('equipment'):
         wc_names[wc.id] = wc.name
+        if wc.is_critical:
+            wc_critical.add(wc.id)
         lights_out = attended = 0
         for eq in wc.equipment.all():
             if not getattr(eq, 'is_schedulable', False):
@@ -179,7 +183,7 @@ def _load_reference(tenant) -> _RefData:
     flow = measure_flow_times(tenant)
 
     return _RefData(timings, labor_models, step_wc, osp_steps, osp_days, flow,
-                    wc_machine_hours, crew_size, wc_names)
+                    wc_machine_hours, crew_size, wc_names, wc_critical)
 
 
 def _step_hours(ref: _RefData, step_id, quantity: int) -> tuple[float, float]:
@@ -371,11 +375,20 @@ def _load_span(buckets, wo, ref, labor_hrs: float, wc_hrs: dict, now,
     return lo, hi, planned_start
 
 
-def build_capacity_load(tenant, months: int = 24) -> dict:
+def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -> dict:
     """Capacity vs load per (resource, monthly bucket) over `months`.
 
     Returns a JSON-friendly dict: buckets[], labor[], and work_centers[] each with
-    per-bucket capacity/load/util."""
+    per-bucket capacity/load/util.
+
+    `critical_only` narrows the work-centre lane to the centres a planner flagged
+    `is_critical`. Textbook RCCP is *defined* over critical resources only, and a shop
+    with forty centres has a handful whose load anyone can act on — the rest are
+    scenery a planner scrolls past. It filters the OUTPUT and nothing else: every
+    centre still accrues load, the labor and material lanes are untouched, and the
+    numbers on a filtered row are identical to the numbers on the same row unfiltered.
+    Making it change the arithmetic would mean two views that disagree."""
+
     import collections
 
     ref = _load_reference(tenant)
@@ -458,11 +471,17 @@ def build_capacity_load(tenant, months: int = 24) -> dict:
         # since "where do we have room?" is half the question this view answers.
         'work_centers': [
             {'id': str(wc_id), 'name': ref.wc_names.get(wc_id, str(wc_id)),
+             'is_critical': wc_id in ref.wc_critical,
              'series': _series(lambda b, w=wc_id: _wc_cap(w, b),
                                wc_load.get(wc_id) or [0.0] * n)}
             for wc_id in sorted(set(ref.wc_names) | set(wc_load),
                                 key=lambda k: ref.wc_names.get(k, str(k)))
+            if not critical_only or wc_id in ref.wc_critical
         ],
+        # How many centres exist at all, so a filtered view can say what it is hiding
+        # instead of looking like a shop with two work centres.
+        'work_center_total': len(set(ref.wc_names) | set(wc_load)),
+        'critical_only': critical_only,
         # Back-scheduled release dates: what has to START, and what is already late to.
         # `is_estimate` distinguishes a derived date from one a planner actually set —
         # RCCP suggests, it never writes `expected_start` (that would make the next run

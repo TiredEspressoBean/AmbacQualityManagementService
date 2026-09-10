@@ -20222,6 +20222,13 @@ paths:
         horizon far past what CP-SAT plans in detail.
       parameters:
       - in: query
+        name: critical_only
+        schema:
+          type: boolean
+        description: Return only work centres flagged `is_critical`. Presentation
+          filter — load and capacity are computed over every centre either way, so
+          a row's numbers do not change.
+      - in: query
         name: months
         schema:
           type: integer
@@ -39826,16 +39833,22 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/UntimedOrder'
+        work_center_total:
+          type: integer
+        critical_only:
+          type: boolean
         materials:
           type: array
           items:
             $ref: '#/components/schemas/MaterialLoad'
       required:
       - buckets
+      - critical_only
       - labor
       - materials
       - planned_releases
       - untimed_orders
+      - work_center_total
       - work_centers
     ChangeControlModeEnum:
       enum:
@@ -54306,6 +54319,14 @@ components:
             by a planner rather than inferred: a resource can look loaded for a month
             without being the real constraint, and acting on a mis-identified one
             starves the shop.'
+        is_critical:
+          type: boolean
+          description: 'Watch this centre on the rough-cut capacity plan. RCCP is
+            defined as capacity planning over CRITICAL resources only — a plant with
+            forty work centres has maybe six whose load anyone can act on, and showing
+            all forty buries them. Presentation only: the flag filters the heatmap,
+            it never changes how load or capacity is computed, and it is independent
+            of `is_constraint`, which gates order release.'
         archived:
           type: boolean
     PatchedWorkOrderRequest:
@@ -65725,6 +65746,14 @@ components:
             by a planner rather than inferred: a resource can look loaded for a month
             without being the real constraint, and acting on a mis-identified one
             starves the shop.'
+        is_critical:
+          type: boolean
+          description: 'Watch this centre on the rough-cut capacity plan. RCCP is
+            defined as capacity planning over CRITICAL resources only — a plant with
+            forty work centres has maybe six whose load anyone can act on, and showing
+            all forty buries them. Presentation only: the flag filters the heatmap,
+            it never changes how load or capacity is computed, and it is independent
+            of `is_constraint`, which gates order release.'
         step_count:
           type: integer
           readOnly: true
@@ -65781,12 +65810,15 @@ components:
           type: string
         name:
           type: string
+        is_critical:
+          type: boolean
         series:
           type: array
           items:
             $ref: '#/components/schemas/WorkCenterBucket'
       required:
       - id
+      - is_critical
       - name
       - series
     WorkCenterKindEnum:
@@ -65848,6 +65880,14 @@ components:
             by a planner rather than inferred: a resource can look loaded for a month
             without being the real constraint, and acting on a mis-identified one
             starves the shop.'
+        is_critical:
+          type: boolean
+          description: 'Watch this centre on the rough-cut capacity plan. RCCP is
+            defined as capacity planning over CRITICAL resources only — a plant with
+            forty work centres has maybe six whose load anyone can act on, and showing
+            all forty buries them. Presentation only: the flag filters the heatmap,
+            it never changes how load or capacity is computed, and it is independent
+            of `is_constraint`, which gates order release.'
         archived:
           type: boolean
       required:

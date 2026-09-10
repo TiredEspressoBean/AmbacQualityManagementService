@@ -915,6 +915,17 @@ class WorkCenter(SecureModel):
     )
     """Planner-declared bottleneck; paces order release under the CONSTRAINT policy."""
 
+    is_critical = models.BooleanField(
+        default=False,
+        help_text="Watch this centre on the rough-cut capacity plan. RCCP is defined "
+                  "as capacity planning over CRITICAL resources only — a plant with "
+                  "forty work centres has maybe six whose load anyone can act on, and "
+                  "showing all forty buries them. Presentation only: the flag filters "
+                  "the heatmap, it never changes how load or capacity is computed, and "
+                  "it is independent of `is_constraint`, which gates order release.",
+    )
+    """Planner-declared 'worth watching' — filters the RCCP heatmap, nothing else."""
+
     # Capacity info
     capacity_units = models.CharField(
         max_length=20,

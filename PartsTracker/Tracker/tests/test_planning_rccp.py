@@ -424,3 +424,96 @@ class RccpLoadPlacementTests(_RccpFixture, TestCase):
         series = self._labor_series()
         self.assertGreater(series[0], 0.0,
                            "in-progress work must load the current bucket")
+
+
+class RccpCriticalResourceTests(_RccpFixture, TestCase):
+    """`critical_only` is a lens, not a different calculation.
+
+    RCCP is textbook-defined over critical resources only, and a forty-centre plant
+    buries the six that matter among the rest. The risk in a filter like this is that
+    it quietly becomes a second answer — hide a centre and the shop looks feasible.
+    These tests pin the opposite: the same row carries the same numbers either way,
+    and the lanes a filter has no business touching don't move.
+    """
+
+    def setUp(self):
+        super().setUp()
+        # A second centre carrying no work: the kind of row the filter exists to hide.
+        self.quiet = WorkCenter.objects.create(
+            tenant=self.tenant, name="Cell B", code="B")
+
+    def _names(self, **kw):
+        return [w["name"] for w in
+                rccp.build_capacity_load(self.tenant, months=2, **kw)["work_centers"]]
+
+    def test_unfiltered_view_shows_every_centre(self):
+        self.assertEqual(sorted(self._names()), ["Cell A", "Cell B"])
+
+    def test_critical_only_keeps_just_the_flagged_centres(self):
+        WorkCenter.objects.filter(pk=self.wc.pk).update(is_critical=True)
+        self.assertEqual(self._names(critical_only=True), ["Cell A"])
+
+    def test_filter_does_not_change_the_numbers_on_a_kept_row(self):
+        """The whole point. A filtered heatmap that reported different load would be a
+        second, quieter answer to the same question."""
+        today = timezone.now().date()
+        self._wo(10, due=today + timedelta(days=5), start=today)
+        WorkCenter.objects.filter(pk=self.wc.pk).update(is_critical=True)
+
+        full = next(w for w in rccp.build_capacity_load(self.tenant, months=2)
+                    ["work_centers"] if w["name"] == "Cell A")
+        filtered = rccp.build_capacity_load(
+            self.tenant, months=2, critical_only=True)["work_centers"][0]
+        self.assertEqual(filtered["series"], full["series"])
+
+    def test_labor_and_totals_are_untouched_by_the_filter(self):
+        """Labor is not a work centre and never hides; `work_center_total` has to keep
+        counting the centres the filter dropped, or a narrowed view is
+        indistinguishable from a two-centre shop."""
+        today = timezone.now().date()
+        self._wo(10, due=today + timedelta(days=5), start=today)
+        WorkCenter.objects.filter(pk=self.wc.pk).update(is_critical=True)
+
+        full = rccp.build_capacity_load(self.tenant, months=2)
+        filtered = rccp.build_capacity_load(self.tenant, months=2, critical_only=True)
+        self.assertEqual(filtered["labor"]["series"], full["labor"]["series"])
+        self.assertEqual(filtered["work_center_total"], 2)
+        self.assertTrue(filtered["critical_only"])
+
+    def test_no_flagged_centre_yields_an_empty_lane_rather_than_everything(self):
+        """Empty is the honest answer to "show me what I said matters" when nothing is
+        flagged. Falling back to every centre would make the toggle look broken."""
+        self.assertEqual(self._names(critical_only=True), [])
+
+    def test_flag_is_reported_on_every_row_so_the_unfiltered_view_can_mark_them(self):
+        WorkCenter.objects.filter(pk=self.wc.pk).update(is_critical=True)
+        rows = {w["name"]: w["is_critical"]
+                for w in rccp.build_capacity_load(self.tenant, months=2)["work_centers"]}
+        self.assertEqual(rows, {"Cell A": True, "Cell B": False})
+
+    def test_the_flag_is_reachable_over_the_api(self):
+        """A flag that ships on the model and nowhere else is a setting that does
+        nothing — the exact failure the bottleneck flag had before it was serialized."""
+        from Tracker.serializers.mes_standard import WorkCenterSerializer
+
+        self.assertIn('is_critical', WorkCenterSerializer.Meta.fields)
+        ser = WorkCenterSerializer(self.wc, data={'is_critical': True}, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        self.assertEqual(
+            rccp.build_capacity_load(self.tenant, months=2,
+                                     critical_only=True)["work_centers"][0]["name"],
+            "Cell A")
+
+    def test_watching_a_centre_does_not_fork_a_work_centre_version(self):
+        """Narrowing a view is not a configuration change. Versioning the work centre
+        every time a planner adjusts what they look at would bury real engineering
+        history under screen preferences."""
+        from Tracker.serializers.mes_standard import WorkCenterSerializer
+
+        before = self.wc.version
+        ser = WorkCenterSerializer(self.wc, data={'is_critical': True}, partial=True)
+        ser.is_valid(raise_exception=True)
+        saved = ser.save()
+        self.assertEqual(saved.version, before)
+        self.assertTrue(saved.is_critical)

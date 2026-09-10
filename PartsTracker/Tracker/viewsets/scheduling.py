@@ -421,9 +421,16 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     # --- Rough-cut capacity planning (the coarse layer above CP-SAT) ---------
 
     @extend_schema(
-        parameters=[OpenApiParameter(
-            name='months', type=OpenApiTypes.INT, required=False,
-            description="Monthly buckets to project (1-60, default 12).")],
+        parameters=[
+            OpenApiParameter(
+                name='months', type=OpenApiTypes.INT, required=False,
+                description="Monthly buckets to project (1-60, default 12)."),
+            OpenApiParameter(
+                name='critical_only', type=OpenApiTypes.BOOL, required=False,
+                description="Return only work centres flagged `is_critical`. "
+                            "Presentation filter — load and capacity are computed over "
+                            "every centre either way, so a row's numbers do not change."),
+        ],
         responses={200: inline_serializer(name='CapacityLoad', fields={
             'buckets': serializers.ListField(child=serializers.CharField()),
             'labor': inline_serializer(name='LaborCapacity', fields={
@@ -438,6 +445,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 name='WorkCenterCapacity', many=True, fields={
                     'id': serializers.CharField(),
                     'name': serializers.CharField(),
+                    'is_critical': serializers.BooleanField(),
                     'series': inline_serializer(name='WorkCenterBucket', many=True, fields={
                         'bucket': serializers.CharField(),
                         'capacity_hours': serializers.FloatField(),
@@ -463,6 +471,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 name='UntimedOrder', many=True, fields={
                     'erp_id': serializers.CharField(),
                     'step_count': serializers.IntegerField()}),
+            # What the work-centre lane is showing, and out of how many. Without the
+            # total a filtered view is indistinguishable from a shop with two centres.
+            'work_center_total': serializers.IntegerField(),
+            'critical_only': serializers.BooleanField(),
             # Material demand on the same buckets. A separate shape from the capacity
             # lanes on purpose: a material has no hourly capacity, it has a balance, so
             # the comparison is cumulative demand against on-hand plus what arrives by
@@ -487,8 +499,12 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         arithmetic, not a solve — this answers "where are we tight next quarter?" over a
         horizon far past what CP-SAT plans in detail."""
         from Tracker.services.planning.rccp import build_capacity_load
-        return Response(build_capacity_load(self.tenant, months=_int_param(
-            request, 'months', default=12, lo=1, hi=60)))
+        return Response(build_capacity_load(
+            self.tenant,
+            months=_int_param(request, 'months', default=12, lo=1, hi=60),
+            critical_only=str(request.query_params.get('critical_only', '')).lower()
+            in ('1', 'true', 'yes'),
+        ))
 
     @extend_schema(
         parameters=[

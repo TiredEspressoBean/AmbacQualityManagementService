@@ -10,11 +10,12 @@
  * and March, so a big order isn't rejected just for exceeding one month.
  */
 import { useMemo, useState } from "react";
-import { CalendarClock, Gauge, Rocket } from "lucide-react";
+import { CalendarClock, Gauge, Rocket, Star } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -72,12 +73,22 @@ function overloadRatio(series: CapacityBucket[]): { over: number; measured: numb
            measured: measured.length };
 }
 
-function HeatRow({ name, series }: { name: string; series: CapacityBucket[] }) {
+function HeatRow({ name, series, critical }: {
+  name: string; series: CapacityBucket[]; critical?: boolean;
+}) {
   const { over, measured } = overloadRatio(series);
   return (
     <tr className="border-t">
       <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium">
-        {name}
+        <span className="flex items-center gap-1.5">
+          {/* Marked in the full view so a planner can see which rows the filter would
+              keep without flipping it on and losing their place. */}
+          {critical && (
+            <Star aria-label="Critical resource"
+                  className="h-3 w-3 shrink-0 fill-amber-400 text-amber-500" />
+          )}
+          <span className="truncate">{name}</span>
+        </span>
       </th>
       <td className="px-2 py-1.5 text-center text-[11px] tabular-nums">
         {measured === 0 ? (
@@ -238,7 +249,10 @@ function ReleaseRow({ r }: { r: PlannedRelease }) {
 
 export function CapacityPlanningPage() {
   const [months, setMonths] = useState(12);
-  const { data, isLoading } = useCapacityLoad(months);
+  // Off by default: a planner who has never flagged anything would otherwise open an
+  // empty heatmap and conclude the page is broken.
+  const [criticalOnly, setCriticalOnly] = useState(false);
+  const { data, isLoading } = useCapacityLoad(months, criticalOnly);
 
   const { data: partTypesData } = useRetrievePartTypes({ limit: 200 } as never);
   const partTypes = partTypesData?.results ?? [];
@@ -359,12 +373,29 @@ export function CapacityPlanningPage() {
         </TabsList>
 
         <TabsContent value="heatmap" className="mt-4 space-y-3">
-          {firstOverload && (
-            <p className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
-              First pinch point: <strong>{firstOverload.name}</strong> hits{" "}
-              {pct(firstOverload.u)} in <strong>{firstOverload.bucket}</strong>.
-            </p>
-          )}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {firstOverload ? (
+              <p className="min-w-0 flex-1 rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+                First pinch point: <strong>{firstOverload.name}</strong> hits{" "}
+                {pct(firstOverload.u)} in <strong>{firstOverload.bucket}</strong>.
+              </p>
+            ) : (
+              <span className="min-w-0 flex-1" />
+            )}
+            {/* Rough-cut planning is defined over critical resources; a forty-centre
+                shop has a handful anyone can act on. The filter changes what is shown
+                and nothing else — load and capacity are computed over every centre
+                either way, so a row's numbers are the same on both sides of it. */}
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+              <Switch checked={criticalOnly} onCheckedChange={setCriticalOnly} />
+              <span className="whitespace-nowrap">Critical resources only</span>
+              {data && (
+                <span className="tabular-nums text-xs text-muted-foreground">
+                  {data.work_centers.length}/{data.work_center_total}
+                </span>
+              )}
+            </label>
+          </div>
 
           <div className="overflow-x-auto rounded-lg border">
             {isLoading ? (
@@ -395,8 +426,24 @@ export function CapacityPlanningPage() {
                     series={data.labor.series}
                   />
                   {data.work_centers.map((w) => (
-                    <HeatRow key={w.id} name={w.name} series={w.series} />
+                    <HeatRow key={w.id} name={w.name} series={w.series}
+                             critical={w.is_critical} />
                   ))}
+
+                  {/* Filtered down to nothing. The honest answer to "show me what I
+                      said matters" when nothing is flagged — but it needs to say so,
+                      and say where the flag lives, or the toggle reads as broken. */}
+                  {criticalOnly && data.work_centers.length === 0 && (
+                    <tr className="border-t">
+                      <td colSpan={buckets.length + 2} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                        No work centre is flagged as critical.{" "}
+                        <Link to="/admin/work-centers" className="underline underline-offset-2">
+                          Flag the ones you watch
+                        </Link>
+                        , or turn this off to see all {data.work_center_total}.
+                      </td>
+                    </tr>
+                  )}
 
                   {/* Materials share the grid but not the units — these cells are
                       cumulative demand against stock, not hours against capacity. Same

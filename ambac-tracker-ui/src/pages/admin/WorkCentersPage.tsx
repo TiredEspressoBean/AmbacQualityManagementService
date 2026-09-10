@@ -55,11 +55,12 @@ type DraftState = {
     kind: Kind;
     description: string;
     isConstraint: boolean;
+    isCritical: boolean;
 };
 
 const EMPTY_DRAFT: DraftState = {
     open: false, editing: null, code: "", name: "", kind: "PRODUCTION", description: "",
-    isConstraint: false,
+    isConstraint: false, isCritical: false,
 };
 
 export default function WorkCentersPage() {
@@ -82,7 +83,7 @@ export default function WorkCentersPage() {
     const rows: WorkCenter[] = page?.results ?? [];
 
     const createMut = useMutation({
-        mutationFn: (payload: { code: string; name: string; kind: Kind; description: string; is_constraint: boolean }) =>
+        mutationFn: (payload: { code: string; name: string; kind: Kind; description: string; is_constraint: boolean; is_critical: boolean }) =>
             api.api_WorkCenters_create(payload as never),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["work-centers"] });
@@ -92,7 +93,7 @@ export default function WorkCentersPage() {
         onError: (e: unknown) => toast.error(`Couldn't create: ${(e as Error).message}`),
     });
     const updateMut = useMutation({
-        mutationFn: ({ id, ...payload }: { id: string; code: string; name: string; kind: Kind; description: string; is_constraint: boolean }) =>
+        mutationFn: ({ id, ...payload }: { id: string; code: string; name: string; kind: Kind; description: string; is_constraint: boolean; is_critical: boolean }) =>
             api.api_WorkCenters_partial_update(payload as never, { params: { id } }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["work-centers"] });
@@ -120,6 +121,7 @@ export default function WorkCentersPage() {
         kind: (((wc as unknown) as { kind?: Kind }).kind ?? "PRODUCTION"),
         description: wc.description ?? "",
         isConstraint: !!((wc as unknown) as { is_constraint?: boolean }).is_constraint,
+        isCritical: !!((wc as unknown) as { is_critical?: boolean }).is_critical,
     });
 
     const submit = () => {
@@ -127,13 +129,29 @@ export default function WorkCentersPage() {
             code: draft.code.trim(), name: draft.name.trim(),
             kind: draft.kind, description: draft.description.trim(),
             is_constraint: draft.isConstraint,
+            is_critical: draft.isCritical,
         };
         if (!payload.code || !payload.name) {
             toast.error("Code and name are required.");
             return;
         }
-        if (draft.editing) updateMut.mutate({ id: draft.editing.id, ...payload });
-        else createMut.mutate(payload);
+        if (draft.editing) {
+            // Send only what actually changed. The backend routes an update through
+            // `create_new_version` based on which KEYS are present, not on which values
+            // differ — so PATCHing the whole form forks a work-centre version even when
+            // the planner only flipped a switch that is explicitly non-versioning. That
+            // buries real engineering history under screen preferences.
+            const e = (draft.editing as unknown) as Record<string, unknown>;
+            const changed = Object.fromEntries(
+                Object.entries(payload).filter(([k, v]) => v !== (e[k] ?? (
+                    typeof v === "boolean" ? false : ""))),
+            );
+            if (Object.keys(changed).length === 0) {
+                setDraft(EMPTY_DRAFT);
+                return;
+            }
+            updateMut.mutate({ id: draft.editing.id, ...changed } as never);
+        } else createMut.mutate(payload);
     };
 
     return (
@@ -190,6 +208,7 @@ export default function WorkCentersPage() {
                         {rows.map((wc) => {
                             const w = (wc as unknown) as WorkCenter & {
                                 kind?: Kind; archived?: boolean; is_constraint?: boolean;
+                                is_critical?: boolean;
                                 step_count?: number; member_count?: number; equipment?: string[];
                             };
                             const kind = w.kind ?? "PRODUCTION";
@@ -215,6 +234,15 @@ export default function WorkCentersPage() {
                                                 title="Paces order release under the bottleneck policy"
                                             >
                                                 Bottleneck
+                                            </Badge>
+                                        )}
+                                        {w.is_critical && (
+                                            <Badge
+                                                variant="outline"
+                                                className="ml-2 text-[10px] text-muted-foreground"
+                                                title="Kept in the capacity heatmap's critical-resources view"
+                                            >
+                                                Watched
                                             </Badge>
                                         )}
                                     </td>
@@ -325,6 +353,25 @@ export default function WorkCentersPage() {
                                 id="wc-constraint"
                                 checked={draft.isConstraint}
                                 onCheckedChange={(v) => setDraft({ ...draft, isConstraint: v })}
+                            />
+                        </div>
+                        {/* Deliberately separate from the bottleneck flag above. That one
+                            changes what the scheduler releases; this one only changes what
+                            the capacity heatmap shows. Folding them together would mean a
+                            planner can't watch a station without pacing release to it. */}
+                        <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="wc-critical">Watch on the capacity plan</Label>
+                                <p className="text-[11px] text-muted-foreground">
+                                    Keeps this station in the “critical resources only” view of the
+                                    rough-cut capacity heatmap. Flag the handful whose load you’d
+                                    actually act on — it changes what you see, never the numbers.
+                                </p>
+                            </div>
+                            <Switch
+                                id="wc-critical"
+                                checked={draft.isCritical}
+                                onCheckedChange={(v) => setDraft({ ...draft, isCritical: v })}
                             />
                         </div>
                     </div>

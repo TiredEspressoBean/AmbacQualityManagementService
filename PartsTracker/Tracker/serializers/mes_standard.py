@@ -40,7 +40,7 @@ class WorkCenterSerializer(SecureModelMixin):
         fields = (
             'id', 'name', 'code', 'description', 'kind', 'capacity_units',
             'default_efficiency', 'equipment', 'equipment_names', 'cost_center',
-            'is_constraint', 'step_count', 'member_count',
+            'is_constraint', 'is_critical', 'step_count', 'member_count',
             'created_at', 'updated_at', 'archived', 'version',
         )
         read_only_fields = ('created_at', 'updated_at', 'equipment_names',
@@ -55,7 +55,11 @@ class WorkCenterSerializer(SecureModelMixin):
     # currently governs output, and the answer changes when you buy a machine or
     # win a contract. Versioning the work centre every time a planner revises that
     # would bury real configuration history under scheduling opinion.
-    _NON_VERSIONING_FIELDS = frozenset({'archived', 'equipment', 'is_constraint'})
+    #
+    # `is_critical` is weaker still — it only decides whether the centre appears on the
+    # rough-cut heatmap. A planner narrowing their view is not a configuration change.
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'equipment', 'is_constraint',
+                                        'is_critical'})
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_equipment_names(self, obj):

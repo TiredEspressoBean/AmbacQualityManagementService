@@ -1315,6 +1315,8 @@ export type CapacityLoad = {
   work_centers: Array<WorkCenterCapacity>;
   planned_releases: Array<PlannedRelease>;
   untimed_orders: Array<UntimedOrder>;
+  work_center_total: number;
+  critical_only: boolean;
   materials: Array<MaterialLoad>;
 };
 export type LaborCapacity = {
@@ -1331,6 +1333,7 @@ export type LaborBucket = {
 export type WorkCenterCapacity = {
   id: string;
   name: string;
+  is_critical: boolean;
   series: Array<WorkCenterBucket>;
 };
 export type WorkCenterBucket = {
@@ -9352,6 +9355,10 @@ export type WorkCenter = {
    * This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop.
    */
   boolean | undefined;
+  is_critical?: /**
+   * Watch this centre on the rough-cut capacity plan. RCCP is defined as capacity planning over CRITICAL resources only — a plant with forty work centres has maybe six whose load anyone can act on, and showing all forty buries them. Presentation only: the flag filters the heatmap, it never changes how load or capacity is computed, and it is independent of `is_constraint`, which gates order release.
+   */
+  boolean | undefined;
   step_count: number;
   member_count: number;
   created_at: string;
@@ -12160,6 +12167,10 @@ export type PatchedWorkCenterRequest = Partial<{
    * This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop.
    */
   is_constraint: boolean;
+  /**
+   * Watch this centre on the rough-cut capacity plan. RCCP is defined as capacity planning over CRITICAL resources only — a plant with forty work centres has maybe six whose load anyone can act on, and showing all forty buries them. Presentation only: the flag filters the heatmap, it never changes how load or capacity is computed, and it is independent of `is_constraint`, which gates order release.
+   */
+  is_critical: boolean;
   archived: boolean;
 }>;
 export type PatchedWorkOrderRequest = Partial<{
@@ -14641,6 +14652,10 @@ export type WorkCenterRequest = {
   string | undefined;
   is_constraint?: /**
    * This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop.
+   */
+  boolean | undefined;
+  is_critical?: /**
+   * Watch this centre on the rough-cut capacity plan. RCCP is defined as capacity planning over CRITICAL resources only — a plant with forty work centres has maybe six whose load anyone can act on, and showing all forty buries them. Presentation only: the flag filters the heatmap, it never changes how load or capacity is computed, and it is independent of `is_constraint`, which gates order release.
    */
   boolean | undefined;
   archived?: boolean | undefined;
@@ -19060,6 +19075,7 @@ const WorkCenterBucket = z.object({
 const WorkCenterCapacity = z.object({
   id: z.string(),
   name: z.string(),
+  is_critical: z.boolean(),
   series: z.array(WorkCenterBucket),
 });
 const PlannedRelease = z.object({
@@ -19094,6 +19110,8 @@ const CapacityLoad = z.object({
   work_centers: z.array(WorkCenterCapacity),
   planned_releases: z.array(PlannedRelease),
   untimed_orders: z.array(UntimedOrder),
+  work_center_total: z.number().int(),
+  critical_only: z.boolean(),
   materials: z.array(MaterialLoad),
 });
 const SolverStatusEnum = z.enum([
@@ -20982,6 +21000,7 @@ const WorkCenter = z.object({
   equipment_names: z.array(z.string()),
   cost_center: z.string().max(50).optional(),
   is_constraint: z.boolean().optional(),
+  is_critical: z.boolean().optional(),
   step_count: z.number().int(),
   member_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
@@ -21008,6 +21027,7 @@ const WorkCenterRequest = z.object({
   equipment: z.array(z.string().uuid()).optional(),
   cost_center: z.string().max(50).optional(),
   is_constraint: z.boolean().optional(),
+  is_critical: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
 const WorkCenterSelect = z.object({
@@ -21026,6 +21046,7 @@ const PatchedWorkCenterRequest = z
     equipment: z.array(z.string().uuid()),
     cost_center: z.string().max(50),
     is_constraint: z.boolean(),
+    is_critical: z.boolean(),
     archived: z.boolean(),
   })
   .partial();
@@ -40253,6 +40274,11 @@ arithmetic, not a solve — this answers &quot;where are we tight next quarter?&
 horizon far past what CP-SAT plans in detail.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "critical_only",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
       {
         name: "months",
         type: "Query",

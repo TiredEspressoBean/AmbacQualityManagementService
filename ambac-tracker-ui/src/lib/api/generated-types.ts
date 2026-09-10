@@ -17089,6 +17089,8 @@ export interface components {
             work_centers: components["schemas"]["WorkCenterCapacity"][];
             planned_releases: components["schemas"]["PlannedRelease"][];
             untimed_orders: components["schemas"]["UntimedOrder"][];
+            work_center_total: number;
+            critical_only: boolean;
             materials: components["schemas"]["MaterialLoad"][];
         };
         /**
@@ -25055,6 +25057,8 @@ export interface components {
             cost_center?: string;
             /** @description This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop. */
             is_constraint?: boolean;
+            /** @description Watch this centre on the rough-cut capacity plan. RCCP is defined as capacity planning over CRITICAL resources only — a plant with forty work centres has maybe six whose load anyone can act on, and showing all forty buries them. Presentation only: the flag filters the heatmap, it never changes how load or capacity is computed, and it is independent of `is_constraint`, which gates order release. */
+            is_critical?: boolean;
             archived?: boolean;
         };
         /** @description Full work order serializer for detail views */
@@ -30832,6 +30836,8 @@ export interface components {
             cost_center?: string;
             /** @description This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop. */
             is_constraint?: boolean;
+            /** @description Watch this centre on the rough-cut capacity plan. RCCP is defined as capacity planning over CRITICAL resources only — a plant with forty work centres has maybe six whose load anyone can act on, and showing all forty buries them. Presentation only: the flag filters the heatmap, it never changes how load or capacity is computed, and it is independent of `is_constraint`, which gates order release. */
+            is_critical?: boolean;
             readonly step_count: number;
             readonly member_count: number;
             /** Format: date-time */
@@ -30853,6 +30859,7 @@ export interface components {
         WorkCenterCapacity: {
             id: string;
             name: string;
+            is_critical: boolean;
             series: components["schemas"]["WorkCenterBucket"][];
         };
         /**
@@ -30886,6 +30893,8 @@ export interface components {
             cost_center?: string;
             /** @description This work centre governs the plant's output — the bottleneck. Only consulted when OptimizationConfig.release_policy is CONSTRAINT, where order release is paced to these centres and the rest are ignored. Declared by a planner rather than inferred: a resource can look loaded for a month without being the real constraint, and acting on a mis-identified one starves the shop. */
             is_constraint?: boolean;
+            /** @description Watch this centre on the rough-cut capacity plan. RCCP is defined as capacity planning over CRITICAL resources only — a plant with forty work centres has maybe six whose load anyone can act on, and showing all forty buries them. Presentation only: the flag filters the heatmap, it never changes how load or capacity is computed, and it is independent of `is_constraint`, which gates order release. */
+            is_critical?: boolean;
             archived?: boolean;
         };
         /** @description Lightweight serializer for dropdowns */
@@ -45566,6 +45575,8 @@ export interface operations {
     api_Schedules_capacity_load_retrieve: {
         parameters: {
             query?: {
+                /** @description Return only work centres flagged `is_critical`. Presentation filter — load and capacity are computed over every centre either way, so a row's numbers do not change. */
+                critical_only?: boolean;
                 /** @description Monthly buckets to project (1-60, default 12). */
                 months?: number;
             };
