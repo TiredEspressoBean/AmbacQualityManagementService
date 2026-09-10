@@ -824,6 +824,84 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
     @extend_schema(
         parameters=[
             OpenApiParameter(
+                name="template_format",
+                location=OpenApiParameter.PATH,
+                type=str,
+                enum=["csv", "xlsx"],
+                description="xlsx returns the full reconcile workbook; csv returns the header row only.",
+                required=True,
+            ),
+            OpenApiParameter(
+                name="populate",
+                location=OpenApiParameter.QUERY,
+                type=bool,
+                description="xlsx only: pre-fill with the current roster (snapshot-and-edit).",
+                required=False,
+            ),
+        ],
+        responses={200: {"type": "string", "format": "binary", "description": "XLSX workbook or CSV header row"}},
+        description=(
+            "Import template for users. The shared data-import components call "
+            "/import-template/<csv|xlsx>/ on every model; most viewsets get it from "
+            "CSVImportMixin, which UserViewSet deliberately does not inherit -- users "
+            "are imported through bulk-reconcile (desired-state by email, with "
+            "invitations and group reconciliation) rather than blind CSV row insertion. "
+            "This action serves the same URL from the reconcile template so those "
+            "components work without exposing a second, weaker user-import path."
+        ),
+        tags=["Users"],
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"import-template/(?P<template_format>csv|xlsx)",
+    )
+    def import_template(self, request, template_format: str):
+        """Serve the bulk-reconcile template under the generic import-template URL."""
+        import csv as _csv
+        from Tracker.services.core.user_reconcile import (
+            TEMPLATE_COLUMNS,
+            build_user_reconcile_template,
+        )
+
+        tenant = self.tenant or getattr(request.user, "tenant", None)
+        if tenant is None:
+            return Response(
+                {"detail": "No tenant context."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if template_format == "xlsx":
+            populate = str(request.query_params.get("populate", "")).strip().lower() in (
+                "1", "true", "yes", "y",
+            )
+            content = build_user_reconcile_template(tenant, populate=populate)
+            response = HttpResponse(
+                content,
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument"
+                    ".spreadsheetml.sheet"
+                ),
+            )
+            filename = (
+                "bulk_user_reconcile_current.xlsx" if populate
+                else "bulk_user_reconcile_template.xlsx"
+            )
+        else:
+            # CSV carries headers only. The xlsx template's value is its reference
+            # sheets and dropdowns (tenant groups, statuses), none of which survive
+            # a flat file -- so the columns come from the same TEMPLATE_COLUMNS the
+            # importer consumes, keeping the two in step by construction.
+            response = HttpResponse(content_type="text/csv")
+            _csv.writer(response).writerow([c["label"] for c in TEMPLATE_COLUMNS])
+            filename = "bulk_user_reconcile_template.csv"
+
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
                 name="task_id",
                 location=OpenApiParameter.PATH,
                 type=str,

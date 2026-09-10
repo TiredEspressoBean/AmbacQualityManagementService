@@ -11547,6 +11547,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/User/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Import template for users. The shared data-import components call /import-template/<csv|xlsx>/ on every model; most viewsets get it from CSVImportMixin, which UserViewSet deliberately does not inherit -- users are imported through bulk-reconcile (desired-state by email, with invitations and group reconciliation) rather than blind CSV row insertion. This action serves the same URL from the reconcile template so those components work without exposing a second, weaker user-import path. */
+        get: operations["api_User_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/User/metadata/": {
         parameters: {
             query?: never;
@@ -51805,6 +51822,31 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_User_import_template_retrieve: {
+        parameters: {
+            query?: {
+                /** @description xlsx only: pre-fill with the current roster (snapshot-and-edit). */
+                populate?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description xlsx returns the full reconcile workbook; csv returns the header row only. */
+                template_format: "csv" | "xlsx";
+            };
             cookie?: never;
         };
         requestBody?: never;

@@ -28974,6 +28974,46 @@ paths:
                 format: binary
                 description: Excel file download
           description: ''
+  /api/User/import-template/{template_format}/:
+    get:
+      operationId: api_User_import_template_retrieve
+      description: Import template for users. The shared data-import components call
+        /import-template/<csv|xlsx>/ on every model; most viewsets get it from CSVImportMixin,
+        which UserViewSet deliberately does not inherit -- users are imported through
+        bulk-reconcile (desired-state by email, with invitations and group reconciliation)
+        rather than blind CSV row insertion. This action serves the same URL from
+        the reconcile template so those components work without exposing a second,
+        weaker user-import path.
+      parameters:
+      - in: query
+        name: populate
+        schema:
+          type: boolean
+        description: 'xlsx only: pre-fill with the current roster (snapshot-and-edit).'
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          enum:
+          - csv
+          - xlsx
+        description: xlsx returns the full reconcile workbook; csv returns the header
+          row only.
+        required: true
+      tags:
+      - Users
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: XLSX workbook or CSV header row
+          description: ''
   /api/User/metadata/:
     get:
       operationId: api_User_metadata_retrieve

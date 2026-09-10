@@ -47111,6 +47111,26 @@ untouched. Request/response shape is unchanged.`,
   },
   {
     method: "get",
+    path: "/api/User/import-template/:template_format/",
+    alias: "api_User_import_template_retrieve",
+    description: `Import template for users. The shared data-import components call /import-template/&lt;csv|xlsx&gt;/ on every model; most viewsets get it from CSVImportMixin, which UserViewSet deliberately does not inherit -- users are imported through bulk-reconcile (desired-state by email, with invitations and group reconciliation) rather than blind CSV row insertion. This action serves the same URL from the reconcile template so those components work without exposing a second, weaker user-import path.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "populate",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.enum(["csv", "xlsx"]),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/User/metadata/",
     alias: "api_User_metadata_retrieve",
     description: `Return searchable/filterable/orderable field information with filter options.`,
@@ -48672,7 +48692,10 @@ Accepts the following POST parameter: email.`,
       },
     ],
     response: z.object({ detail: z.string() }),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/auth/registration/verify-email/",
@@ -48689,10 +48712,7 @@ Accepts the following POST parameter: key.`,
       },
     ],
     response: z.object({ detail: z.string() }),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/auth/user/",
