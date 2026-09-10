@@ -156,7 +156,22 @@ export default function UserFormPage() {
         const headers = { "X-CSRFToken": getCookie("csrftoken") };
         const toAdd = desired.filter((g) => !current.includes(g));
         const toRemove = current.filter((g) => !desired.includes(g));
-        const failed: string[] = [];
+        const failed: { gid: string; reason: string }[] = [];
+
+        /** Report WHY a call failed. A bare catch made a server rejection and a
+         *  client-side TypeError indistinguishable, so a failure said nothing
+         *  useful and left nothing to find in the server log. */
+        const describe = (e: unknown): string => {
+            // eslint-disable-next-line local/no-as-any -- axios error shape needs verbose narrowing
+            const ax = e as any;
+            const status = ax?.response?.status;
+            if (status) {
+                const body = ax.response.data;
+                const detail = typeof body === "string" ? body : body?.detail ?? JSON.stringify(body ?? {});
+                return `HTTP ${status}: ${String(detail).slice(0, 200)}`;
+            }
+            return ax?.message ? `no response (${ax.message})` : String(e);
+        };
         for (const gid of toAdd) {
             try {
                 await api.api_TenantGroups_members_create(
@@ -164,7 +179,11 @@ export default function UserFormPage() {
                     { name: "", user_id: String(targetUserId) } as any,
                     { params: { id: gid }, headers },
                 );
-            } catch { failed.push(gid); }
+            } catch (e) {
+                const reason = describe(e);
+                console.error(`[role] add ${gid} -> user ${targetUserId}:`, reason, e);
+                failed.push({ gid, reason });
+            }
         }
         for (const gid of toRemove) {
             try {
@@ -172,7 +191,11 @@ export default function UserFormPage() {
                     params: { id: gid, user_id: String(targetUserId) },
                     headers,
                 });
-            } catch { failed.push(gid); }
+            } catch (e) {
+                const reason = describe(e);
+                console.error(`[role] remove ${gid} <- user ${targetUserId}:`, reason, e);
+                failed.push({ gid, reason });
+            }
         }
         return failed;
     }
@@ -206,7 +229,8 @@ export default function UserFormPage() {
                         setInitialGroupIds(groupIds);
                         if (failed.length) {
                             toast.warning(
-                                `User updated, but ${failed.length} role change(s) failed. Check permissions and retry.`,
+                                `User updated, but ${failed.length} role change(s) failed — ${failed[0].reason}`,
+                                { duration: 12000 },
                             );
                         } else {
                             toast.success("User updated successfully!");
@@ -222,13 +246,14 @@ export default function UserFormPage() {
             createUser.mutate(submitData as Parameters<typeof createUser.mutate>[0], {
                 onSuccess: async (created) => {
                     const newId = (created as { id?: number } | undefined)?.id;
-                    let failed: string[] = [];
+                    let failed: { gid: string; reason: string }[] = [];
                     if (newId !== undefined && groupIds.length) {
                         failed = await syncGroups(newId, groupIds, []);
                     }
                     if (failed.length) {
                         toast.warning(
-                            `User created, but ${failed.length} role assignment(s) failed. Assign them from the group page.`,
+                            `User created, but ${failed.length} role assignment(s) failed — ${failed[0].reason}`,
+                            { duration: 12000 },
                         );
                     } else {
                         toast.success("User created successfully!");
