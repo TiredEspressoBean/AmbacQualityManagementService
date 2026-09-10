@@ -1014,24 +1014,42 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     # Permission Management
     # -------------------------------------------------------------------------
 
-        # Without an explicit request=, drf-spectacular falls back to the
-        # viewset's serializer_class (TenantGroupSerializer), so the generated
-        # client demanded a full TenantGroup body here. Zodios validates request
-        # bodies at runtime, so it rejected every call with "Invalid Body
-        # parameter 'body'" before it left the browser -- no request reached the
-        # server, and nothing appeared in its log. Same class of bug as the
-        # submit-response one fixed previously.
+    # Per-method: this action's four methods return different shapes, and both
+    # request and response are validated by the generated client at runtime.
     @extend_schema(
-        request=inline_serializer(
-            name="TenantGroupPermissionsInput",
-            fields={
-                "permissions": serializers.ListField(
-                    child=serializers.CharField(),
-                    help_text="Permission codenames.",
-                ),
+        methods=['GET'],
+        request=None,
+        # Raw array, not inline_serializer(many=True): the handler returns
+        # Response(list(perms)) without paginating, so the many=True form would
+        # declare this viewset's pagination wrapper and rename the operation.
+        responses={200: {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'id': {'type': 'integer'},
+                    'codename': {'type': 'string'},
+                    'name': {'type': 'string'},
+                    'content_type__app_label': {'type': 'string'},
+                },
             },
+        }},
+    )
+    @extend_schema(
+        methods=['PUT', 'POST', 'DELETE'],
+        request=inline_serializer(
+            name='TenantGroupPermissionsRequest',
+            fields={
+                'permissions': serializers.ListField(child=serializers.CharField()),
+            }
         ),
-        tags=["TenantGroups"],
+        responses={200: inline_serializer(
+            name='TenantGroupPermissionsResponse',
+            fields={
+                'status': serializers.CharField(),
+                'count': serializers.IntegerField(),
+            }
+        )}
     )
     @action(detail=True, methods=['get', 'put', 'post', 'delete'], url_path='permissions')
     def permissions(self, request, id=None):
@@ -1079,23 +1097,28 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     # Member Management
     # -------------------------------------------------------------------------
 
-        # Without an explicit request=, drf-spectacular falls back to the
-        # viewset's serializer_class (TenantGroupSerializer), so the generated
-        # client demanded a full TenantGroup body here. Zodios validates request
-        # bodies at runtime, so it rejected every call with "Invalid Body
-        # parameter 'body'" before it left the browser -- no request reached the
-        # server, and nothing appeared in its log. Same class of bug as the
-        # submit-response one fixed previously.
     @extend_schema(
+        methods=['GET'],
+        request=None,
+        # $ref'd array rather than UserRoleSerializer(many=True): the handler
+        # returns Response(serializer.data) without paginating, and many=True
+        # would declare this viewset's pagination wrapper around it.
+        responses={200: {
+            'type': 'array',
+            'items': {'$ref': '#/components/schemas/UserRole'},
+        }}
+    )
+    @extend_schema(
+        methods=['POST'],
         request=inline_serializer(
-            name="TenantGroupMemberInput",
+            name='TenantGroupMemberRequest',
             fields={
-                "user_id": serializers.CharField(help_text="User to add to the group."),
-                "facility_id": serializers.CharField(required=False, allow_null=True),
-                "company_id": serializers.CharField(required=False, allow_null=True),
-            },
+                'user_id': serializers.CharField(),
+                'facility_id': serializers.CharField(required=False, allow_null=True),
+                'company_id': serializers.CharField(required=False, allow_null=True),
+            }
         ),
-        tags=["TenantGroups"],
+        responses={201: UserRoleSerializer}
     )
     @action(detail=True, methods=['get', 'post'], url_path='members')
     def members(self, request, id=None):
@@ -1161,22 +1184,15 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     # Clone & Preset Actions
     # -------------------------------------------------------------------------
 
-        # Without an explicit request=, drf-spectacular falls back to the
-        # viewset's serializer_class (TenantGroupSerializer), so the generated
-        # client demanded a full TenantGroup body here. Zodios validates request
-        # bodies at runtime, so it rejected every call with "Invalid Body
-        # parameter 'body'" before it left the browser -- no request reached the
-        # server, and nothing appeared in its log. Same class of bug as the
-        # submit-response one fixed previously.
     @extend_schema(
         request=inline_serializer(
-            name="TenantGroupCloneInput",
+            name='TenantGroupCloneRequest',
             fields={
-                "name": serializers.CharField(help_text="Name for the new group."),
-                "description": serializers.CharField(required=False, allow_blank=True),
-            },
+                'name': serializers.CharField(),
+                'description': serializers.CharField(required=False, allow_blank=True),
+            }
         ),
-        tags=["TenantGroups"],
+        responses={201: TenantGroupDetailSerializer}
     )
     @action(detail=True, methods=['post'], url_path='clone')
     def clone(self, request, id=None):

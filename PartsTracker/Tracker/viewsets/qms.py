@@ -775,6 +775,9 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         serializer = self.get_serializer(assigned_capas, many=True)
         return Response(serializer.data)
 
+    # No body. Without request=None the inferred schema is CAPA, which the
+    # generated client then requires and rejects the call against.
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'], url_path='request-approval')
     def request_approval(self, request, pk=None):
         """Manually request approval for CAPA (typically for Critical/Major severity)"""

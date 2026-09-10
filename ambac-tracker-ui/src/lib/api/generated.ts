@@ -20346,18 +20346,37 @@ const TenantGroupDetail = z.object({
 const PatchedTenantGroupRequest = z
   .object({ name: z.string().min(1).max(100), description: z.string() })
   .partial();
-const TenantGroupCloneInputRequest = z.object({
+const TenantGroupCloneRequestRequest = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
 });
-const TenantGroupMemberInputRequest = z.object({
+const UserRole = z.object({
+  id: z.string().uuid(),
+  user: z.number().int(),
+  user_email: z.string(),
+  user_name: z.string(),
+  group: z.string().uuid(),
+  group_name: z.string(),
+  facility: z.string().uuid().nullish(),
+  facility_name: z.string().nullable(),
+  company: z.string().uuid().nullish(),
+  company_name: z.string().nullable(),
+  granted_at: z.string().datetime({ offset: true }),
+  granted_by: z.number().int().nullable(),
+  granted_by_name: z.string().nullable(),
+});
+const TenantGroupMemberRequestRequest = z.object({
   user_id: z.string().min(1),
   facility_id: z.string().min(1).nullish(),
   company_id: z.string().min(1).nullish(),
 });
 const RemoveMemberResponse = z.object({ status: z.string() });
-const TenantGroupPermissionsInputRequest = z.object({
+const TenantGroupPermissionsRequestRequest = z.object({
   permissions: z.array(z.string().min(1)),
+});
+const TenantGroupPermissionsResponse = z.object({
+  status: z.string(),
+  count: z.number().int(),
 });
 const TenantLLMProviderProviderEnum = z.enum(["ollama", "openai", "anthropic"]);
 const TenantLLMProvider = z.object({
@@ -23497,10 +23516,12 @@ export const schemas = {
   TenantGroupRequest,
   TenantGroupDetail,
   PatchedTenantGroupRequest,
-  TenantGroupCloneInputRequest,
-  TenantGroupMemberInputRequest,
+  TenantGroupCloneRequestRequest,
+  UserRole,
+  TenantGroupMemberRequestRequest,
   RemoveMemberResponse,
-  TenantGroupPermissionsInputRequest,
+  TenantGroupPermissionsRequestRequest,
+  TenantGroupPermissionsResponse,
   TenantLLMProviderProviderEnum,
   TenantLLMProvider,
   PaginatedTenantLLMProviderList,
@@ -25961,11 +25982,6 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: CAPARequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
@@ -28318,13 +28334,8 @@ The new version will:
     path: "/api/Documents/:id/submit-for-approval/",
     alias: "api_Documents_submit_for_approval_create",
     description: `Submit document for approval workflow`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: DocumentsRequest,
-      },
       {
         name: "id",
         type: "Path",
@@ -44925,7 +44936,7 @@ Allows tenant admins to:
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupCloneInputRequest,
+        schema: TenantGroupCloneRequestRequest,
       },
       {
         name: "id",
@@ -44933,7 +44944,7 @@ Allows tenant admins to:
         schema: z.string().uuid(),
       },
     ],
-    response: TenantGroup,
+    response: TenantGroupDetail,
   },
   {
     method: "get",
@@ -44951,7 +44962,7 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
         schema: z.string().uuid(),
       },
     ],
-    response: TenantGroup,
+    response: z.array(UserRole),
   },
   {
     method: "post",
@@ -44966,7 +44977,7 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupMemberInputRequest,
+        schema: TenantGroupMemberRequestRequest,
       },
       {
         name: "id",
@@ -44974,7 +44985,7 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
         schema: z.string().uuid(),
       },
     ],
-    response: TenantGroup,
+    response: UserRole,
   },
   {
     method: "delete",
@@ -45014,7 +45025,16 @@ DELETE: Remove permissions`,
         schema: z.string().uuid(),
       },
     ],
-    response: TenantGroup,
+    response: z.array(
+      z
+        .object({
+          id: z.number().int(),
+          codename: z.string(),
+          name: z.string(),
+          content_type__app_label: z.string(),
+        })
+        .partial()
+    ),
   },
   {
     method: "post",
@@ -45031,7 +45051,7 @@ DELETE: Remove permissions`,
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupPermissionsInputRequest,
+        schema: TenantGroupPermissionsRequestRequest,
       },
       {
         name: "id",
@@ -45039,7 +45059,7 @@ DELETE: Remove permissions`,
         schema: z.string().uuid(),
       },
     ],
-    response: TenantGroup,
+    response: TenantGroupPermissionsResponse,
   },
   {
     method: "put",
@@ -45056,7 +45076,7 @@ DELETE: Remove permissions`,
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupPermissionsInputRequest,
+        schema: TenantGroupPermissionsRequestRequest,
       },
       {
         name: "id",
@@ -45064,7 +45084,7 @@ DELETE: Remove permissions`,
         schema: z.string().uuid(),
       },
     ],
-    response: TenantGroup,
+    response: TenantGroupPermissionsResponse,
   },
   {
     method: "delete",
@@ -45084,7 +45104,7 @@ DELETE: Remove permissions`,
         schema: z.string().uuid(),
       },
     ],
-    response: z.void(),
+    response: TenantGroupPermissionsResponse,
   },
   {
     method: "get",

@@ -1354,6 +1354,9 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    # No body. Without request=None the inferred schema is Documents, which the
+    # generated client then requires and rejects the call against.
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'], url_path='submit-for-approval')
     def submit_for_approval(self, request, pk=None):
         """Submit document for approval workflow"""

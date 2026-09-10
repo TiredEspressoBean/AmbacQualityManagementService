@@ -2432,18 +2432,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CAPARequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/CAPARequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/CAPARequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -5989,18 +5977,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -25718,28 +25694,28 @@ paths:
         description: A UUID string identifying this tenant group.
         required: true
       tags:
-      - TenantGroups
+      - api
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantGroupCloneInputRequest'
+              $ref: '#/components/schemas/TenantGroupCloneRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TenantGroupCloneInputRequest'
+              $ref: '#/components/schemas/TenantGroupCloneRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TenantGroupCloneInputRequest'
+              $ref: '#/components/schemas/TenantGroupCloneRequestRequest'
         required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantGroup'
+                $ref: '#/components/schemas/TenantGroupDetail'
           description: ''
   /api/TenantGroups/{id}/members/:
     get:
@@ -25758,7 +25734,7 @@ paths:
         description: A UUID string identifying this tenant group.
         required: true
       tags:
-      - TenantGroups
+      - api
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -25767,7 +25743,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantGroup'
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserRole'
           description: ''
     post:
       operationId: api_TenantGroups_members_create
@@ -25785,28 +25763,28 @@ paths:
         description: A UUID string identifying this tenant group.
         required: true
       tags:
-      - TenantGroups
+      - api
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantGroupMemberInputRequest'
+              $ref: '#/components/schemas/TenantGroupMemberRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TenantGroupMemberInputRequest'
+              $ref: '#/components/schemas/TenantGroupMemberRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TenantGroupMemberInputRequest'
+              $ref: '#/components/schemas/TenantGroupMemberRequestRequest'
         required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantGroup'
+                $ref: '#/components/schemas/UserRole'
           description: ''
   /api/TenantGroups/{id}/members/{user_id}/:
     delete:
@@ -25857,7 +25835,7 @@ paths:
         description: A UUID string identifying this tenant group.
         required: true
       tags:
-      - TenantGroups
+      - api
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -25866,7 +25844,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantGroup'
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    codename:
+                      type: string
+                    name:
+                      type: string
+                    content_type__app_label:
+                      type: string
           description: ''
     post:
       operationId: api_TenantGroups_permissions_create
@@ -25886,18 +25875,18 @@ paths:
         description: A UUID string identifying this tenant group.
         required: true
       tags:
-      - TenantGroups
+      - api
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantGroupPermissionsInputRequest'
+              $ref: '#/components/schemas/TenantGroupPermissionsRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TenantGroupPermissionsInputRequest'
+              $ref: '#/components/schemas/TenantGroupPermissionsRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TenantGroupPermissionsInputRequest'
+              $ref: '#/components/schemas/TenantGroupPermissionsRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -25907,7 +25896,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantGroup'
+                $ref: '#/components/schemas/TenantGroupPermissionsResponse'
           description: ''
     put:
       operationId: api_TenantGroups_permissions_update
@@ -25927,18 +25916,18 @@ paths:
         description: A UUID string identifying this tenant group.
         required: true
       tags:
-      - TenantGroups
+      - api
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantGroupPermissionsInputRequest'
+              $ref: '#/components/schemas/TenantGroupPermissionsRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TenantGroupPermissionsInputRequest'
+              $ref: '#/components/schemas/TenantGroupPermissionsRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TenantGroupPermissionsInputRequest'
+              $ref: '#/components/schemas/TenantGroupPermissionsRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -25948,7 +25937,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantGroup'
+                $ref: '#/components/schemas/TenantGroupPermissionsResponse'
           description: ''
     delete:
       operationId: api_TenantGroups_permissions_destroy
@@ -25968,13 +25957,17 @@ paths:
         description: A UUID string identifying this tenant group.
         required: true
       tags:
-      - TenantGroups
+      - api
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '204':
-          description: No response body
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantGroupPermissionsResponse'
+          description: ''
   /api/TenantGroups/{id}/preset-diff/:
     get:
       operationId: api_TenantGroups_preset_diff_retrieve
@@ -63019,13 +63012,12 @@ components:
       - permission_count
       - preset_key
       - updated_at
-    TenantGroupCloneInputRequest:
+    TenantGroupCloneRequestRequest:
       type: object
       properties:
         name:
           type: string
           minLength: 1
-          description: Name for the new group.
         description:
           type: string
       required:
@@ -63081,13 +63073,12 @@ components:
       - permissions
       - preset_key
       - updated_at
-    TenantGroupMemberInputRequest:
+    TenantGroupMemberRequestRequest:
       type: object
       properties:
         user_id:
           type: string
           minLength: 1
-          description: User to add to the group.
         facility_id:
           type: string
           nullable: true
@@ -63098,7 +63089,7 @@ components:
           minLength: 1
       required:
       - user_id
-    TenantGroupPermissionsInputRequest:
+    TenantGroupPermissionsRequestRequest:
       type: object
       properties:
         permissions:
@@ -63106,9 +63097,18 @@ components:
           items:
             type: string
             minLength: 1
-          description: Permission codenames.
       required:
       - permissions
+    TenantGroupPermissionsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+      required:
+      - count
+      - status
     TenantGroupRequest:
       type: object
       description: Serializer for TenantGroup with permission counts.
@@ -65494,6 +65494,70 @@ components:
             not dispatchable.
       required:
       - username
+    UserRole:
+      type: object
+      description: Serializer for UserRole (group membership).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+        user_email:
+          type: string
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        group:
+          type: string
+          format: uuid
+        group_name:
+          type: string
+          readOnly: true
+        facility:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null = access to all facilities in tenant
+        facility_name:
+          type: string
+          readOnly: true
+          nullable: true
+        company:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'For customer/external roles: which company they represent'
+        company_name:
+          type: string
+          readOnly: true
+          nullable: true
+        granted_at:
+          type: string
+          format: date-time
+          readOnly: true
+        granted_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        granted_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - company_name
+      - facility_name
+      - granted_at
+      - granted_by
+      - granted_by_name
+      - group
+      - group_name
+      - id
+      - user
+      - user_email
+      - user_name
     UserSelect:
       type: object
       description: Simplified user serializer for dropdowns and selections

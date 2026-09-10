@@ -23,14 +23,11 @@ export type TenantGroupMember = {
 
 export const tenantGroupMembersOptions = (groupId: string | undefined) => queryOptions({
     queryKey: ["tenantGroup", groupId, "members"] as const,
-    queryFn: async () => {
-        // eslint-disable-next-line no-restricted-syntax -- OpenAPI schema is wrong: schema says TenantGroup object but API returns array of members. Fix backend schema to use typed client.
-        const response = await fetch(`/api/TenantGroups/${groupId}/members/`, {
-            credentials: "include",
-        });
-        if (!response.ok) throw new Error("Failed to fetch members");
-        return response.json() as Promise<TenantGroupMember[]>;
-    },
+    // Typed client, now that the action declares its response as an array of
+    // UserRole. This used a raw fetch because the inferred schema claimed a
+    // TenantGroup object.
+    queryFn: () =>
+        api.api_TenantGroups_members_retrieve({ params: { id: groupId! } }),
 });
 
 export function useTenantGroupMembers(groupId: string | undefined, options?: { enabled?: boolean }) {

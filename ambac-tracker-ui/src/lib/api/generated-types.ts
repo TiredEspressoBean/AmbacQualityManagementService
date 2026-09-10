@@ -29541,8 +29541,7 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
-        TenantGroupCloneInputRequest: {
-            /** @description Name for the new group. */
+        TenantGroupCloneRequestRequest: {
             name: string;
             description?: string;
         };
@@ -29564,15 +29563,17 @@ export interface components {
             readonly updated_at: string;
             readonly permissions: string[];
         };
-        TenantGroupMemberInputRequest: {
-            /** @description User to add to the group. */
+        TenantGroupMemberRequestRequest: {
             user_id: string;
             facility_id?: string | null;
             company_id?: string | null;
         };
-        TenantGroupPermissionsInputRequest: {
-            /** @description Permission codenames. */
+        TenantGroupPermissionsRequestRequest: {
             permissions: string[];
+        };
+        TenantGroupPermissionsResponse: {
+            status: string;
+            count: number;
         };
         /** @description Serializer for TenantGroup with permission counts. */
         TenantGroupRequest: {
@@ -30712,6 +30713,33 @@ export interface components {
              * @description The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
              */
             default_shift?: string | null;
+        };
+        /** @description Serializer for UserRole (group membership). */
+        UserRole: {
+            /** Format: uuid */
+            readonly id: string;
+            user: number;
+            readonly user_email: string;
+            readonly user_name: string;
+            /** Format: uuid */
+            group: string;
+            readonly group_name: string;
+            /**
+             * Format: uuid
+             * @description Null = access to all facilities in tenant
+             */
+            facility?: string | null;
+            readonly facility_name: string | null;
+            /**
+             * Format: uuid
+             * @description For customer/external roles: which company they represent
+             */
+            company?: string | null;
+            readonly company_name: string | null;
+            /** Format: date-time */
+            readonly granted_at: string;
+            readonly granted_by: number | null;
+            readonly granted_by_name: string | null;
         };
         /** @description Simplified user serializer for dropdowns and selections */
         UserSelect: {
@@ -33203,13 +33231,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CAPARequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["CAPARequest"];
-                "multipart/form-data": components["schemas"]["CAPARequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -35951,13 +35973,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["DocumentsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
-                "application/json": components["schemas"]["DocumentsRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -49394,18 +49410,18 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TenantGroupCloneInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupCloneInputRequest"];
-                "multipart/form-data": components["schemas"]["TenantGroupCloneInputRequest"];
+                "application/json": components["schemas"]["TenantGroupCloneRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupCloneRequestRequest"];
+                "multipart/form-data": components["schemas"]["TenantGroupCloneRequestRequest"];
             };
         };
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantGroup"];
+                    "application/json": components["schemas"]["TenantGroupDetail"];
                 };
             };
         };
@@ -49427,7 +49443,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantGroup"];
+                    "application/json": components["schemas"]["UserRole"][];
                 };
             };
         };
@@ -49444,18 +49460,18 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TenantGroupMemberInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupMemberInputRequest"];
-                "multipart/form-data": components["schemas"]["TenantGroupMemberInputRequest"];
+                "application/json": components["schemas"]["TenantGroupMemberRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupMemberRequestRequest"];
+                "multipart/form-data": components["schemas"]["TenantGroupMemberRequestRequest"];
             };
         };
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantGroup"];
+                    "application/json": components["schemas"]["UserRole"];
                 };
             };
         };
@@ -49501,7 +49517,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantGroup"];
+                    "application/json": {
+                        id?: number;
+                        codename?: string;
+                        name?: string;
+                        content_type__app_label?: string;
+                    }[];
                 };
             };
         };
@@ -49518,9 +49539,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TenantGroupPermissionsInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupPermissionsInputRequest"];
-                "multipart/form-data": components["schemas"]["TenantGroupPermissionsInputRequest"];
+                "application/json": components["schemas"]["TenantGroupPermissionsRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupPermissionsRequestRequest"];
+                "multipart/form-data": components["schemas"]["TenantGroupPermissionsRequestRequest"];
             };
         };
         responses: {
@@ -49529,7 +49550,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantGroup"];
+                    "application/json": components["schemas"]["TenantGroupPermissionsResponse"];
                 };
             };
         };
@@ -49546,9 +49567,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TenantGroupPermissionsInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupPermissionsInputRequest"];
-                "multipart/form-data": components["schemas"]["TenantGroupPermissionsInputRequest"];
+                "application/json": components["schemas"]["TenantGroupPermissionsRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupPermissionsRequestRequest"];
+                "multipart/form-data": components["schemas"]["TenantGroupPermissionsRequestRequest"];
             };
         };
         responses: {
@@ -49557,7 +49578,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantGroup"];
+                    "application/json": components["schemas"]["TenantGroupPermissionsResponse"];
                 };
             };
         };
@@ -49574,12 +49595,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TenantGroupPermissionsResponse"];
+                };
             };
         };
     };
