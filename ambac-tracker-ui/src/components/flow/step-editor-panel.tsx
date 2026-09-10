@@ -151,9 +151,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
     { params: { id: stepId! } },
     { enabled: stepIdIsUuid }
   );
-  // active_ruleset may be on the extended type from the hook
-  // eslint-disable-next-line local/no-as-any -- active_ruleset is not in Schema<"ProcessStep">; backend returns it via extended serializer (FLAG: add active_ruleset to ProcessStepSerializer)
-  const samplingRuleCount = (stepWithRules as any)?.active_ruleset?.rules?.length ?? 0;
+  const samplingRuleCount = stepWithRules?.active_ruleset?.rules?.length ?? 0;
 
   // Fetch document count
   const { data: documentsResponse } = useRetrieveDocuments(

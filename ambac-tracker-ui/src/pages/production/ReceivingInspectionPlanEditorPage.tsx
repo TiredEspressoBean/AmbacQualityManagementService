@@ -90,8 +90,7 @@ export function ReceivingInspectionPlanEditorPage() {
   const navigate = useNavigate();
 
   const { data: step } = useRetrieveStepWithSamplingRules({ params: { id: stepId } });
-  // eslint-disable-next-line local/no-as-any -- active_ruleset is populated by the extended endpoint, not in the base type
-  const activeRuleset = (step as any)?.active_ruleset;
+  const activeRuleset = step?.active_ruleset;
   const stepName = (step as { name?: string } | undefined)?.name ?? "Receiving plan";
 
   const { data: measurements } = useRetrieveMeasurementDefinitions({ step: stepId }, undefined, { enabled: !!stepId });

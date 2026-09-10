@@ -293,8 +293,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
   // plan can measure (variables works on one numeric characteristic at a time).
   const { data: measurementsResp } = useRetrieveMeasurementDefinitions(
     { step: stepId }, undefined, { enabled: open });
-  // eslint-disable-next-line local/no-as-any -- MeasurementDefinition list rows; we read id/label/type
-  const numericChars = ((measurementsResp?.results ?? []) as any[]).filter((m) => m.type === 'NUMERIC');
+  const numericChars = (measurementsResp?.results ?? []).filter((m) => m.type === 'NUMERIC');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -309,12 +308,9 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
   });
 
   // Populate form when step data loads
-  // Note: active_ruleset and fallback_ruleset come from extended step type via hook
   useEffect(() => {
     if (step && open) {
-      // eslint-disable-next-line local/no-as-any -- step schema doesn't include ruleset fields; they're populated by a separate endpoint at runtime
-      const stepWithRules = step as any;
-      const ar = stepWithRules.active_ruleset ?? {};
+      const ar = step.active_ruleset ?? {};
       // Infer the family from existing data. A Z19 strategy / VARIABLES rule /
       // variables_characteristic means variables; a strategy / AQL / AQL|C_ZERO
       // rule means attribute lot acceptance; otherwise per-part streaming.
@@ -325,7 +321,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
       form.reset({
         family: isVariables ? 'VARIABLES' : isLot ? 'LOT_ACCEPTANCE' : 'STREAMING',
         rules: ar.rules ?? [],
-        fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
+        fallback_rules: step.fallback_ruleset?.rules ?? [],
         tighten_after: ar.tighten_after ?? null,
         fallback_duration: ar.fallback_duration ?? null,
         strategy: ar.strategy ?? '',

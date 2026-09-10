@@ -23,6 +23,59 @@ from Tracker.models import (
 from .core import SecureModelMixin, BulkOperationsMixin, UserSelectSerializer, CompanySerializer
 
 
+# ===== METHOD-FIELD SHAPES =====
+#
+# gate_info and latest_note are dicts built in Orders (models/mes_lite.py), so
+# only extend_schema_field can describe them. They were both declared as a bare
+# DictField, which generates an empty object -- enough to pass --fail-on-warn,
+# but the frontend then can't read a single key without casting, and three
+# `as any` suppressions grew up around exactly that.
+#
+# "required" is not decoration here: without it every key generates optional and
+# the consumer is back to undefined-checking fields the server always sends.
+
+_GATE_SCHEMA = {
+    "type": "object",
+    "required": ["name", "full_name", "is_current", "is_completed"],
+    "properties": {
+        "name": {"type": "string"},
+        "full_name": {"type": "string"},
+        "is_current": {"type": "boolean"},
+        "is_completed": {"type": "boolean"},
+    },
+}
+
+_GATE_INFO_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "required": ["current_gate_name", "current_gate_full_name", "is_in_progress", "gates"],
+    "properties": {
+        "current_gate_name": {"type": "string"},
+        "current_gate_full_name": {"type": "string"},
+        "is_in_progress": {"type": "boolean"},
+        # Position/progress are only emitted while the milestone is in progress.
+        "current_position": {"type": "integer"},
+        "total_gates": {"type": "integer"},
+        "progress_percent": {"type": "number"},
+        "gates": {"type": "array", "items": _GATE_SCHEMA},
+    },
+}
+
+# One entry from the customer_note timeline. timestamp is null for notes in the
+# pre-timeline format, which get_notes still parses.
+_NOTE_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "required": ["timestamp", "user", "visibility", "message"],
+    "properties": {
+        "timestamp": {"type": "string", "nullable": True},
+        "user": {"type": "string"},
+        "visibility": {"type": "string"},
+        "message": {"type": "string"},
+    },
+}
+
+
 # ===== STAGE SERIALIZERS =====
 
 class StageSerializer(serializers.Serializer):
@@ -113,12 +166,12 @@ class OrdersSerializer(SecureModelMixin, BulkOperationsMixin):
         """Use enhanced model method for detailed stage info"""
         return obj.get_detailed_stage_info()
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_GATE_INFO_SCHEMA)
     def get_gate_info(self, obj):
         """Get milestone/gate progress information. Reads from current_milestone, falls back to legacy HubSpot."""
         return obj.get_gate_info()
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_NOTE_SCHEMA)
     def get_latest_note(self, obj):
         """Get the most recent note"""
         return obj.get_latest_note()
@@ -213,7 +266,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
         """Get detailed stage info for progress tracking"""
         return obj.get_detailed_stage_info()
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_GATE_INFO_SCHEMA)
     def get_gate_info(self, obj):
         """Get milestone/gate progress information. Reads from current_milestone, falls back to legacy HubSpot."""
         return obj.get_gate_info()
@@ -282,7 +335,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
         """Safe access to company name"""
         return obj.company.name if obj.company else None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_NOTE_SCHEMA)
     def get_latest_note(self, obj):
         """Get the most recent visible note"""
         return obj.get_latest_note(customer_view=True)

@@ -75,6 +75,11 @@ const required = {
     customer: isFieldRequired(formSchema.shape.customer),
 };
 
+// add-note's body type. NOTE the visibility enum is uppercase -- the action
+// rejects anything else (Tracker/viewsets/mes_lite.py: add_note).
+type AddNoteBody = Parameters<typeof api.api_Orders_add_note_create>[0];
+type NoteVisibility = NonNullable<AddNoteBody["visibility"]>;
+
 export default function OrderFormPage() {
     const navigate = useNavigate();
     const matchRoute = useMatchRoute();
@@ -83,7 +88,7 @@ export default function OrderFormPage() {
     const [companyOpen, setCompanyOpen] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
     const [newNote, setNewNote] = useState("");
-    const [noteVisibility, setNoteVisibility] = useState<"visible" | "internal">("visible");
+    const [noteVisibility, setNoteVisibility] = useState<NoteVisibility>("VISIBLE");
     const [notesExpanded, setNotesExpanded] = useState(false);
     const queryClient = useQueryClient();
 
@@ -111,11 +116,10 @@ export default function OrderFormPage() {
 
     // Add note mutation (only available in edit mode)
     const addNoteMutation = useMutation({
-        mutationFn: async ({ message, visibility }: { message: string; visibility: string }) => {
+        mutationFn: async ({ message, visibility }: AddNoteBody) => {
             if (!orderId) throw new Error("Order ID required");
             return await api.api_Orders_add_note_create(
-                // eslint-disable-next-line local/no-as-any -- add_note body type doesn't expose message/visibility in generated schema; these are the actual runtime fields
-                { message, visibility } as any,
+                { message, visibility },
                 { params: { id: orderId } }
             );
         },
@@ -554,10 +558,10 @@ export default function OrderFormPage() {
                                             type="button"
                                             variant="outline"
                                             size="icon"
-                                            onClick={() => setNoteVisibility(noteVisibility === "visible" ? "internal" : "visible")}
-                                            title={noteVisibility === "visible" ? "Visible to customer" : "Internal only"}
+                                            onClick={() => setNoteVisibility(noteVisibility === "VISIBLE" ? "INTERNAL" : "VISIBLE")}
+                                            title={noteVisibility === "VISIBLE" ? "Visible to customer" : "Internal only"}
                                         >
-                                            {noteVisibility === "visible" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                            {noteVisibility === "VISIBLE" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                                         </Button>
                                         <Button
                                             type="button"

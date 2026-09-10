@@ -114,18 +114,9 @@ export function MilestonesEditorPage() {
     const { data: templates, isLoading } = useListMilestoneTemplates();
     const [, setSaving] = useState(false);
 
-    // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
-    // eslint-disable-next-line local/no-as-any -- useListMilestoneTemplates may return paginated or array shape; checked at runtime below
-    const rawData = templates as any;
-    const templatesList: MilestoneTemplate[] = Array.isArray(rawData)
-        ? rawData
-        : rawData?.results ?? [];
-
-    // Ensure milestones is always an array on each template
-    const safeTemplates = templatesList.map(t => ({
-        ...t,
-        milestones: Array.isArray(t.milestones) ? t.milestones : [],
-    }));
+    // The action sets pagination_class=None, so the response is a bare array and
+    // `milestones` is a required list on every template -- no shape probing needed.
+    const safeTemplates = (templates ?? []) as MilestoneTemplate[];
 
     const updateMilestone = useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) =>
@@ -137,7 +128,7 @@ export function MilestonesEditorPage() {
     });
 
     const createMilestone = useMutation({
-        mutationFn: (data: any) =>
+        mutationFn: (data: Parameters<typeof api.api_Milestones_create>[0]) =>
             api.api_Milestones_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
@@ -188,7 +179,6 @@ export function MilestonesEditorPage() {
     const handleAdd = async (template: MilestoneTemplate) => {
         const maxOrder = template.milestones.reduce((max, m) => Math.max(max, m.display_order), -1);
         try {
-            // eslint-disable-next-line local/no-as-any -- Milestone create body type requires all fields from generated schema; only a subset is needed at runtime
             await createMilestone.mutateAsync({
                 template: template.id,
                 name: "New Milestone",
@@ -196,7 +186,7 @@ export function MilestonesEditorPage() {
                 display_order: maxOrder + 1,
                 description: "",
                 is_active: true,
-            } as any);
+            });
         } catch {
             toast.error("Failed to add milestone");
         }

@@ -530,6 +530,10 @@ _RESOLVED_ACTIVE_RULESET_SCHEMA = {
         "inspection_level": {"type": "string"},
         "severity": {"type": "string"},
         "strategy": {"type": "string"},
+        # Z1.9 variables plans measure one numeric characteristic. Emitted by
+        # get_resolved_sampling_rules but omitted here, which is why the sampling
+        # editor had to read the whole ruleset through `as any`.
+        "variables_characteristic": {"type": "string", "format": "uuid", "nullable": True},
     },
 }
 

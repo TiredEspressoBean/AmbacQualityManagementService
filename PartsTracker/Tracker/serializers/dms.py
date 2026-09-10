@@ -110,7 +110,7 @@ class DocumentsSerializer(SecureModelMixin):
             'effective_date', 'review_date', 'obsolete_date', 'retention_until',
             'is_due_for_review', 'days_until_review', 'is_past_retention')
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_file_url(self, obj):
         try:
             return obj.file.url if obj.file else None
@@ -426,7 +426,8 @@ class HeatMapAnnotationsSerializer(SecureModelMixin):
         ]
         read_only_fields = ['created_by', 'created_at', 'updated_at', 'deleted_at']
 
-    @extend_schema_field(serializers.CharField())
+    # created_by is SET_NULL -- deleting the annotation's author makes this None.
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_created_by_display(self, obj):
         """Get full name of creator"""
         if obj.created_by:

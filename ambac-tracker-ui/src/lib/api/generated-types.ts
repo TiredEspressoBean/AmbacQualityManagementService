@@ -17543,7 +17543,10 @@ export interface components {
             readonly order_number: string;
             readonly name: string;
             readonly latest_note: {
-                [key: string]: unknown;
+                timestamp: string | null;
+                user: string;
+                visibility: string;
+                message: string;
             } | null;
             readonly notes_timeline: unknown[];
             readonly order_status: string;
@@ -17554,7 +17557,18 @@ export interface components {
             readonly original_completion_date: string | null;
             readonly process_stages: unknown[];
             readonly gate_info: {
-                [key: string]: unknown;
+                current_gate_name: string;
+                current_gate_full_name: string;
+                is_in_progress: boolean;
+                current_position?: number;
+                total_gates?: number;
+                progress_percent?: number;
+                gates: {
+                    name: string;
+                    full_name: string;
+                    is_current: boolean;
+                    is_completed: boolean;
+                }[];
             } | null;
             readonly parts_summary: {
                 [key: string]: unknown;
@@ -18045,7 +18059,7 @@ export interface components {
             file_name: string;
             /** Format: uri */
             file: string;
-            readonly file_url: string;
+            readonly file_url: string | null;
             /** Format: date */
             readonly upload_date: string;
             uploaded_by?: number | null;
@@ -19074,7 +19088,7 @@ export interface components {
             notes?: string;
             quality_reports?: string[];
             readonly created_by: number | null;
-            readonly created_by_display: string;
+            readonly created_by_display: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -20327,7 +20341,10 @@ export interface components {
             name: string;
             customer_note?: string | null;
             readonly latest_note: {
-                [key: string]: unknown;
+                timestamp: string | null;
+                user: string;
+                visibility: string;
+                message: string;
             } | null;
             readonly notes_timeline: unknown[];
             customer?: number | null;
@@ -20353,7 +20370,18 @@ export interface components {
             } | null;
             readonly process_stages: unknown[];
             readonly gate_info: {
-                [key: string]: unknown;
+                current_gate_name: string;
+                current_gate_full_name: string;
+                is_in_progress: boolean;
+                current_position?: number;
+                total_gates?: number;
+                progress_percent?: number;
+                gates: {
+                    name: string;
+                    full_name: string;
+                    is_current: boolean;
+                    is_completed: boolean;
+                }[];
             } | null;
             readonly customer_first_name: string | null;
             readonly customer_last_name: string | null;
@@ -28520,6 +28548,8 @@ export interface components {
                 inspection_level?: string;
                 severity?: string;
                 strategy?: string;
+                /** Format: uuid */
+                variables_characteristic?: string | null;
             };
             readonly fallback_ruleset: {
                 /** Format: uuid */
@@ -30658,9 +30688,9 @@ export interface components {
             user: number;
             /** Format: email */
             readonly user_email: string;
-            readonly user_name: string;
+            readonly user_name: string | null;
             invited_by?: number | null;
-            readonly invited_by_name: string;
+            readonly invited_by_name: string | null;
             /** Format: date-time */
             readonly sent_at: string;
             /** Format: date-time */
@@ -30671,7 +30701,7 @@ export interface components {
             readonly is_valid: boolean;
             readonly accepted_ip_address: string | null;
             readonly accepted_user_agent: string | null;
-            readonly invitation_url: string;
+            readonly invitation_url: string | null;
         };
         /** @description Serializer for user invitations */
         UserInvitationRequest: {

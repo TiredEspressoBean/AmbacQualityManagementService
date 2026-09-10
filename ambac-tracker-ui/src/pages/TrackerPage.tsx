@@ -92,10 +92,8 @@ export default function TrackerPage() {
                     orderName={order.name}
                     companyName={order.company_name ?? undefined}
                     estimatedCompletion={order.estimated_completion}
-                    // eslint-disable-next-line local/no-as-any -- gate_info and latest_note typed as {} passthrough in schema; actual shape matches GateInfo/NoteEntry at runtime
-                    gateInfo={order.gate_info as any}
-                    // eslint-disable-next-line local/no-as-any -- latest_note not in generated schema; backend returns it as an extra field on the order list response
-                    latestNote={(order as any).latest_note}
+                    gateInfo={order.gate_info}
+                    latestNote={order.latest_note}
                     stages={(order.process_stages ?? []).map((stage: any) => ({
                         name: stage.name,
                         timestamp: stage.timestamp,

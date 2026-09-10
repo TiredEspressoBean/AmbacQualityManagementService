@@ -4,6 +4,7 @@ import { useIntegrationsCatalog } from "@/hooks/useIntegrationsCatalog";
 import { useCreateIntegration } from "@/hooks/useCreateIntegration";
 import { useUpdateIntegration } from "@/hooks/useUpdateIntegration";
 import { useDeleteIntegration } from "@/hooks/useDeleteIntegration";
+import { useRetrieveIntegration } from "@/hooks/useRetrieveIntegration";
 import { useTestIntegrationConnection } from "@/hooks/useTestIntegrationConnection";
 import { useTriggerIntegrationSync } from "@/hooks/useTriggerIntegrationSync";
 import { useIntegrationSyncLogs } from "@/hooks/useIntegrationSyncLogs";
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import type { IntegrationConfigRequest } from "@/lib/api/generated";
 
 type CatalogItem = {
     provider: string;
@@ -52,7 +54,20 @@ type CatalogItem = {
     last_synced_at: string | null;
     last_sync_error: string | null;
     last_sync_stats: Record<string, number> | null;
-    config: Record<string, any>;
+};
+
+// The `config` column is per-adapter free-form JSON (a DictField in the schema),
+// so the generated types can't name its keys. These are HubSpot's -- the only
+// ones this page edits.
+//
+// It is deliberately NOT on the catalog entry: integrations/tests --
+// CatalogDataExposureTests asserts the catalog never returns raw config. It
+// comes from the detail endpoint instead, whose serializer marks every
+// credential write_only.
+type IntegrationSettings = {
+    pipeline_tracking_enabled?: boolean;
+    active_stage_prefix?: string;
+    debug_mode?: boolean;
 };
 
 function DirectionIcon({ direction }: { direction: string }) {
@@ -85,6 +100,16 @@ export function IntegrationDetailPage() {
     // If the URL says "new" but the catalog shows it's already configured, treat as edit
     const isConfigured = item ? (item.status !== "not_configured" && !!item.config_id) : false;
     const integrationId = item?.config_id ?? null;
+
+    // The settings below are a read-modify-write of the whole `config` dict, so
+    // they need its current value -- and the catalog doesn't carry it.
+    // No refetch needed here: useUpdateIntegration invalidates ["integration"],
+    // which prefix-matches this query's key.
+    const { data: integration } = useRetrieveIntegration(
+        { params: { id: integrationId! } },
+        { enabled: !!integrationId }
+    );
+    const config = (integration?.config ?? {}) as IntegrationSettings;
 
     // Fetch sync logs (only for configured)
     const { data: syncLogs, refetch: refetchSyncLogs } = useIntegrationSyncLogs(
@@ -135,19 +160,19 @@ export function IntegrationDetailPage() {
         try {
             if (isConfigured && integrationId) {
                 // Already exists — update the key instead
-                // eslint-disable-next-line local/no-as-any -- partial Integration update; generated type requires all fields but only api_key changes here
-                await updateIntegration.mutateAsync({ id: integrationId, data: { api_key: apiKeyInput } as any });
+                await updateIntegration.mutateAsync({ id: integrationId, data: { api_key: apiKeyInput } });
                 toast.success("API key updated");
             } else {
                 await createIntegration.mutateAsync(
-                    // eslint-disable-next-line local/no-as-any -- Integration create body uses subset of generated schema; provider/display_name/api_key/is_enabled/config are the required runtime fields
                     {
-                        provider: item.provider,
+                        // The catalog serializer declares provider as a CharField, so
+                        // it arrives as a plain string; the create body wants the enum.
+                        provider: item.provider as IntegrationConfigRequest["provider"],
                         display_name: item.name,
                         api_key: apiKeyInput,
                         is_enabled: true,
                         config: {},
-                    } as any);
+                    });
                 toast.success("Integration connected");
             }
             setApiKeyInput("");
@@ -161,8 +186,7 @@ export function IntegrationDetailPage() {
     const handleUpdateApiKey = async () => {
         if (!apiKeyInput.trim() || !integrationId) return;
         try {
-            // eslint-disable-next-line local/no-as-any -- partial Integration update; generated type requires all fields but only api_key changes here
-            await updateIntegration.mutateAsync({ id: integrationId, data: { api_key: apiKeyInput } as any });
+            await updateIntegration.mutateAsync({ id: integrationId, data: { api_key: apiKeyInput } });
             toast.success("API key updated");
             setApiKeyInput("");
         } catch {
@@ -173,8 +197,7 @@ export function IntegrationDetailPage() {
     const handleToggleEnabled = async () => {
         if (!item || !integrationId) return;
         try {
-            // eslint-disable-next-line local/no-as-any -- partial Integration update; generated type requires all fields but only is_enabled changes here
-            await updateIntegration.mutateAsync({ id: integrationId, data: { is_enabled: !item.is_enabled } as any });
+            await updateIntegration.mutateAsync({ id: integrationId, data: { is_enabled: !item.is_enabled } });
             toast.success(item.is_enabled ? "Integration disabled" : "Integration enabled");
         } catch {
             toast.error("Failed to update integration");
@@ -398,13 +421,12 @@ export function IntegrationDetailPage() {
                             </div>
                             <Switch
                                 id="pipeline-tracking"
-                                checked={item.config?.pipeline_tracking_enabled ?? true}
+                                checked={config.pipeline_tracking_enabled ?? true}
                                 onCheckedChange={async (checked) => {
                                     try {
                                         await updateIntegration.mutateAsync({
                                             id: integrationId!,
-                                            // eslint-disable-next-line local/no-as-any -- partial config update; generated Integration type requires all fields
-                                            data: { config: { ...(item.config ?? {}), pipeline_tracking_enabled: checked } } as any,
+                                            data: { config: { ...config, pipeline_tracking_enabled: checked } },
                                         });
                                         await refetchCatalog();
                                         toast.success(checked ? "Pipeline tracking enabled" : "Pipeline tracking disabled");
@@ -426,17 +448,16 @@ export function IntegrationDetailPage() {
                                 <Input
                                     id="active-stage-prefix"
                                     placeholder="e.g. Active -"
-                                    defaultValue={item.config?.active_stage_prefix ?? ""}
+                                    defaultValue={config.active_stage_prefix ?? ""}
                                     className="max-w-xs"
                                     onBlur={async (e) => {
                                         const value = e.target.value;
-                                        const currentPrefix = item.config?.active_stage_prefix ?? "";
+                                        const currentPrefix = config.active_stage_prefix ?? "";
                                         if (value === currentPrefix) return;
                                         try {
                                             await updateIntegration.mutateAsync({
                                                 id: integrationId!,
-                                                // eslint-disable-next-line local/no-as-any -- partial config update; generated Integration type requires all fields
-                                                data: { config: { ...(item.config ?? {}), active_stage_prefix: value } } as any,
+                                                data: { config: { ...config, active_stage_prefix: value } },
                                             });
                                             await refetchCatalog();
                                             toast.success("Prefix updated");
@@ -459,13 +480,12 @@ export function IntegrationDetailPage() {
                             </div>
                             <Switch
                                 id="debug-mode"
-                                checked={item.config?.debug_mode ?? false}
+                                checked={config.debug_mode ?? false}
                                 onCheckedChange={async (checked) => {
                                     try {
                                         await updateIntegration.mutateAsync({
                                             id: integrationId!,
-                                            // eslint-disable-next-line local/no-as-any -- partial config update; generated Integration type requires all fields
-                                            data: { config: { ...(item.config ?? {}), debug_mode: checked } } as any,
+                                            data: { config: { ...config, debug_mode: checked } },
                                         });
                                         await refetchCatalog();
                                         toast.success(checked ? "Debug mode enabled" : "Debug mode disabled");

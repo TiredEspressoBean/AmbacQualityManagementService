@@ -121,7 +121,8 @@ function PartTypeGroup({
                                 {typeDocuments.map((doc) => (
                                     <a
                                         key={doc.id}
-                                        href={doc.file_url}
+                                        // file_url is null for a document row with no stored file
+                                        href={doc.file_url ?? undefined}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border text-xs hover:bg-accent transition-colors"
@@ -154,6 +155,12 @@ function PartTypeGroup({
     );
 }
 
+
+// add-note's body type. NOTE the visibility enum is uppercase -- the action
+// rejects anything else (Tracker/viewsets/mes_lite.py: add_note).
+type AddNoteBody = Parameters<typeof api.api_Orders_add_note_create>[0];
+type NoteVisibility = NonNullable<AddNoteBody["visibility"]>;
+
 export function OrderDetailsPage() {
     const { orderNumber } = useParams({ from: "/orders/$orderNumber" });
     const navigate = useNavigate();
@@ -162,16 +169,15 @@ export function OrderDetailsPage() {
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
     const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
     const [notesExpanded, setNotesExpanded] = useState(false);
-    const [noteVisibility, setNoteVisibility] = useState<"visible" | "internal">("visible");
+    const [noteVisibility, setNoteVisibility] = useState<NoteVisibility>("VISIBLE");
 
     const { data, isLoading, error, refetch } = useOrderDetails(orderNumber);
 
     // Mutation for adding notes
     const addNoteMutation = useMutation({
-        mutationFn: async ({ message, visibility }: { message: string; visibility: string }) => {
+        mutationFn: async ({ message, visibility }: AddNoteBody) => {
             return await api.api_Orders_add_note_create(
-                // eslint-disable-next-line local/no-as-any -- add_note body type doesn't expose message/visibility in generated schema; these are the actual runtime fields
-                { message, visibility } as any,
+                { message, visibility },
                 { params: { id: orderNumber } }
             );
         },
@@ -459,10 +465,10 @@ export function OrderDetailsPage() {
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        onClick={() => setNoteVisibility(noteVisibility === "visible" ? "internal" : "visible")}
-                                        title={noteVisibility === "visible" ? "Visible to customer" : "Internal only"}
+                                        onClick={() => setNoteVisibility(noteVisibility === "VISIBLE" ? "INTERNAL" : "VISIBLE")}
+                                        title={noteVisibility === "VISIBLE" ? "Visible to customer" : "Internal only"}
                                     >
-                                        {noteVisibility === "visible" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                        {noteVisibility === "VISIBLE" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                                     </Button>
                                 }
                             />
@@ -639,7 +645,8 @@ export function OrderDetailsPage() {
                                     {documents.map((doc) => (
                                         <a
                                             key={doc.id}
-                                            href={doc.file_url}
+                                            // file_url is null for a document row with no stored file
+                                            href={doc.file_url ?? undefined}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"

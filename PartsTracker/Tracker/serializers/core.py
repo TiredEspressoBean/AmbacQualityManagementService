@@ -492,21 +492,25 @@ class UserInvitationSerializer(serializers.ModelSerializer):
             'accepted_ip_address', 'accepted_user_agent', 'token'
         )
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_user_name(self, obj):
         """Get formatted user name"""
         if obj.user:
             return obj.user.get_full_name().strip() or obj.user.email
         return None
 
-    @extend_schema_field(serializers.CharField())
+    # invited_by is SET_NULL, so this genuinely returns None once the staff
+    # member who sent an invitation is deleted. Annotated non-null it generated a
+    # required string, and the zod client rejected the whole invitations
+    # response the first time that happened -- in the browser only.
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_invited_by_name(self, obj):
         """Get formatted invited_by name"""
         if obj.invited_by:
             return obj.invited_by.get_full_name().strip() or obj.invited_by.email
         return None
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_invitation_url(self, obj):
         """Generate invitation signup URL"""
         request = self.context.get('request')

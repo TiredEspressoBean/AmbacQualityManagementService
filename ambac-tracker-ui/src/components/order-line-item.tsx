@@ -231,7 +231,8 @@ export function OrderLineItem({ part, index, partsContentTypeId }: OrderLineItem
                                     {partDocuments.map((doc) => (
                                         <a
                                             key={doc.id}
-                                            href={doc.file_url}
+                                            // file_url is null for a document row with no stored file
+                                            href={doc.file_url ?? undefined}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"

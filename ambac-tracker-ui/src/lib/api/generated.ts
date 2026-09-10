@@ -1957,7 +1957,7 @@ export type Documents = {
    */
   file_name: string;
   file: string;
-  file_url: string;
+  file_url: string | null;
   upload_date: string;
   uploaded_by?: (number | null) | undefined;
   uploaded_by_info: {};
@@ -2626,7 +2626,7 @@ export type HeatMapAnnotations = {
   notes?: string | undefined;
   quality_reports?: Array<string> | undefined;
   created_by: number | null;
-  created_by_display: string;
+  created_by_display: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -3650,7 +3650,12 @@ export type Orders = {
    */
   name: string;
   customer_note?: (string | null) | undefined;
-  latest_note: {};
+  latest_note: {
+    timestamp: string | null;
+    user: string;
+    visibility: string;
+    message: string;
+  };
   notes_timeline: Array<unknown>;
   customer?: (number | null) | undefined;
   customer_info: {};
@@ -3663,7 +3668,20 @@ export type Orders = {
   current_milestone?: (string | null) | undefined;
   parts_summary: {};
   process_stages: Array<unknown>;
-  gate_info: {};
+  gate_info: {
+    current_gate_name: string;
+    current_gate_full_name: string;
+    is_in_progress: boolean;
+    current_position?: number | undefined;
+    total_gates?: number | undefined;
+    progress_percent?: number | undefined;
+    gates: Array<{
+      name: string;
+      full_name: string;
+      is_current: boolean;
+      is_completed: boolean;
+    }>;
+  };
   customer_first_name: string | null;
   customer_last_name: string | null;
   company_name: string | null;
@@ -4202,14 +4220,32 @@ export type CustomerOrder = {
    */
   order_number: string;
   name: string;
-  latest_note: {};
+  latest_note: {
+    timestamp: string | null;
+    user: string;
+    visibility: string;
+    message: string;
+  };
   notes_timeline: Array<unknown>;
   order_status: string;
   order_status_code: string;
   estimated_completion: string | null;
   original_completion_date: string | null;
   process_stages: Array<unknown>;
-  gate_info: {};
+  gate_info: {
+    current_gate_name: string;
+    current_gate_full_name: string;
+    is_in_progress: boolean;
+    current_position?: number | undefined;
+    total_gates?: number | undefined;
+    progress_percent?: number | undefined;
+    gates: Array<{
+      name: string;
+      full_name: string;
+      is_current: boolean;
+      is_completed: boolean;
+    }>;
+  };
   parts_summary: {};
   company_name: string | null;
   customer_first_name: string | null;
@@ -9090,9 +9126,9 @@ export type UserInvitation = {
   id: number;
   user: number;
   user_email: string;
-  user_name: string;
+  user_name: string | null;
   invited_by?: (number | null) | undefined;
-  invited_by_name: string;
+  invited_by_name: string | null;
   sent_at: string;
   expires_at: string;
   accepted_at: string | null;
@@ -9100,7 +9136,7 @@ export type UserInvitation = {
   is_valid: boolean;
   accepted_ip_address: string | null;
   accepted_user_agent: string | null;
-  invitation_url: string;
+  invitation_url: string | null;
 };
 export type PaginatedUserList = {
   /**
@@ -16165,7 +16201,7 @@ const Documents = z.object({
   is_image: z.boolean().optional(),
   file_name: z.string().max(50),
   file: z.string().url(),
-  file_url: z.string(),
+  file_url: z.string().nullable(),
   upload_date: z.string(),
   uploaded_by: z.number().int().nullish(),
   uploaded_by_info: z.object({}).partial().passthrough().nullable(),
@@ -16753,7 +16789,7 @@ const HeatMapAnnotations = z.object({
   notes: z.string().optional(),
   quality_reports: z.array(z.string().uuid()).optional(),
   created_by: z.number().int().nullable(),
-  created_by_display: z.string(),
+  created_by_display: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -17499,7 +17535,14 @@ const Orders = z.object({
   order_number: z.string(),
   name: z.string().max(200),
   customer_note: z.string().nullish(),
-  latest_note: z.object({}).partial().passthrough().nullable(),
+  latest_note: z
+    .object({
+      timestamp: z.string().nullable(),
+      user: z.string(),
+      visibility: z.string(),
+      message: z.string(),
+    })
+    .nullable(),
   notes_timeline: z.array(z.unknown()),
   customer: z.number().int().nullish(),
   customer_info: z.object({}).partial().passthrough().nullable(),
@@ -17512,7 +17555,24 @@ const Orders = z.object({
   current_milestone: z.string().uuid().nullish(),
   parts_summary: z.object({}).partial().passthrough().nullable(),
   process_stages: z.array(z.unknown()),
-  gate_info: z.object({}).partial().passthrough().nullable(),
+  gate_info: z
+    .object({
+      current_gate_name: z.string(),
+      current_gate_full_name: z.string(),
+      is_in_progress: z.boolean(),
+      current_position: z.number().int().optional(),
+      total_gates: z.number().int().optional(),
+      progress_percent: z.number().optional(),
+      gates: z.array(
+        z.object({
+          name: z.string(),
+          full_name: z.string(),
+          is_current: z.boolean(),
+          is_completed: z.boolean(),
+        })
+      ),
+    })
+    .nullable(),
   customer_first_name: z.string().nullable(),
   customer_last_name: z.string().nullable(),
   company_name: z.string().nullable(),
@@ -19862,6 +19922,7 @@ const StepWithResolvedRules = z.object({
       inspection_level: z.string(),
       severity: z.string(),
       strategy: z.string(),
+      variables_characteristic: z.string().uuid().nullable(),
     })
     .partial(),
   fallback_ruleset: z
@@ -20662,14 +20723,38 @@ const CustomerOrder = z.object({
   id: z.string().uuid(),
   order_number: z.string(),
   name: z.string(),
-  latest_note: z.object({}).partial().passthrough().nullable(),
+  latest_note: z
+    .object({
+      timestamp: z.string().nullable(),
+      user: z.string(),
+      visibility: z.string(),
+      message: z.string(),
+    })
+    .nullable(),
   notes_timeline: z.array(z.unknown()),
   order_status: z.string(),
   order_status_code: z.string(),
   estimated_completion: z.string().nullable(),
   original_completion_date: z.string().datetime({ offset: true }).nullable(),
   process_stages: z.array(z.unknown()),
-  gate_info: z.object({}).partial().passthrough().nullable(),
+  gate_info: z
+    .object({
+      current_gate_name: z.string(),
+      current_gate_full_name: z.string(),
+      is_in_progress: z.boolean(),
+      current_position: z.number().int().optional(),
+      total_gates: z.number().int().optional(),
+      progress_percent: z.number().optional(),
+      gates: z.array(
+        z.object({
+          name: z.string(),
+          full_name: z.string(),
+          is_current: z.boolean(),
+          is_completed: z.boolean(),
+        })
+      ),
+    })
+    .nullable(),
   parts_summary: z.object({}).partial().passthrough().nullable(),
   company_name: z.string().nullable(),
   customer_first_name: z.string().nullable(),
@@ -20932,9 +21017,9 @@ const UserInvitation = z.object({
   id: z.number().int(),
   user: z.number().int(),
   user_email: z.string().email(),
-  user_name: z.string(),
+  user_name: z.string().nullable(),
   invited_by: z.number().int().nullish(),
-  invited_by_name: z.string(),
+  invited_by_name: z.string().nullable(),
   sent_at: z.string().datetime({ offset: true }),
   expires_at: z.string().datetime({ offset: true }),
   accepted_at: z.string().datetime({ offset: true }).nullable(),
@@ -20942,7 +21027,7 @@ const UserInvitation = z.object({
   is_valid: z.boolean(),
   accepted_ip_address: z.string().nullable(),
   accepted_user_agent: z.string().nullable(),
-  invitation_url: z.string(),
+  invitation_url: z.string().nullable(),
 });
 const PaginatedUserInvitationList = z.object({
   count: z.number().int(),

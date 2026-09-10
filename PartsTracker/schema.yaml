@@ -40710,8 +40710,22 @@ components:
           readOnly: true
         latest_note:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - timestamp
+          - user
+          - visibility
+          - message
+          properties:
+            timestamp:
+              type: string
+              nullable: true
+            user:
+              type: string
+            visibility:
+              type: string
+            message:
+              type: string
           readOnly: true
         notes_timeline:
           type: array
@@ -40739,8 +40753,43 @@ components:
           readOnly: true
         gate_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - current_gate_name
+          - current_gate_full_name
+          - is_in_progress
+          - gates
+          properties:
+            current_gate_name:
+              type: string
+            current_gate_full_name:
+              type: string
+            is_in_progress:
+              type: boolean
+            current_position:
+              type: integer
+            total_gates:
+              type: integer
+            progress_percent:
+              type: number
+            gates:
+              type: array
+              items:
+                type: object
+                required:
+                - name
+                - full_name
+                - is_current
+                - is_completed
+                properties:
+                  name:
+                    type: string
+                  full_name:
+                    type: string
+                  is_current:
+                    type: boolean
+                  is_completed:
+                    type: boolean
           readOnly: true
         parts_summary:
           type: object
@@ -41715,6 +41764,7 @@ components:
           format: uri
         file_url:
           type: string
+          nullable: true
           readOnly: true
         upload_date:
           type: string
@@ -43761,6 +43811,7 @@ components:
           nullable: true
         created_by_display:
           type: string
+          nullable: true
           readOnly: true
         created_at:
           type: string
@@ -46437,8 +46488,22 @@ components:
           nullable: true
         latest_note:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - timestamp
+          - user
+          - visibility
+          - message
+          properties:
+            timestamp:
+              type: string
+              nullable: true
+            user:
+              type: string
+            visibility:
+              type: string
+            message:
+              type: string
           readOnly: true
         notes_timeline:
           type: array
@@ -46491,8 +46556,43 @@ components:
           readOnly: true
         gate_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - current_gate_name
+          - current_gate_full_name
+          - is_in_progress
+          - gates
+          properties:
+            current_gate_name:
+              type: string
+            current_gate_full_name:
+              type: string
+            is_in_progress:
+              type: boolean
+            current_position:
+              type: integer
+            total_gates:
+              type: integer
+            progress_percent:
+              type: number
+            gates:
+              type: array
+              items:
+                type: object
+                required:
+                - name
+                - full_name
+                - is_current
+                - is_completed
+                properties:
+                  name:
+                    type: string
+                  full_name:
+                    type: string
+                  is_current:
+                    type: boolean
+                  is_completed:
+                    type: boolean
           readOnly: true
         customer_first_name:
           type: string
@@ -61169,6 +61269,10 @@ components:
               type: string
             strategy:
               type: string
+            variables_characteristic:
+              type: string
+              format: uuid
+              nullable: true
           readOnly: true
         fallback_ruleset:
           type: object
@@ -65376,12 +65480,14 @@ components:
           readOnly: true
         user_name:
           type: string
+          nullable: true
           readOnly: true
         invited_by:
           type: integer
           nullable: true
         invited_by_name:
           type: string
+          nullable: true
           readOnly: true
         sent_at:
           type: string
@@ -65411,6 +65517,7 @@ components:
           nullable: true
         invitation_url:
           type: string
+          nullable: true
           readOnly: true
       required:
       - accepted_at
