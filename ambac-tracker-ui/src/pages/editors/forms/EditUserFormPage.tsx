@@ -41,6 +41,9 @@ import {
 
 import { useRetrieveUser } from "@/hooks/useRetrieveUser";
 import { useJobRoles } from "@/hooks/useJobRoles";
+import { useTenantGroups } from "@/hooks/useTenantGroups";
+import { api } from "@/lib/api/generated";
+import { getCookie } from "@/lib/utils";
 import { useCreateUser } from "@/hooks/useCreateUser";
 import { useUpdateUser } from "@/hooks/useUpdateUser";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
@@ -90,6 +93,7 @@ export default function UserFormPage() {
     });
 
     const { data: jobRolesData } = useJobRoles({ active: true });
+    const { data: groupsData } = useTenantGroups({ offset: 0, limit: 200 });
     const jobRoles = jobRolesData?.results ?? [];
 
     // Get current user to check staff/superuser status
@@ -126,6 +130,53 @@ export default function UserFormPage() {
         }
     }, [mode, user, form]);
 
+    // Group membership is NOT part of the user payload: `groups` is a
+    // SerializerMethodField in read_only_fields on the User serializer, so the
+    // API silently ignores it. Membership lives in UserRole and is managed via
+    // the TenantGroups members endpoints, so it is tracked separately here and
+    // reconciled after the user save succeeds.
+    const groupOptions = groupsData?.results ?? [];
+    const [groupIds, setGroupIds] = useState<string[]>([]);
+    const [initialGroupIds, setInitialGroupIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (mode === "edit" && user) {
+            const ids = ((user.groups ?? []) as { id?: string }[])
+                .map((g) => String(g.id))
+                .filter(Boolean);
+            setGroupIds(ids);
+            setInitialGroupIds(ids);
+        }
+    }, [mode, user]);
+
+    /** Apply the group diff. Additions and removals are independent calls, so a
+     *  partial failure is reported rather than silently leaving the user in a
+     *  half-assigned state. */
+    async function syncGroups(targetUserId: number, desired: string[], current: string[]) {
+        const headers = { "X-CSRFToken": getCookie("csrftoken") };
+        const toAdd = desired.filter((g) => !current.includes(g));
+        const toRemove = current.filter((g) => !desired.includes(g));
+        const failed: string[] = [];
+        for (const gid of toAdd) {
+            try {
+                await api.api_TenantGroups_members_create(
+                    // eslint-disable-next-line local/no-as-any -- only user_id is read server-side; mirrors useTenantGroupMembers
+                    { name: "", user_id: String(targetUserId) } as any,
+                    { params: { id: gid }, headers },
+                );
+            } catch { failed.push(gid); }
+        }
+        for (const gid of toRemove) {
+            try {
+                await api.api_TenantGroups_members_destroy(undefined, {
+                    params: { id: gid, user_id: String(targetUserId) },
+                    headers,
+                });
+            } catch { failed.push(gid); }
+        }
+        return failed;
+    }
+
     const createUser = useCreateUser();
     const updateUser = useUpdateUser();
 
@@ -150,8 +201,16 @@ export default function UserFormPage() {
             updateUser.mutate(
                 { id: userId, data: submitData },
                 {
-                    onSuccess: () => {
-                        toast.success("User updated successfully!");
+                    onSuccess: async () => {
+                        const failed = await syncGroups(userId, groupIds, initialGroupIds);
+                        setInitialGroupIds(groupIds);
+                        if (failed.length) {
+                            toast.warning(
+                                `User updated, but ${failed.length} role change(s) failed. Check permissions and retry.`,
+                            );
+                        } else {
+                            toast.success("User updated successfully!");
+                        }
                     },
                     onError: (err) => {
                         console.error("Update failed:", err);
@@ -161,9 +220,22 @@ export default function UserFormPage() {
             );
         } else {
             createUser.mutate(submitData as Parameters<typeof createUser.mutate>[0], {
-                onSuccess: () => {
-                    toast.success("User created successfully!");
+                onSuccess: async (created) => {
+                    const newId = (created as { id?: number } | undefined)?.id;
+                    let failed: string[] = [];
+                    if (newId !== undefined && groupIds.length) {
+                        failed = await syncGroups(newId, groupIds, []);
+                    }
+                    if (failed.length) {
+                        toast.warning(
+                            `User created, but ${failed.length} role assignment(s) failed. Assign them from the group page.`,
+                        );
+                    } else {
+                        toast.success("User created successfully!");
+                    }
                     form.reset();
+                    setGroupIds([]);
+                    setInitialGroupIds([]);
                 },
                 onError: (err) => {
                     console.error("Creation failed:", err);
@@ -384,30 +456,72 @@ export default function UserFormPage() {
                         )}
                     />
 
+                    {/* Role = tenant group membership, which is what actually grants
+                        permissions (via UserRole). Not part of the user payload -- see
+                        syncGroups above. Rendered as plain checkboxes rather than a
+                        Select because membership is many-to-many. */}
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Role</FormLabel>
+                        <div className="rounded-md border p-3 space-y-2 max-h-56 overflow-y-auto">
+                            {groupOptions.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    No roles defined for this organization yet.
+                                </p>
+                            ) : (
+                                groupOptions.map((g) => {
+                                    const gid = String(g.id);
+                                    const checked = groupIds.includes(gid);
+                                    return (
+                                        <label
+                                            key={gid}
+                                            className="flex items-center gap-2 text-sm cursor-pointer"
+                                        >
+                                            <Checkbox
+                                                checked={checked}
+                                                onCheckedChange={(v) =>
+                                                    setGroupIds((prev) =>
+                                                        v === true
+                                                            ? [...prev, gid]
+                                                            : prev.filter((x) => x !== gid),
+                                                    )
+                                                }
+                                            />
+                                            <span>{g.name}</span>
+                                        </label>
+                                    );
+                                })
+                            )}
+                        </div>
+                        <FormDescription>
+                            Controls what this person can do in the app. Applied after the
+                            user is saved, so a failure here is reported separately.
+                        </FormDescription>
+                    </FormItem>
+
                     <FormField
                         control={form.control}
                         name="job_role"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Job Role</FormLabel>
+                                <FormLabel>Position</FormLabel>
                                 <Select
                                     value={field.value ?? "__none__"}
                                     onValueChange={(v) => field.onChange(v === "__none__" ? null : v)}
                                 >
                                     <FormControl>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="No role" />
+                                            <SelectValue placeholder="No position" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        <SelectItem value="__none__">No role</SelectItem>
+                                        <SelectItem value="__none__">No position</SelectItem>
                                         {jobRoles.map((r) => (
                                             <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                                 <FormDescription>
-                                    Primary job role / position — drives the required-competency profile in the training matrix.
+                                    Drives the required-competency profile in the training matrix. Separate from Role, which controls permissions.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

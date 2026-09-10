@@ -401,6 +401,29 @@ def seed_all_defaults(tenant=None, update_existing: bool = False) -> dict:
     }
 
 
+def seed_own_company(tenant) -> dict:
+    """Create a Companies row representing the tenant's own organization.
+
+    `User.parent_company` points at Companies, and its help text frames it as
+    the company a portal user represents -- but internal staff also need
+    something to point at, and on a fresh tenant the Companies table is empty,
+    so the field offers nothing to select. Seeding the organization itself gives
+    a real FK target rather than special-casing the form, and it participates in
+    the supplier-qualification and HubSpot machinery like any other row.
+
+    Named from the tenant so it reads correctly per install. Idempotent by name:
+    re-running (or a later `setup_defaults`) will not duplicate it, and an
+    admin's rename is left alone.
+    """
+    from Tracker.models import Companies
+
+    _, created = Companies.objects.get_or_create(
+        name=tenant.name,
+        defaults={'description': f"{tenant.name} - own organization"},
+    )
+    return {'created': 1 if created else 0, 'skipped': 0 if created else 1}
+
+
 def seed_reference_data_for_tenant(tenant) -> dict:
     """
     Seed all reference data for a new tenant.
@@ -420,6 +443,7 @@ def seed_reference_data_for_tenant(tenant) -> dict:
     results = {
         'document_types': seed_document_types(tenant=tenant, update_existing=False),
         'approval_templates': seed_approval_templates(tenant=tenant, update_existing=False),
+        'own_company': seed_own_company(tenant=tenant),
     }
 
     # Log summary
