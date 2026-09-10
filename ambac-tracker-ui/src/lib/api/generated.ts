@@ -20346,7 +20346,19 @@ const TenantGroupDetail = z.object({
 const PatchedTenantGroupRequest = z
   .object({ name: z.string().min(1).max(100), description: z.string() })
   .partial();
+const TenantGroupCloneInputRequest = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+});
+const TenantGroupMemberInputRequest = z.object({
+  user_id: z.string().min(1),
+  facility_id: z.string().min(1).nullish(),
+  company_id: z.string().min(1).nullish(),
+});
 const RemoveMemberResponse = z.object({ status: z.string() });
+const TenantGroupPermissionsInputRequest = z.object({
+  permissions: z.array(z.string().min(1)),
+});
 const TenantLLMProviderProviderEnum = z.enum(["ollama", "openai", "anthropic"]);
 const TenantLLMProvider = z.object({
   id: z.string().uuid(),
@@ -23485,7 +23497,10 @@ export const schemas = {
   TenantGroupRequest,
   TenantGroupDetail,
   PatchedTenantGroupRequest,
+  TenantGroupCloneInputRequest,
+  TenantGroupMemberInputRequest,
   RemoveMemberResponse,
+  TenantGroupPermissionsInputRequest,
   TenantLLMProviderProviderEnum,
   TenantLLMProvider,
   PaginatedTenantLLMProviderList,
@@ -44910,7 +44925,7 @@ Allows tenant admins to:
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupRequest,
+        schema: TenantGroupCloneInputRequest,
       },
       {
         name: "id",
@@ -44951,7 +44966,7 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupRequest,
+        schema: TenantGroupMemberInputRequest,
       },
       {
         name: "id",
@@ -45016,7 +45031,7 @@ DELETE: Remove permissions`,
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupRequest,
+        schema: TenantGroupPermissionsInputRequest,
       },
       {
         name: "id",
@@ -45041,7 +45056,7 @@ DELETE: Remove permissions`,
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupRequest,
+        schema: TenantGroupPermissionsInputRequest,
       },
       {
         name: "id",

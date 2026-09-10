@@ -46,8 +46,10 @@ export function useAddTenantGroupMember(groupId: string) {
     return useMutation({
         mutationFn: (userId: string) =>
             api.api_TenantGroups_members_create(
-                // eslint-disable-next-line local/no-as-any -- TenantGroupMember create body doesn't match generated schema; only user_id is needed at runtime
-                { name: "", user_id: userId } as any,
+                // Body is TenantGroupMemberInput now that the action declares
+                // request=; previously this fell back to TenantGroupSerializer and
+                // Zod rejected every call for a missing `name`.
+                { user_id: userId },
                 { params: { id: groupId } }
             ),
         onSuccess: () => {

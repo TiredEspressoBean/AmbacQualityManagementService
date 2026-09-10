@@ -175,8 +175,7 @@ export default function UserFormPage() {
         for (const gid of toAdd) {
             try {
                 await api.api_TenantGroups_members_create(
-                    // eslint-disable-next-line local/no-as-any -- only user_id is read server-side; mirrors useTenantGroupMembers
-                    { name: "", user_id: String(targetUserId) } as any,
+                    { user_id: String(targetUserId) },
                     { params: { id: gid }, headers },
                 );
             } catch (e) {
