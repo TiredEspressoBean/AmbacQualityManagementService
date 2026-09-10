@@ -194,6 +194,14 @@ services:
       - CORS_ALLOW_CREDENTIALS=true
       - CORS_ALLOWED_ORIGINS=https://${SITE_DOMAIN:-localhost}
       - CSRF_TRUSTED_ORIGINS=https://${SITE_DOMAIN:-localhost}
+      # ALLOWED_HOSTS derived from the same ${SITE_DOMAIN}, for the same reason
+      # CORS/CSRF are. DEBUG=False makes Django enforce it, and Caddy does a
+      # plain reverse_proxy that preserves the client's Host header -- so without
+      # this an internal hostname gets 400 DisallowedHost on every request, since
+      # settings.py's default covers only localhost and the *.railway.app /
+      # *.azurewebsites.net hosts. localhost stays in the list for the container
+      # healthcheck, which curls http://localhost:8000/health/.
+      - ALLOWED_HOSTS=${SITE_DOMAIN:-localhost},localhost,127.0.0.1
       - DJANGO_DEBUG=False
     # MEDIA_ROOT (/app/media) must outlive the container: uploads, generated
     # report PDFs and converted 3D models live there. Bind-mounted rather than a
