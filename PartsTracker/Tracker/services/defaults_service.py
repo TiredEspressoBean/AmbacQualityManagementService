@@ -417,7 +417,12 @@ def seed_own_company(tenant) -> dict:
     """
     from Tracker.models import Companies
 
+    # Scoped on `tenant` explicitly, not left to SecureManager: this runs during
+    # tenant bootstrap, where the ContextVar holds whatever tenant the calling
+    # request or command was in -- not necessarily the one being seeded. Without
+    # this the row lands in, or is matched against, the wrong tenant.
     _, created = Companies.objects.get_or_create(
+        tenant=tenant,
         name=tenant.name,
         defaults={'description': f"{tenant.name} - own organization"},
     )
