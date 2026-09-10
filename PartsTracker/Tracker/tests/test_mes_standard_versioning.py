@@ -272,6 +272,42 @@ class WorkCenterSerializerRoutingTestCase(TenantTestCase):
         self.assertEqual(result.pk, self.obj.pk)
         self.assertEqual(result.version, 1)
 
+    def test_the_list_endpoint_returns_only_current_versions(self):
+        """Every edit leaves the superseded row behind, and the list was returning
+        both — one station appearing twice, the older copy carrying a stale step and
+        people count. Every internal consumer (RCCP, workload control) already filtered
+        on this; the list was the outlier."""
+        s = self._serializer(self.obj, {'description': 'Revised assembly area'})
+        s.is_valid(raise_exception=True)
+        new = s.save()
+        self.assertEqual(new.version, 2)
+
+        self.grant_tenant_permissions(
+            self.user_a, self.tenant_a, ['view_workcenter', 'full_tenant_access'])
+        self.authenticate_as(self.user_a)
+        resp = self.client.get('/api/WorkCenters/', {'limit': 100})
+        self.assertEqual(resp.status_code, 200)
+        rows = [w for w in resp.data['results'] if w['code'] == 'ASM']
+        self.assertEqual(len(rows), 1, "the superseded version is still listed")
+        self.assertEqual(rows[0]['version'], 2)
+
+    def test_a_superseded_version_is_still_reachable_by_id(self):
+        """Why the filter is scoped to `list` rather than to the class queryset (as
+        `ShiftViewSet` does): `Steps.work_center` holds whichever version was current
+        when the step was authored, so a by-id fetch of an older work centre is
+        legitimate and must not 404."""
+        old_id = self.obj.id
+        s = self._serializer(self.obj, {'description': 'Revised assembly area'})
+        s.is_valid(raise_exception=True)
+        s.save()
+
+        self.grant_tenant_permissions(
+            self.user_a, self.tenant_a, ['view_workcenter', 'full_tenant_access'])
+        self.authenticate_as(self.user_a)
+        resp = self.client.get(f'/api/WorkCenters/{old_id}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['version'], 1)
+
 
 # =============================================================================
 # Shift

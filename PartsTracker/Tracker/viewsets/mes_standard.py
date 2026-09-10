@@ -69,6 +69,24 @@ class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewS
     action_permissions = {'record_pick': ['add_materialstagingline']}
     crud_exempt_actions = {'record_pick'}
 
+    def get_queryset(self):
+        """Current versions only when listing.
+
+        `WorkCenter` is versioned, so an edit leaves the superseded row behind — and the
+        list was returning both, so one station appeared twice with a stale step and
+        people count on the older row. Every internal consumer (RCCP, the workload-
+        control policy) already filters `is_current_version`; the list was the outlier.
+
+        Scoped to `list` rather than filtered on the class queryset (as `ShiftViewSet`
+        does) because `Steps.work_center` holds whichever version was current when the
+        step was authored. Filtering every action would 404 a by-id fetch of a work
+        centre an older routing still legitimately points at.
+        """
+        qs = super().get_queryset()
+        if self.action == 'list':
+            qs = qs.filter(is_current_version=True)
+        return qs
+
     @extend_schema(
         request=inline_serializer(name="MarkStagedInput", fields={
             "work_order": serializers.UUIDField(),
