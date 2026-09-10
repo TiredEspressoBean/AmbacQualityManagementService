@@ -8,10 +8,26 @@ services:
       - "postgres"
       - "-c"
       - "shared_preload_libraries=pgaudit"
+      # pgaudit classes, not "all". This keeps the accountability set -- WRITE
+      # (INSERT/UPDATE/DELETE/TRUNCATE/COPY TO), DDL (schema change) and ROLE
+      # (GRANT/REVOKE, role create/alter/drop) -- and drops READ, FUNCTION and
+      # MISC, which were the bulk of the volume on a read-heavy app.
+      #
+      # What this gives up: database-level visibility of who READ what. Model
+      # *changes* are still covered independently by django-auditlog, whose
+      # tables carry the append-only immutability triggers from
+      # setup_audit_triggers, and the AI data path logs its own access via
+      # log_ai_data_access(). But if read-access evidence for CUI is ever
+      # required at the database layer, this is the setting to revisit -- it is
+      # a compliance decision, not a performance one.
       - "-c"
-      - "pgaudit.log=all"
+      - "pgaudit.log=write, ddl, role"
+      # pgaudit.log_catalog=off: catalog reads carry no audit value and Django
+      # queries pg_class/pg_attribute/information_schema constantly (migrations,
+      # connection setup, introspection). Measured at 36% of all log lines on an
+      # idle stack. pgaudit's own docs recommend disabling it for exactly this.
       - "-c"
-      - "pgaudit.log_catalog=on"
+      - "pgaudit.log_catalog=off"
       - "-c"
       - "pgaudit.log_relation=on"
       - "-c"
@@ -27,8 +43,12 @@ services:
       - "logging_collector=on"
       - "-c"
       - "log_directory=/var/log/postgresql"
+      # %H%M%S is required for log_rotation_size below to do anything. With a
+      # date-only name, hitting the size limit rotates to the SAME filename, and
+      # log_truncate_on_rotation defaults to off, so Postgres just appends -- the
+      # 100MB cap was silently inert and each day grew one unbounded file.
       - "-c"
-      - "log_filename=postgresql-%Y-%m-%d.log"
+      - "log_filename=postgresql-%Y-%m-%d_%H%M%S.log"
       - "-c"
       - "log_rotation_age=1d"
       - "-c"
@@ -416,7 +436,7 @@ services:
     command:
       - |
         # No cron here, deliberately. Dockerfile.postgres builds on
-        # ankane/pgvector (Debian 12) and installs neither cron nor busybox, so
+        # pgvector/pgvector (Debian 12) and installs neither cron nor busybox, so
         # the previous `crontab`/`crond` version exited 127 on every boot and
         # crash-looped under restart: unless-stopped -- these backups had never
         # once run. Installing Debian's cron would not be enough either: this
@@ -447,7 +467,16 @@ services:
           fi
         }
         sync_media() { mkdir -p /backup/media && cp -ru /media/. /backup/media/; }
-        log "=== Backup scheduler started (diff>=02:00 daily, full>=03:00 Sun, media>=04:00 daily) ==="
+        # Postgres never removes its own log files. log_filename carries a
+        # timestamp and log_rotation_size caps each file at 100MB, so without a
+        # prune the postgres_logs volume grows forever. 30 days is the operational
+        # window: these are connection/statement telemetry for incident
+        # investigation, NOT the compliance record. The audit trail proper lives
+        # in the database (django-auditlog plus the append-only tables guarded by
+        # setup_audit_triggers) and its retention is governed by pgBackRest's
+        # repo1-retention-* settings, not by this.
+        prune_logs() { find /var/log/postgresql -name '*.log' -type f -mtime +30 -delete; }
+        log "=== Backup scheduler started (diff>=02:00 daily, full>=03:00 Sun, media>=04:00 daily, log-prune>=05:00 daily) ==="
         while true; do
           H=$$(date +%H); H=$${H#0}; [ -n "$$H" ] || H=0
           TODAY=$$(date +%Y-%m-%d); WEEK=$$(date +%G-%V); DOW=$$(date +%u)
@@ -459,6 +488,9 @@ services:
           fi
           if [ "$$H" -ge 4 ]; then
             run_once media "$$TODAY" sync_media
+          fi
+          if [ "$$H" -ge 5 ]; then
+            run_once prune_logs "$$TODAY" prune_logs
           fi
           sleep 300
         done
