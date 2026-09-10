@@ -423,7 +423,7 @@ The current `docker-compose.yml` is a working on-premise deployment:
 
 | Service | Image | Status | Notes |
 |---------|-------|--------|-------|
-| `postgres` | ankane/pgvector:v0.5.1 | [x] | Vector search enabled |
+| `postgres` | pgvector/pgvector:pg17 (via Dockerfile.postgres) | [x] | Vector search enabled |
 | `redis` | redis:7-alpine | [x] | Broker + cache |
 | `backend` | Custom Dockerfile | [x] | Django + Gunicorn |
 | `celery-worker` | Same as backend | [x] | Async tasks |

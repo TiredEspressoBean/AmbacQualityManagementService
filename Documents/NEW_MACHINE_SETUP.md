@@ -73,13 +73,14 @@ host ports exposed so `localhost:5432` / `localhost:6379` work. This is what
 debugger). Bring up the two containers:
 
 ```powershell
-docker run -d --name partstracker-postgres `
+docker run -d --name partstracker-postgres --restart unless-stopped `
   -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=<from .env> `
   -e POSTGRES_DB=tracker_AMBAC -p 5432:5432 `
   -v partstracker-pgdata:/var/lib/postgresql/data `
-  ankane/pgvector:v0.5.1
+  pgvector/pgvector:pg17
 
-docker run -d --name partstracker-redis -p 6379:6379 redis:7-alpine
+docker run -d --name partstracker-redis --restart unless-stopped `
+  -p 6379:6379 redis:7-alpine
 ```
 
 Notes:
@@ -89,9 +90,19 @@ Notes:
   the *first* migration dies and you never get a schema at all. (The
   `is_vector_extension_available` skips in the test suite make it look
   optional. It isn't — those only spare you a cascade of test errors once
-  you already have a DB.) `ankane/pgvector` is the lighter dev-only equivalent of
-  the compose `Dockerfile.postgres` (which also bakes in pgaudit/pgBackRest —
-  audit logging + WAL archiving that dev doesn't need).
+  you already have a DB.) `pgvector/pgvector` is the lighter dev-only equivalent
+  of the compose `Dockerfile.postgres`, which builds from the same image and adds
+  pgaudit + pgBackRest — audit logging and WAL archiving that dev doesn't need.
+- **Same major as production, deliberately.** Railway runs the pgvector-pg17
+  template because Railway's managed Postgres ships no pgvector binaries — the
+  17 arrived with the only option that had the extension. Compose and this dev
+  container are pinned to pg17 to match, so a production dump restores locally
+  and migrations are validated against the right major. The earlier pin,
+  `ankane/pgvector:v0.5.1`, was PG15 *and* pgvector 0.5.1.
+- **Switching majors destroys the volume.** PG17 refuses to start on a PG15 data
+  directory, so an existing `partstracker-pgdata` must be dumped and restored
+  (`pg_dump` out of the old container, `psql` into the new) or dropped and
+  reseeded. Not a hot swap.
 - **Redis here is passwordless** (dev backend connects to `localhost:6379`
   with no auth) — matches the native backend's default env.
 - **Both must be running for the app.** Postgres is the DB; **Redis backs

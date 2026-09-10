@@ -1,11 +1,19 @@
-FROM ankane/pgvector:v0.5.1
+FROM pgvector/pgvector:pg17
 
 # Install pgaudit extension for CMMC L2 compliance auditing
 # Install pgBackRest for PITR backups
-# ankane/pgvector:v0.5.1 is based on PostgreSQL 15
+# pgvector/pgvector:pg17 is PostgreSQL 17 -- matches the pgvector-pg17 template
+# Railway runs, so local can restore a production dump and validate migrations
+# against the same major. The old ankane/pgvector:v0.5.1 was PG15 AND pgvector
+# 0.5.1; this image carries current pgvector (0.8+), which matters for the HNSW
+# index on doc_chunks -- 0.8 added iterative index scans, the thing that makes a
+# filtered vector search (for_user() then ORDER BY distance) keep using the index
+# instead of falling back to a sequential scan.
+# NOTE: switching majors invalidates the postgres_data volume -- PG17 refuses to
+# start on a PG15 data directory. Requires `down -v` and a reseed.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        postgresql-15-pgaudit \
+        postgresql-17-pgaudit \
         pgbackrest && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/pgbackrest /var/log/pgbackrest /var/spool/pgbackrest && \

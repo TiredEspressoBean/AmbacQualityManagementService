@@ -76,7 +76,7 @@ not 8000.
 |---|---|
 | Backend | Django 5.1 + DRF, Celery (Redis broker), Typst for PDF reports |
 | Frontend | React + Vite + TanStack Router, built with Bun |
-| Database | PostgreSQL 15 (`ankane/pgvector`) with pgvector, pgaudit, pgBackRest |
+| Database | PostgreSQL 17 (`pgvector/pgvector`) with pgvector, pgaudit, pgBackRest |
 | Proxy | Caddy -- TLS, static files, API routing |
 
 Compose profiles: **`local`** (runserver, hot reload, seeded admin),
