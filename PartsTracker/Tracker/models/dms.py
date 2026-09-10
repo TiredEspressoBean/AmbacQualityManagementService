@@ -25,7 +25,7 @@ Note: SecureManager and Documents are in core.py
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-from pgvector.django import VectorField
+from pgvector.django import HnswIndex, VectorField
 
 from .core import SecureManager
 
@@ -58,7 +58,27 @@ class DocChunk(models.Model):
 
     class Meta:
         db_table = 'doc_chunks'
-        indexes = [models.Index(fields=['doc'])]
+        # No explicit index on `doc`: ForeignKey defaults to db_index=True
+        # (django/db/models/fields/related.py, kwargs.setdefault('db_index',
+        # True)), so Django already maintains one. Declaring it here as well
+        # built a second, identical btree on doc_id -- the planner uses one and
+        # writes pay for both. Dropped in migration 0174.
+        indexes = [
+            # Approximate-nearest-neighbour index for semantic search. The
+            # opclass must match the operator the query uses -- these searches
+            # go through CosineDistance (`<=>`), so vector_cosine_ops; an index
+            # built for a different opclass is simply never chosen. It also
+            # only helps `ORDER BY <distance> ASC LIMIT n`: a DESC order or an
+            # expression wrapping the distance falls back to a sequential scan.
+            # Added concurrently in migration 0173.
+            HnswIndex(
+                name='doc_chunks_embedding_hnsw',
+                fields=['embedding'],
+                m=16,
+                ef_construction=128,
+                opclasses=['vector_cosine_ops'],
+            ),
+        ]
 
 
 class ChatSession(models.Model):

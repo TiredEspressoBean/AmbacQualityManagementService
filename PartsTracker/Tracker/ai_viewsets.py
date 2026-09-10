@@ -173,15 +173,25 @@ class AISearchViewSet(viewsets.GenericViewSet):
         if doc_ids:
             chunks = chunks.filter(doc_id__in=doc_ids)
         
+        # CosineDistance is a DISTANCE (<=>): 0 is identical, 2 is opposite. This was
+        # aliased `similarity` and then filtered >= threshold / ordered DESC, which
+        # discarded every close match and ranked the most distant chunk first -- the
+        # search returned its worst hits, best-first-inverted.
+        #
+        # Order on the raw distance ASC: that is the only shape pgvector's HNSW index
+        # can serve (an expression or a DESC order forces a sequential scan), so this
+        # is also what makes the doc_chunks index usable. `threshold` stays a
+        # similarity floor, so the distance bound is 1 - threshold, and the response
+        # converts back to similarity.
         chunks = chunks.annotate(
-            similarity=CosineDistance('embedding', query_embedding)
+            distance=CosineDistance('embedding', query_embedding)
         ).filter(
-            similarity__gte=threshold
-        ).order_by('-similarity')[:limit]
+            distance__lte=1 - threshold
+        ).order_by('distance')[:limit]
 
         results = [{
             'id': chunk.id,
-            'similarity': float(chunk.similarity),
+            'similarity': 1 - float(chunk.distance),
             'preview_text': chunk.preview_text,
             'full_text': chunk.full_text,
             'span_meta': chunk.span_meta,
@@ -342,16 +352,17 @@ class AISearchViewSet(viewsets.GenericViewSet):
             if doc_ids:
                 vector_chunks = vector_chunks.filter(doc_id__in=doc_ids)
             
+            # Same inversion as vector_search above; see the note there.
             vector_chunks = vector_chunks.annotate(
-                similarity=CosineDistance('embedding', query_embedding)
+                distance=CosineDistance('embedding', query_embedding)
             ).filter(
-                similarity__gte=vector_threshold
-            ).order_by('-similarity')[:limit]
+                distance__lte=1 - vector_threshold
+            ).order_by('distance')[:limit]
             
             for chunk in vector_chunks:
                 results.append({
                     'id': chunk.id,
-                    'score': float(chunk.similarity),
+                    'score': 1 - float(chunk.distance),
                     'score_type': 'vector_similarity',
                     'preview_text': chunk.preview_text,
                     'full_text': chunk.full_text,
