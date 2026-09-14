@@ -112,8 +112,13 @@ export default function PartFormPage() {
     // Process selection for filtering steps (not submitted to API)
     const [selectedProcess, setSelectedProcess] = useState<string | undefined>(undefined)
 
+    // `|| undefined`, not the raw value: on a fresh create form
+    // form.watch("part_type") is '', and the Processes filter is declared
+    // z.string().uuid().optional() -- so zodios rejected the call before it was
+    // sent and the Process dropdown silently never loaded. (The Steps filter
+    // below declares a plain string, so '' is harmless there.)
     const {data: processes} = useRetrieveProcesses({
-        part_type: selectedPartType
+        part_type: selectedPartType || undefined
     });
 
     const {data: steps} = useRetrieveSteps({
