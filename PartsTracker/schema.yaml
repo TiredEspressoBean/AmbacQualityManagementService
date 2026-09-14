@@ -14226,14 +14226,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
+              $ref: '#/components/schemas/PartApprovalDisqualifyRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
+              $ref: '#/components/schemas/PartApprovalDisqualifyRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
-        required: true
+              $ref: '#/components/schemas/PartApprovalDisqualifyRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -14263,14 +14262,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
+              $ref: '#/components/schemas/PartApprovalGrantRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
+              $ref: '#/components/schemas/PartApprovalGrantRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
-        required: true
+              $ref: '#/components/schemas/PartApprovalGrantRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -14280,6 +14278,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PartApproval'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/PartApprovals/{id}/suspend/:
     post:
@@ -14303,14 +14308,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
+              $ref: '#/components/schemas/PartApprovalSuspendRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
+              $ref: '#/components/schemas/PartApprovalSuspendRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartApprovalRequest'
-        required: true
+              $ref: '#/components/schemas/PartApprovalSuspendRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -25540,8 +25544,13 @@ paths:
         Why a dedicated action: the ``(step, order)`` UniqueConstraint
         rejects naive per-row PATCHes from the client because intermediate
         states collide mid-swap. We do a two-phase update inside a single
-        transaction — first shift all involved rows to a non-conflicting
-        negative range, then assign the final positive values.
+        transaction — first park every involved row in a scratch range above
+        anything currently in the step, then assign the final ordinals.
+
+        The scratch range has to be *above* the live values, not below:
+        ``order`` is a PositiveIntegerField, so Postgres carries a
+        ``CHECK (order >= 0)`` and parking at negative offsets aborted the
+        transaction every time.
       tags:
       - api
       requestBody:
@@ -25851,14 +25860,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
+              $ref: '#/components/schemas/SupplierQualificationDisqualifyRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
+              $ref: '#/components/schemas/SupplierQualificationDisqualifyRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
-        required: true
+              $ref: '#/components/schemas/SupplierQualificationDisqualifyRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -25888,14 +25896,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
+              $ref: '#/components/schemas/SupplierQualificationGrantRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
+              $ref: '#/components/schemas/SupplierQualificationGrantRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
-        required: true
+              $ref: '#/components/schemas/SupplierQualificationGrantRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -25905,6 +25912,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/SupplierQualifications/{id}/suspend/:
     post:
@@ -25927,14 +25941,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
+              $ref: '#/components/schemas/SupplierQualificationSuspendRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
+              $ref: '#/components/schemas/SupplierQualificationSuspendRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SupplierQualificationRequest'
-        required: true
+              $ref: '#/components/schemas/SupplierQualificationSuspendRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -50240,6 +50253,25 @@ components:
       - supplier
       - supplier_name
       - updated_at
+    PartApprovalDisqualifyRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    PartApprovalGrantRequestRequest:
+      type: object
+      properties:
+        conditional:
+          type: boolean
+          default: false
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
     PartApprovalRequest:
       type: object
       description: |-
@@ -50318,6 +50350,11 @@ components:
       - expiry_date
       - record_id
       - status
+    PartApprovalSuspendRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
     PartApprovalTypeEnum:
       enum:
       - PPAP
@@ -63907,6 +63944,25 @@ components:
       - supplier
       - supplier_name
       - updated_at
+    SupplierQualificationDisqualifyRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    SupplierQualificationGrantRequestRequest:
+      type: object
+      properties:
+        conditional:
+          type: boolean
+          default: false
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
     SupplierQualificationRequest:
       type: object
       description: |-
@@ -63959,6 +64015,11 @@ components:
           type: boolean
       required:
       - supplier
+    SupplierQualificationSuspendRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
     SupplierScorecard:
       type: object
       properties:

@@ -89,7 +89,7 @@ export const useGrantPartApproval = () => {
                     conditional: vars.conditional ?? false,
                     effective_date: vars.effective_date ?? null,
                     expiry_date: vars.expiry_date ?? null,
-                } as never,
+                },
                 { params: { id: vars.id }, headers: csrf() },
             ),
         onSuccess: () => invalidate(qc),
@@ -100,7 +100,7 @@ export const useSuspendPartApproval = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string; reason?: string }) =>
-            api.api_PartApprovals_suspend_create({ reason: vars.reason ?? "" } as never, {
+            api.api_PartApprovals_suspend_create({ reason: vars.reason ?? "" }, {
                 params: { id: vars.id }, headers: csrf(),
             }),
         onSuccess: () => invalidate(qc),
@@ -111,7 +111,7 @@ export const useDisqualifyPartApproval = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string; reason?: string }) =>
-            api.api_PartApprovals_disqualify_create({ reason: vars.reason ?? "" } as never, {
+            api.api_PartApprovals_disqualify_create({ reason: vars.reason ?? "" }, {
                 params: { id: vars.id }, headers: csrf(),
             }),
         onSuccess: () => invalidate(qc),

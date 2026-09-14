@@ -18148,6 +18148,19 @@ const PatchedPartApprovalRequest = z
     archived: z.boolean(),
   })
   .partial();
+const PartApprovalDisqualifyRequestRequest = z
+  .object({ reason: z.string() })
+  .partial();
+const PartApprovalGrantRequestRequest = z
+  .object({
+    conditional: z.boolean().default(false),
+    effective_date: z.string().nullable(),
+    expiry_date: z.string().nullable(),
+  })
+  .partial();
+const PartApprovalSuspendRequestRequest = z
+  .object({ reason: z.string() })
+  .partial();
 const PartApprovalStatus = z.object({
   approved: z.boolean(),
   status: z.string().nullable(),
@@ -20780,6 +20793,19 @@ const PatchedSupplierQualificationRequest = z
     notes: z.string(),
     archived: z.boolean(),
   })
+  .partial();
+const SupplierQualificationDisqualifyRequestRequest = z
+  .object({ reason: z.string() })
+  .partial();
+const SupplierQualificationGrantRequestRequest = z
+  .object({
+    conditional: z.boolean().default(false),
+    effective_date: z.string().nullable(),
+    expiry_date: z.string().nullable(),
+  })
+  .partial();
+const SupplierQualificationSuspendRequestRequest = z
+  .object({ reason: z.string() })
   .partial();
 const QualificationStatus = z.object({
   qualified: z.boolean(),
@@ -23845,6 +23871,9 @@ export const schemas = {
   PaginatedPartApprovalList,
   PartApprovalRequest,
   PatchedPartApprovalRequest,
+  PartApprovalDisqualifyRequestRequest,
+  PartApprovalGrantRequestRequest,
+  PartApprovalSuspendRequestRequest,
   PartApprovalStatus,
   PartTypes,
   PaginatedPartTypesList,
@@ -24094,6 +24123,9 @@ export const schemas = {
   PaginatedSupplierQualificationList,
   SupplierQualificationRequest,
   PatchedSupplierQualificationRequest,
+  SupplierQualificationDisqualifyRequestRequest,
+  SupplierQualificationGrantRequestRequest,
+  SupplierQualificationSuspendRequestRequest,
   QualificationStatus,
   TenantGroup,
   PaginatedTenantGroupList,
@@ -36065,7 +36097,7 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       {
         name: "body",
         type: "Body",
-        schema: PartApprovalRequest,
+        schema: z.object({ reason: z.string() }).partial(),
       },
       {
         name: "id",
@@ -36085,7 +36117,7 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       {
         name: "body",
         type: "Body",
-        schema: PartApprovalRequest,
+        schema: PartApprovalGrantRequestRequest,
       },
       {
         name: "id",
@@ -36094,6 +36126,12 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       },
     ],
     response: PartApproval,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -36108,7 +36146,7 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       {
         name: "body",
         type: "Body",
-        schema: PartApprovalRequest,
+        schema: z.object({ reason: z.string() }).partial(),
       },
       {
         name: "id",
@@ -45348,8 +45386,13 @@ Body shape: &#x60;&#x60;{&quot;step&quot;: &quot;&lt;uuid&gt;&quot;, &quot;order
 Why a dedicated action: the &#x60;&#x60;(step, order)&#x60;&#x60; UniqueConstraint
 rejects naive per-row PATCHes from the client because intermediate
 states collide mid-swap. We do a two-phase update inside a single
-transaction — first shift all involved rows to a non-conflicting
-negative range, then assign the final positive values.`,
+transaction — first park every involved row in a scratch range above
+anything currently in the step, then assign the final ordinals.
+
+The scratch range has to be *above* the live values, not below:
+&#x60;&#x60;order&#x60;&#x60; is a PositiveIntegerField, so Postgres carries a
+&#x60;&#x60;CHECK (order &gt;&#x3D; 0)&#x60;&#x60; and parking at negative offsets aborted the
+transaction every time.`,
     requestFormat: "json",
     parameters: [
       {
@@ -45670,7 +45713,7 @@ const endpoints4 = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: SupplierQualificationRequest,
+        schema: z.object({ reason: z.string() }).partial(),
       },
       {
         name: "id",
@@ -45690,7 +45733,7 @@ const endpoints4 = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: SupplierQualificationRequest,
+        schema: SupplierQualificationGrantRequestRequest,
       },
       {
         name: "id",
@@ -45699,6 +45742,12 @@ const endpoints4 = makeApi([
       },
     ],
     response: SupplierQualification,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -45712,7 +45761,7 @@ const endpoints4 = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: SupplierQualificationRequest,
+        schema: z.object({ reason: z.string() }).partial(),
       },
       {
         name: "id",

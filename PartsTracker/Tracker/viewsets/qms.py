@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_view, OpenApiParameter
+from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_view, OpenApiParameter, OpenApiTypes
 from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -278,6 +278,20 @@ class SupplierQualificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
             return SupplierQualification.objects.none()
         return super().get_queryset().select_related('supplier', 'part_type', 'qualified_by')
 
+    # Undeclared, the body fell back to SupplierQualificationSerializer — which requires the
+    # record's own identifying fields — so the generated client rejected
+    # {conditional, effective_date, expiry_date} before any request was sent.
+    @extend_schema(
+        request=inline_serializer(
+            name='SupplierQualificationGrantRequest',
+            fields={
+                'conditional': serializers.BooleanField(required=False, default=False),
+                'effective_date': serializers.DateField(required=False, allow_null=True),
+                'expiry_date': serializers.DateField(required=False, allow_null=True),
+            },
+        ),
+        responses={200: SupplierQualificationSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='grant')
     def grant(self, request, pk=None):
         """Grant (approve) a qualification. Body: {conditional?, effective_date?, expiry_date?}."""
@@ -294,6 +308,13 @@ class SupplierQualificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(qualification).data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name='SupplierQualificationSuspendRequest',
+            fields={'reason': serializers.CharField(required=False, allow_blank=True)},
+        ),
+        responses={200: SupplierQualificationSerializer},
+    )
     @action(detail=True, methods=['post'], url_path='suspend')
     def suspend(self, request, pk=None):
         from Tracker.services.qms import supplier_qualification as svc
@@ -301,6 +322,13 @@ class SupplierQualificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
         svc.suspend(qualification, user=request.user, reason=request.data.get('reason', ''))
         return Response(self.get_serializer(qualification).data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name='SupplierQualificationDisqualifyRequest',
+            fields={'reason': serializers.CharField(required=False, allow_blank=True)},
+        ),
+        responses={200: SupplierQualificationSerializer},
+    )
     @action(detail=True, methods=['post'], url_path='disqualify')
     def disqualify(self, request, pk=None):
         from Tracker.services.qms import supplier_qualification as svc
@@ -366,6 +394,20 @@ class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
             return PartApproval.objects.none()
         return super().get_queryset().select_related('part_type', 'supplier', 'approved_by')
 
+    # Undeclared, the body fell back to PartApprovalSerializer — which requires the
+    # record's own identifying fields — so the generated client rejected
+    # {conditional, effective_date, expiry_date} before any request was sent.
+    @extend_schema(
+        request=inline_serializer(
+            name='PartApprovalGrantRequest',
+            fields={
+                'conditional': serializers.BooleanField(required=False, default=False),
+                'effective_date': serializers.DateField(required=False, allow_null=True),
+                'expiry_date': serializers.DateField(required=False, allow_null=True),
+            },
+        ),
+        responses={200: PartApprovalSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='grant')
     def grant(self, request, pk=None):
         """Grant (approve) a part approval. Body: {conditional?, effective_date?, expiry_date?}."""
@@ -382,6 +424,13 @@ class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(approval).data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name='PartApprovalSuspendRequest',
+            fields={'reason': serializers.CharField(required=False, allow_blank=True)},
+        ),
+        responses={200: PartApprovalSerializer},
+    )
     @action(detail=True, methods=['post'], url_path='suspend')
     def suspend(self, request, pk=None):
         from Tracker.services.qms import part_approval as svc
@@ -389,6 +438,13 @@ class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
         svc.suspend(approval, user=request.user, reason=request.data.get('reason', ''))
         return Response(self.get_serializer(approval).data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name='PartApprovalDisqualifyRequest',
+            fields={'reason': serializers.CharField(required=False, allow_blank=True)},
+        ),
+        responses={200: PartApprovalSerializer},
+    )
     @action(detail=True, methods=['post'], url_path='disqualify')
     def disqualify(self, request, pk=None):
         from Tracker.services.qms import part_approval as svc

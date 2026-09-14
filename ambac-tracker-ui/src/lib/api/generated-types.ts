@@ -10102,8 +10102,13 @@ export interface paths {
          *     Why a dedicated action: the ``(step, order)`` UniqueConstraint
          *     rejects naive per-row PATCHes from the client because intermediate
          *     states collide mid-swap. We do a two-phase update inside a single
-         *     transaction — first shift all involved rows to a non-conflicting
-         *     negative range, then assign the final positive values.
+         *     transaction — first park every involved row in a scratch range above
+         *     anything currently in the step, then assign the final ordinals.
+         *
+         *     The scratch range has to be *above* the live values, not below:
+         *     ``order`` is a PositiveIntegerField, so Postgres carries a
+         *     ``CHECK (order >= 0)`` and parking at negative offsets aborted the
+         *     transaction every time.
          */
         post: operations["api_Substeps_reorder_create"];
         delete?: never;
@@ -22172,6 +22177,17 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        PartApprovalDisqualifyRequestRequest: {
+            reason?: string;
+        };
+        PartApprovalGrantRequestRequest: {
+            /** @default false */
+            conditional: boolean;
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+        };
         /**
          * @description Base serializer for SecureModel instances.
          *
@@ -22214,6 +22230,9 @@ export interface components {
             expiry_date: string | null;
             days_to_expiry: number | null;
             record_id: string | null;
+        };
+        PartApprovalSuspendRequestRequest: {
+            reason?: string;
         };
         /**
          * @description * `PPAP` - PPAP
@@ -29544,6 +29563,17 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        SupplierQualificationDisqualifyRequestRequest: {
+            reason?: string;
+        };
+        SupplierQualificationGrantRequestRequest: {
+            /** @default false */
+            conditional: boolean;
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+        };
         /**
          * @description Base serializer for SecureModel instances.
          *
@@ -29577,6 +29607,9 @@ export interface components {
             expiry_date?: string | null;
             notes?: string;
             archived?: boolean;
+        };
+        SupplierQualificationSuspendRequestRequest: {
+            reason?: string;
         };
         SupplierScorecard: {
             supplier_id: string;
@@ -41966,11 +41999,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["PartApprovalRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
-                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+                "application/json": components["schemas"]["PartApprovalDisqualifyRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalDisqualifyRequestRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalDisqualifyRequestRequest"];
             };
         };
         responses: {
@@ -41994,11 +42027,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["PartApprovalRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
-                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+                "application/json": components["schemas"]["PartApprovalGrantRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalGrantRequestRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalGrantRequestRequest"];
             };
         };
         responses: {
@@ -42008,6 +42041,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -42022,11 +42065,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["PartApprovalRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
-                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+                "application/json": components["schemas"]["PartApprovalSuspendRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalSuspendRequestRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalSuspendRequestRequest"];
             };
         };
         responses: {
@@ -49615,11 +49658,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["SupplierQualificationRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
-                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+                "application/json": components["schemas"]["SupplierQualificationDisqualifyRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationDisqualifyRequestRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationDisqualifyRequestRequest"];
             };
         };
         responses: {
@@ -49643,11 +49686,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["SupplierQualificationRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
-                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+                "application/json": components["schemas"]["SupplierQualificationGrantRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationGrantRequestRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationGrantRequestRequest"];
             };
         };
         responses: {
@@ -49657,6 +49700,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -49671,11 +49724,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["SupplierQualificationRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
-                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+                "application/json": components["schemas"]["SupplierQualificationSuspendRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationSuspendRequestRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationSuspendRequestRequest"];
             };
         };
         responses: {

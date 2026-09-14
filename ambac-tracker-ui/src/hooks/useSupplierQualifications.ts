@@ -91,7 +91,7 @@ export const useGrantQualification = () => {
                     conditional: vars.conditional ?? false,
                     effective_date: vars.effective_date ?? null,
                     expiry_date: vars.expiry_date ?? null,
-                } as never,
+                },
                 { params: { id: vars.id }, headers: csrf() },
             ),
         onSuccess: () => invalidate(qc),
@@ -102,7 +102,7 @@ export const useSuspendQualification = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string; reason?: string }) =>
-            api.api_SupplierQualifications_suspend_create({ reason: vars.reason ?? "" } as never, {
+            api.api_SupplierQualifications_suspend_create({ reason: vars.reason ?? "" }, {
                 params: { id: vars.id },
                 headers: csrf(),
             }),
@@ -114,7 +114,7 @@ export const useDisqualifyQualification = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string; reason?: string }) =>
-            api.api_SupplierQualifications_disqualify_create({ reason: vars.reason ?? "" } as never, {
+            api.api_SupplierQualifications_disqualify_create({ reason: vars.reason ?? "" }, {
                 params: { id: vars.id },
                 headers: csrf(),
             }),
