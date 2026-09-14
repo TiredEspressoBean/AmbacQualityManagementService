@@ -17,7 +17,12 @@
  * `matchQuery` in query-core), so `matchKey(k)` and `{ queryKey: k }` select
  * the same queries by construction.
  */
-import { partialMatchKey } from "@tanstack/query-core";
+// From @tanstack/react-query, not @tanstack/query-core: query-core is only a
+// transitive dependency here, so importing it directly works under bun's
+// hoisting and breaks under a strict node_modules layout. react-query does
+// `export * from '@tanstack/query-core'`, so this is the same function through
+// the package we actually declare.
+import { partialMatchKey } from "@tanstack/react-query";
 
 type HasKey = { queryKey: readonly unknown[] };
 
