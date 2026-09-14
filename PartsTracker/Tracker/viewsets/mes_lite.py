@@ -666,9 +666,13 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
 
     @extend_schema(
         description="Lightweight endpoint for dropdown/combobox selections",
+        # pagination_class=None on the action below, so many=True generates a
+        # plain array rather than this viewset's pagination envelope -- which is
+        # what the handler actually returns. Same pattern as
+        # integrations.catalog.
         responses={200: PartSelectSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], pagination_class=None)
     def select(self, request):
         """Return lightweight part data for dropdown selections."""
         queryset = self.filter_queryset(self.get_queryset()).select_related('part_type')
@@ -3542,9 +3546,13 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
 
     @extend_schema(
         description="Lightweight endpoint for dropdown/combobox selections",
+        # pagination_class=None on the action below, so many=True generates a
+        # plain array rather than this viewset's pagination envelope -- which is
+        # what the handler actually returns. Same pattern as
+        # integrations.catalog.
         responses={200: PartTypeSelectSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], pagination_class=None)
     def select(self, request):
         """Return lightweight part type data for dropdown selections."""
         queryset = self.filter_queryset(self.get_queryset())
@@ -3756,9 +3764,13 @@ class ProcessWithStepsViewSet(TenantScopedMixin, DataExportMixin, viewsets.Model
         parameters=[
             OpenApiParameter(name='part_type', type=OpenApiTypes.INT, description='Filter by part type ID')
         ],
+        # pagination_class=None on the action below, so many=True generates a
+        # plain array rather than this viewset's pagination envelope -- which is
+        # what the handler actually returns. Same pattern as
+        # integrations.catalog.
         responses={200: ProcessWithStepsSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], pagination_class=None)
     def available(self, request):
         """Get all approved processes available for new work orders.
 

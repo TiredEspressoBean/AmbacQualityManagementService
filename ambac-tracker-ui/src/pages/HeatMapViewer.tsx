@@ -291,9 +291,11 @@ function HeatMapSelection({
     };
 
     // Get display names for comboboxes
+    // Both select endpoints return a bare array -- reading `.results` off one
+    // yielded undefined, which is why these comboboxes always showed "No … found".
     const selectedPartTypeName = partTypesList.find(pt => pt.id === selectedPartTypeForPart)?.name
-        || partTypesSearchData?.results?.find(pt => pt.id === selectedPartTypeForPart)?.name;
-    const selectedPart = partsData?.results?.find(p => p.id === selectedPartId);
+        || partTypesSearchData?.find(pt => pt.id === selectedPartTypeForPart)?.name;
+    const selectedPart = partsData?.find(p => p.id === selectedPartId);
     const selectedPartName = selectedPart
         ? (selectedPart.ERP_id || `Part #${selectedPart.id}`)
         : null;
@@ -413,7 +415,7 @@ function HeatMapSelection({
                                                         <CommandList>
                                                             <CommandEmpty>No part type found.</CommandEmpty>
                                                             <CommandGroup>
-                                                                {(partTypesSearchData?.results || []).map((pt) => (
+                                                                {(partTypesSearchData ?? []).map((pt) => (
                                                                     <CommandItem
                                                                         key={pt.id}
                                                                         value={pt.name}
@@ -469,7 +471,7 @@ function HeatMapSelection({
                                                             <CommandList>
                                                                 <CommandEmpty>No parts found.</CommandEmpty>
                                                                 <CommandGroup>
-                                                                    {(partsData?.results || []).map((part) => {
+                                                                    {(partsData ?? []).map((part) => {
                                                                         const partName = part.ERP_id || `Part #${part.id}`;
                                                                         return (
                                                                             <CommandItem

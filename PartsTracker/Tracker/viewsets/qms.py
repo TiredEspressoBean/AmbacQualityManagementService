@@ -763,6 +763,10 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
             'overdue': overdue_count,
         })
 
+    # many=True is right here, unlike the select/available actions: this one
+    # calls get_paginated_response, so the envelope is real. Undeclared,
+    # spectacular inferred a single CAPA and the client rejected every response.
+    @extend_schema(responses={200: CAPASerializer(many=True)})
     @action(detail=False, methods=['get'], url_path='my-assigned', permission_classes=[IsAuthenticated, TenantAccessPermission])
     def my_assigned(self, request):
         """Get all CAPAs assigned to current user"""

@@ -788,7 +788,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Get all CAPAs assigned to current user */
-        get: operations["api_CAPAs_my_assigned_retrieve"];
+        get: operations["api_CAPAs_my_assigned_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -21048,21 +21048,6 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Fixture"][];
         };
-        PaginatedGeneratedReportList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["GeneratedReport"][];
-        };
         PaginatedHarvestedComponentList: {
             /** @example 123 */
             count: number;
@@ -21302,36 +21287,6 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["PartApproval"][];
-        };
-        PaginatedPartSelectList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["PartSelect"][];
-        };
-        PaginatedPartTypeSelectList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["PartTypeSelect"][];
         };
         PaginatedPartTypesList: {
             /** @example 123 */
@@ -24893,18 +24848,10 @@ export interface components {
              * @description Organization logo (recommended: 200x200 PNG)
              */
             logo?: string | null;
-            /**
-             * Format: email
-             * @description Primary contact email for the organization
-             */
-            contact_email?: string;
+            contact_email?: string | "";
             /** @description Primary contact phone number */
             contact_phone?: string;
-            /**
-             * Format: uri
-             * @description Organization website URL
-             */
-            website?: string;
+            website?: string | "";
             /** @description Organization mailing address */
             address?: string;
             /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
@@ -26742,11 +26689,6 @@ export interface components {
                 [key: string]: unknown;
             }[];
             total_repeat_count: number;
-        };
-        ReportTypesResponse: {
-            name: string;
-            title: string;
-            template: string;
         };
         ResendEmailVerificationRequest: {
             /** Format: email */
@@ -29661,18 +29603,10 @@ export interface components {
              */
             logo?: string | null;
             readonly logo_url: string | null;
-            /**
-             * Format: email
-             * @description Primary contact email for the organization
-             */
-            contact_email?: string;
+            contact_email?: string | "";
             /** @description Primary contact phone number */
             contact_phone?: string;
-            /**
-             * Format: uri
-             * @description Organization website URL
-             */
-            website?: string;
+            website?: string | "";
             /** @description Organization mailing address */
             address?: string;
             /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
@@ -29877,6 +29811,14 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        TenantLLMProviderDefault: {
+            configured: boolean;
+            provider?: string;
+            provider_display?: string;
+            model_name?: string;
+            full_model_name?: string;
+            message?: string;
+        };
         /**
          * @description * `ollama` - Ollama (Local/Self-hosted)
          *     * `openai` - OpenAI
@@ -29956,18 +29898,10 @@ export interface components {
              * @description Organization logo (recommended: 200x200 PNG)
              */
             logo?: string | null;
-            /**
-             * Format: email
-             * @description Primary contact email for the organization
-             */
-            contact_email?: string;
+            contact_email?: string | "";
             /** @description Primary contact phone number */
             contact_phone?: string;
-            /**
-             * Format: uri
-             * @description Organization website URL
-             */
-            website?: string;
+            website?: string | "";
             /** @description Organization mailing address */
             address?: string;
             /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
@@ -33541,9 +33475,45 @@ export interface operations {
             };
         };
     };
-    api_CAPAs_my_assigned_retrieve: {
+    api_CAPAs_my_assigned_list: {
         parameters: {
-            query?: never;
+            query?: {
+                assigned_to?: number;
+                /**
+                 * @description * `CORRECTIVE` - Corrective Action
+                 *     * `PREVENTIVE` - Preventive Action
+                 *     * `CUSTOMER_COMPLAINT` - Customer Complaint
+                 *     * `INTERNAL_AUDIT` - Internal Audit
+                 *     * `SUPPLIER` - Supplier Issue
+                 */
+                capa_type?: "CORRECTIVE" | "CUSTOMER_COMPLAINT" | "INTERNAL_AUDIT" | "PREVENTIVE" | "SUPPLIER";
+                initiated_by?: number;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `CRITICAL` - Critical
+                 *     * `MAJOR` - Major
+                 *     * `MINOR` - Minor
+                 */
+                severity?: "CRITICAL" | "MAJOR" | "MINOR";
+                /**
+                 * @description Status (computed)
+                 *
+                 *     * `OPEN` - Open
+                 *     * `IN_PROGRESS` - In Progress
+                 *     * `PENDING_VERIFICATION` - Pending Verification
+                 *     * `CLOSED` - Closed
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "CANCELLED" | "CLOSED" | "IN_PROGRESS" | "OPEN" | "PENDING_VERIFICATION";
+                supplier?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -33555,7 +33525,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CAPA"];
+                    "application/json": components["schemas"]["PaginatedCAPAList"];
                 };
             };
         };
@@ -42473,11 +42443,7 @@ export interface operations {
     api_PartTypes_select_list: {
         parameters: {
             query?: {
-                /** @description Number of results to return per page. */
-                limit?: number;
                 name?: string;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 /** @description Filter processes by associated part type UUID */
@@ -42498,7 +42464,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedPartTypeSelectList"];
+                    "application/json": components["schemas"]["PartTypeSelect"][];
                 };
             };
         };
@@ -43305,11 +43271,7 @@ export interface operations {
                 created_at__gte?: string;
                 created_at__lte?: string;
                 exclude_terminal?: boolean;
-                /** @description Number of results to return per page. */
-                limit?: number;
                 needs_qa?: boolean;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
                 order?: string;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
@@ -43333,7 +43295,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedPartSelectList"];
+                    "application/json": components["schemas"]["PartSelect"][];
                 };
             };
         };
@@ -44050,10 +44012,6 @@ export interface operations {
     api_Processes_with_steps_available_list: {
         parameters: {
             query?: {
-                /** @description Number of results to return per page. */
-                limit?: number;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 /** @description Filter by part type ID */
@@ -44081,7 +44039,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedProcessWithStepsList"];
+                    "application/json": components["schemas"]["ProcessWithSteps"][];
                 };
             };
         };
@@ -50275,7 +50233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantLLMProvider"];
+                    "application/json": components["schemas"]["TenantLLMProviderDefault"];
                 };
             };
         };
@@ -57299,10 +57257,6 @@ export interface operations {
     api_reports_history_list: {
         parameters: {
             query?: {
-                /** @description Number of results to return per page. */
-                limit?: number;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
             };
@@ -57317,7 +57271,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedGeneratedReportList"];
+                    "application/json": components["schemas"]["GeneratedReport"][];
                 };
             };
         };
@@ -57336,7 +57290,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportTypesResponse"];
+                    "application/json": {
+                        name: string;
+                        title: string;
+                        template: string;
+                    }[];
                 };
             };
         };

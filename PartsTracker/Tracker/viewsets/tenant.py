@@ -472,10 +472,40 @@ class TenantLogoView(APIView):
 # TENANT CRUD (Platform Admin)
 # =============================================================================
 
+# Tenant.contact_email and .website are blank=True, so '' is a valid stored
+# value -- and is what every tenant currently holds. `format: email` / `format:
+# uri` cannot express "an email OR empty", so the generated client emitted
+# .email() / .url() and rejected the entire Tenants list response.
+#
+# The data is not the problem: Django's own guidance is to use '' rather than
+# NULL for blank string fields, so a null=True migration would be fighting the
+# convention to paper over a schema that is simply less expressive than the
+# field. `anyOf` states the real contract instead.
+#
+# Note the format comes from the field's VALIDATORS (EmailValidator /
+# URLValidator), not the field class -- drf-spectacular merges it back in after
+# any override that has a top-level `type`. An anyOf has no top-level type for
+# it to attach to, which is why this form survives where a plain
+# {'type': 'string'} override did not.
+#
+# Server-side write validation is untouched: these are still EmailField and
+# URLField, so a malformed value is still rejected on the way in.
+@extend_schema_field({'anyOf': [{'type': 'string', 'format': 'email'}, {'type': 'string', 'enum': ['']}], 'maxLength': 254})
+class BlankableEmailField(serializers.EmailField):
+    """EmailField whose schema says "an email, or blank" rather than "an email"."""
+
+
+@extend_schema_field({'anyOf': [{'type': 'string', 'format': 'uri'}, {'type': 'string', 'enum': ['']}], 'maxLength': 200})
+class BlankableURLField(serializers.URLField):
+    """URLField whose schema says "a URL, or blank" rather than "a URL"."""
+
+
 class TenantSerializer(serializers.ModelSerializer):
     """Serializer for Tenant model."""
     user_count = serializers.SerializerMethodField()
     logo_url = serializers.SerializerMethodField()
+    contact_email = BlankableEmailField(required=False, allow_blank=True)
+    website = BlankableURLField(required=False, allow_blank=True)
 
     class Meta:
         from Tracker.models import Tenant
@@ -1939,6 +1969,22 @@ class TenantLLMProviderViewSet(viewsets.ModelViewSet):
             'message': f'{instance.get_provider_display()} is now the default provider.'
         })
 
+    # Two arms, discriminated by `configured` -- the unconfigured one carries a
+    # message and nothing else. Undeclared, spectacular inferred the full
+    # TenantLLMProvider model serializer, so the client rejected both.
+    @extend_schema(responses={200: inline_serializer(
+        name='TenantLLMProviderDefault',
+        fields={
+            'configured': serializers.BooleanField(),
+            # configured=True only
+            'provider': serializers.CharField(required=False),
+            'provider_display': serializers.CharField(required=False),
+            'model_name': serializers.CharField(required=False),
+            'full_model_name': serializers.CharField(required=False),
+            # configured=False only
+            'message': serializers.CharField(required=False),
+        },
+    )})
     @action(detail=False, methods=['get'], url_path='default')
     def get_default(self, request):
         """Get the default provider configuration for the current tenant."""

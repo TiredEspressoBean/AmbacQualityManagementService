@@ -4770,25 +4770,6 @@ export type PaginatedFixtureList = {
     | undefined;
   results: Array<Fixture>;
 };
-export type PaginatedGeneratedReportList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<GeneratedReport>;
-};
 export type PaginatedHarvestedComponentList = {
   /**
    * @example 123
@@ -5254,67 +5235,6 @@ export type QualificationStatusEnum =
   | "SUSPENDED"
   | "EXPIRED"
   | "DISQUALIFIED";
-export type PaginatedPartSelectList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<PartSelect>;
-};
-export type PartSelect = {
-  id: string;
-  /**
-   * @maxLength 50
-   */
-  ERP_id: string;
-  part_type?: (string | null) | undefined;
-  part_type_name: string | null;
-  part_status?: PartsStatusEnum | undefined;
-};
-export type PaginatedPartTypeSelectList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<PartTypeSelect>;
-};
-export type PartTypeSelect = {
-  id: string;
-  /**
-   * @maxLength 50
-   */
-  name: string;
-  ID_prefix?:
-    | /**
-     * @maxLength 50
-     */
-    (string | null)
-    | undefined;
-};
 export type PaginatedPartTypesList = {
   /**
    * @example 123
@@ -8752,24 +8672,52 @@ export type Tenant = {
     (string | null)
     | undefined;
   logo_url: string | null;
-  contact_email?: /**
-   * Primary contact email for the organization
-   *
-   * @maxLength 254
-   */
-  string | undefined;
+  contact_email?:
+    | /**
+     * @maxLength 254
+     */
+    (| (
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          )
+        | Array<
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          >
+      )
+    | undefined;
   contact_phone?: /**
    * Primary contact phone number
    *
    * @maxLength 30
    */
   string | undefined;
-  website?: /**
-   * Organization website URL
-   *
-   * @maxLength 200
-   */
-  string | undefined;
+  website?:
+    | /**
+     * @maxLength 200
+     */
+    (| (
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          )
+        | Array<
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          >
+      )
+    | undefined;
   address?: /**
    * Organization mailing address
    */
@@ -9685,6 +9633,16 @@ export type PartApprovalRequest = {
   expiry_date?: (string | null) | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
+};
+export type PartSelect = {
+  id: string;
+  /**
+   * @maxLength 50
+   */
+  ERP_id: string;
+  part_type?: (string | null) | undefined;
+  part_type_name: string | null;
+  part_status?: PartsStatusEnum | undefined;
 };
 export type PartTravelerResponse = {
   part_id: string;
@@ -12061,11 +12019,23 @@ export type PatchedTenantRequest = Partial<{
    */
   logo: string | null;
   /**
-   * Primary contact email for the organization
-   *
    * @maxLength 254
    */
-  contact_email: string;
+  contact_email:
+    | (
+        | string
+        /**
+         * @enum
+         */
+        | ""
+      )
+    | Array<
+        | string
+        /**
+         * @enum
+         */
+        | ""
+      >;
   /**
    * Primary contact phone number
    *
@@ -12073,11 +12043,23 @@ export type PatchedTenantRequest = Partial<{
    */
   contact_phone: string;
   /**
-   * Organization website URL
-   *
    * @maxLength 200
    */
-  website: string;
+  website:
+    | (
+        | string
+        /**
+         * @enum
+         */
+        | ""
+      )
+    | Array<
+        | string
+        /**
+         * @enum
+         */
+        | ""
+      >;
   /**
    * Organization mailing address
    */
@@ -14515,24 +14497,52 @@ export type TenantRequest = {
      */
     (string | null)
     | undefined;
-  contact_email?: /**
-   * Primary contact email for the organization
-   *
-   * @maxLength 254
-   */
-  string | undefined;
+  contact_email?:
+    | /**
+     * @maxLength 254
+     */
+    (| (
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          )
+        | Array<
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          >
+      )
+    | undefined;
   contact_phone?: /**
    * Primary contact phone number
    *
    * @maxLength 30
    */
   string | undefined;
-  website?: /**
-   * Organization website URL
-   *
-   * @maxLength 200
-   */
-  string | undefined;
+  website?:
+    | /**
+     * @maxLength 200
+     */
+    (| (
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          )
+        | Array<
+            | string
+            /**
+             * @enum
+             */
+            | ""
+          >
+      )
+    | undefined;
   address?: /**
    * Organization mailing address
    */
@@ -18168,12 +18178,6 @@ const PartTypeSelect = z.object({
   name: z.string().max(50),
   ID_prefix: z.string().max(50).nullish(),
 });
-const PaginatedPartTypeSelectList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(PartTypeSelect),
-});
 const Parts = z.object({
   id: z.string().uuid(),
   ERP_id: z.string().max(50),
@@ -18464,12 +18468,6 @@ const PartSelect = z.object({
   part_type: z.string().uuid().nullish(),
   part_type_name: z.string().nullable(),
   part_status: PartsStatusEnum.optional(),
-});
-const PaginatedPartSelectList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(PartSelect),
 });
 const PlantCalendarExceptionKindEnum = z.enum([
   "HOLIDAY",
@@ -20807,6 +20805,14 @@ const PatchedTenantLLMProviderRequest = z
     api_key: z.string(),
   })
   .partial();
+const TenantLLMProviderDefault = z.object({
+  configured: z.boolean(),
+  provider: z.string().optional(),
+  provider_display: z.string().optional(),
+  model_name: z.string().optional(),
+  full_model_name: z.string().optional(),
+  message: z.string().optional(),
+});
 const TierEnum = z.enum(["STARTER", "PRO", "ENTERPRISE"]);
 const TenantStatusEnum = z.enum([
   "ACTIVE",
@@ -20832,9 +20838,9 @@ const Tenant = z.object({
   user_count: z.number().int(),
   logo: z.string().url().nullish(),
   logo_url: z.string().nullable(),
-  contact_email: z.string().max(254).email().optional(),
+  contact_email: z.union([z.string(), z.literal("")]).optional(),
   contact_phone: z.string().max(30).optional(),
-  website: z.string().max(200).url().optional(),
+  website: z.union([z.string(), z.literal("")]).optional(),
   address: z.string().optional(),
   default_timezone: z.string().max(50).optional(),
 });
@@ -20881,9 +20887,9 @@ const TenantRequest = z.object({
   trial_ends_at: z.string().datetime({ offset: true }).nullish(),
   settings: z.unknown().optional(),
   logo: z.instanceof(File).nullish(),
-  contact_email: z.string().max(254).email().optional(),
+  contact_email: z.union([z.string(), z.literal("")]).optional(),
   contact_phone: z.string().max(30).optional(),
-  website: z.string().max(200).url().optional(),
+  website: z.union([z.string(), z.literal("")]).optional(),
   address: z.string().optional(),
   default_timezone: z.string().min(1).max(50).optional(),
 });
@@ -20902,9 +20908,9 @@ const PatchedTenantRequest = z
     trial_ends_at: z.string().datetime({ offset: true }).nullable(),
     settings: z.unknown(),
     logo: z.instanceof(File).nullable(),
-    contact_email: z.string().max(254).email(),
+    contact_email: z.union([z.string(), z.literal("")]),
     contact_phone: z.string().max(30),
-    website: z.string().max(200).url(),
+    website: z.union([z.string(), z.literal("")]),
     address: z.string(),
     default_timezone: z.string().min(1).max(50),
   })
@@ -22824,17 +22830,6 @@ const GeneratedReport = z.object({
   status: GeneratedReportStatusEnum,
   error_message: z.string().nullable(),
 });
-const PaginatedGeneratedReportList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(GeneratedReport),
-});
-const ReportTypesResponse = z.object({
-  name: z.string(),
-  title: z.string(),
-  template: z.string(),
-});
 const ChartTypeEnum = z.enum(["XBAR_R", "XBAR_S", "I_MR"]);
 const BaselineStatusEnum = z.enum(["ACTIVE", "SUPERSEDED"]);
 const SPCBaselineList = z.object({
@@ -23761,7 +23756,6 @@ export const schemas = {
   PatchedPartTypesRequest,
   PartTypeQualitySummary,
   PartTypeSelect,
-  PaginatedPartTypeSelectList,
   Parts,
   PaginatedPartsList,
   PartsRequest,
@@ -23802,7 +23796,6 @@ export const schemas = {
   PartsBulkSetStatusInputRequest,
   BulkSetStatusResponse,
   PartSelect,
-  PaginatedPartSelectList,
   PlantCalendarExceptionKindEnum,
   PlantClosureRecurrenceEnum,
   PlantCalendarException,
@@ -24014,6 +24007,7 @@ export const schemas = {
   PaginatedTenantLLMProviderList,
   TenantLLMProviderRequest,
   PatchedTenantLLMProviderRequest,
+  TenantLLMProviderDefault,
   TierEnum,
   TenantStatusEnum,
   Tenant,
@@ -24253,8 +24247,6 @@ export const schemas = {
   GenerateReportResponse,
   GeneratedReportStatusEnum,
   GeneratedReport,
-  PaginatedGeneratedReportList,
-  ReportTypesResponse,
   ChartTypeEnum,
   BaselineStatusEnum,
   SPCBaselineList,
@@ -26565,10 +26557,78 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
   {
     method: "get",
     path: "/api/CAPAs/my-assigned/",
-    alias: "api_CAPAs_my_assigned_retrieve",
+    alias: "api_CAPAs_my_assigned_list",
     description: `Get all CAPAs assigned to current user`,
     requestFormat: "json",
-    response: CAPA,
+    parameters: [
+      {
+        name: "assigned_to",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "capa_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "CORRECTIVE",
+            "CUSTOMER_COMPLAINT",
+            "INTERNAL_AUDIT",
+            "PREVENTIVE",
+            "SUPPLIER",
+          ])
+          .optional(),
+      },
+      {
+        name: "initiated_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "severity",
+        type: "Query",
+        schema: z.enum(["CRITICAL", "MAJOR", "MINOR"]).optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "CANCELLED",
+            "CLOSED",
+            "IN_PROGRESS",
+            "OPEN",
+            "PENDING_VERIFICATION",
+          ])
+          .optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedCAPAList,
   },
   {
     method: "get",
@@ -36770,19 +36830,9 @@ Import/Export endpoints (auto-configured from model):
         schema: z.boolean().optional(),
       },
       {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
         name: "needs_qa",
         type: "Query",
         schema: z.boolean().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
       },
       {
         name: "order",
@@ -36825,7 +36875,7 @@ Import/Export endpoints (auto-configured from model):
         schema: z.string().uuid().optional(),
       },
     ],
-    response: PaginatedPartSelectList,
+    response: z.array(PartSelect),
   },
   {
     method: "get",
@@ -37187,19 +37237,9 @@ Import/Export endpoints (auto-configured from model):
     requestFormat: "json",
     parameters: [
       {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
         name: "name",
         type: "Query",
         schema: z.string().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
       },
       {
         name: "ordering",
@@ -37227,7 +37267,7 @@ Import/Export endpoints (auto-configured from model):
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedPartTypeSelectList,
+    response: z.array(PartTypeSelect),
   },
   {
     method: "get",
@@ -38635,16 +38675,6 @@ Usage:
     requestFormat: "json",
     parameters: [
       {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),
@@ -38667,7 +38697,7 @@ Usage:
           .optional(),
       },
     ],
-    response: PaginatedProcessWithStepsList,
+    response: z.array(ProcessWithSteps),
   },
   {
     method: "get",
@@ -40032,22 +40062,12 @@ requesting user. Responds 202 immediately.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedGeneratedReportList,
+    response: z.array(GeneratedReport),
   },
   {
     method: "get",
@@ -40055,7 +40075,9 @@ requesting user. Responds 202 immediately.`,
     alias: "api_reports_types_retrieve",
     description: `Return a list of registered report types.`,
     requestFormat: "json",
-    response: ReportTypesResponse,
+    response: z.array(
+      z.object({ name: z.string(), title: z.string(), template: z.string() })
+    ),
   },
   {
     method: "get",
@@ -46240,7 +46262,7 @@ Endpoints:
     alias: "api_TenantLLMProviders_default_retrieve",
     description: `Get the default provider configuration for the current tenant.`,
     requestFormat: "json",
-    response: TenantLLMProvider,
+    response: TenantLLMProviderDefault,
   },
   {
     method: "get",

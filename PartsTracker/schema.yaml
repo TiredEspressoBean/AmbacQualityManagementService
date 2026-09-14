@@ -2531,8 +2531,92 @@ paths:
           description: ''
   /api/CAPAs/my-assigned/:
     get:
-      operationId: api_CAPAs_my_assigned_retrieve
+      operationId: api_CAPAs_my_assigned_list
       description: Get all CAPAs assigned to current user
+      parameters:
+      - in: query
+        name: assigned_to
+        schema:
+          type: integer
+      - in: query
+        name: capa_type
+        schema:
+          type: string
+          enum:
+          - CORRECTIVE
+          - CUSTOMER_COMPLAINT
+          - INTERNAL_AUDIT
+          - PREVENTIVE
+          - SUPPLIER
+        description: |-
+          * `CORRECTIVE` - Corrective Action
+          * `PREVENTIVE` - Preventive Action
+          * `CUSTOMER_COMPLAINT` - Customer Complaint
+          * `INTERNAL_AUDIT` - Internal Audit
+          * `SUPPLIER` - Supplier Issue
+      - in: query
+        name: initiated_by
+        schema:
+          type: integer
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: severity
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - MAJOR
+          - MINOR
+        description: |-
+          * `CRITICAL` - Critical
+          * `MAJOR` - Major
+          * `MINOR` - Minor
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - CLOSED
+          - IN_PROGRESS
+          - OPEN
+          - PENDING_VERIFICATION
+        description: |-
+          Status (computed)
+
+          * `OPEN` - Open
+          * `IN_PROGRESS` - In Progress
+          * `PENDING_VERIFICATION` - Pending Verification
+          * `CLOSED` - Closed
+          * `CANCELLED` - Cancelled
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
       tags:
       - api
       security:
@@ -2543,7 +2627,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CAPA'
+                $ref: '#/components/schemas/PaginatedCAPAList'
           description: ''
   /api/CAPAs/stats/:
     get:
@@ -14809,22 +14893,10 @@ paths:
       operationId: api_PartTypes_select_list
       description: Lightweight endpoint for dropdown/combobox selections
       parameters:
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
       - in: query
         name: name
         schema:
           type: string
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
       - name: ordering
         required: false
         in: query
@@ -14860,7 +14932,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPartTypeSelectList'
+                type: array
+                items:
+                  $ref: '#/components/schemas/PartTypeSelect'
           description: ''
   /api/Parts/:
     get:
@@ -16087,22 +16161,10 @@ paths:
         name: exclude_terminal
         schema:
           type: boolean
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
       - in: query
         name: needs_qa
         schema:
           type: boolean
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
       - in: query
         name: order
         schema:
@@ -16158,7 +16220,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPartSelectList'
+                type: array
+                items:
+                  $ref: '#/components/schemas/PartSelect'
           description: ''
   /api/PlantCalendarExceptions/:
     get:
@@ -17358,18 +17422,6 @@ paths:
       operationId: api_Processes_with_steps_available_list
       description: List all approved processes available for work orders
       parameters:
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
       - name: ordering
         required: false
         in: query
@@ -17413,7 +17465,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedProcessWithStepsList'
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProcessWithSteps'
           description: ''
   /api/Processes_with_steps/export/{export_format}/:
     get:
@@ -26733,7 +26787,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantLLMProvider'
+                $ref: '#/components/schemas/TenantLLMProviderDefault'
           description: ''
   /api/Tenants/:
     get:
@@ -36239,18 +36293,6 @@ paths:
       operationId: api_reports_history_list
       description: List the current user's generated reports.
       parameters:
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
       - name: ordering
         required: false
         in: query
@@ -36267,7 +36309,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedGeneratedReportList'
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeneratedReport'
           description: ''
   /api/reports/types/:
     get:
@@ -36283,7 +36327,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReportTypesResponse'
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - title
+                  - template
+                  properties:
+                    name:
+                      type: string
+                    title:
+                      type: string
+                    template:
+                      type: string
           description: ''
   /api/schema/:
     get:
@@ -48269,29 +48326,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Fixture'
-    PaginatedGeneratedReportList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/GeneratedReport'
     PaginatedHarvestedComponentList:
       type: object
       required:
@@ -48660,52 +48694,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PartApproval'
-    PaginatedPartSelectList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/PartSelect'
-    PaginatedPartTypeSelectList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/PartTypeSelect'
     PaginatedPartTypesList:
       type: object
       required:
@@ -54721,18 +54709,24 @@ components:
           nullable: true
           description: 'Organization logo (recommended: 200x200 PNG)'
         contact_email:
-          type: string
-          format: email
-          description: Primary contact email for the organization
+          anyOf:
+          - type: string
+            format: email
+          - type: string
+            enum:
+            - ''
           maxLength: 254
         contact_phone:
           type: string
           description: Primary contact phone number
           maxLength: 30
         website:
-          type: string
-          format: uri
-          description: Organization website URL
+          anyOf:
+          - type: string
+            format: uri
+          - type: string
+            enum:
+            - ''
           maxLength: 200
         address:
           type: string
@@ -58425,19 +58419,6 @@ components:
       required:
       - data
       - total_repeat_count
-    ReportTypesResponse:
-      type: object
-      properties:
-        name:
-          type: string
-        title:
-          type: string
-        template:
-          type: string
-      required:
-      - name
-      - template
-      - title
     ResendEmailVerificationRequest:
       type: object
       properties:
@@ -63844,18 +63825,24 @@ components:
           nullable: true
           readOnly: true
         contact_email:
-          type: string
-          format: email
-          description: Primary contact email for the organization
+          anyOf:
+          - type: string
+            format: email
+          - type: string
+            enum:
+            - ''
           maxLength: 254
         contact_phone:
           type: string
           description: Primary contact phone number
           maxLength: 30
         website:
-          type: string
-          format: uri
-          description: Organization website URL
+          anyOf:
+          - type: string
+            format: uri
+          - type: string
+            enum:
+            - ''
           maxLength: 200
         address:
           type: string
@@ -64331,6 +64318,23 @@ components:
       - provider
       - provider_display
       - updated_at
+    TenantLLMProviderDefault:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        provider:
+          type: string
+        provider_display:
+          type: string
+        model_name:
+          type: string
+        full_model_name:
+          type: string
+        message:
+          type: string
+      required:
+      - configured
     TenantLLMProviderProviderEnum:
       enum:
       - ollama
@@ -64464,18 +64468,24 @@ components:
           nullable: true
           description: 'Organization logo (recommended: 200x200 PNG)'
         contact_email:
-          type: string
-          format: email
-          description: Primary contact email for the organization
+          anyOf:
+          - type: string
+            format: email
+          - type: string
+            enum:
+            - ''
           maxLength: 254
         contact_phone:
           type: string
           description: Primary contact phone number
           maxLength: 30
         website:
-          type: string
-          format: uri
-          description: Organization website URL
+          anyOf:
+          - type: string
+            format: uri
+          - type: string
+            enum:
+            - ''
           maxLength: 200
         address:
           type: string

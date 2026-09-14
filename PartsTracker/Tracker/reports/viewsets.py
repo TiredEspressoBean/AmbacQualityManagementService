@@ -275,14 +275,21 @@ class ReportViewSet(viewsets.GenericViewSet):
     # ---- Metadata --------------------------------------------------------
 
     @extend_schema(
-        responses={200: inline_serializer(
-            name="ReportTypesResponse",
-            fields={
-                "name": serializers.CharField(),
-                "title": serializers.CharField(),
-                "template": serializers.CharField(),
+        # The handler returns a list of dicts, so the array is declared
+        # directly -- inline_serializer(many=True) would wrap it in this
+        # viewset's pagination envelope, which it does not use.
+        responses={200: {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'required': ['name', 'title', 'template'],
+                'properties': {
+                    'name': {'type': 'string'},
+                    'title': {'type': 'string'},
+                    'template': {'type': 'string'},
+                },
             },
-        )},
+        }},
     )
     @action(detail=False, methods=["get"], url_path="types")
     def types(self, request):
@@ -292,8 +299,14 @@ class ReportViewSet(viewsets.GenericViewSet):
             for a in get_all_adapters()
         ])
 
-    @extend_schema(responses={200: GeneratedReportSerializer(many=True)})
-    @action(detail=False, methods=["get"], url_path="history")
+    @extend_schema(
+        # pagination_class=None on the action below, so many=True generates a
+        # plain array rather than this viewset's pagination envelope -- which is
+        # what the handler actually returns. Same pattern as
+        # integrations.catalog.
+        responses={200: GeneratedReportSerializer(many=True)}
+    )
+    @action(detail=False, methods=["get"], url_path="history", pagination_class=None)
     def history(self, request):
         """List the current user's generated reports."""
         # tenant-safe: scoped to request.user; users belong to one tenant
