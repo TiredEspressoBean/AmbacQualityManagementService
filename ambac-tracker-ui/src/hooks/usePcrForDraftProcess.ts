@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 /**
@@ -8,10 +8,9 @@ import { api } from "@/lib/api/generated";
  * lands on a DRAFT that was forked via "Propose Change". A draft can
  * own at most one open PCR (the one that created it).
  */
-export function usePcrForDraftProcess(processId: string | undefined) {
-    return useQuery({
+export const pcrForDraftProcessOptions = (processId: string | undefined) =>
+    queryOptions({
         queryKey: ["pcr-for-draft", processId] as const,
-        enabled: !!processId,
         queryFn: async () => {
             const resp = (await (api as {
                 api_process_change_requests_list: (args: {
@@ -24,4 +23,7 @@ export function usePcrForDraftProcess(processId: string | undefined) {
             return items[0] ?? null;
         },
     });
+
+export function usePcrForDraftProcess(processId: string | undefined) {
+    return useQuery({ ...pcrForDraftProcessOptions(processId), enabled: !!processId });
 }

@@ -15,7 +15,7 @@ export const useCreateTrainingRequirement = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateTrainingRequirementResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["training-requirements"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "training-requirements" });
         },
     });
 };

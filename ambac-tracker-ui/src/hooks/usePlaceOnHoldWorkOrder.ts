@@ -8,6 +8,9 @@ type PlaceOnHoldVariables = {
     notes?: string;
 };
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const workorderKeyOptions = (id: string) => ({ queryKey: ["workorder", id] as const });
+
 export const usePlaceOnHoldWorkOrder = () => {
     const queryClient = useQueryClient();
 
@@ -21,7 +24,7 @@ export const usePlaceOnHoldWorkOrder = () => {
                 },
             ),
         onSuccess: (_data, vars) => {
-            queryClient.invalidateQueries({ queryKey: ["workorder", vars.id] });
+            queryClient.invalidateQueries(workorderKeyOptions(vars.id));
             queryClient.invalidateQueries({
                 predicate: (q) => q.queryKey[0] === "work-order",
             });

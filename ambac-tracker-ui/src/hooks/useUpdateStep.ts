@@ -31,7 +31,6 @@ export const useUpdateStep = () => {
             }) as Promise<UpdateStepResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["step"],
                 predicate: (query) => query.queryKey[0] === "step",
             });
         },

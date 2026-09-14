@@ -6,6 +6,10 @@ import { z } from "zod";
 export type TenantSettingsUpdate = z.infer<typeof schemas.PatchedTenantSettingsUpdateRequestRequest>;
 export type TenantSettingsResponse = Awaited<ReturnType<typeof api.api_tenant_settings_partial_update>>;
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const tenantCurrentKeyOptions = () => ({ queryKey: ["tenant", "current"] as const });
+const tenantSettingsKeyOptions = () => ({ queryKey: ["tenantSettings"] as const });
+
 export function useUpdateTenantSettings() {
     const queryClient = useQueryClient();
 
@@ -16,8 +20,8 @@ export function useUpdateTenantSettings() {
             }),
         onSuccess: () => {
             // Invalidate all tenant-related queries to refresh branding
-            queryClient.invalidateQueries({ queryKey: ["tenant", "current"] });
-            queryClient.invalidateQueries({ queryKey: ["tenantSettings"] });
+            queryClient.invalidateQueries(tenantCurrentKeyOptions());
+            queryClient.invalidateQueries(tenantSettingsKeyOptions());
         },
     });
 }

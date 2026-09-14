@@ -5,7 +5,7 @@
  *  - LaborCalendarBlock: operator non-working time (PTO / sick / meeting / break),
  *    one-off or weekly, company-wide or per person (operators only).
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
@@ -18,8 +18,8 @@ const CLOSURE_KEY = ["plant-closures"] as const;
 const BLOCK_KEY = ["labor-blocks"] as const;
 const OVERTIME_KEY = ["overtime-windows"] as const;
 
-export function usePlantClosures() {
-  return useQuery({
+export const plantClosuresOptions = () =>
+  queryOptions({
     queryKey: CLOSURE_KEY,
     queryFn: async () =>
       ((await api.api_PlantCalendarExceptions_list({
@@ -27,10 +27,9 @@ export function usePlantClosures() {
       } as never)) as { results?: PlantClosure[] }).results ?? [],
     staleTime: 30_000,
   });
-}
 
-export function useLaborBlocks() {
-  return useQuery({
+export const laborBlocksOptions = () =>
+  queryOptions({
     queryKey: BLOCK_KEY,
     queryFn: async () =>
       ((await api.api_LaborCalendarBlocks_list({
@@ -38,6 +37,27 @@ export function useLaborBlocks() {
       } as never)) as { results?: LaborBlock[] }).results ?? [],
     staleTime: 30_000,
   });
+
+export const overtimeWindowsOptions = () =>
+  queryOptions({
+    queryKey: OVERTIME_KEY,
+    queryFn: async () =>
+      ((await api.api_OvertimeWindows_list({
+        queries: { limit: 500, ordering: "start_date" },
+      } as never)) as { results?: Overtime[] }).results ?? [],
+    staleTime: 30_000,
+  });
+
+export function usePlantClosures() {
+  return useQuery(plantClosuresOptions());
+}
+
+export function useLaborBlocks() {
+  return useQuery(laborBlocksOptions());
+}
+
+export function useOvertimeWindows() {
+  return useQuery(overtimeWindowsOptions());
 }
 
 export function useCreatePlantClosure() {
@@ -46,7 +66,7 @@ export function useCreatePlantClosure() {
     mutationFn: (body: Record<string, unknown>) =>
       api.api_PlantCalendarExceptions_create(body as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: CLOSURE_KEY });
+      qc.invalidateQueries(plantClosuresOptions());
       toast.success("Closure added");
     },
     onError: () => toast.error("Couldn't add closure"),
@@ -59,7 +79,7 @@ export function useDeletePlantClosure() {
     mutationFn: (id: string) =>
       api.api_PlantCalendarExceptions_destroy(undefined as never, { params: { id } } as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: CLOSURE_KEY });
+      qc.invalidateQueries(plantClosuresOptions());
       toast.success("Closure removed");
     },
     onError: () => toast.error("Couldn't remove closure"),
@@ -72,7 +92,7 @@ export function useCreateLaborBlock() {
     mutationFn: (body: Record<string, unknown>) =>
       api.api_LaborCalendarBlocks_create(body as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: BLOCK_KEY });
+      qc.invalidateQueries(laborBlocksOptions());
       toast.success("Added to the calendar");
     },
     onError: () => toast.error("Couldn't save — check the required fields"),
@@ -85,21 +105,10 @@ export function useDeleteLaborBlock() {
     mutationFn: (id: string) =>
       api.api_LaborCalendarBlocks_destroy(undefined as never, { params: { id } } as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: BLOCK_KEY });
+      qc.invalidateQueries(laborBlocksOptions());
       toast.success("Removed");
     },
     onError: () => toast.error("Couldn't remove"),
-  });
-}
-
-export function useOvertimeWindows() {
-  return useQuery({
-    queryKey: OVERTIME_KEY,
-    queryFn: async () =>
-      ((await api.api_OvertimeWindows_list({
-        queries: { limit: 500, ordering: "start_date" },
-      } as never)) as { results?: Overtime[] }).results ?? [],
-    staleTime: 30_000,
   });
 }
 
@@ -109,7 +118,7 @@ export function useCreateOvertime() {
     mutationFn: (body: Record<string, unknown>) =>
       api.api_OvertimeWindows_create(body as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OVERTIME_KEY });
+      qc.invalidateQueries(overtimeWindowsOptions());
       toast.success("Overtime added");
     },
     onError: () => toast.error("Couldn't save — check the required fields"),
@@ -122,7 +131,7 @@ export function useDeleteOvertime() {
     mutationFn: (id: string) =>
       api.api_OvertimeWindows_destroy(undefined as never, { params: { id } } as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OVERTIME_KEY });
+      qc.invalidateQueries(overtimeWindowsOptions());
       toast.success("Removed");
     },
     onError: () => toast.error("Couldn't remove"),

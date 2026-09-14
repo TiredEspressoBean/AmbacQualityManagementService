@@ -29,7 +29,6 @@ export const useUpdateProcess = () => {
             }),
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["process-with-steps"],
                 predicate: (query) => query.queryKey[0] === "process-with-steps",
             });
         },

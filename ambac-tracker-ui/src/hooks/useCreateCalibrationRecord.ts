@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateInput = Schema<"CalibrationRecordRequest">;
 type CreateResponse = Schema<"CalibrationRecord">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const calibrationRecordsKeyOptions = () => ({ queryKey: ["calibration-records"] as const });
+
 export const useCreateCalibrationRecord = () => {
     const queryClient = useQueryClient();
 
@@ -15,7 +18,7 @@ export const useCreateCalibrationRecord = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["calibration-records"] });
+            queryClient.invalidateQueries(calibrationRecordsKeyOptions());
         },
     });
 };

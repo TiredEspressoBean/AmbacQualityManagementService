@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateThreeDModelInput = Schema<"ThreeDModelRequest">;
 type CreateThreeDModelResponse = Schema<"ThreeDModel">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const threeDModelKeyOptions = () => ({ queryKey: ["threeDModel"] as const });
+
 export function useCreateThreeDModel() {
     const queryClient = useQueryClient();
 
@@ -15,7 +18,7 @@ export function useCreateThreeDModel() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateThreeDModelResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["threeDModel"] });
+            queryClient.invalidateQueries(threeDModelKeyOptions());
         },
     });
 }

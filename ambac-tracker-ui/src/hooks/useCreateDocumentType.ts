@@ -15,7 +15,7 @@ export function useCreateDocumentType() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateDocumentTypeResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["documentTypes"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "documentTypes" });
         },
     });
 }

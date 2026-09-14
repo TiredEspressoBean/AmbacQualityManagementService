@@ -22,7 +22,7 @@ export const useSplitWorkOrder = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),
         onSuccess: (_data, vars) => {
-            queryClient.invalidateQueries({ queryKey: ["workorder", vars.id] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "workorder" && q.queryKey[1] === vars.id });
             queryClient.invalidateQueries({
                 predicate: (q) => q.queryKey[0] === "workorder" || q.queryKey[0] === "work-order",
             });

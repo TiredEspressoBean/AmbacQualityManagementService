@@ -7,7 +7,7 @@
  *  (upstream-done is implicit for open executions; cert/cal/downtime/manual-
  *  blocker predicates layer on later — see design doc §9). Work-center scoped via
  *  the step's work_center + the operator's memberships. */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
 
@@ -15,19 +15,21 @@ export type WorkQueueRow = components["schemas"]["WorkQueueRow"];
 
 const KEY = ["workQueue"] as const;
 
-export function useWorkQueue(options?: {
+type WorkQueueOptionsArgs = {
     readiness?: "ready" | "blocked";
     /** e.g. "PRODUCTION" — narrows the queue to a surface. */
     kind?: "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
     /** WorkCenter ids to filter by (typically the user's memberships or one picked station). */
     workCenterIds?: string[];
     limit?: number;
-}) {
+};
+
+export const workQueueOptions = (options?: WorkQueueOptionsArgs) => {
     const readiness = options?.readiness;
     const kind = options?.kind;
     const wcs = options?.workCenterIds;
     const limit = options?.limit ?? 20;
-    return useQuery({
+    return queryOptions({
         queryKey: [...KEY, readiness ?? "all", kind ?? "all", (wcs ?? []).slice().sort().join(","), limit] as const,
         queryFn: async () =>
             (await api.api_WorkQueue_list({
@@ -40,4 +42,8 @@ export function useWorkQueue(options?: {
             } as never)).results ?? [],
         staleTime: 15_000,
     });
+};
+
+export function useWorkQueue(options?: WorkQueueOptionsArgs) {
+    return useQuery(workQueueOptions(options));
 }

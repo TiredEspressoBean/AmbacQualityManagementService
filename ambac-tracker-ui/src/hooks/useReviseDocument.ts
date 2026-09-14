@@ -30,10 +30,10 @@ export function useReviseDocument() {
         },
         onSuccess: (_data, variables) => {
             // Invalidate document queries
-            queryClient.invalidateQueries({ queryKey: ["document", variables.id] });
-            queryClient.invalidateQueries({ queryKey: ["documents"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "document" && q.queryKey[1] === variables.id });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "documents" });
             // Also invalidate version history
-            queryClient.invalidateQueries({ queryKey: ["document", variables.id, "version-history"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "document" && q.queryKey[1] === variables.id && q.queryKey[2] === "version-history" });
         },
     });
 }

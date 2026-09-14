@@ -15,7 +15,7 @@ export const useCreateWorkOrder = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateWorkOrderResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["workorder"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "workorder" });
         },
     });
 };

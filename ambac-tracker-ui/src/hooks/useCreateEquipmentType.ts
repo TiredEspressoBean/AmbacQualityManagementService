@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateEquipmentTypeInput = Schema<"EquipmentTypeRequest">;
 type CreateEquipmentTypeResponse = Schema<"EquipmentType">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const parttypeKeyOptions = () => ({ queryKey: ["parttype"] as const });
+
 export const useCreateEquipmentType = () => {
     const queryClient = useQueryClient();
 
@@ -15,7 +18,7 @@ export const useCreateEquipmentType = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateEquipmentTypeResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["parttype"] });
+            queryClient.invalidateQueries(parttypeKeyOptions());
         },
     });
 };

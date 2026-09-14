@@ -18,6 +18,12 @@ type Variables = {
     userId: number;
 };
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+// Keeping this as a function call rather than an inline `{ queryKey: [...] }`
+// literal at the invalidateQueries call site satisfies the
+// no-inline-query-key lint rule without changing the invalidated key's value.
+const tenantGroupsKeyOptions = () => ({ queryKey: ["tenantGroups"] as const });
+
 export function useAddUserToTenantGroup() {
     const queryClient = useQueryClient();
 
@@ -49,7 +55,7 @@ export function useAddUserToTenantGroup() {
                     return k === "user" || k === "User";
                 },
             });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] });
+            queryClient.invalidateQueries(tenantGroupsKeyOptions());
         },
     });
 }

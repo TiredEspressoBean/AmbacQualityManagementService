@@ -44,7 +44,7 @@ export function useCreateChatSession() {
     mutationFn: (data) =>
       api.api_ChatSessions_create(data, csrfHeaders()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
+      queryClient.invalidateQueries(chatSessionsOptions());
     },
   });
 }
@@ -59,7 +59,7 @@ export function useUpdateChatSession() {
     mutationFn: ({ id, data }) =>
       api.api_ChatSessions_partial_update(data, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
+      queryClient.invalidateQueries(chatSessionsOptions());
     },
   });
 }
@@ -73,7 +73,7 @@ export function useDeleteChatSession() {
   return useMutation({
     mutationFn: (id: number) => api.api_ChatSessions_destroy(undefined, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
+      queryClient.invalidateQueries(chatSessionsOptions());
     },
   });
 }
@@ -87,7 +87,7 @@ export function useArchiveChatSession() {
   return useMutation({
     mutationFn: (id: number) => api.api_ChatSessions_archive_create(undefined as never, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
+      queryClient.invalidateQueries(chatSessionsOptions());
     },
   });
 }
@@ -101,7 +101,7 @@ export function useUnarchiveChatSession() {
   return useMutation({
     mutationFn: (id: number) => api.api_ChatSessions_unarchive_create(undefined as never, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
+      queryClient.invalidateQueries(chatSessionsOptions());
     },
   });
 }

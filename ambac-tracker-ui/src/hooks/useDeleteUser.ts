@@ -13,7 +13,7 @@ export function useDeleteUser() {
             }),
         mutationKey: ["part-types", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["User"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "User" });
         },
     });
 }

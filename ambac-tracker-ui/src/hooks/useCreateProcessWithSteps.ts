@@ -15,7 +15,7 @@ export const useCreateProcessWithSteps = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["process-with-steps"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "process-with-steps" });
         },
     });
 };

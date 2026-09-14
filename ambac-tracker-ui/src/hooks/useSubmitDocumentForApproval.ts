@@ -8,9 +8,14 @@ export function useSubmitDocumentForApproval(documentId: string) {
         mutationFn: () => api.api_Documents_submit_for_approval_create(undefined, { params: { id: documentId } }),
         onSuccess: () => {
             // Invalidate document and approval queries
-            queryClient.invalidateQueries({ queryKey: ["document", documentId] });
-            queryClient.invalidateQueries({ queryKey: ["approvals", "document", documentId] });
-            queryClient.invalidateQueries({ queryKey: ["documents"] });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "document" && q.queryKey[1] === documentId,
+            });
+            queryClient.invalidateQueries({
+                predicate: (q) =>
+                    q.queryKey[0] === "approvals" && q.queryKey[1] === "document" && q.queryKey[2] === documentId,
+            });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "documents" });
         },
     });
 }

@@ -15,7 +15,7 @@ export function useCreateApprovalTemplate() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["approvalTemplates"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "approvalTemplates" });
         },
     });
 }

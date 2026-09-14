@@ -2,6 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils.ts";
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const stepKeyOptions = () => ({ queryKey: ["step"] as const });
+
 export function useDeleteStep() {
     const queryClient = useQueryClient();
 
@@ -13,7 +16,7 @@ export function useDeleteStep() {
             }),
         mutationKey: ["part-types", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["step"] });
+            queryClient.invalidateQueries(stepKeyOptions());
         },
     });
 }

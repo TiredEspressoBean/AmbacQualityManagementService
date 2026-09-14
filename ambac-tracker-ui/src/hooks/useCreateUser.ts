@@ -15,7 +15,7 @@ export const useCreateUser = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateUserResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["User"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "User" });
         },
     });
 };

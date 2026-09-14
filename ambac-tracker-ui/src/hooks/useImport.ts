@@ -71,7 +71,7 @@ export const useImport = (
                 modelName.toLowerCase(),
             ];
             queriesToInvalidate.forEach((key) => {
-                queryClient.invalidateQueries({ queryKey: [key] });
+                queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === key });
             });
             options?.onSuccess?.(data);
         },

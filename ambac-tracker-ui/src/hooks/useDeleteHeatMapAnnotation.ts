@@ -12,7 +12,7 @@ export function useDeleteHeatMapAnnotation() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["heatMapAnnotation"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "heatMapAnnotation" });
         },
     });
 };

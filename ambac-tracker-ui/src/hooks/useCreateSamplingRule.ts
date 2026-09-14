@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateSamplingRuleInput = Schema<"SamplingRuleRequest">;
 type CreateSamplingRuleResponse = Schema<"SamplingRule">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const samplingRuleKeyOptions = () => ({ queryKey: ["sampling-rule"] as const });
+
 export const useCreateSamplingRule = () => {
     const queryClient = useQueryClient();
 
@@ -15,7 +18,7 @@ export const useCreateSamplingRule = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateSamplingRuleResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["sampling-rule"] });
+            queryClient.invalidateQueries(samplingRuleKeyOptions());
         },
     });
 };

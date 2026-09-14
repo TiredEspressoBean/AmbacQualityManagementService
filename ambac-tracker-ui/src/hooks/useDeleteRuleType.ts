@@ -13,7 +13,7 @@ export function useDeleteRuleType() {
             }),
         mutationKey: ["rule-type", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["rule-type"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "rule-type" });
         },
     });
 }

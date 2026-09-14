@@ -15,7 +15,7 @@ export const useCreateQualityReport = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateQualityReportResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["quality-reports"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "quality-reports" });
         },
     });
 };

@@ -33,8 +33,8 @@ export function useSubmitProcessChangeRequest() {
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["process-change-requests"] });
-            queryClient.invalidateQueries({ queryKey: ["pcr-for-draft"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "process-change-requests" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "pcr-for-draft" });
         },
     });
 }

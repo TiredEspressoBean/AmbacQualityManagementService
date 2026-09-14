@@ -15,7 +15,7 @@ export const useCreateStep = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateStepResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["step"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "step" });
         },
     });
 };

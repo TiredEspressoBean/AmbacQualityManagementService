@@ -9,6 +9,10 @@ interface DuplicateProcessVariables {
     nameSuffix?: string;
 }
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const processWithStepsKeyOptions = () => ({ queryKey: ["process-with-steps"] as const });
+const processesKeyOptions = () => ({ queryKey: ["processes"] as const });
+
 export const useDuplicateProcess = () => {
     const queryClient = useQueryClient();
 
@@ -22,8 +26,8 @@ export const useDuplicateProcess = () => {
                 }
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["process-with-steps"] });
-            queryClient.invalidateQueries({ queryKey: ["processes"] });
+            queryClient.invalidateQueries(processWithStepsKeyOptions());
+            queryClient.invalidateQueries(processesKeyOptions());
         },
     });
 };

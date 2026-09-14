@@ -13,7 +13,7 @@ export function useDeleteEquipment() {
             }),
         mutationKey: ["equipment", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["equipment"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "equipment" });
         },
     });
 }

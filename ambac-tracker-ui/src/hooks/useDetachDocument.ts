@@ -26,9 +26,9 @@ export function useDetachDocument() {
                 { params: { id } },
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["document"] });
-            queryClient.invalidateQueries({ queryKey: ["scope", "documents"] });
-            queryClient.invalidateQueries({ queryKey: ["qa-documents"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "document" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "scope" && q.queryKey[1] === "documents" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "qa-documents" });
         },
     });
 }

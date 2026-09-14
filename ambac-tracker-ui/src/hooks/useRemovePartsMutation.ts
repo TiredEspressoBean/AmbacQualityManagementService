@@ -29,7 +29,8 @@ export function useRemovePartsMutation(
         onSuccess: (data, ...rest) => {
             invalidateQueryKeys?.forEach((key) => {
                 const queryKey = typeof key === "string" ? [key] : key;
-                queryClient.invalidateQueries({ queryKey });
+                const filter = { queryKey };
+                queryClient.invalidateQueries(filter);
             });
             options?.onSuccess?.(data, ...rest);
         },

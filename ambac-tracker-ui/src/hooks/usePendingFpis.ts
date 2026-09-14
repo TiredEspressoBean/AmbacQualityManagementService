@@ -1,7 +1,7 @@
 /** Pending first-piece inspections — the queue-jumper banner's data. Carries
  *  the acknowledged_by/at state the inbox aggregate doesn't (sent → seen →
  *  verdict; a machine and operator may be idle behind each of these). */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 export type PendingFpi = {
@@ -16,8 +16,8 @@ export type PendingFpi = {
     created_at?: string | null;
 };
 
-export function usePendingFpis() {
-    return useQuery({
+export const pendingFpisOptions = () =>
+    queryOptions({
         queryKey: ["pendingFpis"] as const,
         queryFn: () =>
             api.api_FPIRecords_list({
@@ -26,4 +26,7 @@ export function usePendingFpis() {
         staleTime: 15_000,
         select: (resp) => resp.results ?? [],
     });
+
+export function usePendingFpis() {
+    return useQuery(pendingFpisOptions());
 }

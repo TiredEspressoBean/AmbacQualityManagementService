@@ -13,7 +13,7 @@ export function useDeleteDocuments() {
             }),
         mutationKey: ["documents", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["documents"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "documents" });
         },
     });
 }

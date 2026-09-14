@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import type { Schema } from "@/lib/api/types";
@@ -70,8 +70,12 @@ export const useRecordExpectedReceipt = () => {
             invalidateReceiving(queryClient);
             // The sourcing report and the RCCP material lane both count on-order stock
             // as incoming supply — a new expectation changes what they say.
-            queryClient.invalidateQueries({ queryKey: ["schedule", "requirements"] });
-            queryClient.invalidateQueries({ queryKey: ["planning", "capacity-load"] });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "schedule" && q.queryKey[1] === "requirements",
+            });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "planning" && q.queryKey[1] === "capacity-load",
+            });
         },
     });
 };
@@ -95,12 +99,16 @@ export const useReceiveExpectedLot = () => {
             ),
         onSuccess: () => {
             invalidateReceiving(queryClient);
-            queryClient.invalidateQueries({ queryKey: ["schedule", "requirements"] });
-            queryClient.invalidateQueries({ queryKey: ["planning", "capacity-load"] });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "schedule" && q.queryKey[1] === "requirements",
+            });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "planning" && q.queryKey[1] === "capacity-load",
+            });
             // On-time delivery is measured as received_date <= promised_date over lots
             // with a promised date, so booking in an expected receipt is exactly the
             // event that moves a supplier's OTD number.
-            queryClient.invalidateQueries({ queryKey: ["supplier-scorecard"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "supplier-scorecard" });
         },
     });
 };
@@ -129,8 +137,10 @@ export const useUploadLotCoC = () => {
         },
         onSuccess: (_data, vars) => {
             invalidateReceiving(queryClient);
-            queryClient.invalidateQueries({ queryKey: ["material-lot", vars.id] });
-            queryClient.invalidateQueries({ queryKey: ["supplier-scorecard"] });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "material-lot" && q.queryKey[1] === vars.id,
+            });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "supplier-scorecard" });
         },
     });
 };
@@ -228,17 +238,16 @@ export const useRaiseScar = () => {
             api.api_MaterialLots_raise_scar_create(undefined as never, { params: { id: vars.id }, headers: csrf() }),
         onSuccess: () => {
             invalidateReceiving(queryClient);
-            queryClient.invalidateQueries({ queryKey: ["supplier-scorecard"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "supplier-scorecard" });
         },
     });
 };
 
 // ----- Derived sample plan (GET) -----
 
-export const useSamplePlan = (lotId: string | undefined, plan?: string) =>
-    useQuery({
+export const samplePlanOptions = (lotId: string | undefined, plan?: string) =>
+    queryOptions({
         queryKey: ["sample-plan", lotId, plan] as const,
-        enabled: !!lotId,
         queryFn: () =>
             api.api_MaterialLots_sample_plan_retrieve({
                 params: { id: lotId as string },
@@ -246,3 +255,6 @@ export const useSamplePlan = (lotId: string | undefined, plan?: string) =>
             } as never) as Promise<Schema<"SamplePlanResponse">>,
         meta: { suppressGlobalError: true },
     });
+
+export const useSamplePlan = (lotId: string | undefined, plan?: string) =>
+    useQuery({ ...samplePlanOptions(lotId, plan), enabled: !!lotId });

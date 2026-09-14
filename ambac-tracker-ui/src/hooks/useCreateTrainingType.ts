@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateTrainingTypeInput = Schema<"TrainingTypeRequest">;
 type CreateTrainingTypeResponse = Schema<"TrainingType">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const trainingTypesKeyOptions = () => ({ queryKey: ["training-types"] as const });
+
 export const useCreateTrainingType = () => {
     const queryClient = useQueryClient();
 
@@ -15,7 +18,7 @@ export const useCreateTrainingType = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateTrainingTypeResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["training-types"] });
+            queryClient.invalidateQueries(trainingTypesKeyOptions());
         },
     });
 };

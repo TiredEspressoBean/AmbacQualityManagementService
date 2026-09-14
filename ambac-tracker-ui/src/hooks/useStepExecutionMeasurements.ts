@@ -157,13 +157,15 @@ export function useRecordMeasurement() {
 
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({
-                queryKey: ["step-execution-measurements"]
+                predicate: (q) => q.queryKey[0] === "step-execution-measurements"
             });
             queryClient.invalidateQueries({
-                queryKey: ["required-measurements", variables.step_execution]
+                predicate: (q) =>
+                    q.queryKey[0] === "required-measurements" && q.queryKey[1] === variables.step_execution
             });
             queryClient.invalidateQueries({
-                queryKey: ["measurement-compliance", variables.step_execution]
+                predicate: (q) =>
+                    q.queryKey[0] === "measurement-compliance" && q.queryKey[1] === variables.step_execution
             });
         },
     });
@@ -192,16 +194,18 @@ export function useBulkRecordMeasurements() {
 
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({
-                queryKey: ["step-execution-measurements"]
+                predicate: (q) => q.queryKey[0] === "step-execution-measurements"
             });
             queryClient.invalidateQueries({
-                queryKey: ["required-measurements", variables.step_execution]
+                predicate: (q) =>
+                    q.queryKey[0] === "required-measurements" && q.queryKey[1] === variables.step_execution
             });
             queryClient.invalidateQueries({
-                queryKey: ["measurement-compliance", variables.step_execution]
+                predicate: (q) =>
+                    q.queryKey[0] === "measurement-compliance" && q.queryKey[1] === variables.step_execution
             });
             queryClient.invalidateQueries({
-                queryKey: ["parts"]
+                predicate: (q) => q.queryKey[0] === "parts"
             });
         },
     });

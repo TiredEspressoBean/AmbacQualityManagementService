@@ -97,12 +97,8 @@ export function useFpiGetOrCreate() {
         }) as Promise<FpiGetOrCreateResponse>,
 
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: ["fpi-records"]
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["fpi-status", variables.work_order, variables.step]
-            });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
+            queryClient.invalidateQueries(fpiCheckStatusOptions(variables.work_order, variables.step));
         },
     });
 }
@@ -131,9 +127,9 @@ export function useFpiPass() {
             }),
 
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["fpi-records"] });
-            queryClient.invalidateQueries({ queryKey: ["fpi-status"] });
-            queryClient.invalidateQueries({ queryKey: ["parts"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-status" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "parts" });
         },
     });
 }
@@ -154,9 +150,9 @@ export function useFpiFail() {
             }),
 
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["fpi-records"] });
-            queryClient.invalidateQueries({ queryKey: ["fpi-status"] });
-            queryClient.invalidateQueries({ queryKey: ["parts"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-status" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "parts" });
         },
     });
 }
@@ -177,9 +173,9 @@ export function useFpiWaive() {
             }),
 
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["fpi-records"] });
-            queryClient.invalidateQueries({ queryKey: ["fpi-status"] });
-            queryClient.invalidateQueries({ queryKey: ["parts"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-status" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "parts" });
         },
     });
 }

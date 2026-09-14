@@ -15,7 +15,7 @@ export const useCreateEquipment = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateEquipmentResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["equipment"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "equipment" });
         },
     });
 };

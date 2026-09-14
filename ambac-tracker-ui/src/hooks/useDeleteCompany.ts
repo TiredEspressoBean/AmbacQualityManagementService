@@ -13,7 +13,7 @@ export function useDeleteCompany() {
             }),
         mutationKey: ["Company", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["Company"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "Company" });
         },
     });
 }

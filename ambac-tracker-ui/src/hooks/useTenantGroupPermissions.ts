@@ -13,6 +13,10 @@ export function useTenantGroupPermissions(groupId: string | undefined, options?:
     });
 }
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const tenantGroupKeyOptions = (groupId: string) => ({ queryKey: ["tenantGroup", groupId] as const });
+const tenantGroupsKeyOptions = () => ({ queryKey: ["tenantGroups"] as const });
+
 export function useAddTenantGroupPermissions(groupId: string) {
     const queryClient = useQueryClient();
 
@@ -24,9 +28,9 @@ export function useAddTenantGroupPermissions(groupId: string) {
                 { params: { id: groupId } }
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "permissions"] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] as const });
+            queryClient.invalidateQueries(tenantGroupKeyOptions(groupId));
+            queryClient.invalidateQueries(tenantGroupPermissionsOptions(groupId));
+            queryClient.invalidateQueries(tenantGroupsKeyOptions());
         },
     });
 }
@@ -42,9 +46,9 @@ export function useSetTenantGroupPermissions(groupId: string) {
                 { params: { id: groupId } }
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "permissions"] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] as const });
+            queryClient.invalidateQueries(tenantGroupKeyOptions(groupId));
+            queryClient.invalidateQueries(tenantGroupPermissionsOptions(groupId));
+            queryClient.invalidateQueries(tenantGroupsKeyOptions());
         },
     });
 }

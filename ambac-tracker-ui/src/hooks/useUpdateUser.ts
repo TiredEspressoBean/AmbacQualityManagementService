@@ -22,7 +22,6 @@ export const useUpdateUser = () => {
             }) as Promise<UpdateUserResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["User"],
                 predicate: (query) => query.queryKey[0] === "User",
             });
         },

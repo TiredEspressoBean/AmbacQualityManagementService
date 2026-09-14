@@ -15,8 +15,8 @@ export const useCompleteCapaTask = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["capa-tasks"] });
-            queryClient.invalidateQueries({ queryKey: ["capa"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "capa-tasks" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "capa" });
         },
     });
 };

@@ -2,6 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils.ts";
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const qualityReportsKeyOptions = () => ({ queryKey: ["quality-reports"] as const });
+
 export function useDeleteQualityReport() {
     const queryClient = useQueryClient();
 
@@ -13,7 +16,7 @@ export function useDeleteQualityReport() {
             }),
         mutationKey: ["quality-reports", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["quality-reports"] });
+            queryClient.invalidateQueries(qualityReportsKeyOptions());
         },
     });
 }

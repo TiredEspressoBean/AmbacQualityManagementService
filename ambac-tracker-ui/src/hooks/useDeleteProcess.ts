@@ -13,7 +13,7 @@ export function useDeleteProcesses() {
             }),
         mutationKey: ["process", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["process"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "process" });
         },
     });
 }

@@ -10,7 +10,7 @@ export function useClaimApproval() {
             api.api_ApprovalRequests_claim_create(undefined as never, { params: { id: approvalId } }),
         onSuccess: () => {
             // Covers ["approvals", "claimable"] and ["approvals", "my-pending"].
-            queryClient.invalidateQueries({ queryKey: ["approvals"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "approvals" });
         },
     });
 }

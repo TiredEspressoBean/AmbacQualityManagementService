@@ -22,7 +22,6 @@ export const useUpdateSamplingRuleSet = () => {
             }) as Promise<UpdateSamplingRuleSetResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["sampling_rule_set"],
                 predicate: (query) => query.queryKey[0] === "sampling_rule_set",
             });
         },

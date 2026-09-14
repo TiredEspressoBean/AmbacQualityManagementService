@@ -21,7 +21,7 @@ export function useUpdateThreeDModel() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateThreeDModelResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["threeDModel"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "threeDModel" });
         },
     });
 }

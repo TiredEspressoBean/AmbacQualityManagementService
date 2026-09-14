@@ -22,7 +22,6 @@ export const useUpdateEquipmentType = () => {
             }) as Promise<UpdateEquipmentTypeResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["equipmenttype"],
                 predicate: (query) => query.queryKey[0] === "equipmenttype",
             });
         },

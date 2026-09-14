@@ -15,6 +15,6 @@ export const useCreateReceivingPlan = () => {
       api.api_Steps_create_receiving_plan_create(vars as never, {
         headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["receiving-plans"] }),
+    onSuccess: () => queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "receiving-plans" }),
   });
 };

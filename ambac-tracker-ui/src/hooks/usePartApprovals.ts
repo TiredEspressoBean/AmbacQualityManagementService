@@ -1,6 +1,6 @@
 /** Part approvals (PPAP / FAI) — a supplier approved to produce a specific part type.
  *  Mirrors the ASL (SupplierQualification) hooks; backend at /api/PartApprovals/. */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import type { Schema } from "@/lib/api/types";
@@ -22,32 +22,42 @@ export type PartApprovalListParams = {
     offset?: number;
 };
 
-export const useListPartApprovals = (params: PartApprovalListParams = {}) =>
-    useQuery({
+export const listPartApprovalsOptions = (params: PartApprovalListParams = {}) =>
+    queryOptions({
         queryKey: ["part-approvals", params] as const,
         queryFn: () => api.api_PartApprovals_list({ queries: params } as never),
     });
 
-export const useRetrievePartApproval = (id: string | undefined) =>
-    useQuery({
+export const useListPartApprovals = (params: PartApprovalListParams = {}) =>
+    useQuery(listPartApprovalsOptions(params));
+
+export const retrievePartApprovalOptions = (id: string | undefined) =>
+    queryOptions({
         queryKey: ["part-approvals", "detail", id] as const,
-        enabled: !!id,
         queryFn: () =>
             api.api_PartApprovals_retrieve({ params: { id: id as string } } as never) as Promise<
                 Schema<"PartApproval">
             >,
     });
 
+export const useRetrievePartApproval = (id: string | undefined) =>
+    useQuery({ ...retrievePartApprovalOptions(id), enabled: !!id });
+
 /** Resolve a (part type, supplier) approval standing — for badges + the receiving banner. */
-export const usePartApprovalStatus = (partTypeId: string | undefined, supplierId: string | undefined) =>
-    useQuery({
+export const partApprovalStatusOptions = (partTypeId: string | undefined, supplierId: string | undefined) =>
+    queryOptions({
         queryKey: ["part-approval-status", partTypeId, supplierId] as const,
-        enabled: !!partTypeId && !!supplierId,
         queryFn: () =>
             api.api_PartApprovals_status_retrieve({
                 queries: { part_type: partTypeId as string, supplier: supplierId as string },
             } as never),
         meta: { suppressGlobalError: true },
+    });
+
+export const usePartApprovalStatus = (partTypeId: string | undefined, supplierId: string | undefined) =>
+    useQuery({
+        ...partApprovalStatusOptions(partTypeId, supplierId),
+        enabled: !!partTypeId && !!supplierId,
     });
 
 export const useCreatePartApproval = () => {

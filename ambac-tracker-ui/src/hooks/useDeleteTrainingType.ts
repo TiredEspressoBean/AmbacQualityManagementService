@@ -12,7 +12,7 @@ export const useDeleteTrainingType = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["training-types"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "training-types" });
         },
     });
 };

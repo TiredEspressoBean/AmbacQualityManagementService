@@ -15,7 +15,7 @@ export const useCreateCompanies = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateCompanyResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["Companies"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "Companies" });
         },
     });
 };

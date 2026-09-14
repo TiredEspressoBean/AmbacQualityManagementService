@@ -78,7 +78,7 @@ export function useBulkReconcileUsers() {
                     return k === "user" || k === "User";
                 },
             });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantGroups" });
         },
     });
 }

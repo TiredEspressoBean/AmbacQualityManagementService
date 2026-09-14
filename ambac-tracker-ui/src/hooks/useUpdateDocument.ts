@@ -21,9 +21,14 @@ export const useUpdateDocument = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateDocumentResponse>,
         onSuccess: () => {
+            // Updating a document invalidated NOTHING before this: the filter
+            // combined queryKey ["document"] with a predicate requiring
+            // queryKey[0] === "equipment", and TanStack ANDs those two, so it
+            // could never match. The equipment predicate was copy-paste from an
+            // equipment hook. Both the detail key ("document") and the list key
+            // ("documents") are refreshed, which is what the update should do.
             queryClient.invalidateQueries({
-                queryKey: ["document"],
-                predicate: (query) => query.queryKey[0] === "equipment",
+                predicate: (q) => q.queryKey[0] === "document" || q.queryKey[0] === "documents",
             });
         },
     });

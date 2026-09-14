@@ -10,6 +10,11 @@ export interface ApprovalResponsePayload {
     delegate_to?: number;
 }
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const approvalsKeyOptions = () => ({ queryKey: ["approvals"] as const });
+const capasKeyOptions = () => ({ queryKey: ["capas"] as const });
+const capaStatsKeyOptions = () => ({ queryKey: ["capa-stats"] as const });
+
 export function useSubmitApprovalResponse(approvalRequestId: string) {
     const queryClient = useQueryClient();
 
@@ -21,9 +26,9 @@ export function useSubmitApprovalResponse(approvalRequestId: string) {
             ),
         onSuccess: () => {
             // Invalidate related queries
-            queryClient.invalidateQueries({ queryKey: ["approvals"] });
-            queryClient.invalidateQueries({ queryKey: ["capas"] });
-            queryClient.invalidateQueries({ queryKey: ["capa-stats"] });
+            queryClient.invalidateQueries(approvalsKeyOptions());
+            queryClient.invalidateQueries(capasKeyOptions());
+            queryClient.invalidateQueries(capaStatsKeyOptions());
         },
     });
 }

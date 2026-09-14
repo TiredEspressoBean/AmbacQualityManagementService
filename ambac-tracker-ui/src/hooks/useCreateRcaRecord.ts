@@ -15,8 +15,8 @@ export const useCreateRcaRecord = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateRcaRecordResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["rca-records"] });
-            queryClient.invalidateQueries({ queryKey: ["capas"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "rca-records" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "capas" });
         },
     });
 };

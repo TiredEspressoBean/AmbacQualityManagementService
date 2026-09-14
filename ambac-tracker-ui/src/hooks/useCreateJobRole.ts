@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateJobRoleInput = Schema<"JobRoleRequest">;
 type CreateJobRoleResponse = Schema<"JobRole">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const jobRolesKeyOptions = () => ({ queryKey: ["job-roles"] as const });
+
 export const useCreateJobRole = () => {
     const queryClient = useQueryClient();
     return useMutation<CreateJobRoleResponse, unknown, CreateJobRoleInput>({
@@ -14,7 +17,7 @@ export const useCreateJobRole = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateJobRoleResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+            queryClient.invalidateQueries(jobRolesKeyOptions());
         },
     });
 };

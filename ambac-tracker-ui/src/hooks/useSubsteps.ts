@@ -26,14 +26,16 @@ export function useSubsteps(queries?: SubstepsListQueries, opts?: { enabled?: bo
     return useQuery({ ...substepsOptions(queries), ...opts });
 }
 
-/** Single substep by id. */
-export function useSubstep(id: string | null | undefined) {
-    return useQuery({
+export const substepOptions = (id: string | null | undefined) =>
+    queryOptions({
         queryKey: [QK_BASE, "detail", id] as const,
         queryFn: () =>
             api.api_Substeps_retrieve({ params: { id: String(id) } } as never) as Promise<Substep>,
-        enabled: Boolean(id),
     });
+
+/** Single substep by id. */
+export function useSubstep(id: string | null | undefined) {
+    return useQuery({ ...substepOptions(id), enabled: Boolean(id) });
 }
 
 export function useCreateSubstep() {
@@ -44,7 +46,7 @@ export function useCreateSubstep() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<Substep>,
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: [QK_BASE] });
+            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === QK_BASE });
         },
     });
 }
@@ -63,7 +65,7 @@ export function useUpdateSubstep() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<Substep>,
         onSuccess: (substep) => {
-            qc.invalidateQueries({ queryKey: [QK_BASE] });
+            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === QK_BASE });
             qc.setQueryData([QK_BASE, "detail", substep.id], substep);
         },
     });
@@ -80,7 +82,7 @@ export function useReorderSubsteps() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as unknown as Promise<void>,
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: [QK_BASE] });
+            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === QK_BASE });
         },
     });
 }
@@ -127,7 +129,7 @@ export function useSubmitSubstep() {
         onSuccess: () => {
             // Invalidate substep + completion queries so badges and
             // operator-side counters refresh.
-            qc.invalidateQueries({ queryKey: [QK_BASE] });
+            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === QK_BASE });
         },
     });
 }
@@ -141,7 +143,7 @@ export function useDeleteSubstep() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<void>,
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: [QK_BASE] });
+            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === QK_BASE });
         },
     });
 }

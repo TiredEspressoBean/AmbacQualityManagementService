@@ -11,6 +11,12 @@ type UpdateCompaniesVariables = {
     data: UpdateCompaniesInput;
 };
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const companiesInvalidateOptions = () => ({
+    queryKey: ["Companies"] as const,
+    predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "equipment",
+});
+
 export const useUpdateCompanies = () => {
     const queryClient = useQueryClient();
 
@@ -21,10 +27,7 @@ export const useUpdateCompanies = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateCompaniesResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["Companies"],
-                predicate: (query) => query.queryKey[0] === "equipment",
-            });
+            queryClient.invalidateQueries(companiesInvalidateOptions());
         },
     });
 };

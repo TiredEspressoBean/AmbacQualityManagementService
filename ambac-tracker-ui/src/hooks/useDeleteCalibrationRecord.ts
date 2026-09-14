@@ -12,7 +12,7 @@ export const useDeleteCalibrationRecord = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["calibration-records"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "calibration-records" });
         },
     });
 };

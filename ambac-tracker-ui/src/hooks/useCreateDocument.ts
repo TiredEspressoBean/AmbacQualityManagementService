@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateDocumentInput = Schema<"DocumentsRequest">;
 type CreateDocumentResponse = Schema<"Documents">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const documentKeyOptions = () => ({ queryKey: ["document"] as const });
+
 export const useCreateDocument = () => {
     const queryClient = useQueryClient();
 
@@ -15,7 +18,7 @@ export const useCreateDocument = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateDocumentResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["document"] });
+            queryClient.invalidateQueries(documentKeyOptions());
         },
     });
 };

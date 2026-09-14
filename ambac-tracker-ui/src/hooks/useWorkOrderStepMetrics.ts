@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 /** Live part distribution at one step for a work order (4c). */
@@ -12,6 +12,15 @@ export type StepLiveMetrics = {
 
 type StepMetricsResponse = { steps: StepLiveMetrics[] };
 
+export const workOrderStepMetricsOptions = (workOrderId: string | null | undefined) =>
+    queryOptions({
+        queryKey: ["workorder-step-metrics", workOrderId] as const,
+        queryFn: () =>
+            api.api_WorkOrders_step_metrics_retrieve({
+                params: { id: String(workOrderId) },
+            }) as Promise<StepMetricsResponse>,
+    });
+
 /**
  * Live per-step part counts + attention breakdown for a work order's flow map
  * (4c). Backed by a single grouped query (`/WorkOrders/{id}/step_metrics/`),
@@ -22,11 +31,7 @@ export function useWorkOrderStepMetrics(
     options?: { enabled?: boolean },
 ) {
     return useQuery({
-        queryKey: ["workorder-step-metrics", workOrderId] as const,
-        queryFn: () =>
-            api.api_WorkOrders_step_metrics_retrieve({
-                params: { id: String(workOrderId) },
-            }) as Promise<StepMetricsResponse>,
+        ...workOrderStepMetricsOptions(workOrderId),
         enabled: Boolean(workOrderId) && (options?.enabled ?? true),
     });
 }

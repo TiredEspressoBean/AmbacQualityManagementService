@@ -22,7 +22,6 @@ export const useUpdateProcess = () => {
             }) as Promise<UpdateProcessResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["process"],
                 predicate: (query) => query.queryKey[0] === "process",
             });
         },

@@ -15,8 +15,8 @@ export const useCreateCapaVerification = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateCapaVerificationResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["capa-verifications"] });
-            queryClient.invalidateQueries({ queryKey: ["capa"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "capa-verifications" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "capa" });
         },
     });
 };

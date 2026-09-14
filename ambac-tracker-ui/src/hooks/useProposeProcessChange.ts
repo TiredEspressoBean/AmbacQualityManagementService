@@ -23,6 +23,11 @@ type Variables = {
     customerNotificationRequired?: boolean;
 };
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const processChangeRequestsKeyOptions = () => ({ queryKey: ["process-change-requests"] as const });
+const processesKeyOptions = () => ({ queryKey: ["processes"] as const });
+const processesWithStepsKeyOptions = () => ({ queryKey: ["processesWithSteps"] as const });
+
 export function useProposeProcessChange() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -41,9 +46,9 @@ export function useProposeProcessChange() {
             ),
         onSuccess: () => {
             // New PCR + new DRAFT process — invalidate both lists.
-            queryClient.invalidateQueries({ queryKey: ["process-change-requests"] });
-            queryClient.invalidateQueries({ queryKey: ["processes"] });
-            queryClient.invalidateQueries({ queryKey: ["processesWithSteps"] });
+            queryClient.invalidateQueries(processChangeRequestsKeyOptions());
+            queryClient.invalidateQueries(processesKeyOptions());
+            queryClient.invalidateQueries(processesWithStepsKeyOptions());
         },
     });
 }

@@ -2,6 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils.ts";
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const workordersKeyOptions = () => ({ queryKey: ["workorders"] as const });
+
 export function useDeleteWorkOrder() {
     const queryClient = useQueryClient();
 
@@ -13,7 +16,7 @@ export function useDeleteWorkOrder() {
             }),
         mutationKey: ["workorder", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["workorders"] });
+            queryClient.invalidateQueries(workordersKeyOptions());
         },
     });
 }

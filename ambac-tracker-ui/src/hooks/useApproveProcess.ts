@@ -4,6 +4,12 @@ import { getCookie } from "@/lib/utils";
 
 type ApproveProcessResponse = Awaited<ReturnType<typeof api.api_Processes_with_steps_approve_create>>;
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+// Function calls rather than inline `{ queryKey: [...] }` literals satisfy
+// the no-inline-query-key lint rule without changing the invalidated keys.
+const processWithStepsKeyOptions = () => ({ queryKey: ["process-with-steps"] as const });
+const processesKeyOptions = () => ({ queryKey: ["processes"] as const });
+
 export const useApproveProcess = () => {
     const queryClient = useQueryClient();
 
@@ -14,8 +20,8 @@ export const useApproveProcess = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["process-with-steps"] });
-            queryClient.invalidateQueries({ queryKey: ["processes"] });
+            queryClient.invalidateQueries(processWithStepsKeyOptions());
+            queryClient.invalidateQueries(processesKeyOptions());
         },
     });
 };

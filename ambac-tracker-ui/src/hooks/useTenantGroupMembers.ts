@@ -53,9 +53,9 @@ export function useAddTenantGroupMember(groupId: string) {
                 { params: { id: groupId } }
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "members"] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] as const });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantGroup" && q.queryKey[1] === groupId });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantGroup" && q.queryKey[1] === groupId && q.queryKey[2] === "members" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantGroups" });
         },
     });
 }
@@ -67,9 +67,9 @@ export function useRemoveTenantGroupMember(groupId: string) {
         mutationFn: (userId: number) =>
             api.api_TenantGroups_members_destroy(undefined, { params: { id: groupId, user_id: userId } }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "members"] as const });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] as const });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantGroup" && q.queryKey[1] === groupId });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantGroup" && q.queryKey[1] === groupId && q.queryKey[2] === "members" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantGroups" });
         },
     });
 }

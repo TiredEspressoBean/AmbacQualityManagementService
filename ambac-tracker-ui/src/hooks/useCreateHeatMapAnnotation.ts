@@ -15,7 +15,7 @@ export function useCreateHeatMapAnnotation() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateHeatMapAnnotationResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["heatMapAnnotation"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "heatMapAnnotation" });
         },
     });
 }

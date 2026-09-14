@@ -6,6 +6,10 @@ import type { Schema } from "@/lib/api/types";
 type CreateCapaTaskInput = Schema<"CapaTasksRequest">;
 type CreateCapaTaskResponse = Schema<"CapaTasks">;
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const capaTasksKeyOptions = () => ({ queryKey: ["capa-tasks"] as const });
+const capaKeyOptions = () => ({ queryKey: ["capa"] as const });
+
 export const useCreateCapaTask = () => {
     const queryClient = useQueryClient();
 
@@ -15,8 +19,8 @@ export const useCreateCapaTask = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateCapaTaskResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["capa-tasks"] });
-            queryClient.invalidateQueries({ queryKey: ["capa"] });
+            queryClient.invalidateQueries(capaTasksKeyOptions());
+            queryClient.invalidateQueries(capaKeyOptions());
         },
     });
 };

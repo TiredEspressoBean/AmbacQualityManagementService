@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import type { Schema } from "@/lib/api/types";
@@ -20,36 +20,46 @@ export type QualificationListParams = {
     offset?: number;
 };
 
-export const useListSupplierQualifications = (params: QualificationListParams = {}) =>
-    useQuery({
+export const listSupplierQualificationsOptions = (params: QualificationListParams = {}) =>
+    queryOptions({
         queryKey: ["supplier-qualifications", params] as const,
         queryFn: () => api.api_SupplierQualifications_list({ queries: params } as never),
     });
 
-export const useRetrieveSupplierQualification = (id: string | undefined) =>
-    useQuery({
+export const useListSupplierQualifications = (params: QualificationListParams = {}) =>
+    useQuery(listSupplierQualificationsOptions(params));
+
+export const retrieveSupplierQualificationOptions = (id: string | undefined) =>
+    queryOptions({
         queryKey: ["supplier-qualifications", "detail", id] as const,
-        enabled: !!id,
         queryFn: () =>
             api.api_SupplierQualifications_retrieve({ params: { id: id as string } } as never) as Promise<
                 Schema<"SupplierQualification">
             >,
     });
 
+export const useRetrieveSupplierQualification = (id: string | undefined) =>
+    useQuery({ ...retrieveSupplierQualificationOptions(id), enabled: !!id });
+
 /** Resolve a supplier's standing for a scope — for badges + the receiving banner. */
-export const useSupplierQualificationStatus = (
+export const supplierQualificationStatusOptions = (
     supplierId: string | undefined,
     partTypeId?: string,
 ) =>
-    useQuery({
+    queryOptions({
         queryKey: ["qualification-status", supplierId, partTypeId] as const,
-        enabled: !!supplierId,
         queryFn: () =>
             api.api_SupplierQualifications_status_retrieve({
                 queries: { supplier: supplierId as string, part_type: partTypeId },
             } as never) as Promise<Schema<"QualificationStatus">>,
         meta: { suppressGlobalError: true },
     });
+
+export const useSupplierQualificationStatus = (
+    supplierId: string | undefined,
+    partTypeId?: string,
+) =>
+    useQuery({ ...supplierQualificationStatusOptions(supplierId, partTypeId), enabled: !!supplierId });
 
 export const useCreateSupplierQualification = () => {
     const qc = useQueryClient();

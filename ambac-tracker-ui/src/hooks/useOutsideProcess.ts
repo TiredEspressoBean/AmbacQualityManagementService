@@ -5,7 +5,7 @@
  * return inspection that reuses the DWI receiving runtime). Mutations carry the
  * CSRF header and invalidate shipments + parts on success.
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import type { components } from "@/lib/api/generated-types";
@@ -26,8 +26,8 @@ type PaginatedShipments = components["schemas"]["PaginatedOutsideProcessShipment
 
 /** Shipper board: parts staged at OSP steps, grouped by step/vendor, ready to dispatch.
  *  The endpoint returns a paginated envelope (it rides a paginated viewset); unwrap it. */
-export function useReadyToShip() {
-    return useQuery({
+export const readyToShipOptions = () =>
+    queryOptions({
         queryKey: ["ospReadyToShip"] as const,
         queryFn: async () => {
             const r = await api.api_OutsideProcessShipments_ready_to_ship_list();
@@ -35,27 +35,38 @@ export function useReadyToShip() {
         },
         staleTime: 15_000,
     });
+
+export function useReadyToShip() {
+    return useQuery(readyToShipOptions());
 }
 
 /** Shipments filtered by arbitrary query (e.g. cross-WO { status: "SENT" }). */
-export function useOSPShipments(queries?: Record<string, string>) {
-    return useQuery({
+export const ospShipmentsOptions = (queries?: Record<string, string>) =>
+    queryOptions({
         queryKey: ["ospShipments", "list", queries] as const,
         queryFn: () =>
             api.api_OutsideProcessShipments_list({ queries } as never) as Promise<PaginatedShipments>,
         staleTime: 15_000,
     });
+
+export function useOSPShipments(queries?: Record<string, string>) {
+    return useQuery(ospShipmentsOptions(queries));
 }
 
-export function useListOSPShipments(workOrderId: string, opts?: { enabled?: boolean }) {
-    return useQuery({
+export const listOSPShipmentsOptions = (workOrderId: string) =>
+    queryOptions({
         queryKey: ["ospShipments", "by-wo", workOrderId] as const,
         queryFn: () =>
             api.api_OutsideProcessShipments_list({
                 queries: { work_order: workOrderId } as never,
             }) as Promise<PaginatedShipments>,
-        enabled: opts?.enabled ?? !!workOrderId,
         staleTime: 15_000,
+    });
+
+export function useListOSPShipments(workOrderId: string, opts?: { enabled?: boolean }) {
+    return useQuery({
+        ...listOSPShipmentsOptions(workOrderId),
+        enabled: opts?.enabled ?? !!workOrderId,
     });
 }
 

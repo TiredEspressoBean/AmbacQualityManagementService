@@ -20,8 +20,8 @@ export const useUpdateMeasurementDefinition = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateMeasurementDefinitionResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["measurementDefinition"] });
-            queryClient.invalidateQueries({ queryKey: ["measurementDefinitions"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "measurementDefinition" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "measurementDefinitions" });
         },
     });
 };

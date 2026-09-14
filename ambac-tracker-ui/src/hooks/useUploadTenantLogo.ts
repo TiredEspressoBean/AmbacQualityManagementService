@@ -12,8 +12,8 @@ export function useUploadTenantLogo() {
                 { headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } }
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenant"] });
-            queryClient.invalidateQueries({ queryKey: ["tenantSettings"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenant" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantSettings" });
         },
     });
 }
@@ -27,8 +27,8 @@ export function useDeleteTenantLogo() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenant"] });
-            queryClient.invalidateQueries({ queryKey: ["tenantSettings"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenant" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tenantSettings" });
         },
     });
 }

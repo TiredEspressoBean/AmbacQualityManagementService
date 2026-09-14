@@ -15,7 +15,7 @@ export const useCreateSamplingRuleSet = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateSamplingRuleSetResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["sampling_rule_set"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "sampling_rule_set" });
         },
     });
 };

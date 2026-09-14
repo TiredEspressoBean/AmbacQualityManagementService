@@ -16,10 +16,10 @@ export function useAcknowledgeFpi() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["pendingFpis"] });
-            queryClient.invalidateQueries({ queryKey: ["inspectionInbox"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "pendingFpis" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "inspectionInbox" });
             // The WO-scoped Control panel reads `fpi-records`, not `pendingFpis`.
-            queryClient.invalidateQueries({ queryKey: ["fpi-records"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
         },
     });
 }

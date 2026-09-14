@@ -57,6 +57,9 @@ export const spcActiveBaselineOptions = (measurementId: string | null) => queryO
     },
 });
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const spcBaselinesKeyOptions = () => ({ queryKey: ["spc-baselines"] as const });
+
 export const useSpcActiveBaseline = (measurementId: string | null) => {
     return useQuery({
         ...spcActiveBaselineOptions(measurementId),
@@ -78,13 +81,9 @@ export const useFreezeSpcBaseline = () => {
         },
         onSuccess: (newBaseline) => {
             // Invalidate the active baseline query for this measurement
-            queryClient.invalidateQueries({
-                queryKey: ["spc-baseline-active", newBaseline.measurement_definition] as const,
-            });
+            queryClient.invalidateQueries(spcActiveBaselineOptions(newBaseline.measurement_definition));
             // Also invalidate the list of all baselines
-            queryClient.invalidateQueries({
-                queryKey: ["spc-baselines"] as const,
-            });
+            queryClient.invalidateQueries(spcBaselinesKeyOptions());
         },
     });
 };
@@ -106,13 +105,9 @@ export const useSupersedeSpcBaseline = () => {
         },
         onSuccess: (supersededBaseline) => {
             // Invalidate the active baseline query for this measurement
-            queryClient.invalidateQueries({
-                queryKey: ["spc-baseline-active", supersededBaseline.measurement_definition] as const,
-            });
+            queryClient.invalidateQueries(spcActiveBaselineOptions(supersededBaseline.measurement_definition));
             // Also invalidate the list of all baselines
-            queryClient.invalidateQueries({
-                queryKey: ["spc-baselines"] as const,
-            });
+            queryClient.invalidateQueries(spcBaselinesKeyOptions());
         },
     });
 };

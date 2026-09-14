@@ -5,6 +5,10 @@ import { getCookie } from "@/lib/utils";
 type DeleteConfig = Parameters<typeof api.api_integrations_destroy>[1];
 type DeleteParams = DeleteConfig["params"];
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const integrationsCatalogKeyOptions = () => ({ queryKey: ["integrations-catalog"] as const });
+const integrationKeyOptions = () => ({ queryKey: ["integration"] as const });
+
 export const useDeleteIntegration = () => {
     const queryClient = useQueryClient();
 
@@ -15,8 +19,8 @@ export const useDeleteIntegration = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["integrations-catalog"] });
-            queryClient.invalidateQueries({ queryKey: ["integration"] });
+            queryClient.invalidateQueries(integrationsCatalogKeyOptions());
+            queryClient.invalidateQueries(integrationKeyOptions());
         },
     });
 };

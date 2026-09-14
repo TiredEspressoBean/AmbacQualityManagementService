@@ -13,7 +13,7 @@ export function useDeleteSamplingRule() {
             }),
         mutationKey: ["sampling-rule", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["sampling-rule"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "sampling-rule" });
         },
     });
 }

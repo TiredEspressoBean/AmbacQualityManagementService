@@ -6,6 +6,10 @@ import type { Schema } from "@/lib/api/types";
 type UpdateCapaVerificationInput = Schema<"PatchedCapaVerificationRequest">;
 type UpdateCapaVerificationResponse = Schema<"CapaVerification">;
 
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+const capaVerificationsKeyOptions = () => ({ queryKey: ["capa-verifications"] as const });
+const capaKeyOptions = () => ({ queryKey: ["capa"] as const });
+
 export const useUpdateCapaVerification = () => {
     const queryClient = useQueryClient();
 
@@ -16,8 +20,8 @@ export const useUpdateCapaVerification = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateCapaVerificationResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["capa-verifications"] });
-            queryClient.invalidateQueries({ queryKey: ["capa"] });
+            queryClient.invalidateQueries(capaVerificationsKeyOptions());
+            queryClient.invalidateQueries(capaKeyOptions());
         },
     });
 };

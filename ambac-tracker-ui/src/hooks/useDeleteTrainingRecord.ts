@@ -12,7 +12,7 @@ export const useDeleteTrainingRecord = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["training-records"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "training-records" });
         },
     });
 };

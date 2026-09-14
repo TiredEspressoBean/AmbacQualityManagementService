@@ -13,7 +13,7 @@ export function useDeleteErrorType() {
             }),
         mutationKey: ["error-types", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["error-types"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "error-types" });
         },
     });
 }

@@ -18,7 +18,9 @@ export function usePartsIncrementMutation() {
                 }
             ),
         onSuccess: (_, { orderId }) => {
-            queryClient.invalidateQueries({ queryKey: ['step-distribution', orderId] });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === 'step-distribution' && q.queryKey[1] === orderId,
+            });
         },
     });
 }

@@ -21,8 +21,10 @@ export const useUpdateTrainingRecord = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateTrainingRecordResponse>,
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ["training-records"] });
-            queryClient.invalidateQueries({ queryKey: ["training-record", variables.id] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "training-records" });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "training-record" && q.queryKey[1] === variables.id,
+            });
         },
     });
 };

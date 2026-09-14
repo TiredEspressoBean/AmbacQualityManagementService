@@ -21,8 +21,10 @@ export const useUpdateCalibrationRecord = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateCalibrationRecordResponse>,
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ["calibration-records"] });
-            queryClient.invalidateQueries({ queryKey: ["calibration-record", variables.id] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "calibration-records" });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "calibration-record" && q.queryKey[1] === variables.id,
+            });
         },
     });
 };

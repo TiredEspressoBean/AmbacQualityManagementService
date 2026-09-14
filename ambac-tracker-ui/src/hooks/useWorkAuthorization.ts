@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 /**
@@ -17,14 +17,19 @@ export type WorkAuthRow = {
     missing: { training: string; reason: string }[];
 };
 
-export function useWorkAuthorization(partIds: string[], enabled: boolean) {
-    const parts = partIds.join(",");
-    return useQuery({
+export const workAuthorizationOptions = (parts: string) =>
+    queryOptions({
         queryKey: ["work-authorization", parts] as const,
         queryFn: () =>
             api.api_StepExecutions_work_authorization_retrieve({ queries: { parts } }),
-        enabled: enabled && partIds.length > 0,
         staleTime: 30_000,
         retry: false,
+    });
+
+export function useWorkAuthorization(partIds: string[], enabled: boolean) {
+    const parts = partIds.join(",");
+    return useQuery({
+        ...workAuthorizationOptions(parts),
+        enabled: enabled && partIds.length > 0,
     });
 }

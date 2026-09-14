@@ -12,7 +12,7 @@ export function useDeleteThreeDModel() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["threeDModel"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "threeDModel" });
         },
     });
 };

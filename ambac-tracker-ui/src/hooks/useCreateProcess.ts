@@ -6,6 +6,9 @@ import type { Schema } from "@/lib/api/types";
 type CreateProcessInput = Schema<"ProcessesRequest">;
 type CreateProcessResponse = Schema<"Processes">;
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const processKeyOptions = () => ({ queryKey: ["process"] as const });
+
 export const useCreateProcess = () => {
     const queryClient = useQueryClient();
 
@@ -15,7 +18,7 @@ export const useCreateProcess = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateProcessResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["process"] });
+            queryClient.invalidateQueries(processKeyOptions());
         },
     });
 };

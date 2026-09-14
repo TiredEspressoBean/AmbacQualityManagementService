@@ -15,7 +15,7 @@ export const useCreateErrorType = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateErrorTypeResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["parttype"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "parttype" });
         },
     });
 };

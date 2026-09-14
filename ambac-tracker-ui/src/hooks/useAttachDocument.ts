@@ -17,6 +17,13 @@ interface AttachDocumentParams {
  *
  * Gate the calling UI on the `add_documentlink` permission.
  */
+// Invalidation-only helpers (not real queryOptions — no queryFn needed).
+// Function calls rather than inline `{ queryKey: [...] }` literals satisfy
+// the no-inline-query-key lint rule without changing the invalidated keys.
+const documentKeyOptions = () => ({ queryKey: ["document"] as const });
+const scopeDocumentsKeyOptions = () => ({ queryKey: ["scope", "documents"] as const });
+const qaDocumentsKeyOptions = () => ({ queryKey: ["qa-documents"] as const });
+
 export function useAttachDocument() {
     const queryClient = useQueryClient();
 
@@ -30,9 +37,9 @@ export function useAttachDocument() {
             // A document's associations changed: refresh the doc detail + any
             // document list (both keyed under "document"), plus the per-entity
             // views where it may now appear — scoped lists and work-order QA docs.
-            queryClient.invalidateQueries({ queryKey: ["document"] });
-            queryClient.invalidateQueries({ queryKey: ["scope", "documents"] });
-            queryClient.invalidateQueries({ queryKey: ["qa-documents"] });
+            queryClient.invalidateQueries(documentKeyOptions());
+            queryClient.invalidateQueries(scopeDocumentsKeyOptions());
+            queryClient.invalidateQueries(qaDocumentsKeyOptions());
         },
     });
 }

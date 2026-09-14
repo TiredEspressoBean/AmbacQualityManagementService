@@ -226,7 +226,8 @@ export const updatePartMutationOptions = (queryClient: QueryClient) =>
             }) as Promise<UpdatePartResponse>,
         onMutate: async ({ id, data }) => {
             const detailKey = partsKeys.detail({ params: { id } });
-            await queryClient.cancelQueries({ queryKey: detailKey });
+            const cancelFilter = { queryKey: detailKey };
+            await queryClient.cancelQueries(cancelFilter);
             const prev = queryClient.getQueryData<PartsResponse>(detailKey);
             if (prev) {
                 queryClient.setQueryData<PartsResponse>(detailKey, { ...prev, ...data } as PartsResponse);
@@ -435,13 +436,18 @@ export type DecisionOptions = {
 
 /** Decision-point metadata for a part's current step (4a). Drives the
  *  runtime resolver: branch labels for MANUAL, auto-route note for QA_RESULT. */
-export function useDecisionOptions(partId: string | null | undefined, options?: { enabled?: boolean }) {
-    return useQuery({
+export const decisionOptionsOptions = (partId: string | null | undefined) =>
+    queryOptions({
         queryKey: [...partsKeys.detail({ params: { id: partId ?? "" } }), "decision_options"] as const,
         queryFn: () =>
             api.api_Parts_decision_options_retrieve({
                 params: { id: String(partId) },
             }) as Promise<DecisionOptions>,
+    });
+
+export function useDecisionOptions(partId: string | null | undefined, options?: { enabled?: boolean }) {
+    return useQuery({
+        ...decisionOptionsOptions(partId),
         enabled: Boolean(partId) && (options?.enabled ?? true),
     });
 }
@@ -492,13 +498,18 @@ export type ReworkStatus = {
 
 /** Rework-cycle status for a part: cumulative reworks, visits vs the current
  *  step's cap, and the escalation target when the cap is exceeded (4b). */
-export function useReworkStatus(partId: string | null | undefined, options?: { enabled?: boolean }) {
-    return useQuery({
+export const reworkStatusOptions = (partId: string | null | undefined) =>
+    queryOptions({
         queryKey: [...partsKeys.detail({ params: { id: partId ?? "" } }), "rework_status"] as const,
         queryFn: () =>
             api.api_Parts_rework_status_retrieve({
                 params: { id: String(partId) },
             }) as Promise<ReworkStatus>,
+    });
+
+export function useReworkStatus(partId: string | null | undefined, options?: { enabled?: boolean }) {
+    return useQuery({
+        ...reworkStatusOptions(partId),
         enabled: Boolean(partId) && (options?.enabled ?? true),
     });
 }

@@ -12,8 +12,8 @@ export const useDeleteMeasurementDefinition = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["measurementDefinition"] });
-            queryClient.invalidateQueries({ queryKey: ["measurementDefinitions"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "measurementDefinition" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "measurementDefinitions" });
         },
     });
 };

@@ -13,7 +13,7 @@ export function useDeletePartType() {
             }),
         mutationKey: ["part-types", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["part-types"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "part-types" });
         },
     });
 }

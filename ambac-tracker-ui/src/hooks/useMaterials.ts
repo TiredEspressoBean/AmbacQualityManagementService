@@ -1,6 +1,6 @@
 // Hooks for purchased-material master data (Materials) — the BUY side of a BOM.
 // PartTypes stay in-house SKUs; purchased components (O-rings, seals, coils) are Materials.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
@@ -8,6 +8,23 @@ import type { components } from "@/lib/api/generated-types";
 type PaginatedMaterialList = components["schemas"]["PaginatedMaterialList"];
 
 /** Paginated list for the Materials editor table (ModelEditorPage shape). */
+export const materialsListOptions = (params: {
+  offset: number;
+  limit: number;
+  ordering?: string;
+  search?: string;
+  filters?: Record<string, string>;
+}) => {
+  const { offset, limit, ordering, search, filters } = params;
+  return queryOptions({
+    queryKey: ["materials", { offset, limit, ordering, search, filters }] as const,
+    queryFn: () =>
+      api.api_Materials_list({
+        queries: { offset, limit, ordering, search, ...(filters ?? {}) },
+      } as never) as Promise<PaginatedMaterialList>,
+  });
+};
+
 export function useMaterialsList(params: {
   offset: number;
   limit: number;
@@ -15,34 +32,32 @@ export function useMaterialsList(params: {
   search?: string;
   filters?: Record<string, string>;
 }) {
-  const { offset, limit, ordering, search, filters } = params;
-  return useQuery({
-    queryKey: ["materials", { offset, limit, ordering, search, filters }],
-    queryFn: () =>
-      api.api_Materials_list({
-        queries: { offset, limit, ordering, search, ...(filters ?? {}) },
-      } as never) as Promise<PaginatedMaterialList>,
-  });
+  return useQuery(materialsListOptions(params));
 }
 
 /** All active materials (for pickers — BOM BUY lines, receiving lots). */
-export function useMaterialOptions() {
-  return useQuery({
-    queryKey: ["materials", "options"],
+export const materialOptionsOptions = () =>
+  queryOptions({
+    queryKey: ["materials", "options"] as const,
     queryFn: () =>
       api.api_Materials_list({
         queries: { is_active: true, ordering: "name", limit: 1000 },
       } as never) as Promise<PaginatedMaterialList>,
   });
+
+export function useMaterialOptions() {
+  return useQuery(materialOptionsOptions());
 }
 
 /** One material (for the edit form). */
-export function useRetrieveMaterial(id?: string) {
-  return useQuery({
-    queryKey: ["material", id],
-    enabled: !!id,
+export const retrieveMaterialOptions = (id?: string) =>
+  queryOptions({
+    queryKey: ["material", id] as const,
     queryFn: () => api.api_Materials_retrieve({ params: { id } } as never),
   });
+
+export function useRetrieveMaterial(id?: string) {
+  return useQuery({ ...retrieveMaterialOptions(id), enabled: !!id });
 }
 
 /** Create a material. */
@@ -50,7 +65,7 @@ export function useCreateMaterial() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => api.api_Materials_create(body as never),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["materials"] }),
+    onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "materials" || q.queryKey[0] === "material" }),
   });
 }
 
@@ -60,7 +75,7 @@ export function useUpdateMaterial() {
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
       api.api_Materials_partial_update(body as never, { params: { id } } as never),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["materials"] }),
+    onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "materials" || q.queryKey[0] === "material" }),
   });
 }
 
@@ -71,7 +86,7 @@ export function useDeleteMaterial() {
     mutationFn: (id: string) =>
       api.api_Materials_destroy(undefined as never, { params: { id } } as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["materials"] });
+      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "materials" || q.queryKey[0] === "material" });
       toast.success("Material removed");
     },
     onError: () => toast.error("Couldn't remove material"),

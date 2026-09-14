@@ -11,6 +11,12 @@ type UpdatePartTypeVariables = {
     data: UpdatePartTypeInput;
 };
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const parttypesInvalidateOptions = () => ({
+    queryKey: ["parttypes"] as const,
+    predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "parttypes",
+});
+
 export const useUpdatePartType = () => {
     const queryClient = useQueryClient();
 
@@ -21,10 +27,7 @@ export const useUpdatePartType = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdatePartTypeResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["parttypes"],
-                predicate: (query) => query.queryKey[0] === "parttypes",
-            });
+            queryClient.invalidateQueries(parttypesInvalidateOptions());
         },
     });
 };

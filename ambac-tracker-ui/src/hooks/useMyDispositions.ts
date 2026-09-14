@@ -1,7 +1,7 @@
 /** Quarantine dispositions assigned to the current user that are still open —
  *  a real, existing workflow (the disposition auto-create signal assigns a QA
  *  user). due_date drives the inbox's urgency horizons. */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
 
@@ -15,8 +15,8 @@ export type MyDisposition = Pick<
     | "work_order_erp_id"
 >;
 
-export function useMyDispositions(userPk: number | null | undefined) {
-    return useQuery({
+export const myDispositionsOptions = (userPk: number | null | undefined) =>
+    queryOptions({
         queryKey: ["my-dispositions", userPk] as const,
         enabled: userPk != null,
         queryFn: async () => {
@@ -33,4 +33,7 @@ export function useMyDispositions(userPk: number | null | undefined) {
         },
         staleTime: 30_000,
     });
+
+export function useMyDispositions(userPk: number | null | undefined) {
+    return useQuery(myDispositionsOptions(userPk));
 }

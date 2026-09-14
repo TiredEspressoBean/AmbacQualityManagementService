@@ -11,6 +11,12 @@ type UpdateSamplingRuleVariables = {
     data: UpdateSamplingRuleInput;
 };
 
+// Invalidation-only helper (not a real queryOptions — no queryFn needed).
+const samplingRuleInvalidateOptions = () => ({
+    queryKey: ["sampling-rule"] as const,
+    predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "sampling-rule",
+});
+
 export const useUpdateSamplingRule = () => {
     const queryClient = useQueryClient();
 
@@ -21,10 +27,7 @@ export const useUpdateSamplingRule = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateSamplingRuleResponse>,
         onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["sampling-rule"],
-                predicate: (query) => query.queryKey[0] === "sampling-rule",
-            });
+            queryClient.invalidateQueries(samplingRuleInvalidateOptions());
         },
     });
 };

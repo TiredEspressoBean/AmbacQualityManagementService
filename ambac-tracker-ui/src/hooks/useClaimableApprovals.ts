@@ -2,7 +2,7 @@
  *  groups, not yet claimed or individually assigned (the Veeva
  *  "available to claim" queue — prevents group-routed approvals rotting while
  *  everyone assumes someone else has them). */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 export type ClaimableApproval = {
@@ -14,8 +14,8 @@ export type ClaimableApproval = {
     requested_at?: string | null;
 };
 
-export function useClaimableApprovals() {
-    return useQuery({
+export const claimableApprovalsOptions = () =>
+    queryOptions({
         queryKey: ["approvals", "claimable"] as const,
         queryFn: () =>
             api.api_ApprovalRequests_claimable_list({ queries: { limit: 10 } } as never) as Promise<{
@@ -24,4 +24,7 @@ export function useClaimableApprovals() {
         staleTime: 15_000,
         select: (resp) => resp.results ?? [],
     });
+
+export function useClaimableApprovals() {
+    return useQuery(claimableApprovalsOptions());
 }

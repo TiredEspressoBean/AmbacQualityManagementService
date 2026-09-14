@@ -18,7 +18,6 @@ export const useCreateOrder = () => {
             }) as Promise<CreateOrderResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["orders"],
                 predicate: (query) => query.queryKey[0] === "orders",
             });
         },

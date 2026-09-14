@@ -1,7 +1,7 @@
 // Hooks for authoring a part type's Bill of Materials inline on the Part Type form.
 // Editing model (mirrors the backend): DRAFT BOMs edit in place; a RELEASED BOM is
 // immutable — spin a new revision (a fresh DRAFT copy) to change it.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 
@@ -18,21 +18,27 @@ function pickEffectiveBom(boms: any[]): any | undefined {
   return [...boms].sort(byRevDesc)[0];
 }
 
-/** The effective BOM (with nested lines) for a part type — for allocating BOM lines to
- *  process steps from the flow editor. `isDraft` gates whether lines can be edited. */
-export function useEffectiveBom(partTypeId?: string | null) {
-  const list = useQuery({
-    queryKey: ["BOMs", "list", { part_type: partTypeId }],
-    enabled: !!partTypeId,
+const BOMS_KEY = "BOMs" as const;
+
+export const bomsListOptions = (partTypeId?: string | null) =>
+  queryOptions({
+    queryKey: [BOMS_KEY, "list", { part_type: partTypeId }] as const,
     queryFn: () =>
       api.api_BOMs_list({ queries: { part_type: partTypeId, limit: 100 } } as never) as Promise<any>,
   });
-  const chosen = pickEffectiveBom((list.data as any)?.results ?? []);
-  const detail = useQuery({
-    queryKey: ["BOMs", "detail", chosen?.id],
-    enabled: !!chosen?.id,
-    queryFn: () => api.api_BOMs_retrieve({ params: { id: chosen.id } } as never) as Promise<any>,
+
+export const bomDetailOptions = (id?: string) =>
+  queryOptions({
+    queryKey: [BOMS_KEY, "detail", id] as const,
+    queryFn: () => api.api_BOMs_retrieve({ params: { id } } as never) as Promise<any>,
   });
+
+/** The effective BOM (with nested lines) for a part type — for allocating BOM lines to
+ *  process steps from the flow editor. `isDraft` gates whether lines can be edited. */
+export function useEffectiveBom(partTypeId?: string | null) {
+  const list = useQuery({ ...bomsListOptions(partTypeId), enabled: !!partTypeId });
+  const chosen = pickEffectiveBom((list.data as any)?.results ?? []);
+  const detail = useQuery({ ...bomDetailOptions(chosen?.id), enabled: !!chosen?.id });
   return {
     bom: detail.data as any,
     chosen,
@@ -43,7 +49,7 @@ export function useEffectiveBom(partTypeId?: string | null) {
 
 function useInvalidateBoms() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ["BOMs"] });
+  return () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === BOMS_KEY });
 }
 
 /** Create a DRAFT ASSEMBLY BOM for a part type (when none exists yet). */

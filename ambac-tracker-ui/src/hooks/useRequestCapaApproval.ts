@@ -8,9 +8,11 @@ export function useRequestCapaApproval(capaId: string) {
         mutationFn: () =>
             api.api_CAPAs_request_approval_create(undefined, { params: { id: capaId } }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["capas"] });
-            queryClient.invalidateQueries({ queryKey: ["capa", capaId] });
-            queryClient.invalidateQueries({ queryKey: ["approvals"] });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "capas" });
+            queryClient.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "capa" && q.queryKey[1] === capaId,
+            });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "approvals" });
         },
     });
 }
