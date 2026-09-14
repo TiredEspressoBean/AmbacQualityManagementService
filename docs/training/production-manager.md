@@ -42,9 +42,9 @@ As a Production Manager, you:
 |------|----------|---------|
 | **Work Orders** | Production > Work Orders | Main production management |
 | **Orders** | Data Management > Orders | Customer order management |
-| **Analytics** | Tools > Analytics | Production metrics |
+| **Analytics** | Analytics | Production metrics |
 | **Inbox** | Personal > Inbox | CAPA tasks and approval requests |
-| **Tracker** | Portal > Tracker | Customer-facing order overview |
+| **Tracker** | Tracker | Customer-facing order overview |
 
 **Exercise 1.1:** Navigation Tour
 
@@ -92,7 +92,7 @@ By the end of this module, you will:
 | **Order Number** | Your PO/SO reference |
 | **Customer** | Select from company list |
 | **Due Date** | Target completion date |
-| **Priority** | Normal, High, Rush |
+| **Priority** | Urgent, High, Normal, Low |
 
 **Optional fields:**
 
@@ -107,7 +107,7 @@ By the end of this module, you will:
 **Steps:**
 
 1. Navigate to **Data Management** > **Orders**
-2. Click **+ New Order**
+2. Click **New Orders**
 3. Fill in required fields
 4. Add notes if needed
 5. Save
@@ -130,7 +130,7 @@ By the end of this module, you will:
 
 1. Open the order
 2. Go to **Parts** section
-3. Click **+ Add Parts**
+3. Click **Add Parts**
 4. Configure:
    - Part Type: Select product
    - Quantity: Number of parts
@@ -197,7 +197,7 @@ An order can have multiple work orders if needed.
 **Steps:**
 
 1. Navigate to **Production** > **Work Orders**
-2. Click **+ New Work Order**
+2. Click **New Work Orders**
 3. Select:
    - Order (links to customer order)
    - Process (manufacturing process)
@@ -232,11 +232,14 @@ An order can have multiple work orders if needed.
 
 ### 3.4 Priority Levels
 
-| Level | When to Use |
-|-------|-------------|
-| **Rush** | Emergency, expedite immediately |
-| **High** | Important customer, tight deadline |
-| **Normal** | Standard production |
+| Level | Value | When to Use |
+|-------|-------|-------------|
+| **Urgent** | 1 | Emergency, expedite immediately |
+| **High** | 2 | Important customer, tight deadline |
+| **Normal** | 3 | Standard production (default) |
+| **Low** | 4 | Can wait, no deadline pressure |
+
+Lower number means higher priority for scheduling.
 
 **Changing priority:**
 
@@ -250,7 +253,7 @@ An order can have multiple work orders if needed.
 ### Knowledge Check: Module 3
 
 1. What does a work order link together?
-2. When would you set priority to "Rush"?
+2. When would you set priority to "Urgent"?
 3. How do you assign a work order to specific equipment?
 
 ---
@@ -333,7 +336,7 @@ Use this to identify:
 - WIP levels
 - Cycle time trends
 
-Navigate to **Tools > Analytics** for detailed views.
+Navigate to **Analytics** for detailed views.
 
 ---
 
@@ -349,7 +352,7 @@ Navigate to **Tools > Analytics** for detailed views.
 | Cpk | ≥ 1.33 | Process improvement needed |
 | Out-of-control signals | 0 | Investigate with QA |
 
-Navigate to **Tools > Analytics**, then select the **SPC** tab to see process capability across measurements.
+Navigate to **Analytics**, then select the **SPC** tab to see process capability across measurements.
 
 !!! example "Demo: SPC Impact"
     In demo mode, CAPA-2024-003 was triggered partly by SPC data showing nozzle measurement drift. This demonstrates how SPC data drives corrective action decisions.
@@ -591,10 +594,10 @@ By the end of this module, you will:
 ## Quick Reference
 
 ### Create Order
-Orders → **+ New** → Fill details → Save → Add Parts
+Orders → **New Orders** → Fill details → Save → Add Parts
 
 ### Create Work Order
-Work Orders → **+ New** → Select order, process → Save
+Work Orders → **New Orders** → Select order, process → Save
 
 ### Check Status
 Tracker → Find order → Review progress, holds

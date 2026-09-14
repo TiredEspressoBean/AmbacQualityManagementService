@@ -1,5 +1,10 @@
 # Life Tracking
 
+!!! note "No dedicated screen yet"
+    Life tracking is implemented in the backend — life limit definitions, usage
+    accumulation, and shelf life — and is available via the API and the data
+    editors. A dedicated life tracking screen is planned for a future release.
+
 Life tracking monitors accumulated usage, cycles, or calendar time against defined limits. This is essential for:
 
 - **Aerospace** - Life Limited Parts (LLPs), rotables, time-controlled items

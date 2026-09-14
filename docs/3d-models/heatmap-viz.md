@@ -161,9 +161,10 @@ Document improvement in CAPA verification.
 
 ### Image Export
 
-1. Position model to desired view
-2. Click **Export** or screenshot icon
-3. PNG downloads with heat map overlay
+!!! note "Planned Feature"
+    Heat map image export (PNG) is planned. There is no export or screenshot
+    control in the heat map viewer yet — use your operating system's screen
+    capture.
 
 ### Report Export
 
@@ -196,8 +197,7 @@ Document improvement in CAPA verification.
 
 | Permission | Allows |
 |------------|--------|
-| `view_heatmap` | View heat maps |
-| `view_heatmapannotation` | See annotation details |
+| `view_heatmapannotations` | View heat maps and their annotation details |
 | `export_data` | Export heat map data |
 
 ## Best Practices

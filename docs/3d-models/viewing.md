@@ -171,15 +171,15 @@ Filter which annotations display:
 
 ### Screenshot
 
-1. Position model as desired
-2. Click **Screenshot** or camera icon
-3. PNG downloads with current view
+!!! note "Planned Feature"
+    There is no screenshot or camera control in the 3D viewer. Use your
+    operating system's screen capture in the meantime.
 
 ### Print View
 
-1. Click **Print**
-2. Print-optimized layout generates
-3. Print or save as PDF
+!!! note "Planned Feature"
+    There is no print control in the 3D viewer. Use your browser's print
+    function, or generate a PDF report from the relevant record.
 
 ## Performance Tips
 
@@ -206,8 +206,8 @@ Filter which annotations display:
 | Permission | Allows |
 |------------|--------|
 | `view_threedmodel` | View models |
-| `view_heatmap` | View heat map overlays |
-| `add_annotation` | Create new annotations |
+| `view_heatmapannotations` | View heat maps and their annotations |
+| `add_heatmapannotations` | Create new annotations |
 
 ## Next Steps
 

@@ -14,7 +14,7 @@ SPC data connects to several pages in uqmes:
 |------|-------|---------|
 | **Analysis Dashboard** | `/analysis` | KPI overview: FPY trends, needs attention, defect pareto |
 | **SPC Charts** | `/spc` | Control charts, capability indices, baseline management |
-| **SPC Print View** | `/spc/print` | Print-optimized SPC reports |
+| **SPC Report** | Button on the SPC page | Generates a PDF SPC report, downloaded or emailed to you |
 | **Quality Dashboard** | `/quality` | Quality metrics, open NCRs, CAPA status |
 | **Defect Analysis** | `/quality/defects` | Defect trends by type, supplier, part type |
 | **CAPA List** | `/quality/capas` | Active CAPAs, some triggered by SPC |
@@ -87,7 +87,7 @@ When a signal appears, systematically check these factors:
 !!! example "Demo: Flow Rate Investigation"
     In demo mode, the Flow Rate Rule 2 violation can be traced to:
 
-    1. Navigate to **Tools > Analytics**, then select **SPC** (or go directly to `/spc`)
+    1. Navigate to **Analytics**, then select **SPC** (or go directly to `/spc`)
     2. Select: Process = Common Rail Injector Remanufacturing, Step = Flow Testing, Measurement = Flow Rate @ 1000 bar
     3. Click on the red-flagged points to see timestamps
     4. Cross-reference with parts INJ-0042-017 and INJ-0042-019 (search in `/tracker`)
@@ -223,7 +223,8 @@ Update (unfreeze and refreeze) when:
 2. **Collect new data**: Minimum 25 subgroups under new conditions
 3. **Verify improvement**: New Cpk should be better (or justify why acceptable)
 4. **Approve change**: QA Manager + Engineering sign-off
-5. **Update in system**: Click **Update Baseline**, enter justification
+5. **Update in system**: Click **Unfreeze** to return to baseline mode with
+   recalculated limits, then **Freeze Limits** once the new limits are right
 6. **Retain history**: Old baseline is archived automatically
 
 ```
@@ -341,7 +342,7 @@ When a signal indicates process shift:
 To find parts produced during an out-of-control period:
 
 1. Note the **timestamp range** of suspect measurements from SPC chart (`/spc`)
-2. Navigate to `/tracker` or **Portal > Tracker**
+2. Navigate to `/tracker` or **Tracker**
 3. Use filters:
    - Step = the affected step
    - Date range within suspect period
@@ -458,6 +459,6 @@ Monthly SPC summary for leadership:
 | [Defect Analysis](defects.md) | Defect Analysis | `/quality/defects` |
 | [CAPA Overview](../workflows/capa/overview.md) | CAPA List | `/quality/capas` |
 | [Dispositions](../workflows/quality/dispositions.md) | Dispositions | `/dispositions` |
-| [Quality Reports](../workflows/quality/quality-reports.md) | Quality Reports | `/qualityReports` |
+| [Quality Reports](../workflows/quality/quality-reports.md) | Quality Reports | `/editor/qualityReports` |
 | [Heat Maps](../3d-models/heatmap-viz.md) | Heat Map Viewer | `/heatmap` |
 | [Calibrations](../admin/setup/equipment.md) | Calibration Dashboard | `/quality/calibrations` |

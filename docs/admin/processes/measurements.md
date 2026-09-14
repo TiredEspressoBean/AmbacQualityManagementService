@@ -22,13 +22,10 @@ Measurement definitions specify:
 4. Fill in definition
 5. Save
 
-### From Measurement Editor
-
-1. Navigate to **Data Management** > **Measurements** (if available)
-2. Click **+ New Measurement**
-3. Fill in details
-4. Link to step(s)
-5. Save
+!!! note "No standalone measurements editor"
+    Measurement definitions are configured on the step that collects them, using
+    the procedure above. There is no separate **Measurements** entry under Data
+    Management.
 
 ## Measurement Fields
 

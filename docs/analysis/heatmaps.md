@@ -177,8 +177,8 @@ Filter annotations by date range to see how defect patterns evolve.
 
 | Permission | Allows |
 |------------|--------|
-| `view_heatmap` | View heat maps |
-| `add_annotation` | Create annotations |
+| `view_heatmapannotations` | View heat maps and their annotations |
+| `add_heatmapannotations` | Create annotations |
 | `view_threedmodel` | Access 3D models |
 
 ## Best Practices

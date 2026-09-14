@@ -218,8 +218,8 @@ View disposition history:
 
 | Permission | Allows |
 |------------|--------|
-| `view_disposition` | View disposition records |
-| `add_disposition` | Make disposition decisions |
+| `view_quarantinedisposition` | View disposition records |
+| `add_quarantinedisposition` | Make disposition decisions |
 | `approve_disposition` | Approve dispositions |
 
 ## Best Practices

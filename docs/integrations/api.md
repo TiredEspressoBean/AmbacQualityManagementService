@@ -19,7 +19,8 @@ REST API for integrating uqmes with other systems.
     GET /api/spc/measurements/?step=flow-testing
     ```
 
-    Demo tokens can be generated from any demo account's Profile > API Tokens.
+    API tokens are issued by an administrator — there is no self-service
+    **API Tokens** page on your Profile.
 
 ## API Basics
 

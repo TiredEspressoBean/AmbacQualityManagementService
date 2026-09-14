@@ -13,7 +13,7 @@ Approval Templates define:
 ## Creating Approval Templates
 
 1. Navigate to **Data Management** > **Approval Templates**
-2. Click **+ New Template**
+2. Click **New Approval Templates**
 3. Fill in details:
 
 | Field | Description |

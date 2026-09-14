@@ -1,6 +1,7 @@
 # Moving Parts Forward
 
-Moving parts through production steps is a core operation in uqmes. This guide covers the methods for passing parts to the next step.
+Moving parts through production steps is a core operation in uqmes. This guide
+covers how parts advance and what to do when they don't.
 
 ## Understanding Steps
 
@@ -12,28 +13,43 @@ Parts follow a defined process with sequential steps:
 
 Each step represents a manufacturing operation. Parts must complete each step before moving to the next.
 
-## Passing Parts (Primary Method)
+## How Parts Advance
 
-The primary way to move parts forward is using the **Pass** button at the work order level.
+**Parts advance by themselves.** There is no "move to next step" button in the
+normal flow. Advancement is *event-driven*: it fires whenever a state-changing
+event is recorded — a substep completed, a batch sealed, a part split, an
+override approved. When the step's requirements are satisfied, the parts move.
 
-### Steps
+So the way to move a part forward is to **do and record the work at its current
+step**.
+
+### Working a step
 
 1. Navigate to **Production** > **Work Orders**
-2. Find your work order in the table
-3. Click the **Pass** button on the work order row
-4. The **"Pass Part by Step"** dialog opens
-5. Select the step you want to pass (shows step name and part count)
-6. Click **Submit**
+2. Open your work order
+3. Click **Start Work** and check the parts you'll work on
+   (see [Running Work Instructions](../dwi/running.md))
+4. In the step player, record each substep and tap **Confirm & next**
+5. On the review screen, tap **Complete step**
 
 ### What Happens
 
-- All parts at the selected step move to the next step
-- Operator and timestamp are recorded
-- Progress bar updates automatically
-- Toast confirms: "Part passed to next step."
+- Your entries are recorded against the part with your name and a timestamp
+- The part advances if the step's requirements are met
+- Progress updates automatically
 
-!!! tip "Batch Operation"
-    The Pass function moves ALL parts at the selected step. This is efficient for batch processing.
+!!! tip "Lot cohesion"
+    Parts that have not been split advance **as a cohort** — all parts at the
+    same work order and step move together, or none do. A split part advances
+    on its own as soon as its own requirements clear. This is the usual reason a
+    finished part appears stuck: another part in its lot still has work
+    outstanding.
+
+!!! warning "Force advance is for emergencies"
+    The work order control page has a force-advance control, labelled
+    *"Force advance step (emergency; default flow is event-driven)"*. It bypasses
+    the requirements that normally gate a step. Use it to recover from a stuck
+    state, not as part of routine operation.
 
 ## Quality Reports (Individual Parts)
 
@@ -94,7 +110,7 @@ Each transition records:
 
 If an issue is found:
 
-1. Click **Flag Issue** or create a Quality Report with fail status
+1. Create a Quality Report against the part with a fail status
 2. Select the error type
 3. Enter description
 4. Part enters quarantine status

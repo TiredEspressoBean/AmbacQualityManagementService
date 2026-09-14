@@ -14,7 +14,7 @@ uqmes provides several dashboards for monitoring operations, quality, and produc
 
 ### Analysis Dashboard (`/analysis`)
 
-Navigate to **Tools > Analytics** in the sidebar or go directly to `/analysis`
+Navigate to **Analytics** in the sidebar or go directly to `/analysis`
 
 Focus: Comprehensive KPI analysis
 - First Pass Yield trend with date range toggle
@@ -223,9 +223,16 @@ For shop floor displays:
 
 | Permission | Allows |
 |------------|--------|
-| `view_analytics` | Access dashboards |
-| `view_qualityreport` | See NCR data |
+| `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
+| `view_qualityreports` | See NCR data |
 | `view_capa` | See CAPA data |
+
+!!! note
+    There is no dedicated `view_analytics` permission. The Analytics link is
+    shown to anyone holding `view_documents` or `view_chatsession`; the data
+    each chart shows is then limited by the permissions on the underlying
+    records.
+
 
 ## Best Practices
 

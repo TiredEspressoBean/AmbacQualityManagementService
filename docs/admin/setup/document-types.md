@@ -26,7 +26,7 @@ Document Types define:
 ## Creating Document Types
 
 1. Navigate to **Data Management** > **Document Types**
-2. Click **+ New Document Type**
+2. Click **New Document Types**
 3. Fill in details:
 
 | Field | Description |

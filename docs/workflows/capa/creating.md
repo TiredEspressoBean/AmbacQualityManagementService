@@ -14,7 +14,7 @@ This guide covers how to initiate and set up a CAPA investigation.
 ### From CAPA List
 
 1. Navigate to **Quality** > **CAPAs**
-2. Click **+ New CAPA**
+2. Click **New CAPAs**
 3. Complete the form
 4. Link related records manually
 

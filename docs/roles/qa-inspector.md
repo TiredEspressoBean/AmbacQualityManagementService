@@ -34,9 +34,10 @@ As a QA Inspector, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Work Orders** | Production > Work Orders | Your main inspection queue |
+| **Home** | Home | Your inspection queue — first pieces, incoming, OSP returns |
+| **Work Orders** | Production > Work Orders | Work order detail and history |
 | **Quality Reports** | Quality > Quality Reports | NCRs you've created |
-| **Dispositions** | Production > Dispositions | Quarantined parts |
+| **Dispositions** | Quality > Dispositions | Quarantined parts |
 | **Inbox** | Personal > Inbox | CAPA tasks and pending approvals |
 | **Heat Map** | Quality > Heat Map | Visual defect analysis |
 
@@ -44,10 +45,21 @@ As a QA Inspector, you:
 
 ### 1. Check Your Queue
 
-1. Navigate to **Production** > **Work Orders**
-2. Review work orders requiring inspection
-3. Also check **Inbox** for CAPA tasks and approval requests
-4. Prioritize your work
+**Your Home page is your queue.** When you log in as a QA Inspector, Home shows
+the inspection work waiting on you rather than a generic dashboard:
+
+- **First piece waiting** — parts held until you sign off the first piece, each
+  with **I'm on it** and **Start check**
+- **Incoming queue**, segmented into **Receiving**, **OSP returns**, and
+  **In-process**, with counts and age
+- Counters for **Approvals**, **CAPA tasks**, and **My dispositions**
+- **Review calibrations** for equipment coming due
+
+Work the oldest and most urgent items first — each segment shows its age.
+
+!!! note "Reaching the queue from elsewhere"
+    If your Home shows a different landing (because you hold several roles), the
+    same surface is always available at `/quality/inbox`.
 
 ### 2. Perform Inspections
 
@@ -58,7 +70,10 @@ For each inspection point:
 3. Apply sampling (if applicable)
 4. Perform measurements/checks
 5. Record results
-6. Disposition or pass parts
+6. Disposition any part that fails
+
+Parts that pass need no further action from you — once the step's requirements
+are met, they advance automatically.
 
 ### 3. Document Issues
 
@@ -188,7 +203,7 @@ If 3D models are configured:
 
 ### Parts You've Quarantined
 
-1. Navigate to **Production** > **Dispositions**
+1. Navigate to **Quality** > **Dispositions**
 2. See parts awaiting disposition
 3. Provide additional information as needed
 4. Await disposition decision

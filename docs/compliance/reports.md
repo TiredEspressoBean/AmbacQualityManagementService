@@ -23,27 +23,63 @@ Returns step-by-step history including:
 
 ### Data Export
 
-CSV and Excel export available on most data tables via the `/export/` endpoint:
+CSV and Excel export is available on most data tables. The format is part of
+the URL path, not a query parameter:
 
 ```
-GET /api/Parts/export/?format=xlsx
-GET /api/Orders/export/?format=csv
+GET /api/{Model}/export/csv/
+GET /api/{Model}/export/xlsx/
 ```
 
 Query parameters:
-- `format`: `csv` or `xlsx` (default: xlsx)
 - `fields`: Comma-separated field names to include
 - `filename`: Custom filename
+- `include_references`: Include FK reference sheets (`xlsx` only, default true)
 
-Exports respect all applied filters, search, and ordering.
+CSV is plain data; the Excel export adds reference sheets, validation, and
+formatting. Exports respect all applied filters, search, and ordering.
 
-### SPC Reports
+See [Import & Export](../admin/data/import-export.md) for the full reference.
 
-SPC chart reports can be generated via management command:
+### PDF Reports
 
-```bash
-python manage.py generate_pdf --type spc --params '{"process_id": 1, "step_id": 2, "measurement_id": 3}'
+uqmes generates PDF reports server-side from a registry of report types. In the
+UI, look for a **report button** on the relevant record or dashboard — it
+generates the PDF and either downloads it or emails it to you.
+
+| Report type | Title | Typically generated from |
+|-------------|-------|--------------------------|
+| `work_order_traveler` | Work Order Traveler | Work order detail |
+| `ncr_report` | Non-Conformance Report | Quality report / disposition |
+| `capa_report` | CAPA Report | CAPA detail |
+| `scar` | Supplier Corrective Action Request | Supplier quality |
+| `deviation_request` | Deviation Request | Quality report / disposition |
+| `spc` | SPC Report | SPC page |
+| `bom_report` | Bill of Materials | Part type |
+| `calibration_certificate` | Calibration Certificate | Calibration record |
+| `calibration_due` | Calibration Due Report | Calibration dashboard |
+| `training_record` | Training Record | User detail |
+| `checking_aids` | Checking Aids | Equipment |
+| `dispatch_list` | Dispatch List | Work order control |
+| `pick_list` | Material Requisition | Work order |
+| `pick_sheet` | Pick Sheet | Work order |
+| `staging_list` | Kit Sheet | Staging list |
+| `requirements` | Sourcing & Production Requirements | Requirements page |
+| `labor_hours` | Operator Hours | Operator hours page |
+| `part_id_label` | Part ID Label / WIP Tag | Part |
+| `part_id_label_batch` | Part ID Labels (Batch) | Part list |
+
+Reports are also available over the API:
+
 ```
+GET  /api/reports/types/              # enumerate available report types
+POST /api/reports/generate/           # generate and email
+POST /api/reports/download/           # generate and download
+GET  /api/reports/history/            # previously generated reports
+```
+
+Generating reports requires the export permission; see
+[Exporting Data](../analysis/exporting.md).
 
 ---
 
@@ -91,28 +127,16 @@ System activity for period:
 - Timestamps
 - Change details
 
-### CAPA Summary
-CAPA status and history:
-- Open CAPAs
-- Closure rate
-- Effectiveness metrics
-- Action completion
+!!! note
+    A per-CAPA **CAPA Report** PDF has shipped (see the table above). What
+    remains planned is a rolled-up *CAPA summary* across CAPAs — closure rate,
+    effectiveness metrics, and action-completion rates.
 
-## Planned: UI Report Generation
+## Planned: Bulk Report Generation
 
-### From Record
-1. Open record (part, order, CAPA)
-2. Click **Generate Report** or **Export**
-3. Select report type
-4. Configure options
-5. Generate PDF/CSV
-
-### Bulk Generation
-For multiple records:
-1. Select records
-2. Click **Bulk Export**
-3. Choose format
-4. Download
+Selecting many records and generating one combined report is not available.
+The one exception is **Part ID Labels (Batch)**, which prints labels for a
+batch of parts.
 
 ## Planned: Report Scheduling
 

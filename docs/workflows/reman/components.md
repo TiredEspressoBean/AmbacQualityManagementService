@@ -6,13 +6,13 @@ This guide covers viewing and managing components extracted during core disassem
 
 ### From a Core
 
-1. Open a core from **Reman > Cores**
+1. Open a core from **Remanufacturing > Cores**
 2. Scroll to **Harvested Components** section
 3. View all components from that core
 
 ### All Components
 
-1. Navigate to **Reman > Components**
+1. Navigate to **Remanufacturing > Components**
 2. View all harvested components across cores
 3. Use filters to narrow results
 

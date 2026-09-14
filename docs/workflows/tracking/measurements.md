@@ -17,32 +17,36 @@ Measurements are defined at the step level by administrators. Each definition sp
 
 ## Recording Measurements
 
-### From Part Detail
+Measurements are captured as part of the work at a step. There is no standalone
+"Record Measurements" button on a part.
 
-1. Open the part
-2. Navigate to **Measurements** tab
-3. Click **Record Measurements**
-4. Enter values for each measurement
-5. Click **Save**
+### In the step player (most common)
 
-### During Step Transition
+See [Running Work Instructions](../dwi/running.md).
 
-If measurements are required before moving forward:
+When a step defines measurement captures, they appear as substeps:
 
-1. Attempt to move the part forward
-2. A measurement form appears
-3. Enter the required values
-4. Submit to record and advance
+1. Open the step's substeps for your part (**Start Work** from the work order)
+2. Work through to the measurement substep
+3. Enter the measured value
+4. Tap **Confirm & next**
 
-### Quick Entry Mode
+The value is evaluated against the specification as you enter it.
 
-For high-volume measurement entry:
+### On a Quality Report
 
-1. Select multiple parts at the same step
-2. Click **Record Measurements**
-3. Enter values - use Tab to move between fields
-4. Values apply to selected parts or enter individually
-5. Save all measurements
+A quality report captures measurement results against each measurement
+definition — used for inspections and when documenting a non-conformance. See
+[Quality Reports](../quality/quality-reports.md).
+
+### During Incoming Inspection
+
+Inspecting a received material lot has its own **Record Measurements** action on
+the lot, under **Supply** > **Incoming Inspection**.
+
+!!! note "No bulk measurement entry"
+    There is no quick-entry or multi-part measurement screen. Values are
+    recorded per part, through one of the paths above.
 
 ## Pass/Fail Determination
 
@@ -178,10 +182,10 @@ See [SPC Charts](../../analysis/spc.md) for details.
 
 | Permission | Allows |
 |------------|--------|
-| `view_measurements` | View measurement history |
-| `add_measurements` | Record new measurements |
-| `change_measurements` | Edit measurements |
-| `delete_measurements` | Remove measurements |
+| `view_measurementresult` | View measurement history |
+| `add_measurementresult` | Record new measurements |
+| `change_measurementresult` | Edit measurements |
+| `delete_measurementresult` | Remove measurements |
 
 ## Next Steps
 

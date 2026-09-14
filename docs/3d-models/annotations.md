@@ -32,24 +32,27 @@ Create annotations when:
 3. Find the part and click **Annotate** or open the annotation tool
 4. Model loads with existing annotations
 5. Click location on model where defect is
-6. Fill in annotation form
+6. Fill in annotation form — **Error Type**, **Severity Level**, and **Notes**
 7. Save
 
-### Method 2: During Quality Report Creation
+### Method 2: From a Quality Report
 
-1. Create or open a quality report
-2. Click **Add Annotation** or **Mark on Model**
-3. 3D viewer opens
-4. Click defect location
-5. Annotation links to NCR automatically
+1. Open the **Part Annotator** for the part
+2. Select the quality report the defect belongs to
+3. Click the defect location directly on the model
+4. Complete the annotation form
+5. The annotation links to that report
 
-### Method 3: From Heat Map Viewer
+!!! note "There is no 'Add Annotation' button"
+    Annotations are created by clicking the model itself while in annotate
+    mode. In standalone QA review you must select a quality report before
+    the model accepts a click — the annotation has to belong to something.
 
-1. Open Heat Map for part type
-2. Click **Add Annotation** button
-3. Select part to annotate
-4. Click location on model
-5. Complete annotation form
+### Method 3: As a substep capture
+
+A step can include a **Part annotation** capture, so the operator marks the
+model as part of the work instructions. See
+[Authoring Work Instructions](../workflows/dwi/authoring.md).
 
 ## Annotation Form
 
@@ -207,10 +210,10 @@ For multiple defects of same type:
 
 | Permission | Allows |
 |------------|--------|
-| `add_heatmapannotation` | Create annotations |
-| `change_heatmapannotation` | Edit annotations |
-| `delete_heatmapannotation` | Remove annotations |
-| `view_heatmapannotation` | View annotations |
+| `add_heatmapannotations` | Create annotations |
+| `change_heatmapannotations` | Edit annotations |
+| `delete_heatmapannotations` | Remove annotations |
+| `view_heatmapannotations` | View annotations |
 
 ## Best Practices
 

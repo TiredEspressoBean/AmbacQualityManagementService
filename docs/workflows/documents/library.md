@@ -4,7 +4,7 @@ The Document Library is the central repository for all controlled documents in u
 
 ## Accessing the Library
 
-Navigate to **Tools > Documents** in the sidebar.
+Navigate to **Documents** in the sidebar.
 
 ## Library Overview
 
@@ -172,12 +172,12 @@ From record:
 
 | Permission | Allows |
 |------------|--------|
-| `view_document` | View documents |
-| `view_confidential` | View confidential documents |
-| `add_document` | Upload documents |
-| `change_document` | Edit, create revisions |
-| `delete_document` | Remove documents |
-| `approve_document` | Approve document revisions |
+| `view_documents` | View documents |
+| `view_confidential_documents` | View confidential documents |
+| `add_documents` | Upload documents |
+| `change_documents` | Edit, create revisions |
+| `delete_documents` | Remove documents |
+| `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 
 ## Best Practices
 

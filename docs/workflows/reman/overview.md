@@ -67,7 +67,7 @@ The **Disassembly BOM** defines expected yields:
 
 When a core arrives:
 
-1. Navigate to **Reman > Cores**, then click **+ New**
+1. Navigate to **Remanufacturing > Cores**, then click **New Cores**
 2. Enter core number and serial (if available)
 3. Select core type
 4. Assign condition grade
@@ -79,7 +79,7 @@ When a core arrives:
 
 To disassemble a core:
 
-1. Open core from **Reman > Cores**
+1. Open core from **Remanufacturing > Cores**
 2. Click **Start Disassembly**
 3. Add harvested components as you extract them
 4. Grade each component's condition
@@ -92,7 +92,7 @@ For each harvested component:
 - **Accept to Inventory** - Creates a Part record for reuse
 - **Scrap** - Mark as unusable with reason
 
-### 4. Core Credit
+### 4. Core Credit {#core-credit}
 
 If core credit is owed:
 

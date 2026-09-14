@@ -13,7 +13,7 @@ Manage customer and supplier company records.
 ## Creating a Company
 
 1. Navigate to **Data Management** > **Companies**
-2. Click **+ New Company**
+2. Click **New Companies**
 3. Fill in company details
 4. Save
 
@@ -107,10 +107,10 @@ Company records show HubSpot link.
 
 | Permission | Allows |
 |------------|--------|
-| `view_company` | View companies |
-| `add_company` | Create companies |
-| `change_company` | Edit companies |
-| `delete_company` | Remove companies |
+| `view_companies` | View companies |
+| `add_companies` | Create companies |
+| `change_companies` | Edit companies |
+| `delete_companies` | Remove companies |
 
 ## Best Practices
 

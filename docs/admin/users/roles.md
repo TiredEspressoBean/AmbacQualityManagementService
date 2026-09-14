@@ -99,8 +99,8 @@ Portal access:
 
 ### From Groups Editor
 
-1. Navigate to **Data Management** > **Groups**
-2. Click **+ New Group**
+1. Navigate to **Data Management** > **User Groups**
+2. Click **New User Groups**
 3. Enter group name
 4. Add description
 5. Click **Save**
@@ -141,8 +141,8 @@ Permissions are organized by model:
 `action_model`:
 - `view_orders` - View order records
 - `add_parts` - Create parts
-- `change_qualityreport` - Edit quality reports
-- `delete_document` - Remove documents
+- `change_qualityreports` - Edit quality reports
+- `delete_documents` - Remove documents
 - `approve_capa` - Approve CAPA closure
 
 ## Viewing Effective Permissions
@@ -231,23 +231,22 @@ Key permissions by function:
 - `can_move_parts`
 
 ### Quality
-- `add_qualityreport`, `change_qualityreport`
-- `add_disposition`, `approve_disposition`
+- `add_qualityreports`, `change_qualityreports`
+- `add_quarantinedisposition`, `approve_disposition`
 - `add_capa`, `change_capa`, `close_capa`
-- `view_quarantine`
+- `view_quarantinedisposition`
 
 ### Documents
-- `view_document`, `add_document`
-- `view_confidential_document`
-- `approve_document`
-- `change_document`
+- `view_documents`, `add_documents`
+- `view_confidential_documents`
+- `respond_to_approval`
+- `change_documents`
 
 ### Admin
 - `view_user`, `add_user`, `change_user`
-- `change_group`, `change_permissions`
+- `change_group`, `change_permission`
 - `view_auditlog`
-- `change_settings`
-
+- `change_tenant`
 ## Next Steps
 
 - [Assigning Permissions](permissions.md) - Detailed permission setup

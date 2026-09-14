@@ -29,7 +29,7 @@ Common categories:
 ## Creating Error Types
 
 1. Navigate to **Data Management** > **Error Types**
-2. Click **+ New Error Type**
+2. Click **New Error Types**
 3. Fill in details:
 
 | Field | Description | Required |
@@ -174,10 +174,10 @@ DIM-US,Under Size,Smaller than specified,DIM
 
 | Permission | Allows |
 |------------|--------|
-| `view_errortype` | View error types |
-| `add_errortype` | Create error types |
-| `change_errortype` | Edit error types |
-| `delete_errortype` | Deactivate error types |
+| `view_qualityerrorslist` | View error types |
+| `add_qualityerrorslist` | Create error types |
+| `change_qualityerrorslist` | Edit error types |
+| `delete_qualityerrorslist` | Deactivate error types |
 
 ## Best Practices
 

@@ -42,7 +42,7 @@ Your work directly impacts product quality and customer satisfaction.
 |------|----------|---------|
 | **Work Orders** | Production > Work Orders | Your inspection queue |
 | **Quality Reports** | Quality > Quality Reports | NCR management |
-| **Dispositions** | Production > Dispositions | Quarantined parts |
+| **Dispositions** | Quality > Dispositions | Quarantined parts |
 | **Inbox** | Personal > Inbox | CAPA tasks and approvals |
 
 **Exercise 1.1:** Navigate QA Pages
@@ -225,7 +225,7 @@ By the end of this module, you will:
 **Steps:**
 
 1. Navigate to **Quality** > **Quality Reports**
-2. Click **+ New Report**
+2. Click **New Quality Reports**
 3. Fill in required fields:
    - Title: Clear, specific description
    - Error Type: Select from list
@@ -238,7 +238,7 @@ By the end of this module, you will:
 **Exercise 3.1:** Create a Quality Report
 
 1. Go to **Quality > Quality Reports**
-2. Click **+ New Report**
+2. Click **New Quality Reports**
 3. Create report for:
    - Title: "Surface scratch on housing - TRAIN-101"
    - Error Type: Visual Defect
@@ -460,7 +460,7 @@ By the end of this module, you will:
 - **Cpk:** Process capability index (target ≥ 1.33)
 
 !!! example "Demo: Flow Rate SPC"
-    In demo mode, navigate to **Tools > Analytics**, then select the **SPC** tab. Choose Flow Testing > Flow Rate. Notice the control chart shows a Rule 2 violation (red points) that triggered an alert for your inbox.
+    In demo mode, navigate to **Analytics**, then select the **SPC** tab. Choose Flow Testing > Flow Rate. Notice the control chart shows a Rule 2 violation (red points) that triggered an alert for your inbox.
 
 ---
 
@@ -537,7 +537,7 @@ By the end of this module, you will:
 
 1. FPI for waiting production (blocking work)
 2. High-priority orders
-3. Rush orders
+3. Urgent-priority orders
 4. Orders approaching due date
 5. Standard queue
 
@@ -620,13 +620,13 @@ Complete these tasks to demonstrate competency:
 1. Production > Work Orders → Find work order → **Perform FPI** → Enter measurements → Submit
 
 ### Quality Report
-1. Quality > Quality Reports → **+ New** → Fill details → Link parts → Attach evidence → Save
+1. Quality > Quality Reports → **New Quality Reports** → Fill details → Link parts → Attach evidence → Save
 
 ### Disposition
 1. Open report → **Recommend Disposition** → Select type → Justify → Submit
 
 ### Quarantine Check
-1. View quarantined parts in Production > Dispositions
+1. View quarantined parts in Quality > Dispositions
 2. Part needs quality report and disposition
 
 ---

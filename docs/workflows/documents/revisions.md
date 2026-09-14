@@ -149,9 +149,9 @@ Revisions are never deleted (may be archived).
 
 | Permission | Allows |
 |------------|--------|
-| `change_document` | Create revisions |
-| `view_document` | View revision history |
-| `approve_document` | Approve revisions |
+| `change_documents` | Create revisions |
+| `view_documents` | View revision history |
+| `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 
 ## Best Practices
 

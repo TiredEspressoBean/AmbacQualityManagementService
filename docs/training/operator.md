@@ -58,7 +58,7 @@ By the end of this module, you will:
 | Work order table | List of all work orders |
 | Search/filter | Find your assigned work orders |
 | Status column | Shows order progress |
-| Actions | Pass parts, view details, record quality |
+| Actions | Open a work order, start work, record quality |
 
 **Exercise 1.1:** Finding Your Work Order
 
@@ -104,13 +104,15 @@ By the end of this module, you will:
 
 By the end of this module, you will:
 
-- [ ] Pass parts to the next step
-- [ ] Understand step requirements
-- [ ] Record that work is complete
+- [ ] Start work on a set of parts
+- [ ] Work through a step's substeps and complete the step
+- [ ] Understand why a part might not advance
 
 ### 2.1 The Step Process
 
-**Concept:** Parts move through a defined sequence of steps. You pass a part to the next step when your work is done.
+**Concept:** Parts move through a defined sequence of steps. You do not move
+them yourself — you record the work at your step, and the system advances the
+parts once the step's requirements are satisfied.
 
 **Typical flow:**
 
@@ -127,39 +129,69 @@ Each step may require:
 
 ---
 
-### 2.2 Passing Parts (Work Order Level)
+### 2.2 Starting Work
 
-The primary way to move parts forward is from your work order, passing all parts at a specific step.
+You work a step from the work order, one part at a time.
 
 **Steps:**
 
-1. Navigate to **Work Orders** page
-2. Find your assigned work order
-3. Click the **Pass** button on the work order row
-4. The "Pass Part by Step" dialog opens
-5. Select the step you completed (shows step name and part count)
-6. Click **Submit**
+1. Navigate to **Production** > **Work Orders**
+2. Open your assigned work order
+3. Click **Start Work**
+4. In the **Start work on parts** dialog, check the parts you'll work on, *in
+   the order you'll work them*
+5. Confirm — the step player opens on the first part
 
-**What happens:**
+After you complete a part's step, the player moves to the next checked part
+automatically, so you can work a batch without returning to the work order.
 
-- All parts at that step move to the next step
-- Your name and timestamp are recorded
-- Progress updates automatically
-- Toast message confirms: "Part passed to next step."
+**Exercise 2.1:** Starting Work
 
-**Exercise 2.1:** Passing Parts
+1. Go to **Production** > **Work Orders**
+2. Open your assigned work order
+3. Click **Start Work**
+4. Check two parts and confirm
 
-1. Go to **Work Orders**
-2. Find your assigned work order
-3. Click **Pass**
-4. In the dialog, select the step showing parts you completed
-5. Click **Submit**
-
-**Expected result:** Parts move to next step, progress updates.
+**Expected result:** The step player opens on the first part you checked.
 
 ---
 
-### 2.3 Individual Part Quality Reports
+### 2.3 Working a Step
+
+Reference: [Running Work Instructions](../workflows/dwi/running.md).
+
+The player shows **one substep at a time**, with a progress rail along the top.
+
+**Steps:**
+
+1. Do what the substep asks — take a measurement, perform a check, sign off
+2. Tap **Confirm & next**
+3. If a substep genuinely does not apply, tap **Mark N/A** and choose a reason
+4. After the last substep you get a **review screen** listing everything you
+   recorded — tap any entry to jump back and fix it
+5. Tap **Complete step**
+
+**What happens:**
+
+- Your entries are recorded against the part with your name and a timestamp
+- The part advances if the step's requirements are met
+- The player moves on to the next part you checked
+
+**Exercise 2.2:** Completing a Step
+
+1. In the player, work through each substep, tapping **Confirm & next**
+2. On the review screen, check your entries
+3. Tap **Complete step**
+
+**Expected result:** The step completes and the player moves to your next part.
+
+!!! tip "Your work is saved as you go"
+    Each substep is sealed when you confirm it. If the tablet is closed or
+    handed over, reopening the step resumes where you left off.
+
+---
+
+### 2.4 Individual Part Quality Reports
 
 For individual parts requiring quality documentation or in-process checks:
 
@@ -178,25 +210,34 @@ For individual parts requiring quality documentation or in-process checks:
 
 ---
 
-### 2.4 When Parts Can't Be Passed
+### 2.5 When Parts Don't Advance
 
-A part cannot be passed if:
+A part will not move on if:
 
-- Required measurements are missing
+- Required captures are missing or incomplete
+- The step's First Piece Inspection is still pending
 - You don't have training for that step
 - The part is quarantined
-- Previous step isn't complete
+- The previous step isn't complete
+- **Another part in the lot still has outstanding work**
 
-!!! note "Blocked Parts"
-    If you can't pass a part, the system tells you why. Contact your supervisor if you need help.
+!!! note "Parts move as a lot"
+    Parts that have not been split advance together — all parts at the same work
+    order and step, or none. So a part of yours can be finished and still not
+    move, because a different part in the same lot isn't done. That is normal,
+    not a fault.
+
+!!! warning "First Piece Inspection blocks the whole step"
+    If the step's FPI hasn't been signed off, no part at that step advances.
+    **Complete step** becomes the buy-off action for whoever can sign it.
 
 ---
 
 ### Knowledge Check: Module 2
 
-1. What happens when you pass parts to the next step?
-2. Where do you find your work order to pass parts?
-3. What might prevent parts from being passed?
+1. What actually causes a part to move to the next step?
+2. How do you start work on a set of parts?
+3. Name two reasons a finished part might still not advance.
 
 ---
 
@@ -388,11 +429,11 @@ As you work on your assigned work order:
 
 1. **Open your work order** on the Work Orders page
 2. **Complete your operation** on the parts
-3. **Record measurements** using in-process checks on the work order page
-4. **Pass parts** to the next step when your operation is complete
+3. **Record measurements** as substeps inside the step player
+4. **Complete the step** when your operation is done — parts advance on their own
 5. **Flag any issues** immediately using the quality report function
 
-**Stay in sync:** Pass parts as you complete them, not at end of shift.
+**Stay in sync:** Complete steps as you finish them, not at end of shift — a lot can't advance until every part in it is done.
 
 ---
 
@@ -400,7 +441,7 @@ As you work on your assigned work order:
 
 | Do | Don't |
 |----|-------|
-| Pass parts promptly | Wait until end of shift |
+| Complete steps promptly | Wait until end of shift |
 | Enter actual measurements | Guess or estimate |
 | Flag issues immediately | Hope someone else notices |
 | Ask when unsure | Make assumptions |
@@ -452,10 +493,10 @@ Complete these tasks to demonstrate competency:
 
 ### Task 1: Part Tracking
 
-1. Go to **Work Orders** and find your assigned work order
-2. Click **Pass** on the work order
-3. Select the step with parts to pass
-4. Submit
+1. Go to **Production** > **Work Orders** and open your assigned work order
+2. Click **Start Work** and check a part
+3. Work through the step's substeps, tapping **Confirm & next**
+4. On the review screen, tap **Complete step**
 
 ### Task 2: Quality Report
 

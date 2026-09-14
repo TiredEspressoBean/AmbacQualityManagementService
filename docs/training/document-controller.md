@@ -42,8 +42,8 @@ Document control is critical for quality certifications (ISO, AS9100, etc.).
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Documents** | Tools > Documents | Document dashboard |
-| **Document List** | Documents > All | Complete library |
+| **Documents** | Documents | Document dashboard |
+| **Document List** | Documents > View All Documents | Complete library |
 | **Inbox** | Personal > Inbox | Pending approvals |
 | **Approval History** | Approvals > History | Approval records |
 
@@ -112,8 +112,8 @@ By the end of this module, you will:
 
 **Steps:**
 
-1. Navigate to **Tools > Documents**
-2. Click **+ Upload**
+1. Navigate to **Documents**
+2. Click **Upload Document**
 3. Select file from your computer
 4. Fill in metadata:
    - Title: Descriptive name
@@ -126,8 +126,8 @@ By the end of this module, you will:
 
 **Exercise 2.1:** Upload a Document
 
-1. Go to **Tools > Documents**
-2. Click **+ Upload**
+1. Go to **Documents**
+2. Click **Upload Document**
 3. Select training file provided
 4. Fill in:
    - Title: "Training Work Instruction - Widget Assembly"
@@ -588,7 +588,7 @@ By the end of this module, you will:
 ## Quick Reference
 
 ### Upload Document
-Documents → **+ Upload** → Select file → Fill metadata → **Upload**
+Documents → **Upload Document** → Select file → Fill metadata → **Upload**
 
 ### Create Revision
 Open document → **New Revision** → Upload new file → Fill change notes → **Submit**

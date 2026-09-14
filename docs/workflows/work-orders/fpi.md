@@ -228,8 +228,8 @@ FPI is routine; FAI is comprehensive qualification.
 | Permission | Allows |
 |------------|--------|
 | `submit_fpi` | Submit first piece for review |
-| `approve_fpi` | Approve/reject FPI |
-| `view_fpi` | View FPI status and records |
+| `sign_off_fpi` | Approve/reject FPI |
+| `view_fpirecord` | View FPI status and records |
 
 ## Best Practices
 

@@ -7,66 +7,87 @@ This guide introduces the uqmes interface and helps you find your way around.
 The uqmes interface consists of three main areas:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Header (Organization, Search, Profile)                 │
-├──────────────┬──────────────────────────────────────────┤
+┌──────────────┬──────────────────────────────────────────┐
+│ Organization │  Header (sidebar toggle, notifications,  │
+│   selector   │          theme)                          │
+├──────────────┼──────────────────────────────────────────┤
 │              │                                          │
 │   Sidebar    │           Main Content Area              │
-│              │                                          │
 │  Navigation  │    (Pages, Forms, Tables, Charts)        │
 │              │                                          │
-│              │                                          │
+├──────────────┤                                          │
+│ Your profile │                                          │
 └──────────────┴──────────────────────────────────────────┘
 ```
 
+The organization selector sits at the **top of the sidebar**, and your profile
+menu at the **bottom of the sidebar** — not in the header bar.
+
 ## Sidebar Navigation
 
-The sidebar on the left is your main navigation. It's organized into sections based on function:
+The sidebar on the left is your main navigation. Sections you lack permission
+for are hidden entirely, so your sidebar may be shorter than what follows.
 
-### Portal Section
-Available to all users:
+Three links sit at the top with no section header:
 
-- **Tracker** - The main view showing all orders with their status and progress
+- **Home** - Your role-aware landing page
+- **Help & Docs** - This documentation
+- **Tracker** - Order status and progress
 
-### Personal Section
-Your personal work queue:
-
+### Personal
 - **Inbox** - CAPA tasks and pending approvals (not work assignments—those come from your supervisor)
 
-### Production Section
-For production and manufacturing staff:
-
+### Production
 - **Work Orders** - Active work orders and their status
+- **WO Control Center** - Shop-floor control view across work orders
 - **Processes** - Manufacturing workflow definitions
-- **Dispositions** - Quarantine and disposition management
 
-### Quality Section
-For quality assurance teams:
+### Scheduling
+- **Schedule (Gantt)** - The planning board
+- **Calendar** - Working windows and shifts
+- **Capacity Planning** - Coarse long-range capacity
+- **Staging List** - Kits staged for upcoming jobs
+- **Operator Hours** - Labor hours reporting
+- **Requirements** - Sourcing and production requirements
 
+### Supply
+- **Incoming Inspection** - Receiving inspection queue
+- **Outside Processing** - Parts out at outside vendors
+- **Materials** - Material lots by lifecycle status
+- **Receiving Inspection Plans** - Inspection plans applied on receipt
+- **Supplier Quality** - Supplier performance and issues
+- **Approved Suppliers** - Supplier qualifications
+- **Part Approvals** - Part approval records
+
+### Remanufacturing
+- **Dashboard** - Reman overview
+- **Cores** - Core receiving and tracking
+- **Components** - Harvested components
+
+### Quality
 - **Dashboard** - Quality KPIs at a glance
 - **CAPAs** - Corrective and Preventive Actions
 - **Quality Reports** - Non-conformance reports
+- **Change Control** - Process change requests, orders, and notices
+- **Dispositions** - Quarantine and disposition management
 - **Training** - Training records and compliance
 - **Calibrations** - Equipment calibration tracking
 - **Heat Map** - Visual defect analysis
 
-### Approvals Section
-For users with approval responsibilities:
-
+### Approvals
 - **Overview** - Pending items requiring your approval
 - **History** - Past approval decisions
 
-### Tools Section
-Cross-functional tools:
+Three more standalone links follow, again with no section header:
 
 - **Documents** - Document library and management
 - **Analytics** - Dashboards, trends, and analysis
 - **AI Chat** - AI assistant for data exploration
 
-### Admin Section
-For administrators only:
-
+### Admin
 - **Settings** - Organization and system configuration
+- **User Management** - Users, invitations, and roles
+- **Work Centers** - Shop-floor work center master data
 - **Data Management** - Access to all data editors
 - **Audit Log** - System audit trail
 
@@ -75,26 +96,31 @@ For administrators only:
 
 ## Header Bar
 
-The header bar at the top contains:
+The header bar at the top is deliberately sparse. It contains:
+
+- **Toggle Sidebar** - Collapse the sidebar to icons (also `Ctrl`/`Cmd` + `B`)
+- **Notifications** - Your notification feed
+- **Toggle theme** - Switch between light and dark
 
 ### Organization Selector
-Click your organization name to:
+At the **top of the sidebar**, click your organization name to:
 
-- View current organization
+- See the current organization
+- Open **Organization settings**
 - Switch between organizations (if you belong to multiple)
 
-### Search
-Use the search bar to quickly find:
-
-- Orders by number
-- Parts by serial number
-- Documents by name
-
 ### Profile Menu
-Click your avatar to access:
+At the **bottom of the sidebar**, click your name to access:
 
 - **Profile** - Your account settings
-- **Log Out** - Sign out of uqmes
+- **My Notifications** - Notification preferences
+- **Help & Docs** - This documentation
+- **Log out** - Sign out of uqmes
+
+!!! note "No global search"
+    uqmes has no application-wide search bar. Each list page has its own search
+    and filter controls, and the Home page has a **Look up a work order or
+    part…** box.
 
 ## Page Types
 
@@ -134,7 +160,9 @@ Visual summaries with:
 ## Common Actions
 
 ### Creating Records
-Most list pages have a **+ New** or **+ Add** button in the top right. Click it to create a new record.
+Most list pages have a **New <record type>** button in the top right - for
+example **New Orders** on the Orders editor, **New CAPAs** on the CAPA list.
+Click it to create a new record.
 
 ### Editing Records
 Click a row to view details, then click **Edit** or use the action menu (three dots) on the row.
@@ -147,19 +175,25 @@ Use the filter controls above tables to narrow results:
 3. Click **Apply**
 
 ### Exporting Data
-Many pages support CSV export:
+Many list pages support export. Click the **Export** menu and choose:
 
-1. Click the **Export** button
-2. Select columns to include
-3. Download the CSV file
+- **Export as Excel** (`.xlsx`) - includes reference sheets and formatting
+- **Export as CSV** - plain data
+
+Exports respect the filters, search, and sorting currently applied to the
+table. Import templates (**Excel Template** / **CSV Template**) download from
+the same menu.
 
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `/` | Focus search bar |
+| `Ctrl`/`Cmd` + `B` | Toggle the sidebar |
 | `Esc` | Close modal or cancel |
 | `Enter` | Submit form or confirm |
+
+Some pages add their own shortcuts — the 3D model viewer, heat map viewer, and
+operator step runtime each bind keys while open.
 
 ## Mobile Access
 

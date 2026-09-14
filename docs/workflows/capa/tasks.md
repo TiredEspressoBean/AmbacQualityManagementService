@@ -18,7 +18,7 @@ Note: Root cause analysis is tracked separately via RCA records linked to the CA
 
 1. Open the CAPA
 2. Go to **Tasks** tab
-3. Click **+ Add Task**
+3. Click **Add Task**
 4. Complete the form:
 
 | Field | Description |
@@ -199,10 +199,10 @@ For multiple tasks:
 
 | Permission | Allows |
 |------------|--------|
-| `view_capatask` | View tasks |
-| `add_capatask` | Create tasks |
-| `change_capatask` | Edit, complete tasks |
-| `delete_capatask` | Remove tasks |
+| `view_capatasks` | View tasks |
+| `add_capatasks` | Create tasks |
+| `change_capatasks` | Edit, complete tasks |
+| `delete_capatasks` | Remove tasks |
 
 ## Best Practices
 

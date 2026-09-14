@@ -61,8 +61,8 @@ For multi-shift operations:
 | Permission | Allows |
 |------------|--------|
 | `change_workorder` | Assign/reassign work orders |
-| `view_equipment` | See equipment options |
-| `view_users` | See operator options |
+| `view_equipments` | See equipment options |
+| `view_user` | See operator options |
 
 ## Best Practices
 

@@ -34,17 +34,17 @@ For large files, consider:
 
 ### From Document Library
 
-1. Navigate to **Tools > Documents**
-2. Click **+ Upload** or **+ New Document**
+1. Navigate to **Documents**
+2. Click **Upload Document**
 3. Drag and drop file, or click to browse
 4. Fill in metadata
-5. Click **Upload**
+5. Click **Upload Document**
 
 ### From Related Record
 
 1. Open the order, part, or other record
 2. Go to **Documents** section
-3. Click **Upload**
+3. Click **Upload Document**
 4. File automatically links to the record
 
 ## Document Metadata
@@ -124,7 +124,7 @@ Validation errors show before upload completes.
 
 | Permission | Allows |
 |------------|--------|
-| `add_document` | Upload new documents |
+| `add_documents` | Upload new documents |
 | `add_documenttype` | Create new document types |
 
 ## Best Practices

@@ -101,7 +101,7 @@ Use filters to find specific orders:
 - Overdue only
 
 ### By Priority
-- Rush orders
+- Urgent-priority orders
 - High priority
 - Normal
 
@@ -136,7 +136,7 @@ Configure alerts for order events:
 - Parts entering quarantine
 - Order completed
 
-See your **Profile** > **Notification Preferences** to configure.
+See your **My Notifications** to configure.
 
 ## Exporting Status
 

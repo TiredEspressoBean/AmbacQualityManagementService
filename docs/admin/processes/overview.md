@@ -163,11 +163,11 @@ Track process performance:
 
 | Permission | Allows |
 |------------|--------|
-| `view_process` | View processes |
-| `add_process` | Create processes |
-| `change_process` | Edit processes |
-| `approve_process` | Approve process changes |
-| `delete_process` | Remove processes |
+| `view_processes` | View processes |
+| `add_processes` | Create processes |
+| `change_processes` | Edit processes |
+| `respond_to_approval` | Respond to a process approval request (eligibility also set by the approval template) |
+| `delete_processes` | Remove processes |
 
 ## Best Practices
 

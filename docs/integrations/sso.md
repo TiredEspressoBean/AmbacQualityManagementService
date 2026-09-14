@@ -1,6 +1,6 @@
-# SSO / Azure AD
+# SSO / Microsoft Entra ID
 
-Single Sign-On integration with Microsoft Azure AD and other identity providers.
+Single Sign-On integration with Microsoft Entra ID and other identity providers.
 
 !!! note "Administrator Configuration"
     SSO is configured by system administrators via backend settings. Contact your administrator or uqmes support for SSO setup.
@@ -17,22 +17,22 @@ SSO allows users to:
 
 | Provider | Protocol |
 |----------|----------|
-| **Microsoft Azure AD** | OAuth 2.0 / OIDC |
+| **Microsoft Entra ID** | OAuth 2.0 / OIDC |
 | **Microsoft 365** | OAuth 2.0 / OIDC |
 | **Okta** | SAML / OIDC |
 | **Google Workspace** | OAuth 2.0 |
 
-## Azure AD Setup
+## Microsoft Entra ID Setup
 
 ### Prerequisites
-- Azure AD tenant
+- Microsoft Entra tenant
 - Admin access to register application
 - uqmes admin access
 
 ### Configuration Steps
 
-1. **Register Application in Azure AD**
-   - Go to Azure Portal > Azure Active Directory
+1. **Register Application in Microsoft Entra ID**
+   - Go to the Microsoft Entra admin center
    - App registrations > New registration
    - Name: "uqmes"
    - Redirect URI: `https://yourapp.uqmes.com/accounts/microsoft/login/callback/`
@@ -54,7 +54,7 @@ SSO allows users to:
 4. **Test SSO**
    - Log out of uqmes
    - Click "Sign in with Microsoft"
-   - Authenticate via Azure AD
+   - Authenticate via Microsoft Entra ID
    - Verify successful login
 
 ## On-Premises / Firewalled Deployment
@@ -82,6 +82,12 @@ provider only loads when `SSO_ENABLED=true`):
 | `AZURE_TENANT_ID` | Your Directory (tenant) **GUID** — not `common`, for a single organization |
 | `ALLOWED_HOSTS` | must include `govtracker.ambac.local` |
 | `CSRF_TRUSTED_ORIGINS` | must include `https://govtracker.ambac.local` |
+
+!!! note "Why the variables still say `AZURE_`"
+    Microsoft renamed Azure AD to Microsoft Entra ID, but the environment
+    variable names in uqmes were not renamed with it. Use `AZURE_CLIENT_ID`,
+    `AZURE_CLIENT_SECRET`, and `AZURE_TENANT_ID` exactly as written — they are
+    the keys the application reads.
 
 Also set the Django **Sites** entry (Site ID 1) domain to the internal host —
 allauth builds the absolute callback URL from it.
@@ -162,25 +168,25 @@ Client machines must also trust the internal CA certificate for the `.local` hos
 
 ## Group Mapping
 
-Azure AD groups can be mapped to uqmes permission groups. Contact your administrator for group mapping configuration.
+Microsoft Entra groups can be mapped to uqmes permission groups. Contact your administrator for group mapping configuration.
 
 ## MFA Enforcement
 
 MFA is handled by the identity provider:
-- Configure MFA policy in Azure AD
+- Configure MFA policy in Microsoft Entra ID
 - uqmes inherits MFA
 - No separate MFA configuration needed
 
 ## Session Management
 
 ### Session Duration
-- Controlled by Azure AD policy
+- Controlled by Microsoft Entra policy
 - uqmes session matches
 - Configurable timeout
 
 ### Single Logout
 - Logout from uqmes
-- Optionally logout from Azure AD
+- Optionally logout from Microsoft Entra ID
 - Clear all sessions
 
 ## Troubleshooting SSO
@@ -197,8 +203,8 @@ MFA is handled by the identity provider:
 
 ### "Access denied"
 - User may be deactivated
-- Check Azure AD group membership
-- Verify application assignment in Azure
+- Check Microsoft Entra group membership
+- Verify application assignment in Microsoft Entra
 
 ## Security Considerations
 
@@ -209,9 +215,13 @@ MFA is handled by the identity provider:
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `change_sso_settings` | Configure SSO (admin) |
+SSO has no self-service permission or settings UI. It is configured by a system
+administrator in backend settings at deployment time.
+
+!!! note "Planned Feature"
+    A `change_sso_settings` permission and an in-app SSO configuration panel are
+    planned. Until then, contact your system administrator to change SSO
+    configuration.
 
 ## Best Practices
 

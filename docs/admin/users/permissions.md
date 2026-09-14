@@ -38,9 +38,9 @@ The recommended approach:
 1. Create group "QA Inspector"
 2. Add permissions:
    - `view_orders`, `view_parts`
-   - `add_qualityreport`, `view_qualityreport`
-   - `add_measurement`, `view_measurement`
-   - `view_document`
+   - `add_qualityreports`, `view_qualityreports`
+   - `add_measurementresult`, `view_measurementresult`
+   - `view_documents`
 3. Assign QA inspector users to this group
 
 ## Permission Categories
@@ -53,9 +53,9 @@ The recommended approach:
 |------------|--------|
 | `view_orders` | See orders list and details |
 | `view_parts` | See parts |
-| `view_qualityreport` | See NCRs |
+| `view_qualityreports` | See NCRs |
 | `view_capa` | See CAPAs |
-| `view_document` | See documents |
+| `view_documents` | See documents |
 
 ### Creating Data
 
@@ -65,7 +65,7 @@ The recommended approach:
 |------------|--------|
 | `add_orders` | Create new orders |
 | `add_parts` | Add parts to orders |
-| `add_qualityreport` | Create NCRs |
+| `add_qualityreports` | Create NCRs |
 | `add_capa` | Initiate CAPAs |
 
 ### Editing Data
@@ -76,7 +76,7 @@ The recommended approach:
 |------------|--------|
 | `change_orders` | Edit order details |
 | `change_parts` | Modify parts |
-| `change_qualityreport` | Update NCRs |
+| `change_qualityreports` | Update NCRs |
 | `change_workorder` | Edit work orders |
 
 ### Deleting Data
@@ -87,7 +87,7 @@ The recommended approach:
 |------------|--------|
 | `delete_orders` | Remove orders |
 | `delete_parts` | Delete parts |
-| `delete_document` | Remove documents |
+| `delete_documents` | Remove documents |
 
 !!! note "Soft Delete"
     Most deletions are soft deletes. Records are archived, not permanently removed.
@@ -98,17 +98,22 @@ The recommended approach:
 
 | Permission | Allows |
 |------------|--------|
-| `approve_document` | Approve document revisions |
+| `respond_to_approval` | Respond to any approval request routed to you — documents and processes included |
 | `approve_disposition` | Approve disposition decisions |
 | `approve_capa` | Approve CAPA closure |
-| `approve_process` | Approve process changes |
+| `approve_qualityreports` | Approve quality reports |
+
+!!! note
+    Document and process approvals have no dedicated `approve_*` permission.
+    They are routed through approval templates: holding `respond_to_approval`
+    makes you *eligible*, and the template decides which requests reach you.
 
 ### Confidential Access
 
 | Permission | Allows |
 |------------|--------|
-| `view_confidential_document` | See confidential docs |
-| `view_restricted_document` | See restricted docs |
+| `view_confidential_documents` | See confidential docs |
+| `view_restricted_documents` | See restricted docs |
 
 ### Export Permissions
 
@@ -122,7 +127,7 @@ The recommended approach:
 | Permission | Allows |
 |------------|--------|
 | `view_auditlog` | Access full audit trail |
-| `change_settings` | Modify system settings |
+| `change_tenant` | Modify organization settings |
 | `manage_users` | Full user management |
 
 ## Checking User Permissions
@@ -133,7 +138,7 @@ Users get permissions through their group memberships:
 
 1. Navigate to **Data Management > Users**
 2. Open user record and note their assigned **Groups**
-3. Navigate to **Data Management > Groups**
+3. Navigate to **Data Management > User Groups**
 4. Open each group to view its **Permissions** tab
 5. User has the combined permissions of all their groups
 

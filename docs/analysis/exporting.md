@@ -51,12 +51,13 @@ For detailed information on import/export functionality, including bulk imports 
 
 ### Column Selection
 
-Select which columns to export:
+!!! note "No column picker in the UI"
+    The export menu offers **Export as Excel** and **Export as CSV**; it does
+    not offer column selection. Exports include the model's standard export
+    fields and respect the filters, search, and sorting applied to the table.
 
-1. Click **Select Columns**
-2. Check/uncheck columns
-3. Reorder if needed
-4. Apply selection
+    To restrict columns, call the export endpoint directly with the `fields`
+    query parameter — see [Import & Export](../admin/data/import-export.md).
 
 ### Including Related Data
 
@@ -181,20 +182,14 @@ GET /api/Parts/{id}/traveler/
 
 Returns step-by-step history including timing, operators, equipment, measurements, defects, and attachments.
 
+### Work Order Traveler (available)
+
+A **Traveler** button on the work order detail page generates a Work Order
+Traveler PDF, downloaded or emailed to you.
+
 !!! note "Planned Feature"
-    A UI button to generate Part Traveler PDFs is planned. Currently, traveler data is available via the API endpoint above.
-
-When UI export is available:
-
-1. Navigate to part detail
-2. Click **Generate Traveler** or **Export History**
-3. Select sections to include:
-   - Part information
-   - Step history
-   - Measurements
-   - Quality events
-   - Signatures
-4. Generate PDF
+    A UI button for a *per-part* Traveler PDF is still planned. Part-level
+    traveler data is available via the API endpoint above.
 
 Use for:
 - Customer documentation

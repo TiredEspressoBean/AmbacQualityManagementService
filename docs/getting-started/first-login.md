@@ -18,10 +18,10 @@ uqmes supports two authentication methods:
 
 ### Single Sign-On (SSO)
 
-If your organization uses Microsoft Azure AD or another identity provider:
+If your organization uses Microsoft Entra ID or another identity provider:
 
 1. Navigate to your uqmes URL
-2. Click **Sign in with Microsoft** (or your organization's SSO provider)
+2. Click **Login with Microsoft**
 3. Enter your corporate credentials
 4. You'll be redirected back to uqmes, logged in
 
@@ -35,7 +35,7 @@ If your organization uses direct login:
 1. Navigate to your uqmes URL
 2. Enter your **email address**
 3. Enter your **password**
-4. Click **Log In**
+4. Click **Login**
 
 ## First-Time Setup
 
@@ -52,34 +52,39 @@ If you received an invitation email:
 
 After your first login, you may want to update your profile:
 
-1. Click your **avatar** or **name** in the sidebar header
+1. Click your **name** at the **bottom of the sidebar**
 2. Select **Profile**
-3. Update your information:
-   - **Display Name** - How your name appears to others
+3. Under **Personal Information**, click **Edit** to update:
+   - **First Name** and **Last Name**
    - **Email** - Your contact email (may be locked if using SSO)
-   - **Phone** - Optional contact number
-   - **Notification Preferences** - How you receive alerts
+
+The Profile page also shows read-only **Account Information** and a **Change
+Password** card.
+
+!!! note "Notification preferences live elsewhere"
+    Notification settings are not on the Profile page. Choose **My
+    Notifications** from the same sidebar menu (`/profile/notifications`).
 
 ## Password Reset
 
 If you forget your password:
 
-1. Click **Forgot Password?** on the login page
+1. Click **Forgot your password?** on the login page
 2. Enter your email address
-3. Click **Send Reset Link**
+3. Click **Send reset email**
 4. Check your email for the reset link
 5. Click the link and set a new password
 
 !!! note "SSO Users"
-    If your organization uses SSO, password reset is handled by your IT department through your identity provider (Azure AD, Okta, etc.).
+    If your organization uses SSO, password reset is handled by your IT department through your identity provider (Microsoft Entra ID, Okta, etc.).
 
 ## Multi-Tenant Access
 
 If you belong to multiple organizations (tenants):
 
 1. After logging in, you'll see your primary organization
-2. Click the **organization name** in the sidebar header
-3. Select a different organization from the dropdown
+2. Click the **organization name** at the **top of the sidebar**
+3. Select a different organization from the menu
 4. The page will reload with that organization's data
 
 Your permissions may differ between organizations based on your assigned roles.

@@ -36,8 +36,8 @@ As a Production Manager, you:
 |------|----------|---------|
 | **Work Orders** | Production > Work Orders | Main production management |
 | **Orders** | Data Management > Orders | Customer order management |
-| **Tracker** | Portal > Tracker | Customer-facing order overview |
-| **Analytics** | Tools > Analytics | Production metrics |
+| **Tracker** | Tracker | Customer-facing order overview |
+| **Analytics** | Analytics | Production metrics |
 | **Inbox** | Personal > Inbox | CAPA tasks and approval requests |
 
 ## Daily Workflow
@@ -58,7 +58,7 @@ As a Production Manager, you:
 ### 3. Handle Exceptions
 
 1. Check **Inbox** for CAPA tasks and approval requests
-2. Address quality holds via **Production** > **Dispositions**
+2. Address quality holds via **Quality** > **Dispositions**
 3. Resolve resource conflicts
 4. Update customer if needed
 
@@ -67,7 +67,7 @@ As a Production Manager, you:
 ### New Order Entry
 
 1. Navigate to **Data Management** > **Orders**
-2. Click **+ New Order**
+2. Click **New Orders**
 3. Fill in order details:
 
 | Field | Description |
@@ -75,7 +75,7 @@ As a Production Manager, you:
 | **Order Number** | Your PO/SO number |
 | **Customer** | Select customer |
 | **Due Date** | Target completion |
-| **Priority** | Normal, High, Rush |
+| **Priority** | Urgent, High, Normal, Low |
 | **Notes** | Special instructions |
 
 4. Save order
@@ -84,7 +84,7 @@ As a Production Manager, you:
 
 1. Open the order
 2. Go to **Parts** section
-3. Click **+ Add Parts**
+3. Click **Add Parts**
 4. Specify:
    - Part type
    - Quantity
@@ -105,7 +105,7 @@ For multiple orders:
 ### Linking Order to Process
 
 1. Navigate to **Production** > **Work Orders**
-2. Click **+ New Work Order**
+2. Click **New Work Orders**
 3. Select:
    - Order
    - Process
@@ -118,7 +118,7 @@ For multiple orders:
 
 | Field | Purpose |
 |-------|---------|
-| **Priority** | Normal, High, Rush |
+| **Priority** | Urgent, High, Normal, Low |
 | **Equipment** | Assigned machine |
 | **Notes** | Production instructions |
 
@@ -156,7 +156,7 @@ Look for:
 
 When parts are quarantined:
 
-1. View quarantined parts in **Production** > **Dispositions**
+1. View quarantined parts in **Quality** > **Dispositions**
 2. Understand the issue
 3. Coordinate with Quality
 4. Adjust schedule if needed
@@ -275,9 +275,9 @@ Generate for management:
 
 | Task | Steps |
 |------|-------|
-| Create order | Data Management > Orders → + New → Fill form → Save |
-| Add parts | Open order → Parts → + Add → Configure → Save |
-| Create work order | Production > Work Orders → + New → Configure → Save |
+| Create order | Data Management > Orders → **New Orders** → Fill form → **Create Order** |
+| Add parts | Open order → Parts → **Add Parts** → Configure → **Add Parts** |
+| Create work order | Data Management > Work Orders → **New Work Orders** → Configure → Save |
 | Change priority | Open work order → Change priority → Save |
 | Check status | Production > Work Orders → Find work order → View progress |
 

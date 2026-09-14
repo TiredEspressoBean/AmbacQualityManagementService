@@ -48,7 +48,7 @@ Note: Full AQL tables per ANSI/ASQ Z1.4 are not currently implemented. Use perce
 ## Creating Sampling Rules
 
 1. Navigate to **Data Management** > **Sampling Rules**
-2. Click **+ New Sampling Rule**
+2. Click **New Sampling Rules**
 3. Fill in details:
 
 | Field | Description |

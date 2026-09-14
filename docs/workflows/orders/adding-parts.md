@@ -8,7 +8,7 @@ Parts are the individual items tracked through production. This guide covers add
 
 1. Open the order
 2. Scroll to the **Parts** section
-3. Click **+ Add Parts**
+3. Click **Add Parts**
 4. Fill in the form:
 
 | Field | Description |
@@ -18,7 +18,7 @@ Parts are the individual items tracked through production. This guide covers add
 | **Lot Number** | Optional batch identifier |
 | **Serial Prefix** | Prefix for auto-generated serial numbers |
 
-5. Click **Add**
+5. Click **Add Parts**
 
 ### Example
 

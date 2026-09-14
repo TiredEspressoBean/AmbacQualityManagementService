@@ -42,7 +42,7 @@ Each card displays:
 | **Progress Bar** | Visual completion percentage |
 | **Due Date** | Color-coded (green/yellow/red) |
 | **Part Counts** | Parts at each status |
-| **Priority Badge** | Rush, High, or Normal |
+| **Priority Badge** | Urgent, High, Normal, or Low |
 
 ## Expanding Orders
 

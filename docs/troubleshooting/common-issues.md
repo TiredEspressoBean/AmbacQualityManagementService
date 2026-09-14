@@ -62,22 +62,36 @@ Solutions for frequently encountered problems.
 ## Data Issues
 
 ### Parts stuck at step
-**Cause**: Requirements not met
 
-**Check**:
-- Required measurements recorded?
-- Approval pending?
-- FPI required but not passed?
-- Hold point active?
+Parts advance automatically once a step's requirements are met, so "stuck"
+always means something is still outstanding. Check in this order — the first
+cause is by far the most common and the least obvious:
 
-### Can't move parts forward
-**Cause**: Missing permissions or requirements
+1. **Another part in the same lot isn't finished.** Parts that haven't been
+   split advance *together* — all parts at the same work order and step, or
+   none. One unfinished part holds the whole lot. Look at the other parts
+   before looking at this one.
+2. **The step's First Piece Inspection is pending.** An unsigned FPI blocks
+   every part at that step.
+3. **A required capture is missing.** Open the step's review screen; it shows
+   which.
+4. **The part is quarantined.** It won't move until a disposition is decided.
+5. **The operator isn't trained for the step**, so the work can't be completed
+   or assigned.
+
+!!! tip "A pending sampling decision is not the cause"
+    If a substep's sampling rule can't decide yet, the part advances
+    tentatively rather than blocking. A pending decision never holds a part.
+
+### Can't complete a step
+**Cause**: Missing permissions or incomplete captures
 
 **Solutions**:
-1. Verify user has `change_parts` permission
-2. Complete required measurements
-3. Resolve pending approvals
-4. Release hold points
+1. Verify the user has `change_parts` and `add_measurementresult`
+2. Complete any required captures — the review screen lists what's outstanding
+3. If a substep genuinely doesn't apply, use **Mark N/A** with a reason
+   (unless it's safety-critical, which can never be N/A)
+4. Resolve pending approvals and release hold points
 
 ### Order not showing on Tracker
 **Cause**: Filter or status issue
@@ -159,7 +173,7 @@ Solutions for frequently encountered problems.
 **Causes**: Configuration, IdP issue
 
 **Solutions**:
-1. Verify Azure AD app configuration
+1. Verify Microsoft Entra ID app configuration
 2. Check redirect URIs match
 3. Review SSO error messages
 4. Contact IT for IdP issues

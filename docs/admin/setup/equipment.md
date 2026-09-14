@@ -24,7 +24,7 @@ Equipment records represent:
 ## Creating Equipment
 
 1. Navigate to **Admin** > **Data Management** > **Equipment**
-2. Click **+ New Equipment**
+2. Click **New Equipments**
 3. Fill in details:
 
 | Field | Description | Required |
@@ -55,7 +55,7 @@ Define equipment categories:
 ### Creating Equipment Types
 
 1. Navigate to **Admin** > **Data Management** > **Equipment Types**
-2. Click **+ New**
+2. Click **New Equipments**
 3. Enter type name and description
 4. Set calibration requirements
 5. Save
@@ -197,10 +197,10 @@ Navigate to **Quality** > **Calibrations**.
 
 | Permission | Allows |
 |------------|--------|
-| `view_equipment` | View equipment |
-| `add_equipment` | Create equipment |
-| `change_equipment` | Edit equipment |
-| `delete_equipment` | Remove equipment |
+| `view_equipments` | View equipment |
+| `add_equipments` | Create equipment |
+| `change_equipments` | Edit equipment |
+| `delete_equipments` | Remove equipment |
 | `record_calibration` | Record calibrations |
 
 ## Best Practices

@@ -44,7 +44,7 @@ When a user is deactivated:
 If using Single Sign-On:
 
 ### Deactivate in IdP First
-1. Disable user in Azure AD / Okta
+1. Disable user in Microsoft Entra ID / Okta
 2. User can't authenticate via SSO
 3. Deactivate in uqmes
 
@@ -89,10 +89,10 @@ For urgent access removal:
 
 For multiple users:
 
-1. Navigate to **Data Management > Users**
-2. Select users (checkboxes)
-3. Click **Bulk Actions** > **Deactivate**
-4. Confirm
+1. Navigate to **Admin** > **User Management**
+2. Open **Bulk User Actions**
+3. Add a row per user (**Manual entry**) or **Upload workbook** for a batch
+4. Set their status, then click **Apply rows**
 
 Use for:
 - Contractor project end

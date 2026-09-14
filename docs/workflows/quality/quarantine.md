@@ -57,7 +57,7 @@ Quarantined parts display:
 
 View all quarantined parts:
 
-1. Navigate to **Production** > **Dispositions** (or Quarantine)
+1. Navigate to **Quality** > **Dispositions** (or Quarantine)
 2. See list of held parts
 3. Filter by:
    - Error type

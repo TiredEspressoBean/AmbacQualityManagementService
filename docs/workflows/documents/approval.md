@@ -204,9 +204,9 @@ If documents have expiration dates:
 
 | Permission | Allows |
 |------------|--------|
-| `view_document` | View documents |
-| `change_document` | Submit for approval |
-| `approve_document` | Approve/reject documents |
+| `view_documents` | View documents |
+| `change_documents` | Submit for approval |
+| `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 
 ## Best Practices
 

@@ -15,7 +15,7 @@ Create and manage user accounts for your organization.
 ### From User Editor
 
 1. Navigate to **Data Management** > **Users**
-2. Click **+ New User**
+2. Click **New Users**
 3. Fill in user details:
 
 | Field | Description | Required |
@@ -128,7 +128,7 @@ If your organization uses Single Sign-On:
 
 ### SSO vs Password
 - SSO users authenticate via identity provider
-- Password managed by IdP (Azure AD, Okta, etc.)
+- Password managed by IdP (Microsoft Entra ID, Okta, etc.)
 - MFA handled by IdP
 
 ## Customer Users

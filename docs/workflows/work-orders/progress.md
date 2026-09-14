@@ -191,7 +191,7 @@ View past performance:
 |------------|--------|
 | `view_workorder` | View progress |
 | `change_workorder` | Update status |
-| `view_analytics` | View reports |
+| `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
 
 ## Next Steps
 

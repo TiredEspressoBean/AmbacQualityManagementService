@@ -27,7 +27,8 @@ Go to **Profile** > **Change Password**. If using SSO, manage password through y
 Contact your administrator to change your email. It's used as your login identifier.
 
 ### How do I switch between organizations?
-Click the organization name in the sidebar header and select from the dropdown (if you belong to multiple).
+Click the organization name at the **top of the sidebar** and select from the
+menu (if you belong to multiple).
 
 ## Orders & Parts
 
@@ -35,10 +36,15 @@ Click the organization name in the sidebar header and select from the dropdown (
 Use the **Search** bar with order number, or browse **Tracker**. Apply filters to narrow results.
 
 ### How do I add parts to an existing order?
-Open the order, go to **Parts** section, click **+ Add Parts**.
+Open the order, go to **Parts** section, click **Add Parts**.
 
 ### Why can't I move parts forward?
-Check for: required measurements not recorded, pending approvals, FPI requirements, or hold points.
+You don't move parts — they advance on their own once the step's requirements
+are met. The most common reason one appears stuck is **lot cohesion**: parts
+that haven't been split advance together, so an unfinished part elsewhere in the
+lot holds yours. Also check for a pending First Piece Inspection, missing
+captures, quarantine, or a training gap. See
+[Common Issues](common-issues.md#parts-stuck-at-step).
 
 ### What happens when I delete a part?
 Parts are soft-deleted (archived). They're hidden from active views but retained for audit compliance.
@@ -65,7 +71,7 @@ Complete all tasks, document verification, then click **Request Closure**. Appro
 ## Documents
 
 ### How do I upload a document?
-Navigate to **Tools > Documents**, click **+ Upload**, select file, enter metadata, and save.
+Navigate to **Documents**, click **Upload Document**, select file, enter metadata, and save.
 
 ### Why is my document stuck in "Draft"?
 Controlled document types require approval. Click **Submit for Approval** to start the workflow.
@@ -79,7 +85,7 @@ Visibility depends on document settings (Public, Internal, Confidential) and use
 ## Administration
 
 ### How do I add a new user?
-Navigate to **Data Management** > **Users**, click **+ New User**, fill in details.
+Navigate to **Data Management** > **Users**, click **New Users**, fill in details.
 
 ### How do I reset someone's password?
 If using SSO, this is handled by your identity provider. Otherwise, use "Password Reset" function.
@@ -88,7 +94,7 @@ If using SSO, this is handled by your identity provider. Otherwise, use "Passwor
 Edit the user, modify group membership. Groups determine permissions.
 
 ### How do I create a new process?
-Navigate to **Production** > **Processes**, click **+ New Process**, add steps, configure.
+Navigate to **Production** > **Processes**, click **New Process**, add steps, configure.
 
 ## Technical
 

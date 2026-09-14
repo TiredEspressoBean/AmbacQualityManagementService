@@ -29,7 +29,7 @@ As an Operator, you:
 |------|----------|---------|
 | **Work Orders** | Production > Work Orders | Your main work queue |
 | **Inbox** | Personal > Inbox | CAPA tasks and notifications (if assigned) |
-| **Tracker** | Portal > Tracker | Customer-facing order view |
+| **Tracker** | Tracker | Customer-facing order view |
 
 ## Daily Workflow
 
@@ -52,36 +52,51 @@ Your supervisor assigns you to specific work orders:
 
 For each operation:
 
-1. Complete the physical work on the parts
-2. Record any required measurements using the Quality Report function
-3. Pass parts to the next step when complete
+1. Open the step's work instructions for your part
+2. Work through the substeps, recording what each one asks for
+3. Complete the step — the parts advance on their own once the step's
+   requirements are met
 4. Continue to next part or batch
 
 ## Moving Parts Forward
 
-### Passing Parts (Work Order Level)
+**There is no "Pass" button.** Parts advance automatically once the work at a
+step is recorded. Your job is to complete the step; the system handles the
+transition.
 
-1. Navigate to **Production** > **Work Orders**
-2. Find your assigned work order
-3. Click the **Pass** button on the work order row
-4. Select the step you completed in the "Pass Part by Step" dialog
-5. Click **Submit**
-6. All parts at that step move to the next step
+### Working a Step
 
-### Quality Reports (Individual Parts)
+Full detail: [Running Work Instructions](../workflows/dwi/running.md).
 
-For individual parts needing measurements or in-process checks:
+The step player shows **one substep at a time**:
 
-1. From your work order, find the part in the parts list
-2. Click **Quality Report**
-3. Fill in operator, machine, measurements, status
-4. Submit the form
+1. Open the step's substeps for your part
+2. Record what the substep asks for — a measurement, a check, a signature
+3. Tap **Confirm & next** to seal that substep and move to the next one
+4. If a substep genuinely does not apply, tap **Mark N/A** and pick a reason
+5. At the end you get a **review screen** showing everything you recorded —
+   jump back to fix anything that looks wrong
+6. Tap **Complete step**
+
+Once the step is complete and its requirements are satisfied, the parts move
+forward on their own.
+
+!!! tip "Parts move as a lot"
+    Parts that have not been split advance together: all parts at the same work
+    order and step move on, or none of them do. If parts seem stuck, it is
+    usually because one part in the lot still has outstanding work.
+
+!!! note "First Piece Inspection can hold the step"
+    If the step has a pending First Piece Inspection, advancing is blocked for
+    every part at that step until the FPI is signed off. **Complete step** then
+    becomes the buy-off action for whoever is authorised to sign it.
 
 ### Quick Tips
 
-- Pass parts promptly after completing work
-- Use the Quality Report for detailed measurement recording
-- Check for any required quality data first
+- Complete steps promptly — a lot cannot advance until every part is done
+- Use **Mark N/A** rather than guessing a value when something doesn't apply
+- Check the review screen before completing; it is the last easy place to fix
+  a mistyped measurement
 
 ## Recording Measurements
 
@@ -89,11 +104,13 @@ When your step requires measurements:
 
 ### Recording Values
 
-1. Select the part
-2. Click **Record Measurements**
-3. Enter measured values for each field
-4. System shows pass/fail automatically
-5. Click **Save**
+Measurements are captured as substeps inside the step player, not from a
+separate "Record Measurements" button:
+
+1. Work through the step's substeps until you reach a measurement capture
+2. Enter the measured value
+3. The system evaluates it against the specification automatically
+4. Tap **Confirm & next**
 
 ### Reading Pass/Fail
 
@@ -196,7 +213,7 @@ If FPI is required at your step:
 
 ### Don't Leave Hanging
 
-- Move completed parts forward
+- Complete any step you finished, so the lot isn't held up
 - Record all measurements
 - Flag any open issues
 
@@ -204,9 +221,11 @@ If FPI is required at your step:
 
 | Task | Steps |
 |------|-------|
-| Move part forward | Select part → Move Forward → Confirm |
-| Record measurement | Select part → Record Measurements → Enter values → Save |
-| Flag issue | Select part → Flag → Select error type → Submit |
+| Move part forward | Complete the step — advancement is automatic |
+| Record measurement | Step player → measurement substep → enter value → **Confirm & next** |
+| Substep doesn't apply | Step player → **Mark N/A** → pick a reason |
+| Finish a step | Step player → review screen → **Complete step** |
+| Flag issue | **Quality** > **Quality Reports** → create a report against the part |
 | View instructions | Open work order → Documents → Click instruction |
 
 ## What You CAN'T Do

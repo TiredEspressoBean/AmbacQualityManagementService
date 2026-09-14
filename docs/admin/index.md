@@ -115,13 +115,16 @@ Organization settings include:
 - Retention policies
 - Approval requirements
 
-### Integration (Coming Soon)
-- SSO configuration
-- API settings
-- Webhook configuration
+### Integrations
+Self-service integration management lives at **Admin > Settings > Integrations**
+(`/settings/integrations`). The page lists a catalog of available providers;
+connecting one opens a detail page where you configure it, watch **Sync
+Activity**, and remove it.
 
-!!! note "Planned Feature"
-    The Integrations settings panel is planned. API access is available now via tokens (see [API documentation](../integrations/api.md)).
+!!! note "Planned Features"
+    SSO configuration, API token management, and webhook configuration still
+    have no self-service UI. API access is available now via tokens — contact
+    your administrator (see [API documentation](../integrations/api.md)).
 
 ## Quick Start Checklist
 

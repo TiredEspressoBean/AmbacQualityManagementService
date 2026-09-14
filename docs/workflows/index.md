@@ -46,6 +46,12 @@ Moving parts through production steps.
 - [Flagging Issues](tracking/flagging-issues.md) - Reporting problems
 - [Part History](tracking/part-history.md) - Viewing audit trail
 - [Life Tracking](tracking/life-tracking.md) - Monitoring cycles, hours, and shelf life
+- [Digital Work Instructions](dwi/overview.md) - Substeps, captures, and how work is recorded
+- [Scheduling](scheduling/overview.md) - The Gantt board, capacity, staging, and requirements
+- [Supply](supply/overview.md) - Inbound material, outside processing, and suppliers
+- [Change Control](change-control/overview.md) - PCR, PCO, and PCN for process changes
+- [Training Matrix](tracking/training-matrix.md) - Competency coverage and staffing risk
+- [Shift Notes](tracking/shift-notes.md) - Handing off to the floor
 - [Lot Tracking](tracking/lot-tracking.md) - Material lot traceability
 
 ### [Work Orders](work-orders/basics.md)

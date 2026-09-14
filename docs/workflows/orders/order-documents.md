@@ -22,7 +22,7 @@ Common documents attached to orders:
 
 1. Open the order
 2. Go to the **Documents** tab or section
-3. Click **+ Add Document** or **Upload**
+3. Click **Attach**
 4. Select the file from your computer
 5. Fill in document metadata:
 
@@ -33,7 +33,7 @@ Common documents attached to orders:
 | **Revision** | Version identifier |
 | **Notes** | Optional description |
 
-6. Click **Upload**
+6. Click **Upload Document**
 
 ### Link Existing Document
 
@@ -122,7 +122,7 @@ Missing required documents may:
 
 Find documents across orders:
 
-1. Go to **Tools > Documents** in the sidebar
+1. Go to **Documents** in the sidebar
 2. Use filters:
    - Document type
    - Date range

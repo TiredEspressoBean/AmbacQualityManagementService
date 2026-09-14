@@ -163,9 +163,9 @@ See [Dispositions](../quality/dispositions.md) for disposition workflow.
 
 | Permission | Allows |
 |------------|--------|
-| `add_qualityreport` | Create quality reports |
-| `view_qualityreport` | View existing reports |
-| `change_qualityreport` | Edit quality reports |
+| `add_qualityreports` | Create quality reports |
+| `view_qualityreports` | View existing reports |
+| `change_qualityreports` | Edit quality reports |
 
 ## Next Steps
 

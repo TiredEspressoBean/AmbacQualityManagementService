@@ -41,7 +41,7 @@ Your configuration decisions affect all users.
 |------|----------|---------|
 | **Data Management** | Admin > Data Management | All editors |
 | **Users** | Data Management > Users | User accounts |
-| **Groups** | Data Management > Groups | Permission groups |
+| **Groups** | Data Management > User Groups | Permission groups |
 | **Settings** | Admin > Settings | System configuration |
 | **Audit Log** | Admin > Audit Log | Activity monitoring |
 
@@ -96,7 +96,7 @@ By the end of this module, you will:
 **Steps:**
 
 1. Navigate to **Data Management** > **Users**
-2. Click **+ New User**
+2. Click **New Users**
 3. Fill in:
    - Email address (will be login)
    - First and last name
@@ -201,8 +201,8 @@ Users → Groups → Permissions
 
 **Steps:**
 
-1. Navigate to **Data Management** > **Groups**
-2. Click **+ New Group**
+1. Navigate to **Data Management** > **User Groups**
+2. Click **New User Groups**
 3. Name the group (e.g., "Operators", "QA Inspectors")
 4. Add description
 5. Save
@@ -242,7 +242,7 @@ Users → Groups → Permissions
 2. Add permissions:
    - View orders (yes)
    - View parts (yes)
-   - Pass parts (yes)
+   - Record measurement results (yes)
    - Create orders (no)
 3. Save
 
@@ -307,7 +307,7 @@ Processes define how parts move through production.
 **Steps:**
 
 1. Navigate to **Production** > **Processes**
-2. Click **+ New Process**
+2. Click **New Process**
 3. Fill in:
    - Name: Descriptive name
    - Description: What this process is for
@@ -329,7 +329,7 @@ Processes define how parts move through production.
 
 **For each step:**
 
-1. Click **+ Add Step**
+1. Click **Add Step**
 2. Configure:
    - Name: Step name (e.g., "Machining")
    - Sequence: Order in process
@@ -356,7 +356,7 @@ Add these steps to your training process:
 
 1. Open step
 2. Go to **Measurements** section
-3. Click **+ Add Measurement**
+3. Click **Add Measurement**
 4. Configure:
    - Name: What's measured
    - Type: Numeric, Pass/Fail, etc.
@@ -410,7 +410,7 @@ By the end of this module, you will:
 **Creating customers/suppliers:**
 
 1. Navigate to **Data Management** > **Companies**
-2. Click **+ New Company**
+2. Click **New Companies**
 3. Fill in:
    - Name
    - Type (Customer, Supplier, Both)
@@ -431,7 +431,7 @@ Create training customer:
 **Setting up products:**
 
 1. Navigate to **Data Management** > **Part Types**
-2. Click **+ New Part Type**
+2. Click **New Part Types**
 3. Fill in:
    - Name: Product name
    - Part Number: Your numbering
@@ -513,7 +513,7 @@ By the end of this module, you will:
 
 **Planned integrations:**
 
-- SSO/Azure AD: Single sign-on
+- SSO / Microsoft Entra ID: Single sign-on
 - HubSpot: CRM integration
 - API access: For custom integrations
 
@@ -725,8 +725,9 @@ By the end of this module, you will:
 
 ### Task 5: Troubleshooting
 
-1. User "trainee-broken@example.com" can't pass parts
-2. Diagnose the issue
+1. User "trainee-broken@example.com" reports their parts aren't advancing
+2. Diagnose the issue — check their permissions and training for the step, and
+   whether another part in the same lot still has outstanding work
 3. Fix and verify
 
 ---
@@ -754,10 +755,10 @@ By the end of this module, you will:
 ## Quick Reference
 
 ### Create User
-Users → **+ New** → Fill details → Assign groups → **Save**
+Users → **New Users** → Fill details → Assign groups → **Save**
 
 ### Create Group
-Groups → **+ New** → Name group → **Save** → Assign permissions
+Groups → **New User Groups** → Name group → **Save** → Assign permissions
 
 ### Deactivate User
 Open user → Uncheck **Active** → **Save**

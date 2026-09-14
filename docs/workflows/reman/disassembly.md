@@ -14,7 +14,7 @@ Before starting disassembly:
 
 ### Step 1: Open the Core
 
-1. Navigate to **Reman > Cores**
+1. Navigate to **Remanufacturing > Cores**
 2. Find and click on the core to disassemble
 3. Review core information and condition notes
 

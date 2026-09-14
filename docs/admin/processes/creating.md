@@ -17,7 +17,7 @@ Before creating in uqmes:
 ### From Process Editor
 
 1. Navigate to **Production** > **Processes**
-2. Click **+ New Process**
+2. Click **New Process**
 3. Fill in basic information:
 
 | Field | Description | Required |
@@ -231,10 +231,10 @@ Parts record which process version they used:
 
 | Permission | Allows |
 |------------|--------|
-| `add_process` | Create new processes |
-| `change_process` | Edit process configuration |
-| `approve_process` | Approve for activation |
-| `delete_process` | Remove processes |
+| `add_processes` | Create new processes |
+| `change_processes` | Edit process configuration |
+| `respond_to_approval` | Respond to a process approval request (eligibility also set by the approval template) |
+| `delete_processes` | Remove processes |
 
 ## Best Practices
 

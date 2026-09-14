@@ -1,7 +1,9 @@
 # Material Lot Tracking
 
-!!! warning "Planned Feature"
-    Material lot tracking is planned but not yet implemented. This documentation describes the intended functionality.
+Material lots are managed from **Supply** > **Materials**
+(`/production/material-lots`), a hub segmented by lifecycle status — **On
+order**, **Awaiting inspection**, **On hand**, and **Held** — with **Expect**,
+**Receive**, and **Inspect** actions, plus import and export.
 
 Material lot tracking provides full traceability for raw materials, components, and consumables used in production.
 

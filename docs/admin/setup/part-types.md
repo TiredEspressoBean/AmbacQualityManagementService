@@ -14,7 +14,7 @@ Part Types define:
 ## Creating a Part Type
 
 1. Navigate to **Data Management** > **Part Types**
-2. Click **+ New Part Type**
+2. Click **New Part Types**
 3. Fill in details:
 
 | Field | Description | Required |
@@ -167,10 +167,10 @@ Don't delete—inactivate to preserve history.
 
 | Permission | Allows |
 |------------|--------|
-| `view_parttype` | View part types |
-| `add_parttype` | Create part types |
-| `change_parttype` | Edit part types |
-| `delete_parttype` | Deactivate part types |
+| `view_parttypes` | View part types |
+| `add_parttypes` | Create part types |
+| `change_parttypes` | Edit part types |
+| `delete_parttypes` | Deactivate part types |
 
 ## Best Practices
 

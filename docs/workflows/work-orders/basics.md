@@ -31,14 +31,14 @@ An order may have multiple work orders if:
 ## Creating a Work Order
 
 1. Navigate to **Production** > **Work Orders**
-2. Click **+ New Work Order**
+2. Click **New Work Orders**
 3. Fill in the form:
 
 | Field | Description | Required |
 |-------|-------------|----------|
 | **Order** | Select the customer order | Yes |
 | **Process** | Manufacturing workflow to follow | Yes |
-| **Priority** | Normal, High, or Rush | Yes |
+| **Priority** | Urgent, High, Normal, or Low | Yes |
 | **Due Date** | Target completion | No |
 | **Notes** | Instructions or comments | No |
 

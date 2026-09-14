@@ -91,22 +91,26 @@ On any record, view **History** tab:
 
 ## Audit Reports
 
-### Standard Reports
-- User activity report
-- Change summary report
-- Access log report
-- Signature report
+Audit data can be **viewed and filtered** in the UI at **Admin** > **Audit
+Log**, and on any record's **History** tab.
 
-### Custom Reports
-Build reports for audits:
-1. Filter to relevant data
-2. Select columns
-3. Export PDF or CSV
+!!! warning "Audit data cannot be exported from the UI"
+    Export is deliberately disabled on the audit log viewer. To get audit data
+    out for an audit or a report, use the API:
 
-### Scheduled Reports
+    ```
+    GET /api/AuditLog/
+    ```
 
-!!! note "Planned Feature"
-    Automated scheduled reports are planned for a future release. Currently, generate reports manually using the export functions above.
+    Filter it with the same parameters available in the UI.
+
+### Planned
+
+| Report | Status |
+|--------|--------|
+| User activity, change summary, access log, signature reports | Planned |
+| Custom report builder with column selection | Planned |
+| Scheduled / automated reports | Planned |
 
 ## Regulatory Mappings
 

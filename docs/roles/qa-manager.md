@@ -30,8 +30,8 @@ As a QA Manager, you:
 | **Quality Reports** | Quality > Quality Reports | All NCRs |
 | **Inbox** | Personal > Inbox | Pending approvals and CAPA tasks |
 | **Approvals** | Approvals > Overview | All pending approval requests |
-| **Analytics** | Tools > Analytics | Trends and analysis |
-| **Dispositions** | Production > Dispositions | Quarantine management |
+| **Analytics** | Analytics | Trends and analysis |
+| **Dispositions** | Quality > Dispositions | Quarantine management |
 
 ## Daily Workflow
 
@@ -71,7 +71,7 @@ Start with the Quality Dashboard:
 
 ### Reviewing Disposition Requests
 
-1. Navigate to **Personal > Inbox** or **Production > Dispositions**
+1. Navigate to **Personal > Inbox** or **Quality > Dispositions**
 2. Open disposition request
 3. Review:
    - Original NCR and issue
@@ -114,7 +114,7 @@ For expensive scrap or customer deviations:
 
 For significant issues:
 
-1. Click **+ New CAPA** or create from NCR
+1. Click **New CAPAs** or create from NCR
 2. Fill in:
    - Problem description
    - Priority
@@ -152,7 +152,7 @@ Before closure:
 
 ### Reviewing Documents
 
-1. Navigate to **Personal > Inbox** or **Tools > Documents**
+1. Navigate to **Personal > Inbox** or **Documents**
 2. Open document pending approval
 3. Review document content
 4. Check revision notes
@@ -205,7 +205,7 @@ When trends indicate problems:
 
 ### Capability Analysis
 
-1. Navigate to **Tools > Analytics**, then select **SPC**
+1. Navigate to **Analytics**, then select **SPC**
 2. Review control charts for key characteristics
 3. Check Cp/Cpk values
 4. Identify out-of-control conditions
@@ -293,10 +293,10 @@ Configure workflows for:
 | Task | Location |
 |------|----------|
 | Approve disposition | Inbox → Disposition → Approve |
-| Create CAPA | Quality > CAPAs → + New |
+| Create CAPA | Quality > CAPAs → **New CAPAs** |
 | Close CAPA | CAPA detail → Request Closure |
 | Approve document | Inbox → Document → Approve |
-| View analytics | Tools > Analytics |
+| View analytics | Analytics |
 
 ## Related Documentation
 

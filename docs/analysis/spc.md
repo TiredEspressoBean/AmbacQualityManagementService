@@ -16,10 +16,10 @@ SPC applies statistical methods to:
 | Page | Route | Purpose |
 |------|-------|---------|
 | SPC Charts | `/spc` | Main control chart view with measurement selection |
-| SPC Print | `/spc/print` | Print-optimized view for reports |
+| SPC Report | Button on the SPC page | Generates a PDF SPC report, downloaded or emailed to you |
 | Analysis Dashboard | `/analysis` | Overview with links to SPC |
 
-Navigate to **Tools > Analytics**, then select **SPC**, or go directly to `/spc`
+Navigate to **Analytics**, then select **SPC**, or go directly to `/spc`
 
 ## Control Charts
 
@@ -178,9 +178,14 @@ Once your process is stable, lock the control limits:
 When process improves significantly:
 
 1. Review new stable data period
-2. Click **Update Baseline**
-3. New limits replace old
-4. Document reason for change (required)
+2. Click **Unfreeze** — the chart returns to baseline mode with recalculated
+   limits
+3. Once the new limits look right, click **Freeze Limits** to lock them
+4. Document the reason for the change
+
+!!! note "There is no single 'update baseline' action"
+    Re-baselining is unfreeze-then-freeze. The chart recalculates limits from
+    current data while unfrozen, so check them before you freeze again.
 
 ## Histogram
 
@@ -210,21 +215,24 @@ Generate reports:
 - CSV for analysis
 - Image for presentations
 
-## Printing SPC
+## SPC Reports
 
-Navigate to `/spc/print` for print-optimized view:
+Click **SPC Report** on the SPC page to generate a PDF:
 
-- Full-page charts
-- Summary tables
-- Formatted for paper
+- Full-page control charts
+- Capability summary tables
+- Delivered as a download, or emailed to you
+
+Select a measurement and date range first — the report is generated for the
+current selection.
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
-| `view_analytics` | View SPC charts |
-| `view_measurements` | Access measurement data |
-| `change_spc_baseline` | Modify baselines |
+| `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
+| `view_measurementresult` | Access measurement data |
+| `change_spcbaseline` | Modify baselines |
 
 ## Best Practices
 

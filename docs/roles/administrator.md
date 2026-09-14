@@ -38,14 +38,14 @@ For a new uqmes instance:
 | **Data Management** | Admin > Data Management | All editors |
 | **Audit Log** | Admin > Audit Log | System activity |
 | **Users** | Data Management > Users | User management |
-| **Groups** | Data Management > Groups | Permission groups |
+| **Groups** | Data Management > User Groups | Permission groups |
 
 ## User Management
 
 ### Adding Users
 
 1. Navigate to **Data Management** > **Users**
-2. Click **+ New User**
+2. Click **New Users**
 3. Fill in:
    - Email (login ID)
    - First/Last name
@@ -57,7 +57,7 @@ User receives invitation email.
 
 ### Managing Groups
 
-1. Navigate to **Data Management** > **Groups**
+1. Navigate to **Data Management** > **User Groups**
 2. Create/edit groups
 3. Assign permissions to groups
 4. Assign users to groups
@@ -83,7 +83,7 @@ User cannot log in; history preserved.
 ### Creating Processes
 
 1. Navigate to **Production** > **Processes**
-2. Click **+ New Process**
+2. Click **New Process**
 3. Add steps in sequence
 4. Configure requirements per step
 5. Set up measurements
@@ -158,7 +158,7 @@ Navigate to **Admin > Settings**:
 ### Integration Settings
 
 Configure:
-- SSO/Azure AD
+- SSO / Microsoft Entra ID
 - HubSpot connection
 - API access
 
@@ -268,8 +268,8 @@ When you can't resolve:
 
 | Task | Location |
 |------|----------|
-| Add user | Data Management > Users > + New |
-| Create group | Data Management > Groups > + New |
+| Add user | Data Management > Users > **New Users** |
+| Create group | Data Management > User Groups > **New User Groups** |
 | Edit permissions | Groups > [Group] > Permissions |
 | Configure process | Production > Processes |
 | View audit log | Admin > Audit Log |

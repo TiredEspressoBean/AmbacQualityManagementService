@@ -2,8 +2,9 @@
 
 Connect uqmes with HubSpot CRM for deal and order synchronization.
 
-!!! note "Administrator Configuration"
-    HubSpot integration is configured by system administrators via backend settings. A self-service configuration UI is planned for a future release.
+!!! note "Where to configure"
+    Connect and configure HubSpot yourself at **Admin > Settings > Integrations**
+    (`/settings/integrations`). Requires tenant administrator permissions.
 
 ## Overview
 
@@ -126,8 +127,12 @@ Order status reflects in HubSpot:
 
 ## Viewing Integration Status
 
-!!! note "Planned Feature"
-    A self-service integration status dashboard is planned for a future release. Currently, contact your administrator for integration status and logs.
+Open the integration from **Admin > Settings > Integrations** to see its status:
+
+- **What syncs** — the record types this integration covers
+- **Sync Activity** — sync run history, with a **Recent activity** feed
+- **Pipeline Tracking**, **Active Stage Prefix**, and **Debug Mode** settings
+- **Remove integration** to disconnect
 
 ## Troubleshooting
 
@@ -151,7 +156,7 @@ Order status reflects in HubSpot:
 | Permission | Allows |
 |------------|--------|
 | `manage_integrations` | Configure HubSpot (admin) |
-| `view_integrations` | View integration status |
+| `view_integrationconfig` | View integration status |
 
 ## Best Practices
 

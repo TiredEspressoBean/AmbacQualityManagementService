@@ -15,8 +15,8 @@ Receive a core when:
 
 ### Step 1: Navigate to Core Receiving
 
-1. Go to **Reman > Cores** in the sidebar
-2. Click **+ New** to receive a new core
+1. Go to **Remanufacturing > Cores** in the sidebar
+2. Click **New Cores** to receive a new core
 
 ### Step 2: Enter Core Information
 

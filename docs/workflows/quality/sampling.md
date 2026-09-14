@@ -202,7 +202,10 @@ Track sampling performance:
 | **Rule Effectiveness** | Defect detection by rule |
 | **Audit Compliance** | Algorithm verification logs |
 
-View analytics in **Quality Dashboard** > **Sampling Analytics**.
+!!! note "Planned Feature"
+    Sampling analytics are recorded by the system but have no screen yet. The
+    metrics above are available via the API; a **Sampling Analytics** view is
+    planned for a future release.
 
 ## Sampling Audit Trail
 

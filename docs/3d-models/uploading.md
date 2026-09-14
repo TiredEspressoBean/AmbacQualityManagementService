@@ -25,7 +25,7 @@ glTF (GL Transmission Format) is preferred because:
 ### From 3D Models Editor
 
 1. Navigate to **Data Management** > **3D Models**
-2. Click **+ Upload Model**
+2. Click **New 3D Models**
 3. Select or drag-drop your file
 4. Fill in model details:
 
@@ -121,11 +121,9 @@ Upload multiple models for different views:
 
 When parts change, update models:
 
-1. Open existing model
-2. Click **Upload New Version**
-3. Select updated file
-4. Enter version notes
-5. Upload
+!!! note "Planned Feature"
+    There is no in-place **Upload New Version** action on a 3D model. Upload the
+    updated file as a model record and retire the old one.
 
 Previous versions are retained for historical parts.
 

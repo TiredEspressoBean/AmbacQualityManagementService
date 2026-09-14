@@ -47,7 +47,7 @@ You have authority to make disposition decisions that affect product, cost, and 
 | **Quality Reports** | Quality > Quality Reports | All NCRs |
 | **Inbox** | Personal > Inbox | Pending approvals and CAPA tasks |
 | **Approvals** | Approvals > Overview | All pending approval requests |
-| **Analytics** | Tools > Analytics | Trends |
+| **Analytics** | Analytics | Trends |
 
 **Exercise 1.1:** Dashboard Review
 
@@ -216,7 +216,7 @@ By the end of this module, you will:
 **Steps:**
 
 1. Navigate to **Quality** > **CAPAs**
-2. Click **+ New CAPA**
+2. Click **New CAPAs**
 3. Fill in details:
 
 | Field | Description |
@@ -235,7 +235,7 @@ By the end of this module, you will:
 **Exercise 3.1:** Create a CAPA
 
 1. Go to **Quality > CAPAs**
-2. Click **+ New CAPA**
+2. Click **New CAPAs**
 3. Create with:
    - Title: "Recurring dimensional failures on part type PT-100"
    - Priority: High
@@ -259,7 +259,7 @@ By the end of this module, you will:
 
 1. Open CAPA
 2. Go to **Tasks** section
-3. Click **+ Add Task**
+3. Click **Add Task**
 4. Define: task description, assignee(s), due date
 5. For multi-person tasks, select **Completion Mode**:
    - **Single Owner**: Only primary assignee works on task (default)
@@ -488,7 +488,7 @@ By the end of this module, you will:
 
 **Exercise 5.2:** SPC Review
 
-1. Go to **Tools > Analytics**, then select the **SPC** tab
+1. Go to **Analytics**, then select the **SPC** tab
 2. Select Process: Common Rail Injector Remanufacturing
 3. Select Step: Flow Testing
 4. Select Measurement: Flow Rate @ 1000 bar
@@ -667,7 +667,7 @@ By the end of this module, you will:
 Inbox → Review request → Verify evidence → **Approve/Reject** → Sign
 
 ### CAPA Creation
-CAPAs → **+ New** → Fill details → Add tasks → Assign team → Save
+CAPAs → **New CAPAs** → Fill details → Add tasks → Assign team → Save
 
 ### CAPA Closure
 Open CAPA → Verify complete → **Request Closure** → Add summary → Sign

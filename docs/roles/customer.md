@@ -146,7 +146,7 @@ Configure preferences in your profile.
 
 ### Accessing Profile
 
-Click your name/avatar in the header, then **Profile**.
+Click your name at the bottom of the sidebar, then **Profile**.
 
 ### Profile Settings
 

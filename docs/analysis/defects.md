@@ -4,7 +4,7 @@ Analyze defect data to identify patterns, prioritize improvements, and track qua
 
 ## Accessing Defect Analysis
 
-Navigate to **Tools > Analytics**, then click **Defects**, or go directly to `/quality/defects`
+Navigate to **Analytics**, then click **Defects**, or go directly to `/quality/defects`
 
 ## Pareto Analysis
 
@@ -202,8 +202,8 @@ Export defect data from the Quality Reports table (**Quality > Quality Reports**
 
 | Permission | Allows |
 |------------|--------|
-| `view_analytics` | Access defect analysis |
-| `view_qualityreport` | See underlying data |
+| `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
+| `view_qualityreports` | See underlying data |
 | `export_data` | Export reports |
 
 ## Best Practices

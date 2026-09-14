@@ -13,7 +13,7 @@ Ensure you have:
 ## Creating a New Order
 
 1. Navigate to **Data Management** > **Orders**
-2. Click **+ New Order** in the top right
+2. Click **New Orders** in the top right
 3. Complete the order form
 
 ### Required Fields
@@ -30,13 +30,17 @@ Ensure you have:
 
 | Field | Description |
 |-------|-------------|
-| **Due Date** | Target completion date |
-| **Priority** | Normal, High, or Rush |
-| **Notes** | Internal comments |
-| **Customer PO** | Customer's purchase order reference |
-| **Ship To** | Delivery address if different from customer |
+| **Customer** | The customer contact on the order |
+| **Estimated Completion** | Target completion date |
+| **Order Status** | Current state of the order |
+| **Archive Order** | Archive the order instead of keeping it active |
 
-4. Click **Save**
+4. Click **Create Order**
+
+!!! note "Priority is set on the work order"
+    Orders have no priority field. Priority (**Urgent**, **High**, **Normal**,
+    **Low**) is set on the *work order* that carries the production, not on the
+    customer order.
 
 ## Order Numbering
 
@@ -61,7 +65,7 @@ New orders start in **Pending** status. Status progresses as work is performed:
 
 Orders need work orders to track production:
 
-1. After creating the order, click **+ Add Work Order** or navigate to Work Orders
+1. After creating the order, click **New Work Orders** or navigate to Work Orders
 2. Select your order
 3. Choose the process to apply
 4. The work order links parts to the manufacturing workflow

@@ -24,7 +24,7 @@ A Quality Report is a formal record of:
 ### From Quality Menu
 
 1. Navigate to **Quality** > **Quality Reports**
-2. Click **+ New Quality Report**
+2. Click **New Quality Reports**
 3. Search for and select affected parts
 4. Complete the form
 5. Submit

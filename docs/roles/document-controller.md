@@ -25,8 +25,8 @@ As a Document Controller, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Documents** | Tools > Documents | Document dashboard |
-| **Document List** | Documents > List | All documents |
+| **Documents** | Documents | Document dashboard |
+| **Document List** | Documents > View All Documents | All documents |
 | **Inbox** | Personal > Inbox | Pending approvals and tasks |
 | **Approvals** | Approvals > Overview | Pending approval requests |
 | **Approval History** | Approvals > History | Approval records |
@@ -57,7 +57,7 @@ As a Document Controller, you:
 
 ### Browsing Documents
 
-1. Navigate to **Tools > Documents**
+1. Navigate to **Documents**
 2. Use filters:
    - Document type
    - Status
@@ -77,8 +77,8 @@ Organize by:
 
 ### New Document
 
-1. Navigate to **Tools > Documents**
-2. Click **+ Upload**
+1. Navigate to **Documents**
+2. Click **Upload Document**
 3. Select file
 4. Fill in metadata:
 
@@ -278,7 +278,7 @@ When documents update:
 
 | Task | Steps |
 |------|-------|
-| Upload document | Documents → + Upload → Fill form → Save |
+| Upload document | Documents → **Upload Document** → Fill form → Save |
 | Create revision | Open doc → New Revision → Upload → Submit |
 | Submit for approval | Open doc → Submit for Approval → Select template |
 | Check approval status | Open doc → View Approvals section |

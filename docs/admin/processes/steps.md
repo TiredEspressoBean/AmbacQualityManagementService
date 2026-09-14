@@ -269,9 +269,9 @@ Part of process version history.
 
 | Permission | Allows |
 |------------|--------|
-| `change_step` | Create/edit steps |
-| `delete_step` | Remove steps |
-| `view_step` | View step configuration |
+| `change_steps` | Create/edit steps |
+| `delete_steps` | Remove steps |
+| `view_steps` | View step configuration |
 
 ## Best Practices
 
