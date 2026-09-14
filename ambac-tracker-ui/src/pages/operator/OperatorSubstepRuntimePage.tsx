@@ -156,7 +156,12 @@ export function OperatorSubstepRuntimePage() {
     // Resolve the active substep id eagerly so the eager-bind effect can
     // run unconditionally (Rules of Hooks: no conditional hook calls).
     // Falls back to undefined while data is loading; the effect bails.
-    const rawSubsteps = (data?.results as Substep[] | undefined) ?? [];
+    // useMemo, not a bare `?? []`: the fallback builds a NEW array on every
+    // render while data is undefined, so the memo below never actually memoised.
+    const rawSubsteps = useMemo(
+        () => (data?.results as Substep[] | undefined) ?? [],
+        [data],
+    );
     const sortedForBind = useMemo(
         () => [...rawSubsteps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
         [rawSubsteps],

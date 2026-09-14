@@ -124,7 +124,9 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // memberships. Persisted client-side keyed by user pk. "all" = "all my
     // stations" (union of memberships). See Documents/WORK_CENTER_DESIGN.md
     // Phase 2. Users with no memberships fall through to unscoped by kind only.
-    const memberships = user.work_center_memberships ?? [];
+    // useMemo, not a bare `?? []`: the fallback builds a NEW array on every
+    // render while data is undefined, so the memo below never actually memoised.
+    const memberships = useMemo(() => user.work_center_memberships ?? [], [user.work_center_memberships]);
     const primaryWcId = memberships.find((m) => m.is_primary)?.work_center;
     const storageKey = `operator.activeWc.${user.pk ?? "anon"}`;
     const [activeWcId, setActiveWcId] = useState<string>(() => {

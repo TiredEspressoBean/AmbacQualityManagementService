@@ -289,7 +289,12 @@ export function SubstepEditorPage() {
         });
     }, []);
 
-    const substeps: Substep[] = (data?.results as Substep[] | undefined) ?? [];
+    // useMemo, not a bare `?? []`: the fallback builds a NEW array on every
+    // render while data is undefined, so the memo below never actually memoised.
+    const substeps: Substep[] = useMemo(
+        () => (data?.results as Substep[] | undefined) ?? [],
+        [data],
+    );
     // DRAFT-only authoring guard. The backend stamps each substep with
     // `is_editable` (derived from its parent Step's consuming Processes —
     // all must be DRAFT). Every substep on the same Step agrees, so we

@@ -46,7 +46,9 @@ export function IncomingHubPage() {
     const [q, setQ] = useState("");
     const [openingId, setOpeningId] = useState<string | null>(null);
 
-    const rows = data ?? [];
+    // useMemo, not a bare `?? []`: the fallback builds a NEW array on every
+    // render while data is undefined, so the memo below never actually memoised.
+    const rows = useMemo(() => data ?? [], [data]);
     const statuses = useMemo(
         () => Array.from(new Set(rows.map((r) => r.status_display))).sort(),
         [rows],

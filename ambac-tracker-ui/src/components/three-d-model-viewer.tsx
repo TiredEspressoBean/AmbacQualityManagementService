@@ -61,9 +61,12 @@ function HeadlampLight({ intensity }: { intensity: number }) {
     const { camera, scene } = useThree();
 
     useEffect(() => {
-        scene.add(targetRef.current);
+        // Captured once: reading targetRef.current inside the cleanup would read
+        // whatever it holds at unmount, not what was added here.
+        const target = targetRef.current;
+        scene.add(target);
         return () => {
-            scene.remove(targetRef.current);
+            scene.remove(target);
         };
     }, [scene]);
 

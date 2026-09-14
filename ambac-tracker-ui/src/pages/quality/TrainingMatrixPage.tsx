@@ -167,7 +167,9 @@ export function TrainingMatrixPage() {
     const [expiryLens, setExpiryLens] = useState(false);
     const [roleFilter, setRoleFilter] = useState<string>("all");
 
-    const columns: Column[] = data?.training_types ?? [];
+    // useMemo, not a bare `?? []`: the fallback builds a NEW array on every
+    // render while data is undefined, so the memo below never actually memoised.
+    const columns: Column[] = useMemo(() => data?.training_types ?? [], [data]);
     const qualifiedAt = data?.qualified_at ?? 3;
     const jobRoles = data?.job_roles ?? [];
 

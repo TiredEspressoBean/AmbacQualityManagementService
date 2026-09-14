@@ -263,7 +263,12 @@ function View(props: NodeViewProps) {
         ? String(part.step_execution_id)
         : null;
 
-    const variables = (Array.isArray(a.variables) ? a.variables : []) as ComputedVariable[];
+    // useMemo, not a bare `?? []`: the fallback builds a NEW array on every
+    // render while data is undefined, so the memo below never actually memoised.
+    const variables = useMemo(
+        () => (Array.isArray(a.variables) ? a.variables : []) as ComputedVariable[],
+        [a.variables],
+    );
 
     const { data: defsResp } = useRetrieveMeasurementDefinitions();
     const defLabelById = useMemo(() => {
