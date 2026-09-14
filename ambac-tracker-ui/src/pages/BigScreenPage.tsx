@@ -159,6 +159,9 @@ export default function BigScreenPage() {
                             <CardTitle className="text-xl">Defects by Type (30 days)</CardTitle>
                         </CardHeader>
                         <CardContent className="flex-1 min-h-0 pb-2">
+                            {/* ChartContainer is required: ChartTooltipContent calls
+                                useChart(), which throws without this provider. */}
+                            <ChartContainer config={chartConfig} className="h-full w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     data={defectsByType}
@@ -176,6 +179,7 @@ export default function BigScreenPage() {
                                     <ChartTooltip content={<ChartTooltipContent />} />
                                 </BarChart>
                             </ResponsiveContainer>
+                            </ChartContainer>
                         </CardContent>
                     </Card>
 

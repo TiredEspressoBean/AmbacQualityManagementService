@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Table,
   TableBody,
@@ -54,6 +54,7 @@ export function AnalyticsTable<T extends { id: string | number }>({
   className,
   compact = false,
 }: AnalyticsTableProps<T>) {
+  const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
@@ -119,7 +120,22 @@ export function AnalyticsTable<T extends { id: string | number }>({
       ))}
       {(rowLink || onRowClick) && (
         <TableCell className={cn("w-8", compact && "py-2")}>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          {rowLink ? (
+            // A real anchor, so the row is reachable by keyboard and can be
+            // opened in a new tab. It lives INSIDE the cell: an <a> wrapping
+            // the cells of a <tr> is invalid HTML, which is what this used to
+            // do (React: "<tr> cannot contain a nested <a>").
+            <Link
+              to={rowLink(row)}
+              search={rowLinkParams?.(row)}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Open"
+            >
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
         </TableCell>
       )}
     </>
@@ -152,14 +168,12 @@ export function AnalyticsTable<T extends { id: string | number }>({
         <TableBody>
           {displayData.map((row) =>
             rowLink ? (
-              <TableRow key={row.id} className="cursor-pointer hover:bg-muted/50">
-                <Link
-                  to={rowLink(row)}
-                  search={rowLinkParams?.(row)}
-                  className="contents"
-                >
-                  {rowContent(row)}
-                </Link>
+              <TableRow
+                key={row.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => navigate({ to: rowLink(row), search: rowLinkParams?.(row) })}
+              >
+                {rowContent(row)}
               </TableRow>
             ) : onRowClick ? (
               <TableRow
