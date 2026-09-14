@@ -1,12 +1,32 @@
 // Hooks for the CP-SAT scheduling API (solve / dispatch / read / pin).
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 
+/** Cache-key roots this module owns. Prefix invalidations match against these
+ *  rather than repeating the string, so a rename lands in one place. Keys
+ *  themselves are declared by the `queryOptions()` factories below — that is
+ *  the one place a full key is spelled. */
+const ROOT = {
+  schedule: "schedule",
+  scheduledTasks: "scheduled-tasks",
+  workOrder: "work-order",
+  planning: "planning",
+  stagingList: "staging-list",
+  shifts: "shifts",
+  fixtures: "fixtures",
+} as const;
+
+/** Matches every query under a root, which is what a single-element
+ *  `queryKey` filter did before. */
+const underRoot = (root: string) => ({
+  predicate: (q: { queryKey: readonly unknown[] }) => q.queryKey[0] === root,
+});
+
 /** The active schedule's run metadata (null when none has been solved yet). */
-export function useCurrentSchedule() {
-  return useQuery({
+export const currentScheduleOptions = () =>
+  queryOptions({
     queryKey: ["schedule", "current"],
     queryFn: async () => {
       try {
@@ -17,11 +37,14 @@ export function useCurrentSchedule() {
       }
     },
   });
+
+export function useCurrentSchedule() {
+  return useQuery(currentScheduleOptions());
 }
 
 /** Scheduled tasks (Gantt rows) for a schedule. */
-export function useScheduledTasks(scheduleId?: string) {
-  return useQuery({
+export const scheduledTasksOptions = (scheduleId?: string) =>
+  queryOptions({
     queryKey: ["scheduled-tasks", scheduleId],
     enabled: !!scheduleId,
     queryFn: () =>
@@ -31,6 +54,9 @@ export function useScheduledTasks(scheduleId?: string) {
         queries: { schedule: scheduleId, ordering: "start_time", limit: 2000 },
       } as never),
   });
+
+export function useScheduledTasks(scheduleId?: string) {
+  return useQuery(scheduledTasksOptions(scheduleId));
 }
 
 /** Re-anchor a work-order batch (many parts at one op) to a new start. 422s with a
@@ -57,18 +83,35 @@ export function usePinBatch() {
 }
 
 /** Tenant working windows over the active schedule's horizon (for shift shading). */
-export function useWorkingWindows(scheduleId?: string) {
-  return useQuery({
+export const workingWindowsOptions = (scheduleId?: string) =>
+  queryOptions({
     queryKey: ["schedule", "working-windows", scheduleId],
     enabled: !!scheduleId,
     queryFn: () => api.api_Schedules_working_windows_retrieve(),
   });
+
+export function useWorkingWindows(scheduleId?: string) {
+  return useQuery(workingWindowsOptions(scheduleId));
 }
 
 function invalidateSchedule(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: ["schedule"] });
-  qc.invalidateQueries({ queryKey: ["scheduled-tasks"] });
+  qc.invalidateQueries(underRoot(ROOT.schedule));
+  qc.invalidateQueries(underRoot(ROOT.scheduledTasks));
 }
+
+/** Poll state for one background solve/dispatch task. */
+export const solveStatusOptions = (taskId: string | null) =>
+  queryOptions({
+    queryKey: ["solve-status", taskId],
+    enabled: !!taskId,
+    queryFn: () =>
+      api.api_Schedules_solve_status_retrieve({ queries: { task_id: taskId } } as never),
+    // Poll while the task is queued/running; stop once it's terminal.
+    refetchInterval: (q) => {
+      const s = q.state.data?.state;
+      return s === "SUCCESS" || s === "FAILURE" ? false : 1500;
+    },
+  });
 
 /** Kick off a background scheduling task (solve / dispatch), then poll `solve_status`
  * until it finishes and refresh the schedule. Returns `{ run, isRunning }` — the task
@@ -93,17 +136,7 @@ function useAsyncScheduleTask(
     meta: { suppressGlobalError: true },
   });
 
-  const status = useQuery({
-    queryKey: ["solve-status", taskId],
-    enabled: !!taskId,
-    queryFn: () =>
-      api.api_Schedules_solve_status_retrieve({ queries: { task_id: taskId } } as never),
-    // Poll while the task is queued/running; stop once it's terminal.
-    refetchInterval: (q) => {
-      const s = q.state.data?.state;
-      return s === "SUCCESS" || s === "FAILURE" ? false : 1500;
-    },
-  });
+  const status = useQuery(solveStatusOptions(taskId));
 
   useEffect(() => {
     const d = status.data;
@@ -142,8 +175,8 @@ export function useSolveDraft(onReady?: () => void) {
 }
 
 /** The pending what-if draft (null when none). */
-export function useDraftSchedule() {
-  return useQuery({
+export const draftScheduleOptions = () =>
+  queryOptions({
     queryKey: ["schedule", "draft"],
     queryFn: async () => {
       try {
@@ -154,15 +187,21 @@ export function useDraftSchedule() {
       }
     },
   });
+
+export function useDraftSchedule() {
+  return useQuery(draftScheduleOptions());
 }
 
 /** Live-vs-draft comparison (summaries + moved-task count); only when a draft exists. */
-export function useCompareDraft(enabled: boolean) {
-  return useQuery({
+export const compareDraftOptions = (enabled: boolean) =>
+  queryOptions({
     queryKey: ["schedule", "compare"],
     enabled,
     queryFn: () => api.api_Schedules_compare_retrieve(),
   });
+
+export function useCompareDraft(enabled: boolean) {
+  return useQuery(compareDraftOptions(enabled));
 }
 
 /** Promote the draft to the live schedule. */
@@ -218,21 +257,27 @@ export type ActiveRun = {
  *
  *  Polls quickly while something is running and slowly otherwise, so another planner's
  *  solve shows up here within a few seconds without hammering the endpoint all day. */
-export function useActiveRun() {
-  return useQuery({
+export const activeRunOptions = () =>
+  queryOptions({
     queryKey: ["schedule", "active-run"],
     queryFn: () => api.api_Schedules_solve_status_retrieve() as Promise<ActiveRun>,
     refetchInterval: (q) => ((q.state.data as ActiveRun)?.running ? 2000 : 10000),
     refetchOnWindowFocus: true,
   });
+
+export function useActiveRun() {
+  return useQuery(activeRunOptions());
 }
 
 /** The tenant's solver knobs (time limit, fences, penalties, labor model). */
-export function useOptimizationConfig() {
-  return useQuery({
+export const optimizationConfigOptions = () =>
+  queryOptions({
     queryKey: ["schedule", "config"],
     queryFn: () => api.api_Schedules_config_retrieve(),
   });
+
+export function useOptimizationConfig() {
+  return useQuery(optimizationConfigOptions());
 }
 
 /** Update the tenant's solver knobs (partial). */
@@ -242,7 +287,7 @@ export function useUpdateOptimizationConfig() {
     mutationFn: (patch: Record<string, unknown>) =>
       api.api_Schedules_config_partial_update(patch as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["schedule", "config"] });
+      qc.invalidateQueries(optimizationConfigOptions());
       toast.success("Solver settings saved");
     },
     onError: () => toast.error("Couldn't save solver settings"),
@@ -269,12 +314,15 @@ export function useBatchMembership() {
 }
 
 /** Fetch a work order (for the edit dialog's current values). */
-export function useWorkOrder(id: string | null) {
-  return useQuery({
+export const workOrderOptions = (id: string | null) =>
+  queryOptions({
     queryKey: ["work-order", id],
     enabled: !!id,
     queryFn: () => api.api_WorkOrders_retrieve({ params: { id } } as never),
   });
+
+export function useWorkOrder(id: string | null) {
+  return useQuery(workOrderOptions(id));
 }
 
 /** Operator shop-hours over a date range — on-shift (attendance) + direct (job) hours,
@@ -282,14 +330,17 @@ export function useWorkOrder(id: string | null) {
 export type OperatorHoursRow = {
   user_id: number; name: string; on_shift_hours: number; direct_hours: number;
 };
-export function useOperatorHours(start: string, end: string) {
-  return useQuery({
+export const operatorHoursOptions = (start: string, end: string) =>
+  queryOptions({
     queryKey: ["operator-hours", start, end],
     queryFn: async () =>
       ((await api.api_Schedules_operator_hours_retrieve({
         queries: { start, end },
       } as never)) as { rows?: OperatorHoursRow[] }).rows ?? [],
   });
+
+export function useOperatorHours(start: string, end: string) {
+  return useQuery(operatorHoursOptions(start, end));
 }
 
 /** Sourcing & production requirements — what open demand needs bought (source) or built
@@ -305,14 +356,17 @@ export type ToolingRow = {
   fixture: string; kind: string; need_by: string; lead_time_days: number | null;
   order_by: string | null;
 };
-export function useRequirements() {
-  return useQuery({
+export const requirementsOptions = () =>
+  queryOptions({
     queryKey: ["schedule", "requirements"],
     queryFn: () =>
       api.api_Schedules_requirements_retrieve() as Promise<{
         source: SourceRow[]; produce: ProduceRow[]; tooling: ToolingRow[];
       }>,
   });
+
+export function useRequirements() {
+  return useQuery(requirementsOptions());
 }
 
 /* --- Rough-cut capacity planning ------------------------------------------
@@ -376,14 +430,17 @@ export type CapacityLoad = {
  *  It is part of the query key because it changes the response, but NOT part of the
  *  arithmetic: a row kept by the filter carries the same numbers it carries unfiltered
  *  (the backend computes load over every centre either way). */
-export function useCapacityLoad(months = 12, criticalOnly = false) {
-  return useQuery({
+export const capacityLoadOptions = (months = 12, criticalOnly = false) =>
+  queryOptions({
     queryKey: ["planning", "capacity-load", months, criticalOnly],
     queryFn: () =>
       api.api_Schedules_capacity_load_retrieve({
         queries: { months, critical_only: criticalOnly },
       } as never) as Promise<CapacityLoad>,
   });
+
+export function useCapacityLoad(months = 12, criticalOnly = false) {
+  return useQuery(capacityLoadOptions(months, criticalOnly));
 }
 
 export type CtpBinding = {
@@ -400,10 +457,10 @@ export type CtpQuote = {
 };
 /** Quote an order against remaining capacity. Disabled until every input is set —
  *  a half-filled form must not fire a request that can only answer 400. */
-export function useCapableToPromise(
+export const capableToPromiseOptions = (
   args: { part_type: string; quantity: number; target_date: string; months?: number } | null
-) {
-  return useQuery({
+) =>
+  queryOptions({
     queryKey: ["planning", "ctp", args],
     enabled: !!args && !!args.part_type && args.quantity > 0 && !!args.target_date,
     queryFn: () =>
@@ -411,6 +468,11 @@ export function useCapableToPromise(
         queries: args,
       } as never) as Promise<CtpQuote>,
   });
+
+export function useCapableToPromise(
+  args: { part_type: string; quantity: number; target_date: string; months?: number } | null
+) {
+  return useQuery(capableToPromiseOptions(args));
 }
 
 /* --- Staging pick list ----------------------------------------------------
@@ -461,14 +523,17 @@ export type StagingList = {
   unmapped: StagingUnmapped[];
   stations: StagingStation[];
 };
-export function useStagingList(workCenterId?: string, hours = 8) {
-  return useQuery({
+export const stagingListOptions = (workCenterId?: string, hours = 8) =>
+  queryOptions({
     queryKey: ["staging-list", workCenterId ?? null, hours],
     queryFn: () =>
       api.api_WorkCenters_staging_list_retrieve({
         queries: { ...(workCenterId ? { work_center: workCenterId } : {}), hours },
       } as never) as Promise<StagingList>,
   });
+
+export function useStagingList(workCenterId?: string, hours = 8) {
+  return useQuery(stagingListOptions(workCenterId, hours));
 }
 
 /** Mark a job's material staged at its bench (or take it back). */
@@ -477,7 +542,7 @@ export function useMarkStaged() {
   return useMutation({
     mutationFn: (v: { work_order: string; step: string; staged: boolean; note?: string }) =>
       api.api_WorkCenters_mark_staged_create(v as never),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["staging-list"] }),
+    onSuccess: () => qc.invalidateQueries(underRoot(ROOT.stagingList)),
     onError: (e: any) =>
       toast.error(e?.response?.data?.detail ?? "Couldn't update staging"),
   });
@@ -498,9 +563,9 @@ export function useRecordPick() {
       lots: { lot_id: string; lot_number?: string; qty: number }[];
     }) => api.api_WorkCenters_record_pick_create(v as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["staging-list"] });
+      qc.invalidateQueries(underRoot(ROOT.stagingList));
       // Reserved stock changes what every other planning surface can promise.
-      qc.invalidateQueries({ queryKey: ["planning"] });
+      qc.invalidateQueries(underRoot(ROOT.planning));
     },
     onError: (e: any) =>
       toast.error(e?.response?.data?.detail ?? "Couldn't record the pick"),
@@ -527,8 +592,8 @@ export type UnscheduledDiagnosis = {
   counts: Record<string, number>;
   work_orders: UnscheduledRow[];
 };
-export function useUnscheduled(enabled = true) {
-  return useQuery({
+export const unscheduledOptions = (enabled = true) =>
+  queryOptions({
     queryKey: ["schedule", "unscheduled"],
     enabled,
     // Re-derives the solver's inputs (routing, timings, training, material gates), so
@@ -537,6 +602,9 @@ export function useUnscheduled(enabled = true) {
     queryFn: () =>
       api.api_Schedules_unscheduled_retrieve() as Promise<UnscheduledDiagnosis>,
   });
+
+export function useUnscheduled(enabled = true) {
+  return useQuery(unscheduledOptions(enabled));
 }
 
 /** Per-WO material requirements — the "what this job needs" readout (picklist-lite):
@@ -547,8 +615,8 @@ export type MaterialRequirementRow = {
   on_hand: number; incoming: number; short_qty: number; status: string; is_optional: boolean;
   lead_time_days: number | null; need_by: string | null; order_by: string | null;
 };
-export function useWorkOrderMaterialRequirements(id: string | null) {
-  return useQuery({
+export const workOrderMaterialRequirementsOptions = (id: string | null) =>
+  queryOptions({
     queryKey: ["work-order", "material-requirements", id],
     enabled: !!id,
     queryFn: async () =>
@@ -556,16 +624,22 @@ export function useWorkOrderMaterialRequirements(id: string | null) {
         params: { id },
       } as never)) as { rows?: MaterialRequirementRow[] }).rows ?? [],
   });
+
+export function useWorkOrderMaterialRequirements(id: string | null) {
+  return useQuery(workOrderMaterialRequirementsOptions(id));
 }
 
 /** Make-up gap for a work order — good owed vs. still alive; `shortfall` is what a
  *  make-up would create. Refetched when the edit dialog opens. */
-export function useMakeupStatus(id: string | null) {
-  return useQuery({
+export const makeupStatusOptions = (id: string | null) =>
+  queryOptions({
     queryKey: ["work-order", "makeup", id],
     enabled: !!id,
     queryFn: () => api.api_WorkOrders_makeup_status_retrieve({ params: { id } } as never),
   });
+
+export function useMakeupStatus(id: string | null) {
+  return useQuery(makeupStatusOptions(id));
 }
 
 /** Planner-confirmed make-up: spawn replacement parts to cover the shortfall. */
@@ -576,7 +650,7 @@ export function useCreateMakeup() {
       api.api_WorkOrders_create_makeup_create(undefined as never, { params: { id } } as never),
     onSuccess: (_data, id) => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order", "makeup", id] });
+      qc.invalidateQueries(makeupStatusOptions(id));
       toast.success("Make-up parts created");
     },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't create make-up parts"),
@@ -591,7 +665,7 @@ export function useUpdateWorkOrder() {
       api.api_WorkOrders_partial_update(body as never, { params: { id } } as never),
     onSuccess: () => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Work order updated — re-solve to apply");
     },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't update work order"),
@@ -606,7 +680,7 @@ export function useSetWorkOrderQuantity() {
       api.api_WorkOrders_set_quantity_create({ quantity } as never, { params: { id } } as never),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       const msg = r?.added ? `Added ${r.added} part(s)` : r?.cancelled ? `Cancelled ${r.cancelled} unstarted part(s)` : "Quantity unchanged";
       toast.success(`${msg} — re-solve to apply`);
     },
@@ -626,8 +700,8 @@ export type ReleaseReadiness = {
 };
 
 /** Would this work order release clean? Fetched when the edit dialog opens. */
-export function useReleaseReadiness(id: string | null) {
-  return useQuery({
+export const releaseReadinessOptions = (id: string | null) =>
+  queryOptions({
     queryKey: ["work-order", "release-readiness", id],
     enabled: !!id,
     queryFn: () =>
@@ -635,6 +709,9 @@ export function useReleaseReadiness(id: string | null) {
         params: { id },
       } as never) as Promise<ReleaseReadiness>,
   });
+
+export function useReleaseReadiness(id: string | null) {
+  return useQuery(releaseReadinessOptions(id));
 }
 
 /** Authorize a work order for scheduling. A blocked order comes back 409 with its
@@ -649,10 +726,10 @@ export function useReleaseForScheduling() {
       ),
     onSuccess: (_d, v) => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       // Releasing changes what the rough-cut layer shows — the order leaves the
       // release list and its load stops being provisional.
-      qc.invalidateQueries({ queryKey: ["planning"] });
+      qc.invalidateQueries(underRoot(ROOT.planning));
       toast.success(
         v.override_reason
           ? "Released with an override — re-solve to plan it"
@@ -681,8 +758,8 @@ export type ReleaseQueue = {
   release_mode: string; count: number; work_orders: ReleaseQueueRow[];
   recommendation?: ReleaseRecommendation;
 };
-export function useReleaseQueue(enabled = true) {
-  return useQuery({
+export const releaseQueueOptions = (enabled = true) =>
+  queryOptions({
     queryKey: ["work-order", "release-queue"],
     enabled,
     // Evaluates readiness AND the workload-control recommendation for the whole
@@ -694,6 +771,9 @@ export function useReleaseQueue(enabled = true) {
     queryFn: () =>
       api.api_WorkOrders_release_queue_retrieve() as Promise<ReleaseQueue>,
   });
+
+export function useReleaseQueue(enabled = true) {
+  return useQuery(releaseQueueOptions(enabled));
 }
 
 /** What workload control would release now, and why. Advisory — calling this
@@ -726,7 +806,7 @@ export function useBulkRelease() {
       ) as Promise<{ released: number; blocked: number; results: any[] }>,
     onSuccess: (d) => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       if (d.blocked > 0) {
         toast.warning(
           `Released ${d.released} — ${d.blocked} need a reason before they can go.`
@@ -748,7 +828,7 @@ export function useUnreleaseForScheduling() {
       api.api_WorkOrders_unrelease_create(undefined as never, { params: { id } } as never),
     onSuccess: () => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Release withdrawn — re-solve to drop it");
     },
     onError: (e: any) =>
@@ -763,7 +843,7 @@ export function useHoldWorkOrder() {
       api.api_WorkOrders_place_on_hold_create({ reason } as never, { params: { id } } as never),
     onSuccess: () => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Work order held — re-solve to drop it");
     },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't hold work order"),
@@ -778,7 +858,7 @@ export function useReleaseWorkOrder() {
       api.api_WorkOrders_clear_hold_create(undefined as never, { params: { id } } as never),
     onSuccess: () => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Hold cleared — re-solve to reschedule");
     },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't release hold"),
@@ -793,7 +873,7 @@ export function useCancelWorkOrder() {
       api.api_WorkOrders_cancel_create(undefined as never, { params: { id } } as never),
     onSuccess: () => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Work order cancelled");
     },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't cancel work order"),
@@ -801,13 +881,16 @@ export function useCancelWorkOrder() {
 }
 
 /** Eligible machines + qualified operators for a task's step (reassign dropdowns). */
-export function useReassignOptions(taskId: string | null) {
-  return useQuery({
+export const reassignOptionsOptions = (taskId: string | null) =>
+  queryOptions({
     queryKey: ["reassign-options", taskId],
     enabled: !!taskId,
     queryFn: () =>
       api.api_ScheduledTasks_reassign_options_retrieve({ params: { id: taskId } } as never),
   });
+
+export function useReassignOptions(taskId: string | null) {
+  return useQuery(reassignOptionsOptions(taskId));
 }
 
 /** Move a task onto a specific machine (+ pin). Warns if the machine isn't eligible. */
@@ -887,12 +970,15 @@ export function useBulkReassignOperator() {
  *  can change underneath the running job. The server enforces this too; filtering here
  *  keeps the choice out of the picker rather than failing after the planner picks it.
  */
-export function useProcesses() {
-  return useQuery({
+export const processesForPlanningOptions = () =>
+  queryOptions({
     queryKey: ["processes", "for-planning"],
     queryFn: () =>
       api.api_Processes_list({ queries: { limit: 500, status: "APPROVED" } } as never),
   });
+
+export function useProcesses() {
+  return useQuery(processesForPlanningOptions());
 }
 
 /** Create a new work order + its parts (the Gantt 'add work' action). */
@@ -903,7 +989,7 @@ export function usePlanWorkOrder() {
       api.api_Schedules_plan_work_order_create(body as never),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success(`Work order ${r?.ERP_id ?? ""} created — re-solve to schedule it`);
       // Yield gross-up: started more than requested to still finish the good count.
       if (r?.yield?.started && r?.yield?.target_good) {
@@ -936,7 +1022,7 @@ export function useExplodeWorkOrder() {
       api.api_Schedules_explode_work_order_create({ work_order_id, create } as never),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
-      qc.invalidateQueries({ queryKey: ["work-order"] });
+      qc.invalidateQueries(underRoot(ROOT.workOrder));
       const made = r?.created_count ?? 0;
       if (made) toast.success(`Generated ${made} component work order(s)`);
       else toast.success("BOM exploded — nothing new needed");
@@ -947,12 +1033,15 @@ export function useExplodeWorkOrder() {
 }
 
 /** Work-hours shift calendar (the solver's working windows come from these). */
-export function useShifts() {
-  return useQuery({
+export const shiftsOptions = () =>
+  queryOptions({
     queryKey: ["shifts"],
     queryFn: () =>
       api.api_Shifts_list({ queries: { ordering: "start_time", limit: 200 } } as never),
   });
+
+export function useShifts() {
+  return useQuery(shiftsOptions());
 }
 
 /** Create (no id) or update (with id) a shift. */
@@ -964,13 +1053,13 @@ export function useSaveShift() {
         ? api.api_Shifts_partial_update(body as never, { params: { id } } as never)
         : api.api_Shifts_create(body as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries(underRoot(ROOT.shifts));
       // A content edit forks the shift to a NEW id and repoints every
       // User.default_shift server-side — cached user/auth payloads still
       // hold the old id, which zeroes the calendar's headcount badges and
       // breaks the "My crew" preset until their 5-min staleTime expires.
-      qc.invalidateQueries({ queryKey: ["user"] });
-      qc.invalidateQueries({ queryKey: ["authUser"] });
+      qc.invalidateQueries(underRoot("user"));
+      qc.invalidateQueries(underRoot("authUser"));
       toast.success("Shift saved");
     },
     onError: () => toast.error("Couldn't save shift — is the code unique?"),
@@ -984,7 +1073,7 @@ export function useDeleteShift() {
     mutationFn: (id: string) =>
       api.api_Shifts_destroy(undefined as never, { params: { id } } as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries(underRoot(ROOT.shifts));
       toast.success("Shift removed");
     },
     onError: () => toast.error("Couldn't remove shift"),
@@ -994,6 +1083,23 @@ export function useDeleteShift() {
 // --- Tooling / shared resources (fixtures, cutting tools, dies, NC programs) ---
 
 /** Paginated list for the tooling editor table (ModelEditorPage shape). */
+export const fixturesListOptions = (params: {
+  offset: number;
+  limit: number;
+  ordering?: string;
+  search?: string;
+  filters?: Record<string, string>;
+}) => {
+  const { offset, limit, ordering, search, filters } = params;
+  return queryOptions({
+    queryKey: ["fixtures", { offset, limit, ordering, search, filters }],
+    queryFn: () =>
+      api.api_Fixtures_list({
+        queries: { offset, limit, ordering, search, ...(filters ?? {}) },
+      } as never),
+  });
+};
+
 export function useFixturesList(params: {
   offset: number;
   limit: number;
@@ -1001,23 +1107,19 @@ export function useFixturesList(params: {
   search?: string;
   filters?: Record<string, string>;
 }) {
-  const { offset, limit, ordering, search, filters } = params;
-  return useQuery({
-    queryKey: ["fixtures", { offset, limit, ordering, search, filters }],
-    queryFn: () =>
-      api.api_Fixtures_list({
-        queries: { offset, limit, ordering, search, ...(filters ?? {}) },
-      } as never),
-  });
+  return useQuery(fixturesListOptions(params));
 }
 
 /** One tooling resource (for the edit form). */
-export function useRetrieveFixture(id?: string) {
-  return useQuery({
+export const retrieveFixtureOptions = (id?: string) =>
+  queryOptions({
     queryKey: ["fixture", id],
     enabled: !!id,
     queryFn: () => api.api_Fixtures_retrieve({ params: { id } } as never),
   });
+
+export function useRetrieveFixture(id?: string) {
+  return useQuery(retrieveFixtureOptions(id));
 }
 
 /** Create a tooling resource. */
@@ -1026,7 +1128,7 @@ export function useCreateFixture() {
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => api.api_Fixtures_create(body as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fixtures"] });
+      qc.invalidateQueries(underRoot(ROOT.fixtures));
       invalidateSchedule(qc);
     },
   });
@@ -1039,7 +1141,7 @@ export function useUpdateFixture() {
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
       api.api_Fixtures_partial_update(body as never, { params: { id } } as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fixtures"] });
+      qc.invalidateQueries(underRoot(ROOT.fixtures));
       invalidateSchedule(qc);
     },
   });
@@ -1052,7 +1154,7 @@ export function useDeleteFixture() {
     mutationFn: (id: string) =>
       api.api_Fixtures_destroy(undefined as never, { params: { id } } as never),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fixtures"] });
+      qc.invalidateQueries(underRoot(ROOT.fixtures));
       invalidateSchedule(qc);
       toast.success("Resource removed");
     },
@@ -1062,12 +1164,15 @@ export function useDeleteFixture() {
 
 /** A process's detail, including its ordered `process_steps` — powers the tooling form's
  *  cascading Process → Step picker. */
-export function useProcessDetail(id?: string) {
-  return useQuery({
+export const processDetailOptions = (id?: string) =>
+  queryOptions({
     queryKey: ["process-detail", id],
     enabled: !!id,
     queryFn: () => api.api_Processes_retrieve({ params: { id } } as never),
   });
+
+export function useProcessDetail(id?: string) {
+  return useQuery(processDetailOptions(id));
 }
 
 /** Pin / unpin a task (planner lock). */
