@@ -572,7 +572,7 @@ services:
      volumes:
        - ./conf/Caddyfile.local:/etc/caddy/Caddyfile
        - frontend-dist:/usr/share/caddy
-       - docs-dist:/usr/share/caddy/docs
+       - docs-dist:/srv/docs
        - caddy_data:/data
        - caddy_config:/config
      depends_on:
@@ -604,7 +604,7 @@ services:
        - ./conf/Caddyfile:/etc/caddy/Caddyfile
        - ./certs:/etc/caddy/certs:ro
        - frontend-dist:/usr/share/caddy
-       - docs-dist:/usr/share/caddy/docs
+       - docs-dist:/srv/docs
        - caddy_data:/data
        - caddy_config:/config
      depends_on:

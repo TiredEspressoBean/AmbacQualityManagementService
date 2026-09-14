@@ -47,9 +47,26 @@
         uri strip_prefix /lg
     }
 
-    # Documentation (MkDocs static files)
-    handle /docs/* {
-        root * /usr/share/caddy
+    # Bare /docs has no trailing slash, so it never matches /docs/* below —
+    # without this it falls through to the SPA catch-all and returns index.html.
+    handle /docs {
+        redir * /docs/ 301
+    }
+
+    # Documentation (MkDocs static files).
+    #
+    # Mounted at /srv/docs, deliberately OUTSIDE /usr/share/caddy. It used to be
+    # nested at /usr/share/caddy/docs, inside the frontend-dist volume — but a
+    # nested mount is attached at container creation and needs its mountpoint
+    # directory to survive in the parent volume. Rebuilding the frontend clears
+    # frontend-dist, deletes that directory, and silently orphans the mount:
+    # `docker inspect` still lists it while `ls` inside the container reports
+    # "No such file or directory", and /docs/ 404s until Caddy is recreated.
+    #
+    # handle_path (not handle) strips the /docs prefix, so the root can point
+    # straight at the docs directory.
+    handle_path /docs/* {
+        root * /srv/docs
         file_server
     }
 
