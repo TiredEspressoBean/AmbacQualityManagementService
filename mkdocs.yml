@@ -53,6 +53,8 @@ nav:
     - Production Manager Training: training/production-manager.md
     - Document Controller Training: training/document-controller.md
     - Administrator Training: training/administrator.md
+    - SPC Fundamentals: training/spc-fundamentals.md
+    - Training Data Setup: training/training-data-setup.md
   - Core Workflows:
     - Overview: workflows/index.md
     - Orders & Parts:
@@ -60,12 +62,30 @@ nav:
       - Adding Parts: workflows/orders/adding-parts.md
       - Order Status: workflows/orders/order-status.md
       - Order Documents: workflows/orders/order-documents.md
+    - Scheduling:
+      - Overview: workflows/scheduling/overview.md
+      - Schedule (Gantt): workflows/scheduling/gantt.md
+      - Capacity Planning: workflows/scheduling/capacity.md
+    - Supply:
+      - Overview: workflows/supply/overview.md
+      - Outside Processing: workflows/supply/outside-processing.md
+      - Part Approvals: workflows/supply/part-approvals.md
+    - Change Control:
+      - Overview: workflows/change-control/overview.md
+    - Digital Work Instructions:
+      - Overview: workflows/dwi/overview.md
+      - Authoring Work Instructions: workflows/dwi/authoring.md
+      - Running Work Instructions: workflows/dwi/running.md
     - Parts Tracking:
       - Tracker Overview: workflows/tracking/tracker-overview.md
       - Moving Parts Forward: workflows/tracking/moving-parts.md
       - Recording Measurements: workflows/tracking/measurements.md
       - Flagging Issues: workflows/tracking/flagging-issues.md
       - Part History: workflows/tracking/part-history.md
+      - Material Lot Tracking: workflows/tracking/lot-tracking.md
+      - Life Tracking: workflows/tracking/life-tracking.md
+      - Training Matrix: workflows/tracking/training-matrix.md
+      - Shift Notes: workflows/tracking/shift-notes.md
     - Work Orders:
       - Work Order Basics: workflows/work-orders/basics.md
       - Assigning Work Orders: workflows/work-orders/assigning.md
@@ -126,8 +146,10 @@ nav:
       - Document Types: admin/setup/document-types.md
       - Approval Templates: admin/setup/approval-templates.md
       - Sampling Rules: admin/setup/sampling-rules.md
+      - Notification Rules: admin/setup/notification-rules.md
     - Deployment:
       - Railway: admin/deployment/railway.md
+      - Documentation Site: admin/deployment/documentation-site.md
   - Compliance:
     - Overview: compliance/overview.md
     - Audit Trails: compliance/audit-trails.md
