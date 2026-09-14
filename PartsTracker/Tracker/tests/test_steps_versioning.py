@@ -683,3 +683,33 @@ class StepSerializerVersioningTestCase(TenantTestCase):
         updated = self._patch(operation_number='20')
         self.assertEqual(updated.pk, self.step.pk)
         self.assertEqual(updated.version, 1)
+
+    def test_a_whole_form_patch_that_only_moves_the_operation_number_does_not_fork(self):
+        """The real shape `EditStepFormPage` submits: every rendered field, at its
+        current value, with one non-versioning label changed.
+
+        The test above passes `operation_number` alone, which the old
+        present-keys routing already handled. The form never sends it alone — it
+        posts name, description and part_type alongside — so in practice renumbering
+        an operation forked a Step version, and a Step fork repoints ProcessStep
+        junctions. Pins `apply_versioned_update` routing on CHANGED fields.
+        """
+        updated = self._patch(
+            name=self.step.name,
+            description=self.step.description,
+            part_type=self.step.part_type_id,
+            operation_number='30',
+        )
+        self.assertEqual(updated.pk, self.step.pk)
+        self.assertEqual(updated.version, 1)
+        self.assertEqual(updated.operation_number, '30')
+
+    def test_the_same_whole_form_patch_still_forks_when_content_really_changed(self):
+        """Guard: routing on changed fields must not become routing on nothing."""
+        updated = self._patch(
+            name=self.step.name,
+            description='A genuinely new instruction',
+            part_type=self.step.part_type_id,
+            operation_number='40',
+        )
+        self.assertEqual(updated.version, 2)

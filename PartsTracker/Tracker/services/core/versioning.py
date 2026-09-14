@@ -36,8 +36,15 @@ def apply_versioned_update(
     """Route a serializer update through either `default_update` or
     `create_new_version()` depending on which fields are being edited.
 
+    Routing is on the fields whose values actually CHANGED, not on the fields
+    merely present in `validated_data`. A serializer update is normally fed by a
+    form that posts every field it renders, so keying on presence meant a save
+    that only flipped a non-versioning flag — or changed nothing at all — still
+    forked a new version. See `_changed_keys`.
+
     - Empty `validated_data` → noop, return the instance unchanged.
-    - Every edited key is in `non_versioning_fields` → delegate to
+    - Nothing actually differs from the row → `default_update`, no new version.
+    - Every *changed* key is in `non_versioning_fields` → delegate to
       `default_update(instance, validated_data)`. Typically this is
       `super().update` from a DRF `ModelSerializer`, which handles M2M
       assignment, writable-nested fields, and regular `save()`. Used
@@ -73,10 +80,72 @@ def apply_versioned_update(
     if not validated_data:
         return instance
 
-    if set(validated_data.keys()) <= frozenset(non_versioning_fields):
+    touched = _changed_keys(instance, validated_data)
+
+    if not touched:
+        # Every submitted value already matches the row. Forking here would mint a
+        # revision that records no change — which is worse than useless on a controlled
+        # spec, because it pads the history an audit reads as evidence.
+        return default_update(instance, validated_data)
+
+    if touched <= frozenset(non_versioning_fields):
         return default_update(instance, validated_data)
 
     return instance.create_new_version(**validated_data, **(version_kwargs or {}))
+
+
+def _changed_keys(instance, validated_data: dict) -> set:
+    """Which submitted keys actually differ from what is on the row.
+
+    Routing on the keys *present* rather than the keys *changed* was the original
+    behaviour, and it is wrong for the way real forms submit: an edit dialog posts every
+    field it renders, so a planner toggling one explicitly-non-versioning flag still
+    sent the content keys alongside it and forked a new version. Observed on the work
+    centre dialog, the shift settings tab (where a fork also repoints
+    `User.default_shift` and blanks the calendar's headcount badges) and the step form.
+
+    Conservative by construction: anything that cannot be compared cleanly counts as
+    changed, so the failure mode is the old behaviour — an unnecessary version — rather
+    than a real edit silently landing as a plain save on a controlled record.
+
+    Assumes `instance` was loaded from the database, which is true of every serializer
+    update (DRF hands `update()` the object `get_object()` fetched). The comparison is
+    on Python values, so a row built in memory can hold an unconverted assignment — a
+    `TimeField` assigned the string '06:00:00' stays a string until it round-trips —
+    and would compare unequal to the `datetime.time` the serializer validated. That
+    errs toward an extra version rather than a missed one, but it will bite a test that
+    builds a row with `objects.create(...)` and serializes it without refreshing.
+    """
+    changed = set()
+    for key, new in validated_data.items():
+        field = None
+        try:
+            field = instance._meta.get_field(key)
+        except Exception:
+            changed.add(key)          # not a concrete field (writable nested, property)
+            continue
+
+        if field.many_to_many or field.one_to_many:
+            # Comparing an M2M means a query per field and an order-insensitive diff of
+            # pks. Cheap enough, and these are exactly the "placement" fields (a work
+            # centre's equipment list) that are typically non-versioning anyway.
+            try:
+                current = set(getattr(instance, key).values_list('pk', flat=True))
+                submitted = {getattr(o, 'pk', o) for o in (new or [])}
+            except Exception:
+                changed.add(key)
+                continue
+            if current != submitted:
+                changed.add(key)
+            continue
+
+        current = getattr(instance, field.attname if field.many_to_one else key, None)
+        if field.many_to_one:
+            new = getattr(new, 'pk', new)   # DRF hands back the instance, not the id
+
+        if current != new:
+            changed.add(key)
+    return changed
 
 
 def raise_not_versioned(self, **_):

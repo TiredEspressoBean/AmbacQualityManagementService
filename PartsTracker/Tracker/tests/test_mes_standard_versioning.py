@@ -272,6 +272,66 @@ class WorkCenterSerializerRoutingTestCase(TenantTestCase):
         self.assertEqual(result.pk, self.obj.pk)
         self.assertEqual(result.version, 1)
 
+    # --- routing is on CHANGED fields, not PRESENT ones --------------------
+    #
+    # Real forms post every field they render. Keying on presence meant a save that
+    # only flipped a non-versioning flag still forked, because the content keys rode
+    # along unchanged. Observed on this dialog, on the shift settings tab (where a
+    # fork also repoints User.default_shift and blanks the calendar headcount) and on
+    # the step form.
+
+    def test_resubmitting_unchanged_content_does_not_version(self):
+        s = self._serializer(self.obj, {
+            'name': self.obj.name,
+            'code': self.obj.code,
+            'description': self.obj.description,
+        })
+        s.is_valid(raise_exception=True)
+        result = s.save()
+        self.assertEqual(result.version, 1)
+        self.assertEqual(result.pk, self.obj.pk)
+
+    def test_a_flag_flip_alongside_unchanged_content_does_not_version(self):
+        """The whole-form-PATCH case: one non-versioning flag actually changed, every
+        content field submitted at its current value."""
+        s = self._serializer(self.obj, {
+            'name': self.obj.name,
+            'code': self.obj.code,
+            'description': self.obj.description,
+            'is_critical': True,
+        })
+        s.is_valid(raise_exception=True)
+        result = s.save()
+        self.assertEqual(result.version, 1)
+        self.assertTrue(result.is_critical)
+
+    def test_a_real_content_change_still_versions(self):
+        """The guard on the above: routing on changed fields must not become routing
+        on nothing."""
+        s = self._serializer(self.obj, {
+            'name': self.obj.name,
+            'code': self.obj.code,
+            'description': 'Genuinely different',
+            'is_critical': True,
+        })
+        s.is_valid(raise_exception=True)
+        result = s.save()
+        self.assertEqual(result.version, 2)
+        self.assertEqual(result.description, 'Genuinely different')
+
+    def test_an_unchanged_m2m_does_not_count_as_an_edit(self):
+        """`equipment` is non-versioning anyway, but the comparison has to not treat a
+        resubmitted identical list as a change — otherwise every save looks like one."""
+        eq = Equipments.objects.create(name='Press-1', serial_number='P-1')
+        self.obj.equipment.add(eq)
+        s = self._serializer(self.obj, {
+            'name': self.obj.name,
+            'equipment': [eq.pk],
+        })
+        s.is_valid(raise_exception=True)
+        result = s.save()
+        self.assertEqual(result.version, 1)
+
     def test_the_list_endpoint_returns_only_current_versions(self):
         """Every edit leaves the superseded row behind, and the list was returning
         both — one station appearing twice, the older copy carrying a stale step and
@@ -336,6 +396,53 @@ class ShiftSerializerRoutingTestCase(TenantTestCase):
             instance, data=data, partial=partial,
             context={'request': request},
         )
+
+    def test_a_whole_form_patch_that_only_toggles_is_active_does_not_fork(self):
+        """The real shape `ShiftsSettingsTab.saveRow` submits: every rendered field at
+        its current value, with only `is_active` changed.
+
+        This one has a user-visible tail. `useSaveShift` documents it: a fork mints a
+        new Shift id and repoints every `User.default_shift` server-side, so cached
+        auth payloads still hold the old id — which zeroes the calendar's headcount
+        badges and breaks the "My crew" preset until staleTime expires. Deactivating a
+        shift should never have triggered that. Pins routing on CHANGED fields.
+        """
+        # As a viewset would: the instance comes from the DB, so `start_time` is a
+        # `datetime.time` rather than the string setUp assigned. Comparing a
+        # freshly-created in-memory row against DRF-validated values would compare
+        # str to time and call every field changed.
+        self.obj.refresh_from_db()
+        s = self._serializer(self.obj, {
+            'name': self.obj.name,
+            'code': self.obj.code,
+            'start_time': self.obj.start_time,
+            'end_time': self.obj.end_time,
+            'days_of_week': self.obj.days_of_week,
+            'is_active': False,
+        })
+        s.is_valid(raise_exception=True)
+        result = s.save()
+        self.assertEqual(result.pk, self.obj.pk)
+        self.assertEqual(result.version, 1)
+        self.assertFalse(result.is_active)
+
+    def test_the_same_whole_form_patch_still_forks_when_the_hours_really_changed(self):
+        """Guard: routing on changed fields must not become routing on nothing."""
+        # As a viewset would: the instance comes from the DB, so `start_time` is a
+        # `datetime.time` rather than the string setUp assigned. Comparing a
+        # freshly-created in-memory row against DRF-validated values would compare
+        # str to time and call every field changed.
+        self.obj.refresh_from_db()
+        s = self._serializer(self.obj, {
+            'name': self.obj.name,
+            'code': self.obj.code,
+            'start_time': self.obj.start_time,
+            'end_time': '15:00:00',
+            'days_of_week': self.obj.days_of_week,
+            'is_active': False,
+        })
+        s.is_valid(raise_exception=True)
+        self.assertEqual(s.save().version, 2)
 
     def test_content_edit_creates_new_version(self):
         s = self._serializer(self.obj, {'start_time': '07:00:00'})
