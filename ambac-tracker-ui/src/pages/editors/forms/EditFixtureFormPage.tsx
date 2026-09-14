@@ -88,14 +88,14 @@ export default function EditFixtureFormPage() {
 
   const { data: processesData } = useProcesses();
   const processes = useMemo(
-    () => (((processesData as any)?.results ?? []) as any[]).map((p) => ({ id: String(p.id), name: p.name })),
+    () => (processesData?.results ?? []).map((p) => ({ id: String(p.id), name: p.name })),
     [processesData]
   );
   const selectedProcess = processes.find((p) => p.id === processId);
   const { data: processDetail } = useProcessDetail(processId);
   const processSteps = useMemo(
     () =>
-      (((processDetail as any)?.process_steps ?? []) as any[])
+      (processDetail?.process_steps ?? [])
         .filter((ps) => ps.step)
         .map((ps) => ({ id: String(ps.step.id), name: ps.step.name as string, order: ps.order })),
     [processDetail]
@@ -105,7 +105,7 @@ export default function EditFixtureFormPage() {
   // fixture loads — a `reset()` effect fails to propagate to the Kind Select on edit.
   const loadedValues = useMemo<FormValues | undefined>(() => {
     if (mode === "edit" && fixture) {
-      const f = fixture as any;
+      const f = fixture;
       return {
         name: f.name ?? "", kind: f.kind ?? "FIXTURE", quantity: f.quantity ?? 1,
         lead_time_days: f.lead_time_days ?? null,
@@ -122,7 +122,7 @@ export default function EditFixtureFormPage() {
 
   useEffect(() => {
     if (mode === "edit" && fixture) {
-      const f = fixture as any;
+      const f = fixture;
       // Radix Select doesn't reflect an RHF `values`-driven update, so set kind explicitly.
       form.setValue("kind", (f.kind ?? "FIXTURE") as FormValues["kind"], { shouldDirty: false });
       const ids: string[] = (f.steps ?? []).map(String);

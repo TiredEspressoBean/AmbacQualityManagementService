@@ -22,6 +22,13 @@ import { useUpdateStepSamplingRules } from '@/hooks/useUpdateStepSamplingRules';
 import { useRetrieveApprovalTemplates } from '@/hooks/useRetrieveApprovalTemplates';
 import SamplingRulesEditor from '@/components/SamplingRulesEditor';
 import { toast } from 'sonner';
+import type { api } from '@/lib/api/generated';
+
+// The request shape, taken from the generated client. The form's own zod schema
+// is deliberately looser (inputs yield strings), so the values are converted to
+// this at the submit boundary rather than cast past the type system.
+type SamplingUpdateBody = Parameters<typeof api.api_Steps_update_sampling_rules_create>[0];
+type ApiSamplingRule = SamplingUpdateBody['rules'][number];
 
 const samplingRuleSchema = z.object({
   rule_type: z.string().min(1),
@@ -344,10 +351,14 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
 
   const normalizeRules = (
     rules: { rule_type: string; value: string | number | null | undefined }[]
-  ): { rule_type: string; value: string | number | null; order: number }[] => {
+  ): ApiSamplingRule[] => {
     return rules.map((rule, index) => ({
-      rule_type: rule.rule_type,
-      value: rule.value ?? null,
+      // rule_type is chosen from a fixed picker, so it is always an enum member;
+      // the form schema just types it as a plain string.
+      rule_type: rule.rule_type as ApiSamplingRule['rule_type'],
+      // The API takes a number: parseRuleValue turns '' / null / '12' into
+      // null / null / 12. The form holds strings because inputs produce them.
+      value: parseRuleValue(rule.value),
       order: index + 1,
     }));
   };
@@ -384,7 +395,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
     const isAcceptance = isLot || isVar;
     // Acceptance families persist a single marker rule (the strategy) + plan params;
     // streaming persists its per-part rule rows. They never coexist.
-    const markerRule = isVar
+    const markerRule: ApiSamplingRule[] = isVar
       ? [{ rule_type: 'VARIABLES', value: null, order: 1 }]
       : [{ rule_type: values.strategy === 'Z14' ? 'AQL' : 'C_ZERO', value: null, order: 1 }];
 
@@ -392,10 +403,8 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
       {
         id: stepId,
         data: {
-          // eslint-disable-next-line local/no-as-any -- rule shapes are looser than the generated tuple/enum types
-          rules: (isAcceptance ? markerRule : normalizeRules(values.rules)) as any,
-          // eslint-disable-next-line local/no-as-any -- same
-          fallback_rules: (isAcceptance ? [] : normalizeRules(values.fallback_rules ?? [])) as any,
+          rules: isAcceptance ? markerRule : normalizeRules(values.rules),
+          fallback_rules: isAcceptance ? [] : normalizeRules(values.fallback_rules ?? []),
           tighten_after: isAcceptance ? null : (values.tighten_after ?? undefined),
           // fallback_duration is optional-but-non-nullable in the schema — omit
           // (undefined) rather than send null for acceptance families.
@@ -403,16 +412,15 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
           // Acceptance plan. Attribute (Lot): C0/Z14, AQL, level/severity (Z14 only).
           // Variables: strategy Z19, AQL + level, the measured characteristic, no severity (MVP).
           strategy: isVar ? 'Z19' : isLot ? (values.strategy || 'C0') : '',
-          aql: isAcceptance ? (values.aql ?? null) : null,
+          aql: isAcceptance && values.aql != null ? String(values.aql) : null,
           inspection_level: isVar
             ? (values.inspection_level || 'II')
             : isLot ? (values.strategy === 'Z14' ? (values.inspection_level || 'II') : 'II') : '',
           severity: isLot ? (values.strategy === 'Z14' ? (values.severity || '') : '') : '',
-          // eslint-disable-next-line local/no-as-any -- variables_characteristic is on the update serializer; generated type may lag
-          variables_characteristic: (isVar ? (values.variables_characteristic ?? null) : null) as any,
+          variables_characteristic: isVar ? (values.variables_characteristic ?? null) : null,
           // Quality gate — applies to both families.
           gate_metric: values.gate_metric || '',
-          gate_threshold: values.gate_threshold ?? null,
+          gate_threshold: values.gate_threshold != null ? String(values.gate_threshold) : null,
           gate_window: values.gate_window || '',
           gate_window_n: values.gate_window_n ?? null,
           gate_min_sample: values.gate_min_sample ?? null,
@@ -420,7 +428,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
           gate_capa_type: values.gate_capa_type || '',
           gate_capa_severity: values.gate_capa_severity || '',
           gate_approval_template: values.gate_approval_template ?? null,
-        } as any,
+        },
       },
       {
         onSuccess: () => {

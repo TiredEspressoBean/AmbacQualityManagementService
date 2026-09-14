@@ -85,7 +85,7 @@ export function MeasurementProgressChart({ workOrder, stepHistory = [] }: Props)
         const partsWithCapture = new Set(
             reports
                 .filter(r => (r.measurements || []).some((m: any) => m.definition === def.id))
-                .map(r => (r as any).part)
+                .map(r => r.part)
         ).size;
 
         return { def, totalMeasurements, passCount, failCount, passRate, partsWithCapture };
@@ -94,7 +94,7 @@ export function MeasurementProgressChart({ workOrder, stepHistory = [] }: Props)
     // Group defs by step id
     const defsByStep = new Map<string, typeof defStats>();
     for (const stat of defStats) {
-        const stepId = (stat.def as any).step as string | null;
+        const stepId = stat.def.step;
         if (!stepId) continue;
         if (!defsByStep.has(stepId)) defsByStep.set(stepId, []);
         defsByStep.get(stepId)!.push(stat);
@@ -111,7 +111,7 @@ export function MeasurementProgressChart({ workOrder, stepHistory = [] }: Props)
         .map(([stepId, stats]) => {
             const meta = stepMeta.get(stepId);
             const partsReached = meta?.parts_reached ?? 0;
-            const stepName = meta?.step_name || (stats[0]?.def as any)?.step_name || "Unknown step";
+            const stepName = meta?.step_name || stats[0]?.def?.step_name || "Unknown step";
             const stepOrder = meta?.step_order ?? 9999;
             return { stepId, stepName, stepOrder, partsReached, stats };
         })
