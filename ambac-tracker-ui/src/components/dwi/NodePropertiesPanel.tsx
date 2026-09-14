@@ -121,7 +121,12 @@ export function NodePropertiesPanel({ editor }: { editor: Editor | null }) {
         );
     }
 
-    const adapter = {
+    // Every EditForm destructures exactly `{ node, updateAttributes }` even
+    // though they all declare the full NodeViewProps, and this panel is not a
+    // NodeView -- it has no decorations, getPos, or view to hand over. So the
+    // adapter is genuinely a Pick, and widening it is a single assertion; the
+    // `as unknown as` this used to carry was never required.
+    const adapter: Pick<NodeViewProps, "node" | "updateAttributes"> = {
         node,
         updateAttributes: (partial: Record<string, unknown>) => {
             // Critical: do NOT call `.focus()` in this chain. The panel
@@ -131,7 +136,7 @@ export function NodePropertiesPanel({ editor }: { editor: Editor | null }) {
             // We just update attributes; selection stays where it is.
             editor.chain().updateAttributes(typeName, partial).run();
         },
-    } as unknown as NodeViewProps;
+    };
 
     return (
         // Isolation wrapper:
@@ -155,7 +160,7 @@ export function NodePropertiesPanel({ editor }: { editor: Editor | null }) {
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {NODE_LABELS[typeName] ?? typeName}
             </div>
-            <Form {...adapter} />
+            <Form {...(adapter as NodeViewProps)} />
         </div>
     );
 }

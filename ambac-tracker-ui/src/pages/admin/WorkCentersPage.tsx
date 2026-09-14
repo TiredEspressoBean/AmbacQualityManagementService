@@ -116,12 +116,12 @@ export default function WorkCentersPage() {
     const openEdit = (wc: WorkCenter) => setDraft({
         open: true, editing: wc,
         code: wc.code, name: wc.name,
-        // WorkCenter.kind isn't yet on the read-serializer for older tenants;
-        // fall back to PRODUCTION defensively.
-        kind: (((wc as unknown) as { kind?: Kind }).kind ?? "PRODUCTION"),
+        // `kind` is optional in the schema, so the PRODUCTION fallback stays —
+        // but it no longer needs a cast to reach it.
+        kind: wc.kind ?? "PRODUCTION",
         description: wc.description ?? "",
-        isConstraint: !!((wc as unknown) as { is_constraint?: boolean }).is_constraint,
-        isCritical: !!((wc as unknown) as { is_critical?: boolean }).is_critical,
+        isConstraint: !!wc.is_constraint,
+        isCritical: !!wc.is_critical,
     });
 
     const submit = () => {
@@ -136,15 +136,17 @@ export default function WorkCentersPage() {
             return;
         }
         if (draft.editing) {
-            // Send only what actually changed. The backend routes an update through
-            // `create_new_version` based on which KEYS are present, not on which values
-            // differ — so PATCHing the whole form forks a work-centre version even when
-            // the planner only flipped a switch that is explicitly non-versioning. That
-            // buries real engineering history under screen preferences.
-            const e = (draft.editing as unknown) as Record<string, unknown>;
+            // Send only what actually changed. The backend now compares values too
+            // (`apply_versioned_update` routes on changed fields, not present ones), so
+            // this is no longer load-bearing for version correctness — it just keeps
+            // the payload honest about what the user touched.
+            // Indexed read of a known-key payload against the saved row. The
+            // keys of `payload` are all WorkCenter fields, so this is a plain
+            // lookup rather than a reinterpretation of the object.
+            const e: Partial<Record<keyof typeof payload, unknown>> = draft.editing;
             const changed = Object.fromEntries(
-                Object.entries(payload).filter(([k, v]) => v !== (e[k] ?? (
-                    typeof v === "boolean" ? false : ""))),
+                Object.entries(payload).filter(([k, v]) => v !== (
+                    e[k as keyof typeof payload] ?? (typeof v === "boolean" ? false : ""))),
             );
             if (Object.keys(changed).length === 0) {
                 setDraft(EMPTY_DRAFT);
@@ -206,11 +208,9 @@ export default function WorkCentersPage() {
                             </td></tr>
                         )}
                         {rows.map((wc) => {
-                            const w = (wc as unknown) as WorkCenter & {
-                                kind?: Kind; archived?: boolean; is_constraint?: boolean;
-                                is_critical?: boolean;
-                                step_count?: number; member_count?: number; equipment?: string[];
-                            };
+                            // Every field this row reads is on WorkCenter now; the
+                            // widened alias it used to be cast to is gone.
+                            const w = wc;
                             const kind = w.kind ?? "PRODUCTION";
                             const archived = w.archived;
                             const num = (n: number | undefined) =>
@@ -286,7 +286,7 @@ export default function WorkCentersPage() {
             </div>
 
             <StationDialog
-                station={detail as never}
+                station={detail}
                 open={detail != null}
                 onOpenChange={(v) => !v && setDetail(null)}
             />

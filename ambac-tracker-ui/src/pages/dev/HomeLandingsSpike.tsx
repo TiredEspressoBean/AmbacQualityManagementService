@@ -46,11 +46,14 @@ export function HomeLandingsSpike() {
     // Preview identity: real user (keeps pk for personal blocks) with the group
     // swapped to the selected role and is_staff cleared, so only the group drives
     // block gating/ordering (matches how Home resolves a real member of that role).
-    const previewUser = {
+    // The cast this used to carry was only needed because the synthetic group
+    // omitted `id`, which AuthUserGroup requires. Block gating keys off `name`
+    // only, so a marker id keeps the shape honest without a reinterpretation.
+    const previewUser: AuthUser = {
         ...realUser,
         is_staff: false,
-        groups: [{ name: role }],
-    } as unknown as AuthUser;
+        groups: [{ id: `preview:${role}`, name: role }],
+    };
 
     const blocks = resolveHomeBlocks(previewUser);
 

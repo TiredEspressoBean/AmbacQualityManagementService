@@ -27,6 +27,14 @@ type ErrorEntry = {
 const MAX_ENTRIES = 50;
 const buffer: ErrorEntry[] = [];
 
+// Declared rather than cast at the assignment: `__errorLog` is a real part of
+// this module's dev-console surface, so it belongs in the Window type.
+declare global {
+    interface Window {
+        __errorLog?: typeof dump;
+    }
+}
+
 function record(entry: ErrorEntry) {
     buffer.push(entry);
     if (buffer.length > MAX_ENTRIES) buffer.shift();
@@ -92,7 +100,7 @@ export function installErrorLog() {
     });
 
     // Expose so devs can run `__errorLog()` from the console.
-    (window as unknown as { __errorLog: typeof dump }).__errorLog = dump;
+    window.__errorLog = dump;
 }
 
 /** Record a React Query / mutation error so it shows up in __errorLog().

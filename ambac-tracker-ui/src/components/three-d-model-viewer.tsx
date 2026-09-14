@@ -244,6 +244,17 @@ export type ViewerViewApi = {
  * (`makeDefault` exposes them via `useThree().controls`). Restores
  * `initialView` once on load, and exposes get/apply-view to the parent.
  */
+/** `useThree().controls` is typed as the generic controls base, which has no
+ *  `target`. Rather than double-casting at each use, narrow once and actually
+ *  check the shape at runtime — `controls` is legitimately null until
+ *  OrbitControls mounts. */
+type OrbitLike = { target: THREE.Vector3; update?: () => void };
+function asOrbitLike(controls: unknown): OrbitLike | null {
+    return controls && typeof controls === "object" && "target" in controls
+        ? (controls as OrbitLike)
+        : null;
+}
+
 function ViewController({
     initialView,
     onReady,
@@ -255,8 +266,7 @@ function ViewController({
     const appliedRef = useRef(false);
 
     const getView = useCallback((): SavedView => {
-        const ctrl = controls as unknown as { target?: THREE.Vector3 } | null;
-        const t = ctrl?.target ?? new THREE.Vector3();
+        const t = asOrbitLike(controls)?.target ?? new THREE.Vector3();
         return {
             position: [camera.position.x, camera.position.y, camera.position.z],
             target: [t.x, t.y, t.z],
@@ -265,7 +275,7 @@ function ViewController({
 
     const applyView = useCallback(
         (view: SavedView) => {
-            const ctrl = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
+            const ctrl = asOrbitLike(controls);
             camera.position.set(view.position[0], view.position[1], view.position[2]);
             if (ctrl?.target) {
                 ctrl.target.set(view.target[0], view.target[1], view.target[2]);
