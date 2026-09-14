@@ -25,6 +25,17 @@ pre-computed value.
 Part type is resolved via WorkOrder → Process → PartType.  The released BOM for
 that PartType is then fetched (status=RELEASED).
 
+Lines are scoped to the job's ROUTE, not to the whole BOM. `BOMLine.consumed_at_step`
+pegs a line to the operation that consumes it, and a process may carry rework or
+alternate branches a released job will not run; picking those would hand the crib parts
+for operations that are not going to happen. The route comes from `resolve_route` walking
+DEFAULT edges from the process head — the same resolver the scheduler uses, so this sheet
+and the schedule cannot disagree about what is in scope. An off-route line is *shown*
+and marked not-picked rather than dropped: a line that vanishes reads as a BOM that
+never had it. A line pegged to nothing is always in scope, and if no route can be
+resolved at all nothing is filtered (silently under-picking is worse than over-picking —
+the picker cannot see an absence).
+
 Defense-in-depth: every ORM query in build_context() filters by
 tenant explicitly, in addition to the param serializer's upstream
 check. See Documents/TYPST_MIGRATION_PLAN.md "SPC service methods
@@ -186,6 +197,8 @@ class PickListAdapter(ReportAdapter):
         from Tracker.models.mes_standard import BOM
         from Tracker.reports.services.barcodes import render_barcode_svg
         from Tracker.services.mes.consumption import plan_draw
+        from Tracker.services.scheduling.manual_move import _process_graph
+        from Tracker.services.scheduling.routing import resolve_route
 
         today = datetime.date.today()
 
@@ -225,9 +238,38 @@ class PickListAdapter(ReportAdapter):
                 .first()
             )
 
+            # Which steps this job will actually run. A BOM line pegged to a step on a
+            # rework or alternate branch is not material for THIS release, and picking it
+            # anyway would pull every branch's parts on every job. `resolve_route` walks
+            # DEFAULT edges only, which is precisely the nominal path a released job
+            # takes — the same resolver the scheduler uses, so the sheet and the schedule
+            # cannot disagree about which operations are in scope.
+            #
+            # From the head rather than from any part's current step: this document is
+            # "what the job needs", and its quantities are line × the FULL work-order
+            # quantity. A remaining-work route would contradict the quantities beside it.
+            #
+            # `None` means the route could not be resolved (no process, or a process with
+            # no authored steps). Then nothing is filtered — under-picking silently is a
+            # worse failure than over-picking, because the picker cannot see the absence.
+            route_steps = None
+            if wo.process_id:
+                nodes, edges = _process_graph(wo.process_id)
+                if nodes:
+                    ids, _ = resolve_route(
+                        min(nodes, key=lambda n: n.order).step_id, nodes, edges)
+                    route_steps = set(ids)
+
             if bom is not None:
                 wo_qty = Decimal(wo.quantity)
                 for line in bom.lines.all():
+                    # Off-route lines stay on the sheet rather than vanishing from it —
+                    # a line that disappears looks like a BOM that never had it.
+                    off_route = (
+                        route_steps is not None
+                        and line.consumed_at_step_id is not None
+                        and line.consumed_at_step_id not in route_steps
+                    )
                     qty_per = line.quantity
                     qty_req = qty_per * wo_qty
                     # A line is EITHER an in-house component_type (MAKE) or a
@@ -243,7 +285,7 @@ class PickListAdapter(ReportAdapter):
                     # Purchased lines get a pick plan; MAKE lines are built, not
                     # picked, so they stay blank rather than showing a false shortage.
                     location, lot_text, short_text = "", "", ""
-                    if line.material_id:
+                    if line.material_id and not off_route:
                         plan = plan_draw(line.material_id, tenant, qty_req)
                         planned = sum(Decimal(str(p['take'])) for p in plan)
                         lot_text = ", ".join(p['lot_number'] for p in plan)
@@ -267,7 +309,12 @@ class PickListAdapter(ReportAdapter):
                         lots=lot_text,
                         qty_short=short_text,
                         not_picked_reason=(
-                            "made in-house — not picked" if line.source == 'MAKE'
+                            # Off-route wins over the other two: it is a statement about
+                            # THIS job's scope, and calling an off-route MAKE line
+                            # "made in-house" would imply a child work order exists for
+                            # it on this job, which it does not.
+                            "not on this job's route" if off_route
+                            else "made in-house — not picked" if line.source == 'MAKE'
                             else "" if line.material_id
                             # A bought part: procured, but staging lines are keyed to
                             # Material, so it is not kitted from the crib today.
