@@ -36,7 +36,8 @@ from Tracker.serializers.mes_lite import (
     ProcessWithStepsSerializer, EquipmentsSerializer, EquipmentTypeSerializer,
     BulkAddPartsSerializer, BulkRemovePartsSerializer,
     StepAdvancementSerializer, BulkStepAdvancementSerializer,
-    StepExecutionSerializer, StepExecutionListSerializer, WIPSummarySerializer,
+    StepExecutionSerializer, StepExecutionCreateSerializer,
+    StepExecutionListSerializer, WIPSummarySerializer,
     OutsideProcessShipmentSerializer, ReadyToShipGroupSerializer,
     # Digital Traveler serializers
     WorkOrderStepHistoryResponseSerializer, PartTravelerResponseSerializer,
@@ -2844,6 +2845,11 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
 
 # ===== STEP EXECUTION VIEWSET =====
 
+@extend_schema_view(
+    # create() reads the second-person override credentials off request.data,
+    # outside the serializer -- see StepExecutionCreateSerializer.
+    create=extend_schema(request=StepExecutionCreateSerializer),
+)
 class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
                            viewsets.ModelViewSet):
     """

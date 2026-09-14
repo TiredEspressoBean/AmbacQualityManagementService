@@ -78,7 +78,6 @@ export function MaterialsPage() {
         const q: Record<string, unknown> = { offset: params.offset, limit: params.limit, ...queriesForTab(tab) };
         if (params.ordering) q.ordering = params.ordering;
         if (params.search) q.search = params.search;
-        // eslint-disable-next-line react-hooks/rules-of-hooks -- useList is itself a hook (use-prefixed), invoked unconditionally by ModelEditorPage
         return useListMaterialLots(q as never);
     };
 

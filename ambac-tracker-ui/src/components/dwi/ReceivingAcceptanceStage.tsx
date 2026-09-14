@@ -130,9 +130,9 @@ export function ReceivingAcceptanceStage({
         setEvaluating(true);
         try {
             if (!(await ensureFlushed())) { toast.error("Could not save the reading"); return; }
-            const res = await fetch(`/api/MaterialLots/${lotId}/evaluate_receiving/`, { credentials: "include" });
-            if (!res.ok) { toast.error("Could not evaluate the lot"); return; }
-            setServerVerdict(await res.json());
+            setServerVerdict(
+                await api.api_MaterialLots_evaluate_receiving_retrieve({ params: { id: lotId } }),
+            );
         } catch {
             toast.error("Could not evaluate the lot");
         } finally {

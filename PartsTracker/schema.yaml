@@ -21624,13 +21624,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StepExecutionRequest'
+              $ref: '#/components/schemas/StepExecutionCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StepExecutionRequest'
+              $ref: '#/components/schemas/StepExecutionCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StepExecutionRequest'
+              $ref: '#/components/schemas/StepExecutionCreateRequest'
         required: true
       security:
       - cookieAuth: []
@@ -24906,13 +24906,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/EnsureInspectionQrRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/EnsureInspectionQrRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/EnsureInspectionQrRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -24922,7 +24922,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Substep'
+                $ref: '#/components/schemas/EnsureInspectionQrResponse'
           description: ''
   /api/Substeps/{id}/submit/:
     post:
@@ -25801,8 +25801,8 @@ paths:
       - in: path
         name: user_id
         schema:
-          type: string
-        description: User UUID to remove
+          type: integer
+        description: User pk to remove
         required: true
       tags:
       - api
@@ -28853,6 +28853,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BulkReconcileUsersResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkReconcileUsersQueued'
           description: ''
         '400':
           content:
@@ -34995,7 +35001,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProcessChangeOrder'
+                $ref: '#/components/schemas/AffectedWorkordersResponse'
           description: ''
   /api/process-change-orders/{id}/approve/:
     post:
@@ -35626,18 +35632,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -37421,6 +37415,52 @@ components:
       - split_parts_advanced
       - split_parts_blocked
       - status
+    AffectedWorkorderRow:
+      type: object
+      properties:
+        wo_id:
+          type: string
+          format: uuid
+        erp_id:
+          type: string
+        status:
+          type: string
+        priority:
+          type: integer
+        quantity:
+          type: integer
+        total_parts:
+          type: integer
+        affected_parts:
+          type: integer
+        portable_count:
+          type: integer
+        stranded:
+          type: array
+          items:
+            $ref: '#/components/schemas/StrandedPart'
+      required:
+      - affected_parts
+      - erp_id
+      - priority
+      - quantity
+      - status
+      - total_parts
+      - wo_id
+    AffectedWorkordersResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AffectedWorkorderRow'
+        available_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailableStep'
+      required:
+      - available_steps
+      - results
     ApprovalFlowTypeEnum:
       enum:
       - ALL_REQUIRED
@@ -37451,8 +37491,18 @@ components:
           maxLength: 36
         content_object_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - type
+          - id
+          - str
+          properties:
+            type:
+              type: string
+            id:
+              type: string
+            str:
+              type: string
           readOnly: true
         content_object_display:
           type: string
@@ -37462,8 +37512,8 @@ components:
           type: integer
           nullable: true
         requested_by_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/UserSelect'
           nullable: true
           readOnly: true
         reason:
@@ -38276,6 +38326,17 @@ components:
       description: |-
         * `off` - Off (flag stale only; planner re-solves by hand)
         * `live` - Live (auto re-solve and supersede the schedule)
+    AvailableStep:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     BOM:
       type: object
       description: |-
@@ -38869,6 +38930,65 @@ components:
       required:
       - operator_id
       - task_ids
+    BulkReconcileResultRow:
+      type: object
+      properties:
+        row:
+          type: integer
+        outcome:
+          $ref: '#/components/schemas/BulkReconcileResultRowOutcomeEnum'
+        user_id:
+          type: string
+        invitation_id:
+          type: string
+        invitation_url:
+          type: string
+        changes:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        error:
+          type: string
+      required:
+      - outcome
+      - row
+    BulkReconcileResultRowOutcomeEnum:
+      enum:
+      - created
+      - updated
+      - unchanged
+      - error
+      type: string
+      description: |-
+        * `created` - created
+        * `updated` - updated
+        * `unchanged` - unchanged
+        * `error` - error
+    BulkReconcileRowRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        first_name:
+          type: string
+        last_name:
+          type: string
+        group:
+          type: string
+        groups:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+      required:
+      - email
     BulkReconcileSummary:
       type: object
       properties:
@@ -38888,14 +39008,29 @@ components:
       - total
       - unchanged
       - updated
+    BulkReconcileUsersQueued:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+        total_rows:
+          type: integer
+        message:
+          type: string
+      required:
+      - message
+      - status
+      - task_id
+      - total_rows
     BulkReconcileUsersRequestRequest:
       type: object
       properties:
         rows:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/BulkReconcileRowRequest'
           description: 'List of row dicts: {email, first_name, last_name, group, status,
             message}. Either `rows` (this field) or a `file` upload must be provided.'
     BulkReconcileUsersResponse:
@@ -38906,8 +39041,7 @@ components:
         results:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/BulkReconcileResultRow'
       required:
       - results
       - summary
@@ -39567,8 +39701,19 @@ components:
           format: uuid
         capa_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - capa_number
+          - problem_statement
+          properties:
+            id:
+              type: string
+              format: uuid
+            capa_number:
+              type: string
+            problem_statement:
+              type: string
           readOnly: true
         task_type:
           $ref: '#/components/schemas/TaskTypeEnum'
@@ -39728,8 +39873,19 @@ components:
           format: uuid
         capa_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - capa_number
+          - problem_statement
+          properties:
+            id:
+              type: string
+              format: uuid
+            capa_number:
+              type: string
+            problem_statement:
+              type: string
           readOnly: true
         verification_method:
           type: string
@@ -42280,6 +42436,25 @@ components:
             format: double
       required:
       - embedding
+    EnsureInspectionQrRequestRequest:
+      type: object
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+      required:
+      - step_execution
+    EnsureInspectionQrResponse:
+      type: object
+      properties:
+        quality_report_id:
+          type: string
+          format: uuid
+        created:
+          type: boolean
+      required:
+      - created
+      - quality_report_id
     EquipmentType:
       type: object
       description: |-
@@ -46687,16 +46862,6 @@ components:
         * `COMPLETED` - Completed
         * `ON_HOLD` - On hold
         * `CANCELLED` - Cancelled
-    OutcomeEnum:
-      enum:
-      - selected
-      - deselected
-      - pending
-      type: string
-      description: |-
-        * `selected` - Selected
-        * `deselected` - Deselected
-        * `pending` - Pending
     OutsideProcessShipment:
       type: object
       description: |-
@@ -49829,8 +49994,23 @@ components:
           format: uuid
         part_type_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - name
+          - version
+          - ID_prefix
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            version:
+              type: integer
+            ID_prefix:
+              type: string
+              nullable: true
           readOnly: true
         step:
           type: string
@@ -49838,8 +50018,31 @@ components:
           nullable: true
         step_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - name
+          - order
+          - description
+          - is_last_step
+          - process_name
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            order:
+              type: integer
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            is_last_step:
+              type: boolean
+            process_name:
+              type: string
+              nullable: true
           readOnly: true
         work_order:
           type: string
@@ -53594,8 +53797,20 @@ components:
           description: Short human-readable title shown in substep listings.
           maxLength: 200
         body_blocks:
-          description: 'TipTap document JSON. Shape: {type: ''doc'', content: [...]}.
-            See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.'
+          oneOf:
+          - type: object
+            properties:
+              type:
+                type: string
+              content:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+          - type: array
+            items:
+              type: object
+              additionalProperties: true
         is_optional:
           type: boolean
           description: Operator may mark this substep N/A instead of completing it.
@@ -53766,7 +53981,20 @@ components:
           description: Translated title.
           maxLength: 200
         body_blocks:
-          description: Translated TipTap document JSON; same shape as Substep.body_blocks.
+          oneOf:
+          - type: object
+            properties:
+              type:
+                type: string
+              content:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+          - type: array
+            items:
+              type: object
+              additionalProperties: true
         archived:
           type: boolean
     PatchedSupplierQualificationRequest:
@@ -57018,8 +57246,19 @@ components:
           format: uuid
         capa_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - capa_number
+          - problem_statement
+          properties:
+            id:
+              type: string
+              format: uuid
+            capa_number:
+              type: string
+            problem_statement:
+              type: string
           readOnly: true
         rca_method:
           $ref: '#/components/schemas/RcaMethodEnum'
@@ -58476,7 +58715,7 @@ components:
           description: The substep whose sampling_rule produced this decision.
         outcome:
           allOf:
-          - $ref: '#/components/schemas/OutcomeEnum'
+          - $ref: '#/components/schemas/SamplingDecisionOutcomeEnum'
           readOnly: true
           description: |-
             What the rule decided - SELECTED, DESELECTED, or PENDING.
@@ -58510,6 +58749,16 @@ components:
       - step_execution
       - substep
       - superseded_by
+    SamplingDecisionOutcomeEnum:
+      enum:
+      - selected
+      - deselected
+      - pending
+      type: string
+      description: |-
+        * `selected` - Selected
+        * `deselected` - Deselected
+        * `pending` - Pending
     SamplingRule:
       type: object
       description: Enhanced sampling rule serializer
@@ -60324,6 +60573,81 @@ components:
       - step_info
       - training_authorization
       - updated_at
+    StepExecutionCreateRequest:
+      type: object
+      description: |-
+        Documentation-only view of the create body.
+
+        POST /api/StepExecutions/ accepts three fields that are NOT on the model
+        and NOT on StepExecutionSerializer: the second-person override credentials.
+        `StepExecutionViewSet.create` reads them straight off `request.data`
+        (`_verify_supervisor` for the email/password pair, `override_reason` for the
+        log) before delegating to the normal create, so they never pass through a
+        serializer.
+
+        Undeclared, the generated client's body schema omitted them — and zod
+        strips unknown keys, so a client using the typed method would have had its
+        override credentials silently dropped and hit the competence gate with no
+        way past it.
+
+        Referenced only from `@extend_schema(request=...)`; never instantiated for
+        validation, so it changes the contract and nothing else.
+      properties:
+        part:
+          type: string
+          format: uuid
+          nullable: true
+          description: The part being tracked through this step (mutually exclusive
+            with `core`).
+        step:
+          type: string
+          format: uuid
+          description: The step being executed
+        visit_number:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Which visit this is (1st, 2nd, 3rd time at this step)
+        exited_at:
+          type: string
+          format: date-time
+          nullable: true
+        assigned_to:
+          type: integer
+          nullable: true
+          description: Operator assigned to this step execution
+        completed_by:
+          type: integer
+          nullable: true
+          description: Operator who completed this step
+        next_step:
+          type: string
+          format: uuid
+          nullable: true
+          description: The step this part moved to (for audit trail)
+        decision_result:
+          type: string
+          description: 'Result of decision: ''PASS'', ''FAIL'', measurement value,
+            etc.'
+          maxLength: 50
+        status:
+          $ref: '#/components/schemas/StepExecutionStatusEnum'
+        archived:
+          type: boolean
+        override_email:
+          type: string
+          format: email
+          writeOnly: true
+          minLength: 1
+        override_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        override_reason:
+          type: string
+          writeOnly: true
+      required:
+      - step
     StepExecutionList:
       type: object
       description: Lightweight serializer for list views - avoids N+1 with select_related.
@@ -61379,8 +61703,23 @@ components:
           format: uuid
         part_type_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - name
+          - version
+          - ID_prefix
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            version:
+              type: integer
+            ID_prefix:
+              type: string
+              nullable: true
           readOnly: true
         part_type_name:
           type: string
@@ -61671,6 +62010,25 @@ components:
       required:
       - name
       - part_type
+    StrandedPart:
+      type: object
+      properties:
+        part_id:
+          type: string
+          format: uuid
+        wo_id:
+          type: string
+          format: uuid
+        step_id:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+      required:
+      - part_id
+      - step_id
+      - step_name
+      - wo_id
     SubjectKindEnum:
       enum:
       - fpi_record
@@ -61735,8 +62093,20 @@ components:
           description: Short human-readable title shown in substep listings.
           maxLength: 200
         body_blocks:
-          description: 'TipTap document JSON. Shape: {type: ''doc'', content: [...]}.
-            See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.'
+          oneOf:
+          - type: object
+            properties:
+              type:
+                type: string
+              content:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+          - type: array
+            items:
+              type: object
+              additionalProperties: true
         is_optional:
           type: boolean
           description: Operator may mark this substep N/A instead of completing it.
@@ -62123,8 +62493,20 @@ components:
           description: Short human-readable title shown in substep listings.
           maxLength: 200
         body_blocks:
-          description: 'TipTap document JSON. Shape: {type: ''doc'', content: [...]}.
-            See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.'
+          oneOf:
+          - type: object
+            properties:
+              type:
+                type: string
+              content:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+          - type: array
+            items:
+              type: object
+              additionalProperties: true
         is_optional:
           type: boolean
           description: Operator may mark this substep N/A instead of completing it.
@@ -62528,7 +62910,20 @@ components:
           description: Translated title.
           maxLength: 200
         body_blocks:
-          description: Translated TipTap document JSON; same shape as Substep.body_blocks.
+          oneOf:
+          - type: object
+            properties:
+              type:
+                type: string
+              content:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+          - type: array
+            items:
+              type: object
+              additionalProperties: true
         created_at:
           type: string
           format: date-time
@@ -62565,7 +62960,20 @@ components:
           description: Translated title.
           maxLength: 200
         body_blocks:
-          description: Translated TipTap document JSON; same shape as Substep.body_blocks.
+          oneOf:
+          - type: object
+            properties:
+              type:
+                type: string
+              content:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+          - type: array
+            items:
+              type: object
+              additionalProperties: true
         archived:
           type: boolean
       required:
@@ -63181,16 +63589,15 @@ components:
       type: object
       properties:
         user_id:
-          type: string
-          minLength: 1
+          type: integer
         facility_id:
           type: string
+          format: uuid
           nullable: true
-          minLength: 1
         company_id:
           type: string
+          format: uuid
           nullable: true
-          minLength: 1
       required:
       - user_id
     TenantGroupPermissionsRequestRequest:
@@ -66210,8 +66617,19 @@ components:
           nullable: true
         process_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - name
+          - version
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            version:
+              type: integer
           readOnly: true
         expected_start:
           type: string
@@ -66488,8 +66906,19 @@ components:
           nullable: true
         process_info:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - id
+          - name
+          - version
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            version:
+              type: integer
           readOnly: true
         expected_completion:
           type: string

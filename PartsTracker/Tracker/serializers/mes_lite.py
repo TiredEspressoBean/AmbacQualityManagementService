@@ -61,6 +61,51 @@ _GATE_INFO_SCHEMA = {
     },
 }
 
+# The `*_info` method fields below were all bare DictField, which generates an
+# empty object -- so no consumer could read a key without casting. Types here
+# are taken from the model fields the methods actually read (PartTypes.version
+# is a PositiveIntegerField, ID_prefix and Steps.description are nullable, and
+# so on); getting one wrong would make the zod client reject the response.
+
+_PART_TYPE_INFO_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "required": ["id", "name", "version", "ID_prefix"],
+    "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "name": {"type": "string"},
+        "version": {"type": "integer"},
+        "ID_prefix": {"type": "string", "nullable": True},
+    },
+}
+
+_STEP_INFO_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "required": ["id", "name", "order", "description", "is_last_step", "process_name"],
+    "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "name": {"type": "string"},
+        # order and process_name are null when the part has no work order, so
+        # there is no process to resolve the step's position within.
+        "order": {"type": "integer", "nullable": True},
+        "description": {"type": "string", "nullable": True},
+        "is_last_step": {"type": "boolean"},
+        "process_name": {"type": "string", "nullable": True},
+    },
+}
+
+_PROCESS_INFO_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "required": ["id", "name", "version"],
+    "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "name": {"type": "string"},
+        "version": {"type": "integer"},
+    },
+}
+
 # One entry from the customer_note timeline. timestamp is null for notes in the
 # pre-timeline format, which get_notes still parses.
 _NOTE_SCHEMA = {
@@ -411,7 +456,7 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
         return {'has_errors': obj.has_quality_errors(), 'latest_status': obj.get_latest_quality_status(),
                 'error_count': obj.error_reports.count()}
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_PART_TYPE_INFO_SCHEMA)
     def get_part_type_info(self, obj):
         if obj.part_type:
             return {'id': obj.part_type.id, 'name': obj.part_type.name, 'version': obj.part_type.version,
@@ -430,7 +475,7 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
                 return process.id
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_STEP_INFO_SCHEMA)
     def get_step_info(self, obj):
         if obj.step:
             # Get process from work_order for process-specific fields
@@ -604,7 +649,7 @@ class WorkOrderListSerializer(SecureModelMixin):
             PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED, PartsStatus.RMA_CLOSED,
         )).count()
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_PROCESS_INFO_SCHEMA)
     def get_process_info(self, obj):
         if obj.process:
             return {'id': obj.process.id, 'name': obj.process.name, 'version': obj.process.version}
@@ -711,7 +756,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     def get_current_hold(self, obj):
         return _serialize_current_hold(obj)
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_PROCESS_INFO_SCHEMA)
     def get_process_info(self, obj):
         if obj.process:
             return {'id': obj.process.id, 'name': obj.process.name, 'version': obj.process.version}
@@ -1090,7 +1135,7 @@ class StepsSerializer(SecureModelMixin):
         except Processes.DoesNotExist:
             return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_PART_TYPE_INFO_SCHEMA)
     def get_part_type_info(self, obj):
         if obj.part_type:
             return {'id': obj.part_type.id, 'name': obj.part_type.name, 'version': obj.part_type.version,
@@ -1134,6 +1179,8 @@ class StepExecutionSerializer(SecureModelMixin):
             # Server-computed competence snapshot / override log — never client-set.
             'training_authorization',
         )
+
+
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_part_info(self, obj):
@@ -1201,6 +1248,37 @@ class StepExecutionSerializer(SecureModelMixin):
     def get_is_active(self, obj):
         """Whether this execution is still active (not exited)."""
         return obj.exited_at is None
+
+
+class StepExecutionCreateSerializer(StepExecutionSerializer):
+    """Documentation-only view of the create body.
+
+    POST /api/StepExecutions/ accepts three fields that are NOT on the model
+    and NOT on StepExecutionSerializer: the second-person override credentials.
+    `StepExecutionViewSet.create` reads them straight off `request.data`
+    (`_verify_supervisor` for the email/password pair, `override_reason` for the
+    log) before delegating to the normal create, so they never pass through a
+    serializer.
+
+    Undeclared, the generated client's body schema omitted them — and zod
+    strips unknown keys, so a client using the typed method would have had its
+    override credentials silently dropped and hit the competence gate with no
+    way past it.
+
+    Referenced only from `@extend_schema(request=...)`; never instantiated for
+    validation, so it changes the contract and nothing else.
+    """
+
+    override_email = serializers.EmailField(required=False, write_only=True)
+    override_password = serializers.CharField(required=False, write_only=True)
+    override_reason = serializers.CharField(
+        required=False, allow_blank=True, write_only=True
+    )
+
+    class Meta(StepExecutionSerializer.Meta):
+        fields = StepExecutionSerializer.Meta.fields + (
+            'override_email', 'override_password', 'override_reason',
+        )
 
 
 class StepExecutionListSerializer(SecureModelMixin):

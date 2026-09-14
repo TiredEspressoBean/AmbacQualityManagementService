@@ -169,11 +169,9 @@ export function WorkOrderDetailPage() {
             </div>
 
             {/* Process Info */}
-            {/* eslint-disable-next-line local/no-as-any -- process_info typed as {} passthrough in schema; name field exists at runtime */}
-            {(workOrder.process_info as any)?.name && (
+            {workOrder.process_info?.name && (
                 <p className="text-muted-foreground">
-                    {/* eslint-disable-next-line local/no-as-any -- process_info typed as {} passthrough in schema */}
-                    Process: {(workOrder.process_info as any).name}
+                    Process: {workOrder.process_info.name}
                 </p>
             )}
 

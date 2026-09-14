@@ -147,6 +147,10 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             created_by=self.request.user,
         )
 
+    # The handler never reads request.data -- narrative fields are PATCHed
+    # before this is called -- so the body is empty. Undeclared, spectacular
+    # inferred ProcessChangeRequestRequest and the client demanded a full PCR.
+    @extend_schema(request=None, responses={200: ProcessChangeRequestSerializer})
     @action(detail=True, methods=['post'], url_path='submit')
     def submit(self, request, pk=None):
         pcr = self.get_object()
@@ -494,6 +498,49 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         pco.refresh_from_db()
         return Response(self.get_serializer(pco).data)
 
+    # Shape comes from impact_analysis.affected_workorders_with_impact plus
+    # part_remap._stranded_info. portable_count/stranded are only emitted when
+    # the PCO has a draft process version to classify against, so they are
+    # optional; everything else is always present.
+    @extend_schema(
+        responses={200: inline_serializer(
+            name='AffectedWorkordersResponse',
+            fields={
+                'results': serializers.ListField(child=inline_serializer(
+                    name='AffectedWorkorderRow',
+                    fields={
+                        'wo_id': serializers.UUIDField(),
+                        'erp_id': serializers.CharField(),
+                        'status': serializers.CharField(),
+                        'priority': serializers.IntegerField(),
+                        'quantity': serializers.IntegerField(),
+                        'total_parts': serializers.IntegerField(),
+                        'affected_parts': serializers.IntegerField(),
+                        'portable_count': serializers.IntegerField(required=False),
+                        'stranded': serializers.ListField(
+                            required=False,
+                            child=inline_serializer(
+                                name='StrandedPart',
+                                fields={
+                                    'part_id': serializers.UUIDField(),
+                                    'wo_id': serializers.UUIDField(),
+                                    'step_id': serializers.UUIDField(),
+                                    'step_name': serializers.CharField(),
+                                },
+                            ),
+                        ),
+                    },
+                )),
+                'available_steps': serializers.ListField(child=inline_serializer(
+                    name='AvailableStep',
+                    fields={
+                        'id': serializers.UUIDField(),
+                        'name': serializers.CharField(),
+                    },
+                )),
+            },
+        )}
+    )
     @action(detail=True, methods=['get'], url_path='affected-workorders')
     def affected_workorders(self, request, pk=None):
         """Per-WO impact summary for the PCO migration picker.

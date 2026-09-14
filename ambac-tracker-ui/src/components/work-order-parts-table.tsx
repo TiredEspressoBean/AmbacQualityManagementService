@@ -287,8 +287,7 @@ export function WorkOrderPartsTable({
                                                 <StatusBadge status={part.part_status || "PENDING"} />
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {/* eslint-disable-next-line local/no-as-any -- step_info typed as {} passthrough in schema; .name field exists at runtime */}
-                                {(part.step_info as any)?.name || part.step_description || "-"}
+                                {part.step_info?.name || part.step_description || "-"}
                                             </TableCell>
                                             <TableCell>
                                                 <Button

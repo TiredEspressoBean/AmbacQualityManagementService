@@ -72,6 +72,31 @@ export type VisibilityEnum =
    * @enum VISIBLE, INTERNAL
    */
   "VISIBLE" | "INTERNAL";
+export type AffectedWorkorderRow = {
+  wo_id: string;
+  erp_id: string;
+  status: string;
+  priority: number;
+  quantity: number;
+  total_parts: number;
+  affected_parts: number;
+  portable_count?: number | undefined;
+  stranded?: Array<StrandedPart> | undefined;
+};
+export type StrandedPart = {
+  part_id: string;
+  wo_id: string;
+  step_id: string;
+  step_name: string;
+};
+export type AffectedWorkordersResponse = {
+  results: Array<AffectedWorkorderRow>;
+  available_steps: Array<AvailableStep>;
+};
+export type AvailableStep = {
+  id: string;
+  name: string;
+};
 export type ApprovalRequest = {
   id: string;
   approval_number: string;
@@ -82,10 +107,14 @@ export type ApprovalRequest = {
      */
     (string | null)
     | undefined;
-  content_object_info: {};
+  content_object_info: {
+    type: string;
+    id: string;
+    str: string;
+  };
   content_object_display: string | null;
   requested_by?: (number | null) | undefined;
-  requested_by_info: {};
+  requested_by_info: UserSelect;
   reason?: (string | null) | undefined;
   notes?: (string | null) | undefined;
   status?: ApprovalStatusEnum | undefined;
@@ -124,6 +153,34 @@ export type ApprovalRequest = {
   created_at: string;
   updated_at: string;
   archived: boolean;
+};
+export type UserSelect = {
+  id: number;
+  /**
+   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+   */
+  username: string;
+  first_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  last_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  email?: /**
+   * @maxLength 254
+   */
+  string | undefined;
+  full_name: string;
+  /**
+   * Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
+   */
+  is_active: boolean;
 };
 export type ApprovalStatusEnum =
   /**
@@ -731,9 +788,47 @@ export type PartsStatusEnum =
   | "AWAITING_PICKUP"
   | "CORE_BANKED"
   | "RMA_CLOSED";
+export type BulkReconcileResultRow = {
+  row: number;
+  outcome: BulkReconcileResultRowOutcomeEnum;
+  user_id?: string | undefined;
+  invitation_id?: string | undefined;
+  invitation_url?: string | undefined;
+  changes?: Array<string> | undefined;
+  warnings?: Array<string> | undefined;
+  error?: string | undefined;
+};
+export type BulkReconcileResultRowOutcomeEnum =
+  /**
+   * * `created` - created
+   * `updated` - updated
+   * `unchanged` - unchanged
+   * `error` - error
+   *
+   * @enum created, updated, unchanged, error
+   */
+  "created" | "updated" | "unchanged" | "error";
+export type BulkReconcileUsersRequestRequest = Partial<{
+  /**
+   * List of row dicts: {email, first_name, last_name, group, status, message}. Either `rows` (this field) or a `file` upload must be provided.
+   */
+  rows: Array<BulkReconcileRowRequest>;
+}>;
+export type BulkReconcileRowRequest = {
+  /**
+   * @minLength 1
+   */
+  email: string;
+  first_name?: string | undefined;
+  last_name?: string | undefined;
+  group?: string | undefined;
+  groups?: string | undefined;
+  status?: string | undefined;
+  message?: string | undefined;
+};
 export type BulkReconcileUsersResponse = {
   summary: BulkReconcileSummary;
-  results: Array<{}>;
+  results: Array<BulkReconcileResultRow>;
 };
 export type BulkReconcileSummary = {
   total: number;
@@ -850,7 +945,11 @@ export type CapaTasks = {
   id: string;
   task_number: string;
   capa: string;
-  capa_info: {};
+  capa_info: {
+    id: string;
+    capa_number: string;
+    problem_statement: string;
+  };
   task_type: TaskTypeEnum;
   task_type_display: string;
   description: string;
@@ -924,7 +1023,11 @@ export type CompletionModeEnum =
 export type RcaRecord = {
   id: string;
   capa: string;
-  capa_info: {};
+  capa_info: {
+    id: string;
+    capa_number: string;
+    problem_statement: string;
+  };
   rca_method: RcaMethodEnum;
   rca_method_display: string;
   problem_description: string;
@@ -1068,7 +1171,11 @@ export type Fishbone = {
 export type CapaVerification = {
   id: string;
   capa: string;
-  capa_info: {};
+  capa_info: {
+    id: string;
+    capa_number: string;
+    problem_statement: string;
+  };
   /**
    * How effectiveness was verified
    */
@@ -5343,9 +5450,21 @@ export type Parts = {
   qa_completed: boolean;
   order?: (string | null) | undefined;
   part_type: string;
-  part_type_info: {};
+  part_type_info: {
+    id: string;
+    name: string;
+    version: number;
+    ID_prefix: string | null;
+  };
   step?: (string | null) | undefined;
-  step_info: {};
+  step_info: {
+    id: string;
+    name: string;
+    order: number | null;
+    description: string | null;
+    is_last_step: boolean;
+    process_name: string | null;
+  };
   work_order?: (string | null) | undefined;
   quality_info: {};
   created_at: string;
@@ -6743,7 +6862,7 @@ export type SamplingDecision = {
     * `deselected` - Deselected
     * `pending` - Pending
      */
-  outcome: OutcomeEnum;
+  outcome: SamplingDecisionOutcomeEnum;
   /**
    * Version of the SamplingRuleSet that produced this decision. Audit can answer 'what rule was active when this was decided' via this field; rule edits bump the version on supersession.
    */
@@ -6757,7 +6876,7 @@ export type SamplingDecision = {
    */
   superseded_by: string | null;
 };
-export type OutcomeEnum =
+export type SamplingDecisionOutcomeEnum =
   /**
    * * `selected` - Selected
    * `deselected` - Deselected
@@ -7749,7 +7868,12 @@ export type Steps = {
    */
   boolean | undefined;
   part_type: string;
-  part_type_info: {};
+  part_type_info: {
+    id: string;
+    name: string;
+    version: number;
+    ID_prefix: string | null;
+  };
   part_type_name: string | null;
   work_center?:
     | /**
@@ -8088,10 +8212,15 @@ export type Substep = {
    * @maxLength 200
    */
   title: string;
-  body_blocks?: /**
-   * TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.
-   */
-  unknown | undefined;
+  body_blocks?:
+    | (
+        | Partial<{
+            type: string;
+            content: Array<{}>;
+          }>
+        | Array<{}>
+      )
+    | undefined;
   is_optional?: /**
    * Operator may mark this substep N/A instead of completing it.
    */
@@ -8374,10 +8503,15 @@ export type SubstepTranslation = {
    * @maxLength 200
    */
   title: string;
-  body_blocks?: /**
-   * Translated TipTap document JSON; same shape as Substep.body_blocks.
-   */
-  unknown | undefined;
+  body_blocks?:
+    | (
+        | Partial<{
+            type: string;
+            content: Array<{}>;
+          }>
+        | Array<{}>
+      )
+    | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -9249,34 +9383,6 @@ export type PaginatedUserSelectList = {
     | undefined;
   results: Array<UserSelect>;
 };
-export type UserSelect = {
-  id: number;
-  /**
-   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   */
-  username: string;
-  first_name?:
-    | /**
-     * @maxLength 150
-     */
-    (string | null)
-    | undefined;
-  last_name?:
-    | /**
-     * @maxLength 150
-     */
-    (string | null)
-    | undefined;
-  email?: /**
-   * @maxLength 254
-   */
-  string | undefined;
-  full_name: string;
-  /**
-   * Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
-   */
-  is_active: boolean;
-};
 export type PaginatedUserWorkCenterMembershipList = {
   /**
    * @example 123
@@ -9458,7 +9564,11 @@ export type WorkOrderList = {
   related_order?: (string | null) | undefined;
   related_order_info: {};
   process?: (string | null) | undefined;
-  process_info: {};
+  process_info: {
+    id: string;
+    name: string;
+    version: number;
+  };
   expected_completion?: (string | null) | undefined;
   true_completion?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
@@ -11745,10 +11855,12 @@ export type PatchedSubstepRequest = Partial<{
    * @maxLength 200
    */
   title: string;
-  /**
-   * TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.
-   */
-  body_blocks: unknown;
+  body_blocks:
+    | Partial<{
+        type: string;
+        content: Array<{}>;
+      }>
+    | Array<{}>;
   /**
    * Operator may mark this substep N/A instead of completing it.
    */
@@ -13522,6 +13634,61 @@ export type StepEdgeRequest = {
     (number | null)
     | undefined;
 };
+export type StepExecutionCreateRequest = {
+  part?:
+    | /**
+     * The part being tracked through this step (mutually exclusive with `core`).
+     */
+    (string | null)
+    | undefined;
+  /**
+   * The step being executed
+   */
+  step: string;
+  visit_number?: /**
+   * Which visit this is (1st, 2nd, 3rd time at this step)
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  exited_at?: (string | null) | undefined;
+  assigned_to?:
+    | /**
+     * Operator assigned to this step execution
+     */
+    (number | null)
+    | undefined;
+  completed_by?:
+    | /**
+     * Operator who completed this step
+     */
+    (number | null)
+    | undefined;
+  next_step?:
+    | /**
+     * The step this part moved to (for audit trail)
+     */
+    (string | null)
+    | undefined;
+  decision_result?: /**
+   * Result of decision: 'PASS', 'FAIL', measurement value, etc.
+   *
+   * @maxLength 50
+   */
+  string | undefined;
+  status?: StepExecutionStatusEnum | undefined;
+  archived?: boolean | undefined;
+  override_email?: /**
+   * @minLength 1
+   */
+  string | undefined;
+  override_password?: /**
+   * @minLength 1
+   */
+  string | undefined;
+  override_reason?: string | undefined;
+};
 export type StepExecutionRequest = {
   part?:
     | /**
@@ -14023,10 +14190,15 @@ export type SubstepRequest = {
    * @maxLength 200
    */
   title: string;
-  body_blocks?: /**
-   * TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.
-   */
-  unknown | undefined;
+  body_blocks?:
+    | (
+        | Partial<{
+            type: string;
+            content: Array<{}>;
+          }>
+        | Array<{}>
+      )
+    | undefined;
   is_optional?: /**
    * Operator may mark this substep N/A instead of completing it.
    */
@@ -14724,7 +14896,11 @@ export type WorkOrder = {
   related_order_info: {};
   related_order_detail: {};
   process?: (string | null) | undefined;
-  process_info: {};
+  process_info: {
+    id: string;
+    name: string;
+    version: number;
+  };
   expected_start?: (string | null) | undefined;
   expected_completion?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
@@ -14859,6 +15035,15 @@ export type WorkingWindow = {
   end: string;
 };
 
+const UserSelect = z.object({
+  id: z.number().int(),
+  username: z.string(),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+  email: z.string().max(254).email().optional(),
+  full_name: z.string(),
+  is_active: z.boolean(),
+});
 const ApprovalStatusEnum = z.enum([
   "NOT_REQUIRED",
   "PENDING",
@@ -14916,10 +15101,12 @@ const ApprovalRequest = z.object({
   approval_number: z.string(),
   content_type: z.number().int().nullish(),
   object_id: z.string().max(36).nullish(),
-  content_object_info: z.object({}).partial().passthrough().nullable(),
+  content_object_info: z
+    .object({ type: z.string(), id: z.string(), str: z.string() })
+    .nullable(),
   content_object_display: z.string().nullable(),
   requested_by: z.number().int().nullish(),
-  requested_by_info: z.object({}).partial().passthrough().nullable(),
+  requested_by_info: UserSelect.nullable(),
   reason: z.string().nullish(),
   notes: z.string().nullish(),
   status: ApprovalStatusEnum.optional(),
@@ -15387,7 +15574,13 @@ const CapaTasks = z.object({
   id: z.string().uuid(),
   task_number: z.string(),
   capa: z.string().uuid(),
-  capa_info: z.object({}).partial().passthrough().nullable(),
+  capa_info: z
+    .object({
+      id: z.string().uuid(),
+      capa_number: z.string(),
+      problem_statement: z.string(),
+    })
+    .nullable(),
   task_type: TaskTypeEnum,
   task_type_display: z.string(),
   description: z.string(),
@@ -15480,7 +15673,13 @@ const Fishbone = z.object({
 const RcaRecord = z.object({
   id: z.string().uuid(),
   capa: z.string().uuid(),
-  capa_info: z.object({}).partial().passthrough().nullable(),
+  capa_info: z
+    .object({
+      id: z.string().uuid(),
+      capa_number: z.string(),
+      problem_statement: z.string(),
+    })
+    .nullable(),
   rca_method: RcaMethodEnum,
   rca_method_display: z.string(),
   problem_description: z.string(),
@@ -15513,7 +15712,13 @@ const EffectivenessResultEnum = z.enum([
 const CapaVerification = z.object({
   id: z.string().uuid(),
   capa: z.string().uuid(),
-  capa_info: z.object({}).partial().passthrough().nullable(),
+  capa_info: z
+    .object({
+      id: z.string().uuid(),
+      capa_number: z.string(),
+      problem_statement: z.string(),
+    })
+    .nullable(),
   verification_method: z.string(),
   verification_criteria: z.string(),
   verification_date: z.string().nullable(),
@@ -16369,15 +16574,6 @@ const PatchedDowntimeEventRequest = z
     archived: z.boolean(),
   })
   .partial();
-const UserSelect = z.object({
-  id: z.number().int(),
-  username: z.string(),
-  first_name: z.string().max(150).nullish(),
-  last_name: z.string().max(150).nullish(),
-  email: z.string().max(254).email().optional(),
-  full_name: z.string(),
-  is_active: z.boolean(),
-});
 const PaginatedUserSelectList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -17971,9 +18167,25 @@ const Parts = z.object({
   qa_completed: z.boolean(),
   order: z.string().uuid().nullish(),
   part_type: z.string().uuid(),
-  part_type_info: z.object({}).partial().passthrough().nullable(),
+  part_type_info: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      version: z.number().int(),
+      ID_prefix: z.string().nullable(),
+    })
+    .nullable(),
   step: z.string().uuid().nullish(),
-  step_info: z.object({}).partial().passthrough().nullable(),
+  step_info: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      order: z.number().int().nullable(),
+      description: z.string().nullable(),
+      is_last_step: z.boolean(),
+      process_name: z.string().nullable(),
+    })
+    .nullable(),
   work_order: z.string().uuid().nullish(),
   quality_info: z.object({}).partial().passthrough().nullable(),
   created_at: z.string().datetime({ offset: true }),
@@ -18928,12 +19140,16 @@ const PatchedSamplingRuleRequest = z
     archived: z.boolean(),
   })
   .partial();
-const OutcomeEnum = z.enum(["selected", "deselected", "pending"]);
+const SamplingDecisionOutcomeEnum = z.enum([
+  "selected",
+  "deselected",
+  "pending",
+]);
 const SamplingDecision = z.object({
   id: z.string().uuid(),
   step_execution: z.string().uuid(),
   substep: z.string().uuid(),
-  outcome: OutcomeEnum,
+  outcome: SamplingDecisionOutcomeEnum,
   ruleset_version: z.number().int(),
   decided_at: z.string().datetime({ offset: true }),
   superseded_by: z.string().uuid().nullable(),
@@ -19578,7 +19794,7 @@ const PaginatedStepExecutionListList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(StepExecutionList),
 });
-const StepExecutionRequest = z.object({
+const StepExecutionCreateRequest = z.object({
   part: z.string().uuid().nullish(),
   step: z.string().uuid(),
   visit_number: z.number().int().gte(0).lte(2147483647).optional(),
@@ -19589,6 +19805,9 @@ const StepExecutionRequest = z.object({
   decision_result: z.string().max(50).optional(),
   status: StepExecutionStatusEnum.optional(),
   archived: z.boolean().optional(),
+  override_email: z.string().min(1).email().optional(),
+  override_password: z.string().min(1).optional(),
+  override_reason: z.string().optional(),
 });
 const StepExecution = z.object({
   id: z.string().uuid(),
@@ -19611,6 +19830,18 @@ const StepExecution = z.object({
   training_authorization: z.unknown().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const StepExecutionRequest = z.object({
+  part: z.string().uuid().nullish(),
+  step: z.string().uuid(),
+  visit_number: z.number().int().gte(0).lte(2147483647).optional(),
+  exited_at: z.string().datetime({ offset: true }).nullish(),
+  assigned_to: z.number().int().nullish(),
+  completed_by: z.number().int().nullish(),
+  next_step: z.string().uuid().nullish(),
+  decision_result: z.string().max(50).optional(),
+  status: StepExecutionStatusEnum.optional(),
   archived: z.boolean().optional(),
 });
 const PatchedStepExecutionRequest = z
@@ -19765,7 +19996,14 @@ const Steps = z.object({
   pass_threshold: z.number().optional(),
   requires_first_piece_inspection: z.boolean().optional(),
   part_type: z.string().uuid(),
-  part_type_info: z.object({}).partial().passthrough().nullable(),
+  part_type_info: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      version: z.number().int(),
+      ID_prefix: z.string().nullable(),
+    })
+    .nullable(),
   part_type_name: z.string().nullable(),
   work_center: z.string().uuid().nullish(),
   work_center_name: z.string().nullable(),
@@ -20194,7 +20432,17 @@ const SubstepTranslation = z.object({
   substep: z.string().uuid(),
   language: z.string().max(10),
   title: z.string().max(200),
-  body_blocks: z.unknown().optional(),
+  body_blocks: z
+    .union([
+      z
+        .object({
+          type: z.string(),
+          content: z.array(z.object({}).partial().passthrough()),
+        })
+        .partial(),
+      z.array(z.object({}).partial().passthrough()),
+    ])
+    .optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -20209,7 +20457,17 @@ const SubstepTranslationRequest = z.object({
   substep: z.string().uuid(),
   language: z.string().min(1).max(10),
   title: z.string().min(1).max(200),
-  body_blocks: z.unknown().optional(),
+  body_blocks: z
+    .union([
+      z
+        .object({
+          type: z.string(),
+          content: z.array(z.object({}).partial().passthrough()),
+        })
+        .partial(),
+      z.array(z.object({}).partial().passthrough()),
+    ])
+    .optional(),
   archived: z.boolean().optional(),
 });
 const PatchedSubstepTranslationRequest = z
@@ -20217,7 +20475,15 @@ const PatchedSubstepTranslationRequest = z
     substep: z.string().uuid(),
     language: z.string().min(1).max(10),
     title: z.string().min(1).max(200),
-    body_blocks: z.unknown(),
+    body_blocks: z.union([
+      z
+        .object({
+          type: z.string(),
+          content: z.array(z.object({}).partial().passthrough()),
+        })
+        .partial(),
+      z.array(z.object({}).partial().passthrough()),
+    ]),
     archived: z.boolean(),
   })
   .partial();
@@ -20228,7 +20494,17 @@ const Substep = z.object({
   step_name: z.string().nullable(),
   order: z.number().int().gte(0).lte(2147483647).optional(),
   title: z.string().max(200),
-  body_blocks: z.unknown().optional(),
+  body_blocks: z
+    .union([
+      z
+        .object({
+          type: z.string(),
+          content: z.array(z.object({}).partial().passthrough()),
+        })
+        .partial(),
+      z.array(z.object({}).partial().passthrough()),
+    ])
+    .optional(),
   is_optional: z.boolean().optional(),
   is_critical: z.boolean().optional(),
   allow_not_applicable: z.boolean().optional(),
@@ -20254,7 +20530,17 @@ const SubstepRequest = z.object({
   step: z.string().uuid(),
   order: z.number().int().gte(0).lte(2147483647).optional(),
   title: z.string().min(1).max(200),
-  body_blocks: z.unknown().optional(),
+  body_blocks: z
+    .union([
+      z
+        .object({
+          type: z.string(),
+          content: z.array(z.object({}).partial().passthrough()),
+        })
+        .partial(),
+      z.array(z.object({}).partial().passthrough()),
+    ])
+    .optional(),
   is_optional: z.boolean().optional(),
   is_critical: z.boolean().optional(),
   allow_not_applicable: z.boolean().optional(),
@@ -20272,7 +20558,15 @@ const PatchedSubstepRequest = z
     step: z.string().uuid(),
     order: z.number().int().gte(0).lte(2147483647),
     title: z.string().min(1).max(200),
-    body_blocks: z.unknown(),
+    body_blocks: z.union([
+      z
+        .object({
+          type: z.string(),
+          content: z.array(z.object({}).partial().passthrough()),
+        })
+        .partial(),
+      z.array(z.object({}).partial().passthrough()),
+    ]),
     is_optional: z.boolean(),
     is_critical: z.boolean(),
     allow_not_applicable: z.boolean(),
@@ -20291,6 +20585,13 @@ const PatchedSubstepRequest = z
     archived: z.boolean(),
   })
   .partial();
+const EnsureInspectionQrRequestRequest = z.object({
+  step_execution: z.string().uuid(),
+});
+const EnsureInspectionQrResponse = z.object({
+  quality_report_id: z.string().uuid(),
+  created: z.boolean(),
+});
 const SubstepSubmitRequestRequest = z
   .object({
     step_execution: z.string().uuid(),
@@ -20427,9 +20728,9 @@ const UserRole = z.object({
   granted_by_name: z.string().nullable(),
 });
 const TenantGroupMemberRequestRequest = z.object({
-  user_id: z.string().min(1),
-  facility_id: z.string().min(1).nullish(),
-  company_id: z.string().min(1).nullish(),
+  user_id: z.number().int(),
+  facility_id: z.string().uuid().nullish(),
+  company_id: z.string().uuid().nullish(),
 });
 const RemoveMemberResponse = z.object({ status: z.string() });
 const TenantGroupPermissionsRequestRequest = z.object({
@@ -20990,9 +21291,24 @@ const BulkCompanyAssignmentInputRequest = z.object({
   user_ids: z.array(z.number().int()),
   company_id: z.string().uuid().nullable(),
 });
+const BulkReconcileRowRequest = z.object({
+  email: z.string().min(1).email(),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  group: z.string().optional(),
+  groups: z.string().optional(),
+  status: z.string().optional(),
+  message: z.string().optional(),
+});
 const BulkReconcileUsersRequestRequest = z
-  .object({ rows: z.array(z.object({}).partial().passthrough()) })
+  .object({ rows: z.array(BulkReconcileRowRequest) })
   .partial();
+const BulkReconcileUsersQueued = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  total_rows: z.number().int(),
+  message: z.string(),
+});
 const BulkReconcileSummary = z.object({
   total: z.number().int(),
   created: z.number().int(),
@@ -21000,9 +21316,25 @@ const BulkReconcileSummary = z.object({
   unchanged: z.number().int(),
   errors: z.number().int(),
 });
+const BulkReconcileResultRowOutcomeEnum = z.enum([
+  "created",
+  "updated",
+  "unchanged",
+  "error",
+]);
+const BulkReconcileResultRow = z.object({
+  row: z.number().int(),
+  outcome: BulkReconcileResultRowOutcomeEnum,
+  user_id: z.string().optional(),
+  invitation_id: z.string().optional(),
+  invitation_url: z.string().optional(),
+  changes: z.array(z.string()).optional(),
+  warnings: z.array(z.string()).optional(),
+  error: z.string().optional(),
+});
 const BulkReconcileUsersResponse = z.object({
   summary: BulkReconcileSummary,
-  results: z.array(z.object({}).partial().passthrough()),
+  results: z.array(BulkReconcileResultRow),
 });
 const SendInvitationInputRequest = z.object({ user_id: z.number().int() });
 const SendInvitationResponse = z.object({
@@ -21209,7 +21541,13 @@ const WorkOrderList = z.object({
   related_order: z.string().uuid().nullish(),
   related_order_info: z.object({}).partial().passthrough().nullable(),
   process: z.string().uuid().nullish(),
-  process_info: z.object({}).partial().passthrough().nullable(),
+  process_info: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      version: z.number().int(),
+    })
+    .nullable(),
   expected_completion: z.string().nullish(),
   true_completion: z.string().nullish(),
   expected_duration: z.string().nullish(),
@@ -21259,7 +21597,13 @@ const WorkOrder = z.object({
   related_order_info: z.object({}).partial().passthrough().nullable(),
   related_order_detail: z.object({}).partial().passthrough().nullable(),
   process: z.string().uuid().nullish(),
-  process_info: z.object({}).partial().passthrough().nullable(),
+  process_info: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      version: z.number().int(),
+    })
+    .nullable(),
   expected_start: z.string().nullish(),
   expected_completion: z.string().nullish(),
   expected_duration: z.string().nullish(),
@@ -22323,6 +22667,28 @@ const PatchedProcessChangeOrderRequest = z
     migration_reason: z.string(),
   })
   .partial();
+const StrandedPart = z.object({
+  part_id: z.string().uuid(),
+  wo_id: z.string().uuid(),
+  step_id: z.string().uuid(),
+  step_name: z.string(),
+});
+const AffectedWorkorderRow = z.object({
+  wo_id: z.string().uuid(),
+  erp_id: z.string(),
+  status: z.string(),
+  priority: z.number().int(),
+  quantity: z.number().int(),
+  total_parts: z.number().int(),
+  affected_parts: z.number().int(),
+  portable_count: z.number().int().optional(),
+  stranded: z.array(StrandedPart).optional(),
+});
+const AvailableStep = z.object({ id: z.string().uuid(), name: z.string() });
+const AffectedWorkordersResponse = z.object({
+  results: z.array(AffectedWorkorderRow),
+  available_steps: z.array(AvailableStep),
+});
 const ProcessChangeStatusEnum = z.enum([
   "DRAFT",
   "SUBMITTED",
@@ -23061,6 +23427,7 @@ const StepRequest = z.object({
 });
 
 export const schemas = {
+  UserSelect,
   ApprovalStatusEnum,
   ApprovalTypeEnum,
   ApprovalFlowTypeEnum,
@@ -23200,7 +23567,6 @@ export const schemas = {
   PaginatedDowntimeEventList,
   DowntimeEventRequest,
   PatchedDowntimeEventRequest,
-  UserSelect,
   PaginatedUserSelectList,
   EquipmentsStatusEnum,
   BatchModeEnum,
@@ -23461,7 +23827,7 @@ export const schemas = {
   PaginatedSamplingRuleList,
   SamplingRuleRequest,
   PatchedSamplingRuleRequest,
-  OutcomeEnum,
+  SamplingDecisionOutcomeEnum,
   SamplingDecision,
   PaginatedSamplingDecisionList,
   SamplingSeverityStateSeverityEnum,
@@ -23533,8 +23899,9 @@ export const schemas = {
   StepExecutionStatusEnum,
   StepExecutionList,
   PaginatedStepExecutionListList,
-  StepExecutionRequest,
+  StepExecutionCreateRequest,
   StepExecution,
+  StepExecutionRequest,
   PatchedStepExecutionRequest,
   ClaimStepInputRequest,
   StepDurationStats,
@@ -23587,6 +23954,8 @@ export const schemas = {
   PaginatedSubstepList,
   SubstepRequest,
   PatchedSubstepRequest,
+  EnsureInspectionQrRequestRequest,
+  EnsureInspectionQrResponse,
   SubstepSubmitRequestRequest,
   SubstepSubmitResponse,
   ScopeTypeEnum,
@@ -23660,8 +24029,12 @@ export const schemas = {
   PatchedUserRequest,
   BulkUserActivationInputRequest,
   BulkCompanyAssignmentInputRequest,
+  BulkReconcileRowRequest,
   BulkReconcileUsersRequestRequest,
+  BulkReconcileUsersQueued,
   BulkReconcileSummary,
+  BulkReconcileResultRowOutcomeEnum,
+  BulkReconcileResultRow,
   BulkReconcileUsersResponse,
   SendInvitationInputRequest,
   SendInvitationResponse,
@@ -23831,6 +24204,10 @@ export const schemas = {
   PaginatedProcessChangeOrderList,
   ProcessChangeOrderRequest,
   PatchedProcessChangeOrderRequest,
+  StrandedPart,
+  AffectedWorkorderRow,
+  AvailableStep,
+  AffectedWorkordersResponse,
   ProcessChangeStatusEnum,
   ChangeControlPriorityEnum,
   ProcessChangeRequest,
@@ -37125,7 +37502,7 @@ the PCR diff). Drives the &#x60;MIGRATE_SELECTED&#x60; picker.`,
         schema: z.string().uuid(),
       },
     ],
-    response: ProcessChangeOrder,
+    response: AffectedWorkordersResponse,
   },
   {
     method: "post",
@@ -37529,11 +37906,6 @@ Lifecycle endpoints:
     POST /api/process-change-requests/{id}/cancel/   {reason?}`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ProcessChangeRequestRequest,
-      },
       {
         name: "id",
         type: "Path",
@@ -42079,7 +42451,7 @@ Used by the workflow engine for tracking part progression through steps.`,
       {
         name: "body",
         type: "Body",
-        schema: StepExecutionRequest,
+        schema: StepExecutionCreateRequest,
       },
     ],
     response: StepExecution,
@@ -44292,7 +44664,7 @@ Returns: { &quot;quality_report_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;create
       {
         name: "body",
         type: "Body",
-        schema: SubstepRequest,
+        schema: z.object({ step_execution: z.string().uuid() }),
       },
       {
         name: "id",
@@ -44300,7 +44672,7 @@ Returns: { &quot;quality_report_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;create
         schema: z.string().uuid(),
       },
     ],
-    response: Substep,
+    response: EnsureInspectionQrResponse,
   },
   {
     method: "post",
@@ -45087,7 +45459,7 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
       {
         name: "user_id",
         type: "Path",
-        schema: z.string(),
+        schema: z.number().int(),
       },
     ],
     response: z.object({ status: z.string() }),
@@ -47193,7 +47565,7 @@ untouched. Request/response shape is unchanged.`,
         schema: BulkReconcileUsersRequestRequest,
       },
     ],
-    response: BulkReconcileUsersResponse,
+    response: BulkReconcileUsersQueued,
     errors: [
       {
         status: 400,

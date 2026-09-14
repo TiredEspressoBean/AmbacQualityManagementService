@@ -193,7 +193,7 @@ export function GroupDetailPage() {
 
         try {
             for (const userId of selectedUsersToAdd) {
-                await addMemberMutation.mutateAsync(String(userId));
+                await addMemberMutation.mutateAsync(userId);
             }
             toast.success(`Added ${selectedUsersToAdd.length} user(s) to ${group.name}`);
             setSelectedUsersToAdd([]);
@@ -208,7 +208,7 @@ export function GroupDetailPage() {
 
         try {
             for (const userId of selectedUsersToRemove) {
-                await removeMemberMutation.mutateAsync(String(userId));
+                await removeMemberMutation.mutateAsync(userId);
             }
             toast.success(`Removed ${selectedUsersToRemove.length} user(s) from ${group.name}`);
             setSelectedUsersToRemove([]);

@@ -509,6 +509,17 @@ _RESOLVED_RULE_SCHEMA = {
     },
 }
 
+_CAPA_INFO_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "required": ["id", "capa_number", "problem_statement"],
+    "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "capa_number": {"type": "string"},
+        "problem_statement": {"type": "string"},
+    },
+}
+
 _RESOLVED_ACTIVE_RULESET_SCHEMA = {
     "type": "object",
     "properties": {
@@ -1311,7 +1322,7 @@ class RcaRecordSerializer(SecureModelMixin):
             fishbone_data=fishbone_data,
         )
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_CAPA_INFO_SCHEMA)
     def get_capa_info(self, obj):
         if obj.capa:
             return {
@@ -1394,7 +1405,7 @@ class CapaTasksSerializer(SecureModelMixin):
         )
         read_only_fields = ('task_number', 'completed_date', 'completed_by', 'completion_signature', 'created_at', 'updated_at')
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_CAPA_INFO_SCHEMA)
     def get_capa_info(self, obj):
         if obj.capa:
             return {
@@ -1481,7 +1492,7 @@ class CapaVerificationSerializer(SecureModelMixin):
                             # action's service, never by a direct write.
                             'verified_by', 'verification_date')
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_CAPA_INFO_SCHEMA)
     def get_capa_info(self, obj):
         if obj.capa:
             return {

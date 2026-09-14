@@ -1,58 +1,31 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 
-/**
- * Fetch the per-WO impact summary for a PCO's migration picker.
- *
- * Raw fetch (not Zodios) because the response shape is an ad-hoc
- * `{results: [...]}` not declared in the serializer registry — the
- * @action endpoint just returns a list of dicts straight from the
- * impact-analysis service.
- */
-export type StrandedPart = {
-    part_id: string;
-    wo_id: string;
-    step_id: string;
-    step_name: string;
-};
+type Response = Awaited<ReturnType<typeof api.api_process_change_orders_affected_workorders_retrieve>>;
 
-export type AffectedWorkorderRow = {
-    wo_id: string;
-    erp_id: string;
-    status: string;
-    priority: number;
-    quantity: number;
-    total_parts: number;
-    affected_parts: number;
-    /** Parts whose step survives the migration (auto-port). Present when the
-     * picker is asked to classify against the new version. */
-    portable_count?: number;
-    /** Parts at a step REMOVED in the new version — each needs a resolution. */
-    stranded?: StrandedPart[];
-};
-
+export type AffectedWorkorderRow = Response["results"][number];
+export type StrandedPart = NonNullable<AffectedWorkorderRow["stranded"]>[number];
 /** A surviving step in the new version — a RELOCATE target. */
-export type AvailableStep = { id: string; name: string };
+export type AvailableStep = Response["available_steps"][number];
 
 export type AffectedWorkorders = {
     rows: AffectedWorkorderRow[];
     availableSteps: AvailableStep[];
 };
 
+export const affectedWorkordersOptions = (pcoId: string | undefined) => queryOptions({
+    queryKey: ["pco-affected-workorders", pcoId] as const,
+    queryFn: async (): Promise<AffectedWorkorders> => {
+        const r = await api.api_process_change_orders_affected_workorders_retrieve({
+            params: { id: pcoId! },
+        });
+        return { rows: r.results, availableSteps: r.available_steps };
+    },
+});
+
 export function useAffectedWorkorders(pcoId: string | undefined, enabled = true) {
-    return useQuery<AffectedWorkorders>({
-        queryKey: ["pco-affected-workorders", pcoId] as const,
+    return useQuery({
+        ...affectedWorkordersOptions(pcoId),
         enabled: !!pcoId && enabled,
-        queryFn: async () => {
-            const r = await fetch(
-                `/api/process-change-orders/${pcoId}/affected-workorders/`,
-                { credentials: "include" },
-            );
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            const j = (await r.json()) as {
-                results?: AffectedWorkorderRow[];
-                available_steps?: AvailableStep[];
-            };
-            return { rows: j.results ?? [], availableSteps: j.available_steps ?? [] };
-        },
     });
 }

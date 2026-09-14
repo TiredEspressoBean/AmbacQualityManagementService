@@ -48,15 +48,13 @@ function WorkCentersTab({ userId }: { userId: number }) {
             queries: { user: userId, limit: 100 },
         } as never),
     });
-    // eslint-disable-next-line local/no-as-any -- generated union is loose; we only read the fields we typed on the serializer
-    const memberships = ((page?.results ?? []) as any[]);
+    const memberships = page?.results ?? [];
 
     const { data: wcPage } = useQuery({
         queryKey: ["work-centers", "for-membership-picker"] as const,
         queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
     });
-    // eslint-disable-next-line local/no-as-any -- same as above
-    const workCenters = ((wcPage?.results ?? []) as any[]);
+    const workCenters = wcPage?.results ?? [];
     const memberWcIds = new Set(memberships.map((m) => m.work_center));
     const availableWcs = workCenters.filter((wc) => !memberWcIds.has(wc.id));
 

@@ -46,6 +46,7 @@ import { useTenantGroups } from "@/hooks/useTenantGroups";
 import {
     useBulkReconcileUsers,
     fetchBulkReconcileStatus,
+    isReconcileResult,
     type BulkReconcileResultRow,
 } from "@/hooks/useBulkReconcileUsers";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
@@ -204,9 +205,16 @@ export function BulkUserActionsPage() {
             await new Promise((res) => setTimeout(res, 1500));
             try {
                 const s = await fetchBulkReconcileStatus(taskId);
-                if (s.status === "SUCCESS" && s.result) {
+                if (s.status === "SUCCESS" && isReconcileResult(s.result)) {
                     setResults(s.result.results);
                     summarizeAndToast(s.result.summary);
+                    setAsyncTaskId(null);
+                    return;
+                }
+                if (s.status === "SUCCESS" && s.result && !isReconcileResult(s.result)) {
+                    // Celery records the task's own early-out as SUCCESS, so a
+                    // failed run still arrives here -- with a message, not rows.
+                    toast.error(`Job failed: ${s.result.message}`);
                     setAsyncTaskId(null);
                     return;
                 }

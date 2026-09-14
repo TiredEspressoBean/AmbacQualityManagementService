@@ -94,7 +94,7 @@ export async function flushSubstepCaptures({
     for (const s of substeps) {
         const responses = responsesBySubstepId[s.id] ?? {};
         if (Object.keys(responses).length === 0) continue;
-        const captures = buildCaptures(s.body_blocks as unknown as object, responses);
+        const captures = buildCaptures(s.body_blocks, responses);
         try {
             await submit.mutateAsync({
                 id: s.id,
@@ -133,11 +133,8 @@ export async function advanceToNextQueuedPart({
     // current state rather than trusting the dialog snapshot.
     let nextStepId: string | null = null;
     try {
-        const r = await fetch(`/api/Parts/${nextPartId}/`, { credentials: "include" });
-        if (r.ok) {
-            const part = await r.json();
-            if (part?.step) nextStepId = String(part.step);
-        }
+        const part = await api.api_Parts_retrieve({ params: { id: nextPartId } });
+        if (part?.step) nextStepId = String(part.step);
     } catch {
         // network/auth blip — fall through, toast below
     }
@@ -219,7 +216,7 @@ async function completePart(ctx: CompletionContext): Promise<void> {
     for (const s of substeps) {
         const responses = responsesBySubstepId[s.id] ?? {};
         if (Object.keys(responses).length === 0) continue;
-        const captures = buildCaptures(s.body_blocks as unknown as object, responses);
+        const captures = buildCaptures(s.body_blocks, responses);
         try {
             await submit.mutateAsync({
                 id: s.id,

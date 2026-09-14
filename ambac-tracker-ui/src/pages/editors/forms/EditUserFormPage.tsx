@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { describeApiError } from "@/lib/api-error";
 
 import { Button } from "@/components/ui/button";
 import { ReportButton } from "@/components/reports/ReportButton";
@@ -161,21 +162,11 @@ export default function UserFormPage() {
         /** Report WHY a call failed. A bare catch made a server rejection and a
          *  client-side TypeError indistinguishable, so a failure said nothing
          *  useful and left nothing to find in the server log. */
-        const describe = (e: unknown): string => {
-            // eslint-disable-next-line local/no-as-any -- axios error shape needs verbose narrowing
-            const ax = e as any;
-            const status = ax?.response?.status;
-            if (status) {
-                const body = ax.response.data;
-                const detail = typeof body === "string" ? body : body?.detail ?? JSON.stringify(body ?? {});
-                return `HTTP ${status}: ${String(detail).slice(0, 200)}`;
-            }
-            return ax?.message ? `no response (${ax.message})` : String(e);
-        };
+        const describe = describeApiError;
         for (const gid of toAdd) {
             try {
                 await api.api_TenantGroups_members_create(
-                    { user_id: String(targetUserId) },
+                    { user_id: targetUserId },
                     { params: { id: gid }, headers },
                 );
             } catch (e) {
@@ -187,7 +178,7 @@ export default function UserFormPage() {
         for (const gid of toRemove) {
             try {
                 await api.api_TenantGroups_members_destroy(undefined, {
-                    params: { id: gid, user_id: String(targetUserId) },
+                    params: { id: gid, user_id: targetUserId },
                     headers,
                 });
             } catch (e) {

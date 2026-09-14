@@ -615,8 +615,23 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         request=inline_serializer(
             name="BulkReconcileUsersRequest",
             fields={
+                # Item shape from user_reconcile.reconcile_user_row: only
+                # `email` is load-bearing; the rest are optional columns a
+                # workbook may or may not carry. `groups` is accepted as an
+                # alias for `group`.
                 "rows": serializers.ListField(
-                    child=serializers.DictField(),
+                    child=inline_serializer(
+                        name="BulkReconcileRow",
+                        fields={
+                            "email": serializers.EmailField(),
+                            "first_name": serializers.CharField(required=False, allow_blank=True),
+                            "last_name": serializers.CharField(required=False, allow_blank=True),
+                            "group": serializers.CharField(required=False, allow_blank=True),
+                            "groups": serializers.CharField(required=False, allow_blank=True),
+                            "status": serializers.CharField(required=False, allow_blank=True),
+                            "message": serializers.CharField(required=False, allow_blank=True),
+                        },
+                    ),
                     help_text=(
                         "List of row dicts: "
                         "{email, first_name, last_name, group, status, message}. "
@@ -640,7 +655,47 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
                             "errors": serializers.IntegerField(),
                         },
                     ),
-                    "results": serializers.ListField(child=serializers.DictField()),
+                    # Per-row outcome. Only `row` and `outcome` are always
+                    # present -- the rest depend on which branch
+                    # reconcile_user_row took, so everything else is optional:
+                    #   created   -> user_id, invitation_id, invitation_url, warnings
+                    #   updated   -> user_id, changes, warnings
+                    #   unchanged -> user_id, warnings
+                    #   error     -> error
+                    # invitation_url in particular is the copyable signup link
+                    # the roster UI offers when email delivery is off.
+                    "results": serializers.ListField(
+                        child=inline_serializer(
+                            name="BulkReconcileResultRow",
+                            fields={
+                                "row": serializers.IntegerField(),
+                                "outcome": serializers.ChoiceField(
+                                    choices=["created", "updated", "unchanged", "error"],
+                                ),
+                                "user_id": serializers.CharField(required=False),
+                                "invitation_id": serializers.CharField(required=False),
+                                "invitation_url": serializers.CharField(required=False),
+                                "changes": serializers.ListField(
+                                    child=serializers.CharField(), required=False,
+                                ),
+                                "warnings": serializers.ListField(
+                                    child=serializers.CharField(), required=False,
+                                ),
+                                "error": serializers.CharField(required=False),
+                            },
+                        ),
+                    ),
+                },
+            ),
+            # The async arm, over the 25-row sync threshold. It was undeclared,
+            # so the generated client knew only the 207 shape.
+            202: inline_serializer(
+                name="BulkReconcileUsersQueued",
+                fields={
+                    "task_id": serializers.CharField(),
+                    "status": serializers.CharField(),
+                    "total_rows": serializers.IntegerField(),
+                    "message": serializers.CharField(),
                 },
             ),
             400: {"description": "Bad request (no rows, bad file)"},

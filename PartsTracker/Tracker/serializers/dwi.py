@@ -36,6 +36,40 @@ from Tracker.models import (
 from .core import SecureModelMixin
 
 
+# A TipTap document, or the empty list the model defaults to before anyone has
+# authored a body. Both shapes really do come back, so the schema declares the
+# union rather than picking the convenient one -- claiming `object` here would
+# make the zod client reject every unauthored substep in the browser.
+#
+# Undeclared this generated as `unknown`, which is why every consumer reached
+# for a *double* cast (`body_blocks as unknown as object`): TS won't narrow
+# unknown to object in one step. Thirteen sites did that.
+_TIPTAP_NODE_SCHEMA = {"type": "object", "additionalProperties": True}
+
+_TIPTAP_DOC_SCHEMA = {
+    "oneOf": [
+        {
+            "type": "object",
+            "properties": {
+                "type": {"type": "string"},
+                "content": {"type": "array", "items": _TIPTAP_NODE_SCHEMA},
+            },
+        },
+        {"type": "array", "items": _TIPTAP_NODE_SCHEMA},
+    ],
+}
+
+
+@extend_schema_field(_TIPTAP_DOC_SCHEMA)
+class TipTapDocumentField(serializers.JSONField):
+    """JSONField carrying a TipTap document.
+
+    Behaves exactly as the JSONField a ModelSerializer would have built; the
+    only difference is that it tells drf-spectacular what is inside. See
+    ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.
+    """
+
+
 class SubstepSerializer(SecureModelMixin):
     """Substep — the unit of work instruction within a Step.
 
@@ -49,6 +83,9 @@ class SubstepSerializer(SecureModelMixin):
     # Process(es) are no longer DRAFT. Backend writes are blocked separately
     # in the viewset; this is the UI hint.
     is_editable = serializers.BooleanField(read_only=True)
+    # required=False to match the model's blank=True/default=list -- what
+    # ModelSerializer inferred before this field was declared explicitly.
+    body_blocks = TipTapDocumentField(required=False)
 
     class Meta:
         model = Substep
@@ -225,6 +262,8 @@ class SubstepResourceSerializer(SecureModelMixin):
 
 class SubstepTranslationSerializer(SecureModelMixin):
     """Localized title + body for a substep."""
+
+    body_blocks = TipTapDocumentField(required=False)
 
     class Meta:
         model = SubstepTranslation

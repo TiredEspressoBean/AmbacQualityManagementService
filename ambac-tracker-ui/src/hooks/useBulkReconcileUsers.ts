@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { schemas } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 /**
@@ -10,59 +12,29 @@ import { getCookie } from "@/lib/utils";
  *
  * Sync below 25 rows → 207 Multi-Status with `{summary, results}`.
  * Async above 25 → 202 Accepted with `{task_id, ...}`. Poll via
- * `useBulkReconcileUsersStatus`.
+ * `fetchBulkReconcileStatus`.
  *
- * Raw fetch (not Zodios) because the endpoint shape isn't well-represented
- * by the auto-inferred OpenAPI body — it accepts either JSON rows OR a
- * multipart file, and the response can be 207 or 202.
+ * Raw fetch rather than the typed client, because the REQUEST genuinely
+ * can't be expressed by one Zodios operation: it is either JSON rows or a
+ * multipart file, and the status code selects between two response shapes.
+ *
+ * The RESPONSE has no such excuse, so it is parsed through the generated Zod
+ * schemas below. Previously both shapes were hand-declared here and nothing
+ * checked them against the server -- including `invitation_url`, the copyable
+ * signup link the roster UI falls back to when email delivery is off.
  */
 
-export type BulkReconcileRow = {
-    email: string;
-    first_name?: string;
-    last_name?: string;
-    /** Semicolon-separated for multi-group rows when coming from a workbook;
-     *  single name when coming from the manual entry form. */
-    group?: string;
-    status?: "Active" | "Inactive";
-    message?: string;
-};
+// Straight from the schema, so these can't drift from the server again.
+export type BulkReconcileRow = z.infer<typeof schemas.BulkReconcileRowRequest>;
+export type BulkReconcileResultRow = z.infer<typeof schemas.BulkReconcileResultRow>;
+export type BulkReconcileSummary = z.infer<typeof schemas.BulkReconcileSummary>;
 
-export type BulkReconcileResultRow = {
-    row: number;
-    outcome: "created" | "updated" | "unchanged" | "error";
-    user_id?: string;
-    invitation_id?: string;
-    /** Copyable signup link for newly created users — onboarding works even
-     *  when email delivery is off. Only present on `created` rows. */
-    invitation_url?: string;
-    changes?: string[];
-    warnings?: string[];
-    error?: string;
-};
-
-export type BulkReconcileSummary = {
-    total: number;
-    created: number;
-    updated: number;
-    unchanged: number;
-    errors: number;
-};
+const Queued = schemas.BulkReconcileUsersQueued;
+const Synchronous = schemas.BulkReconcileUsersResponse;
 
 export type BulkReconcileResponse =
-    | {
-          summary: BulkReconcileSummary;
-          results: BulkReconcileResultRow[];
-          task_id?: never;
-      }
-    | {
-          task_id: string;
-          status: "queued";
-          total_rows: number;
-          message: string;
-          summary?: never;
-          results?: never;
-      };
+    | (z.infer<typeof Synchronous> & { task_id?: never })
+    | (z.infer<typeof Queued> & { summary?: never; results?: never });
 
 type Variables =
     | { rows: BulkReconcileRow[]; file?: never }
@@ -91,9 +63,10 @@ export function useBulkReconcileUsers() {
                 headers,
                 body,
             });
-            if (r.status === 207 || r.status === 202) {
-                return (await r.json()) as BulkReconcileResponse;
-            }
+            // 207 is the sync arm, 202 the queued one — the status code is the
+            // discriminator, so each is parsed against its own schema.
+            if (r.status === 207) return Synchronous.parse(await r.json());
+            if (r.status === 202) return Queued.parse(await r.json());
             const text = await r.text().catch(() => "");
             throw new Error(text || `HTTP ${r.status}`);
         },
@@ -110,17 +83,42 @@ export function useBulkReconcileUsers() {
     });
 }
 
+/** The task's own early-out when it can't load the tenant or acting user.
+ *
+ * It RETURNS this rather than raising, so Celery records the job as SUCCESS and
+ * the status endpoint hands it back in `result` — where it is not a
+ * {summary, results} payload at all. Declaring only the happy shape here would
+ * make the poller throw a Zod error in the browser on exactly the runs that
+ * already went wrong. */
+const TaskFailed = z.object({ status: z.string(), message: z.string() });
+
+/** The Celery envelope the status endpoint wraps a finished job in. */
+const BulkReconcileStatus = z.object({
+    task_id: z.string(),
+    status: z.string(),
+    progress: z
+        .object({ current: z.number(), total: z.number(), percent: z.number() })
+        .optional(),
+    result: z.union([Synchronous, TaskFailed]).optional(),
+    error: z.string().optional(),
+});
+
+/** Narrow a finished job's `result` to the successful arm. */
+export function isReconcileResult(
+    result: BulkReconcileStatus["result"],
+): result is z.infer<typeof Synchronous> {
+    return !!result && "results" in result;
+}
+
+export type BulkReconcileStatus = z.infer<typeof BulkReconcileStatus>;
+
 /** Poll a queued bulk-reconcile job by task id. */
-export async function fetchBulkReconcileStatus(taskId: string): Promise<{
-    task_id: string;
-    status: string;
-    progress?: { current: number; total: number; percent: number };
-    result?: { summary: BulkReconcileSummary; results: BulkReconcileResultRow[] };
-    error?: string;
-}> {
+export async function fetchBulkReconcileStatus(taskId: string): Promise<BulkReconcileStatus> {
     const r = await fetch(`/api/User/bulk-reconcile-status/${taskId}/`, {
         credentials: "include",
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
+    // `result` is the same {summary, results} the sync arm returns, so it
+    // reuses that schema instead of a second hand-written copy.
+    return BulkReconcileStatus.parse(await r.json());
 }

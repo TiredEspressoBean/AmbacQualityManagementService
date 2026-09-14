@@ -839,7 +839,9 @@ class ApprovalRequestSerializer(SecureModelMixin):
             'created_at', 'updated_at', 'archived'
         )
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    # Returns UserSelectSerializer's own output, so $ref it instead of
+    # restating the shape -- this stays correct when that serializer changes.
+    @extend_schema_field(UserSelectSerializer(allow_null=True))
     def get_requested_by_info(self, obj):
         if obj.requested_by:
             return UserSelectSerializer(obj.requested_by).data
@@ -873,7 +875,23 @@ class ApprovalRequestSerializer(SecureModelMixin):
         pending = obj.get_pending_approvers()
         return UserSelectSerializer(pending, many=True).data
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field({
+        'type': 'object',
+        'nullable': True,
+        'required': ['type', 'id', 'str'],
+        'properties': {
+            # ContentType.model, the target's pk, and its __str__ -- the generic
+            # link's display triple.
+            #
+            # `id` is ApprovalRequest.object_id, a CharField(max_length=36) so
+            # the GFK can point at models with UUID pks. It is a string, not a
+            # number -- declaring it integer made the zod client reject every
+            # ApprovalRequests list response.
+            'type': {'type': 'string'},
+            'id': {'type': 'string'},
+            'str': {'type': 'string'},
+        },
+    })
     def get_content_object_info(self, obj):
         """Get basic info about the linked content object"""
         if obj.content_object:

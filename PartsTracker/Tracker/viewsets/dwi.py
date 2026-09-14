@@ -252,6 +252,19 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        request=inline_serializer(
+            name='EnsureInspectionQrRequest',
+            fields={'step_execution': drf_serializers.UUIDField()},
+        ),
+        responses={200: inline_serializer(
+            name='EnsureInspectionQrResponse',
+            fields={
+                'quality_report_id': drf_serializers.UUIDField(),
+                'created': drf_serializers.BooleanField(),
+            },
+        )},
+    )
     @action(detail=True, methods=['post'], url_path='ensure_inspection_qr')
     def ensure_inspection_qr(self, request, pk=None):
         """

@@ -41,7 +41,10 @@ export function useAddTenantGroupMember(groupId: string) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (userId: string) =>
+        // number, not string: User's pk is a BigAutoField. The action declared
+        // user_id as a CharField, so callers holding the numeric pk had to
+        // String() it and DRF coerced it back.
+        mutationFn: (userId: number) =>
             api.api_TenantGroups_members_create(
                 // Body is TenantGroupMemberInput now that the action declares
                 // request=; previously this fell back to TenantGroupSerializer and
@@ -61,7 +64,7 @@ export function useRemoveTenantGroupMember(groupId: string) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (userId: string) =>
+        mutationFn: (userId: number) =>
             api.api_TenantGroups_members_destroy(undefined, { params: { id: groupId, user_id: userId } }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] as const });

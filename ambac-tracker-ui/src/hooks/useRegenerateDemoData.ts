@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 /**
@@ -7,17 +8,12 @@ import { getCookie } from "@/lib/utils";
  * Backend: `POST /api/Tenants/{slug}/regenerate-demo-data/` returns 202
  * with a `task_id`. Poll `regenerate-demo-status/{task_id}/` for
  * completion. Refuses on any slug !== 'demo'.
- *
- * Raw fetch (not Zodios) — the endpoint takes no JSON body but Zodios
- * insists on body schema validation against the auto-inferred default
- * serializer. Easier to fetch directly.
  */
 
-export type RegenerateDemoQueued = {
-    task_id: string;
-    status: "queued";
-    message: string;
-};
+// From the endpoint itself. The hand-written version narrowed status to the
+// literal "queued", which the schema does not promise.
+export type RegenerateDemoQueued =
+    Awaited<ReturnType<typeof api.api_Tenants_regenerate_demo_data_create>>;
 
 type Variables = {
     /** Should always be 'demo'. The endpoint refuses anything else,
@@ -29,17 +25,10 @@ export function useRegenerateDemoData() {
     const queryClient = useQueryClient();
     return useMutation<RegenerateDemoQueued, Error, Variables>({
         mutationFn: async ({ slug }) => {
-            const r = await fetch(
-                `/api/Tenants/${encodeURIComponent(slug)}/regenerate-demo-data/`,
-                {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
-                },
-            );
-            if (r.status === 202) return (await r.json()) as RegenerateDemoQueued;
-            const text = await r.text().catch(() => "");
-            throw new Error(text || `HTTP ${r.status}`);
+            return api.api_Tenants_regenerate_demo_data_create(undefined, {
+                params: { slug },
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+            });
         },
         onSuccess: () => {
             // After reseed the entire tenant changes — blow the whole

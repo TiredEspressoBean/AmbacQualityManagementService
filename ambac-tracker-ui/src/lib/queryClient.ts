@@ -17,7 +17,6 @@ function reportApiError(kind: "query" | "mutation", source: string, error: unkno
         : undefined;
     recordCaughtError(kind, source, error, enriched);
     if (desc && import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
         console.error(`[API] ${desc.summary}`, desc.detail ?? "", error);
     }
 }

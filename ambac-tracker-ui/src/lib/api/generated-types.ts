@@ -15934,6 +15934,22 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        AffectedWorkorderRow: {
+            /** Format: uuid */
+            wo_id: string;
+            erp_id: string;
+            status: string;
+            priority: number;
+            quantity: number;
+            total_parts: number;
+            affected_parts: number;
+            portable_count?: number;
+            stranded?: components["schemas"]["StrandedPart"][];
+        };
+        AffectedWorkordersResponse: {
+            results: components["schemas"]["AffectedWorkorderRow"][];
+            available_steps: components["schemas"]["AvailableStep"][];
+        };
         /**
          * @description * `ALL_REQUIRED` - All Required
          *     * `THRESHOLD` - Threshold
@@ -15949,13 +15965,13 @@ export interface components {
             content_type?: number | null;
             object_id?: string | null;
             readonly content_object_info: {
-                [key: string]: unknown;
+                type: string;
+                id: string;
+                str: string;
             } | null;
             readonly content_object_display: string | null;
             requested_by?: number | null;
-            readonly requested_by_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly requested_by_info: components["schemas"]["UserSelect"] | null;
             reason?: string | null;
             notes?: string | null;
             status?: components["schemas"]["ApprovalStatusEnum"];
@@ -16322,6 +16338,11 @@ export interface components {
          * @enum {string}
          */
         AutoResolveEnum: "off" | "live";
+        AvailableStep: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         /**
          * @description Bill of Materials serializer.
          *
@@ -16653,6 +16674,34 @@ export interface components {
             task_ids: string[];
             operator_id: number | null;
         };
+        BulkReconcileResultRow: {
+            row: number;
+            outcome: components["schemas"]["BulkReconcileResultRowOutcomeEnum"];
+            user_id?: string;
+            invitation_id?: string;
+            invitation_url?: string;
+            changes?: string[];
+            warnings?: string[];
+            error?: string;
+        };
+        /**
+         * @description * `created` - created
+         *     * `updated` - updated
+         *     * `unchanged` - unchanged
+         *     * `error` - error
+         * @enum {string}
+         */
+        BulkReconcileResultRowOutcomeEnum: "created" | "updated" | "unchanged" | "error";
+        BulkReconcileRowRequest: {
+            /** Format: email */
+            email: string;
+            first_name?: string;
+            last_name?: string;
+            group?: string;
+            groups?: string;
+            status?: string;
+            message?: string;
+        };
         BulkReconcileSummary: {
             total: number;
             created: number;
@@ -16660,17 +16709,19 @@ export interface components {
             unchanged: number;
             errors: number;
         };
+        BulkReconcileUsersQueued: {
+            task_id: string;
+            status: string;
+            total_rows: number;
+            message: string;
+        };
         BulkReconcileUsersRequestRequest: {
             /** @description List of row dicts: {email, first_name, last_name, group, status, message}. Either `rows` (this field) or a `file` upload must be provided. */
-            rows?: {
-                [key: string]: unknown;
-            }[];
+            rows?: components["schemas"]["BulkReconcileRowRequest"][];
         };
         BulkReconcileUsersResponse: {
             summary: components["schemas"]["BulkReconcileSummary"];
-            results: {
-                [key: string]: unknown;
-            }[];
+            results: components["schemas"]["BulkReconcileResultRow"][];
         };
         BulkReleaseRequestRequest: {
             ids: string[];
@@ -16984,7 +17035,10 @@ export interface components {
             /** Format: uuid */
             capa: string;
             readonly capa_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                capa_number: string;
+                problem_statement: string;
             } | null;
             task_type: components["schemas"]["TaskTypeEnum"];
             readonly task_type_display: string;
@@ -17053,7 +17107,10 @@ export interface components {
             /** Format: uuid */
             capa: string;
             readonly capa_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                capa_number: string;
+                problem_statement: string;
             } | null;
             /** @description How effectiveness was verified */
             verification_method: string;
@@ -18308,6 +18365,15 @@ export interface components {
         };
         EmbedQueryResponse: {
             embedding: number[];
+        };
+        EnsureInspectionQrRequestRequest: {
+            /** Format: uuid */
+            step_execution: string;
+        };
+        EnsureInspectionQrResponse: {
+            /** Format: uuid */
+            quality_report_id: string;
+            created: boolean;
         };
         /**
          * @description Equipment type serializer.
@@ -20419,13 +20485,6 @@ export interface components {
          */
         OrdersStatusEnum: "RFI" | "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD" | "CANCELLED";
         /**
-         * @description * `selected` - Selected
-         *     * `deselected` - Deselected
-         *     * `pending` - Pending
-         * @enum {string}
-         */
-        OutcomeEnum: "selected" | "deselected" | "pending";
-        /**
          * @description Outside-process (subcontract) shipment — the Flow B send/return aggregate.
          *
          *     Read-mostly: shipments are created + transitioned via the viewset's send_out /
@@ -22361,12 +22420,22 @@ export interface components {
             /** Format: uuid */
             part_type: string;
             readonly part_type_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                name: string;
+                version: number;
+                ID_prefix: string | null;
             } | null;
             /** Format: uuid */
             step?: string | null;
             readonly step_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                name: string;
+                order: number | null;
+                description: string | null;
+                is_last_step: boolean;
+                process_name: string | null;
             } | null;
             /** Format: uuid */
             work_order?: string | null;
@@ -24560,8 +24629,14 @@ export interface components {
             order?: number;
             /** @description Short human-readable title shown in substep listings. */
             title?: string;
-            /** @description TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary. */
-            body_blocks?: unknown;
+            body_blocks?: {
+                type?: string;
+                content?: {
+                    [key: string]: unknown;
+                }[];
+            } | {
+                [key: string]: unknown;
+            }[];
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
             /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
@@ -24676,8 +24751,14 @@ export interface components {
             language?: string;
             /** @description Translated title. */
             title?: string;
-            /** @description Translated TipTap document JSON; same shape as Substep.body_blocks. */
-            body_blocks?: unknown;
+            body_blocks?: {
+                type?: string;
+                content?: {
+                    [key: string]: unknown;
+                }[];
+            } | {
+                [key: string]: unknown;
+            }[];
             archived?: boolean;
         };
         /**
@@ -26386,7 +26467,10 @@ export interface components {
             /** Format: uuid */
             capa: string;
             readonly capa_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                capa_number: string;
+                problem_statement: string;
             } | null;
             rca_method: components["schemas"]["RcaMethodEnum"];
             readonly rca_method_display: string;
@@ -27123,7 +27207,7 @@ export interface components {
              *     * `deselected` - Deselected
              *     * `pending` - Pending
              */
-            readonly outcome: components["schemas"]["OutcomeEnum"];
+            readonly outcome: components["schemas"]["SamplingDecisionOutcomeEnum"];
             /** @description Version of the SamplingRuleSet that produced this decision. Audit can answer 'what rule was active when this was decided' via this field; rule edits bump the version on supersession. */
             readonly ruleset_version: number;
             /**
@@ -27137,6 +27221,13 @@ export interface components {
              */
             readonly superseded_by: string | null;
         };
+        /**
+         * @description * `selected` - Selected
+         *     * `deselected` - Deselected
+         *     * `pending` - Pending
+         * @enum {string}
+         */
+        SamplingDecisionOutcomeEnum: "selected" | "deselected" | "pending";
         /** @description Enhanced sampling rule serializer */
         SamplingRule: {
             /** Format: uuid */
@@ -27999,6 +28090,57 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        /**
+         * @description Documentation-only view of the create body.
+         *
+         *     POST /api/StepExecutions/ accepts three fields that are NOT on the model
+         *     and NOT on StepExecutionSerializer: the second-person override credentials.
+         *     `StepExecutionViewSet.create` reads them straight off `request.data`
+         *     (`_verify_supervisor` for the email/password pair, `override_reason` for the
+         *     log) before delegating to the normal create, so they never pass through a
+         *     serializer.
+         *
+         *     Undeclared, the generated client's body schema omitted them — and zod
+         *     strips unknown keys, so a client using the typed method would have had its
+         *     override credentials silently dropped and hit the competence gate with no
+         *     way past it.
+         *
+         *     Referenced only from `@extend_schema(request=...)`; never instantiated for
+         *     validation, so it changes the contract and nothing else.
+         */
+        StepExecutionCreateRequest: {
+            /**
+             * Format: uuid
+             * @description The part being tracked through this step (mutually exclusive with `core`).
+             */
+            part?: string | null;
+            /**
+             * Format: uuid
+             * @description The step being executed
+             */
+            step: string;
+            /** @description Which visit this is (1st, 2nd, 3rd time at this step) */
+            visit_number?: number;
+            /** Format: date-time */
+            exited_at?: string | null;
+            /** @description Operator assigned to this step execution */
+            assigned_to?: number | null;
+            /** @description Operator who completed this step */
+            completed_by?: number | null;
+            /**
+             * Format: uuid
+             * @description The step this part moved to (for audit trail)
+             */
+            next_step?: string | null;
+            /** @description Result of decision: 'PASS', 'FAIL', measurement value, etc. */
+            decision_result?: string;
+            status?: components["schemas"]["StepExecutionStatusEnum"];
+            archived?: boolean;
+            /** Format: email */
+            override_email?: string;
+            override_password?: string;
+            override_reason?: string;
+        };
         /** @description Lightweight serializer for list views - avoids N+1 with select_related. */
         StepExecutionList: {
             /** Format: uuid */
@@ -28608,7 +28750,11 @@ export interface components {
             /** Format: uuid */
             part_type: string;
             readonly part_type_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                name: string;
+                version: number;
+                ID_prefix: string | null;
             } | null;
             readonly part_type_name: string | null;
             /**
@@ -28761,6 +28907,15 @@ export interface components {
             change_description?: string;
             archived?: boolean;
         };
+        StrandedPart: {
+            /** Format: uuid */
+            part_id: string;
+            /** Format: uuid */
+            wo_id: string;
+            /** Format: uuid */
+            step_id: string;
+            step_name: string;
+        };
         /**
          * @description * `fpi_record` - fpi_record
          *     * `material_lot` - material_lot
@@ -28799,8 +28954,14 @@ export interface components {
             order?: number;
             /** @description Short human-readable title shown in substep listings. */
             title: string;
-            /** @description TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary. */
-            body_blocks?: unknown;
+            body_blocks?: {
+                type?: string;
+                content?: {
+                    [key: string]: unknown;
+                }[];
+            } | {
+                [key: string]: unknown;
+            }[];
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
             /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
@@ -29026,8 +29187,14 @@ export interface components {
             order?: number;
             /** @description Short human-readable title shown in substep listings. */
             title: string;
-            /** @description TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary. */
-            body_blocks?: unknown;
+            body_blocks?: {
+                type?: string;
+                content?: {
+                    [key: string]: unknown;
+                }[];
+            } | {
+                [key: string]: unknown;
+            }[];
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
             /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
@@ -29277,8 +29444,14 @@ export interface components {
             language: string;
             /** @description Translated title. */
             title: string;
-            /** @description Translated TipTap document JSON; same shape as Substep.body_blocks. */
-            body_blocks?: unknown;
+            body_blocks?: {
+                type?: string;
+                content?: {
+                    [key: string]: unknown;
+                }[];
+            } | {
+                [key: string]: unknown;
+            }[];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -29296,8 +29469,14 @@ export interface components {
             language: string;
             /** @description Translated title. */
             title: string;
-            /** @description Translated TipTap document JSON; same shape as Substep.body_blocks. */
-            body_blocks?: unknown;
+            body_blocks?: {
+                type?: string;
+                content?: {
+                    [key: string]: unknown;
+                }[];
+            } | {
+                [key: string]: unknown;
+            }[];
             archived?: boolean;
         };
         SupersedeRequestRequest: {
@@ -29594,8 +29773,10 @@ export interface components {
             readonly permissions: string[];
         };
         TenantGroupMemberRequestRequest: {
-            user_id: string;
+            user_id: number;
+            /** Format: uuid */
             facility_id?: string | null;
+            /** Format: uuid */
             company_id?: string | null;
         };
         TenantGroupPermissionsRequestRequest: {
@@ -31021,7 +31202,10 @@ export interface components {
             /** Format: uuid */
             process?: string | null;
             readonly process_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                name: string;
+                version: number;
             } | null;
             /** Format: date */
             expected_start?: string | null;
@@ -31136,7 +31320,10 @@ export interface components {
             /** Format: uuid */
             process?: string | null;
             readonly process_info: {
-                [key: string]: unknown;
+                /** Format: uuid */
+                id: string;
+                name: string;
+                version: number;
             } | null;
             /** Format: date */
             expected_completion?: string | null;
@@ -46780,9 +46967,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["StepExecutionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["StepExecutionRequest"];
-                "multipart/form-data": components["schemas"]["StepExecutionRequest"];
+                "application/json": components["schemas"]["StepExecutionCreateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StepExecutionCreateRequest"];
+                "multipart/form-data": components["schemas"]["StepExecutionCreateRequest"];
             };
         };
         responses: {
@@ -48877,9 +49064,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubstepRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
-                "multipart/form-data": components["schemas"]["SubstepRequest"];
+                "application/json": components["schemas"]["EnsureInspectionQrRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["EnsureInspectionQrRequestRequest"];
+                "multipart/form-data": components["schemas"]["EnsureInspectionQrRequestRequest"];
             };
         };
         responses: {
@@ -48888,7 +49075,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Substep"];
+                    "application/json": components["schemas"]["EnsureInspectionQrResponse"];
                 };
             };
         };
@@ -49513,8 +49700,8 @@ export interface operations {
             path: {
                 /** @description A UUID string identifying this tenant group. */
                 id: string;
-                /** @description User UUID to remove */
-                user_id: string;
+                /** @description User pk to remove */
+                user_id: number;
             };
             cookie?: never;
         };
@@ -51786,6 +51973,14 @@ export interface operations {
             };
         };
         responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkReconcileUsersQueued"];
+                };
+            };
             207: {
                 headers: {
                     [name: string]: unknown;
@@ -56357,7 +56552,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProcessChangeOrder"];
+                    "application/json": components["schemas"]["AffectedWorkordersResponse"];
                 };
             };
         };
@@ -56764,13 +56959,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

@@ -356,7 +356,7 @@ function BatchCaptureSection({
         }));
 
     const handleConfirm = async (substep: Substep) => {
-        const body = (substep.body_blocks as unknown as object) ?? EMPTY_DOC;
+        const body = substep.body_blocks ?? EMPTY_DOC;
         const responses = responsesBySubstep[substep.id] ?? {};
         const missing = findMissingRequired(body, responses);
         if (missing.length > 0) {
@@ -408,7 +408,7 @@ function BatchCaptureSection({
                             }}
                         >
                             <SubstepOperatorView
-                                body={(s.body_blocks as unknown as object) ?? EMPTY_DOC}
+                                body={s.body_blocks ?? EMPTY_DOC}
                             />
                         </OperatorResponseContext.Provider>
                         <Button

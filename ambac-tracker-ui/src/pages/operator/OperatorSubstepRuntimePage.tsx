@@ -176,7 +176,7 @@ export function OperatorSubstepRuntimePage() {
         const out: CapturedMeasurement[] = [];
         for (const s of sortedForBind) {
             const caps = buildCaptures(
-                s.body_blocks as unknown as object,
+                s.body_blocks,
                 responsesBySubstepId[s.id] ?? {},
             );
             for (const c of caps) {
@@ -245,7 +245,7 @@ export function OperatorSubstepRuntimePage() {
                 const resp = state[s.id];
                 if (
                     resp &&
-                    findMissingRequired(s.body_blocks as unknown as object, resp).length === 0
+                    findMissingRequired(s.body_blocks, resp).length === 0
                 ) {
                     next.add(s.id);
                 }
@@ -264,21 +264,11 @@ export function OperatorSubstepRuntimePage() {
         if (!search.execution) return; // can't bind without a step_execution
         if (qrIdBySubstepId[activeSubstepId]) return; // already bound
         let cancelled = false;
-        // Raw fetch instead of the generated client: spectacular infers the
-        // body type from the default SubstepRequest serializer, but this
-        // action's real body is just `{ step_execution: <uuid> }`. Zodios
-        // would reject the simplified payload.
-        fetch(`/api/Substeps/${activeSubstepId}/ensure_inspection_qr/`, {
-            method: "POST",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-                ...csrfHeaders(),
-            },
-            body: JSON.stringify({ step_execution: search.execution }),
-        })
-            .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-            .then((resp: { quality_report_id?: string }) => {
+        api.api_Substeps_ensure_inspection_qr_create(
+            { step_execution: search.execution },
+            { params: { id: activeSubstepId }, headers: csrfHeaders() },
+        )
+            .then((resp) => {
                 if (cancelled) return;
                 const qrId = resp?.quality_report_id;
                 if (qrId) {
@@ -889,7 +879,7 @@ function SubstepStage({
             ) : (
                 <OperatorResponseContext.Provider value={contextValue}>
                     <SubstepOperatorView
-                        body={(substep.body_blocks as unknown as object) ?? { type: "doc", content: [] }}
+                        body={substep.body_blocks ?? { type: "doc", content: [] }}
                     />
                 </OperatorResponseContext.Provider>
             )}
@@ -924,7 +914,7 @@ function ActionBar({
         () =>
             isDeselected
                 ? []
-                : findMissingRequired(substep.body_blocks as unknown as object, responses),
+                : findMissingRequired(substep.body_blocks, responses),
         [substep.body_blocks, responses, isDeselected],
     );
     const blocked = missing.length > 0;
@@ -1080,14 +1070,14 @@ function ReviewStage({
                     const outcome = outcomeBySubstepId[s.id];
                     const isDeselected = outcome === "deselected";
                     const summary = summarizeResponses(
-                        s.body_blocks as unknown as object,
+                        s.body_blocks,
                         responses,
                     );
                     const filled = summary.filter((r) => !r.empty);
                     const missing = isDeselected
                         ? []
                         : findMissingRequired(
-                            s.body_blocks as unknown as object,
+                            s.body_blocks,
                             responses,
                           );
                     return (

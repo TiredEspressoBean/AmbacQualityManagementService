@@ -768,7 +768,7 @@ function SubstepRow({
     const displaySignature = pending?.requires_signature ?? substep.requires_signature;
     const displayBody =
         (pending?.body_blocks as object | undefined) ??
-        (substep.body_blocks as unknown as object | undefined);
+        substep.body_blocks;
     // Annotator in the body forces inspection-point, so reflect it in the badge
     // even when the stored flag is stale (legacy substeps authored before the
     // coupling existed).
@@ -906,7 +906,7 @@ function SubstepExpandedBody({
     const workingScope = pending?.scope ?? (substep.scope ?? "sampled");
     const workingBody =
         (pending?.body_blocks as object | undefined) ??
-        ((substep.body_blocks as unknown as object) ?? { type: "doc", content: [] });
+        (substep.body_blocks ?? { type: "doc", content: [] });
 
     // A defect annotator in the body forces this substep to be an inspection
     // point (else its captures never reach a QualityReport). The toggle is

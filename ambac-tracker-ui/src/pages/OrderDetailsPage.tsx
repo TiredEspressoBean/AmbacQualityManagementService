@@ -225,8 +225,7 @@ export function OrderDetailsPage() {
             if (!groups[typeName]) {
                 groups[typeName] = {
                     parts: [],
-                    // eslint-disable-next-line local/no-as-any -- part_type_info is typed as {} passthrough; id exists at runtime
-                    partTypeId: ((part.part_type_info as any)?.id as string | undefined) || part.part_type || null,
+                    partTypeId: part.part_type_info?.id || part.part_type || null,
                 };
             }
             groups[typeName].parts.push(part);

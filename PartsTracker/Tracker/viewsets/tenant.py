@@ -1110,12 +1110,17 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     )
     @extend_schema(
         methods=['POST'],
+        # Types match the pks the handler looks up with: User is a BigAutoField,
+        # Facility and Companies are UUIDs. Declared as CharField these all
+        # generated as strings, so callers holding a numeric user pk had to
+        # String() it -- which DRF coerces back, making the contract a lie that
+        # happened to work.
         request=inline_serializer(
             name='TenantGroupMemberRequest',
             fields={
-                'user_id': serializers.CharField(),
-                'facility_id': serializers.CharField(required=False, allow_null=True),
-                'company_id': serializers.CharField(required=False, allow_null=True),
+                'user_id': serializers.IntegerField(),
+                'facility_id': serializers.UUIDField(required=False, allow_null=True),
+                'company_id': serializers.UUIDField(required=False, allow_null=True),
             }
         ),
         responses={201: UserRoleSerializer}
@@ -1163,7 +1168,7 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
         return Response(UserRoleSerializer(role).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
-        parameters=[OpenApiParameter(name='user_id', location='path', type=str, description='User UUID to remove')],
+        parameters=[OpenApiParameter(name='user_id', location='path', type=int, description='User pk to remove')],
         responses={200: inline_serializer(name='RemoveMemberResponse', fields={'status': serializers.CharField()})}
     )
     @action(detail=True, methods=['delete'], url_path='members/(?P<user_id>[^/.]+)')

@@ -84,8 +84,7 @@ function CapaTasksList() {
                                     )}
                                 </div>
                                 <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                                    {/* eslint-disable-next-line local/no-as-any -- capa_info typed as {} passthrough; capa_number field exists at runtime */}
-                                    <span>{(task.capa_info as any)?.capa_number || `CAPA #${task.capa}`}</span>
+                                    <span>{task.capa_info?.capa_number || `CAPA #${task.capa}`}</span>
                                     {task.due_date && (
                                         <span className={`flex items-center gap-1 ${isOverdue ? "text-destructive" : ""}`}>
                                             <Calendar className="h-3 w-3" />
@@ -147,15 +146,12 @@ function ApprovalsList() {
                                 )}
                             </div>
                             <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                                {/* eslint-disable-next-line local/no-as-any -- content_object_info typed as {} passthrough; .str is the runtime display field */}
-                                {(approval.content_object_info as any)?.str && (
-                                    // eslint-disable-next-line local/no-as-any -- content_object_info typed as {} passthrough
-                                    <span>{(approval.content_object_info as any).str}</span>
+                                {approval.content_object_info?.str && (
+                                    <span>{approval.content_object_info.str}</span>
                                 )}
                                 {approval.requested_by_info && (
                                     <span>
-                                        {/* eslint-disable-next-line local/no-as-any -- requested_by_info typed as {} passthrough; full_name/username exist at runtime */}
-                                        from {(approval.requested_by_info as any).full_name || (approval.requested_by_info as any).username}
+                                        from {approval.requested_by_info.full_name || approval.requested_by_info.username}
                                     </span>
                                 )}
                                 {approval.due_date && (
