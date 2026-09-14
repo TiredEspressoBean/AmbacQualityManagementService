@@ -88,7 +88,7 @@ export function PcrDetailPage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { navigate({ to: '/process-flow', search: { id: pcr.draft_process_version! } as never }); }}
+                                    onClick={() => { navigate({ to: '/process-flow', search: { id: pcr.draft_process_version! } }); }}
                                 >
                                     <FileEdit className="h-4 w-4 mr-2" />
                                     Open draft

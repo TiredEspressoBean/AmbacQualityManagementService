@@ -21,7 +21,7 @@ export const materialsListOptions = (params: {
     queryFn: () =>
       api.api_Materials_list({
         queries: { offset, limit, ordering, search, ...(filters ?? {}) },
-      } as never) as Promise<PaginatedMaterialList>,
+      }) as Promise<PaginatedMaterialList>,
   });
 };
 
@@ -42,7 +42,7 @@ export const materialOptionsOptions = () =>
     queryFn: () =>
       api.api_Materials_list({
         queries: { is_active: true, ordering: "name", limit: 1000 },
-      } as never) as Promise<PaginatedMaterialList>,
+      }) as Promise<PaginatedMaterialList>,
   });
 
 export function useMaterialOptions() {
@@ -74,7 +74,7 @@ export function useUpdateMaterial() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
-      api.api_Materials_partial_update(body as never, { params: { id } } as never),
+      api.api_Materials_partial_update(body, { params: { id } }),
     onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "materials" || q.queryKey[0] === "material" }),
   });
 }
@@ -84,7 +84,7 @@ export function useDeleteMaterial() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_Materials_destroy(undefined as never, { params: { id } } as never),
+      api.api_Materials_destroy(undefined, { params: { id } }),
     onSuccess: () => {
       qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "materials" || q.queryKey[0] === "material" });
       toast.success("Material removed");

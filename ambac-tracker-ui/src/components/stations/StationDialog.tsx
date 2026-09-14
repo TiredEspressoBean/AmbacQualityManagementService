@@ -51,27 +51,27 @@ const stationStepsOptions = (stationId: string) =>
         queryKey: ["station-steps", stationId] as const,
         queryFn: () => api.api_Steps_list({
             queries: { work_center: stationId, limit: 200 },
-        } as never) as Promise<any>,
+        }) as Promise<any>,
     });
 
 const allStepsOptions = (enabled: boolean) =>
     queryOptions({
         queryKey: ["station-steps", "all"] as const,
         enabled,
-        queryFn: () => api.api_Steps_list({ queries: { limit: 500 } } as never) as Promise<any>,
+        queryFn: () => api.api_Steps_list({ queries: { limit: 500 } }) as Promise<any>,
     });
 
 const stationDetailOptions = (stationId: string) =>
     queryOptions({
         queryKey: ["work-centers", "detail", stationId] as const,
-        queryFn: () => api.api_WorkCenters_retrieve({ params: { id: stationId } } as never) as Promise<any>,
+        queryFn: () => api.api_WorkCenters_retrieve({ params: { id: stationId } }) as Promise<any>,
     });
 
 const equipmentPickerOptions = (enabled: boolean) =>
     queryOptions({
         queryKey: ["equipment", "station-picker"] as const,
         enabled,
-        queryFn: () => api.api_Equipment_list({ queries: { limit: 500 } } as never) as Promise<any>,
+        queryFn: () => api.api_Equipment_list({ queries: { limit: 500 } }) as Promise<any>,
     });
 
 const stationMembersOptions = (stationId: string) =>
@@ -79,14 +79,14 @@ const stationMembersOptions = (stationId: string) =>
         queryKey: ["station-members", stationId] as const,
         queryFn: () => api.api_UserWorkCenterMemberships_list({
             queries: { work_center: stationId, limit: 200 },
-        } as never) as Promise<any>,
+        }) as Promise<any>,
     });
 
 const usersPickerOptions = (enabled: boolean) =>
     queryOptions({
         queryKey: ["users", "station-picker"] as const,
         enabled,
-        queryFn: () => api.api_User_list({ queries: { limit: 500 } } as never) as Promise<any>,
+        queryFn: () => api.api_User_list({ queries: { limit: 500 } }) as Promise<any>,
     });
 
 function useInvalidate() {
@@ -118,7 +118,7 @@ function StepsTab({ station }: { station: StationLite }) {
 
     const patchStep = useMutation({
         mutationFn: ({ id, work_center }: { id: string; work_center: string | null }) =>
-            api.api_Steps_partial_update({ work_center } as never, { params: { id } } as never),
+            api.api_Steps_partial_update({ work_center }, { params: { id } }),
         onSuccess: () => invalidate(),
         onError: () => toast.error("Couldn't update the step's station."),
     });
@@ -210,7 +210,7 @@ function EquipmentTab({ station }: { station: StationLite }) {
 
     const setEquipment = useMutation({
         mutationFn: (equipment: string[]) =>
-            api.api_WorkCenters_partial_update({ equipment } as never, { params: { id: station.id } } as never),
+            api.api_WorkCenters_partial_update({ equipment }, { params: { id: station.id } }),
         onSuccess: () => invalidate(),
         onError: () => toast.error("Couldn't update the station's equipment."),
     });
@@ -297,20 +297,20 @@ function PeopleTab({ station }: { station: StationLite }) {
         mutationFn: (userId: number) =>
             api.api_UserWorkCenterMemberships_create({
                 user: userId, work_center: station.id, is_primary: false,
-            } as never),
+            }),
         onSuccess: () => invalidate(),
         onError: () => toast.error("Couldn't add the member."),
     });
     const removeMember = useMutation({
         mutationFn: (id: string) =>
-            api.api_UserWorkCenterMemberships_destroy(undefined as never, { params: { id } } as never),
+            api.api_UserWorkCenterMemberships_destroy(undefined, { params: { id } }),
         onSuccess: () => invalidate(),
         onError: () => toast.error("Couldn't remove the member."),
     });
     const setPrimary = useMutation({
         mutationFn: (id: string) =>
             api.api_UserWorkCenterMemberships_set_primary_create(
-                undefined as never, { params: { id } } as never),
+                undefined, { params: { id } }),
         onSuccess: () => invalidate(),
         onError: () => toast.error("Couldn't set primary."),
     });

@@ -184,7 +184,7 @@ export function insertEntry(editor: Editor, entry: CatalogEntry) {
     }
 
     const content = nodes.map((n) => withFreshNodeId(n));
-    editor.chain().focus().insertContent(content as never).run();
+    editor.chain().focus().insertContent(content).run();
 }
 
 /** Case-insensitive filter across label + keywords + id (for the slash menu). */

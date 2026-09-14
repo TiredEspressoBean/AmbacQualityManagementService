@@ -324,7 +324,7 @@ export default function EditDispositionFormPage() {
 
     // Everything except the decision — disposition_type is read-only on update.
     const savePatch = (values: FormValues) =>
-        api.api_QuarantineDispositions_partial_update(values as never, {
+        api.api_QuarantineDispositions_partial_update(values, {
             params: { id: dispositionId! },
             headers: csrf(),
         })
@@ -365,7 +365,7 @@ export default function EditDispositionFormPage() {
                 toast.success("Disposition updated")
                 queryClient.invalidateQueries(matchKey(["disposition", dispositionId]))
             } else {
-                const result = await api.api_QuarantineDispositions_create(values as never, {
+                const result = await api.api_QuarantineDispositions_create(values, {
                     headers: csrf(),
                 })
                 toast.success("Disposition created")

@@ -90,7 +90,7 @@ function ArtifactTable({
                     <tr
                         key={r.id}
                         className="border-t cursor-pointer hover:bg-muted/40"
-                        onClick={() => { navigate({ to: `${detailPathPrefix}/${r.id}` as never }); }}
+                        onClick={() => { navigate({ to: `${detailPathPrefix}/${r.id}` }); }}
                     >
                         <td className="px-3 py-2 font-mono text-xs">{r.artifact_number ?? r.id}</td>
                         <td className="px-3 py-2">{r.title ?? "—"}</td>

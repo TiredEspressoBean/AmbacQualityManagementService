@@ -15,7 +15,7 @@ export const useUpdateMeasurementDefinition = () => {
 
     return useMutation<UpdateMeasurementDefinitionResponse, unknown, UpdateMeasurementDefinitionVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_MeasurementDefinitions_update(data as never, {
+            api.api_MeasurementDefinitions_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateMeasurementDefinitionResponse>,

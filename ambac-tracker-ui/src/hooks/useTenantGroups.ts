@@ -14,7 +14,7 @@ export const tenantGroupsOptions = (queries?: TenantGroupsListQueries, config?: 
     queryKey: ["tenantGroups", queries, config] as const,
     queryFn: () =>
       api.api_TenantGroups_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<TenantGroupsListResponse>,
   });
 

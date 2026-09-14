@@ -120,7 +120,7 @@ export function ReceivingInspectionPlanEditorPage() {
         body_blocks: buildReceivingInspectionBody(
           (measurements?.results ?? []) as CharacteristicDef[],
         ),
-      } as never);
+      });
     } catch {
       toast.error("Could not create the inspection substep");
       return;

@@ -79,7 +79,7 @@ export function useSealBatchExecution() {
     const qc = useQueryClient();
     return useMutation<SealResult, unknown, { id: string }>({
         mutationFn: ({ id }) =>
-            api.api_BatchExecutions_seal_create(undefined as never, {
+            api.api_BatchExecutions_seal_create(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<SealResult>,

@@ -14,14 +14,14 @@ export function PartLinkedRecordsSection({ modelData }: { modelData: { id?: stri
     const partId = modelData?.id ? String(modelData.id) : undefined;
 
     const { data: qrData, isLoading: qrLoading } = useQualityReports(
-        partId ? ({ part: partId, limit: 10 } as never) : undefined,
+        partId ? ({ part: partId, limit: 10 }) : undefined,
         undefined,
-        { enabled: !!partId } as never,
+        { enabled: !!partId },
     );
     const { data: dispositionData, isLoading: dispositionLoading } = useRetrieveQuarantineDispositions(
-        partId ? ({ part: partId, limit: 10 } as never) : undefined,
+        partId ? ({ part: partId, limit: 10 }) : undefined,
         undefined,
-        { enabled: !!partId } as never,
+        { enabled: !!partId },
     );
 
     if (!partId) return null;

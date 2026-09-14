@@ -17,7 +17,7 @@ export const substepsOptions = (queries?: SubstepsListQueries) =>
         queryKey: [QK_BASE, "list", queries] as const,
         queryFn: () =>
             api.api_Substeps_list(
-                (queries ? { queries } : undefined) as never,
+                (queries ? { queries } : undefined),
             ) as Promise<SubstepsListResponse>,
     });
 
@@ -30,7 +30,7 @@ export const substepOptions = (id: string | null | undefined) =>
     queryOptions({
         queryKey: [QK_BASE, "detail", id] as const,
         queryFn: () =>
-            api.api_Substeps_retrieve({ params: { id: String(id) } } as never) as Promise<Substep>,
+            api.api_Substeps_retrieve({ params: { id: String(id) } }) as Promise<Substep>,
     });
 
 /** Single substep by id. */
@@ -42,7 +42,7 @@ export function useCreateSubstep() {
     const qc = useQueryClient();
     return useMutation<Substep, unknown, SubstepRequest>({
         mutationFn: (data) =>
-            api.api_Substeps_create(data as never, {
+            api.api_Substeps_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<Substep>,
         onSuccess: () => {
@@ -60,7 +60,7 @@ export function useUpdateSubstep() {
         { id: string; data: PatchedSubstepRequest }
     >({
         mutationFn: ({ id, data }) =>
-            api.api_Substeps_partial_update(data as never, {
+            api.api_Substeps_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<Substep>,
@@ -122,7 +122,7 @@ export function useSubmitSubstep() {
         { id: string; data: SubmitSubstepRequest }
     >({
         mutationFn: ({ id, data }) =>
-            api.api_Substeps_submit_create(data as never, {
+            api.api_Substeps_submit_create(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<SubmitSubstepResponse>,
@@ -138,7 +138,7 @@ export function useDeleteSubstep() {
     const qc = useQueryClient();
     return useMutation<void, unknown, string>({
         mutationFn: (id) =>
-            api.api_Substeps_destroy(undefined as never, {
+            api.api_Substeps_destroy(undefined, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<void>,

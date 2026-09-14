@@ -15,7 +15,7 @@ export const threeDModelsOptions = (queries?: ThreeDModelsListQueries, config?: 
     queryKey: ["threeDModel", queries, config] as const,
     queryFn: () =>
       api.api_ThreeDModels_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<ThreeDModelsListResponse>,
   });
 

@@ -45,7 +45,7 @@ export const ospShipmentsOptions = (queries?: Record<string, string>) =>
     queryOptions({
         queryKey: ["ospShipments", "list", queries] as const,
         queryFn: () =>
-            api.api_OutsideProcessShipments_list({ queries } as never) as Promise<PaginatedShipments>,
+            api.api_OutsideProcessShipments_list({ queries }) as Promise<PaginatedShipments>,
         staleTime: 15_000,
     });
 
@@ -58,7 +58,7 @@ export const listOSPShipmentsOptions = (workOrderId: string) =>
         queryKey: ["ospShipments", "by-wo", workOrderId] as const,
         queryFn: () =>
             api.api_OutsideProcessShipments_list({
-                queries: { work_order: workOrderId } as never,
+                queries: { work_order: workOrderId },
             }) as Promise<PaginatedShipments>,
         staleTime: 15_000,
     });
@@ -81,7 +81,7 @@ export function useSendPartsOut() {
     const qc = useQueryClient();
     return useMutation<OutsideProcessShipment, unknown, SendPartsOutBody>({
         mutationFn: (body) =>
-            api.api_OutsideProcessShipments_send_out_create(body as never, {
+            api.api_OutsideProcessShipments_send_out_create(body, {
                 headers: csrf(),
             }) as Promise<OutsideProcessShipment>,
         onSuccess: () => invalidateOsp(qc),
@@ -94,7 +94,7 @@ export function useReceiveBack() {
     const qc = useQueryClient();
     return useMutation<components["schemas"]["QualityReports"], unknown, { id: string }>({
         mutationFn: ({ id }) =>
-            api.api_OutsideProcessShipments_receive_back_create(undefined as never, {
+            api.api_OutsideProcessShipments_receive_back_create(undefined, {
                 params: { id },
                 headers: csrf(),
             }) as Promise<components["schemas"]["QualityReports"]>,

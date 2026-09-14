@@ -14,7 +14,7 @@ export const useCreateSamplingRule = () => {
 
     return useMutation<CreateSamplingRuleResponse, unknown, CreateSamplingRuleInput>({
         mutationFn: (data) =>
-            api.api_Sampling_rules_create(data as never, {
+            api.api_Sampling_rules_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateSamplingRuleResponse>,
         onSuccess: () => {

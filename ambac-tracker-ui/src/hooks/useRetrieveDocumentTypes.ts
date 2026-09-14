@@ -15,7 +15,7 @@ export const documentTypesOptions = (queries?: DocumentTypesListQueries, config?
     queryKey: ["document-type", queries, config] as const,
     queryFn: () =>
       api.api_DocumentTypes_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<DocumentTypesListResponse>,
   });
 

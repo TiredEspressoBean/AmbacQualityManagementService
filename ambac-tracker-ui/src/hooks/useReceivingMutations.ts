@@ -37,7 +37,7 @@ export const useBulkCreateLots = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (vars: { lots: LotBulkRow[] }) =>
-            api.api_MaterialLots_bulk_create_create({ lots: vars.lots } as never, { headers: csrf() }),
+            api.api_MaterialLots_bulk_create_create({ lots: vars.lots }, { headers: csrf() }),
         onSuccess: () => invalidateReceiving(queryClient),
     });
 };
@@ -63,7 +63,7 @@ export const useRecordExpectedReceipt = () => {
                     promised_date: vars.promised_date,
                     ...(vars.supplier ? { supplier: vars.supplier } : {}),
                     erp_po_number: vars.erp_po_number ?? "",
-                } as never,
+                },
                 { headers: csrf() },
             ),
         onSuccess: () => {
@@ -94,7 +94,7 @@ export const useReceiveExpectedLot = () => {
                     lot_number: vars.lot_number,
                     ...(vars.quantity ? { quantity: vars.quantity } : {}),
                     ...(vars.received_date ? { received_date: vars.received_date } : {}),
-                } as never,
+                },
                 { params: { id: vars.id }, headers: csrf() },
             ),
         onSuccess: () => {
@@ -151,7 +151,7 @@ export const useOpenInspection = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string }) =>
-            api.api_MaterialLots_open_inspection_create(undefined as never, {
+            api.api_MaterialLots_open_inspection_create(undefined, {
                 params: { id: vars.id },
                 headers: csrf(),
             }),
@@ -166,7 +166,7 @@ export const useRecordInspection = () => {
             id: string;
             measurements: { definition: string; value_numeric?: number | null; value_pass_fail?: "PASS" | "FAIL" | null }[];
         }) =>
-            api.api_MaterialLots_record_inspection_create({ measurements: vars.measurements } as never, {
+            api.api_MaterialLots_record_inspection_create({ measurements: vars.measurements }, {
                 params: { id: vars.id },
                 headers: csrf(),
             }),
@@ -181,7 +181,7 @@ export const useRecordUnits = () => {
             id: string;
             units: { sample_number: number; measurements: { definition: string; value_numeric?: number | null; value_pass_fail?: "PASS" | "FAIL" | null }[] }[];
         }) =>
-            api.api_MaterialLots_record_units_create({ units: vars.units } as never, {
+            api.api_MaterialLots_record_units_create({ units: vars.units }, {
                 params: { id: vars.id },
                 headers: csrf(),
             }),
@@ -193,7 +193,7 @@ export const useRecordBulk = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string; defectives_found: number }) =>
-            api.api_MaterialLots_record_bulk_create({ defectives_found: vars.defectives_found } as never, {
+            api.api_MaterialLots_record_bulk_create({ defectives_found: vars.defectives_found }, {
                 params: { id: vars.id },
                 headers: csrf(),
             }),
@@ -205,7 +205,7 @@ export const useAcceptLot = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string }) =>
-            api.api_MaterialLots_accept_create(undefined as never, { params: { id: vars.id }, headers: csrf() }),
+            api.api_MaterialLots_accept_create(undefined, { params: { id: vars.id }, headers: csrf() }),
         onSuccess: () => invalidateReceiving(queryClient),
     });
 };
@@ -214,7 +214,7 @@ export const useRejectLot = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string }) =>
-            api.api_MaterialLots_reject_create(undefined as never, { params: { id: vars.id }, headers: csrf() }),
+            api.api_MaterialLots_reject_create(undefined, { params: { id: vars.id }, headers: csrf() }),
         onSuccess: () => invalidateReceiving(queryClient),
     });
 };
@@ -224,7 +224,7 @@ export const useExtendShelfLife = () => {
     return useMutation({
         mutationFn: (vars: { id: string; new_expiration_date: string; reason: string }) =>
             api.api_MaterialLots_extend_shelf_life_create(
-                { new_expiration_date: vars.new_expiration_date, reason: vars.reason } as never,
+                { new_expiration_date: vars.new_expiration_date, reason: vars.reason },
                 { params: { id: vars.id }, headers: csrf() },
             ),
         onSuccess: () => invalidateReceiving(queryClient),
@@ -235,7 +235,7 @@ export const useRaiseScar = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string }) =>
-            api.api_MaterialLots_raise_scar_create(undefined as never, { params: { id: vars.id }, headers: csrf() }),
+            api.api_MaterialLots_raise_scar_create(undefined, { params: { id: vars.id }, headers: csrf() }),
         onSuccess: () => {
             invalidateReceiving(queryClient);
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "supplier-scorecard" });
@@ -269,5 +269,5 @@ export const materialLotOptions = (lotId: string) =>
         queryFn: () =>
             api.api_MaterialLots_retrieve({
                 params: { id: lotId },
-            } as never) as Promise<Schema<"MaterialLot">>,
+            }) as Promise<Schema<"MaterialLot">>,
     });

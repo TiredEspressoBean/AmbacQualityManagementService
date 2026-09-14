@@ -11,7 +11,7 @@ export const useCreateWorkOrder = () => {
 
     return useMutation<CreateWorkOrderResponse, unknown, CreateWorkOrderInput>({
         mutationFn: (data) =>
-            api.api_WorkOrders_create(data as never, {
+            api.api_WorkOrders_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateWorkOrderResponse>,
         onSuccess: () => {

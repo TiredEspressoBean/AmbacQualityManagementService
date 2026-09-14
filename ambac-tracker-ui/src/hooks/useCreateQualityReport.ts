@@ -11,7 +11,7 @@ export const useCreateQualityReport = () => {
 
     return useMutation<CreateQualityReportResponse, unknown, CreateQualityReportInput>({
         mutationFn: (data) =>
-            api.api_QualityReports_create(data as never, {
+            api.api_QualityReports_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateQualityReportResponse>,
         onSuccess: () => {

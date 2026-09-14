@@ -11,7 +11,7 @@ export const useCreateEquipment = () => {
 
     return useMutation<CreateEquipmentResponse, unknown, CreateEquipmentInput>({
         mutationFn: (data) =>
-            api.api_Equipment_create(data as never, {
+            api.api_Equipment_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateEquipmentResponse>,
         onSuccess: () => {

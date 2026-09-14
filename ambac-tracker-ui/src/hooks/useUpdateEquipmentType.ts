@@ -16,7 +16,7 @@ export const useUpdateEquipmentType = () => {
 
     return useMutation<UpdateEquipmentTypeResponse, unknown, UpdateEquipmentTypeVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_Equipment_types_partial_update(data as never, {
+            api.api_Equipment_types_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateEquipmentTypeResponse>,

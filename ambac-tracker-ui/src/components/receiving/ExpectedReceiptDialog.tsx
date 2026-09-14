@@ -51,7 +51,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
     const [poNumber, setPoNumber] = useState("");
 
     const materials = useMaterialOptions();
-    const companies = useRetrieveCompanies({ ordering: "name", limit: 1000 } as never);
+    const companies = useRetrieveCompanies({ ordering: "name", limit: 1000 });
     const record = useRecordExpectedReceipt();
 
     /** Picking a material pre-selects its preferred supplier — the common case is buying

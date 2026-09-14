@@ -16,7 +16,7 @@ export const workOrdersOptions = (queries?: WorkOrdersListQueries, config?: List
     queryKey: ["work-order", queries, config] as const,
     queryFn: () =>
       api.api_WorkOrders_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<WorkOrdersListResponse>,
   });
 

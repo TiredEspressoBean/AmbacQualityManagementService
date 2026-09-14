@@ -29,7 +29,7 @@ import {
 const stagingPickerWorkCentersOptions = () =>
   queryOptions({
     queryKey: ["work-centers", "staging-picker"] as const,
-    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
+    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } }),
   });
 
 const WINDOWS = [4, 8, 12, 24];

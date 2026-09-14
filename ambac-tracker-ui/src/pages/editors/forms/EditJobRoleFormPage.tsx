@@ -73,7 +73,7 @@ export default function EditJobRoleFormPage() {
                 onError: () => toast.error("Failed to update job role."),
             });
         } else {
-            createRole.mutate(submitData as never, {
+            createRole.mutate(submitData, {
                 onSuccess: () => { toast.success("Job role created."); navigate({ to: "/quality/training/roles" }); },
                 onError: () => toast.error("Failed to create job role."),
             });

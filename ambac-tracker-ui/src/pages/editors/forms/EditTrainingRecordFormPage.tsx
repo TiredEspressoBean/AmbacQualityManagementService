@@ -164,7 +164,7 @@ export default function EditTrainingRecordFormPage() {
                 }
             );
         } else {
-            createRecord.mutate(submitData as never, {
+            createRecord.mutate(submitData, {
                 onSuccess: () => {
                     toast.success("Training record created successfully!");
                     navigate({ to: "/quality/training/records" });

@@ -14,7 +14,7 @@ export const samplingRulesOptions = (queries?: SamplingRulesListQueries, config?
     queryKey: ["sampling-rules", queries, config] as const,
     queryFn: () =>
       api.api_Sampling_rules_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<SamplingRulesListResponse>,
   });
 

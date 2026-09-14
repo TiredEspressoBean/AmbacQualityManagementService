@@ -90,7 +90,7 @@ export function DocumentLinkEditForm({ node, updateAttributes }: NodeViewProps) 
     const fallback = useRetrieveDocuments(
         !workOrderId && trimmed.length > 1 ? ({ search: trimmed, page_size: 10 } as never) : undefined,
         undefined,
-        { enabled: !workOrderId && trimmed.length > 1 } as never,
+        { enabled: !workOrderId && trimmed.length > 1 },
     );
 
     const scopedResults = useMemo<ScopedDoc[]>(() => {

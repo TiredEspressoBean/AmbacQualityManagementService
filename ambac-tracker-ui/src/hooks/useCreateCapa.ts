@@ -11,7 +11,7 @@ export const useCreateCapa = () => {
 
     return useMutation<CreateCapaResponse, unknown, CreateCapaInput>({
         mutationFn: (data) =>
-            api.api_CAPAs_create(data as never, {
+            api.api_CAPAs_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateCapaResponse>,
         onSuccess: () => {

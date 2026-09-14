@@ -6,7 +6,7 @@ export const supplierScorecardOptions = (supplierId: string) =>
     queryOptions({
         queryKey: ["supplier-scorecard", supplierId] as const,
         queryFn: () =>
-            api.api_Companies_scorecard_retrieve({ params: { id: supplierId } } as never) as Promise<
+            api.api_Companies_scorecard_retrieve({ params: { id: supplierId } }) as Promise<
                 Schema<"SupplierScorecard">
             >,
     });

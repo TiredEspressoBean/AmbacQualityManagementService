@@ -16,7 +16,7 @@ export const useUpdateUser = () => {
 
     return useMutation<UpdateUserResponse, unknown, UpdateUserVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_User_partial_update(data as never, {
+            api.api_User_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateUserResponse>,

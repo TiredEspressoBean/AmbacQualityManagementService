@@ -16,7 +16,7 @@ export const stepsOptions = (queries?: StepsListQueries, config?: ListHookConfig
     queryKey: ["step", queries, config] as const,
     queryFn: () =>
       api.api_Steps_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<StepsListResponse>,
   });
 

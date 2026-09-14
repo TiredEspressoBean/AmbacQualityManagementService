@@ -48,7 +48,7 @@ export function TrainingRequirementsEditor({
     description?: string;
     readOnly?: boolean;
 }) {
-    const { data: reqData, isLoading } = useTrainingRequirements({ queries: scope as never }, { retry: false });
+    const { data: reqData, isLoading } = useTrainingRequirements({ queries: scope }, { retry: false });
     const requirements = reqData?.results ?? [];
     const { data: typesData } = useTrainingTypes({});
     const trainingTypes = typesData?.results ?? [];

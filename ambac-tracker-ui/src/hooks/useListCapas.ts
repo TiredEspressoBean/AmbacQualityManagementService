@@ -13,7 +13,7 @@ export const listCapasOptions = (queries?: CapasListQueries, config?: ListHookCo
   queryKey: ["capas", queries, config] as const,
   queryFn: () =>
     api.api_CAPAs_list(
-      (queries || config ? { queries, ...config } : undefined) as never,
+      (queries || config ? { queries, ...config } : undefined),
     ) as Promise<CapasListResponse>,
 });
 

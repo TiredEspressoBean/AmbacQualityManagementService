@@ -11,7 +11,7 @@ export const useCreateStep = () => {
 
     return useMutation<CreateStepResponse, unknown, CreateStepInput>({
         mutationFn: (data) =>
-            api.api_Steps_create(data as never, {
+            api.api_Steps_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateStepResponse>,
         onSuccess: () => {

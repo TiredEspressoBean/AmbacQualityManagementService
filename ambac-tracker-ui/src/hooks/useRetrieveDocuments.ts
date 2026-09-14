@@ -15,7 +15,7 @@ export const documentsOptions = (queries?: DocumentsListQueries, config?: ListHo
     queryKey: ["document", queries, config] as const,
     queryFn: () =>
       api.api_Documents_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<DocumentsListResponse>,
   });
 

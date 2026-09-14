@@ -11,7 +11,7 @@ export function useCreateHeatMapAnnotation() {
 
     return useMutation<CreateHeatMapAnnotationResponse, unknown, CreateHeatMapAnnotationInput>({
         mutationFn: (data) =>
-            api.api_HeatMapAnnotation_create(data as never, {
+            api.api_HeatMapAnnotation_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateHeatMapAnnotationResponse>,
         onSuccess: () => {

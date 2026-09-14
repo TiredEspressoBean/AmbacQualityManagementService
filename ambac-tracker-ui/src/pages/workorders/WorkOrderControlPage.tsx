@@ -296,7 +296,7 @@ function KpiChip({
         </span>
     );
     return to ? (
-        <Link to={to} search={search as never} className="transition-opacity hover:opacity-80">
+        <Link to={to} search={search} className="transition-opacity hover:opacity-80">
             {chip}
         </Link>
     ) : (

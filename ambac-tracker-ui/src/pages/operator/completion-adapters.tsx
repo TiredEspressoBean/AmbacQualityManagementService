@@ -391,10 +391,10 @@ function OutsideProcessCompletionFooter({ ctx }: { ctx: CompletionContext }) {
         try {
             const headers = { "X-CSRFToken": getCookie("csrftoken") ?? "" };
             if (decision === "accept") {
-                await api.api_OutsideProcessShipments_accept_create(undefined as never, { params: { id: shipmentId }, headers });
+                await api.api_OutsideProcessShipments_accept_create(undefined, { params: { id: shipmentId }, headers });
                 toast.success("Accepted — parts advanced past the outside-process step.");
             } else {
-                await api.api_OutsideProcessShipments_reject_create(undefined as never, { params: { id: shipmentId }, headers });
+                await api.api_OutsideProcessShipments_reject_create(undefined, { params: { id: shipmentId }, headers });
                 toast.warning("Rejected — parts quarantined for disposition.");
             }
             // Terminal action moved parts off the OSP surfaces — refresh them before leaving.

@@ -47,7 +47,7 @@ export const scheduledTasksOptions = (scheduleId?: string) =>
       // lane is populated, not just the earliest 25 tasks.
       api.api_ScheduledTasks_list({
         queries: { schedule: scheduleId, ordering: "start_time", limit: 2000 },
-      } as never),
+      }),
   });
 
 export function useScheduledTasks(scheduleId?: string) {
@@ -60,7 +60,7 @@ export function useMoveBatch() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ task_ids, start_time }: { task_ids: string[]; start_time: string }) =>
-      api.api_ScheduledTasks_move_batch_create({ task_ids, start_time } as never),
+      api.api_ScheduledTasks_move_batch_create({ task_ids, start_time }),
     onSettled: () => invalidateSchedule(qc),
     // The drag handler toasts the reason and rolls the bars back.
     meta: { suppressGlobalError: true },
@@ -72,7 +72,7 @@ export function usePinBatch() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ task_ids, is_pinned }: { task_ids: string[]; is_pinned: boolean }) =>
-      api.api_ScheduledTasks_pin_batch_create({ task_ids, is_pinned } as never),
+      api.api_ScheduledTasks_pin_batch_create({ task_ids, is_pinned }),
     onSuccess: () => invalidateSchedule(qc),
   });
 }
@@ -153,7 +153,7 @@ function useAsyncScheduleTask(
 /** Run the Layer-1 solver in the background (supersedes the active schedule). */
 export function useSolveSchedule() {
   return useAsyncScheduleTask(
-    () => api.api_Schedules_solve_create(undefined as never) as Promise<{ task_id: string }>,
+    () => api.api_Schedules_solve_create(undefined) as Promise<{ task_id: string }>,
     { verb: "the solve", done: (r) => `Schedule solved (${r?.solver_status ?? "done"})` }
   );
 }
@@ -163,7 +163,7 @@ export function useSolveSchedule() {
  * draft view, so the what-if shows itself instead of hiding behind a toggle). */
 export function useSolveDraft(onReady?: () => void) {
   return useAsyncScheduleTask(
-    () => api.api_Schedules_solve_draft_create(undefined as never) as Promise<{ task_id: string }>,
+    () => api.api_Schedules_solve_draft_create(undefined) as Promise<{ task_id: string }>,
     { verb: "the what-if", done: () => "What-if draft ready — showing it now" },
     onReady
   );
@@ -203,7 +203,7 @@ export function useCompareDraft(enabled: boolean) {
 export function useCommitDraft() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.api_Schedules_commit_create(undefined as never),
+    mutationFn: () => api.api_Schedules_commit_create(undefined),
     onSuccess: () => invalidateSchedule(qc),
   });
 }
@@ -212,7 +212,7 @@ export function useCommitDraft() {
 export function useDiscardDraft() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.api_Schedules_discard_create(undefined as never),
+    mutationFn: () => api.api_Schedules_discard_create(undefined),
     onSuccess: () => invalidateSchedule(qc),
   });
 }
@@ -220,7 +220,7 @@ export function useDiscardDraft() {
 /** Assign operators to the active schedule (Layer 2) in the background. */
 export function useDispatchSchedule() {
   return useAsyncScheduleTask(
-    () => api.api_Schedules_dispatch_create(undefined as never) as Promise<{ task_id: string }>,
+    () => api.api_Schedules_dispatch_create(undefined) as Promise<{ task_id: string }>,
     {
       verb: "dispatch",
       done: (r) =>
@@ -280,7 +280,7 @@ export function useUpdateOptimizationConfig() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (patch: Record<string, unknown>) =>
-      api.api_Schedules_config_partial_update(patch as never),
+      api.api_Schedules_config_partial_update(patch),
     onSuccess: () => {
       qc.invalidateQueries(optimizationConfigOptions());
       toast.success("Solver settings saved");
@@ -295,7 +295,7 @@ export function useBatchMembership() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ task_ids, merge }: { task_ids: string[]; merge: boolean }) =>
-      api.api_ScheduledTasks_batch_membership_create({ task_ids, merge } as never),
+      api.api_ScheduledTasks_batch_membership_create({ task_ids, merge }),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       toast.success(
@@ -331,7 +331,7 @@ export const operatorHoursOptions = (start: string, end: string) =>
     queryFn: async () =>
       ((await api.api_Schedules_operator_hours_retrieve({
         queries: { start, end },
-      } as never)) as { rows?: OperatorHoursRow[] }).rows ?? [],
+      })) as { rows?: OperatorHoursRow[] }).rows ?? [],
   });
 
 export function useOperatorHours(start: string, end: string) {
@@ -431,7 +431,7 @@ export const capacityLoadOptions = (months = 12, criticalOnly = false) =>
     queryFn: () =>
       api.api_Schedules_capacity_load_retrieve({
         queries: { months, critical_only: criticalOnly },
-      } as never) as Promise<CapacityLoad>,
+      }) as Promise<CapacityLoad>,
   });
 
 export function useCapacityLoad(months = 12, criticalOnly = false) {
@@ -524,7 +524,7 @@ export const stagingListOptions = (workCenterId?: string, hours = 8) =>
     queryFn: () =>
       api.api_WorkCenters_staging_list_retrieve({
         queries: { ...(workCenterId ? { work_center: workCenterId } : {}), hours },
-      } as never) as Promise<StagingList>,
+      }) as Promise<StagingList>,
   });
 
 export function useStagingList(workCenterId?: string, hours = 8) {
@@ -536,7 +536,7 @@ export function useMarkStaged() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { work_order: string; step: string; staged: boolean; note?: string }) =>
-      api.api_WorkCenters_mark_staged_create(v as never),
+      api.api_WorkCenters_mark_staged_create(v),
     onSuccess: () => qc.invalidateQueries(underRoot(ROOT.stagingList)),
     onError: (e: any) =>
       toast.error(e?.response?.data?.detail ?? "Couldn't update staging"),
@@ -556,7 +556,7 @@ export function useRecordPick() {
       work_order: string; step: string; material: string;
       qty: number; qty_required?: number;
       lots: { lot_id: string; lot_number?: string; qty: number }[];
-    }) => api.api_WorkCenters_record_pick_create(v as never),
+    }) => api.api_WorkCenters_record_pick_create(v),
     onSuccess: () => {
       qc.invalidateQueries(underRoot(ROOT.stagingList));
       // Reserved stock changes what every other planning surface can promise.
@@ -657,7 +657,7 @@ export function useUpdateWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
-      api.api_WorkOrders_partial_update(body as never, { params: { id } } as never),
+      api.api_WorkOrders_partial_update(body, { params: { id } }),
     onSuccess: () => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -672,7 +672,7 @@ export function useSetWorkOrderQuantity() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, quantity }: { id: string; quantity: number }) =>
-      api.api_WorkOrders_set_quantity_create({ quantity } as never, { params: { id } } as never),
+      api.api_WorkOrders_set_quantity_create({ quantity }, { params: { id } }),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -716,8 +716,8 @@ export function useReleaseForScheduling() {
   return useMutation({
     mutationFn: ({ id, override_reason }: { id: string; override_reason?: string }) =>
       api.api_WorkOrders_release_create(
-        { override_reason: override_reason ?? "" } as never,
-        { params: { id } } as never
+        { override_reason: override_reason ?? "" },
+        { params: { id } }
       ),
     onSuccess: (_d, v) => {
       invalidateSchedule(qc);
@@ -797,7 +797,7 @@ export function useBulkRelease() {
   return useMutation({
     mutationFn: ({ ids, override_reason }: { ids: string[]; override_reason?: string }) =>
       api.api_WorkOrders_bulk_release_create(
-        { ids, override_reason: override_reason ?? "" } as never
+        { ids, override_reason: override_reason ?? "" }
       ) as Promise<{ released: number; blocked: number; results: any[] }>,
     onSuccess: (d) => {
       invalidateSchedule(qc);
@@ -820,7 +820,7 @@ export function useUnreleaseForScheduling() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_WorkOrders_unrelease_create(undefined as never, { params: { id } } as never),
+      api.api_WorkOrders_unrelease_create(undefined, { params: { id } }),
     onSuccess: () => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -835,7 +835,7 @@ export function useHoldWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      api.api_WorkOrders_place_on_hold_create({ reason } as never, { params: { id } } as never),
+      api.api_WorkOrders_place_on_hold_create({ reason }, { params: { id } }),
     onSuccess: () => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -850,7 +850,7 @@ export function useReleaseWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_WorkOrders_clear_hold_create(undefined as never, { params: { id } } as never),
+      api.api_WorkOrders_clear_hold_create(undefined, { params: { id } }),
     onSuccess: () => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -865,7 +865,7 @@ export function useCancelWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_WorkOrders_cancel_create(undefined as never, { params: { id } } as never),
+      api.api_WorkOrders_cancel_create(undefined, { params: { id } }),
     onSuccess: () => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -894,7 +894,7 @@ export function useReassignMachine() {
   return useMutation({
     mutationFn: ({ id, machine_id }: { id: string; machine_id: string }) =>
       api.api_ScheduledTasks_reassign_machine_create(
-        { machine_id } as never, { params: { id } } as never),
+        { machine_id }, { params: { id } }),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       if (r?.warning) toast.warning(r.warning);
@@ -912,7 +912,7 @@ export function useReassignOperator() {
   return useMutation({
     mutationFn: ({ id, operator_id }: { id: string; operator_id: number | null }) =>
       api.api_ScheduledTasks_reassign_operator_create(
-        { operator_id } as never, { params: { id } } as never),
+        { operator_id }, { params: { id } }),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       if (r?.warning) toast.warning(r.warning);
@@ -929,7 +929,7 @@ export function useBulkReassignMachine() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ task_ids, machine_id }: { task_ids: string[]; machine_id: string }) =>
-      api.api_ScheduledTasks_bulk_reassign_machine_create({ task_ids, machine_id } as never),
+      api.api_ScheduledTasks_bulk_reassign_machine_create({ task_ids, machine_id }),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       const warnings: string[] = r?.warnings ?? [];
@@ -947,7 +947,7 @@ export function useBulkReassignOperator() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ task_ids, operator_id }: { task_ids: string[]; operator_id: number | null }) =>
-      api.api_ScheduledTasks_bulk_reassign_operator_create({ task_ids, operator_id } as never),
+      api.api_ScheduledTasks_bulk_reassign_operator_create({ task_ids, operator_id }),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       const warnings: string[] = r?.warnings ?? [];
@@ -969,7 +969,7 @@ export const processesForPlanningOptions = () =>
   queryOptions({
     queryKey: ["processes", "for-planning"],
     queryFn: () =>
-      api.api_Processes_list({ queries: { limit: 500, status: "APPROVED" } } as never),
+      api.api_Processes_list({ queries: { limit: 500, status: "APPROVED" } }),
   });
 
 export function useProcesses() {
@@ -1014,7 +1014,7 @@ export function useExplodeWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ work_order_id, create = true }: { work_order_id: string; create?: boolean }) =>
-      api.api_Schedules_explode_work_order_create({ work_order_id, create } as never),
+      api.api_Schedules_explode_work_order_create({ work_order_id, create }),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -1032,7 +1032,7 @@ export const shiftsOptions = () =>
   queryOptions({
     queryKey: ["shifts"],
     queryFn: () =>
-      api.api_Shifts_list({ queries: { ordering: "start_time", limit: 200 } } as never),
+      api.api_Shifts_list({ queries: { ordering: "start_time", limit: 200 } }),
   });
 
 export function useShifts() {
@@ -1045,7 +1045,7 @@ export function useSaveShift() {
   return useMutation({
     mutationFn: ({ id, ...body }: { id?: string } & Record<string, unknown>) =>
       id
-        ? api.api_Shifts_partial_update(body as never, { params: { id } } as never)
+        ? api.api_Shifts_partial_update(body, { params: { id } })
         : api.api_Shifts_create(body as never),
     onSuccess: () => {
       qc.invalidateQueries(underRoot(ROOT.shifts));
@@ -1066,7 +1066,7 @@ export function useDeleteShift() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_Shifts_destroy(undefined as never, { params: { id } } as never),
+      api.api_Shifts_destroy(undefined, { params: { id } }),
     onSuccess: () => {
       qc.invalidateQueries(underRoot(ROOT.shifts));
       toast.success("Shift removed");
@@ -1091,7 +1091,7 @@ export const fixturesListOptions = (params: {
     queryFn: () =>
       api.api_Fixtures_list({
         queries: { offset, limit, ordering, search, ...(filters ?? {}) },
-      } as never),
+      }),
   });
 };
 
@@ -1134,7 +1134,7 @@ export function useUpdateFixture() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
-      api.api_Fixtures_partial_update(body as never, { params: { id } } as never),
+      api.api_Fixtures_partial_update(body, { params: { id } }),
     onSuccess: () => {
       qc.invalidateQueries(underRoot(ROOT.fixtures));
       invalidateSchedule(qc);
@@ -1147,7 +1147,7 @@ export function useDeleteFixture() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_Fixtures_destroy(undefined as never, { params: { id } } as never),
+      api.api_Fixtures_destroy(undefined, { params: { id } }),
     onSuccess: () => {
       qc.invalidateQueries(underRoot(ROOT.fixtures));
       invalidateSchedule(qc);
@@ -1175,9 +1175,9 @@ export function usePinTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, is_pinned }: { id: string; is_pinned: boolean }) =>
-      api.api_ScheduledTasks_pin_create({ is_pinned } as never, {
+      api.api_ScheduledTasks_pin_create({ is_pinned }, {
         params: { id },
-      } as never),
+      }),
     onSuccess: () => invalidateSchedule(qc),
   });
 }
@@ -1188,9 +1188,9 @@ export function useMoveTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, start_time }: { id: string; start_time: string }) =>
-      api.api_ScheduledTasks_move_create({ start_time } as never, {
+      api.api_ScheduledTasks_move_create({ start_time }, {
         params: { id },
-      } as never),
+      }),
     // Refetch on both outcomes so a SUCCESSFUL move settles to the server's truth.
     // A rejected one is not undone here: the refetched data is deeply equal, and
     // React Query's structural sharing then returns the same object reference, so

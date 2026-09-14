@@ -16,7 +16,7 @@ export const processesOptions = (queries?: ProcessesListQueries, config?: ListHo
     queryKey: ["process", queries, config] as const,
     queryFn: () =>
       api.api_Processes_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<ProcessesListResponse>,
   });
 

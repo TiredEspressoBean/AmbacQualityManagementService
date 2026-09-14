@@ -14,7 +14,7 @@ export const approvalTemplatesOptions = (queries?: ApprovalTemplatesListQueries,
     queryKey: ["approval-template", queries, config] as const,
     queryFn: () =>
       api.api_ApprovalTemplates_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<ApprovalTemplatesListResponse>,
   });
 

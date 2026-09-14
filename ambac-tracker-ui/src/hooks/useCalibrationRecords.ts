@@ -13,7 +13,7 @@ export const calibrationRecordsOptions = (queries?: CalibrationRecordsListQuerie
   queryKey: ["calibration-records", queries, config] as const,
   queryFn: () =>
     api.api_CalibrationRecords_list(
-      (queries || config ? { queries, ...config } : undefined) as never,
+      (queries || config ? { queries, ...config } : undefined),
     ) as Promise<CalibrationRecordsListResponse>,
 });
 

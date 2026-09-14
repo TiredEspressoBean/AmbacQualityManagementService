@@ -56,10 +56,10 @@ export function MaterialsPage() {
 
     // Funnel counts — cheap (limit:1, read total) and double as the manager's
     // at-a-glance of where material is piling up.
-    const onorder = useListMaterialLots({ status: "ON_ORDER", limit: 1 } as never);
+    const onorder = useListMaterialLots({ status: "ON_ORDER", limit: 1 });
     const awaiting = useListMaterialLots({ inspection_pending: "true", limit: 1 } as never);
-    const onhand = useListMaterialLots({ status: "ACCEPTED", limit: 1 } as never);
-    const held = useListMaterialLots({ status: "QUARANTINE", limit: 1 } as never);
+    const onhand = useListMaterialLots({ status: "ACCEPTED", limit: 1 });
+    const held = useListMaterialLots({ status: "QUARANTINE", limit: 1 });
     const counts: Record<Tab, number | undefined> = {
         onorder: onorder.data?.count,
         awaiting: awaiting.data?.count,
@@ -78,7 +78,7 @@ export function MaterialsPage() {
         const q: Record<string, unknown> = { offset: params.offset, limit: params.limit, ...queriesForTab(tab) };
         if (params.ordering) q.ordering = params.ordering;
         if (params.search) q.search = params.search;
-        return useListMaterialLots(q as never);
+        return useListMaterialLots(q);
     };
 
     return (

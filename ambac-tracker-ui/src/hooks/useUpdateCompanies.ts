@@ -22,7 +22,7 @@ export const useUpdateCompanies = () => {
 
     return useMutation<UpdateCompaniesResponse, unknown, UpdateCompaniesVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_Companies_partial_update(data as never, {
+            api.api_Companies_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateCompaniesResponse>,

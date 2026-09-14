@@ -148,7 +148,7 @@ export default function PartFormPage() {
     function onSubmit(values: FormValues) {
         if (mode === "edit" && partId) {
             updatePart.mutate({
-                id: partId, data: values as never,
+                id: partId, data: values,
             }, {
                 onSuccess: () => {
                     toast.success("Part updated successfully!");
@@ -158,7 +158,7 @@ export default function PartFormPage() {
                 },
             });
         } else {
-            createPart.mutate(values as never, {
+            createPart.mutate(values, {
                 onSuccess: () => {
                     toast.success("Part created successfully!");
                     form.reset(); // optionally reset the form

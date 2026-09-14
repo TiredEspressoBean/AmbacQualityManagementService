@@ -16,7 +16,7 @@ export function useUpdateHeatMapAnnotation() {
 
     return useMutation<UpdateHeatMapAnnotationResponse, unknown, UpdateHeatMapAnnotationVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_HeatMapAnnotation_partial_update(data as never, {
+            api.api_HeatMapAnnotation_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateHeatMapAnnotationResponse>,

@@ -22,7 +22,7 @@ export const useUpdatePartType = () => {
 
     return useMutation<UpdatePartTypeResponse, unknown, UpdatePartTypeVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_PartTypes_partial_update(data as never, {
+            api.api_PartTypes_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdatePartTypeResponse>,

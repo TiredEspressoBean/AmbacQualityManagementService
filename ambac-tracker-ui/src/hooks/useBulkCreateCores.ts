@@ -25,7 +25,7 @@ export const useBulkCreateCores = () => {
     return useMutation({
         mutationFn: (vars: BulkCreateCoresVars) =>
             api.api_Cores_bulk_create_create(
-                { cores: vars.cores as never },
+                { cores: vars.cores },
                 { headers: { "X-CSRFToken": getCookie("csrftoken") } },
             ),
         onSuccess: () => {

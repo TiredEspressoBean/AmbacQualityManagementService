@@ -17,7 +17,7 @@ export const qualityReportsOptions = (queries?: QualityReportsListQueries, confi
     queryKey: ["quality-reports", queries, config] as const,
     queryFn: () =>
       api.api_QualityReports_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<QualityReportsListResponse>,
   });
 
@@ -32,7 +32,7 @@ export const measurementDefinitionsOptions = (queries?: MeasurementDefinitionsLi
     queryKey: ["measurement-definitions", queries, config] as const,
     queryFn: () =>
       api.api_MeasurementDefinitions_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<MeasurementDefinitionsListResponse>,
   });
 

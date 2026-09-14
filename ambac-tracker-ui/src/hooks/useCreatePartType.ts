@@ -11,7 +11,7 @@ export const useCreatePartType = () => {
 
     return useMutation<CreatePartTypeResponse, unknown, CreatePartTypeInput>({
         mutationFn: (data) =>
-            api.api_PartTypes_create(data as never, {
+            api.api_PartTypes_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreatePartTypeResponse>,
         onSuccess: () => {

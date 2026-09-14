@@ -14,7 +14,7 @@ export const useCreateProcess = () => {
 
     return useMutation<CreateProcessResponse, unknown, CreateProcessInput>({
         mutationFn: (data) =>
-            api.api_Processes_create(data as never, {
+            api.api_Processes_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateProcessResponse>,
         onSuccess: () => {

@@ -7,7 +7,7 @@ export function useClaimApproval() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (approvalId: string) =>
-            api.api_ApprovalRequests_claim_create(undefined as never, { params: { id: approvalId } }),
+            api.api_ApprovalRequests_claim_create(undefined, { params: { id: approvalId } }),
         onSuccess: () => {
             // Covers ["approvals", "claimable"] and ["approvals", "my-pending"].
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "approvals" });

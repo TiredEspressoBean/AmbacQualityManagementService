@@ -16,7 +16,7 @@ export const errorTypesOptions = (queries?: ErrorTypesListQueries, config?: List
     queryKey: ["error-type", queries, config] as const,
     queryFn: () =>
       api.api_Error_types_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<ErrorTypesListResponse>,
   });
 

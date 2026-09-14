@@ -13,7 +13,7 @@ export const useCreateJobRole = () => {
     const queryClient = useQueryClient();
     return useMutation<CreateJobRoleResponse, unknown, CreateJobRoleInput>({
         mutationFn: (data) =>
-            api.api_JobRoles_create(data as never, {
+            api.api_JobRoles_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateJobRoleResponse>,
         onSuccess: () => {

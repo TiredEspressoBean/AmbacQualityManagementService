@@ -39,7 +39,7 @@ export function samplingDecisionsForExecutionOptions(stepExecutionId: string) {
         queryKey: samplingDecisionKeys.forExecution(stepExecutionId),
         queryFn: () =>
             api.api_SamplingDecisions_list({
-                queries: { step_execution: stepExecutionId } as never,
+                queries: { step_execution: stepExecutionId },
             }) as Promise<ListResponse>,
         enabled: !!stepExecutionId,
         staleTime: 30_000,

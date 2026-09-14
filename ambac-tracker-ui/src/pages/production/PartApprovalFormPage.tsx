@@ -27,8 +27,8 @@ export function PartApprovalFormPage() {
     const isEdit = !!approvalId;
 
     const { data: existing } = useRetrievePartApproval(approvalId);
-    const { data: companies } = useRetrieveCompanies({ limit: 500 } as never);
-    const { data: partTypes } = useRetrievePartTypes({ limit: 500 } as never);
+    const { data: companies } = useRetrieveCompanies({ limit: 500 });
+    const { data: partTypes } = useRetrievePartTypes({ limit: 500 });
     const create = useCreatePartApproval();
     const update = useUpdatePartApproval();
 

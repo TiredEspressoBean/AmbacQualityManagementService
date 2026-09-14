@@ -35,7 +35,7 @@ export const retrievePartApprovalOptions = (id: string | undefined) =>
     queryOptions({
         queryKey: ["part-approvals", "detail", id] as const,
         queryFn: () =>
-            api.api_PartApprovals_retrieve({ params: { id: id as string } } as never) as Promise<
+            api.api_PartApprovals_retrieve({ params: { id: id as string } }) as Promise<
                 Schema<"PartApproval">
             >,
     });
@@ -50,7 +50,7 @@ export const partApprovalStatusOptions = (partTypeId: string | undefined, suppli
         queryFn: () =>
             api.api_PartApprovals_status_retrieve({
                 queries: { part_type: partTypeId as string, supplier: supplierId as string },
-            } as never),
+            }),
         meta: { suppressGlobalError: true },
     });
 
@@ -73,7 +73,7 @@ export const useUpdatePartApproval = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string; body: Partial<Schema<"PartApproval">> }) =>
-            api.api_PartApprovals_partial_update(vars.body as never, {
+            api.api_PartApprovals_partial_update(vars.body, {
                 params: { id: vars.id }, headers: csrf(),
             }),
         onSuccess: () => invalidate(qc),

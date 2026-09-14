@@ -86,7 +86,7 @@ export const tenantSchedulesOptions = (filters: SchedulesListFilters = {}) =>
                     limit: filters.limit,
                     offset: filters.offset,
                 },
-            } as never) as Promise<PaginatedTenantScheduleList>,
+            }) as Promise<PaginatedTenantScheduleList>,
     });
 
 export const retrieveTenantScheduleOptions = (id: string) =>
@@ -133,7 +133,7 @@ export const personalSchedulesOptions = (filters: SchedulesListFilters = {}) =>
                     limit: filters.limit,
                     offset: filters.offset,
                 },
-            } as never) as Promise<PaginatedPersonalScheduleList>,
+            }) as Promise<PaginatedPersonalScheduleList>,
     });
 
 export const retrievePersonalScheduleOptions = (id: string) =>
@@ -253,7 +253,7 @@ export const createTenantScheduleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<TenantSchedule, unknown, TenantScheduleRequest>({
         mutationKey: notificationSchedulesMutationKeys.createTenant,
         mutationFn: (data) =>
-            api.api_notifications_schedules_tenant_create(data as never, {
+            api.api_notifications_schedules_tenant_create(data, {
                 headers: csrfHeaders(),
             }) as Promise<TenantSchedule>,
         onSuccess: () => invalidateAllSchedules(queryClient),
@@ -264,7 +264,7 @@ export const updateTenantScheduleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<TenantSchedule, unknown, UpdateVariables<PatchedTenantScheduleRequest>, OptimisticCtx>({
         mutationKey: notificationSchedulesMutationKeys.updateTenant,
         mutationFn: ({ id, data }) =>
-            api.api_notifications_schedules_tenant_partial_update(data as never, {
+            api.api_notifications_schedules_tenant_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<TenantSchedule>,
@@ -282,7 +282,7 @@ export const deleteTenantScheduleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<unknown, unknown, string>({
         mutationKey: notificationSchedulesMutationKeys.deleteTenant,
         mutationFn: (id) =>
-            api.api_notifications_schedules_tenant_destroy(undefined as never, {
+            api.api_notifications_schedules_tenant_destroy(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }),
@@ -296,7 +296,7 @@ export const createCustomerScheduleMutationOptions = (queryClient: QueryClient) 
     mutationOptions<CustomerSchedule, unknown, CustomerScheduleRequest>({
         mutationKey: notificationSchedulesMutationKeys.createCustomer,
         mutationFn: (data) =>
-            api.api_notifications_schedules_customer_create(data as never, {
+            api.api_notifications_schedules_customer_create(data, {
                 headers: csrfHeaders(),
             }) as Promise<CustomerSchedule>,
         onSuccess: () => invalidateAllSchedules(queryClient),
@@ -307,7 +307,7 @@ export const updateCustomerScheduleMutationOptions = (queryClient: QueryClient) 
     mutationOptions<CustomerSchedule, unknown, UpdateVariables<PatchedCustomerScheduleRequest>, OptimisticCtx>({
         mutationKey: notificationSchedulesMutationKeys.updateCustomer,
         mutationFn: ({ id, data }) =>
-            api.api_notifications_schedules_customer_partial_update(data as never, {
+            api.api_notifications_schedules_customer_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<CustomerSchedule>,
@@ -325,7 +325,7 @@ export const deleteCustomerScheduleMutationOptions = (queryClient: QueryClient) 
     mutationOptions<unknown, unknown, string>({
         mutationKey: notificationSchedulesMutationKeys.deleteCustomer,
         mutationFn: (id) =>
-            api.api_notifications_schedules_customer_destroy(undefined as never, {
+            api.api_notifications_schedules_customer_destroy(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }),
@@ -339,7 +339,7 @@ export const createPersonalScheduleMutationOptions = (queryClient: QueryClient) 
     mutationOptions<PersonalSchedule, unknown, PersonalScheduleRequest>({
         mutationKey: notificationSchedulesMutationKeys.createPersonal,
         mutationFn: (data) =>
-            api.api_notifications_schedules_personal_create(data as never, {
+            api.api_notifications_schedules_personal_create(data, {
                 headers: csrfHeaders(),
             }) as Promise<PersonalSchedule>,
         onSuccess: () => invalidateAllSchedules(queryClient),
@@ -350,7 +350,7 @@ export const updatePersonalScheduleMutationOptions = (queryClient: QueryClient) 
     mutationOptions<PersonalSchedule, unknown, UpdateVariables<PatchedPersonalScheduleRequest>, OptimisticCtx>({
         mutationKey: notificationSchedulesMutationKeys.updatePersonal,
         mutationFn: ({ id, data }) =>
-            api.api_notifications_schedules_personal_partial_update(data as never, {
+            api.api_notifications_schedules_personal_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<PersonalSchedule>,
@@ -368,7 +368,7 @@ export const deletePersonalScheduleMutationOptions = (queryClient: QueryClient) 
     mutationOptions<unknown, unknown, string>({
         mutationKey: notificationSchedulesMutationKeys.deletePersonal,
         mutationFn: (id) =>
-            api.api_notifications_schedules_personal_destroy(undefined as never, {
+            api.api_notifications_schedules_personal_destroy(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }),

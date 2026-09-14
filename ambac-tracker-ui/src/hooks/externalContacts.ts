@@ -113,7 +113,7 @@ export const createExternalContactMutationOptions = (queryClient: QueryClient) =
     mutationOptions<ExternalContact, unknown, ExternalContactRequest>({
         mutationKey: externalContactsMutationKeys.create,
         mutationFn: (data) =>
-            api.api_notifications_external_contacts_create(data as never, {
+            api.api_notifications_external_contacts_create(data, {
                 headers: csrfHeaders(),
             }) as Promise<ExternalContact>,
         onSuccess: () => invalidateAll(queryClient),
@@ -124,7 +124,7 @@ export const updateExternalContactMutationOptions = (queryClient: QueryClient) =
     mutationOptions<ExternalContact, unknown, UpdateVariables>({
         mutationKey: externalContactsMutationKeys.update,
         mutationFn: ({ id, data }) =>
-            api.api_notifications_external_contacts_partial_update(data as never, {
+            api.api_notifications_external_contacts_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<ExternalContact>,
@@ -136,7 +136,7 @@ export const deleteExternalContactMutationOptions = (queryClient: QueryClient) =
     mutationOptions<unknown, unknown, string>({
         mutationKey: externalContactsMutationKeys.delete,
         mutationFn: (id) =>
-            api.api_notifications_external_contacts_destroy(undefined as never, {
+            api.api_notifications_external_contacts_destroy(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }),

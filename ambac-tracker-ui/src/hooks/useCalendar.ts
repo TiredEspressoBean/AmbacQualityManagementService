@@ -24,7 +24,7 @@ export const plantClosuresOptions = () =>
     queryFn: async () =>
       ((await api.api_PlantCalendarExceptions_list({
         queries: { limit: 500, ordering: "start_time" },
-      } as never)) as { results?: PlantClosure[] }).results ?? [],
+      })) as { results?: PlantClosure[] }).results ?? [],
     staleTime: 30_000,
   });
 
@@ -34,7 +34,7 @@ export const laborBlocksOptions = () =>
     queryFn: async () =>
       ((await api.api_LaborCalendarBlocks_list({
         queries: { limit: 500, ordering: "start_time" },
-      } as never)) as { results?: LaborBlock[] }).results ?? [],
+      })) as { results?: LaborBlock[] }).results ?? [],
     staleTime: 30_000,
   });
 
@@ -44,7 +44,7 @@ export const overtimeWindowsOptions = () =>
     queryFn: async () =>
       ((await api.api_OvertimeWindows_list({
         queries: { limit: 500, ordering: "start_date" },
-      } as never)) as { results?: Overtime[] }).results ?? [],
+      })) as { results?: Overtime[] }).results ?? [],
     staleTime: 30_000,
   });
 
@@ -77,7 +77,7 @@ export function useDeletePlantClosure() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_PlantCalendarExceptions_destroy(undefined as never, { params: { id } } as never),
+      api.api_PlantCalendarExceptions_destroy(undefined, { params: { id } }),
     onSuccess: () => {
       qc.invalidateQueries(plantClosuresOptions());
       toast.success("Closure removed");
@@ -90,7 +90,7 @@ export function useCreateLaborBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      api.api_LaborCalendarBlocks_create(body as never),
+      api.api_LaborCalendarBlocks_create(body),
     onSuccess: () => {
       qc.invalidateQueries(laborBlocksOptions());
       toast.success("Added to the calendar");
@@ -103,7 +103,7 @@ export function useDeleteLaborBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_LaborCalendarBlocks_destroy(undefined as never, { params: { id } } as never),
+      api.api_LaborCalendarBlocks_destroy(undefined, { params: { id } }),
     onSuccess: () => {
       qc.invalidateQueries(laborBlocksOptions());
       toast.success("Removed");
@@ -129,7 +129,7 @@ export function useDeleteOvertime() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_OvertimeWindows_destroy(undefined as never, { params: { id } } as never),
+      api.api_OvertimeWindows_destroy(undefined, { params: { id } }),
     onSuccess: () => {
       qc.invalidateQueries(overtimeWindowsOptions());
       toast.success("Removed");

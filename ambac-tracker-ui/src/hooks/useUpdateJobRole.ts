@@ -13,7 +13,7 @@ export const useUpdateJobRole = () => {
     const queryClient = useQueryClient();
     return useMutation<Schema<"JobRole">, unknown, UpdateJobRoleInput>({
         mutationFn: ({ id, data }) =>
-            api.api_JobRoles_partial_update(data as never, {
+            api.api_JobRoles_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<Schema<"JobRole">>,

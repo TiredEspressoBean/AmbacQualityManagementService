@@ -16,7 +16,7 @@ export const partTypesOptions = (queries?: PartTypesListQueries, config?: ListHo
     queryKey: ["part-type", queries, config] as const,
     queryFn: () =>
       api.api_PartTypes_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<PartTypesListResponse>,
   });
 

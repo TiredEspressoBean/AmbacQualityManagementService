@@ -11,7 +11,7 @@ export const useCreateErrorType = () => {
 
     return useMutation<CreateErrorTypeResponse, unknown, CreateErrorTypeInput>({
         mutationFn: (data) =>
-            api.api_Error_types_create(data as never, {
+            api.api_Error_types_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateErrorTypeResponse>,
         onSuccess: () => {

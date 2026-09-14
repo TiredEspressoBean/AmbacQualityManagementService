@@ -11,7 +11,7 @@ export const useCreateTrainingRecord = () => {
 
     return useMutation<CreateTrainingRecordResponse, unknown, CreateTrainingRecordInput>({
         mutationFn: (data) =>
-            api.api_TrainingRecords_create(data as never, {
+            api.api_TrainingRecords_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateTrainingRecordResponse>,
         onSuccess: () => {

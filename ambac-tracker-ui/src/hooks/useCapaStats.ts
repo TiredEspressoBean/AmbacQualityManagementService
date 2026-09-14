@@ -31,7 +31,7 @@ export const capaStatsOptions = (filters: CapaStatsFilters = {}) => {
         // flagged it as a missing dependency.
         queryFn: () =>
             api.api_CAPAs_stats_retrieve(
-                Object.keys(queries).length > 0 ? ({ queries } as never) : undefined,
+                Object.keys(queries).length > 0 ? ({ queries }) : undefined,
             ) as Promise<CapaStats>,
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - actionable stats
     });

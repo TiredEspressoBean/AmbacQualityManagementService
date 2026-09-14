@@ -89,7 +89,7 @@ export function CoresBulkActionsBar({
 
     // Fetch the core_type's default disassembly process preference.
     const { data: coreTypeData } = useRetrievePartType(
-        { params: { id: sharedCoreType ?? "" } } as never,
+        { params: { id: sharedCoreType ?? "" } },
         { enabled: teardownOpen && !!sharedCoreType },
     );
     const defaultProcessId = (coreTypeData as { default_disassembly_process?: string | null } | undefined)

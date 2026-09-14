@@ -45,7 +45,7 @@ export function ReceiveLotsBatchPage() {
     const [serverErrors, setServerErrors] = useState<Record<number, unknown>>({});
     const mutation = useBulkCreateLots();
     const { data: materials } = useMaterialOptions();
-    const { data: companies } = useRetrieveCompanies({ limit: 500 } as never);
+    const { data: companies } = useRetrieveCompanies({ limit: 500 });
 
     const materialByName = useMemo(
         () => new Map((materials?.results ?? []).filter((p) => p.name).map((p) => [p.name.toLowerCase(), String(p.id)])),

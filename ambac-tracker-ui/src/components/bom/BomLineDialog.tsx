@@ -117,7 +117,7 @@ export function BomLineDialog({
   }, [open, line]);
 
   const { data: materialsData } = useMaterialOptions();
-  const { data: partTypesData } = useRetrievePartTypes({ limit: 500 } as never);
+  const { data: partTypesData } = useRetrievePartTypes({ limit: 500 });
 
   const options = useMemo(() => {
     // A component lives in one of two tables, so the picker's value carries which one

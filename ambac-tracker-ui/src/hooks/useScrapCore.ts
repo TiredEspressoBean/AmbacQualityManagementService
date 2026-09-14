@@ -13,7 +13,7 @@ export const useScrapCore = () => {
     return useMutation({
         mutationFn: (vars: ScrapCoreVars) =>
             api.api_Cores_scrap_create(
-                { reason: vars.reason ?? "" } as never,
+                { reason: vars.reason ?? "" },
                 {
                     params: { id: vars.id },
                     headers: { "X-CSRFToken": getCookie("csrftoken") },

@@ -113,7 +113,7 @@ export function ScanBox({
         setBusy(true);
         try {
             // Work order first (traveler headers carry the WO number), then part.
-            const wos = (await api.api_WorkOrders_list({ queries: { search: q, limit: 5 } } as never)) as {
+            const wos = (await api.api_WorkOrders_list({ queries: { search: q, limit: 5 } })) as {
                 results?: Array<{ id: string; ERP_id?: string | null }>;
             };
             const wo = (wos.results ?? []).find((w) => (w.ERP_id ?? "").toLowerCase() === q.toLowerCase())
@@ -122,7 +122,7 @@ export function ScanBox({
                 goToWo(String(wo.id));
                 return;
             }
-            const parts = (await api.api_Parts_list({ queries: { search: q, limit: 5 } } as never)) as {
+            const parts = (await api.api_Parts_list({ queries: { search: q, limit: 5 } })) as {
                 results?: Array<{ id: string; ERP_id?: string | null; work_order?: string | null }>;
             };
             const part = (parts.results ?? []).find((p) => (p.ERP_id ?? "").toLowerCase() === q.toLowerCase())
@@ -199,7 +199,7 @@ const woQueueOptions = () =>
         queryFn: () =>
             api.api_WorkOrders_list({
                 queries: { workorder_status: "IN_PROGRESS", limit: 50 },
-            } as never) as Promise<{ results?: QueueWo[] }>,
+            }) as Promise<{ results?: QueueWo[] }>,
         staleTime: 15_000,
     });
 
@@ -210,14 +210,14 @@ const myDispositionsOptions = (userPk: AuthUser["pk"]) =>
         queryFn: () =>
             api.api_QuarantineDispositions_list({
                 queries: { assigned_to: userPk, current_state: "OPEN", limit: 10 },
-            } as never) as Promise<{ results?: Array<{ id: string; disposition_number: string }> }>,
+            }) as Promise<{ results?: Array<{ id: string; disposition_number: string }> }>,
         staleTime: 30_000,
     });
 
 const docsDueForReviewOptions = () =>
     queryOptions({
         queryKey: ["home", "documents", "due-for-review"],
-        queryFn: () => api.api_Documents_due_for_review_list({ queries: { limit: 10 } } as never),
+        queryFn: () => api.api_Documents_due_for_review_list({ queries: { limit: 10 } }),
         staleTime: 60_000,
     });
 
@@ -227,7 +227,7 @@ const wosOnHoldOptions = () =>
         queryFn: () =>
             api.api_WorkOrders_list({
                 queries: { workorder_status: "ON_HOLD", ordering: "-updated_at", limit: 25 },
-            } as never) as Promise<{ results?: QueueWo[] }>,
+            }) as Promise<{ results?: QueueWo[] }>,
         staleTime: 30_000,
     });
 
@@ -1181,8 +1181,8 @@ function SupplierQualsExpiringBlock() {
     // Fetch expired + approaching-expiry in parallel and merge. The list
     // endpoint doesn't take a computed `status` filter, so we scope with the
     // authoritative status codes and merge client-side.
-    const { data: expiredResp } = useListSupplierQualifications({ status: "EXPIRED", limit: 15 } as never);
-    const { data: activeResp } = useListSupplierQualifications({ status: "APPROVED", limit: 50 } as never);
+    const { data: expiredResp } = useListSupplierQualifications({ status: "EXPIRED", limit: 15 });
+    const { data: activeResp } = useListSupplierQualifications({ status: "APPROVED", limit: 50 });
 
     const rows = useMemo(() => {
         const now = new Date();

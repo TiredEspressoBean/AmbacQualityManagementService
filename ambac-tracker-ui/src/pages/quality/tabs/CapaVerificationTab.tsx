@@ -74,7 +74,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
             effectiveness_result: formData.effectiveness_result as "CONFIRMED" | "NOT_EFFECTIVE",
             notes: formData.verification_notes || undefined,
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
-        } as never, {
+        }, {
             params: { id: verificationId },
             headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
         })

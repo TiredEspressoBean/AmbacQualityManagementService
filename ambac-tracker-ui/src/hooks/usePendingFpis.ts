@@ -22,7 +22,7 @@ export const pendingFpisOptions = () =>
         queryFn: () =>
             api.api_FPIRecords_list({
                 queries: { status: "PENDING", limit: 10 },
-            } as never) as Promise<{ results?: PendingFpi[] }>,
+            }) as Promise<{ results?: PendingFpi[] }>,
         staleTime: 15_000,
         select: (resp) => resp.results ?? [],
     });

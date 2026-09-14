@@ -93,8 +93,8 @@ export default function SamplingRuleSetsFormPage() {
     const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null)
 
     const { data: partTypes } = useRetrievePartTypes({ search: partTypeSearch })
-    const { data: companies } = useRetrieveCompanies({ limit: 200 } as never)
-    const { data: approvalTemplates } = useRetrieveApprovalTemplates({ limit: 200 } as never)
+    const { data: companies } = useRetrieveCompanies({ limit: 200 })
+    const { data: approvalTemplates } = useRetrieveApprovalTemplates({ limit: 200 })
     const { data: processes } = useRetrieveProcesses({
         search: processSearch,
         ...(selectedPartTypeId !== null ? { part_type: selectedPartTypeId } : {}),
@@ -160,10 +160,10 @@ export default function SamplingRuleSetsFormPage() {
     async function onSubmit(values: FormValues) {
         try {
             if (mode === "edit" && ruleSetId) {
-                await updateRuleSet.mutateAsync({ id: ruleSetId, data: values } as never)
+                await updateRuleSet.mutateAsync({ id: ruleSetId, data: values })
                 toast.success("Rule set updated")
             } else {
-                const created = await createRuleSet.mutateAsync(values as never)
+                const created = await createRuleSet.mutateAsync(values)
                 toast.success("Rule set created — add sampling rules below")
                 const newId = (created as { id?: string })?.id
                 if (newId) navigate({ to: "/SamplingRuleSetForm/edit/$id", params: { id: newId } })

@@ -30,8 +30,8 @@ export function SupplierQualificationFormPage() {
     const isEdit = !!qualId;
 
     const { data: existing } = useRetrieveSupplierQualification(qualId);
-    const { data: companies } = useRetrieveCompanies({ limit: 500 } as never);
-    const { data: partTypes } = useRetrievePartTypes({ limit: 500 } as never);
+    const { data: companies } = useRetrieveCompanies({ limit: 500 });
+    const { data: partTypes } = useRetrievePartTypes({ limit: 500 });
     const create = useCreateSupplierQualification();
     const update = useUpdateSupplierQualification();
 

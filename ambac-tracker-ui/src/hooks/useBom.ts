@@ -61,7 +61,7 @@ export function useCreateBom() {
     mutationFn: (partTypeId: string) =>
       api.api_BOMs_create({
         part_type: partTypeId, bom_type: "ASSEMBLY", status: "DRAFT", revision: "A",
-      } as never),
+      }),
     onSuccess: () => { invalidate(); toast.success("Draft BOM created"); },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't create BOM"),
   });
@@ -72,7 +72,7 @@ export function useReleaseBom() {
   const invalidate = useInvalidateBoms();
   return useMutation({
     mutationFn: (bomId: string) =>
-      api.api_BOMs_release_create(undefined as never, { params: { id: bomId } } as never),
+      api.api_BOMs_release_create(undefined, { params: { id: bomId } }),
     onSuccess: () => { invalidate(); toast.success("BOM released"); },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't release BOM"),
   });
@@ -84,8 +84,8 @@ export function useCreateBomRevision() {
   return useMutation({
     mutationFn: (bomId: string) =>
       api.api_BOMs_revisions_create(
-        { change_description: "Edited from Part Type form" } as never,
-        { params: { id: bomId } } as never),
+        { change_description: "Edited from Part Type form" },
+        { params: { id: bomId } }),
     onSuccess: () => { invalidate(); toast.success("New draft revision started"); },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't create revision"),
   });
@@ -106,7 +106,7 @@ export function useUpdateBomLine() {
   const invalidate = useInvalidateBoms();
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
-      api.api_BOMLines_partial_update(body as never, { params: { id } } as never),
+      api.api_BOMLines_partial_update(body, { params: { id } }),
     onSuccess: () => { invalidate(); toast.success("Line updated"); },
     onError: (e: any) => toast.error(bomLineError(e) ?? "Couldn't update line"),
   });
@@ -117,7 +117,7 @@ export function useDeleteBomLine() {
   const invalidate = useInvalidateBoms();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_BOMLines_destroy(undefined as never, { params: { id } } as never),
+      api.api_BOMLines_destroy(undefined, { params: { id } }),
     onSuccess: () => { invalidate(); toast.success("Line removed"); },
     onError: () => toast.error("Couldn't remove line"),
   });

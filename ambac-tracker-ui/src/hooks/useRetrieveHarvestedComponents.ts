@@ -13,7 +13,7 @@ export const retrieveHarvestedComponentsOptions = (queries?: HarvestedComponents
   queryKey: ["harvested-components", queries, config] as const,
   queryFn: () =>
     api.api_HarvestedComponents_list(
-      (queries || config ? { queries, ...config } : undefined) as never,
+      (queries || config ? { queries, ...config } : undefined),
     ) as Promise<HarvestedComponentsListResponse>,
 });
 

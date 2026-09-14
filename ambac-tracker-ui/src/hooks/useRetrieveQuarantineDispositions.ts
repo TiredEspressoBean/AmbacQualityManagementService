@@ -15,7 +15,7 @@ export const retrieveQuarantineDispositionsOptions = (queries?: QuarantineDispos
   queryKey: ["quarantine-disposition", queries, config] as const,
   queryFn: () =>
     api.api_QuarantineDispositions_list(
-      (queries || config ? { queries, ...config } : undefined) as never,
+      (queries || config ? { queries, ...config } : undefined),
     ) as Promise<QuarantineDispositionsListResponse>,
 });
 

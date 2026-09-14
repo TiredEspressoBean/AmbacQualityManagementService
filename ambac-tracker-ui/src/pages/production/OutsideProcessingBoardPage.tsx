@@ -175,7 +175,7 @@ function SentRow({
 async function openReturnInspection(shipmentId: string, navigate: ReturnType<typeof useNavigate>) {
     const plan = await api.api_OutsideProcessShipments_sample_plan_retrieve({
         params: { id: shipmentId },
-    } as never) as { step_id?: string; step_execution_id?: string };
+    }) as { step_id?: string; step_execution_id?: string };
     if (plan.step_id && plan.step_execution_id) {
         navigate({
             to: "/operator/steps/$stepId/substeps",

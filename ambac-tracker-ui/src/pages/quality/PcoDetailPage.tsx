@@ -78,7 +78,7 @@ export function PcoDetailPage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { navigate({ to: `/quality/change-control/pcrs/${pco.request}` as never }); }}
+                                    onClick={() => { navigate({ to: `/quality/change-control/pcrs/${pco.request}` }); }}
                                 >
                                     <FileText className="h-4 w-4 mr-2" />
                                     Open PCR
@@ -88,7 +88,7 @@ export function PcoDetailPage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { navigate({ to: '/process-flow', search: { id: pco.draft_process_version_id! } as never }); }}
+                                    onClick={() => { navigate({ to: '/process-flow', search: { id: pco.draft_process_version_id! } }); }}
                                 >
                                     <FileEdit className="h-4 w-4 mr-2" />
                                     Open draft

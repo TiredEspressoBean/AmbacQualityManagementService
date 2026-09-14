@@ -15,7 +15,7 @@ export const retrieveMeasurementDefinitionsOptions = (queries?: MeasurementDefin
   queryKey: ["measurementDefinitions", queries, config] as const,
   queryFn: () =>
     api.api_MeasurementDefinitions_list(
-      (queries || config ? { queries, ...config } : undefined) as never,
+      (queries || config ? { queries, ...config } : undefined),
     ) as Promise<MeasurementDefinitionsListResponse>,
 });
 

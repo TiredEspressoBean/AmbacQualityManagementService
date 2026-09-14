@@ -47,7 +47,7 @@ import {useRetrieveSteps} from "@/hooks/useRetrieveSteps";
 const supplierPickerOptions = () =>
     queryOptions({
         queryKey: ["companies", "part-type-supplier-picker"] as const,
-        queryFn: () => api.api_Companies_list({queries: {limit: 500, ordering: "name"}} as never) as Promise<{
+        queryFn: () => api.api_Companies_list({queries: {limit: 500, ordering: "name"}}) as Promise<{
             results?: Array<{ id: string | number; name: string }>
         }>,
     });
@@ -402,7 +402,7 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
     const isDraft = chosen?.status === "DRAFT" && canAuthor;
 
     // The assembly's own process steps — the ops a line can be "consumed at".
-    const {data: stepsData} = useRetrieveSteps({ part_type: partTypeId, limit: 500 } as never);
+    const {data: stepsData} = useRetrieveSteps({ part_type: partTypeId, limit: 500 });
     const steps = (stepsData?.results ?? [])
         .filter((s) => s?.id)
         .map((s) => ({ id: String(s.id), name: s.name as string }));

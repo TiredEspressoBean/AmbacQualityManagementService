@@ -13,7 +13,7 @@ export const trainingRecordsOptions = (queries?: TrainingRecordsListQueries, con
   queryKey: ["training-records", queries, config] as const,
   queryFn: () =>
     api.api_TrainingRecords_list(
-      (queries || config ? { queries, ...config } : undefined) as never,
+      (queries || config ? { queries, ...config } : undefined),
     ) as Promise<TrainingRecordsListResponse>,
 });
 

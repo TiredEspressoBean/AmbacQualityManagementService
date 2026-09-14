@@ -30,7 +30,7 @@ export const notificationFeedOptions = (options?: { unread?: boolean; limit?: nu
                     ...(options?.unread ? { unread: "true" } : {}),
                     limit: options?.limit ?? 50,
                 },
-            } as never)),
+            })),
         staleTime: 15_000,
     });
 
@@ -56,7 +56,7 @@ export function useMarkNotificationRead() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (id: string) =>
-            api.api_notifications_feed_mark_read_create(undefined as never, { params: { id } }),
+            api.api_notifications_feed_mark_read_create(undefined, { params: { id } }),
         onSuccess: () => queryClient.invalidateQueries(feedKeyOptions()),
     });
 }
@@ -65,7 +65,7 @@ export function useMarkAllNotificationsRead() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: () =>
-            api.api_notifications_feed_mark_all_read_create(undefined as never),
+            api.api_notifications_feed_mark_all_read_create(undefined),
         onSuccess: () => queryClient.invalidateQueries(feedKeyOptions()),
     });
 }

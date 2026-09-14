@@ -15,7 +15,7 @@ export const usersOptions = (queries?: UserListQueries, config?: ListHookConfig)
     queryKey: ["user", queries, config] as const,
     queryFn: () =>
       api.api_User_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<UserListResponse>,
   });
 

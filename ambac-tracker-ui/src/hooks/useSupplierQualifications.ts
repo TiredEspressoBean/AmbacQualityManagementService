@@ -33,7 +33,7 @@ export const retrieveSupplierQualificationOptions = (id: string | undefined) =>
     queryOptions({
         queryKey: ["supplier-qualifications", "detail", id] as const,
         queryFn: () =>
-            api.api_SupplierQualifications_retrieve({ params: { id: id as string } } as never) as Promise<
+            api.api_SupplierQualifications_retrieve({ params: { id: id as string } }) as Promise<
                 Schema<"SupplierQualification">
             >,
     });
@@ -51,7 +51,7 @@ export const supplierQualificationStatusOptions = (
         queryFn: () =>
             api.api_SupplierQualifications_status_retrieve({
                 queries: { supplier: supplierId as string, part_type: partTypeId },
-            } as never) as Promise<Schema<"QualificationStatus">>,
+            }) as Promise<Schema<"QualificationStatus">>,
         meta: { suppressGlobalError: true },
     });
 
@@ -74,7 +74,7 @@ export const useUpdateSupplierQualification = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (vars: { id: string; body: Partial<Schema<"SupplierQualification">> }) =>
-            api.api_SupplierQualifications_partial_update(vars.body as never, {
+            api.api_SupplierQualifications_partial_update(vars.body, {
                 params: { id: vars.id },
                 headers: csrf(),
             }),

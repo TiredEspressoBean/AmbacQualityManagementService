@@ -66,7 +66,7 @@ type ListHookConfig = {
 export const stepExecutionMeasurementsOptions = (queries?: StepExecutionMeasurementsListQueries, config?: ListHookConfig) => queryOptions({
     queryKey: ["step-execution-measurements", queries, config] as const,
     queryFn: () => api.api_StepExecutionMeasurements_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
     ),
 });
 

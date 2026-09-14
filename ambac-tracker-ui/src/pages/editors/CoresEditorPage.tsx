@@ -176,7 +176,7 @@ export function CoresEditorPage() {
                 modelName="Cores"
                 showDetailsLink={true}
                 useList={useCoresList}
-                generateDetailLink={(core) => `/reman/cores/${core.id}` as never}
+                generateDetailLink={(core) => `/reman/cores/${core.id}`}
                 columns={[
                     col({
                         header: "",

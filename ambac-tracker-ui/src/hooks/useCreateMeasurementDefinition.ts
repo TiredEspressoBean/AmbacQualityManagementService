@@ -15,7 +15,7 @@ export const useCreateMeasurementDefinition = () => {
 
     return useMutation<CreateMeasurementDefinitionResponse, unknown, CreateMeasurementDefinitionInput>({
         mutationFn: (data) =>
-            api.api_MeasurementDefinitions_create(data as never, {
+            api.api_MeasurementDefinitions_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateMeasurementDefinitionResponse>,
         onSuccess: () => {

@@ -47,7 +47,7 @@ export function useAcknowledgeShiftNote() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) =>
-            api.api_ShiftNotes_acknowledge_create(undefined as never, { params: { id } }),
+            api.api_ShiftNotes_acknowledge_create(undefined, { params: { id } }),
         onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === KEY[0] }),
     });
 }
@@ -56,7 +56,7 @@ export function useRetractShiftNote() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) =>
-            api.api_ShiftNotes_retract_create(undefined as never, { params: { id } }),
+            api.api_ShiftNotes_retract_create(undefined, { params: { id } }),
         onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === KEY[0] }),
     });
 }

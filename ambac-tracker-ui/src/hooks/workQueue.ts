@@ -39,7 +39,7 @@ export const workQueueOptions = (options?: WorkQueueOptionsArgs) => {
                     ...(wcs && wcs.length ? { work_center__in: wcs.join(",") } : {}),
                     limit,
                 },
-            } as never)).results ?? [],
+            })).results ?? [],
         staleTime: 15_000,
     });
 };

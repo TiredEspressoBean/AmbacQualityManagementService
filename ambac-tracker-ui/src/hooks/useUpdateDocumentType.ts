@@ -16,7 +16,7 @@ export function useUpdateDocumentType() {
 
     return useMutation<UpdateDocumentTypeResponse, unknown, UpdateDocumentTypeVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_DocumentTypes_partial_update(data as never, {
+            api.api_DocumentTypes_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateDocumentTypeResponse>,

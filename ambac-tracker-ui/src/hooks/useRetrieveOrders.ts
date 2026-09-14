@@ -16,7 +16,7 @@ export const ordersOptions = (queries?: OrdersListQueries, config?: ListHookConf
     queryKey: ["order", queries, config] as const,
     queryFn: () =>
       api.api_Orders_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<OrdersListResponse>,
   });
 

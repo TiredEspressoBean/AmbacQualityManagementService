@@ -11,7 +11,7 @@ export const useCreateOrder = () => {
 
     return useMutation<CreateOrderResponse, unknown, CreateOrderInput>({
         mutationFn: (body) =>
-            api.api_Orders_create(body as never, {
+            api.api_Orders_create(body, {
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken"),
                 },

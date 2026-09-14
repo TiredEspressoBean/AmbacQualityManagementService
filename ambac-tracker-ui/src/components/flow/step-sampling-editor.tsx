@@ -295,7 +295,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
     { enabled: open }
   );
   const updateSamplingRules = useUpdateStepSamplingRules();
-  const { data: approvalTemplates } = useRetrieveApprovalTemplates({ limit: 200 } as never);
+  const { data: approvalTemplates } = useRetrieveApprovalTemplates({ limit: 200 });
   // Numeric measurement definitions on this step — the candidates a Z1.9 variables
   // plan can measure (variables works on one numeric characteristic at a time).
   const { data: measurementsResp } = useRetrieveMeasurementDefinitions(

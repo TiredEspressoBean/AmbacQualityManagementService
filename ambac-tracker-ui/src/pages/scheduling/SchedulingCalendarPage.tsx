@@ -54,7 +54,7 @@ import { api } from "@/lib/api/generated";
 const calendarWorkCentersOptions = () =>
   queryOptions({
     queryKey: ["work-centers", "calendar-filter"] as const,
-    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never) as Promise<{
+    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } }) as Promise<{
       results?: Array<{ id: string; code: string; name: string }>
     }>,
   });
@@ -65,7 +65,7 @@ const calendarMembershipsOptions = (enabled: boolean) =>
     enabled,
     queryFn: () => api.api_UserWorkCenterMemberships_list({
       queries: { limit: 500 },
-    } as never) as Promise<{ results?: Array<{ user: number; work_center: string }> }>,
+    }) as Promise<{ results?: Array<{ user: number; work_center: string }> }>,
   });
 
 const KIND_COLOR: Record<string, string> = {
@@ -140,7 +140,7 @@ export function SchedulingCalendarPage() {
   const { data: closures = [] } = usePlantClosures();
   const { data: blocks = [] } = useLaborBlocks();
   const { data: overtimes = [] } = useOvertimeWindows();
-  const { data: usersPage } = useRetrieveUsers({ limit: 200, user_type: "INTERNAL" } as never);
+  const { data: usersPage } = useRetrieveUsers({ limit: 200, user_type: "INTERNAL" });
   const users = usersPage?.results ?? [];
   const { data: shiftsPage } = useShifts();
   const shifts = (shiftsPage as { results?: { id: string; name: string }[] } | undefined)?.results ?? [];

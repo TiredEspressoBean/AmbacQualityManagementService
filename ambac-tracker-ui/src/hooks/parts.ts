@@ -88,7 +88,7 @@ export const partsOptions = (queries?: PartsListQueries, config?: ListHookConfig
         queryKey: partsKeys.list(queries, config),
         queryFn: () =>
             api.api_Parts_list(
-                (queries || config ? { queries, ...config } : undefined) as never,
+                (queries || config ? { queries, ...config } : undefined),
             ) as Promise<PartsListResponse>,
     });
 
@@ -206,7 +206,7 @@ export const createPartMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<CreatePartResponse, unknown, CreatePartInput>({
         mutationKey: partsMutationKeys.create,
         mutationFn: (data) =>
-            api.api_Parts_create(data as never, { headers: csrfHeaders() }) as Promise<CreatePartResponse>,
+            api.api_Parts_create(data, { headers: csrfHeaders() }) as Promise<CreatePartResponse>,
         onSuccess: () => invalidateAllParts(queryClient),
         meta: { errorMessage: "Couldn't create part", successMessage: "Part created" },
     });
@@ -220,7 +220,7 @@ export const updatePartMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<UpdatePartResponse, unknown, UpdatePartVariables, { prev?: PartsResponse }>({
         mutationKey: partsMutationKeys.update,
         mutationFn: ({ id, data }) =>
-            api.api_Parts_partial_update(data as never, {
+            api.api_Parts_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<UpdatePartResponse>,
@@ -259,7 +259,7 @@ export const bulkIncrementPartsMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<Awaited<ReturnType<typeof api.api_Parts_bulk_increment_create>>, unknown, string[]>({
         mutationKey: partsMutationKeys.bulkIncrement,
         mutationFn: (ids) =>
-            api.api_Parts_bulk_increment_create({ ids } as never, { headers: csrfHeaders() }),
+            api.api_Parts_bulk_increment_create({ ids }, { headers: csrfHeaders() }),
         onSuccess: () => invalidateAllParts(queryClient),
         meta: { errorMessage: "Couldn't increment parts", successMessage: "Parts incremented" },
     });
@@ -268,7 +268,7 @@ export const bulkRollbackPartsMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<Awaited<ReturnType<typeof api.api_Parts_bulk_rollback_create>>, unknown, string[]>({
         mutationKey: partsMutationKeys.bulkRollback,
         mutationFn: (ids) =>
-            api.api_Parts_bulk_rollback_create({ ids } as never, { headers: csrfHeaders() }),
+            api.api_Parts_bulk_rollback_create({ ids }, { headers: csrfHeaders() }),
         onSuccess: () => invalidateAllParts(queryClient),
         meta: { errorMessage: "Couldn't roll back parts", successMessage: "Parts rolled back" },
     });
@@ -334,7 +334,7 @@ export const splitPartFromLotMutationOptions = (queryClient: QueryClient) =>
                     reason,
                     ...(rework_target_step_id ? { rework_target_step_id } : {}),
                     ...(notes ? { notes } : {}),
-                } as never,
+                },
                 { params: { id }, headers: csrfHeaders() },
             ),
         onSuccess: () => invalidateAllParts(queryClient),
@@ -351,7 +351,7 @@ export const rejoinPartToLotMutationOptions = (queryClient: QueryClient) =>
         mutationKey: partsMutationKeys.rejoinToLot,
         mutationFn: ({ id, notes }) =>
             api.api_Parts_rejoin_to_lot_create(
-                { ...(notes ? { notes } : {}) } as never,
+                { ...(notes ? { notes } : {}) },
                 { params: { id }, headers: csrfHeaders() },
             ),
         onSuccess: () => invalidateAllParts(queryClient),
@@ -368,7 +368,7 @@ export const advanceLotMutationOptions = (queryClient: QueryClient) =>
         mutationKey: partsMutationKeys.advanceLot,
         mutationFn: ({ work_order_id, step_id }) =>
             api.api_Parts_advance_lot_create(
-                { work_order_id, step_id } as never,
+                { work_order_id, step_id },
                 { headers: csrfHeaders() },
             ),
         onSuccess: () => invalidateAllParts(queryClient),
@@ -403,7 +403,7 @@ export const completeStepMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<AdvanceLotResult, unknown, string>({
         mutationKey: partsMutationKeys.completeStep,
         mutationFn: (partId) =>
-            api.api_Parts_complete_step_create(undefined as never, {
+            api.api_Parts_complete_step_create(undefined, {
                 params: { id: partId },
                 headers: csrfHeaders(),
             }) as Promise<AdvanceLotResult>,
@@ -475,7 +475,7 @@ export const useResolveDecision = () => {
     }>({
         mutationFn: ({ partId, decision, cosign_email, cosign_password }) =>
             api.api_Parts_resolve_decision_create(
-                { decision, ...(cosign_email ? { cosign_email, cosign_password } : {}) } as never,
+                { decision, ...(cosign_email ? { cosign_email, cosign_password } : {}) },
                 { params: { id: partId }, headers: { "X-CSRFToken": getCookie("csrftoken") } },
             ) as Promise<ResolveDecisionResult>,
         onSuccess: () => invalidateAllParts(queryClient),

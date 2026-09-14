@@ -20,7 +20,7 @@ const receivingPlansOptions = (queries: Record<string, unknown>) =>
   queryOptions({
     queryKey: ["receiving-plans", queries] as const,
     queryFn: () =>
-      api.api_Steps_list({ queries } as never) as Promise<components["schemas"]["PaginatedStepsList"]>,
+      api.api_Steps_list({ queries }) as Promise<components["schemas"]["PaginatedStepsList"]>,
   });
 
 const col = createColumnHelper<Schema<"Steps">>();
@@ -50,7 +50,7 @@ export function ReceivingInspectionPlansPage() {
   const createPlan = useCreateReceivingPlan();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [partType, setPartType] = useState<string>("");
-  const { data: partTypes } = useRetrievePartTypes({ limit: 200 } as never);
+  const { data: partTypes } = useRetrievePartTypes({ limit: 200 });
 
   const handleCreate = () => {
     if (!partType) return;

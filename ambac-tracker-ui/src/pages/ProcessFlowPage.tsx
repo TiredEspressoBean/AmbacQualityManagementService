@@ -1221,7 +1221,7 @@ export default function ProcessFlowPage() {
                   variant="outline"
                   onClick={() => {
                     const id = (linkedPcr as { id?: string }).id;
-                    if (id) navigate({ to: `/quality/change-control/pcrs/${id}` as never });
+                    if (id) navigate({ to: `/quality/change-control/pcrs/${id}` });
                   }}
                 >
                   View PCR

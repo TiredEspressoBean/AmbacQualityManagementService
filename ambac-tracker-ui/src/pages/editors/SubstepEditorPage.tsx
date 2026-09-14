@@ -365,7 +365,7 @@ export function SubstepEditorPage() {
                     step: stepId,
                     order: draft.order,
                     title: draft.title,
-                    body_blocks: draft.body_blocks as never,
+                    body_blocks: draft.body_blocks,
                     is_optional: draft.is_optional,
                     requires_signature: draft.requires_signature,
                     // Backstop: a body with the defect annotator is always an
@@ -375,7 +375,7 @@ export function SubstepEditorPage() {
                     is_critical: draft.is_critical,
                     allow_not_applicable: draft.allow_not_applicable,
                     scope: draft.scope,
-                } as never);
+                });
             }
 
             // 3. PATCH per-row edits on still-alive existing substeps. Skip
@@ -387,7 +387,7 @@ export function SubstepEditorPage() {
             );
             await Promise.all(
                 rowEntries.map(([id, data]) =>
-                    update.mutateAsync({ id, data: data as never }),
+                    update.mutateAsync({ id, data: data }),
                 ),
             );
 

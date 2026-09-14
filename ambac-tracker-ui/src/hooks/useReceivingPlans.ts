@@ -12,7 +12,7 @@ export const useCreateReceivingPlan = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: { part_type: string; name?: string }) =>
-      api.api_Steps_create_receiving_plan_create(vars as never, {
+      api.api_Steps_create_receiving_plan_create(vars, {
         headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
       }),
     onSuccess: () => queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "receiving-plans" }),

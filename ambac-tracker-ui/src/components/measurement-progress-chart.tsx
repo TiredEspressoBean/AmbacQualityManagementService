@@ -36,7 +36,7 @@ export function MeasurementProgressChart({ workOrder, stepHistory = [] }: Props)
     const { data: measurementDefs, isLoading: loadingDefs } = useMeasurementDefinitions({
         limit: 100,
         step__process: processId,
-    } as never, undefined, {
+    }, undefined, {
         enabled: !!processId,
     });
 

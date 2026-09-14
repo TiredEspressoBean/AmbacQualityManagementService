@@ -11,7 +11,7 @@ export const useCreateCompanies = () => {
 
     return useMutation<CreateCompanyResponse, unknown, CreateCompanyInput>({
         mutationFn: (data) =>
-            api.api_Companies_create(data as never, {
+            api.api_Companies_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateCompanyResponse>,
         onSuccess: () => {

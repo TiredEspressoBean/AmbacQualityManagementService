@@ -11,7 +11,7 @@ export const useCreateRcaRecord = () => {
 
     return useMutation<CreateRcaRecordResponse, unknown, CreateRcaRecordInput>({
         mutationFn: (data) =>
-            api.api_RcaRecords_create(data as never, {
+            api.api_RcaRecords_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateRcaRecordResponse>,
         onSuccess: () => {

@@ -8,7 +8,7 @@ type JobRolesListResponse = components["schemas"]["PaginatedJobRoleList"];
 export const jobRolesOptions = (queries?: JobRolesListQueries) => queryOptions({
     queryKey: ["job-roles", queries] as const,
     queryFn: () =>
-        api.api_JobRoles_list((queries ? { queries } : undefined) as never) as Promise<JobRolesListResponse>,
+        api.api_JobRoles_list((queries ? { queries } : undefined)) as Promise<JobRolesListResponse>,
 });
 
 export function useJobRoles(queries?: JobRolesListQueries) {

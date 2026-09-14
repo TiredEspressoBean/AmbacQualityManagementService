@@ -60,7 +60,7 @@ const myWorkloadOptions = (scopedWcIds: string[]) =>
                 limit: 5,
                 step__work_center__kind: "PRODUCTION",
                 ...(scopedWcIds.length ? { step__work_center__in: scopedWcIds } : {}),
-            } as never,
+            },
         }),
     });
 

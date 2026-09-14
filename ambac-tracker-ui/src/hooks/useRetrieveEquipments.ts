@@ -16,7 +16,7 @@ export const equipmentsOptions = (queries?: EquipmentListQueries, config?: ListH
     queryKey: ["equipment", queries, config] as const,
     queryFn: () =>
       api.api_Equipment_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<EquipmentListResponse>,
   });
 

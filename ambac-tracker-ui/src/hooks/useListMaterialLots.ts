@@ -12,7 +12,7 @@ export const listMaterialLotsOptions = (queries?: MaterialLotListQueries, config
         queryKey: ["material-lots", queries, config] as const,
         queryFn: () =>
             api.api_MaterialLots_list(
-                (queries || config ? { queries, ...config } : undefined) as never,
+                (queries || config ? { queries, ...config } : undefined),
             ) as Promise<MaterialLotListResponse>,
     });
 

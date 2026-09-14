@@ -228,7 +228,7 @@ export function AiChatExample() {
                 const result = {
                     externalId,
                     messages: (stateValues?.messages ?? []) as LangChainMessage[],
-                    interrupts: state.tasks?.[0]?.interrupts as never,
+                    interrupts: state.tasks?.[0]?.interrupts,
                 };
                 return result;
             } catch (error) {

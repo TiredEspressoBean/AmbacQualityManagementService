@@ -14,7 +14,7 @@ export const auditLogOptions = (queries?: AuditLogListQueries, config?: ListHook
     queryKey: ["logs", queries, config] as const,
     queryFn: () =>
       api.api_auditlog_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<AuditLogListResponse>,
   });
 

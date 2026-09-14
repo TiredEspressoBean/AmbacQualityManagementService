@@ -31,7 +31,7 @@ const needsValue = (t: string) => unitFor(t) !== "";
  *  Each mutation persists immediately via the SamplingRule endpoint — separate
  *  from the ruleset header form's save. */
 export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
-    const { data, refetch, isLoading } = useRetrieveSamplingRules({ ruleset: rulesetId } as never);
+    const { data, refetch, isLoading } = useRetrieveSamplingRules({ ruleset: rulesetId });
     const create = useCreateSamplingRule();
     const update = useUpdateSamplingRule();
     const del = useDeleteSamplingRule();
@@ -61,7 +61,7 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
 
     const saveValue = async (id: string, v: string) => {
         try {
-            await update.mutateAsync({ id, data: { value: v === "" ? null : Number(v) } as never });
+            await update.mutateAsync({ id, data: { value: v === "" ? null : Number(v) } });
             refetch();
         } catch {
             toast.error("Failed to update rule");

@@ -24,7 +24,7 @@ export const useUpdateStep = () => {
 
     return useMutation<UpdateStepResponse, unknown, UpdateStepVariables>({
         mutationFn: ({ id, data, processId }) =>
-            api.api_Steps_partial_update(data as never, {
+            api.api_Steps_partial_update(data, {
                 params: { id },
                 queries: processId ? { process: processId } : undefined,
                 headers: { "X-CSRFToken": getCookie("csrftoken") },

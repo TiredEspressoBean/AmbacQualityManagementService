@@ -20,7 +20,7 @@ export function useUpdateApprovalTemplate() {
 
     return useMutation<UpdateResponse, unknown, UpdateVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_ApprovalTemplates_partial_update(data as never, {
+            api.api_ApprovalTemplates_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateResponse>,

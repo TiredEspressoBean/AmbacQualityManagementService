@@ -11,7 +11,7 @@ export function useCreateDocumentType() {
 
     return useMutation<CreateDocumentTypeResponse, unknown, CreateDocumentTypeInput>({
         mutationFn: (data) =>
-            api.api_DocumentTypes_create(data as never, {
+            api.api_DocumentTypes_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateDocumentTypeResponse>,
         onSuccess: () => {

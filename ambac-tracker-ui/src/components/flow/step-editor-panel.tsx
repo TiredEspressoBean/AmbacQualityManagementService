@@ -221,7 +221,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
 
   // Vendor options for an outside-process (subcontract) receiving node.
   const { data: companiesData } = useRetrieveCompanies(
-    { limit: 200 } as never, undefined, { enabled: isReceivingType },
+    { limit: 200 }, undefined, { enabled: isReceivingType },
   );
   const companies = (companiesData?.results ?? []) as { id: string; name: string }[];
 

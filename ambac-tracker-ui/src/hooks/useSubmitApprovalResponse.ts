@@ -21,7 +21,7 @@ export function useSubmitApprovalResponse(approvalRequestId: string) {
     return useMutation({
         mutationFn: (payload: ApprovalResponsePayload) =>
             api.api_ApprovalRequests_submit_response_create(
-                payload as never,
+                payload,
                 { params: { id: approvalRequestId } },
             ),
         onSuccess: () => {

@@ -13,7 +13,7 @@ export const useStartTeardownBatch = () => {
     return useMutation({
         mutationFn: (vars: StartTeardownBatchVars) =>
             api.api_Cores_start_teardown_batch_create(
-                { core_ids: vars.core_ids, ...(vars.process_id ? { process_id: vars.process_id } : {}) } as never,
+                { core_ids: vars.core_ids, ...(vars.process_id ? { process_id: vars.process_id } : {}) },
                 { headers: { "X-CSRFToken": getCookie("csrftoken") } },
             ),
         onSuccess: () => {

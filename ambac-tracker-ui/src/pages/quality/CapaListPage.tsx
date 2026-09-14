@@ -35,7 +35,7 @@ function useCapasListWithFilter(urlFilters: { supplier?: string; capa_type?: str
         if (ordering !== undefined) queries.ordering = ordering;
         if (search !== undefined) queries.search = search;
         if (urlFilters.supplier) queries.supplier = urlFilters.supplier;
-        if (urlFilters.capa_type) queries.capa_type = urlFilters.capa_type as never;
+        if (urlFilters.capa_type) queries.capa_type = urlFilters.capa_type;
         return useListCapas(queries);
     };
 }

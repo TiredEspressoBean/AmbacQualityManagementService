@@ -74,7 +74,7 @@ export function IncomingHubPage() {
         try {
             const plan = await api.api_OutsideProcessShipments_sample_plan_retrieve({
                 params: { id: row.id },
-            } as never) as { step_id?: string; step_execution_id?: string };
+            }) as { step_id?: string; step_execution_id?: string };
             if (plan.step_id && plan.step_execution_id) {
                 navigate({
                     to: "/operator/steps/$stepId/substeps",

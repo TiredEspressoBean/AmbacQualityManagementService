@@ -8,7 +8,7 @@ export function useAcknowledgeFpi() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (fpiId: string) =>
-            api.api_FPIRecords_acknowledge_create(undefined as never, {
+            api.api_FPIRecords_acknowledge_create(undefined, {
                 params: { id: fpiId },
                 // Every mutation in useFpiRecords.ts sends this; this hook was
                 // the odd one out. A POST without it fails CSRF wherever the

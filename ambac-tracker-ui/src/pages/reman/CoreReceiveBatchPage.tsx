@@ -310,7 +310,7 @@ export function CoreReceiveBatchPage() {
                     if (id) base.customer = id;
                     else if (v) { base.customer = v; unresolved++; }
                 } else {
-                    base[key] = v as never;
+                    base[key] = v;
                 }
             });
             return base;
@@ -347,7 +347,7 @@ export function CoreReceiveBatchPage() {
                     const today = new Date().toISOString().slice(0, 10);
                     navigate({
                         to: "/reman/cores",
-                        search: { received_date: today } as never,
+                        search: { received_date: today },
                     });
                 },
                 onError: (err) => {

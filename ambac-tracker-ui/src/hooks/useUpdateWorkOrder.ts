@@ -16,7 +16,7 @@ export const useUpdateWorkOrder = () => {
 
     return useMutation<UpdateWorkOrderResponse, unknown, UpdateWorkOrderVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_WorkOrders_partial_update(data as never, {
+            api.api_WorkOrders_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateWorkOrderResponse>,

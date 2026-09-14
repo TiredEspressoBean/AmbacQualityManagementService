@@ -16,7 +16,7 @@ export const useUpdateTrainingType = () => {
 
     return useMutation<UpdateTrainingTypeResponse, unknown, UpdateTrainingTypeVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_TrainingTypes_partial_update(data as never, {
+            api.api_TrainingTypes_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateTrainingTypeResponse>,

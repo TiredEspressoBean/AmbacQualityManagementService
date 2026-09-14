@@ -27,7 +27,7 @@ export function NotificationFeedPage() {
     const open = (item: NotificationFeedItem) => {
         if (!item.read_at) markRead.mutate(item.id);
         if (item.rendered_action_url) {
-            navigate({ to: item.rendered_action_url } as never);
+            navigate({ to: item.rendered_action_url });
         }
     };
 

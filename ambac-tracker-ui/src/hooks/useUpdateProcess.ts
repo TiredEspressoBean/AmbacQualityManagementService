@@ -16,7 +16,7 @@ export const useUpdateProcess = () => {
 
     return useMutation<UpdateProcessResponse, unknown, UpdateProcessVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_Processes_partial_update(data as never, {
+            api.api_Processes_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateProcessResponse>,

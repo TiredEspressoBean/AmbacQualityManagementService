@@ -22,7 +22,7 @@ export const useUpdateSamplingRule = () => {
 
     return useMutation<UpdateSamplingRuleResponse, unknown, UpdateSamplingRuleVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_Sampling_rules_partial_update(data as never, {
+            api.api_Sampling_rules_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateSamplingRuleResponse>,

@@ -15,7 +15,7 @@ export const retrieveHeatMapAnnotationsOptions = (queries?: HeatMapAnnotationLis
   queryKey: ["heatMapAnnotation", queries, config] as const,
   queryFn: () =>
     api.api_HeatMapAnnotation_list(
-      (queries || config ? { queries, ...config } : undefined) as never,
+      (queries || config ? { queries, ...config } : undefined),
     ) as Promise<HeatMapAnnotationListResponse>,
 });
 

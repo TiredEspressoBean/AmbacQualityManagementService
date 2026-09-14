@@ -11,7 +11,7 @@ export const useUpdateOrder = () => {
 
     return useMutation<UpdateOrderResponse, unknown, { id: string; newData: UpdateOrderInput }>({
         mutationFn: async ({ id, newData }) => {
-            return api.api_Orders_partial_update(newData as never, {
+            return api.api_Orders_partial_update(newData, {
                 params: { id },
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken"),

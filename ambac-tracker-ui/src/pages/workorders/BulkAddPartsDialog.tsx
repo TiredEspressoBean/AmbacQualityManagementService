@@ -44,13 +44,13 @@ export function BulkAddPartsDialog({
     const [stepId, setStepId] = useState<string>("");
 
     const processQuery = useRetrieveProcessWithSteps(
-        { params: { id: processId ?? "" } } as never,
+        { params: { id: processId ?? "" } },
         { enabled: open && !!processId },
     );
 
     const partTypeId = (processQuery.data as { part_type?: string } | undefined)?.part_type;
     const partTypeQuery = useRetrievePartType(
-        { params: { id: partTypeId ?? "" } } as never,
+        { params: { id: partTypeId ?? "" } },
         { enabled: open && !!partTypeId },
     );
     const partType = partTypeQuery.data as

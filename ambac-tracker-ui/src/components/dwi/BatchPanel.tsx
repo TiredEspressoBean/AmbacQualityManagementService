@@ -68,7 +68,7 @@ export function BatchPanel({
     // Disjoint membership: a part already in an OPEN batch can't join another,
     // so the picker only offers parts not in an open load. Parts in a SEALED
     // batch ARE still offered (a reworked part can re-batch on a later visit)
-    // but get tagged below so they don't read as never-batched.
+    // but get tagged below so they don't read-batched.
     const openBatchedIds = new Set(
         openBatches.flatMap((b) => (b.parts ?? []).map((p) => String(p))),
     );
@@ -77,7 +77,7 @@ export function BatchPanel({
     );
     const availableParts = cohortParts.filter((p) => !openBatchedIds.has(p.id));
     // "Fresh" = in no batch at all. Coverage + select-all key off these so a
-    // part sitting in a sealed load isn't counted/treated as never-batched.
+    // part sitting in a sealed load isn't counted/treated-batched.
     const freshParts = availableParts.filter((p) => !sealedBatchedIds.has(p.id));
 
     const toggle = (id: string) =>

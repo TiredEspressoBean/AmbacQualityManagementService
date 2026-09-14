@@ -37,7 +37,7 @@ const workCentersAdminOptions = (search: string) =>
         queryKey: ["work-centers", "admin", search] as const,
         queryFn: () => api.api_WorkCenters_list({
             queries: { limit: 100, ...(search ? { search } : {}) },
-        } as never),
+        }),
     });
 
 type WorkCenter = components["schemas"]["WorkCenter"];
@@ -88,7 +88,7 @@ export default function WorkCentersPage() {
 
     const createMut = useMutation({
         mutationFn: (payload: { code: string; name: string; kind: Kind; description: string; is_constraint: boolean; is_critical: boolean }) =>
-            api.api_WorkCenters_create(payload as never),
+            api.api_WorkCenters_create(payload),
         onSuccess: () => {
             qc.invalidateQueries(matchKey(["work-centers"]));
             toast.success("Work center created.");
@@ -98,7 +98,7 @@ export default function WorkCentersPage() {
     });
     const updateMut = useMutation({
         mutationFn: ({ id, ...payload }: { id: string; code: string; name: string; kind: Kind; description: string; is_constraint: boolean; is_critical: boolean }) =>
-            api.api_WorkCenters_partial_update(payload as never, { params: { id } }),
+            api.api_WorkCenters_partial_update(payload, { params: { id } }),
         onSuccess: () => {
             qc.invalidateQueries(matchKey(["work-centers"]));
             toast.success("Work center updated.");
@@ -108,7 +108,7 @@ export default function WorkCentersPage() {
     });
     const archiveMut = useMutation({
         mutationFn: (id: string) =>
-            api.api_WorkCenters_partial_update({ archived: true } as never, { params: { id } }),
+            api.api_WorkCenters_partial_update({ archived: true }, { params: { id } }),
         onSuccess: () => {
             qc.invalidateQueries(matchKey(["work-centers"]));
             toast.success("Archived.");

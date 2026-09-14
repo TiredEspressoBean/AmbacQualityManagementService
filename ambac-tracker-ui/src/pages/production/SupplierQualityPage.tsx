@@ -75,7 +75,7 @@ function ScorecardCard({ id, name }: { id: string; name: string }) {
     const { data: sc, isLoading } = useSupplierScorecard(id);
     const scarLink = {
         to: "/quality/capas" as const,
-        search: { supplier: id, capa_type: "SUPPLIER" } as never,
+        search: { supplier: id, capa_type: "SUPPLIER" },
     };
     return (
         <Card>
@@ -128,7 +128,7 @@ function ScorecardCard({ id, name }: { id: string; name: string }) {
 }
 
 export function SupplierQualityPage() {
-    const { data: companies, isLoading } = useRetrieveCompanies({ limit: 200 } as never);
+    const { data: companies, isLoading } = useRetrieveCompanies({ limit: 200 });
     return (
         <div className="space-y-4 p-2">
             <div>

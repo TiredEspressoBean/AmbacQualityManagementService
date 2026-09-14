@@ -18,7 +18,7 @@ function useQueueList(params: { offset: number; limit: number; ordering?: string
     const queries: Record<string, unknown> = { offset: params.offset, limit: params.limit, inspection_pending: "true" };
     if (params.ordering) queries.ordering = params.ordering;
     if (params.search) queries.search = params.search;
-    return useListMaterialLots(queries as never);
+    return useListMaterialLots(queries);
 }
 
 export function ReceivingInspectionQueuePage() {

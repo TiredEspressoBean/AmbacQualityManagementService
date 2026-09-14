@@ -18,7 +18,7 @@ export const claimableApprovalsOptions = () =>
     queryOptions({
         queryKey: ["approvals", "claimable"] as const,
         queryFn: () =>
-            api.api_ApprovalRequests_claimable_list({ queries: { limit: 10 } } as never) as Promise<{
+            api.api_ApprovalRequests_claimable_list({ queries: { limit: 10 } }) as Promise<{
                 results?: ClaimableApproval[];
             }>,
         staleTime: 15_000,

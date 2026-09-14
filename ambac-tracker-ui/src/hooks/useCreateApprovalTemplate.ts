@@ -11,7 +11,7 @@ export function useCreateApprovalTemplate() {
 
     return useMutation<CreateResponse, unknown, CreateInput>({
         mutationFn: (data) =>
-            api.api_ApprovalTemplates_create(data as never, {
+            api.api_ApprovalTemplates_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateResponse>,
         onSuccess: () => {

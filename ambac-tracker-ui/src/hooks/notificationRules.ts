@@ -94,7 +94,7 @@ export const tenantRulesOptions = (filters: RulesListFilters = {}) =>
                     limit: filters.limit,
                     offset: filters.offset,
                 },
-            } as never) as Promise<PaginatedTenantRuleList>,
+            }) as Promise<PaginatedTenantRuleList>,
     });
 
 export const retrieveTenantRuleOptions = (id: string) =>
@@ -149,7 +149,7 @@ export const personalRulesOptions = (filters: RulesListFilters = {}) =>
                     limit: filters.limit,
                     offset: filters.offset,
                 },
-            } as never) as Promise<PaginatedPersonalRuleList>,
+            }) as Promise<PaginatedPersonalRuleList>,
     });
 
 export const retrievePersonalRuleOptions = (id: string) =>
@@ -278,7 +278,7 @@ export const createTenantRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<TenantRule, unknown, TenantRuleRequest>({
         mutationKey: notificationRulesMutationKeys.createTenant,
         mutationFn: (data) =>
-            api.api_notifications_rules_tenant_create(data as never, {
+            api.api_notifications_rules_tenant_create(data, {
                 headers: csrfHeaders(),
             }) as Promise<TenantRule>,
         onSuccess: () => invalidateAllRules(queryClient),
@@ -289,7 +289,7 @@ export const updateTenantRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<TenantRule, unknown, UpdateVariables<PatchedTenantRuleRequest>, OptimisticCtx>({
         mutationKey: notificationRulesMutationKeys.updateTenant,
         mutationFn: ({ id, data }) =>
-            api.api_notifications_rules_tenant_partial_update(data as never, {
+            api.api_notifications_rules_tenant_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<TenantRule>,
@@ -307,7 +307,7 @@ export const deleteTenantRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<unknown, unknown, string>({
         mutationKey: notificationRulesMutationKeys.deleteTenant,
         mutationFn: (id) =>
-            api.api_notifications_rules_tenant_destroy(undefined as never, {
+            api.api_notifications_rules_tenant_destroy(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }),
@@ -323,7 +323,7 @@ export const createCustomerRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<CustomerRule, unknown, CustomerRuleRequest>({
         mutationKey: notificationRulesMutationKeys.createCustomer,
         mutationFn: (data) =>
-            api.api_notifications_rules_customer_create(data as never, {
+            api.api_notifications_rules_customer_create(data, {
                 headers: csrfHeaders(),
             }) as Promise<CustomerRule>,
         onSuccess: () => invalidateAllRules(queryClient),
@@ -334,7 +334,7 @@ export const updateCustomerRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<CustomerRule, unknown, UpdateVariables<PatchedCustomerRuleRequest>, OptimisticCtx>({
         mutationKey: notificationRulesMutationKeys.updateCustomer,
         mutationFn: ({ id, data }) =>
-            api.api_notifications_rules_customer_partial_update(data as never, {
+            api.api_notifications_rules_customer_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<CustomerRule>,
@@ -352,7 +352,7 @@ export const deleteCustomerRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<unknown, unknown, string>({
         mutationKey: notificationRulesMutationKeys.deleteCustomer,
         mutationFn: (id) =>
-            api.api_notifications_rules_customer_destroy(undefined as never, {
+            api.api_notifications_rules_customer_destroy(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }),
@@ -368,7 +368,7 @@ export const createPersonalRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<PersonalRule, unknown, PersonalRuleRequest>({
         mutationKey: notificationRulesMutationKeys.createPersonal,
         mutationFn: (data) =>
-            api.api_notifications_rules_personal_create(data as never, {
+            api.api_notifications_rules_personal_create(data, {
                 headers: csrfHeaders(),
             }) as Promise<PersonalRule>,
         onSuccess: () => invalidateAllRules(queryClient),
@@ -379,7 +379,7 @@ export const updatePersonalRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<PersonalRule, unknown, UpdateVariables<PatchedPersonalRuleRequest>, OptimisticCtx>({
         mutationKey: notificationRulesMutationKeys.updatePersonal,
         mutationFn: ({ id, data }) =>
-            api.api_notifications_rules_personal_partial_update(data as never, {
+            api.api_notifications_rules_personal_partial_update(data, {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<PersonalRule>,
@@ -397,7 +397,7 @@ export const deletePersonalRuleMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<unknown, unknown, string>({
         mutationKey: notificationRulesMutationKeys.deletePersonal,
         mutationFn: (id) =>
-            api.api_notifications_rules_personal_destroy(undefined as never, {
+            api.api_notifications_rules_personal_destroy(undefined, {
                 params: { id },
                 headers: csrfHeaders(),
             }),

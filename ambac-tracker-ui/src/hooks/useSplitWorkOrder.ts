@@ -17,7 +17,7 @@ export const useSplitWorkOrder = () => {
 
     return useMutation({
         mutationFn: ({ id, ...body }: SplitWorkOrderVariables) =>
-            api.api_WorkOrders_split_create(body as never, {
+            api.api_WorkOrders_split_create(body, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),

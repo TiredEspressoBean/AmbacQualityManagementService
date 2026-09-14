@@ -15,7 +15,7 @@ export const companiesOptions = (queries?: CompaniesListQueries, config?: ListHo
     queryKey: ["company", queries, config] as const,
     queryFn: () =>
       api.api_Companies_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<CompaniesListResponse>,
   });
 

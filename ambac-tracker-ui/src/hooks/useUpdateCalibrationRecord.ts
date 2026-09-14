@@ -16,7 +16,7 @@ export const useUpdateCalibrationRecord = () => {
 
     return useMutation<UpdateCalibrationRecordResponse, unknown, UpdateCalibrationRecordVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_CalibrationRecords_partial_update(data as never, {
+            api.api_CalibrationRecords_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateCalibrationRecordResponse>,

@@ -31,13 +31,13 @@ const userMembershipsOptions = (userId: number) =>
         queryKey: ["userwc-memberships", userId] as const,
         queryFn: () => api.api_UserWorkCenterMemberships_list({
             queries: { user: userId, limit: 100 },
-        } as never),
+        }),
     });
 
 const membershipPickerWorkCentersOptions = () =>
     queryOptions({
         queryKey: ["work-centers", "for-membership-picker"] as const,
-        queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
+        queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } }),
     });
 
 type Kind = "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
@@ -66,7 +66,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
     const addMut = useMutation({
         mutationFn: (wcId: string) => api.api_UserWorkCenterMemberships_create({
             user: userId, work_center: wcId, is_primary: false,
-        } as never),
+        }),
         onSuccess: () => {
             qc.invalidateQueries(userMembershipsOptions(userId));
             setAddWcId("");
@@ -75,7 +75,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
         onError: (e) => toast.error(`Couldn't add: ${(e as Error).message}`),
     });
     const removeMut = useMutation({
-        mutationFn: (id: string) => api.api_UserWorkCenterMemberships_destroy(undefined as never, { params: { id } }),
+        mutationFn: (id: string) => api.api_UserWorkCenterMemberships_destroy(undefined, { params: { id } }),
         onSuccess: () => {
             qc.invalidateQueries(userMembershipsOptions(userId));
             toast.success("Removed.");
@@ -84,7 +84,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
     });
     const setPrimaryMut = useMutation({
         mutationFn: (id: string) => api.api_UserWorkCenterMemberships_set_primary_create(
-            undefined as never, { params: { id } },
+            undefined, { params: { id } },
         ),
         onSuccess: () => {
             qc.invalidateQueries(userMembershipsOptions(userId));

@@ -14,7 +14,7 @@ export const coresOptions = (queries?: CoresListQueries, config?: ListHookConfig
     queryKey: ["cores", queries, config] as const,
     queryFn: () =>
       api.api_Cores_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
+        (queries || config ? { queries, ...config } : undefined),
       ) as Promise<CoresListResponse>,
   });
 

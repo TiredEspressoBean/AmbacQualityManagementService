@@ -70,7 +70,7 @@ export function PcnDetailPage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { navigate({ to: `/quality/change-control/pcos/${pcn.order}` as never }); }}
+                                    onClick={() => { navigate({ to: `/quality/change-control/pcos/${pcn.order}` }); }}
                                 >
                                     <FileText className="h-4 w-4 mr-2" />
                                     Open PCO

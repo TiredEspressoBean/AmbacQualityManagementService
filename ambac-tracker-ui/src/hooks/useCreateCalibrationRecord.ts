@@ -14,7 +14,7 @@ export const useCreateCalibrationRecord = () => {
 
     return useMutation<CreateResponse, unknown, CreateInput>({
         mutationFn: (data) =>
-            api.api_CalibrationRecords_create(data as never, {
+            api.api_CalibrationRecords_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateResponse>,
         onSuccess: () => {

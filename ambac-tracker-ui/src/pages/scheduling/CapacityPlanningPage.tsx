@@ -254,7 +254,7 @@ export function CapacityPlanningPage() {
   const [criticalOnly, setCriticalOnly] = useState(false);
   const { data, isLoading } = useCapacityLoad(months, criticalOnly);
 
-  const { data: partTypesData } = useRetrievePartTypes({ limit: 200 } as never);
+  const { data: partTypesData } = useRetrievePartTypes({ limit: 200 });
   const partTypes = partTypesData?.results ?? [];
 
   const [partType, setPartType] = useState("");

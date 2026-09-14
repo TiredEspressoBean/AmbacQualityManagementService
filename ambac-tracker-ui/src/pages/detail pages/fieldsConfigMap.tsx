@@ -236,7 +236,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         return (
                             <Link
                                 to="/editor/qualityReports"
-                                search={{ part: String(partId) } as never}
+                                search={{ part: String(partId) }}
                                 className="text-primary hover:underline font-medium"
                             >
                                 {text}

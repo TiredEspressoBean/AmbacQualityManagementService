@@ -11,7 +11,7 @@ export const useCreateUser = () => {
 
     return useMutation<CreateUserResponse, unknown, CreateUserInput>({
         mutationFn: (data) =>
-            api.api_User_create(data as never, {
+            api.api_User_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<CreateUserResponse>,
         onSuccess: () => {

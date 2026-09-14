@@ -71,7 +71,7 @@ export default function EditMaterialFormPage() {
   // Preferred-supplier combobox (nullable FK) — kept out of RHF like the fixture form.
   const [supOpen, setSupOpen] = useState(false);
   const [supplierId, setSupplierId] = useState<string | null>(null);
-  const { data: companiesData } = useRetrieveCompanies({ limit: 500, ordering: "name" } as never);
+  const { data: companiesData } = useRetrieveCompanies({ limit: 500, ordering: "name" });
   const suppliers = useMemo(
     () => (companiesData?.results ?? []).map((c) => ({ id: String(c.id), name: c.name })),
     [companiesData]
