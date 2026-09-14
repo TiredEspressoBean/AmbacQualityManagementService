@@ -1,4 +1,5 @@
-import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent} from "@tanstack/react-router"
+import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link} from "@tanstack/react-router"
+import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import type { QueryClient } from "@tanstack/react-query"
 
 import Layout from "@/components/layout";
@@ -1139,6 +1140,25 @@ const substepEditorRoute = createRoute({
     component: lazyRouteComponent(() => import("@/pages/editors/SubstepEditorPage"), "SubstepEditorPage"),
 });
 
+
+/** Shown when a deep link carries a malformed id — a stale bookmark, a
+ *  truncated scan, a hand-edited URL. Better than a blank shell, and it
+ *  names the station's way out. */
+function OperatorRuntimeSearchError() {
+    return (
+        <div className="mx-auto max-w-lg p-8 text-center">
+            <h1 className="text-lg font-semibold">This link isn't valid</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+                The work link you followed is missing or has a malformed id. It may be a
+                stale bookmark or a damaged scan. Start the job again from your queue.
+            </p>
+            <Link to="/production/operator" className="mt-4 inline-block underline">
+                Back to my queue
+            </Link>
+        </div>
+    );
+}
+
 const operatorSubstepRuntimeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/operator/steps/$stepId/substeps',
@@ -1146,23 +1166,32 @@ const operatorSubstepRuntimeRoute = createRoute({
         () => import("@/pages/operator/OperatorSubstepRuntimePage"),
         "OperatorSubstepRuntimePage",
     ),
-    validateSearch: (search: Record<string, unknown>) => ({
-        part: typeof search.part === 'string' ? search.part : undefined,
-        workOrder: typeof search.workOrder === 'string' ? search.workOrder : undefined,
-        // Receiving inspection: the MaterialLot subject of this execution (no part/WO).
-        // Without it the runtime can't route back to the receiving page on complete.
-        material_lot: typeof search.material_lot === 'string' ? search.material_lot : undefined,
-        // OSP return inspection: the OutsideProcessShipment subject of this execution.
-        osp_shipment: typeof search.osp_shipment === 'string' ? search.osp_shipment : undefined,
-        execution: typeof search.execution === 'string' ? search.execution : undefined,
-        // Current substep index — drives the player + refresh/kiosk resume.
-        at: search.at != null && Number.isFinite(Number(search.at)) ? Number(search.at) : undefined,
-        // Receiving unit-by-unit: which sampled unit (1..n) is being inspected.
-        unit: search.unit != null && Number.isFinite(Number(search.unit)) ? Number(search.unit) : undefined,
-        // Serial queue of remaining part ids (StartWorkDialog multi-select).
-        queue: typeof search.queue === 'string' ? search.queue : undefined,
-        debug: typeof search.debug === 'string' ? search.debug : undefined,
-    }),
+    // Zod rather than hand-rolled narrowing, for three reasons:
+    //
+    //  1. `.optional()` gives genuinely optional keys. The previous validator
+    //     returned an object literal with every key present and merely allowed
+    //     to be undefined, so TypeScript demanded that callers spell out every
+    //     key — which is why producers padded with `material_lot: undefined,
+    //     osp_shipment: undefined, unit: undefined, debug: undefined` or gave
+    //     up and cast `as never`.
+    //  2. The id params are actually validated, not just narrowed to `string`.
+    //     This route is a deep-link target: a wrong `execution` means the
+    //     operator captures against the wrong step execution, which is a
+    //     quality-record problem, so a malformed one must not reach the page.
+    //  3. Numeric params are coerced once here instead of at each read site.
+    //
+    // Strict vs lenient is deliberate. The ids throw, because acting on the
+    // wrong record is worse than showing an error. The cosmetic params
+    // (`at`, `unit`) use `.catch()` so a damaged URL resumes at the start
+    // rather than bricking a station mid-shift — the page already clamps both.
+    //
+    // No `.default()` anywhere on purpose: defaults are written back into the
+    // URL by the router, so adding one would start appending `?at=0` to links
+    // that don't have it today. The page's existing `search.at ?? 0` handles it.
+    validateSearch: OperatorRuntimeSearch,
+    // Without this an invalid id throws past the route and blanks the app
+    // shell. VALIDATE_SEARCH failures land here instead.
+    errorComponent: OperatorRuntimeSearchError,
 });
 
 const schedulingGanttRoute = createRoute({

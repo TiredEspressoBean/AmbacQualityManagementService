@@ -506,13 +506,6 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                         // runs; the runtime resolves those from execution alone.
                                         part: activeRun.part ? String(activeRun.part) : undefined,
                                         execution: String(activeRun.id),
-                                        workOrder: undefined,
-                                        material_lot: undefined,
-                                        osp_shipment: undefined,
-                                        at: undefined,
-                                        unit: undefined,
-                                        queue: undefined,
-                                        debug: undefined,
                                     },
                                 })}
                             >

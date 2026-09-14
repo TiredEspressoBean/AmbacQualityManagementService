@@ -222,18 +222,15 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
         navigate({
             to: "/operator/steps/$stepId/substeps",
             params: { stepId },
-            // The runtime route's search shape requires every key present
-            // (fresh context — no inherited material_lot/osp_shipment/unit).
+            // Fresh context — no inherited material_lot/osp_shipment/unit.
+            // The route's schema makes those genuinely optional, so they no
+            // longer have to be listed as explicit `undefined`.
             search: {
                 part: firstId,
                 workOrder: workOrderId,
                 execution: executionId,
                 at: 0,
                 queue: queue.length > 0 ? queue.join(",") : undefined,
-                material_lot: undefined,
-                osp_shipment: undefined,
-                unit: undefined,
-                debug: undefined,
             },
         });
     };

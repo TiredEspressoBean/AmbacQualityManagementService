@@ -89,6 +89,7 @@ import {
     advanceToNextQueuedPart,
     type CompletionContext,
 } from "./completion-adapters";
+import type { OperatorRuntimeSearchParams } from "@/lib/routes/operator-runtime-search";
 
 const captureStateOptions = (executionId: unknown, enabled: boolean) =>
     queryOptions({
@@ -101,24 +102,10 @@ const captureStateOptions = (executionId: unknown, enabled: boolean) =>
     });
 
 type RouteParams = { stepId: string };
-type SearchParams = {
-    part?: string;
-    workOrder?: string;
-    /** Receiving inspection: the MaterialLot subject of this execution (no part/WO). */
-    material_lot?: string;
-    /** OSP return inspection: the OutsideProcessShipment subject of this execution. */
-    osp_shipment?: string;
-    execution?: string;
-    at?: number;
-    /** Receiving unit-by-unit: which sampled unit (1..n) is being inspected. */
-    unit?: number;
-    debug?: string;
-    /** Comma-separated list of remaining part ids to work in serial after
-     *  the current one. Populated by the `StartWorkDialog` when an
-     *  operator checks multiple parts; consumed by `handleCompleteStep`
-     *  to auto-advance to the next part. Empty/absent = no queue. */
-    queue?: string;
-};
+// Derived from the schema the router validates with, rather than restated
+// here — the two can't drift, and the ids are known-good UUIDs by the time
+// this page renders because the route rejects malformed ones.
+type SearchParams = OperatorRuntimeSearchParams;
 
 export function OperatorSubstepRuntimePage() {
     const params = useParams({ strict: false }) as Partial<RouteParams>;

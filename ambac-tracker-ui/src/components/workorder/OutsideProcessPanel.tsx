@@ -174,7 +174,7 @@ async function openInspectionRuntime(
         navigate({
             to: "/operator/steps/$stepId/substeps",
             params: { stepId: String(plan.step_id) },
-            search: { execution: String(plan.step_execution_id), osp_shipment: shipmentId, at: 0 } as never,
+            search: { execution: String(plan.step_execution_id), osp_shipment: shipmentId, at: 0 },
         });
     } else {
         toast.error("No open return inspection for this shipment.");

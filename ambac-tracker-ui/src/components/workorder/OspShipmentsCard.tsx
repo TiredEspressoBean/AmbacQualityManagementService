@@ -39,7 +39,7 @@ async function openInspectionRuntime(
                 execution: String(plan.step_execution_id),
                 osp_shipment: shipmentId,
                 at: 0,
-            } as never,
+            },
         });
     } else {
         toast.error("No open return inspection for this shipment.");

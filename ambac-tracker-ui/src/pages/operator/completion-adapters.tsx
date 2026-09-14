@@ -187,10 +187,6 @@ export async function advanceToNextQueuedPart({
             workOrder: workOrderId,
             execution: executionId,
             at: 0,
-            material_lot: undefined,
-            osp_shipment: undefined,
-            unit: undefined,
-            debug: undefined,
             queue: rest.length > 0 ? rest.join(",") : undefined,
         },
     });
@@ -343,7 +339,7 @@ function ReceivingCompletionFooter({ ctx }: { ctx: CompletionContext }) {
                         ctx.navigate({
                             to: "/operator/steps/$stepId/substeps",
                             params: { stepId: ctx.stepId },
-                            search: { ...ctx.search, unit: ctx.unit + 1, at: 0 } as never,
+                            search: { ...ctx.search, unit: ctx.unit + 1, at: 0 },
                         });
                     }}
                 >

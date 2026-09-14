@@ -522,7 +522,7 @@ function DwiLaunch({ samplePlan, lotId, navigate }: {
                     navigate({
                         to: "/operator/steps/$stepId/substeps",
                         params: { stepId: String(samplePlan.step_id) },
-                        search: { execution: String(samplePlan.step_execution_id), material_lot: lotId, at: 0 } as never,
+                        search: { execution: String(samplePlan.step_execution_id), material_lot: lotId, at: 0 },
                     })
                 }
             >
