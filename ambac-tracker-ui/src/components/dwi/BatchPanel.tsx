@@ -194,7 +194,7 @@ export function BatchPanel({
                                     <div className="flex-1 text-xs">
                                         <div className="font-mono">{b.id.slice(0, 8)}…</div>
                                         <div className="text-muted-foreground">
-                                            {b.parts.length} parts · started {new Date(b.started_at).toLocaleString()}
+                                            {(b.parts ?? []).length} parts · started {new Date(b.started_at).toLocaleString()}
                                         </div>
                                     </div>
                                     <Button
@@ -229,7 +229,7 @@ export function BatchPanel({
                                 <div className="flex-1 text-xs">
                                     <div className="font-mono">{b.id.slice(0, 8)}…</div>
                                     <div className="text-muted-foreground">
-                                        {b.parts.length} parts · sealed{" "}
+                                        {(b.parts ?? []).length} parts · sealed{" "}
                                         {b.sealed_at ? new Date(b.sealed_at).toLocaleString() : ""}
                                     </div>
                                 </div>

@@ -933,7 +933,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Gauges the current user recently used whose calibration is due soon or overdue - the personal pre-empt for the point-of-use calibration gate. */
-        get: operations["api_CalibrationRecords_my_gauge_nag_retrieve"];
+        get: operations["api_CalibrationRecords_my_gauge_nag_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -18641,35 +18641,25 @@ export interface components {
             readonly id: string;
             /** Format: uuid */
             work_order: string;
-            readonly work_order_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly work_order_info: components["schemas"]["FPIRecordWorkOrderInfo"] | null;
             /** Format: uuid */
             step: string;
-            readonly step_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly step_info: components["schemas"]["FPIRecordStepInfo"] | null;
             /** Format: uuid */
             part_type: string;
-            readonly part_type_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly part_type_info: components["schemas"]["FPIRecordPartTypeInfo"] | null;
             /**
              * Format: uuid
              * @description The part designated for FPI
              */
             designated_part?: string | null;
-            readonly designated_part_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly designated_part_info: components["schemas"]["FPIRecordDesignatedPartInfo"] | null;
             /**
              * Format: uuid
              * @description Equipment being used (for per-equipment FPI)
              */
             equipment?: string | null;
-            readonly equipment_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly equipment_info: components["schemas"]["FPIRecordEquipmentInfo"] | null;
             /**
              * Format: date
              * @description Date of the shift for per-shift FPI
@@ -18690,9 +18680,7 @@ export interface components {
             readonly result_display: string;
             /** @description User who performed the inspection */
             readonly inspected_by: number | null;
-            readonly inspected_by_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly inspected_by_info: components["schemas"]["UserSelect"] | null;
             /**
              * Format: date-time
              * @description When inspection was completed
@@ -18700,23 +18688,17 @@ export interface components {
             readonly inspected_at: string | null;
             /** @description Operator at whose station a QA person co-signed this buy-off (distinct from inspected_by, the attester). Null for a direct QA sign-off. */
             readonly performed_by: number | null;
-            readonly performed_by_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly performed_by_info: components["schemas"]["UserSelect"] | null;
             /** @description Whether FPI requirement was waived */
             readonly waived: boolean;
             /** @description User who waived the FPI */
             readonly waived_by: number | null;
-            readonly waived_by_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly waived_by_info: components["schemas"]["UserSelect"] | null;
             /** @description Reason for waiving FPI requirement */
             readonly waive_reason: string;
             /** @description QA user who acknowledged the pending request (is on it) */
             readonly acknowledged_by: number | null;
-            readonly acknowledged_by_info: {
-                [key: string]: unknown;
-            } | null;
+            readonly acknowledged_by_info: components["schemas"]["UserSelect"] | null;
             /**
              * Format: date-time
              * @description When the pending request was acknowledged
@@ -18732,6 +18714,18 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             archived?: boolean;
+        };
+        FPIRecordDesignatedPartInfo: {
+            id: string;
+            erp_id: string | null;
+        };
+        FPIRecordEquipmentInfo: {
+            id: string;
+            name: string | null;
+        };
+        FPIRecordPartTypeInfo: {
+            id: string;
+            name: string | null;
         };
         /** @description Serializer for First Piece Inspection records. */
         FPIRecordRequest: {
@@ -18774,6 +18768,15 @@ export interface components {
          * @enum {string}
          */
         FPIRecordStatusEnum: "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED";
+        FPIRecordStepInfo: {
+            id: string;
+            name: string | null;
+        };
+        FPIRecordWorkOrderInfo: {
+            id: string;
+            erp_id: string | null;
+            status: string | null;
+        };
         FPYTrendResponse: {
             data: {
                 [key: string]: unknown;
@@ -19022,6 +19025,14 @@ export interface components {
          * @enum {string}
          */
         GateWindowEnum: "WORK_ORDER" | "ROLLING_N" | "LOT";
+        GaugeNagRow: {
+            equipment_id: string;
+            equipment_name: string;
+            /** Format: date */
+            due_date: string;
+            days_until_due: number;
+            overdue: boolean;
+        };
         /**
          * @description Top-level shape: {report_type, params}.
          *
@@ -27204,6 +27215,18 @@ export interface components {
          * @enum {string}
          */
         SamplingDecisionOutcomeEnum: "selected" | "deselected" | "pending";
+        SamplingDecisionReconcileRequestRequest: {
+            /** Format: uuid */
+            work_order_id: string;
+            /** Format: uuid */
+            step_id?: string;
+        };
+        SamplingDecisionReconcileResponse: {
+            reconciled: number;
+            now_selected: number;
+            now_deselected: number;
+            still_pending: number;
+        };
         /** @description Enhanced sampling rule serializer */
         SamplingRule: {
             /** Format: uuid */
@@ -29062,6 +29085,15 @@ export interface components {
             /** @description Client IP at signing time; captured for audit defense. */
             ip_address?: string | null;
         };
+        SubstepCompletionVoidRequestRequest: {
+            reason: string;
+        };
+        SubstepCompletionVoidResponse: {
+            id: string;
+            is_voided: boolean;
+            voided_at: string | null;
+            void_reason: string;
+        };
         /** @description Per-node attestation / signature gate records. */
         SubstepGateCompletion: {
             /** Format: uuid */
@@ -29145,6 +29177,12 @@ export interface components {
             verification_method?: components["schemas"]["VerificationMethodEnum"];
             /** @description Client IP at signing time; captured for audit defense. */
             ip_address?: string | null;
+        };
+        SubstepReorderRequestRequest: {
+            /** Format: uuid */
+            step: string;
+            /** @description Substep ids in their intended final order. */
+            order: string[];
         };
         /**
          * @description Substep — the unit of work instruction within a Step.
@@ -33877,11 +33915,30 @@ export interface operations {
             };
         };
     };
-    api_CalibrationRecords_my_gauge_nag_retrieve: {
+    api_CalibrationRecords_my_gauge_nag_list: {
         parameters: {
             query?: {
+                /**
+                 * @description * `SCHEDULED` - Scheduled
+                 *     * `INITIAL` - Initial
+                 *     * `AFTER_REPAIR` - After Repair
+                 *     * `AFTER_ADJUSTMENT` - After Adjustment
+                 *     * `VERIFICATION` - Verification Check
+                 */
+                calibration_type?: "AFTER_ADJUSTMENT" | "AFTER_REPAIR" | "INITIAL" | "SCHEDULED" | "VERIFICATION";
                 /** @description Due horizon (days) */
                 due_within?: number;
+                equipment?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `PASS` - Pass
+                 *     * `FAIL` - Fail
+                 *     * `LIMITED` - Limited/Restricted Use
+                 */
+                result?: "FAIL" | "LIMITED" | "PASS";
+                /** @description A search term. */
+                search?: string;
                 /** @description Lookback window for usage (days) */
                 used_within?: number;
             };
@@ -33896,14 +33953,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        equipment_id?: string;
-                        equipment_name?: string;
-                        /** Format: date */
-                        due_date?: string;
-                        days_until_due?: number;
-                        overdue?: boolean;
-                    }[];
+                    "application/json": components["schemas"]["GaugeNagRow"][];
                 };
             };
         };
@@ -45284,6 +45334,7 @@ export interface operations {
                  */
                 outcome?: "deselected" | "pending" | "selected";
                 step_execution?: string;
+                step_execution__part__work_order?: string;
                 substep?: string;
             };
             header?: never;
@@ -45331,14 +45382,40 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SamplingDecisionReconcileRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SamplingDecisionReconcileRequestRequest"];
+                "multipart/form-data": components["schemas"]["SamplingDecisionReconcileRequestRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SamplingDecision"];
+                    "application/json": components["schemas"]["SamplingDecisionReconcileResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -48429,9 +48506,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubstepCompletionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubstepCompletionRequest"];
-                "multipart/form-data": components["schemas"]["SubstepCompletionRequest"];
+                "application/json": components["schemas"]["SubstepCompletionVoidRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepCompletionVoidRequestRequest"];
+                "multipart/form-data": components["schemas"]["SubstepCompletionVoidRequestRequest"];
             };
         };
         responses: {
@@ -48440,7 +48517,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubstepCompletion"];
+                    "application/json": components["schemas"]["SubstepCompletionVoidResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -49306,18 +49393,37 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubstepRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
-                "multipart/form-data": components["schemas"]["SubstepRequest"];
+                "application/json": components["schemas"]["SubstepReorderRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepReorderRequestRequest"];
+                "multipart/form-data": components["schemas"]["SubstepReorderRequestRequest"];
             };
         };
         responses: {
-            200: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Substep"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

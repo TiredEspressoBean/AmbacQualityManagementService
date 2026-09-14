@@ -24,8 +24,13 @@ export type FpiGetOrCreateResponse = {
     fpi: any;
 };
 
-// Extract queries type from Zodios endpoint
-type FpiRecordsListQueries = Parameters<typeof api.api_FPIRecords_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_FPIRecords_list>[0];
+// Extract the queries bag from the Zodios endpoint. The previous conditional
+// never matched -- the parameter is wrapped in DeepReadonly, so it fell
+// through to the false branch and this alias was the whole `{queries}` object
+// rather than the queries themselves.
+type FpiRecordsListQueries = NonNullable<
+    NonNullable<Parameters<typeof api.api_FPIRecords_list>[0]>["queries"]
+>;
 
 // Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
@@ -34,9 +39,8 @@ type ListHookConfig = {
 
 export const fpiRecordsOptions = (queries?: FpiRecordsListQueries, config?: ListHookConfig) => queryOptions({
     queryKey: ["fpi-records", queries, config] as const,
-    queryFn: () => api.api_FPIRecords_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
-    ),
+    queryFn: () =>
+        api.api_FPIRecords_list(queries || config ? { queries, ...config } : undefined),
 });
 
 /**

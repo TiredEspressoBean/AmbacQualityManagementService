@@ -3,8 +3,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
-from rest_framework import viewsets, filters
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, inline_serializer
+from rest_framework import viewsets, filters, serializers
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
@@ -199,15 +199,26 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportM
             OpenApiParameter(name='due_within', description='Due horizon (days)',
                              required=False, type=int, default=7),
         ],
-        responses={200: {"type": "array", "items": {"type": "object", "properties": {
-            "equipment_id": {"type": "string"},
-            "equipment_name": {"type": "string"},
-            "due_date": {"type": "string", "format": "date"},
-            "days_until_due": {"type": "integer"},
-            "overdue": {"type": "boolean"},
-        }}}},
+        # A raw dict schema has no `required`, so every field came out
+        # optional and consumers had to guard fields the service always
+        # sends. An inline_serializer marks them required.
+        responses={200: inline_serializer(
+            name='GaugeNagRow',
+            fields={
+                'equipment_id': serializers.CharField(),
+                'equipment_name': serializers.CharField(),
+                'due_date': serializers.DateField(),
+                'days_until_due': serializers.IntegerField(),
+                'overdue': serializers.BooleanField(),
+            },
+            many=True,
+        )},
     )
-    @action(detail=False, methods=['get'], url_path='my-gauge-nag')
+    # pagination_class=None: the viewset paginates, so a `many=True` response
+    # would otherwise be documented as a paginated envelope while this action
+    # returns a bare list.
+    @action(detail=False, methods=['get'], url_path='my-gauge-nag',
+            pagination_class=None)
     def my_gauge_nag(self, request):
         """Equipment I used recently with calibration due soon / overdue."""
         from Tracker.services.qms.gauge_nag import my_gauge_nag

@@ -3104,16 +3104,61 @@ paths:
           description: ''
   /api/CalibrationRecords/my-gauge-nag/:
     get:
-      operationId: api_CalibrationRecords_my_gauge_nag_retrieve
+      operationId: api_CalibrationRecords_my_gauge_nag_list
       description: Gauges the current user recently used whose calibration is due
         soon or overdue - the personal pre-empt for the point-of-use calibration gate.
       parameters:
+      - in: query
+        name: calibration_type
+        schema:
+          type: string
+          enum:
+          - AFTER_ADJUSTMENT
+          - AFTER_REPAIR
+          - INITIAL
+          - SCHEDULED
+          - VERIFICATION
+        description: |-
+          * `SCHEDULED` - Scheduled
+          * `INITIAL` - Initial
+          * `AFTER_REPAIR` - After Repair
+          * `AFTER_ADJUSTMENT` - After Adjustment
+          * `VERIFICATION` - Verification Check
       - in: query
         name: due_within
         schema:
           type: integer
           default: 7
         description: Due horizon (days)
+      - in: query
+        name: equipment
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: result
+        schema:
+          type: string
+          enum:
+          - FAIL
+          - LIMITED
+          - PASS
+        description: |-
+          * `PASS` - Pass
+          * `FAIL` - Fail
+          * `LIMITED` - Limited/Restricted Use
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       - in: query
         name: used_within
         schema:
@@ -3132,19 +3177,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    equipment_id:
-                      type: string
-                    equipment_name:
-                      type: string
-                    due_date:
-                      type: string
-                      format: date
-                    days_until_due:
-                      type: integer
-                    overdue:
-                      type: boolean
+                  $ref: '#/components/schemas/GaugeNagRow'
           description: ''
   /api/CalibrationRecords/overdue/:
     get:
@@ -19699,6 +19732,11 @@ paths:
           type: string
           format: uuid
       - in: query
+        name: step_execution__part__work_order
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: substep
         schema:
           type: string
@@ -19762,6 +19800,18 @@ paths:
         still_pending }. Supervisor UI uses this to surface what flipped.
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SamplingDecisionReconcileRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SamplingDecisionReconcileRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SamplingDecisionReconcileRequestRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -19770,7 +19820,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SamplingDecision'
+                $ref: '#/components/schemas/SamplingDecisionReconcileResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/SamplingSeverityStates/:
     get:
@@ -24245,13 +24309,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
+              $ref: '#/components/schemas/SubstepCompletionVoidRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
+              $ref: '#/components/schemas/SubstepCompletionVoidRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
+              $ref: '#/components/schemas/SubstepCompletionVoidRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -24261,7 +24325,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubstepCompletion'
+                $ref: '#/components/schemas/SubstepCompletionVoidResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/SubstepGateCompletions/:
     get:
@@ -25477,23 +25548,33 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/SubstepReorderRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/SubstepReorderRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/SubstepReorderRequestRequest'
         required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
+        '204':
+          description: No response body
+        '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Substep'
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/SupplierQualifications/:
     get:
@@ -43531,24 +43612,24 @@ components:
           type: string
           format: uuid
         work_order_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordWorkOrderInfo'
           nullable: true
           readOnly: true
         step:
           type: string
           format: uuid
         step_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordStepInfo'
           nullable: true
           readOnly: true
         part_type:
           type: string
           format: uuid
         part_type_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordPartTypeInfo'
           nullable: true
           readOnly: true
         designated_part:
@@ -43557,8 +43638,8 @@ components:
           nullable: true
           description: The part designated for FPI
         designated_part_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordDesignatedPartInfo'
           nullable: true
           readOnly: true
         equipment:
@@ -43567,8 +43648,8 @@ components:
           nullable: true
           description: Equipment being used (for per-equipment FPI)
         equipment_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordEquipmentInfo'
           nullable: true
           readOnly: true
         shift_date:
@@ -43605,8 +43686,8 @@ components:
           nullable: true
           description: User who performed the inspection
         inspected_by_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/UserSelect'
           nullable: true
           readOnly: true
         inspected_at:
@@ -43622,8 +43703,8 @@ components:
           description: Operator at whose station a QA person co-signed this buy-off
             (distinct from inspected_by, the attester). Null for a direct QA sign-off.
         performed_by_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/UserSelect'
           nullable: true
           readOnly: true
         waived:
@@ -43636,8 +43717,8 @@ components:
           nullable: true
           description: User who waived the FPI
         waived_by_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/UserSelect'
           nullable: true
           readOnly: true
         waive_reason:
@@ -43650,8 +43731,8 @@ components:
           nullable: true
           description: QA user who acknowledged the pending request (is on it)
         acknowledged_by_info:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/UserSelect'
           nullable: true
           readOnly: true
         acknowledged_at:
@@ -43706,6 +43787,39 @@ components:
       - waived_by_info
       - work_order
       - work_order_info
+    FPIRecordDesignatedPartInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        erp_id:
+          type: string
+          nullable: true
+      required:
+      - erp_id
+      - id
+    FPIRecordEquipmentInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+      required:
+      - id
+      - name
+    FPIRecordPartTypeInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+      required:
+      - id
+      - name
     FPIRecordRequest:
       type: object
       description: Serializer for First Piece Inspection records.
@@ -43764,6 +43878,32 @@ components:
         * `PASSED` - Passed
         * `FAILED` - Failed
         * `WAIVED` - Waived
+    FPIRecordStepInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+      required:
+      - id
+      - name
+    FPIRecordWorkOrderInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        erp_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+      required:
+      - erp_id
+      - id
+      - status
     FPYTrendResponse:
       type: object
       properties:
@@ -44277,6 +44417,26 @@ components:
         * `WORK_ORDER` - Whole work order at this step
         * `ROLLING_N` - Rolling last N inspections
         * `LOT` - Receiving lot sample
+    GaugeNagRow:
+      type: object
+      properties:
+        equipment_id:
+          type: string
+        equipment_name:
+          type: string
+        due_date:
+          type: string
+          format: date
+        days_until_due:
+          type: integer
+        overdue:
+          type: boolean
+      required:
+      - days_until_due
+      - due_date
+      - equipment_id
+      - equipment_name
+      - overdue
     GenerateReportRequest:
       type: object
       description: |-
@@ -59355,6 +59515,33 @@ components:
         * `selected` - Selected
         * `deselected` - Deselected
         * `pending` - Pending
+    SamplingDecisionReconcileRequestRequest:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+          format: uuid
+        step_id:
+          type: string
+          format: uuid
+      required:
+      - work_order_id
+    SamplingDecisionReconcileResponse:
+      type: object
+      properties:
+        reconciled:
+          type: integer
+        now_selected:
+          type: integer
+        now_deselected:
+          type: integer
+        still_pending:
+          type: integer
+      required:
+      - now_deselected
+      - now_selected
+      - reconciled
+      - still_pending
     SamplingRule:
       type: object
       description: Enhanced sampling rule serializer
@@ -62929,6 +63116,31 @@ components:
       required:
       - completed_by
       - substep
+    SubstepCompletionVoidRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    SubstepCompletionVoidResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        is_voided:
+          type: boolean
+        voided_at:
+          type: string
+          nullable: true
+        void_reason:
+          type: string
+      required:
+      - id
+      - is_voided
+      - void_reason
+      - voided_at
     SubstepGateCompletion:
       type: object
       description: Per-node attestation / signature gate records.
@@ -63065,6 +63277,21 @@ components:
       - node_id
       - step_execution
       - substep
+    SubstepReorderRequestRequest:
+      type: object
+      properties:
+        step:
+          type: string
+          format: uuid
+        order:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Substep ids in their intended final order.
+      required:
+      - order
+      - step
     SubstepRequest:
       type: object
       description: |-

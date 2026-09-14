@@ -2465,25 +2465,25 @@ export type FPIGetOrCreateCreated = {
 export type FPIRecord = {
   id: string;
   work_order: string;
-  work_order_info: {};
+  work_order_info: FPIRecordWorkOrderInfo;
   step: string;
-  step_info: {};
+  step_info: FPIRecordStepInfo;
   part_type: string;
-  part_type_info: {};
+  part_type_info: FPIRecordPartTypeInfo;
   designated_part?:
     | /**
      * The part designated for FPI
      */
     (string | null)
     | undefined;
-  designated_part_info: {};
+  designated_part_info: FPIRecordDesignatedPartInfo;
   equipment?:
     | /**
      * Equipment being used (for per-equipment FPI)
      */
     (string | null)
     | undefined;
-  equipment_info: {};
+  equipment_info: FPIRecordEquipmentInfo;
   shift_date?:
     | /**
      * Date of the shift for per-shift FPI
@@ -2507,7 +2507,7 @@ export type FPIRecord = {
    * User who performed the inspection
    */
   inspected_by: number | null;
-  inspected_by_info: {};
+  inspected_by_info: UserSelect;
   /**
    * When inspection was completed
    */
@@ -2516,7 +2516,7 @@ export type FPIRecord = {
    * Operator at whose station a QA person co-signed this buy-off (distinct from inspected_by, the attester). Null for a direct QA sign-off.
    */
   performed_by: number | null;
-  performed_by_info: {};
+  performed_by_info: UserSelect;
   /**
    * Whether FPI requirement was waived
    */
@@ -2525,7 +2525,7 @@ export type FPIRecord = {
    * User who waived the FPI
    */
   waived_by: number | null;
-  waived_by_info: {};
+  waived_by_info: UserSelect;
   /**
    * Reason for waiving FPI requirement
    */
@@ -2534,7 +2534,7 @@ export type FPIRecord = {
    * QA user who acknowledged the pending request (is on it)
    */
   acknowledged_by: number | null;
-  acknowledged_by_info: {};
+  acknowledged_by_info: UserSelect;
   /**
    * When the pending request was acknowledged
    */
@@ -2546,6 +2546,27 @@ export type FPIRecord = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+};
+export type FPIRecordWorkOrderInfo = {
+  id: string;
+  erp_id: string | null;
+  status: string | null;
+};
+export type FPIRecordStepInfo = {
+  id: string;
+  name: string | null;
+};
+export type FPIRecordPartTypeInfo = {
+  id: string;
+  name: string | null;
+};
+export type FPIRecordDesignatedPartInfo = {
+  id: string;
+  erp_id: string | null;
+};
+export type FPIRecordEquipmentInfo = {
+  id: string;
+  name: string | null;
 };
 export type FPIRecordStatusEnum =
   /**
@@ -15919,6 +15940,13 @@ const PatchedCalibrationRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
+const GaugeNagRow = z.object({
+  equipment_id: z.string(),
+  equipment_name: z.string(),
+  due_date: z.string(),
+  days_until_due: z.number().int(),
+  overdue: z.boolean(),
+});
 const CalibrationStats = z.object({
   total_equipment: z.number().int(),
   current_calibrations: z.number().int(),
@@ -16768,6 +16796,27 @@ const PatchedQualityErrorsListRequest = z
     archived: z.boolean(),
   })
   .partial();
+const FPIRecordWorkOrderInfo = z.object({
+  id: z.string(),
+  erp_id: z.string().nullable(),
+  status: z.string().nullable(),
+});
+const FPIRecordStepInfo = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+});
+const FPIRecordPartTypeInfo = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+});
+const FPIRecordDesignatedPartInfo = z.object({
+  id: z.string(),
+  erp_id: z.string().nullable(),
+});
+const FPIRecordEquipmentInfo = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+});
 const FPIRecordStatusEnum = z.enum([
   "NOT_REQUIRED",
   "PENDING",
@@ -16780,31 +16829,31 @@ const BlankEnum = z.literal("");
 const FPIRecord = z.object({
   id: z.string().uuid(),
   work_order: z.string().uuid(),
-  work_order_info: z.object({}).partial().passthrough().nullable(),
+  work_order_info: FPIRecordWorkOrderInfo.nullable(),
   step: z.string().uuid(),
-  step_info: z.object({}).partial().passthrough().nullable(),
+  step_info: FPIRecordStepInfo.nullable(),
   part_type: z.string().uuid(),
-  part_type_info: z.object({}).partial().passthrough().nullable(),
+  part_type_info: FPIRecordPartTypeInfo.nullable(),
   designated_part: z.string().uuid().nullish(),
-  designated_part_info: z.object({}).partial().passthrough().nullable(),
+  designated_part_info: FPIRecordDesignatedPartInfo.nullable(),
   equipment: z.string().uuid().nullish(),
-  equipment_info: z.object({}).partial().passthrough().nullable(),
+  equipment_info: FPIRecordEquipmentInfo.nullable(),
   shift_date: z.string().nullish(),
   status: FPIRecordStatusEnum,
   status_display: z.string(),
   result: z.union([FPIRecordResultEnum, BlankEnum]),
   result_display: z.string(),
   inspected_by: z.number().int().nullable(),
-  inspected_by_info: z.object({}).partial().passthrough().nullable(),
+  inspected_by_info: UserSelect.nullable(),
   inspected_at: z.string().datetime({ offset: true }).nullable(),
   performed_by: z.number().int().nullable(),
-  performed_by_info: z.object({}).partial().passthrough().nullable(),
+  performed_by_info: UserSelect.nullable(),
   waived: z.boolean(),
   waived_by: z.number().int().nullable(),
-  waived_by_info: z.object({}).partial().passthrough().nullable(),
+  waived_by_info: UserSelect.nullable(),
   waive_reason: z.string(),
   acknowledged_by: z.number().int().nullable(),
-  acknowledged_by_info: z.object({}).partial().passthrough().nullable(),
+  acknowledged_by_info: UserSelect.nullable(),
   acknowledged_at: z.string().datetime({ offset: true }).nullable(),
   quality_report: z.string().uuid().nullable(),
   created_at: z.string().datetime({ offset: true }),
@@ -19199,6 +19248,16 @@ const PaginatedSamplingDecisionList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(SamplingDecision),
 });
+const SamplingDecisionReconcileRequestRequest = z.object({
+  work_order_id: z.string().uuid(),
+  step_id: z.string().uuid().optional(),
+});
+const SamplingDecisionReconcileResponse = z.object({
+  reconciled: z.number().int(),
+  now_selected: z.number().int(),
+  now_deselected: z.number().int(),
+  still_pending: z.number().int(),
+});
 const SamplingSeverityStateSeverityEnum = z.enum([
   "NORMAL",
   "TIGHTENED",
@@ -20320,6 +20379,15 @@ const PatchedSubstepCompletionRequest = z
     ip_address: z.string().min(1).nullable(),
   })
   .partial();
+const SubstepCompletionVoidRequestRequest = z.object({
+  reason: z.string().min(1),
+});
+const SubstepCompletionVoidResponse = z.object({
+  id: z.string(),
+  is_voided: z.boolean(),
+  voided_at: z.string().nullable(),
+  void_reason: z.string(),
+});
 const SubstepGateCompletion = z.object({
   id: z.string().uuid(),
   step_execution: z.string().uuid(),
@@ -20655,6 +20723,10 @@ const SubstepSubmitResponse = z.object({
   response_count: z.number().int(),
   quality_report_id: z.string().nullable(),
   measurement_count: z.number().int(),
+});
+const SubstepReorderRequestRequest = z.object({
+  step: z.string().uuid(),
+  order: z.array(z.string().uuid()),
 });
 const ScopeTypeEnum = z.enum(["PART_TYPE", "COMMODITY", "SPECIAL_PROCESS"]);
 const BasisEnum = z.enum(["AUDIT", "PPAP", "FAI", "SURVEY", "HISTORICAL"]);
@@ -23543,6 +23615,7 @@ export const schemas = {
   PaginatedCalibrationRecordList,
   CalibrationRecordRequest,
   PatchedCalibrationRecordRequest,
+  GaugeNagRow,
   CalibrationStats,
   PaginatedCapaTasksList,
   CapaTasksRequest,
@@ -23624,6 +23697,11 @@ export const schemas = {
   PaginatedQualityErrorsListList,
   QualityErrorsListRequest,
   PatchedQualityErrorsListRequest,
+  FPIRecordWorkOrderInfo,
+  FPIRecordStepInfo,
+  FPIRecordPartTypeInfo,
+  FPIRecordDesignatedPartInfo,
+  FPIRecordEquipmentInfo,
   FPIRecordStatusEnum,
   FPIRecordResultEnum,
   BlankEnum,
@@ -23874,6 +23952,8 @@ export const schemas = {
   SamplingDecisionOutcomeEnum,
   SamplingDecision,
   PaginatedSamplingDecisionList,
+  SamplingDecisionReconcileRequestRequest,
+  SamplingDecisionReconcileResponse,
   SamplingSeverityStateSeverityEnum,
   SamplingSeverityState,
   PaginatedSamplingSeverityStateList,
@@ -23979,6 +24059,8 @@ export const schemas = {
   PaginatedSubstepCompletionList,
   SubstepCompletionRequest,
   PatchedSubstepCompletionRequest,
+  SubstepCompletionVoidRequestRequest,
+  SubstepCompletionVoidResponse,
   SubstepGateCompletion,
   PaginatedSubstepGateCompletionList,
   SubstepGateCompletionRequest,
@@ -24005,6 +24087,7 @@ export const schemas = {
   EnsureInspectionQrResponse,
   SubstepSubmitRequestRequest,
   SubstepSubmitResponse,
+  SubstepReorderRequestRequest,
   ScopeTypeEnum,
   BasisEnum,
   SupplierQualification,
@@ -26254,14 +26337,47 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
   {
     method: "get",
     path: "/api/CalibrationRecords/my-gauge-nag/",
-    alias: "api_CalibrationRecords_my_gauge_nag_retrieve",
+    alias: "api_CalibrationRecords_my_gauge_nag_list",
     description: `Gauges the current user recently used whose calibration is due soon or overdue - the personal pre-empt for the point-of-use calibration gate.`,
     requestFormat: "json",
     parameters: [
       {
+        name: "calibration_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "AFTER_ADJUSTMENT",
+            "AFTER_REPAIR",
+            "INITIAL",
+            "SCHEDULED",
+            "VERIFICATION",
+          ])
+          .optional(),
+      },
+      {
         name: "due_within",
         type: "Query",
         schema: z.number().int().optional().default(7),
+      },
+      {
+        name: "equipment",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "result",
+        type: "Query",
+        schema: z.enum(["FAIL", "LIMITED", "PASS"]).optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
       },
       {
         name: "used_within",
@@ -26269,17 +26385,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
         schema: z.number().int().optional().default(7),
       },
     ],
-    response: z.array(
-      z
-        .object({
-          equipment_id: z.string(),
-          equipment_name: z.string(),
-          due_date: z.string(),
-          days_until_due: z.number().int(),
-          overdue: z.boolean(),
-        })
-        .partial()
-    ),
+    response: z.array(GaugeNagRow),
   },
   {
     method: "get",
@@ -40780,6 +40886,11 @@ not editable through the API.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "step_execution__part__work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "substep",
         type: "Query",
         schema: z.string().uuid().optional(),
@@ -40823,7 +40934,24 @@ Body: { &quot;work_order_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;step_id&quot;
 Returns a summary: { reconciled, now_selected, now_deselected,
 still_pending }. Supervisor UI uses this to surface what flipped.`,
     requestFormat: "json",
-    response: SamplingDecision,
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SamplingDecisionReconcileRequestRequest,
+      },
+    ],
+    response: SamplingDecisionReconcileResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+      {
+        status: 404,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -44501,7 +44629,7 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
       {
         name: "body",
         type: "Body",
-        schema: SubstepCompletionRequest,
+        schema: z.object({ reason: z.string().min(1) }),
       },
       {
         name: "id",
@@ -44509,7 +44637,13 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
         schema: z.string().uuid(),
       },
     ],
-    response: SubstepCompletion,
+    response: SubstepCompletionVoidResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -45221,10 +45355,20 @@ negative range, then assign the final positive values.`,
       {
         name: "body",
         type: "Body",
-        schema: SubstepRequest,
+        schema: SubstepReorderRequestRequest,
       },
     ],
-    response: Substep,
+    response: z.void(),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+      {
+        status: 404,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",

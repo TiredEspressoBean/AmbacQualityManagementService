@@ -32,23 +32,21 @@ import { getCookie } from "@/lib/utils";
 
 const csrfHeaders = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" });
 
-type VoidResponse = {
-    id: string;
-    is_voided: boolean;
-    voided_at: string | null;
-    void_reason: string;
-};
+// The action now declares both halves, so the response type comes from the
+// client. It used to fall back to the SubstepCompletion row shape, which made
+// the generated body schema demand substep / completed_by / the rest -- and
+// Zod rejected `{reason}` before any request was sent, so this dialog could
+// never actually void anything.
+type VoidResponse = Awaited<ReturnType<typeof api.api_SubstepCompletions_void_create>>;
 
 function useVoidCompletion() {
     const qc = useQueryClient();
     return useMutation<VoidResponse, unknown, { id: string; reason: string }>({
         mutationFn: ({ id, reason }) =>
             api.api_SubstepCompletions_void_create(
-                { reason } as never,
+                { reason },
                 { params: { id }, headers: csrfHeaders() },
-                // Schema gap: void's response isn't declared on the endpoint,
-                // so the generated type is the SubstepCompletion shape.
-            ) as unknown as Promise<VoidResponse>,
+            ),
         onSuccess: () => {
             // Refresh substep-completion + traveler queries so the
             // voided state reflects everywhere.

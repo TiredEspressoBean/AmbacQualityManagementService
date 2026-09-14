@@ -4,19 +4,16 @@
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
-export type GaugeNagRow = {
-    equipment_id: string;
-    equipment_name: string;
-    due_date: string;
-    days_until_due: number;
-    overdue: boolean;
-};
+// The action already declares its array response, so this is the client's own
+// row type rather than a hand-kept copy that could drift from it.
+export type GaugeNagRow = Awaited<
+    ReturnType<typeof api.api_CalibrationRecords_my_gauge_nag_list>
+>[number];
 
 export const gaugeNagOptions = () =>
     queryOptions({
         queryKey: ["gaugeNag"] as const,
-        queryFn: () =>
-            api.api_CalibrationRecords_my_gauge_nag_retrieve() as unknown as Promise<GaugeNagRow[]>,
+        queryFn: () => api.api_CalibrationRecords_my_gauge_nag_list(),
         staleTime: 60_000,
     });
 

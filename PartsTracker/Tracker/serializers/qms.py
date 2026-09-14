@@ -1,7 +1,7 @@
 # serializers/qms.py - Quality Management System serializers
 import logging
 
-from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
 from Tracker.models import (
@@ -25,7 +25,7 @@ from Tracker.models import (
     NotificationTask,
 )
 
-from .core import SecureModelMixin
+from .core import SecureModelMixin, UserSelectSerializer
 from .fields import TenantScopedPrimaryKeyRelatedField
 
 logger = logging.getLogger(__name__)
@@ -1750,7 +1750,21 @@ class FPIRecordSerializer(SecureModelMixin):
             'created_at', 'updated_at'
         )
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    # These were DictField, which generates a bare `{}` -- so the generated
+    # client typed every `*_info` as an empty object and consumers had to
+    # double-cast the whole response to read `.name` off one. The shapes are
+    # fixed and known right here, so declare them.
+    @extend_schema_field(
+        inline_serializer(
+            name='FPIRecordWorkOrderInfo',
+            fields={
+                'id': serializers.CharField(),
+                'erp_id': serializers.CharField(allow_null=True),
+                'status': serializers.CharField(allow_null=True),
+            },
+            allow_null=True,
+        )
+    )
     def get_work_order_info(self, obj):
         if obj.work_order:
             return {
@@ -1760,7 +1774,16 @@ class FPIRecordSerializer(SecureModelMixin):
             }
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(
+        inline_serializer(
+            name='FPIRecordStepInfo',
+            fields={
+                'id': serializers.CharField(),
+                'name': serializers.CharField(allow_null=True),
+            },
+            allow_null=True,
+        )
+    )
     def get_step_info(self, obj):
         if obj.step:
             return {
@@ -1769,7 +1792,16 @@ class FPIRecordSerializer(SecureModelMixin):
             }
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(
+        inline_serializer(
+            name='FPIRecordPartTypeInfo',
+            fields={
+                'id': serializers.CharField(),
+                'name': serializers.CharField(allow_null=True),
+            },
+            allow_null=True,
+        )
+    )
     def get_part_type_info(self, obj):
         if obj.part_type:
             return {
@@ -1778,7 +1810,16 @@ class FPIRecordSerializer(SecureModelMixin):
             }
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(
+        inline_serializer(
+            name='FPIRecordDesignatedPartInfo',
+            fields={
+                'id': serializers.CharField(),
+                'erp_id': serializers.CharField(allow_null=True),
+            },
+            allow_null=True,
+        )
+    )
     def get_designated_part_info(self, obj):
         if obj.designated_part:
             return {
@@ -1787,35 +1828,46 @@ class FPIRecordSerializer(SecureModelMixin):
             }
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    # These four already return UserSelectSerializer output, so name it
+    # rather than flattening it to an untyped dict.
+    @extend_schema_field(UserSelectSerializer(allow_null=True))
     def get_inspected_by_info(self, obj):
         if obj.inspected_by:
             from .core import UserSelectSerializer
             return UserSelectSerializer(obj.inspected_by).data
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(UserSelectSerializer(allow_null=True))
     def get_performed_by_info(self, obj):
         if obj.performed_by:
             from .core import UserSelectSerializer
             return UserSelectSerializer(obj.performed_by).data
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(UserSelectSerializer(allow_null=True))
     def get_waived_by_info(self, obj):
         if obj.waived_by:
             from .core import UserSelectSerializer
             return UserSelectSerializer(obj.waived_by).data
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(UserSelectSerializer(allow_null=True))
     def get_acknowledged_by_info(self, obj):
         if obj.acknowledged_by:
             from .core import UserSelectSerializer
             return UserSelectSerializer(obj.acknowledged_by).data
         return None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(
+        inline_serializer(
+            name='FPIRecordEquipmentInfo',
+            fields={
+                'id': serializers.CharField(),
+                'name': serializers.CharField(allow_null=True),
+            },
+            allow_null=True,
+        )
+    )
     def get_equipment_info(self, obj):
         if obj.equipment:
             return {

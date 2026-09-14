@@ -19,19 +19,12 @@ import { getCookie } from "@/lib/utils";
 
 const csrfHeaders = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" });
 
-export type BatchExecutionRow = {
-    id: string;
-    work_order: string;
-    step: string;
-    parts: string[];
-    started_by?: string;
-    started_at: string;
-    sealed_at: string | null;
-    completed_at: string | null;
-    notes: string;
-};
-
-type ListResponse = { results?: BatchExecutionRow[] };
+// Derived from the client rather than restated. The hand-written copy here
+// had `started_by?: string` where the serializer sends a numeric user pk, and
+// nothing caught it because every call site was cast.
+export type BatchExecutionRow = Awaited<
+    ReturnType<typeof api.api_BatchExecutions_create>
+>;
 
 export const batchKeys = {
     all: ["batchExecutions"] as const,
@@ -44,8 +37,8 @@ export function batchesForWoStepOptions(workOrderId: string, stepId: string) {
         queryKey: batchKeys.forWoStep(workOrderId, stepId),
         queryFn: () =>
             api.api_BatchExecutions_list({
-                queries: { work_order: workOrderId, step: stepId } as never,
-            }) as unknown as Promise<ListResponse>,
+                queries: { work_order: workOrderId, step: stepId },
+            }),
         enabled: !!workOrderId && !!stepId,
         staleTime: 15_000,
     });
@@ -71,9 +64,7 @@ export function useCreateBatchExecution() {
     const qc = useQueryClient();
     return useMutation<BatchExecutionRow, unknown, CreateBatchInput>({
         mutationFn: (data) =>
-            api.api_BatchExecutions_create(data as never, {
-                headers: csrfHeaders(),
-            }) as unknown as Promise<BatchExecutionRow>,
+            api.api_BatchExecutions_create(data, { headers: csrfHeaders() }),
         onSuccess: () => invalidateBatches(qc),
         meta: {
             errorMessage: "Couldn't start batch",

@@ -25,22 +25,11 @@ import { getCookie } from "@/lib/utils";
 
 const csrfHeaders = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" });
 
-type SamplingDecisionRow = {
-    id: string;
-    step_execution: string;
-    substep: string;
-    outcome: "selected" | "deselected" | "pending";
-    ruleset_version: number;
-    decided_at: string;
-    superseded_by: string | null;
-};
-
-type ReconcileSummary = {
-    reconciled: number;
-    now_selected: number;
-    now_deselected: number;
-    still_pending: number;
-};
+// Declared on the action now, so the summary shape comes from the client
+// rather than being restated here.
+type ReconcileSummary = Awaited<
+    ReturnType<typeof api.api_SamplingDecisions_reconcile_create>
+>;
 
 function usePendingDecisionsForWorkOrder(workOrderId: string) {
     return useQuery({
@@ -49,13 +38,13 @@ function usePendingDecisionsForWorkOrder(workOrderId: string) {
             api.api_SamplingDecisions_list({
                 queries: {
                     outcome: "pending",
-                    // Backend filterset doesn't expose work_order directly;
-                    // server-side filtering by step_execution__part__work_order
-                    // is via the related lookup. The list endpoint also
-                    // accepts arbitrary filters DRF resolves.
+                    // This related lookup is a declared filter now. It was
+                    // being passed undeclared, and django-filter drops params
+                    // it doesn't know -- so the panel was listing every
+                    // PENDING decision in the tenant, not this work order's.
                     step_execution__part__work_order: workOrderId,
-                } as never,
-            }) as Promise<{ results?: SamplingDecisionRow[] }>,
+                },
+            }),
         enabled: !!workOrderId,
         staleTime: 15_000,
     });
@@ -69,12 +58,9 @@ function useReconcilePendingDecisions() {
         { work_order_id: string; step_id?: string }
     >({
         mutationFn: (data) =>
-            api.api_SamplingDecisions_reconcile_create(
-                data as never,
-                { headers: csrfHeaders() },
-                // Schema gap: reconcile's summary response isn't declared on the
-                // endpoint, so the generated type is the SamplingDecision shape.
-            ) as unknown as Promise<ReconcileSummary>,
+            api.api_SamplingDecisions_reconcile_create(data, {
+                headers: csrfHeaders(),
+            }),
         onSuccess: () => {
             qc.invalidateQueries({
                 predicate: (q) => q.queryKey[0] === "samplingDecisions",

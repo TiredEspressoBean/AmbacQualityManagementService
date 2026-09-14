@@ -7,6 +7,7 @@ CRUD endpoints for the Phase 1-3 models. Operator-side capture actions
 `services/mes/substeps.py` and are exposed via dedicated viewset actions
 when Phase 4 frontend wires them.
 """
+from django.db.models import Max
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -320,6 +321,23 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             'created': not existed_before,
         })
 
+    @extend_schema(
+        # Without this the body falls back to SubstepRequest -- a whole
+        # substep, where `order` is a single integer ordinal. The generated
+        # client then rejects `{step, order: [...]}` before it ever reaches
+        # the network, so drag-to-reorder failed client-side every time.
+        request=inline_serializer(
+            name='SubstepReorderRequest',
+            fields={
+                'step': drf_serializers.UUIDField(),
+                'order': drf_serializers.ListField(
+                    child=drf_serializers.UUIDField(),
+                    help_text='Substep ids in their intended final order.',
+                ),
+            },
+        ),
+        responses={204: None, 400: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=['post'])
     def reorder(self, request, *args, **kwargs):
         """Atomically reorder substeps within a step.
@@ -329,8 +347,13 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         Why a dedicated action: the ``(step, order)`` UniqueConstraint
         rejects naive per-row PATCHes from the client because intermediate
         states collide mid-swap. We do a two-phase update inside a single
-        transaction — first shift all involved rows to a non-conflicting
-        negative range, then assign the final positive values.
+        transaction — first park every involved row in a scratch range above
+        anything currently in the step, then assign the final ordinals.
+
+        The scratch range has to be *above* the live values, not below:
+        ``order`` is a PositiveIntegerField, so Postgres carries a
+        ``CHECK (order >= 0)`` and parking at negative offsets aborted the
+        transaction every time.
         """
         step_id = request.data.get('step')
         ordering = request.data.get('order') or []
@@ -354,12 +377,33 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Every live substep in the step has to be accounted for. A partial
+        # ordering would leave unlisted rows holding ordinals that phase 2
+        # then tries to reuse, which surfaced as an opaque unique-violation
+        # 500 rather than a usable error.
+        live_ids = {
+            str(pk) for pk in
+            self.get_queryset().filter(step_id=step_id).values_list('pk', flat=True)
+        }
+        unlisted = live_ids - {str(sid) for sid in ordering}
+        if unlisted:
+            return Response(
+                {'detail': f'`order` must list every substep in the step; '
+                           f'missing: {sorted(unlisted)}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         with transaction.atomic():
-            # Phase 1: park all involved rows at negative offsets so the unique
-            # constraint on (step, order) can't fire while we shuffle.
+            # Phase 1: park every involved row in a scratch range above the
+            # step's current high-water mark, so neither the unique constraint
+            # on (step, order) nor the `order >= 0` check can fire mid-shuffle.
+            current_max = self.get_queryset().filter(
+                step_id=step_id,
+            ).aggregate(m=Max('order'))['m'] or 0
+            scratch = current_max + 1
             for i, sid in enumerate(ordering):
-                Substep.unscoped.filter(pk=sid).update(order=-(i + 1))
-            # Phase 2: write the final positive ordinals.
+                Substep.unscoped.filter(pk=sid).update(order=scratch + i)
+            # Phase 2: write the final ordinals.
             for i, sid in enumerate(ordering):
                 Substep.unscoped.filter(pk=sid).update(order=i)
 
@@ -407,6 +451,28 @@ class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     ordering_fields = ['completed_at']
     ordering = ['-completed_at']
 
+    @extend_schema(
+        # Undeclared, the body fell back to SubstepCompletionRequest, which
+        # requires substep / completed_by / the whole row. The generated
+        # client rejected `{reason}` client-side, so QA could never void a
+        # completion -- no request was even sent.
+        request=inline_serializer(
+            name='SubstepCompletionVoidRequest',
+            fields={'reason': drf_serializers.CharField()},
+        ),
+        responses={
+            200: inline_serializer(
+                name='SubstepCompletionVoidResponse',
+                fields={
+                    'id': drf_serializers.CharField(),
+                    'is_voided': drf_serializers.BooleanField(),
+                    'voided_at': drf_serializers.CharField(allow_null=True),
+                    'void_reason': drf_serializers.CharField(),
+                },
+            ),
+            400: OpenApiTypes.OBJECT,
+        },
+    )
     @action(detail=True, methods=['post'], url_path='void')
     def void(self, request, pk=None):
         """
@@ -576,7 +642,14 @@ class SamplingDecisionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     )
     serializer_class = SamplingDecisionSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['step_execution', 'substep', 'outcome']
+    # `step_execution__part__work_order` is what the supervisor's pending-
+    # reconciliation panel filters on. django-filter drops any param not
+    # named here, so without it that panel was silently listing every PENDING
+    # decision in the tenant rather than the one work order's.
+    filterset_fields = [
+        'step_execution', 'substep', 'outcome',
+        'step_execution__part__work_order',
+    ]
     ordering_fields = ['decided_at']
     ordering = ['-decided_at']
 
@@ -597,6 +670,31 @@ class SamplingDecisionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(superseded_by__isnull=True)
         return qs
 
+    @extend_schema(
+        request=inline_serializer(
+            name='SamplingDecisionReconcileRequest',
+            fields={
+                'work_order_id': drf_serializers.UUIDField(),
+                'step_id': drf_serializers.UUIDField(required=False),
+            },
+        ),
+        # Undeclared, the response fell back to SamplingDecision -- a
+        # decision row, not this summary -- so the client rejected every
+        # successful reconcile after the server had already done the work.
+        responses={
+            200: inline_serializer(
+                name='SamplingDecisionReconcileResponse',
+                fields={
+                    'reconciled': drf_serializers.IntegerField(),
+                    'now_selected': drf_serializers.IntegerField(),
+                    'now_deselected': drf_serializers.IntegerField(),
+                    'still_pending': drf_serializers.IntegerField(),
+                },
+            ),
+            400: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     @action(detail=False, methods=['post'], url_path='reconcile')
     def reconcile(self, request):
         """

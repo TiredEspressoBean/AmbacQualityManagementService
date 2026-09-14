@@ -19,6 +19,7 @@ import { useState } from "react";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
+import { api } from "@/lib/api/generated";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FpiSignOffDialog } from "@/components/fpi-sign-off-dialog";
@@ -27,14 +28,9 @@ import { useAcknowledgeFpi } from "@/hooks/useAcknowledgeFpi";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useReportActivity } from "@/hooks/useReportActivity";
 
-type FpiRow = {
-    id: string;
-    step_info?: { id: string; name?: string | null } | null;
-    designated_part_info?: { id: string; erp_id?: string | null } | null;
-    equipment_info?: { id: string; name?: string | null } | null;
-    acknowledged_by_info?: { username?: string | null; full_name?: string | null } | null;
-    acknowledged_at?: string | null;
-};
+// The `*_info` fields are declared shapes now rather than DictField, so the
+// row type comes from the client instead of being guessed at here.
+type FpiRow = Awaited<ReturnType<typeof api.api_FPIRecords_list>>["results"][number];
 
 export function PendingFpiPanel({ workOrderId, onActivity }: {
     workOrderId: string;
@@ -45,14 +41,12 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
     const { data, isLoading } = useFpiRecords({
         work_order: workOrderId,
         status: "PENDING",
-    } as never);
+    });
     const acknowledge = useAcknowledgeFpi();
     const canSignOff = usePermissionSet().has("sign_off_fpi");
     const [signing, setSigning] = useState<FpiRow | null>(null);
 
-    // The `*_info` fields are declared DictField in the serializer, so the
-    // generated client types them as loose records — narrow them here.
-    const rows: FpiRow[] = (data as unknown as { results?: FpiRow[] } | undefined)?.results ?? [];
+    const rows: FpiRow[] = data?.results ?? [];
     useReportActivity(rows.length > 0, onActivity);
 
     if (isLoading) {
