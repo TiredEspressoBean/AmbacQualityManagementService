@@ -34744,13 +34744,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChatSessionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ChatSessionRequest"];
-                "multipart/form-data": components["schemas"]["ChatSessionRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -34772,13 +34766,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChatSessionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ChatSessionRequest"];
-                "multipart/form-data": components["schemas"]["ChatSessionRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -53527,13 +53515,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WorkOrderRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["WorkOrderRequest"];
-                "multipart/form-data": components["schemas"]["WorkOrderRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -55194,13 +55176,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationConfigRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["IntegrationConfigRequest"];
-                "multipart/form-data": components["schemas"]["IntegrationConfigRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -55222,13 +55198,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationConfigRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["IntegrationConfigRequest"];
-                "multipart/form-data": components["schemas"]["IntegrationConfigRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

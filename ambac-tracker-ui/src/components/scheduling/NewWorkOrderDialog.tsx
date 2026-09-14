@@ -46,11 +46,16 @@ export function NewWorkOrderDialog({ open, onOpenChange }: Props) {
   const canSubmit = !!processId && Number.isFinite(qtyNum) && qtyNum >= 1;
 
   const submit = () => {
-    const body: Record<string, unknown> = { process: processId, quantity: qtyNum };
-    if (erpId.trim()) body.erp_id = erpId.trim();
-    if (priority.trim() !== "") body.priority = Number(priority);
-    if (due) body.expected_completion = due;
-    if (release) body.expected_start = release;
+    // Built by spreading rather than mutating a Record<string, unknown>, so it
+    // infers a concrete shape the mutation's request type can check.
+    const body = {
+      process: processId,
+      quantity: qtyNum,
+      ...(erpId.trim() ? { erp_id: erpId.trim() } : {}),
+      ...(priority.trim() !== "" ? { priority: Number(priority) } : {}),
+      ...(due ? { expected_completion: due } : {}),
+      ...(release ? { expected_start: release } : {}),
+    };
     plan.mutate(body, {
       onSuccess: () => { reset(); onOpenChange(false); },
     });

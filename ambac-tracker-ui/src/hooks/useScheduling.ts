@@ -1,6 +1,6 @@
 // Hooks for the CP-SAT scheduling API (solve / dispatch / read / pin).
 import { useEffect, useRef, useState } from "react";
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { underRoot } from "@/lib/query-filters";
@@ -98,9 +98,9 @@ function invalidateSchedule(qc: ReturnType<typeof useQueryClient>) {
 export const solveStatusOptions = (taskId: string | null) =>
   queryOptions({
     queryKey: ["solve-status", taskId],
-    enabled: !!taskId,
-    queryFn: () =>
-      api.api_Schedules_solve_status_retrieve({ queries: { task_id: taskId } } as never),
+    queryFn: taskId
+      ? () => api.api_Schedules_solve_status_retrieve({ queries: { task_id: taskId } })
+      : skipToken,
     // Poll while the task is queued/running; stop once it's terminal.
     refetchInterval: (q) => {
       const s = q.state.data?.state;
@@ -312,8 +312,7 @@ export function useBatchMembership() {
 export const workOrderOptions = (id: string | null) =>
   queryOptions({
     queryKey: ["work-order", id],
-    enabled: !!id,
-    queryFn: () => api.api_WorkOrders_retrieve({ params: { id } } as never),
+    queryFn: id ? () => api.api_WorkOrders_retrieve({ params: { id } }) : skipToken,
   });
 
 export function useWorkOrder(id: string | null) {
@@ -457,11 +456,14 @@ export const capableToPromiseOptions = (
 ) =>
   queryOptions({
     queryKey: ["planning", "ctp", args],
-    enabled: !!args && !!args.part_type && args.quantity > 0 && !!args.target_date,
-    queryFn: () =>
-      api.api_Schedules_capable_to_promise_retrieve({
-        queries: args,
-      } as never) as Promise<CtpQuote>,
+    // A half-filled form must not fire a request that can only answer 400.
+    queryFn:
+      args && args.part_type && args.quantity > 0 && args.target_date
+        ? () =>
+            api.api_Schedules_capable_to_promise_retrieve({
+              queries: args,
+            }) as Promise<CtpQuote>
+        : skipToken,
   });
 
 export function useCapableToPromise(
@@ -613,11 +615,12 @@ export type MaterialRequirementRow = {
 export const workOrderMaterialRequirementsOptions = (id: string | null) =>
   queryOptions({
     queryKey: ["work-order", "material-requirements", id],
-    enabled: !!id,
-    queryFn: async () =>
-      ((await api.api_WorkOrders_material_requirements_retrieve({
-        params: { id },
-      } as never)) as { rows?: MaterialRequirementRow[] }).rows ?? [],
+    queryFn: id
+      ? async () =>
+          ((await api.api_WorkOrders_material_requirements_retrieve({
+            params: { id },
+          })) as { rows?: MaterialRequirementRow[] }).rows ?? []
+      : skipToken,
   });
 
 export function useWorkOrderMaterialRequirements(id: string | null) {
@@ -629,8 +632,9 @@ export function useWorkOrderMaterialRequirements(id: string | null) {
 export const makeupStatusOptions = (id: string | null) =>
   queryOptions({
     queryKey: ["work-order", "makeup", id],
-    enabled: !!id,
-    queryFn: () => api.api_WorkOrders_makeup_status_retrieve({ params: { id } } as never),
+    queryFn: id
+      ? () => api.api_WorkOrders_makeup_status_retrieve({ params: { id } })
+      : skipToken,
   });
 
 export function useMakeupStatus(id: string | null) {
@@ -642,7 +646,7 @@ export function useCreateMakeup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.api_WorkOrders_create_makeup_create(undefined as never, { params: { id } } as never),
+      api.api_WorkOrders_create_makeup_create(undefined, { params: { id } }),
     onSuccess: (_data, id) => {
       invalidateSchedule(qc);
       qc.invalidateQueries(makeupStatusOptions(id));
@@ -698,11 +702,12 @@ export type ReleaseReadiness = {
 export const releaseReadinessOptions = (id: string | null) =>
   queryOptions({
     queryKey: ["work-order", "release-readiness", id],
-    enabled: !!id,
-    queryFn: () =>
-      api.api_WorkOrders_release_readiness_retrieve({
-        params: { id },
-      } as never) as Promise<ReleaseReadiness>,
+    queryFn: id
+      ? () =>
+          api.api_WorkOrders_release_readiness_retrieve({
+            params: { id },
+          }) as Promise<ReleaseReadiness>
+      : skipToken,
   });
 
 export function useReleaseReadiness(id: string | null) {
@@ -879,9 +884,9 @@ export function useCancelWorkOrder() {
 export const reassignOptionsOptions = (taskId: string | null) =>
   queryOptions({
     queryKey: ["reassign-options", taskId],
-    enabled: !!taskId,
-    queryFn: () =>
-      api.api_ScheduledTasks_reassign_options_retrieve({ params: { id: taskId } } as never),
+    queryFn: taskId
+      ? () => api.api_ScheduledTasks_reassign_options_retrieve({ params: { id: taskId } })
+      : skipToken,
   });
 
 export function useReassignOptions(taskId: string | null) {
@@ -980,8 +985,8 @@ export function useProcesses() {
 export function usePlanWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      api.api_Schedules_plan_work_order_create(body as never),
+    mutationFn: (body: Parameters<typeof api.api_Schedules_plan_work_order_create>[0]) =>
+      api.api_Schedules_plan_work_order_create(body),
     onSuccess: (r: any) => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));
@@ -1043,10 +1048,12 @@ export function useShifts() {
 export function useSaveShift() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: { id?: string } & Record<string, unknown>) =>
+    // Typed from the create request: the settings form always sends name /
+    // code / start_time / end_time, and the update path takes a subset.
+    mutationFn: ({ id, ...body }: { id?: string } & Parameters<typeof api.api_Shifts_create>[0]) =>
       id
         ? api.api_Shifts_partial_update(body, { params: { id } })
-        : api.api_Shifts_create(body as never),
+        : api.api_Shifts_create(body),
     onSuccess: () => {
       qc.invalidateQueries(underRoot(ROOT.shifts));
       // A content edit forks the shift to a NEW id and repoints every
@@ -1109,8 +1116,7 @@ export function useFixturesList(params: {
 export const retrieveFixtureOptions = (id?: string) =>
   queryOptions({
     queryKey: ["fixture", id],
-    enabled: !!id,
-    queryFn: () => api.api_Fixtures_retrieve({ params: { id } } as never),
+    queryFn: id ? () => api.api_Fixtures_retrieve({ params: { id } }) : skipToken,
   });
 
 export function useRetrieveFixture(id?: string) {
@@ -1121,7 +1127,8 @@ export function useRetrieveFixture(id?: string) {
 export function useCreateFixture() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.api_Fixtures_create(body as never),
+    mutationFn: (body: Parameters<typeof api.api_Fixtures_create>[0]) =>
+      api.api_Fixtures_create(body),
     onSuccess: () => {
       qc.invalidateQueries(underRoot(ROOT.fixtures));
       invalidateSchedule(qc);
@@ -1162,8 +1169,7 @@ export function useDeleteFixture() {
 export const processDetailOptions = (id?: string) =>
   queryOptions({
     queryKey: ["process-detail", id],
-    enabled: !!id,
-    queryFn: () => api.api_Processes_retrieve({ params: { id } } as never),
+    queryFn: id ? () => api.api_Processes_retrieve({ params: { id } }) : skipToken,
   });
 
 export function useProcessDetail(id?: string) {

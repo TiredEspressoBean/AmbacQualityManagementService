@@ -85,7 +85,7 @@ export function useArchiveChatSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => api.api_ChatSessions_archive_create(undefined as never, { params: { id }, ...csrfHeaders() }),
+    mutationFn: (id: number) => api.api_ChatSessions_archive_create(undefined, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
       queryClient.invalidateQueries(chatSessionsOptions());
     },
@@ -99,7 +99,7 @@ export function useUnarchiveChatSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => api.api_ChatSessions_unarchive_create(undefined as never, { params: { id }, ...csrfHeaders() }),
+    mutationFn: (id: number) => api.api_ChatSessions_unarchive_create(undefined, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
       queryClient.invalidateQueries(chatSessionsOptions());
     },

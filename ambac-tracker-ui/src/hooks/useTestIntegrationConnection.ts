@@ -7,7 +7,7 @@ type TestConnectionParams = Parameters<typeof api.api_integrations_test_connecti
 export const useTestIntegrationConnection = () => {
     return useMutation<any, unknown, { id: TestConnectionParams["id"] }>({
         mutationFn: ({ id }) =>
-            api.api_integrations_test_connection_create(undefined as never, {
+            api.api_integrations_test_connection_create(undefined, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),

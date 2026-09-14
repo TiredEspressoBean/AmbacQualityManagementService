@@ -247,7 +247,10 @@ export const partIncrementMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<unknown, unknown, string>({
         mutationKey: partsMutationKeys.increment,
         mutationFn: (id) =>
-            api.api_Parts_increment_create(undefined as never, {
+            // Empty body, not absent: the action's `decision` field is optional,
+            // so the schema legitimately declares a body. `{}` is what this call
+            // has always sent on the wire.
+            api.api_Parts_increment_create({}, {
                 params: { id },
                 headers: csrfHeaders(),
             }),

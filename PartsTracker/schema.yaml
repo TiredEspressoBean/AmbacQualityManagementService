@@ -4174,18 +4174,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChatSessionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ChatSessionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ChatSessionRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -4209,18 +4197,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChatSessionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ChatSessionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ChatSessionRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -31052,18 +31028,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkOrderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WorkOrderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WorkOrderRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -33327,18 +33291,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IntegrationConfigRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/IntegrationConfigRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/IntegrationConfigRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -33363,18 +33315,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IntegrationConfigRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/IntegrationConfigRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/IntegrationConfigRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []

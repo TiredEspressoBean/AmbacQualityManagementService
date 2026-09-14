@@ -17,6 +17,7 @@ from Tracker.models.dms import ChatSession
 from Tracker.permissions import TenantAccessPermission
 from Tracker.serializers.dms import ChatSessionSerializer
 from .base import TenantScopedMixin
+from drf_spectacular.utils import extend_schema
 
 
 class ChatSessionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
@@ -46,6 +47,10 @@ class ChatSessionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         """Update the updated_at timestamp when session is modified."""
         serializer.save(updated_at=timezone.now())
 
+    # request=None: no body — the action operates on the object named in the
+    # path. Undeclared, spectacular assumed the model serializer and the
+    # generated client demanded a full body the caller does not have.
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
         """Archive a chat session."""
@@ -54,6 +59,10 @@ class ChatSessionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         session.save()
         return Response(ChatSessionSerializer(session).data)
 
+    # request=None: no body — the action operates on the object named in the
+    # path. Undeclared, spectacular assumed the model serializer and the
+    # generated client demanded a full body the caller does not have.
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     def unarchive(self, request, pk=None):
         """Unarchive a chat session."""

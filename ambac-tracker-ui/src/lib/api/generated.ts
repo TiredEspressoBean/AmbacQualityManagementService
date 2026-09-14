@@ -27417,11 +27417,6 @@ Provides list, create, retrieve, update, and delete operations.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: ChatSessionRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.number().int(),
@@ -27436,11 +27431,6 @@ Provides list, create, retrieve, update, and delete operations.`,
     description: `Unarchive a chat session.`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ChatSessionRequest,
-      },
       {
         name: "id",
         type: "Path",
@@ -32314,11 +32304,6 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: IntegrationConfigRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
@@ -32333,11 +32318,6 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     description: `Manually trigger a sync for this integration.`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: IntegrationConfigRequest,
-      },
       {
         name: "id",
         type: "Path",
@@ -49385,11 +49365,6 @@ Import/Export endpoints (auto-configured from model):
 route&#x27;s first step to cover the shortfall, and flag the schedule for re-solve.`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: WorkOrderRequest,
-      },
       {
         name: "id",
         type: "Path",

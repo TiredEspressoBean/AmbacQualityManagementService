@@ -2375,7 +2375,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         from Tracker.services.mes.makeup import work_order_shortfall
         return Response(work_order_shortfall(self.get_object()))
 
-    @extend_schema(responses={200: inline_serializer(
+    # request=None: the action takes no body — it acts on the WorkOrder named
+    # in the path. Undeclared, spectacular assumed the model serializer, so the
+    # generated client's type demanded a full WorkOrder body and the caller had
+    # to pass `undefined as never`.
+    @extend_schema(request=None, responses={200: inline_serializer(
         name="WorkOrderCreateMakeupResponse",
         fields={
             "created": serializers.IntegerField(),

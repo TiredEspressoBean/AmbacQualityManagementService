@@ -168,6 +168,10 @@ class IntegrationConfigViewSet(viewsets.ModelViewSet):
             },
         )
     )
+    # request=None: no body — the action operates on the object named in the
+    # path. Undeclared, spectacular assumed the model serializer and the
+    # generated client demanded a full body the caller does not have.
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     def test_connection(self, request, pk=None):
         """Test that the integration's credentials work."""
@@ -186,6 +190,7 @@ class IntegrationConfigViewSet(viewsets.ModelViewSet):
             })
 
     @extend_schema(
+        request=None,
         responses=inline_serializer(
             name='TriggerSyncResult',
             fields={
