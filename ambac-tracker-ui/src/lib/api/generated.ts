@@ -33938,6 +33938,11 @@ customer FK validation handled at the serializer layer.`,
     requestFormat: "json",
     parameters: [
       {
+        name: "customer",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -34152,6 +34157,11 @@ Supports a &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; query param to filter to one 
 rules; without it, all customer-scoped rules in the tenant are returned.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "customer",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
       {
         name: "limit",
         type: "Query",
@@ -34538,6 +34548,11 @@ manager method so customer/personal rules don&#x27;t leak through.`,
 Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;s schedules.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "customer",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
       {
         name: "limit",
         type: "Query",
@@ -49106,6 +49121,36 @@ Import/Export endpoints (auto-configured from model):
 - GET /export/ - Export filtered data to CSV/Excel`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "expected_completion",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "expected_completion__gt",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "expected_completion__gte",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "expected_completion__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "expected_completion__lt",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "expected_completion__lte",
+        type: "Query",
+        schema: z.string().optional(),
+      },
       {
         name: "limit",
         type: "Query",

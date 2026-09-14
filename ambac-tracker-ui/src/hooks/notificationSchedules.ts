@@ -110,7 +110,7 @@ export const customerSchedulesOptions = (filters: CustomerSchedulesListFilters =
                     offset: filters.offset,
                     customer: filters.customer,
                 },
-            } as never) as Promise<PaginatedCustomerScheduleList>,
+            }) as Promise<PaginatedCustomerScheduleList>,
     });
 
 export const retrieveCustomerScheduleOptions = (id: string) =>

@@ -30658,6 +30658,35 @@ paths:
         - GET /import-status/{task_id}/ - Check status of background import
         - GET /export/ - Export filtered data to CSV/Excel
       parameters:
+      - in: query
+        name: expected_completion
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: expected_completion__gt
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: expected_completion__gte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: expected_completion__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: expected_completion__lt
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: expected_completion__lte
+        schema:
+          type: string
+          format: date
       - name: limit
         required: false
         in: query
@@ -33421,6 +33450,12 @@ paths:
         CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
         customer FK validation handled at the serializer layer.
       parameters:
+      - in: query
+        name: customer
+        schema:
+          type: string
+          format: uuid
+        description: Filter to one customer's rows.
       - name: limit
         required: false
         in: query
@@ -33750,6 +33785,12 @@ paths:
         Supports a `?customer=<uuid>` query param to filter to one customer's
         rules; without it, all customer-scoped rules in the tenant are returned.
       parameters:
+      - in: query
+        name: customer
+        schema:
+          type: string
+          format: uuid
+        description: Filter to one customer's rows.
       - name: limit
         required: false
         in: query
@@ -34349,6 +34390,12 @@ paths:
 
         Supports `?customer=<uuid>` to filter to one customer's schedules.
       parameters:
+      - in: query
+        name: customer
+        schema:
+          type: string
+          format: uuid
+        description: Filter to one customer's rows.
       - name: limit
         required: false
         in: query

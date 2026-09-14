@@ -53266,6 +53266,12 @@ export interface operations {
     api_WorkOrders_list: {
         parameters: {
             query?: {
+                expected_completion?: string;
+                expected_completion__gt?: string;
+                expected_completion__gte?: string;
+                expected_completion__isnull?: boolean;
+                expected_completion__lt?: string;
+                expected_completion__lte?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -55278,6 +55284,8 @@ export interface operations {
     api_notifications_external_contacts_list: {
         parameters: {
             query?: {
+                /** @description Filter to one customer's rows. */
+                customer?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -55538,6 +55546,8 @@ export interface operations {
     api_notifications_rules_customer_list: {
         parameters: {
             query?: {
+                /** @description Filter to one customer's rows. */
+                customer?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -55994,6 +56004,8 @@ export interface operations {
     api_notifications_schedules_customer_list: {
         parameters: {
             query?: {
+                /** @description Filter to one customer's rows. */
+                customer?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */

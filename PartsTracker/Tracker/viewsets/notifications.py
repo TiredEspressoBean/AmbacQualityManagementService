@@ -22,6 +22,7 @@ is reused for both since they're managed by the same admin role):
 from __future__ import annotations
 
 from django.utils import timezone
+from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema_view, extend_schema
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -74,6 +75,20 @@ class TenantRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         return NotificationRule.objects.tenant_rules()
 
 
+# These three read `?customer=` straight off query_params in get_queryset
+# rather than through django-filter, so it works at runtime but never reached
+# the schema — which left callers passing it through a cast. Declared here so
+# the generated client types it.
+_customer_param = OpenApiParameter(
+    name="customer",
+    type=OpenApiTypes.UUID,
+    location=OpenApiParameter.QUERY,
+    required=False,
+    description="Filter to one customer's rows.",
+)
+
+
+@extend_schema_view(list=extend_schema(parameters=[_customer_param]))
 class CustomerRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD over customer-scoped rules.
 
@@ -119,6 +134,7 @@ class PersonalRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 # External contacts.
 # =============================================================================
 
+@extend_schema_view(list=extend_schema(parameters=[_customer_param]))
 class ExternalContactViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
     customer FK validation handled at the serializer layer."""
@@ -212,6 +228,7 @@ class TenantScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         return NotificationSchedule.objects.tenant_schedules()
 
 
+@extend_schema_view(list=extend_schema(parameters=[_customer_param]))
 class CustomerScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD over customer-scoped scheduled notifications.
 

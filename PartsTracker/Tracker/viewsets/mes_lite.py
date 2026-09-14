@@ -1710,7 +1710,19 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
     serializer_class = WorkOrderSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
-    filterset_fields = ["related_order", "workorder_status", "priority", "process"]
+    # Dict form so `expected_completion` gains range lookups alongside the
+    # plain-equality fields. The home page's jobs-going-late blocks were already
+    # sending `expected_completion__lte=<horizon>`; django-filter drops params it
+    # does not declare, so the horizon was ignored and those blocks listed every
+    # IN_PROGRESS order rather than the ones actually due soon. `exact` keeps the
+    # existing bare parameter names working.
+    filterset_fields = {
+        "related_order": ["exact"],
+        "workorder_status": ["exact"],
+        "priority": ["exact"],
+        "process": ["exact"],
+        "expected_completion": ["exact", "lte", "gte", "lt", "gt", "isnull"],
+    }
     ordering_fields = ["created_at", "expected_completion", "ERP_id", "workorder_status", "priority"]
     ordering = ["ERP_id"]
     search_fields = ["ERP_id", "related_order__name", "notes"]

@@ -63,7 +63,7 @@ export const externalContactsOptions = (filters: ExternalContactsFilters = {}) =
                     offset: filters.offset,
                     customer: filters.customer,
                 },
-            } as never) as Promise<PaginatedExternalContactList>,
+            }) as Promise<PaginatedExternalContactList>,
     });
 
 export const retrieveExternalContactOptions = (id: string) =>

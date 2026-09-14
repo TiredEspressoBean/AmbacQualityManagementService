@@ -122,7 +122,7 @@ export const customerRulesOptions = (filters: CustomerRulesListFilters = {}) =>
                     offset: filters.offset,
                     customer: filters.customer,
                 },
-            } as never) as Promise<PaginatedCustomerRuleList>,
+            }) as Promise<PaginatedCustomerRuleList>,
     });
 
 export const retrieveCustomerRuleOptions = (id: string) =>

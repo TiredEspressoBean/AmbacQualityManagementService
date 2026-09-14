@@ -955,7 +955,7 @@ const wosGoingLateOptions = (horizonISO: string) =>
                     ordering: "expected_completion",
                     limit: 25,
                 },
-            } as never) as Promise<{ results?: QueueWo[] }>,
+            }) as Promise<{ results?: QueueWo[] }>,
         staleTime: 30_000,
     });
 
