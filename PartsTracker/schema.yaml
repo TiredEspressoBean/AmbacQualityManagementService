@@ -398,24 +398,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedApprovalRequestList'
           description: ''
-  /api/ApprovalRequests/export-excel/:
+  /api/ApprovalRequests/export/{export_format}/:
     get:
-      operationId: api_ApprovalRequests_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_ApprovalRequests_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -426,7 +436,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/ApprovalRequests/metadata/:
     get:
@@ -785,24 +795,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApprovalResponse'
           description: ''
-  /api/ApprovalResponses/export-excel/:
+  /api/ApprovalResponses/export/{export_format}/:
     get:
-      operationId: api_ApprovalResponses_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_ApprovalResponses_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -813,7 +833,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/ApprovalResponses/metadata/:
     get:
@@ -1163,24 +1183,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApprovalTemplate'
           description: ''
-  /api/ApprovalTemplates/export-excel/:
+  /api/ApprovalTemplates/export/{export_format}/:
     get:
-      operationId: api_ApprovalTemplates_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_ApprovalTemplates_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1191,7 +1221,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/ApprovalTemplates/metadata/:
     get:
@@ -2442,24 +2472,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/CAPA'
           description: ''
-  /api/CAPAs/export-excel/:
+  /api/CAPAs/export/{export_format}/:
     get:
-      operationId: api_CAPAs_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_CAPAs_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2470,7 +2510,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/CAPAs/metadata/:
     get:
@@ -2841,24 +2881,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedCalibrationRecordList'
           description: ''
-  /api/CalibrationRecords/export-excel/:
+  /api/CalibrationRecords/export/{export_format}/:
     get:
-      operationId: api_CalibrationRecords_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_CalibrationRecords_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2869,7 +2919,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/CalibrationRecords/for-equipment/:
     get:
@@ -3358,24 +3408,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/CapaTasks'
           description: ''
-  /api/CapaTasks/export-excel/:
+  /api/CapaTasks/export/{export_format}/:
     get:
-      operationId: api_CapaTasks_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_CapaTasks_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -3386,7 +3446,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/CapaTasks/metadata/:
     get:
@@ -3733,24 +3793,34 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/CapaVerifications/export-excel/:
+  /api/CapaVerifications/export/{export_format}/:
     get:
-      operationId: api_CapaVerifications_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_CapaVerifications_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -3761,7 +3831,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/CapaVerifications/metadata/:
     get:
@@ -4254,24 +4324,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/SupplierScorecard'
           description: ''
-  /api/Companies/export-excel/:
+  /api/Companies/export/{export_format}/:
     get:
-      operationId: api_Companies_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Companies_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -4282,7 +4362,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Companies/metadata/:
     get:
@@ -4850,24 +4930,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/CoreBulkCreateError'
           description: ''
-  /api/Cores/export-excel/:
+  /api/Cores/export/{export_format}/:
     get:
-      operationId: api_Cores_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Cores_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -4878,7 +4968,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Cores/start_teardown_batch/:
     post:
@@ -5069,24 +5159,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Customers/export-excel/:
+  /api/Customers/export/{export_format}/:
     get:
-      operationId: api_Customers_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Customers_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -5097,7 +5197,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Customers/metadata/:
     get:
@@ -5484,24 +5584,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/DocumentTypes/export-excel/:
+  /api/DocumentTypes/export/{export_format}/:
     get:
-      operationId: api_DocumentTypes_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_DocumentTypes_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -5512,7 +5622,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/DocumentTypes/metadata/:
     get:
@@ -6090,24 +6200,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedDocumentsList'
           description: ''
-  /api/Documents/export-excel/:
+  /api/Documents/export/{export_format}/:
     get:
-      operationId: api_Documents_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Documents_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -6118,7 +6238,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Documents/metadata/:
     get:
@@ -6542,24 +6662,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/DowntimeEvent'
           description: ''
-  /api/DowntimeEvents/export-excel/:
+  /api/DowntimeEvents/export/{export_format}/:
     get:
-      operationId: api_DowntimeEvents_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_DowntimeEvents_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -6570,7 +6700,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Employees-Options/:
     get:
@@ -7216,24 +7346,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Equipment-types/export-excel/:
+  /api/Equipment-types/export/{export_format}/:
     get:
-      operationId: api_Equipment_types_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Equipment_types_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -7244,7 +7384,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Equipment-types/metadata/:
     get:
@@ -7475,24 +7615,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Equipment/export-excel/:
+  /api/Equipment/export/{export_format}/:
     get:
-      operationId: api_Equipment_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Equipment_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -7503,7 +7653,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Equipment/metadata/:
     get:
@@ -7861,24 +8011,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Error-types/export-excel/:
+  /api/Error-types/export/{export_format}/:
     get:
-      operationId: api_Error_types_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Error_types_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -7889,7 +8049,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Error-types/metadata/:
     get:
@@ -8349,8 +8509,26 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/FPIGetOrCreateExisting'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FPIGetOrCreateCreated'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: work_order and step are required, or equipment missing
+                  for PER_EQUIPMENT scope
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                description: Work order, step, or equipment not found in this tenant
           description: ''
   /api/FPIRecords/metadata/:
     get:
@@ -8548,24 +8726,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Fishbone/export-excel/:
+  /api/Fishbone/export/{export_format}/:
     get:
-      operationId: api_Fishbone_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Fishbone_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -8576,7 +8764,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Fishbone/metadata/:
     get:
@@ -8774,24 +8962,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/FiveWhys/export-excel/:
+  /api/FiveWhys/export/{export_format}/:
     get:
-      operationId: api_FiveWhys_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_FiveWhys_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -8802,7 +9000,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/FiveWhys/metadata/:
     get:
@@ -9037,24 +9235,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Fixtures/export-excel/:
+  /api/Fixtures/export/{export_format}/:
     get:
-      operationId: api_Fixtures_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Fixtures_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -9065,7 +9273,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Fixtures/metadata/:
     get:
@@ -9392,24 +9600,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/HarvestedComponent'
           description: ''
-  /api/HarvestedComponents/export-excel/:
+  /api/HarvestedComponents/export/{export_format}/:
     get:
-      operationId: api_HarvestedComponents_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_HarvestedComponents_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -9420,7 +9638,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/HeatMapAnnotation/:
     get:
@@ -9678,24 +9896,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/HeatMapAnnotation/export-excel/:
+  /api/HeatMapAnnotation/export/{export_format}/:
     get:
-      operationId: api_HeatMapAnnotation_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_HeatMapAnnotation_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -9706,7 +9934,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/HeatMapAnnotation/facets/:
     get:
@@ -9993,24 +10221,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/JobRoles/export-excel/:
+  /api/JobRoles/export/{export_format}/:
     get:
-      operationId: api_JobRoles_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_JobRoles_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -10021,7 +10259,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/JobRoles/metadata/:
     get:
@@ -10272,24 +10510,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/LaborCalendarBlocks/export-excel/:
+  /api/LaborCalendarBlocks/export/{export_format}/:
     get:
-      operationId: api_LaborCalendarBlocks_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_LaborCalendarBlocks_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -10300,7 +10548,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/LaborCalendarBlocks/metadata/:
     get:
@@ -10968,24 +11216,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/MaterialLot'
           description: ''
-  /api/MaterialLots/export-excel/:
+  /api/MaterialLots/export/{export_format}/:
     get:
-      operationId: api_MaterialLots_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_MaterialLots_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -10996,7 +11254,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/MaterialUsages/:
     get:
@@ -11277,24 +11535,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Materials/export-excel/:
+  /api/Materials/export/{export_format}/:
     get:
-      operationId: api_Materials_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Materials_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -11305,7 +11573,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Materials/metadata/:
     get:
@@ -11672,24 +11940,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/MeasurementDefinitions/export-excel/:
+  /api/MeasurementDefinitions/export/{export_format}/:
     get:
-      operationId: api_MeasurementDefinitions_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_MeasurementDefinitions_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -11700,7 +11978,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/MeasurementDefinitions/metadata/:
     get:
@@ -13155,24 +13433,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/SamplePlanResponse'
           description: ''
-  /api/OutsideProcessShipments/export-excel/:
+  /api/OutsideProcessShipments/export/{export_format}/:
     get:
-      operationId: api_OutsideProcessShipments_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_OutsideProcessShipments_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -13183,7 +13471,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/OutsideProcessShipments/ready_to_ship/:
     get:
@@ -13500,24 +13788,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/OvertimeWindows/export-excel/:
+  /api/OvertimeWindows/export/{export_format}/:
     get:
-      operationId: api_OvertimeWindows_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_OvertimeWindows_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -13528,7 +13826,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/OvertimeWindows/metadata/:
     get:
@@ -13906,24 +14204,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartApproval'
           description: ''
-  /api/PartApprovals/export-excel/:
+  /api/PartApprovals/export/{export_format}/:
     get:
-      operationId: api_PartApprovals_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_PartApprovals_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -13934,7 +14242,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/PartApprovals/metadata/:
     get:
@@ -15233,8 +15541,20 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/PartRollbackDone'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartRollbackPendingApproval'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Rollback not permitted (outside undo window, no previous
+                  step, …)
           description: ''
   /api/Parts/{id}/split_from_lot/:
     post:
@@ -16050,24 +16370,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/PlantCalendarExceptions/export-excel/:
+  /api/PlantCalendarExceptions/export/{export_format}/:
     get:
-      operationId: api_PlantCalendarExceptions_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_PlantCalendarExceptions_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -16078,7 +16408,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/PlantCalendarExceptions/metadata/:
     get:
@@ -16493,24 +16823,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/Processes'
           description: ''
-  /api/Processes/export-excel/:
+  /api/Processes/export/{export_format}/:
     get:
-      operationId: api_Processes_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Processes_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -16521,7 +16861,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Processes/metadata/:
     get:
@@ -17075,24 +17415,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedProcessWithStepsList'
           description: ''
-  /api/Processes_with_steps/export-excel/:
+  /api/Processes_with_steps/export/{export_format}/:
     get:
-      operationId: api_Processes_with_steps_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Processes_with_steps_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -17103,7 +17453,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/QualityReports/:
     get:
@@ -17476,24 +17826,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/QualityReports/export-excel/:
+  /api/QualityReports/export/{export_format}/:
     get:
-      operationId: api_QualityReports_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_QualityReports_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -17504,7 +17864,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/QualityReports/metadata/:
     get:
@@ -18026,24 +18386,34 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/QuarantineDispositions/export-excel/:
+  /api/QuarantineDispositions/export/{export_format}/:
     get:
-      operationId: api_QuarantineDispositions_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_QuarantineDispositions_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -18054,7 +18424,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/QuarantineDispositions/metadata/:
     get:
@@ -18342,24 +18712,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/RcaRecord'
           description: ''
-  /api/RcaRecords/export-excel/:
+  /api/RcaRecords/export/{export_format}/:
     get:
-      operationId: api_RcaRecords_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_RcaRecords_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -18370,7 +18750,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/RcaRecords/metadata/:
     get:
@@ -18742,24 +19122,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Sampling-rule-sets/export-excel/:
+  /api/Sampling-rule-sets/export/{export_format}/:
     get:
-      operationId: api_Sampling_rule_sets_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Sampling_rule_sets_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -18770,7 +19160,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Sampling-rule-sets/metadata/:
     get:
@@ -19148,24 +19538,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/Sampling-rules/export-excel/:
+  /api/Sampling-rules/export/{export_format}/:
     get:
-      operationId: api_Sampling_rules_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Sampling_rules_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -19176,7 +19576,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Sampling-rules/metadata/:
     get:
@@ -23451,22 +23851,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/Steps'
           description: ''
-  /api/Steps/export-excel/:
+  /api/Steps/export/{export_format}/:
     get:
-      operationId: api_Steps_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_Steps_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       - in: query
         name: part_type
         schema:
@@ -23478,7 +23888,7 @@ paths:
           type: string
         description: Filter steps by process UUID (via ProcessStep)
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -23489,7 +23899,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/Steps/metadata/:
     get:
@@ -25378,24 +25788,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/SupplierQualification'
           description: ''
-  /api/SupplierQualifications/export-excel/:
+  /api/SupplierQualifications/export/{export_format}/:
     get:
-      operationId: api_SupplierQualifications_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_SupplierQualifications_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -25406,7 +25826,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/SupplierQualifications/metadata/:
     get:
@@ -26862,24 +27282,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/ThreeDModels/export-excel/:
+  /api/ThreeDModels/export/{export_format}/:
     get:
-      operationId: api_ThreeDModels_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_ThreeDModels_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -26890,7 +27320,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/ThreeDModels/metadata/:
     get:
@@ -27209,24 +27639,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/TimeEntry'
           description: ''
-  /api/TimeEntries/export-excel/:
+  /api/TimeEntries/export/{export_format}/:
     get:
-      operationId: api_TimeEntries_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_TimeEntries_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27237,7 +27677,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/TrackerOrders/:
     get:
@@ -27722,24 +28162,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedTrainingRecordList'
           description: ''
-  /api/TrainingRecords/export-excel/:
+  /api/TrainingRecords/export/{export_format}/:
     get:
-      operationId: api_TrainingRecords_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_TrainingRecords_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27750,7 +28200,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/TrainingRecords/metadata/:
     get:
@@ -28076,24 +28526,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/TrainingRequirements/export-excel/:
+  /api/TrainingRequirements/export/{export_format}/:
     get:
-      operationId: api_TrainingRequirements_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_TrainingRequirements_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -28104,7 +28564,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/TrainingRequirements/for-process/:
     get:
@@ -28482,24 +28942,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/TrainingTypes/export-excel/:
+  /api/TrainingTypes/export/{export_format}/:
     get:
-      operationId: api_TrainingTypes_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_TrainingTypes_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -28510,7 +28980,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/TrainingTypes/metadata/:
     get:
@@ -28943,24 +29413,34 @@ paths:
                 type: object
                 additionalProperties: {}
           description: Debug info about current user's filtering context
-  /api/User/export-excel/:
+  /api/User/export/{export_format}/:
     get:
-      operationId: api_User_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_User_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -28971,7 +29451,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/User/import-template/{template_format}/:
     get:
@@ -29841,24 +30321,34 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/WorkCenters/export-excel/:
+  /api/WorkCenters/export/{export_format}/:
     get:
-      operationId: api_WorkCenters_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_WorkCenters_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -29869,7 +30359,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/WorkCenters/mark-staged/:
     post:
@@ -36285,24 +36775,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/SPCBaseline'
           description: ''
-  /api/spc-baselines/export-excel/:
+  /api/spc-baselines/export/{export_format}/:
     get:
-      operationId: api_spc_baselines_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
+      operationId: api_spc_baselines_export_retrieve
+      description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
           type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
+        description: Comma-separated list of fields to export
       - in: query
         name: filename
         schema:
           type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
-      - api
+      - Import/Export
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -36313,7 +36813,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: Excel file download
+                description: File download
           description: ''
   /api/spc-baselines/freeze/:
     post:
@@ -42920,6 +43420,26 @@ components:
       - customer
       - email
       - name
+    FPIGetOrCreateCreated:
+      type: object
+      properties:
+        created:
+          type: boolean
+        fpi:
+          $ref: '#/components/schemas/FPIRecord'
+      required:
+      - created
+      - fpi
+    FPIGetOrCreateExisting:
+      type: object
+      properties:
+        created:
+          type: boolean
+        fpi:
+          $ref: '#/components/schemas/FPIRecord'
+      required:
+      - created
+      - fpi
     FPIRecord:
       type: object
       description: Serializer for First Piece Inspection records.
@@ -49644,6 +50164,45 @@ components:
           minLength: 1
           description: 'Decision result for branching steps: ''pass'', ''fail'', ''default'',
             ''alternate'', or measurement value'
+    PartRollbackDone:
+      type: object
+      properties:
+        detail:
+          type: string
+        success:
+          type: boolean
+        new_step_id:
+          type: string
+          format: uuid
+          nullable: true
+        new_step_name:
+          type: string
+          nullable: true
+        part_status:
+          type: string
+      required:
+      - detail
+      - new_step_id
+      - new_step_name
+      - part_status
+      - success
+    PartRollbackPendingApproval:
+      type: object
+      properties:
+        detail:
+          type: string
+        success:
+          type: boolean
+        requires_approval:
+          type: boolean
+        previous_step_name:
+          type: string
+          nullable: true
+      required:
+      - detail
+      - previous_step_name
+      - requires_approval
+      - success
     PartSelect:
       type: object
       description: Lightweight part serializer for dropdown/combobox selections

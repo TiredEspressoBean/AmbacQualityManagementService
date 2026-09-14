@@ -44,7 +44,8 @@ from Tracker.services.scheduling.run_status import (
     current_run, mark_finished, mark_started,
 )
 from .base import TenantScopedMixin
-from .core import ExcelExportMixin, ListMetadataMixin
+from .core import ListMetadataMixin
+from .mixins import DataExportMixin
 
 # Solve/dispatch time cap lives on `OptimizationConfig.solver_time_limit_seconds`
 # (default 180s, editable from the scheduling settings dialog); CP-SAT returns
@@ -782,7 +783,7 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         return Response(svc(tasks, operator, user=request.user))
 
 
-class FixtureViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class FixtureViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
     operations against the quantity available (cumulative capacity)."""
@@ -796,7 +797,7 @@ class FixtureViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
 
 
 class PlantCalendarExceptionViewSet(TenantScopedMixin, ListMetadataMixin,
-                                    ExcelExportMixin, viewsets.ModelViewSet):
+                                    DataExportMixin, viewsets.ModelViewSet):
     """CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
     blocks every machine and treats operators as absent during these."""
     queryset = PlantCalendarException.unscoped.all()
@@ -809,7 +810,7 @@ class PlantCalendarExceptionViewSet(TenantScopedMixin, ListMetadataMixin,
 
 
 class LaborCalendarBlockViewSet(TenantScopedMixin, ListMetadataMixin,
-                                ExcelExportMixin, viewsets.ModelViewSet):
+                                DataExportMixin, viewsets.ModelViewSet):
     """CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
     one-off or weekly, company-wide (user null) or per person. Operators only; machines
     keep running (only PlantCalendarException stops machines)."""
@@ -823,7 +824,7 @@ class LaborCalendarBlockViewSet(TenantScopedMixin, ListMetadataMixin,
 
 
 class OvertimeWindowViewSet(TenantScopedMixin, ListMetadataMixin,
-                            ExcelExportMixin, viewsets.ModelViewSet):
+                            DataExportMixin, viewsets.ModelViewSet):
     """CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
     weekly, company-wide. The solver adds these to operator + attended-machine
     availability (plant closures still win)."""

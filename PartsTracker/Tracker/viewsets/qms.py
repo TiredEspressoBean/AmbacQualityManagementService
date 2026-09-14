@@ -34,16 +34,18 @@ from Tracker.serializers.qms import (
     MeasurementDefinitionSerializer,
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
+    FPIRecordSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
-from .core import ExcelExportMixin, ListMetadataMixin
+from .core import ListMetadataMixin
+from .mixins import DataExportMixin
 from .base import TenantScopedMixin
 from .mixins import SecondPersonMixin
 
 
 # ===== QUALITY VIEWSETS =====
 
-class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = QualityReports.unscoped.all()
     serializer_class = QualityReportsSerializer
     pagination_class = LimitOffsetPagination
@@ -70,7 +72,7 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixi
         ).prefetch_related('operators', 'errors', 'equipment_links__equipment')
 
 
-class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = QualityErrorsList.unscoped.all()
     serializer_class = QualityErrorsListSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -88,7 +90,7 @@ class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
         return qs
 
 
-class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
+class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
                                    SecondPersonMixin, viewsets.ModelViewSet):
     queryset = QuarantineDisposition.unscoped.all()
     serializer_class = QuarantineDispositionSerializer
@@ -251,7 +253,7 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
         return Response(self.get_serializer(disposition).data)
 
 
-class SupplierQualificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class SupplierQualificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """Approved-supplier-list / qualification records. CRUD plus lifecycle actions
     (grant / suspend / disqualify) that delegate to the qualification service.
     `grant` is gated by the `approve_supplierqualification` marker perm."""
@@ -338,7 +340,7 @@ class SupplierQualificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
         return Response(QualificationStatusSerializer(standing).data)
 
 
-class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
     delegate to the part-approval service. `grant` is gated by the
@@ -421,7 +423,7 @@ class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin
 
 # ===== SAMPLING VIEWSETS =====
 
-class SamplingRuleSetViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class SamplingRuleSetViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = SamplingRuleSet.unscoped.all()
     serializer_class = SamplingRuleSetSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -461,7 +463,7 @@ class SamplingSeverityStateViewSet(TenantScopedMixin, ListMetadataMixin, viewset
         return super().get_queryset().select_related('step', 'supplier')
 
 
-class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = SamplingRule.unscoped.all()
     serializer_class = SamplingRuleSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -496,7 +498,7 @@ class MeasurementDefinitionFilter(django_filters.FilterSet):
         fields = ["step__name", "label", "step"]
 
 
-class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = MeasurementDefinition.unscoped.all()
     serializer_class = MeasurementDefinitionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -570,7 +572,7 @@ class CAPAFilterSet(django_filters.FilterSet):
     partial_update=extend_schema(description="Partially update a CAPA"),
     destroy=extend_schema(description="Soft delete a CAPA")
 )
-class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing CAPAs (Corrective and Preventive Actions).
 
@@ -819,7 +821,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
     partial_update=extend_schema(description="Partially update a CAPA task"),
     destroy=extend_schema(description="Soft delete a CAPA task")
 )
-class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing CAPA tasks.
 
@@ -928,7 +930,7 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
     partial_update=extend_schema(description="Partially update an RCA record"),
     destroy=extend_schema(description="Soft delete an RCA record")
 )
-class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing Root Cause Analysis records.
 
@@ -1002,7 +1004,7 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
     partial_update=extend_schema(description="Partially update a CAPA verification"),
     destroy=extend_schema(description="Soft delete a CAPA verification")
 )
-class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
+class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
                               SecondPersonMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing CAPA verifications.
@@ -1129,7 +1131,7 @@ class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     partial_update=extend_schema(description="Partially update a 5 Whys analysis"),
     destroy=extend_schema(description="Delete a 5 Whys analysis")
 )
-class FiveWhysViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class FiveWhysViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing 5 Whys root cause analyses.
 
@@ -1167,7 +1169,7 @@ class FiveWhysViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
     partial_update=extend_schema(description="Partially update a Fishbone diagram"),
     destroy=extend_schema(description="Delete a Fishbone diagram")
 )
-class FishboneViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class FishboneViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing Fishbone (Ishikawa) diagrams.
 
@@ -1210,7 +1212,7 @@ class FishboneViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
         ]
     )
 )
-class ThreeDModelViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class ThreeDModelViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing 3D model files for quality visualization"""
     queryset = ThreeDModel.unscoped.all()
     serializer_class = ThreeDModelSerializer
@@ -1256,7 +1258,7 @@ class ThreeDModelViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
     partial_update=extend_schema(description="Partially update a heatmap annotation"),
     destroy=extend_schema(description="Soft delete a heatmap annotation")
 )
-class HeatMapAnnotationsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class HeatMapAnnotationsViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing heatmap annotations on 3D models for quality inspection"""
     queryset = HeatMapAnnotations.unscoped.all()
     serializer_class = HeatMapAnnotationsSerializer
@@ -1876,7 +1878,27 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             "equipment": {"type": "string", "format": "uuid", "description": "Required for per_equipment scope"},
             "shift_date": {"type": "string", "format": "date", "description": "Required for per_shift scope"},
         }}},
-        responses={200: dict}
+        responses={
+            # Same body either way -- `created` is the discriminator, the status
+            # code just mirrors it. 201 was undeclared, so a client had no
+            # schema for the half of this endpoint that actually creates.
+            200: inline_serializer(
+                name="FPIGetOrCreateExisting",
+                fields={
+                    "created": serializers.BooleanField(),
+                    "fpi": FPIRecordSerializer(),
+                },
+            ),
+            201: inline_serializer(
+                name="FPIGetOrCreateCreated",
+                fields={
+                    "created": serializers.BooleanField(),
+                    "fpi": FPIRecordSerializer(),
+                },
+            ),
+            400: {"description": "work_order and step are required, or equipment missing for PER_EQUIPMENT scope"},
+            404: {"description": "Work order, step, or equipment not found in this tenant"},
+        }
     )
     @action(detail=False, methods=['post'], url_path='get-or-create')
     def get_or_create(self, request):

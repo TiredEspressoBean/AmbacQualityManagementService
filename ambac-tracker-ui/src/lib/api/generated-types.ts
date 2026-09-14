@@ -110,15 +110,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ApprovalRequests/export-excel/": {
+    "/api/ApprovalRequests/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_ApprovalRequests_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_ApprovalRequests_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -221,15 +221,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ApprovalResponses/export-excel/": {
+    "/api/ApprovalResponses/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_ApprovalResponses_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_ApprovalResponses_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -344,15 +344,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ApprovalTemplates/export-excel/": {
+    "/api/ApprovalTemplates/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_ApprovalTemplates_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_ApprovalTemplates_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -746,15 +746,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/CAPAs/export-excel/": {
+    "/api/CAPAs/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_CAPAs_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_CAPAs_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -874,15 +874,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/CalibrationRecords/export-excel/": {
+    "/api/CalibrationRecords/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_CalibrationRecords_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_CalibrationRecords_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1035,15 +1035,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/CapaTasks/export-excel/": {
+    "/api/CapaTasks/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_CapaTasks_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_CapaTasks_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1141,15 +1141,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/CapaVerifications/export-excel/": {
+    "/api/CapaVerifications/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_CapaVerifications_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_CapaVerifications_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1332,15 +1332,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Companies/export-excel/": {
+    "/api/Companies/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Companies_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Companies_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1583,15 +1583,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Cores/export-excel/": {
+    "/api/Cores/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Cores_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Cores_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1655,15 +1655,15 @@ export interface paths {
         patch: operations["api_Customers_partial_update"];
         trace?: never;
     };
-    "/api/Customers/export-excel/": {
+    "/api/Customers/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Customers_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Customers_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1765,15 +1765,15 @@ export interface paths {
         patch: operations["api_DocumentTypes_partial_update"];
         trace?: never;
     };
-    "/api/DocumentTypes/export-excel/": {
+    "/api/DocumentTypes/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_DocumentTypes_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_DocumentTypes_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2030,15 +2030,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Documents/export-excel/": {
+    "/api/Documents/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Documents_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Documents_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2170,15 +2170,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/DowntimeEvents/export-excel/": {
+    "/api/DowntimeEvents/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_DowntimeEvents_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_DowntimeEvents_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2571,15 +2571,15 @@ export interface paths {
         patch: operations["api_Equipment_types_partial_update"];
         trace?: never;
     };
-    "/api/Equipment-types/export-excel/": {
+    "/api/Equipment-types/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Equipment_types_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Equipment_types_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2729,15 +2729,15 @@ export interface paths {
         patch: operations["api_Equipment_partial_update"];
         trace?: never;
     };
-    "/api/Equipment/export-excel/": {
+    "/api/Equipment/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Equipment_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Equipment_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2957,15 +2957,15 @@ export interface paths {
         patch: operations["api_Error_types_partial_update"];
         trace?: never;
     };
-    "/api/Error-types/export-excel/": {
+    "/api/Error-types/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Error_types_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Error_types_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3210,15 +3210,15 @@ export interface paths {
         patch: operations["api_Fishbone_partial_update"];
         trace?: never;
     };
-    "/api/Fishbone/export-excel/": {
+    "/api/Fishbone/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Fishbone_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Fishbone_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3282,15 +3282,15 @@ export interface paths {
         patch: operations["api_FiveWhys_partial_update"];
         trace?: never;
     };
-    "/api/FiveWhys/export-excel/": {
+    "/api/FiveWhys/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_FiveWhys_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_FiveWhys_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3378,15 +3378,15 @@ export interface paths {
         patch: operations["api_Fixtures_partial_update"];
         trace?: never;
     };
-    "/api/Fixtures/export-excel/": {
+    "/api/Fixtures/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Fixtures_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Fixtures_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3520,15 +3520,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/HarvestedComponents/export-excel/": {
+    "/api/HarvestedComponents/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_HarvestedComponents_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_HarvestedComponents_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3575,15 +3575,15 @@ export interface paths {
         patch: operations["api_HeatMapAnnotation_partial_update"];
         trace?: never;
     };
-    "/api/HeatMapAnnotation/export-excel/": {
+    "/api/HeatMapAnnotation/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_HeatMapAnnotation_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_HeatMapAnnotation_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3701,15 +3701,15 @@ export interface paths {
         patch: operations["api_JobRoles_partial_update"];
         trace?: never;
     };
-    "/api/JobRoles/export-excel/": {
+    "/api/JobRoles/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_JobRoles_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_JobRoles_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3797,15 +3797,15 @@ export interface paths {
         patch: operations["api_LaborCalendarBlocks_partial_update"];
         trace?: never;
     };
-    "/api/LaborCalendarBlocks/export-excel/": {
+    "/api/LaborCalendarBlocks/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_LaborCalendarBlocks_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_LaborCalendarBlocks_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4116,15 +4116,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/MaterialLots/export-excel/": {
+    "/api/MaterialLots/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_MaterialLots_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_MaterialLots_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4223,15 +4223,15 @@ export interface paths {
         patch: operations["api_Materials_partial_update"];
         trace?: never;
     };
-    "/api/Materials/export-excel/": {
+    "/api/Materials/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Materials_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Materials_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4451,15 +4451,15 @@ export interface paths {
         patch: operations["api_MeasurementDefinitions_partial_update"];
         trace?: never;
     };
-    "/api/MeasurementDefinitions/export-excel/": {
+    "/api/MeasurementDefinitions/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_MeasurementDefinitions_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_MeasurementDefinitions_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5082,15 +5082,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/OutsideProcessShipments/export-excel/": {
+    "/api/OutsideProcessShipments/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_OutsideProcessShipments_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_OutsideProcessShipments_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5195,15 +5195,15 @@ export interface paths {
         patch: operations["api_OvertimeWindows_partial_update"];
         trace?: never;
     };
-    "/api/OvertimeWindows/export-excel/": {
+    "/api/OvertimeWindows/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_OvertimeWindows_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_OvertimeWindows_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5358,15 +5358,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/PartApprovals/export-excel/": {
+    "/api/PartApprovals/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_PartApprovals_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_PartApprovals_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6205,15 +6205,15 @@ export interface paths {
         patch: operations["api_PlantCalendarExceptions_partial_update"];
         trace?: never;
     };
-    "/api/PlantCalendarExceptions/export-excel/": {
+    "/api/PlantCalendarExceptions/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_PlantCalendarExceptions_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_PlantCalendarExceptions_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6450,15 +6450,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Processes/export-excel/": {
+    "/api/Processes/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Processes_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Processes_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6763,15 +6763,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Processes_with_steps/export-excel/": {
+    "/api/Processes_with_steps/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Processes_with_steps_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Processes_with_steps_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6974,15 +6974,15 @@ export interface paths {
         patch: operations["api_QualityReports_partial_update"];
         trace?: never;
     };
-    "/api/QualityReports/export-excel/": {
+    "/api/QualityReports/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_QualityReports_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_QualityReports_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7240,15 +7240,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/QuarantineDispositions/export-excel/": {
+    "/api/QuarantineDispositions/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_QuarantineDispositions_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_QuarantineDispositions_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7346,15 +7346,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/RcaRecords/export-excel/": {
+    "/api/RcaRecords/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_RcaRecords_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_RcaRecords_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7574,15 +7574,15 @@ export interface paths {
         patch: operations["api_Sampling_rule_sets_partial_update"];
         trace?: never;
     };
-    "/api/Sampling-rule-sets/export-excel/": {
+    "/api/Sampling-rule-sets/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Sampling_rule_sets_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Sampling_rule_sets_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7802,15 +7802,15 @@ export interface paths {
         patch: operations["api_Sampling_rules_partial_update"];
         trace?: never;
     };
-    "/api/Sampling-rules/export-excel/": {
+    "/api/Sampling-rules/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Sampling_rules_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Sampling_rules_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9609,15 +9609,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Steps/export-excel/": {
+    "/api/Steps/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_Steps_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Steps_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10233,15 +10233,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/SupplierQualifications/export-excel/": {
+    "/api/SupplierQualifications/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_SupplierQualifications_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_SupplierQualifications_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10850,15 +10850,15 @@ export interface paths {
         patch: operations["api_ThreeDModels_partial_update"];
         trace?: never;
     };
-    "/api/ThreeDModels/export-excel/": {
+    "/api/ThreeDModels/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_ThreeDModels_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_ThreeDModels_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10973,15 +10973,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/TimeEntries/export-excel/": {
+    "/api/TimeEntries/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_TimeEntries_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_TimeEntries_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11136,15 +11136,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/TrainingRecords/export-excel/": {
+    "/api/TrainingRecords/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_TrainingRecords_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_TrainingRecords_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11242,15 +11242,15 @@ export interface paths {
         patch: operations["api_TrainingRequirements_partial_update"];
         trace?: never;
     };
-    "/api/TrainingRequirements/export-excel/": {
+    "/api/TrainingRequirements/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_TrainingRequirements_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_TrainingRequirements_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11348,15 +11348,15 @@ export interface paths {
         patch: operations["api_TrainingTypes_partial_update"];
         trace?: never;
     };
-    "/api/TrainingTypes/export-excel/": {
+    "/api/TrainingTypes/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_TrainingTypes_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_TrainingTypes_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11530,15 +11530,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/User/export-excel/": {
+    "/api/User/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_User_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_User_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11898,15 +11898,15 @@ export interface paths {
         patch: operations["api_WorkCenters_partial_update"];
         trace?: never;
     };
-    "/api/WorkCenters/export-excel/": {
+    "/api/WorkCenters/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_WorkCenters_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_WorkCenters_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -15173,15 +15173,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/spc-baselines/export-excel/": {
+    "/api/spc-baselines/export/{export_format}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_spc_baselines_export_excel_retrieve"];
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_spc_baselines_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -18626,6 +18626,14 @@ export interface components {
             /** @description Free-form label, e.g. 'primary', 'quality', 'procurement'. */
             role?: string;
             enabled?: boolean;
+        };
+        FPIGetOrCreateCreated: {
+            created: boolean;
+            fpi: components["schemas"]["FPIRecord"];
+        };
+        FPIGetOrCreateExisting: {
+            created: boolean;
+            fpi: components["schemas"]["FPIRecord"];
         };
         /** @description Serializer for First Piece Inspection records. */
         FPIRecord: {
@@ -22250,6 +22258,20 @@ export interface components {
         PartIncrementInputRequest: {
             /** @description Decision result for branching steps: 'pass', 'fail', 'default', 'alternate', or measurement value */
             decision?: string;
+        };
+        PartRollbackDone: {
+            detail: string;
+            success: boolean;
+            /** Format: uuid */
+            new_step_id: string | null;
+            new_step_name: string | null;
+            part_status: string;
+        };
+        PartRollbackPendingApproval: {
+            detail: string;
+            success: boolean;
+            requires_approval: boolean;
+            previous_step_name: string | null;
         };
         /** @description Lightweight part serializer for dropdown/combobox selections */
         PartSelect: {
@@ -31857,16 +31879,20 @@ export interface operations {
             };
         };
     };
-    api_ApprovalRequests_export_excel_retrieve: {
+    api_ApprovalRequests_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -32144,16 +32170,20 @@ export interface operations {
             };
         };
     };
-    api_ApprovalResponses_export_excel_retrieve: {
+    api_ApprovalResponses_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -32444,16 +32474,20 @@ export interface operations {
             };
         };
     };
-    api_ApprovalTemplates_export_excel_retrieve: {
+    api_ApprovalTemplates_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -33460,16 +33494,20 @@ export interface operations {
             };
         };
     };
-    api_CAPAs_export_excel_retrieve: {
+    api_CAPAs_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -33765,16 +33803,20 @@ export interface operations {
             };
         };
     };
-    api_CalibrationRecords_export_excel_retrieve: {
+    api_CalibrationRecords_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -34142,16 +34184,20 @@ export interface operations {
             };
         };
     };
-    api_CapaTasks_export_excel_retrieve: {
+    api_CapaTasks_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -34426,16 +34472,20 @@ export interface operations {
             };
         };
     };
-    api_CapaVerifications_export_excel_retrieve: {
+    api_CapaVerifications_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -34850,16 +34900,20 @@ export interface operations {
             };
         };
     };
-    api_Companies_export_excel_retrieve: {
+    api_Companies_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -35272,16 +35326,20 @@ export interface operations {
             };
         };
     };
-    api_Cores_export_excel_retrieve: {
+    api_Cores_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -35467,16 +35525,20 @@ export interface operations {
             };
         };
     };
-    api_Customers_export_excel_retrieve: {
+    api_Customers_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -35815,16 +35877,20 @@ export interface operations {
             };
         };
     };
-    api_DocumentTypes_export_excel_retrieve: {
+    api_DocumentTypes_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -36266,16 +36332,20 @@ export interface operations {
             };
         };
     };
-    api_Documents_export_excel_retrieve: {
+    api_Documents_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -36599,16 +36669,20 @@ export interface operations {
             };
         };
     };
-    api_DowntimeEvents_export_excel_retrieve: {
+    api_DowntimeEvents_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -36935,16 +37009,20 @@ export interface operations {
             };
         };
     };
-    api_Equipment_types_export_excel_retrieve: {
+    api_Equipment_types_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -37077,16 +37155,20 @@ export interface operations {
             };
         };
     };
-    api_Equipment_export_excel_retrieve: {
+    api_Equipment_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -37274,16 +37356,20 @@ export interface operations {
             };
         };
     };
-    api_Error_types_export_excel_retrieve: {
+    api_Error_types_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -37665,9 +37751,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["FPIGetOrCreateExisting"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FPIGetOrCreateCreated"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -37843,16 +37951,20 @@ export interface operations {
             };
         };
     };
-    api_Fishbone_export_excel_retrieve: {
+    api_Fishbone_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -38038,16 +38150,20 @@ export interface operations {
             };
         };
     };
-    api_FiveWhys_export_excel_retrieve: {
+    api_FiveWhys_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -38243,16 +38359,20 @@ export interface operations {
             };
         };
     };
-    api_Fixtures_export_excel_retrieve: {
+    api_Fixtures_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -38504,16 +38624,20 @@ export interface operations {
             };
         };
     };
-    api_HarvestedComponents_export_excel_retrieve: {
+    api_HarvestedComponents_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -38700,16 +38824,20 @@ export interface operations {
             };
         };
     };
-    api_HeatMapAnnotation_export_excel_retrieve: {
+    api_HeatMapAnnotation_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -38965,16 +39093,20 @@ export interface operations {
             };
         };
     };
-    api_JobRoles_export_excel_retrieve: {
+    api_JobRoles_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -39176,16 +39308,20 @@ export interface operations {
             };
         };
     };
-    api_LaborCalendarBlocks_export_excel_retrieve: {
+    api_LaborCalendarBlocks_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -39743,16 +39879,20 @@ export interface operations {
             };
         };
     };
-    api_MaterialLots_export_excel_retrieve: {
+    api_MaterialLots_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -39973,16 +40113,20 @@ export interface operations {
             };
         };
     };
-    api_Materials_export_excel_retrieve: {
+    api_Materials_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -40172,16 +40316,20 @@ export interface operations {
             };
         };
     };
-    api_MeasurementDefinitions_export_excel_retrieve: {
+    api_MeasurementDefinitions_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -41312,16 +41460,20 @@ export interface operations {
             };
         };
     };
-    api_OutsideProcessShipments_export_excel_retrieve: {
+    api_OutsideProcessShipments_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -41557,16 +41709,20 @@ export interface operations {
             };
         };
     };
-    api_OvertimeWindows_export_excel_retrieve: {
+    api_OvertimeWindows_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -41852,16 +42008,20 @@ export interface operations {
             };
         };
     };
-    api_PartApprovals_export_excel_retrieve: {
+    api_PartApprovals_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -42754,9 +42914,23 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PartRollbackDone"];
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartRollbackPendingApproval"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -43324,16 +43498,20 @@ export interface operations {
             };
         };
     };
-    api_PlantCalendarExceptions_export_excel_retrieve: {
+    api_PlantCalendarExceptions_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -43560,16 +43738,20 @@ export interface operations {
             };
         };
     };
-    api_Processes_export_excel_retrieve: {
+    api_Processes_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -43904,16 +44086,20 @@ export interface operations {
             };
         };
     };
-    api_Processes_with_steps_export_excel_retrieve: {
+    api_Processes_with_steps_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -44091,16 +44277,20 @@ export interface operations {
             };
         };
     };
-    api_QualityReports_export_excel_retrieve: {
+    api_QualityReports_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -44382,16 +44572,20 @@ export interface operations {
             };
         };
     };
-    api_QuarantineDispositions_export_excel_retrieve: {
+    api_QuarantineDispositions_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -44639,16 +44833,20 @@ export interface operations {
             };
         };
     };
-    api_RcaRecords_export_excel_retrieve: {
+    api_RcaRecords_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -44839,16 +45037,20 @@ export interface operations {
             };
         };
     };
-    api_Sampling_rule_sets_export_excel_retrieve: {
+    api_Sampling_rule_sets_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -45047,16 +45249,20 @@ export interface operations {
             };
         };
     };
-    api_Sampling_rules_export_excel_retrieve: {
+    api_Sampling_rules_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -48022,20 +48228,24 @@ export interface operations {
             };
         };
     };
-    api_Steps_export_excel_retrieve: {
+    api_Steps_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
                 /** @description Filter steps by process's part type UUID */
                 part_type?: string;
                 /** @description Filter steps by process UUID (via ProcessStep) */
                 process?: string;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -49394,16 +49604,20 @@ export interface operations {
             };
         };
     };
-    api_SupplierQualifications_export_excel_retrieve: {
+    api_SupplierQualifications_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -50497,16 +50711,20 @@ export interface operations {
             };
         };
     };
-    api_ThreeDModels_export_excel_retrieve: {
+    api_ThreeDModels_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -50780,16 +50998,20 @@ export interface operations {
             };
         };
     };
-    api_TimeEntries_export_excel_retrieve: {
+    api_TimeEntries_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -51139,16 +51361,20 @@ export interface operations {
             };
         };
     };
-    api_TrainingRecords_export_excel_retrieve: {
+    api_TrainingRecords_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -51411,16 +51637,20 @@ export interface operations {
             };
         };
     };
-    api_TrainingRequirements_export_excel_retrieve: {
+    api_TrainingRequirements_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -51695,16 +51925,20 @@ export interface operations {
             };
         };
     };
-    api_TrainingTypes_export_excel_retrieve: {
+    api_TrainingTypes_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -52074,16 +52308,20 @@ export interface operations {
             };
         };
     };
-    api_User_export_excel_retrieve: {
+    api_User_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -52769,16 +53007,20 @@ export interface operations {
             };
         };
     };
-    api_WorkCenters_export_excel_retrieve: {
+    api_WorkCenters_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -57378,16 +57620,20 @@ export interface operations {
             };
         };
     };
-    api_spc_baselines_export_excel_retrieve: {
+    api_spc_baselines_export_retrieve: {
         parameters: {
             query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                /** @description Comma-separated list of fields to export */
                 fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                /** @description Custom filename for the download */
                 filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                export_format: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

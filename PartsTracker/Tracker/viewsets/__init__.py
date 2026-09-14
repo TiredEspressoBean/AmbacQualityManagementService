@@ -11,9 +11,10 @@ from .base import (
     NonTenantModelViewSet,
 )
 
+from .mixins import DataExportMixin
+
 from .core import (
     # Mixins & Utilities
-    ExcelExportMixin,
     with_int_pk_schema,
     serve_media_iframe_safe,
 
@@ -275,7 +276,7 @@ __all__ = [
     'NonTenantModelViewSet',
 
     # Core - Mixins & Utilities
-    'ExcelExportMixin',
+    'DataExportMixin',
     'with_int_pk_schema',
     'serve_media_iframe_safe',
 

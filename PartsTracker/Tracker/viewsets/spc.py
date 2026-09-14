@@ -35,7 +35,8 @@ from Tracker.serializers.spc import (
     SPCBaselineListSerializer,
     SPCBaselineFreezeSerializer,
 )
-from .core import ExcelExportMixin, ListMetadataMixin
+from .core import ListMetadataMixin
+from .mixins import DataExportMixin
 from .base import TenantScopedMixin
 from Tracker.permissions import TenantAccessPermission
 
@@ -720,7 +721,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         })
 
 
-class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for SPC Baselines (frozen control limits).
 

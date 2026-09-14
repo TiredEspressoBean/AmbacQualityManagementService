@@ -48,12 +48,13 @@ from Tracker.services.qms import receiving_inspection
 from Tracker.services.qms import incoming_inspection
 from Tracker.services.qms import inspection_inbox
 from .base import TenantScopedMixin
-from .core import ExcelExportMixin, ListMetadataMixin
+from .core import ListMetadataMixin
+from .mixins import DataExportMixin
 
 
 # ===== WORK CENTER VIEWSETS =====
 
-class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class WorkCenterViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Work center management"""
     queryset = WorkCenter.unscoped.all()
     serializer_class = WorkCenterSerializer
@@ -324,7 +325,7 @@ class ScheduleSlotViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
 # ===== DOWNTIME EVENT VIEWSETS =====
 
-class DowntimeEventViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class DowntimeEventViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Equipment/work center downtime tracking"""
     queryset = DowntimeEvent.unscoped.select_related(
         'equipment', 'work_center', 'work_order', 'reported_by', 'resolved_by'
@@ -359,7 +360,7 @@ class DowntimeEventViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelVi
 
 # ===== MATERIAL LOT VIEWSETS =====
 
-class MaterialViewSet(TenantScopedMixin, ExcelExportMixin, ListMetadataMixin, viewsets.ModelViewSet):
+class MaterialViewSet(TenantScopedMixin, DataExportMixin, ListMetadataMixin, viewsets.ModelViewSet):
     """Purchased items — raw materials / bought components (O-rings, seals, fasteners).
     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time."""
     queryset = Material.unscoped.select_related('preferred_supplier').all()
@@ -371,7 +372,7 @@ class MaterialViewSet(TenantScopedMixin, ExcelExportMixin, ListMetadataMixin, vi
     ordering = ['name']
 
 
-class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""
     queryset = MaterialLot.unscoped.select_related(
         'material_type', 'supplier', 'parent_lot', 'received_by'
@@ -807,7 +808,7 @@ class MaterialUsageViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
 # ===== TIME ENTRY VIEWSETS =====
 
-class TimeEntryViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class TimeEntryViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Labor time tracking with clock-in/out"""
     queryset = TimeEntry.unscoped.select_related(
         'user', 'part', 'work_order', 'step', 'equipment', 'work_center'

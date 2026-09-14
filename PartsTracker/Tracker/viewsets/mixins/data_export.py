@@ -17,6 +17,7 @@ import re
 from typing import Dict, List, Optional, Tuple, Any
 
 import pandas as pd
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -40,6 +41,22 @@ SKIP_EXPORT_FIELDS = {
 COMMON_REQUIRED_FIELDS = {'id', 'name', 'ERP_id'}
 
 
+def _has_name_column(model) -> bool:
+    """Does `model` have a concrete `name` DB column?
+
+    `hasattr(model, 'name')` is not the same question: ContentType.name is a
+    *property* returning the verbose name, so hasattr says yes while
+    `.values('content_type__name')` raises FieldError. Any model with a
+    content_type FK -- Documents, ApprovalRequest, … -- failed to export
+    because of that.
+    """
+    try:
+        field = model._meta.get_field('name')
+    except Exception:
+        return False
+    return getattr(field, 'concrete', False)
+
+
 def get_exportable_fields(model) -> List[str]:
     """
     Get list of exportable fields from a model via introspection.
@@ -53,6 +70,15 @@ def get_exportable_fields(model) -> List[str]:
         if field.auto_created and not field.concrete:
             continue
 
+        # Skip GenericForeignKey. It is not a database column -- it is a
+        # descriptor over (content_type, object_id) -- so naming it in
+        # .values() raises FieldError: "Cannot resolve keyword 'content_object'
+        # into field". Its two backing columns are concrete and get exported on
+        # their own. Every model with a GFK (ApprovalRequest, Documents, …)
+        # failed to export before this.
+        if isinstance(field, GenericForeignKey):
+            continue
+
         # Skip system fields
         if field.name in SKIP_EXPORT_FIELDS:
             continue
@@ -62,7 +88,7 @@ def get_exportable_fields(model) -> List[str]:
             fields.append(field.name)
             # Add __name lookup if related model has name field
             related_model = field.related_model
-            if hasattr(related_model, 'name'):
+            if _has_name_column(related_model):
                 fields.append(f'{field.name}__name')
             continue
 
@@ -410,7 +436,7 @@ class DataExportMixin:
         related_model = fk_field.related_model
 
         # Determine display field (prefer name, then fall back to str)
-        if hasattr(related_model, 'name'):
+        if _has_name_column(related_model):
             display_field = 'name'
         else:
             display_field = None

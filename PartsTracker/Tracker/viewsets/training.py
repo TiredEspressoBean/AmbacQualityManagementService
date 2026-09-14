@@ -21,7 +21,8 @@ from Tracker.serializers.training import (
 )
 from Tracker.services.training import build_training_matrix
 from .base import TenantScopedMixin
-from .core import ExcelExportMixin, ListMetadataMixin
+from .core import ListMetadataMixin
+from .mixins import DataExportMixin
 
 
 # ===== TRAINING TYPE VIEWSET =====
@@ -39,7 +40,7 @@ from .core import ExcelExportMixin, ListMetadataMixin
     partial_update=extend_schema(description="Partially update a training type"),
     destroy=extend_schema(description="Soft delete a training type")
 )
-class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing training types.
 
@@ -79,7 +80,7 @@ class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin
     partial_update=extend_schema(description="Partially update a training record"),
     destroy=extend_schema(description="Soft delete a training record")
 )
-class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing training records.
 
@@ -244,7 +245,7 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMix
     partial_update=extend_schema(description="Partially update a training requirement"),
     destroy=extend_schema(description="Soft delete a training requirement")
 )
-class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing training requirements.
 
@@ -320,7 +321,7 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpo
     partial_update=extend_schema(description="Partially update a job role"),
     destroy=extend_schema(description="Soft delete a job role"),
 )
-class JobRoleViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class JobRoleViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing job roles (HR/organizational positions).
 

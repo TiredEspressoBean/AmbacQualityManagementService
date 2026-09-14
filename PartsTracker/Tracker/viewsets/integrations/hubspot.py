@@ -4,7 +4,7 @@ from rest_framework import viewsets
 
 from Tracker.models.core import ExternalAPIOrderIdentifier
 from Tracker.serializers.integrations.hubspot import ExternalAPIOrderIdentifierSerializer
-from ..core import ExcelExportMixin
+from ..mixins import DataExportMixin
 
 
 @extend_schema_view(
@@ -15,7 +15,7 @@ from ..core import ExcelExportMixin
     partial_update=extend_schema(summary="Partially update HubSpot gate"),
     destroy=extend_schema(summary="Delete HubSpot gate"),
 )
-class HubspotGatesViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+class HubspotGatesViewSet(DataExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing HubSpot gate/milestone data"""
     serializer_class = ExternalAPIOrderIdentifierSerializer
     pagination_class = None

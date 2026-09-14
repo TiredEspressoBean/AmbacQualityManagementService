@@ -15,7 +15,8 @@ from Tracker.serializers.calibration import (
     CalibrationStatsSerializer,
 )
 from .base import TenantScopedMixin
-from .core import ExcelExportMixin, ListMetadataMixin
+from .core import ListMetadataMixin
+from .mixins import DataExportMixin
 
 
 @extend_schema_view(
@@ -34,7 +35,7 @@ from .core import ExcelExportMixin, ListMetadataMixin
     partial_update=extend_schema(description="Partially update a calibration record"),
     destroy=extend_schema(description="Soft delete a calibration record")
 )
-class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing calibration records.
 

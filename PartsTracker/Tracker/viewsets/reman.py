@@ -20,12 +20,12 @@ from Tracker.serializers.reman import (
     DisassemblyBOMLineSerializer,
 )
 from .base import TenantScopedMixin
-from .core import ExcelExportMixin
+from .mixins import DataExportMixin
 
 
 # ===== CORE VIEWSETS =====
 
-class CoreViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     Remanufacturing core management with disassembly workflow.
 
@@ -238,7 +238,7 @@ class CoreViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
 
 # ===== HARVESTED COMPONENT VIEWSETS =====
 
-class HarvestedComponentViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class HarvestedComponentViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     Harvested component management.
 

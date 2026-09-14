@@ -2458,6 +2458,10 @@ export type EquipmentsRequest = {
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
+export type FPIGetOrCreateCreated = {
+  created: boolean;
+  fpi: FPIRecord;
+};
 export type FPIRecord = {
   id: string;
   work_order: string;
@@ -2568,6 +2572,10 @@ export type BlankEnum =
    * @enum
    */
   unknown;
+export type FPIGetOrCreateExisting = {
+  created: boolean;
+  fpi: FPIRecord;
+};
 export type Fixture = {
   id: string;
   /**
@@ -16829,6 +16837,14 @@ const api_FPIRecords_get_or_create_create_Body = z
     shift_date: z.string(),
   })
   .partial();
+const FPIGetOrCreateExisting = z.object({
+  created: z.boolean(),
+  fpi: FPIRecord,
+});
+const FPIGetOrCreateCreated = z.object({
+  created: z.boolean(),
+  fpi: FPIRecord,
+});
 const PaginatedFishboneList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -18281,6 +18297,19 @@ const ReworkStatusResponse = z.object({
 const api_Parts_rollback_create_Body = z
   .object({ reason: z.string(), override_id: z.string().uuid() })
   .partial();
+const PartRollbackDone = z.object({
+  detail: z.string(),
+  success: z.boolean(),
+  new_step_id: z.string().uuid().nullable(),
+  new_step_name: z.string().nullable(),
+  part_status: z.string(),
+});
+const PartRollbackPendingApproval = z.object({
+  detail: z.string(),
+  success: z.boolean(),
+  requires_approval: z.boolean(),
+  previous_step_name: z.string().nullable(),
+});
 const ReasonEnum = z.enum(["quarantine", "rework", "scrap"]);
 const PartsSplitFromLotInputRequest = z.object({
   reason: ReasonEnum,
@@ -23592,6 +23621,8 @@ export const schemas = {
   api_FPIRecords_fail_create_Body,
   api_FPIRecords_waive_create_Body,
   api_FPIRecords_get_or_create_create_Body,
+  FPIGetOrCreateExisting,
+  FPIGetOrCreateCreated,
   PaginatedFishboneList,
   FishboneRequest,
   PatchedFishboneRequest,
@@ -23743,6 +23774,8 @@ export const schemas = {
   ResolveDecisionInputRequest,
   ReworkStatusResponse,
   api_Parts_rollback_create_Body,
+  PartRollbackDone,
+  PartRollbackPendingApproval,
   ReasonEnum,
   PartsSplitFromLotInputRequest,
   PartsSplitFromLotResponse,
@@ -24695,11 +24728,16 @@ POST: Executes the query.`,
   },
   {
     method: "get",
-    path: "/api/ApprovalRequests/export-excel/",
-    alias: "api_ApprovalRequests_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/ApprovalRequests/export/:export_format/",
+    alias: "api_ApprovalRequests_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -24709,6 +24747,11 @@ POST: Executes the query.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -24954,11 +24997,16 @@ identity verification, and delegation support.`,
   },
   {
     method: "get",
-    path: "/api/ApprovalResponses/export-excel/",
-    alias: "api_ApprovalResponses_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/ApprovalResponses/export/:export_format/",
+    alias: "api_ApprovalResponses_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -24968,6 +25016,11 @@ identity verification, and delegation support.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -25182,11 +25235,16 @@ identity verification, and delegation support.`,
   },
   {
     method: "get",
-    path: "/api/ApprovalTemplates/export-excel/",
-    alias: "api_ApprovalTemplates_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/ApprovalTemplates/export/:export_format/",
+    alias: "api_ApprovalTemplates_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -25196,6 +25254,11 @@ identity verification, and delegation support.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -26081,11 +26144,16 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
   },
   {
     method: "get",
-    path: "/api/CalibrationRecords/export-excel/",
-    alias: "api_CalibrationRecords_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/CalibrationRecords/export/:export_format/",
+    alias: "api_CalibrationRecords_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -26095,6 +26163,11 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -26453,11 +26526,16 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
   },
   {
     method: "get",
-    path: "/api/CAPAs/export-excel/",
-    alias: "api_CAPAs_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/CAPAs/export/:export_format/",
+    alias: "api_CAPAs_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -26467,6 +26545,11 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -26701,11 +26784,16 @@ If task.requires_signature is True, signature_data and password are required.`,
   },
   {
     method: "get",
-    path: "/api/CapaTasks/export-excel/",
-    alias: "api_CapaTasks_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/CapaTasks/export/:export_format/",
+    alias: "api_CapaTasks_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -26715,6 +26803,11 @@ If task.requires_signature is True, signature_data and password are required.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -26933,11 +27026,16 @@ If task.requires_signature is True, signature_data and password are required.`,
   },
   {
     method: "get",
-    path: "/api/CapaVerifications/export-excel/",
-    alias: "api_CapaVerifications_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/CapaVerifications/export/:export_format/",
+    alias: "api_CapaVerifications_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -26947,6 +27045,11 @@ If task.requires_signature is True, signature_data and password are required.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -27264,11 +27367,16 @@ Provides list, create, retrieve, update, and delete operations.`,
   },
   {
     method: "get",
-    path: "/api/Companies/export-excel/",
-    alias: "api_Companies_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Companies/export/:export_format/",
+    alias: "api_Companies_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -27278,6 +27386,11 @@ Provides list, create, retrieve, update, and delete operations.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -27670,11 +27783,16 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
   },
   {
     method: "get",
-    path: "/api/Cores/export-excel/",
-    alias: "api_Cores_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Cores/export/:export_format/",
+    alias: "api_Cores_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -27684,6 +27802,11 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -27805,11 +27928,16 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
   },
   {
     method: "get",
-    path: "/api/Customers/export-excel/",
-    alias: "api_Customers_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Customers/export/:export_format/",
+    alias: "api_Customers_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -27819,6 +27947,11 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -28882,11 +29015,16 @@ Returns documents where review_date &lt;&#x3D; today.`,
   },
   {
     method: "get",
-    path: "/api/Documents/export-excel/",
-    alias: "api_Documents_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Documents/export/:export_format/",
+    alias: "api_Documents_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -28896,6 +29034,11 @@ Returns documents where review_date &lt;&#x3D; today.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -29155,11 +29298,16 @@ const endpoints1 = makeApi([
   },
   {
     method: "get",
-    path: "/api/DocumentTypes/export-excel/",
-    alias: "api_DocumentTypes_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/DocumentTypes/export/:export_format/",
+    alias: "api_DocumentTypes_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -29169,6 +29317,11 @@ const endpoints1 = makeApi([
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -29340,11 +29493,16 @@ const endpoints1 = makeApi([
   },
   {
     method: "get",
-    path: "/api/DowntimeEvents/export-excel/",
-    alias: "api_DowntimeEvents_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/DowntimeEvents/export/:export_format/",
+    alias: "api_DowntimeEvents_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -29354,6 +29512,11 @@ const endpoints1 = makeApi([
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -29752,11 +29915,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Equipment-types/export-excel/",
-    alias: "api_Equipment_types_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Equipment-types/export/:export_format/",
+    alias: "api_Equipment_types_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -29766,6 +29934,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -30062,11 +30235,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Equipment/export-excel/",
-    alias: "api_Equipment_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Equipment/export/:export_format/",
+    alias: "api_Equipment_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -30076,6 +30254,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -30359,11 +30542,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Error-types/export-excel/",
-    alias: "api_Error_types_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Error-types/export/:export_format/",
+    alias: "api_Error_types_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -30373,6 +30561,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -30502,11 +30695,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Fishbone/export-excel/",
-    alias: "api_Fishbone_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Fishbone/export/:export_format/",
+    alias: "api_Fishbone_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -30516,6 +30714,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -30645,11 +30848,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/FiveWhys/export-excel/",
-    alias: "api_FiveWhys_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/FiveWhys/export/:export_format/",
+    alias: "api_FiveWhys_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -30659,6 +30867,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -30807,11 +31020,16 @@ operations against the quantity available (cumulative capacity).`,
   },
   {
     method: "get",
-    path: "/api/Fixtures/export-excel/",
-    alias: "api_Fixtures_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Fixtures/export/:export_format/",
+    alias: "api_Fixtures_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -30821,6 +31039,11 @@ operations against the quantity available (cumulative capacity).`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -31099,7 +31322,17 @@ before batch production proceeds. Configurable per step via fpi_scope:
         schema: api_FPIRecords_get_or_create_create_Body,
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: FPIGetOrCreateExisting,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+      {
+        status: 404,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -31310,11 +31543,16 @@ Components are created during core disassembly, then either:
   },
   {
     method: "get",
-    path: "/api/HarvestedComponents/export-excel/",
-    alias: "api_HarvestedComponents_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/HarvestedComponents/export/:export_format/",
+    alias: "api_HarvestedComponents_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -31324,6 +31562,11 @@ Components are created during core disassembly, then either:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -31525,11 +31768,16 @@ Components are created during core disassembly, then either:
   },
   {
     method: "get",
-    path: "/api/HeatMapAnnotation/export-excel/",
-    alias: "api_HeatMapAnnotation_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/HeatMapAnnotation/export/:export_format/",
+    alias: "api_HeatMapAnnotation_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -31539,6 +31787,11 @@ Components are created during core disassembly, then either:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -32019,11 +32272,16 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
   },
   {
     method: "get",
-    path: "/api/JobRoles/export-excel/",
-    alias: "api_JobRoles_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/JobRoles/export/:export_format/",
+    alias: "api_JobRoles_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -32033,6 +32291,11 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -32196,11 +32459,16 @@ keep running (only PlantCalendarException stops machines).`,
   },
   {
     method: "get",
-    path: "/api/LaborCalendarBlocks/export-excel/",
-    alias: "api_LaborCalendarBlocks_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/LaborCalendarBlocks/export/:export_format/",
+    alias: "api_LaborCalendarBlocks_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -32210,6 +32478,11 @@ keep running (only PlantCalendarException stops machines).`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -32617,11 +32890,16 @@ so the lot lands ON_ORDER with a generated placeholder lot number.`,
   },
   {
     method: "get",
-    path: "/api/MaterialLots/export-excel/",
-    alias: "api_MaterialLots_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/MaterialLots/export/:export_format/",
+    alias: "api_MaterialLots_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -32631,6 +32909,11 @@ so the lot lands ON_ORDER with a generated placeholder lot number.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -32768,11 +33051,16 @@ The buy-side item list, distinct from in-house PartTypes; holds purchase lead ti
   },
   {
     method: "get",
-    path: "/api/Materials/export-excel/",
-    alias: "api_Materials_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Materials/export/:export_format/",
+    alias: "api_Materials_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -32782,6 +33070,11 @@ The buy-side item list, distinct from in-house PartTypes; holds purchase lead ti
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -33135,11 +33428,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/MeasurementDefinitions/export-excel/",
-    alias: "api_MeasurementDefinitions_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/MeasurementDefinitions/export/:export_format/",
+    alias: "api_MeasurementDefinitions_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -33149,6 +33447,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -35127,11 +35430,16 @@ to the shipment and runs the same DWI receiving runtime as incoming lots.`,
   },
   {
     method: "get",
-    path: "/api/OutsideProcessShipments/export-excel/",
-    alias: "api_OutsideProcessShipments_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/OutsideProcessShipments/export/:export_format/",
+    alias: "api_OutsideProcessShipments_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -35141,6 +35449,11 @@ to the shipment and runs the same DWI receiving runtime as incoming lots.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -35354,11 +35667,16 @@ availability (plant closures still win).`,
   },
   {
     method: "get",
-    path: "/api/OvertimeWindows/export-excel/",
-    alias: "api_OvertimeWindows_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/OvertimeWindows/export/:export_format/",
+    alias: "api_OvertimeWindows_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -35368,6 +35686,11 @@ availability (plant closures still win).`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -35610,11 +35933,16 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
   },
   {
     method: "get",
-    path: "/api/PartApprovals/export-excel/",
-    alias: "api_PartApprovals_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/PartApprovals/export/:export_format/",
+    alias: "api_PartApprovals_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -35624,6 +35952,11 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -36106,7 +36439,13 @@ remain, and the ESCALATION target it routes to once the cap is exceeded
         schema: z.array(z.string()).optional(),
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: PartRollbackDone,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "post",
@@ -37042,11 +37381,16 @@ blocks every machine and treats operators as absent during these.`,
   },
   {
     method: "get",
-    path: "/api/PlantCalendarExceptions/export-excel/",
-    alias: "api_PlantCalendarExceptions_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/PlantCalendarExceptions/export/:export_format/",
+    alias: "api_PlantCalendarExceptions_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -37056,6 +37400,11 @@ blocks every machine and treats operators as absent during these.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -38322,11 +38671,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Processes_with_steps/export-excel/",
-    alias: "api_Processes_with_steps_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Processes_with_steps/export/:export_format/",
+    alias: "api_Processes_with_steps_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -38336,6 +38690,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -38643,11 +39002,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Processes/export-excel/",
-    alias: "api_Processes_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Processes/export/:export_format/",
+    alias: "api_Processes_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -38657,6 +39021,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -38960,11 +39329,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/QualityReports/export-excel/",
-    alias: "api_QualityReports_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/QualityReports/export/:export_format/",
+    alias: "api_QualityReports_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -38974,6 +39348,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -39360,11 +39739,16 @@ the completion blockers.`,
   },
   {
     method: "get",
-    path: "/api/QuarantineDispositions/export-excel/",
-    alias: "api_QuarantineDispositions_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/QuarantineDispositions/export/:export_format/",
+    alias: "api_QuarantineDispositions_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -39374,6 +39758,11 @@ the completion blockers.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -39563,11 +39952,16 @@ the completion blockers.`,
   },
   {
     method: "get",
-    path: "/api/RcaRecords/export-excel/",
-    alias: "api_RcaRecords_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/RcaRecords/export/:export_format/",
+    alias: "api_RcaRecords_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -39577,6 +39971,11 @@ the completion blockers.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -39944,11 +40343,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Sampling-rule-sets/export-excel/",
-    alias: "api_Sampling_rule_sets_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Sampling-rule-sets/export/:export_format/",
+    alias: "api_Sampling_rule_sets_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -39958,6 +40362,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -40253,11 +40662,16 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/Sampling-rules/export-excel/",
-    alias: "api_Sampling_rules_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Sampling-rules/export/:export_format/",
+    alias: "api_Sampling_rules_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -40267,6 +40681,11 @@ Usage:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -41860,11 +42279,16 @@ Standard CRUD plus custom actions:
   },
   {
     method: "get",
-    path: "/api/spc-baselines/export-excel/",
-    alias: "api_spc_baselines_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/spc-baselines/export/:export_format/",
+    alias: "api_spc_baselines_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -41874,6 +42298,11 @@ Standard CRUD plus custom actions:
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -43793,11 +44222,16 @@ Returns the active + fallback rulesets for a given step`,
   },
   {
     method: "get",
-    path: "/api/Steps/export-excel/",
-    alias: "api_Steps_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/Steps/export/:export_format/",
+    alias: "api_Steps_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -43807,6 +44241,11 @@ Returns the active + fallback rulesets for a given step`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "part_type",
@@ -45083,11 +45522,16 @@ const endpoints4 = makeApi([
   },
   {
     method: "get",
-    path: "/api/SupplierQualifications/export-excel/",
-    alias: "api_SupplierQualifications_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/SupplierQualifications/export/:export_format/",
+    alias: "api_SupplierQualifications_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -45097,6 +45541,11 @@ const endpoints4 = makeApi([
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -46190,11 +46639,16 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
   },
   {
     method: "get",
-    path: "/api/ThreeDModels/export-excel/",
-    alias: "api_ThreeDModels_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/ThreeDModels/export/:export_format/",
+    alias: "api_ThreeDModels_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -46204,6 +46658,11 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -46414,11 +46873,16 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
   },
   {
     method: "get",
-    path: "/api/TimeEntries/export-excel/",
-    alias: "api_TimeEntries_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/TimeEntries/export/:export_format/",
+    alias: "api_TimeEntries_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -46428,6 +46892,11 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -46768,11 +47237,16 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
   },
   {
     method: "get",
-    path: "/api/TrainingRecords/export-excel/",
-    alias: "api_TrainingRecords_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/TrainingRecords/export/:export_format/",
+    alias: "api_TrainingRecords_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -46782,6 +47256,11 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -47003,11 +47482,16 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
   },
   {
     method: "get",
-    path: "/api/TrainingRequirements/export-excel/",
-    alias: "api_TrainingRequirements_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/TrainingRequirements/export/:export_format/",
+    alias: "api_TrainingRequirements_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -47017,6 +47501,11 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -47285,11 +47774,16 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
   },
   {
     method: "get",
-    path: "/api/TrainingTypes/export-excel/",
-    alias: "api_TrainingTypes_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/TrainingTypes/export/:export_format/",
+    alias: "api_TrainingTypes_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -47299,6 +47793,11 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -47583,11 +48082,16 @@ untouched. Request/response shape is unchanged.`,
   },
   {
     method: "get",
-    path: "/api/User/export-excel/",
-    alias: "api_User_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/User/export/:export_format/",
+    alias: "api_User_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -47597,6 +48101,11 @@ untouched. Request/response shape is unchanged.`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),
@@ -48231,11 +48740,16 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
   },
   {
     method: "get",
-    path: "/api/WorkCenters/export-excel/",
-    alias: "api_WorkCenters_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    path: "/api/WorkCenters/export/:export_format/",
+    alias: "api_WorkCenters_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -48245,6 +48759,11 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),

@@ -48,7 +48,7 @@ from Tracker.serializers.qms import (
 )
 from Tracker.services.mes import outside_process
 from Tracker.serializers.dms import DocumentsSerializer
-from .core import ExcelExportMixin, ListMetadataMixin, with_int_pk_schema
+from .core import ListMetadataMixin, with_int_pk_schema
 from .base import TenantScopedMixin
 from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin
 
@@ -595,7 +595,31 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "reason": {"type": "string", "description": "Justification for rollback (required if approval needed)"},
             "override_id": {"type": "string", "format": "uuid", "description": "Pre-approved override ID"}
         }}},
-        responses={200: dict}
+        responses={
+            # Two distinct success arms. 202 was undeclared, so the client had
+            # no schema for the case that actually matters -- the one where the
+            # step needs supervisor approval before the rollback happens.
+            200: inline_serializer(
+                name="PartRollbackDone",
+                fields={
+                    "detail": serializers.CharField(),
+                    "success": serializers.BooleanField(),
+                    "new_step_id": serializers.UUIDField(allow_null=True),
+                    "new_step_name": serializers.CharField(allow_null=True),
+                    "part_status": serializers.CharField(),
+                },
+            ),
+            202: inline_serializer(
+                name="PartRollbackPendingApproval",
+                fields={
+                    "detail": serializers.CharField(),
+                    "success": serializers.BooleanField(),
+                    "requires_approval": serializers.BooleanField(),
+                    "previous_step_name": serializers.CharField(allow_null=True),
+                },
+            ),
+            400: {"description": "Rollback not permitted (outside undo window, no previous step, …)"},
+        }
     )
     @action(detail=True, methods=["post"])
     def rollback(self, request, pk=None):
@@ -2723,7 +2747,7 @@ class StepFilterSet(django_filters.FilterSet):
         ],
     ),
 )
-class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class StepsViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = Steps.unscoped.all()
     serializer_class = StepsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -3415,7 +3439,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         return Response(result)
 
 
-class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = Processes.unscoped.all()
     serializer_class = ProcessesSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -3689,7 +3713,7 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
         })
 
 
-class ProcessWithStepsViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class ProcessWithStepsViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = Processes.unscoped.all()
     serializer_class = ProcessWithStepsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -3861,7 +3885,7 @@ class EquipmentSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         return qs
 
 
-class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = Equipments.unscoped.all()
     serializer_class = EquipmentsSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -3879,7 +3903,7 @@ class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
         return qs.select_related('equipment_type')
 
 
-class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = EquipmentType.unscoped.all()
     serializer_class = EquipmentTypeSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -3897,7 +3921,7 @@ class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixi
         return qs
 
 
-class OutsideProcessShipmentViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class OutsideProcessShipmentViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Outside-processing (subcontract) shipments — Flow B.
 
     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the

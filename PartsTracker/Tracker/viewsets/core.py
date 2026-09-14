@@ -32,6 +32,7 @@ from Tracker.serializers.core import (
 )
 from Tracker.serializers.dms import DocumentsSerializer, DocumentTypeSerializer
 from .base import TenantScopedMixin, NonTenantModelViewSet
+from .mixins import DataExportMixin
 
 
 # ===== BASE MIXINS =====
@@ -188,129 +189,6 @@ class ListMetadataMixin:
         })
 
 
-class ExcelExportMixin:
-    """
-    Mixin to add Excel export functionality to ViewSets.
-
-    Current features:
-    - Exports all non-relation fields by default
-    - Respects filtering, search, and ordering from list view
-    - Supports query param ?fields=id,name,status to select specific fields
-    - Supports query param ?filename=custom.xlsx for custom filename
-
-    Future enhancements (TODO):
-    - Add ExportConfiguration model for user-saved preferences
-    - Add available_fields() action to return list of exportable fields
-    - Add save_export_config() action to save user preferences
-    - Frontend: React modal with field checkboxes and "Save as Default" button
-
-    Usage:
-        class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
-            excel_fields = ['id', 'name', 'status']  # Optional: override default fields
-            excel_filename = 'my_export.xlsx'  # Optional: override default filename
-
-        GET /api/my-model/export_excel/
-        GET /api/my-model/export_excel/?fields=id,name
-        GET /api/my-model/export_excel/?filename=custom_export.xlsx
-    """
-
-    excel_fields = None  # Override in viewset to specify default fields
-    excel_filename = 'export.xlsx'  # Override in viewset for default filename
-
-    def get_excel_fields(self):
-        """
-        Get the list of fields to export.
-
-        Priority:
-        1. Query param ?fields=id,name,status (user override)
-        2. self.excel_fields (class attribute)
-        3. All non-relation model fields (auto-detect)
-
-        Future TODO: Add DB lookup for user-saved preferences between steps 1 and 2
-        """
-        # 1. Check query params first (highest priority)
-        fields_param = self.request.query_params.get('fields')
-        if fields_param:
-            return [f.strip() for f in fields_param.split(',')]
-
-        # TODO: Add DB lookup here for user-saved ExportConfiguration
-        # try:
-        #     config = ExportConfiguration.objects.get(
-        #         user=self.request.user,
-        #         model_name=self.queryset.model.__name__,
-        #         is_default=True
-        #     )
-        #     return config.fields
-        # except ExportConfiguration.DoesNotExist:
-        #     pass
-
-        # 2. Use class attribute if specified
-        if self.excel_fields:
-            return self.excel_fields
-
-        # 3. Default: export all non-relation fields
-        return [f.name for f in self.queryset.model._meta.fields if not f.is_relation]
-
-    def get_excel_filename(self):
-        """
-        Get the filename for the export.
-
-        Priority:
-        1. Query param ?filename=custom.xlsx
-        2. self.excel_filename (class attribute)
-
-        Future TODO: Could pull from DB config as well
-        """
-        filename_param = self.request.query_params.get('filename')
-        if filename_param:
-            # Ensure .xlsx extension
-            if not filename_param.endswith('.xlsx'):
-                filename_param += '.xlsx'
-            return filename_param
-
-        return self.excel_filename
-
-    @extend_schema(parameters=[OpenApiParameter(name='fields',
-                                                description='Comma-separated list of field names to export (e.g., id,name,status)',
-                                                required=False, type=str), OpenApiParameter(name='filename',
-                                                                                            description='Custom filename for the download (e.g., my_export.xlsx)',
-                                                                                            required=False,
-                                                                                            type=str), ],
-                   responses={200: {'type': 'string', 'format': 'binary', 'description': 'Excel file download'}},
-                   description='Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.')
-    @action(detail=False, methods=['get'], url_path='export-excel')
-    def export_excel(self, request):
-        """
-        Export the current queryset to Excel format.
-
-        Respects all filters, search, and ordering applied to the list view.
-
-        Query params:
-        - fields: Comma-separated list of field names to export (e.g., ?fields=id,name,status)
-        - filename: Custom filename for the download (e.g., ?filename=my_export.xlsx)
-
-        Returns:
-        - Excel file download
-        """
-        # Get the filtered/searched/ordered queryset (same as list view)
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Get fields to export
-        fields = self.get_excel_fields()
-
-        # Convert queryset to DataFrame using only requested fields
-        df = pd.DataFrame(queryset.values(*fields))
-
-        # Create HTTP response with Excel content type
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename="{self.get_excel_filename()}"'
-
-        # Write DataFrame to Excel
-        df.to_excel(response, index=False, engine='openpyxl')
-
-        return response
-
-
 def with_int_pk_schema(cls):
     """Decorator to add integer PK parameter to OpenAPI schema for detail endpoints"""
     return extend_schema_view(
@@ -340,7 +218,7 @@ class EmployeeSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         return super().get_queryset().filter(user_type='INTERNAL', is_active=True)
 
 
-class CustomerViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class CustomerViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """Customer (non-staff user) management."""
     queryset = User.objects.all()
     serializer_class = UserDetailSerializer
@@ -355,7 +233,7 @@ class CustomerViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
 
 @with_int_pk_schema
-class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """Enhanced User ViewSet with comprehensive filtering, ordering, and search"""
     queryset = User.objects.all()  # Base queryset - filtered in get_queryset()
     serializer_class = UserSerializer
@@ -989,7 +867,7 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         return Response(payload)
 
 
-class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """Company management - scoped to tenant and user permissions."""
     queryset = Companies.unscoped.all()
     serializer_class = CompanySerializer
@@ -1257,7 +1135,7 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     update=extend_schema(request={'multipart/form-data': DocumentsSerializer}),
     partial_update=extend_schema(request={'multipart/form-data': DocumentsSerializer})
 )
-class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing document attachments (universal infrastructure)"""
     queryset = Documents.unscoped.all()
     serializer_class = DocumentsSerializer
@@ -1806,7 +1684,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
 # ===== DOCUMENT TYPE VIEWSET =====
 
-class DocumentTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class DocumentTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing document types"""
     queryset = DocumentType.unscoped.all()
     serializer_class = DocumentTypeSerializer
@@ -1890,7 +1768,7 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
     partial_update=extend_schema(description="Partially update an approval template"),
     destroy=extend_schema(description="Soft delete an approval template")
 )
-class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing approval templates.
 
@@ -2009,7 +1887,7 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     partial_update=extend_schema(description="Partially update an approval request"),
     destroy=extend_schema(description="Cancel an approval request")
 )
-class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing approval requests.
 
@@ -2252,7 +2130,7 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
     update=extend_schema(description="Update an approval response"),
     partial_update=extend_schema(description="Partially update an approval response"),
 )
-class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing approval responses.
 
