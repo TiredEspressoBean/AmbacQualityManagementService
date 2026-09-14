@@ -51,8 +51,8 @@ export function BulkReassignDialog({ open, onOpenChange, taskIds, repTaskId, onD
     }
   }, [open]);
 
-  const machines = ((data as any)?.machines ?? []) as { id: string; name: string }[];
-  const operators = ((data as any)?.operators ?? []) as { id: string; name: string }[];
+  const machines = data?.machines ?? [];
+  const operators = data?.operators ?? [];
 
   const apply = () => {
     if (machineId) bulkMachine.mutate({ task_ids: taskIds, machine_id: machineId });

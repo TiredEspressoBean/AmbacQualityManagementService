@@ -683,7 +683,26 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         changed = regroup_batch(tasks, merge=body.validated_data['merge'], user=request.user)
         return Response({'changed': changed, 'merged': body.validated_data['merge']})
 
-    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
+    # OpenApiTypes.OBJECT generates a bare {} -- enough to pass --fail-on-warn,
+    # but it tells the client nothing, so both reassign dialogs had to read
+    # `(data as any)?.machines`. Both lists are {id, name} pairs and are always
+    # present (possibly empty).
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='ReassignOptions',
+            fields={
+                'machines': serializers.ListField(child=inline_serializer(
+                    name='ReassignMachineOption',
+                    fields={'id': serializers.CharField(), 'name': serializers.CharField()},
+                )),
+                'operators': serializers.ListField(child=inline_serializer(
+                    name='ReassignOperatorOption',
+                    fields={'id': serializers.CharField(), 'name': serializers.CharField()},
+                )),
+            },
+        )},
+    )
     @action(detail=True, methods=['get'], url_path='reassign-options')
     def reassign_options(self, request, pk=None):
         """Machines eligible for this task's step + operators qualified for it — the

@@ -29,11 +29,11 @@ export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
   const reassignOperator = useReassignOperator();
 
   const machines = useMemo(
-    () => ((data as any)?.machines ?? []) as { id: string; name: string }[],
+    () => data?.machines ?? [],
     [data]
   );
   const operators = useMemo(
-    () => ((data as any)?.operators ?? []) as { id: string; name: string }[],
+    () => data?.operators ?? [],
     [data]
   );
 

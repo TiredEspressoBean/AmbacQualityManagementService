@@ -12794,6 +12794,18 @@ export type RcaRecordRequest = {
   fishbone_data?: FishboneNestedRequest | undefined;
   archived?: boolean | undefined;
 };
+export type ReassignOptions = {
+  machines: Array<ReassignMachineOption>;
+  operators: Array<ReassignOperatorOption>;
+};
+export type ReassignMachineOption = {
+  id: string;
+  name: string;
+};
+export type ReassignOperatorOption = {
+  id: string;
+  name: string;
+};
 export type ReceivingMeasurementInputRequest = {
   definition: string;
   value_numeric?: (number | null) | undefined;
@@ -19324,6 +19336,12 @@ const ReassignMachineRequestRequest = z.object({
 const ReassignOperatorRequestRequest = z.object({
   operator_id: z.number().int().nullable(),
 });
+const ReassignMachineOption = z.object({ id: z.string(), name: z.string() });
+const ReassignOperatorOption = z.object({ id: z.string(), name: z.string() });
+const ReassignOptions = z.object({
+  machines: z.array(ReassignMachineOption),
+  operators: z.array(ReassignOperatorOption),
+});
 const BatchMembershipRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
   merge: z.boolean(),
@@ -23871,6 +23889,9 @@ export const schemas = {
   PinRequestRequest,
   ReassignMachineRequestRequest,
   ReassignOperatorRequestRequest,
+  ReassignMachineOption,
+  ReassignOperatorOption,
+  ReassignOptions,
   BatchMembershipRequestRequest,
   BulkReassignMachineRequestRequest,
   BulkReassignOperatorRequestRequest,
@@ -41055,7 +41076,7 @@ options the detail dialog&#x27;s reassign dropdowns show.`,
         schema: z.string().uuid(),
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: ReassignOptions,
   },
   {
     method: "post",

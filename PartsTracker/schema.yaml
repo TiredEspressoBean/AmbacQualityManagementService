@@ -20420,8 +20420,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/ReassignOptions'
           description: ''
   /api/ScheduledTasks/batch-membership/:
     post:
@@ -58038,6 +58037,16 @@ components:
         * `quarantine` - Quarantine
         * `rework` - Rework
         * `scrap` - Scrap
+    ReassignMachineOption:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
     ReassignMachineRequestRequest:
       type: object
       description: Move a scheduled task onto a specific machine (planner override).
@@ -58047,6 +58056,16 @@ components:
           format: uuid
       required:
       - machine_id
+    ReassignOperatorOption:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
     ReassignOperatorRequestRequest:
       type: object
       description: Assign / re-assign / clear (null) the operator on a scheduled task.
@@ -58056,6 +58075,20 @@ components:
           nullable: true
       required:
       - operator_id
+    ReassignOptions:
+      type: object
+      properties:
+        machines:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReassignMachineOption'
+        operators:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReassignOperatorOption'
+      required:
+      - machines
+      - operators
     ReceiveExpectedLotRequest:
       type: object
       description: Book in an ON_ORDER lot that has physically arrived.

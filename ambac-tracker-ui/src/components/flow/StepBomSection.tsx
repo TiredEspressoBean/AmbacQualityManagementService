@@ -4,7 +4,7 @@
 // op's perspective. Editing requires a DRAFT BOM (released BOMs are immutable — revise them
 // on the Part Type); otherwise it's read-only.
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,14 @@ import {
 } from "@/components/ui/command";
 import { useEffectiveBom, useUpdateBomLine } from "@/hooks/useBom";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+
+// Only the part_type is read from this; processId! is safe because every caller
+// gates the query on `enabled: !!processId`.
+const processPartTypeOptions = (processId: string | null | undefined) =>
+  queryOptions({
+    queryKey: ["process", "part-type", processId] as const,
+    queryFn: () => api.api_Processes_retrieve({ params: { id: processId! } }),
+  });
 
 const lineLabel = (l: any) =>
   // Read the name off whichever column the line carries, not off MAKE/BUY: a BUY line
@@ -32,11 +40,13 @@ export function StepBomSection({
   const [addOpen, setAddOpen] = useState(false);
 
   const { data: proc } = useQuery({
-    queryKey: ["process", "part-type", processId] as const,
+    ...processPartTypeOptions(processId),
     enabled: !!processId,
-    queryFn: () => api.api_Processes_retrieve({ params: { id: processId } } as never) as Promise<any>,
   });
-  const partTypeId = (proc as any)?.part_type ?? null;
+  // Processes declares part_type, so no cast is needed -- the `as any` here was
+  // only required because the queryFn above threw the type away with
+  // `as Promise<any>`.
+  const partTypeId = proc?.part_type ?? null;
   const { bom, isDraft, isLoading } = useEffectiveBom(partTypeId);
   const updateLine = useUpdateBomLine();
   // Allocation edits BOM lines — BOM authoring tier, on top of the flow

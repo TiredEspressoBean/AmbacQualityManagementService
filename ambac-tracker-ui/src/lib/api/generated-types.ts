@@ -26529,14 +26529,26 @@ export interface components {
          * @enum {string}
          */
         ReasonEnum: "quarantine" | "rework" | "scrap";
+        ReassignMachineOption: {
+            id: string;
+            name: string;
+        };
         /** @description Move a scheduled task onto a specific machine (planner override). */
         ReassignMachineRequestRequest: {
             /** Format: uuid */
             machine_id: string;
         };
+        ReassignOperatorOption: {
+            id: string;
+            name: string;
+        };
         /** @description Assign / re-assign / clear (null) the operator on a scheduled task. */
         ReassignOperatorRequestRequest: {
             operator_id: number | null;
+        };
+        ReassignOptions: {
+            machines: components["schemas"]["ReassignMachineOption"][];
+            operators: components["schemas"]["ReassignOperatorOption"][];
         };
         /** @description Book in an ON_ORDER lot that has physically arrived. */
         ReceiveExpectedLotRequest: {
@@ -45813,9 +45825,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ReassignOptions"];
                 };
             };
         };

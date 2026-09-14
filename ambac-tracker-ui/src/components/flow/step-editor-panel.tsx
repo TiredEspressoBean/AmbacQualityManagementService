@@ -79,6 +79,50 @@ export interface StepEditorPanelProps {
   onAddRejectEdge?: (targetId: string) => void;
 }
 
+/** The fields this panel reads off a flow node's `data`.
+ *
+ *  ReactFlow types Node["data"] as Record<string, unknown> by design — it cannot
+ *  know our node shape — so every access used to be cast to `any` individually.
+ *  Naming the shape once narrows all of them and documents what the flow editor
+ *  actually puts on a node. Everything is optional: placeholder nodes rendered
+ *  before the real process loads carry almost none of it. */
+type StepNodeData = {
+  step?: { id?: string };
+  step_type?: string;
+  label?: string;
+  description?: string;
+  operation_number?: string | number;
+  // Decision / terminal behaviour
+  decisionType?: string;
+  decision_type?: string;
+  isDecisionPoint?: boolean;
+  isTerminal?: boolean;
+  terminalStatus?: string;
+  maxVisits?: number | string;
+  // Quality gates
+  requiresQaSignoff?: boolean;
+  requiresFirstPieceInspection?: boolean;
+  requiresBatchCompletion?: boolean;
+  fpiScope?: string;
+  samplingRequired?: boolean;
+  minSamplingRate?: number;
+  passThreshold?: number;
+  scrapRate?: number;
+  // Routing / timing
+  work_center?: string;
+  work_center_name?: string;
+  labor_model?: string;
+  expectedDuration?: string;
+  // Reuses the canonical shape rather than restating it: attention_type is a
+  // literal union there, and a looser copy here silently breaks assignment.
+  timing?: StepData['timing'];
+  // Outside processing
+  isOutsideProcess?: boolean;
+  outsideSupplier?: string;
+  outsideSupplierName?: string;
+  outsideProcessLeadDays?: number | string;
+};
+
 export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, processId, rejectDestinations, rejectRoutes, onAddRejectEdge }: StepEditorPanelProps) {
   const navigate = useNavigate();
   const [rejectTarget, setRejectTarget] = useState<string>('');
@@ -89,8 +133,9 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   // the type (a Decision node IS a decision point; a Terminal node IS terminal)
   // are shown as their meaningful field (decision type / end status) rather than
   // a redundant on/off toggle. The rest lives under "Advanced".
-  const nodeType = String(node.type || (node.data as any)?.step_type || 'TASK');
-  const decisionTypeValue = (node.data as any)?.decisionType ?? (node.data as any)?.decision_type;
+  const data = node.data as StepNodeData;
+  const nodeType = String(node.type || data.step_type || 'TASK');
+  const decisionTypeValue = data.decisionType ?? data.decision_type;
   const isDecisionType = nodeType === 'DECISION';
   const isTerminalType = nodeType === 'TERMINAL';
   const isReworkType = nodeType === 'REWORK';
@@ -98,15 +143,13 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   const isStartType = nodeType === 'START';
   const isReceivingType = nodeType === 'RECEIVING';
   // A step behaves as a decision if it's a Decision node or was flagged one.
-  const actsAsDecision = isDecisionType || !!(node.data as any)?.isDecisionPoint;
-  const actsAsTerminal = isTerminalType || !!(node.data as any)?.isTerminal;
+  const actsAsDecision = isDecisionType || !!data.isDecisionPoint;
+  const actsAsTerminal = isTerminalType || !!data.isTerminal;
   // Measurements/sampling/docs/substeps only make sense on working steps.
   const showConfiguration = !isStartType && !isTerminalType;
   // Reject routing is the Fail/alternate branch — relevant to any decision/gate step.
   const showRejectRouting = !!onAddRejectEdge && (actsAsDecision || decisionTypeValue === 'AGGREGATE');
-  // eslint-disable-next-line local/no-as-any -- FlowNodeData is a union type; we use structural access for the step sub-shape here
-  const data = node.data as any;
-  const stepId = data.step?.id as string | undefined;
+  const stepId = data.step?.id;
   // The flow renders placeholder node ids (e.g. "3") on first paint before the
   // real process (with UUID step ids) loads. Step-scoped queries hit UUID-only
   // filters, so gate them on a real UUID id to avoid transient 400s.
@@ -947,7 +990,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               )}
             </div>
 
-            {(data.samplingRequired || data.minSamplingRate > 0) && (
+            {(data.samplingRequired || (data.minSamplingRate ?? 0) > 0) && (
               <div className="space-y-1.5">
                 <Label htmlFor="sampling-rate" className="text-sm font-normal">Min sampling rate (%)</Label>
                 {editable ? (
