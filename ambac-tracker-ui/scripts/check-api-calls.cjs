@@ -39,6 +39,12 @@ const OPTIONAL_QUERY_PARAMS = [
 const SAFE_ENDPOINTS = [
   'api_dashboard_', // Dashboard endpoints have all optional params
   'api_content_types_list',
+  // content_type/object_id are BODY fields on these two
+  // (DocumentLinkTargetRequest), not query params. The name-based check below
+  // can't tell the difference, so it flagged both calls even though they are
+  // correct -- which left this script exiting 1 on a clean tree.
+  'api_Documents_attach_create',
+  'api_Documents_detach_create',
 ];
 
 function findFiles(dir, extensions) {
