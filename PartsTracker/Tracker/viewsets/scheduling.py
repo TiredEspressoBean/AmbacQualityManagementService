@@ -254,7 +254,30 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         # Optional: omit it to ask what THIS TENANT has in flight, which is how a client
         # that didn't start the run finds out one is happening.
         parameters=[OpenApiParameter('task_id', str, required=False)],
-        responses={200: OpenApiTypes.OBJECT},
+        # Two shapes, chosen by whether task_id was supplied, with no field
+        # common to both -- so every field is optional and the client narrows on
+        # `task_id`/`running`. OpenApiTypes.OBJECT generated a bare {}, which is
+        # why the polling hook had to read `(data as any)?.state`.
+        responses={200: {
+            'type': 'object',
+            'properties': {
+                # ?task_id=<id> -- polling one run
+                'task_id': {'type': 'string'},
+                'state': {'type': 'string'},
+                'ready': {'type': 'boolean'},
+                # Whatever the celery task returned; shape is the task's business.
+                'result': {},
+                'detail': {'type': 'string'},
+                # no task_id -- what this tenant has in flight (current_run)
+                'running': {'type': 'boolean'},
+                'kind': {'type': 'string'},
+                'last_state': {'type': 'string'},
+                'stale': {'type': 'boolean'},
+                'seconds_elapsed': {'type': 'integer'},
+                'seconds_remaining': {'type': 'integer'},
+                'limit_seconds': {'type': 'integer'},
+            },
+        }},
     )
     @action(detail=False, methods=['get'])
     def solve_status(self, request):

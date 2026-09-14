@@ -100,13 +100,13 @@ function useAsyncScheduleTask(
       api.api_Schedules_solve_status_retrieve({ queries: { task_id: taskId } } as never),
     // Poll while the task is queued/running; stop once it's terminal.
     refetchInterval: (q) => {
-      const s = (q.state.data as any)?.state;
+      const s = q.state.data?.state;
       return s === "SUCCESS" || s === "FAILURE" ? false : 1500;
     },
   });
 
   useEffect(() => {
-    const d = status.data as any;
+    const d = status.data;
     if (!d || !taskId) return;
     if (d.state === "SUCCESS") {
       invalidateSchedule(qc);

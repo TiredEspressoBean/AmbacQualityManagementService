@@ -21019,7 +21019,30 @@ paths:
             application/json:
               schema:
                 type: object
-                additionalProperties: {}
+                properties:
+                  task_id:
+                    type: string
+                  state:
+                    type: string
+                  ready:
+                    type: boolean
+                  result: {}
+                  detail:
+                    type: string
+                  running:
+                    type: boolean
+                  kind:
+                    type: string
+                  last_state:
+                    type: string
+                  stale:
+                    type: boolean
+                  seconds_elapsed:
+                    type: integer
+                  seconds_remaining:
+                    type: integer
+                  limit_seconds:
+                    type: integer
           description: ''
   /api/Schedules/unscheduled/:
     get:

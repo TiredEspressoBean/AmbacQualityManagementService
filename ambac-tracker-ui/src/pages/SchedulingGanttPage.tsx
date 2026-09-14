@@ -321,7 +321,7 @@ export function SchedulingGanttPage() {
   const unscheduled = useUnscheduled();
   const unscheduledCount = unscheduled.data?.unscheduled_work_orders ?? 0;
   const { data: schedConfig } = useOptimizationConfig();
-  const manualRelease = (schedConfig as any)?.release_mode === "manual";
+  const manualRelease = schedConfig?.release_mode === "manual";
   const releaseQueue = useReleaseQueue(manualRelease);
   const releaseQueueCount = releaseQueue.data?.count ?? 0;
   // Multi-select: ⌘/Ctrl-click bars to select several, then merge/break them in one go.

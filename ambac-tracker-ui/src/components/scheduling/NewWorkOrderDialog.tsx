@@ -27,10 +27,9 @@ export function NewWorkOrderDialog({ open, onOpenChange }: Props) {
   const { data: procData, isLoading } = useProcesses();
   const plan = usePlanWorkOrder();
 
-  const processes = useMemo(() => {
-    const list = ((procData as any)?.results ?? procData ?? []) as any[];
-    return Array.isArray(list) ? list : [];
-  }, [procData]);
+  // api_Processes_list responds PaginatedProcessesList -- always paginated, so
+  // the previous "paginated or bare array" guard was dead.
+  const processes = useMemo(() => procData?.results ?? [], [procData]);
 
   const [processId, setProcessId] = useState("");
   const [quantity, setQuantity] = useState("10");

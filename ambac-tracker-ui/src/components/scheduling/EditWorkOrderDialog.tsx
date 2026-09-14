@@ -45,13 +45,13 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   const { data: config } = useOptimizationConfig();
   const release = useReleaseForScheduling();
   const unrelease = useUnreleaseForScheduling();
-  const wo = data as any;
-  const makeup = makeupData as any;
+  const wo = data;
+  const makeup = makeupData;
   const onHold = !!wo?.current_hold;
   const released = !!wo?.released_at;
   // Under "auto" the gate never filters, so releasing is bookkeeping the planner
   // doesn't need to see. Only surface the section where it changes the plan.
-  const manualRelease = (config as any)?.release_mode === "manual";
+  const manualRelease = config?.release_mode === "manual";
   // Blockers the backend already refused once. Holding them here is what turns the
   // second click into an informed override rather than a repeat of the same request.
   const [blockers, setBlockers] = useState<ReleaseCheck[]>([]);

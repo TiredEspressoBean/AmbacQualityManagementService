@@ -45,8 +45,10 @@ export function ShiftsSettingsTab() {
   const [rows, setRows] = useState<Row[]>([]);
 
   useEffect(() => {
-    const list = ((data as any)?.results ?? data ?? []) as any[];
-    if (!Array.isArray(list)) return;
+    // api_Shifts_list responds PaginatedShiftList, so `.results` is always
+    // there -- the old `?? data ?? []` fallback was guarding a shape that the
+    // schema rules out.
+    const list = data?.results ?? [];
     setRows(
       list.map((s) => ({
         key: s.id,

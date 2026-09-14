@@ -46375,7 +46375,18 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        task_id?: string;
+                        state?: string;
+                        ready?: boolean;
+                        result?: unknown;
+                        detail?: string;
+                        running?: boolean;
+                        kind?: string;
+                        last_state?: string;
+                        stale?: boolean;
+                        seconds_elapsed?: number;
+                        seconds_remaining?: number;
+                        limit_seconds?: number;
                     };
                 };
             };

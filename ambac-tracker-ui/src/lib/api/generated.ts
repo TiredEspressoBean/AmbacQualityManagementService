@@ -41403,7 +41403,22 @@ SUCCESS, or FAILURE; on SUCCESS &#x60;result&#x60; carries the task&#x27;s retur
         schema: z.string().optional(),
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: z
+      .object({
+        task_id: z.string(),
+        state: z.string(),
+        ready: z.boolean(),
+        result: z.unknown(),
+        detail: z.string(),
+        running: z.boolean(),
+        kind: z.string(),
+        last_state: z.string(),
+        stale: z.boolean(),
+        seconds_elapsed: z.number().int(),
+        seconds_remaining: z.number().int(),
+        limit_seconds: z.number().int(),
+      })
+      .partial(),
   },
   {
     method: "post",
