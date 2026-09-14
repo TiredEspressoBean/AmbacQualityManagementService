@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
+import { underRoot } from "@/lib/query-filters";
 
 /** Cache-key roots this module owns. Prefix invalidations match against these
  *  rather than repeating the string, so a rename lands in one place. Keys
@@ -17,12 +18,6 @@ const ROOT = {
   shifts: "shifts",
   fixtures: "fixtures",
 } as const;
-
-/** Matches every query under a root, which is what a single-element
- *  `queryKey` filter did before. */
-const underRoot = (root: string) => ({
-  predicate: (q: { queryKey: readonly unknown[] }) => q.queryKey[0] === root,
-});
 
 /** The active schedule's run metadata (null when none has been solved yet). */
 export const currentScheduleOptions = () =>

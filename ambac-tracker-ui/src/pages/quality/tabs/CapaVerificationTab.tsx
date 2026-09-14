@@ -19,6 +19,7 @@ import { api } from "@/lib/api/generated"
 import { getCookie } from "@/lib/utils"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
+import { matchKey } from "@/lib/query-filters";
 
 type CapaVerificationTabProps = {
     capa: any
@@ -119,7 +120,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                 await createVerificationMutation.mutateAsync(payload)
                 toast.success("Verification record created successfully")
             }
-            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
             setDialogOpen(false)
         } catch (error) {
             toast.error(editingVerification ? "Failed to update verification" : "Failed to create verification")
@@ -154,7 +155,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
         }
         try {
             await runVerify(completingVerification.id)
-            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
             toast.success("Verification completed successfully")
             setCompleteDialogOpen(false)
         } catch (error: any) {
@@ -169,7 +170,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
         setCosignError(null)
         try {
             await runVerify(completingVerification.id, creds)
-            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
             toast.success("Verification completed")
             setCosignOpen(false)
         } catch (error: any) {

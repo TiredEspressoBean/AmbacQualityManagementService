@@ -31,6 +31,7 @@ import { getCookie } from '@/lib/utils'
 import { isFieldRequired } from '@/lib/zod-config'
 import { getAppName, getAppTagline } from '@/lib/branding'
 import { useTenantContext } from '@/components/tenant-provider'
+import { matchKey } from "@/lib/query-filters";
 
 // Make sure you've done this somewhere globally:
 api.axios.defaults.withCredentials = true
@@ -91,7 +92,7 @@ export default function LoginPreview() {
         // cookie set by this POST; nudge a refresh and navigate — the root
         // layout fetches `authUser` (with retry) on its own.
         toast.success(`Welcome back, ${values.email}!`)
-        void queryClient.invalidateQueries({ queryKey: ['authUser'] })
+        void queryClient.invalidateQueries(matchKey(['authUser']))
         router.navigate({ to: "/" })
     }
 

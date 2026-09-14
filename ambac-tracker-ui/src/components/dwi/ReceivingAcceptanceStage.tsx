@@ -3,15 +3,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
-import type { Schema } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCookie } from "@/lib/utils";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
-    useSamplePlan, useAcceptLot, useRejectLot, useRecordBulk, useRaiseScar,
-} from "@/hooks/useReceivingMutations";
+    useSamplePlan, useAcceptLot, useRejectLot, useRecordBulk, useRaiseScar, materialLotOptions } from "@/hooks/useReceivingMutations";
 import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
 
 /** A measurement the operator captured in the DWI, flattened for verdict math. */
@@ -78,10 +76,7 @@ export function ReceivingAcceptanceStage({
 }) {
     const navigate = useNavigate();
 
-    const lotQuery = useQuery({
-        queryKey: ["material-lot", lotId],
-        queryFn: () => api.api_MaterialLots_retrieve({ params: { id: lotId } } as never) as Promise<Schema<"MaterialLot">>,
-    });
+    const lotQuery = useQuery(materialLotOptions(lotId));
     const lot = lotQuery.data;
 
     const { data: samplePlan } = useSamplePlan(lotId);

@@ -5,7 +5,7 @@ import {Plus, Pencil, Trash2} from "lucide-react";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
-import {useQuery} from "@tanstack/react-query";
+import { queryOptions,useQuery} from "@tanstack/react-query";
 import {Button} from "@/components/ui/button";
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
@@ -43,6 +43,31 @@ import {
 import {BomLineDialog, type BomLine} from "@/components/bom/BomLineDialog";
 import {useCreateBom, useReleaseBom, useCreateBomRevision, useDeleteBomLine} from "@/hooks/useBom";
 import {useRetrieveSteps} from "@/hooks/useRetrieveSteps";
+
+const supplierPickerOptions = () =>
+    queryOptions({
+        queryKey: ["companies", "part-type-supplier-picker"] as const,
+        queryFn: () => api.api_Companies_list({queries: {limit: 500, ordering: "name"}} as never) as Promise<{
+            results?: Array<{ id: string | number; name: string }>
+        }>,
+    });
+
+const bomListOptions = (partTypeId: string) =>
+    queryOptions({
+        queryKey: ["BOMs", "list", {part_type: partTypeId}] as const,
+        queryFn: () =>
+            api.api_BOMs_list({queries: {part_type: partTypeId, limit: 100}}) as Promise<
+                z.infer<typeof schemas.PaginatedBOMListList>
+            >,
+    });
+
+const bomDetailOptions = (bomId: string | undefined) =>
+    queryOptions({
+        queryKey: ["BOMs", "detail", bomId] as const,
+        queryFn: () =>
+            api.api_BOMs_retrieve({params: {id: bomId!}}) as Promise<BomDetail>,
+        enabled: !!bomId,
+    });
 
 // Use generated schema - error messages handled by global error map
 const formSchema = schemas.PartTypesRequest.pick({
@@ -93,12 +118,7 @@ export default function PartTypeFormPage() {
     // Preferred-supplier combobox (nullable FK) — kept out of RHF like the
     // material/fixture forms.
     const [supplierId, setSupplierId] = useState<string | null>(null);
-    const {data: companiesPage} = useQuery({
-        queryKey: ["companies", "part-type-supplier-picker"] as const,
-        queryFn: () => api.api_Companies_list({queries: {limit: 500, ordering: "name"}} as never) as Promise<{
-            results?: Array<{ id: string | number; name: string }>
-        }>,
-    });
+    const {data: companiesPage} = useQuery(supplierPickerOptions());
     const suppliers = (companiesPage?.results ?? []).map((c) => ({id: String(c.id), name: c.name}));
 
     useEffect(() => {
@@ -369,22 +389,11 @@ function pickBom(boms: BomListItem[]): BomListItem | undefined {
 }
 
 function BomPanel({partTypeId}: {partTypeId: string}) {
-    const {data: bomList, isLoading: listLoading} = useQuery({
-        queryKey: ["BOMs", "list", {part_type: partTypeId}] as const,
-        queryFn: () =>
-            api.api_BOMs_list({queries: {part_type: partTypeId, limit: 100}}) as Promise<
-                z.infer<typeof schemas.PaginatedBOMListList>
-            >,
-    });
+    const {data: bomList, isLoading: listLoading} = useQuery(bomListOptions(partTypeId));
 
     const chosen = pickBom(bomList?.results ?? []);
 
-    const {data: bom, isLoading: detailLoading} = useQuery({
-        queryKey: ["BOMs", "detail", chosen?.id] as const,
-        queryFn: () =>
-            api.api_BOMs_retrieve({params: {id: chosen!.id}}) as Promise<BomDetail>,
-        enabled: !!chosen?.id,
-    });
+    const {data: bom, isLoading: detailLoading} = useQuery(bomDetailOptions(chosen?.id));
 
     const lines = bom?.lines ?? [];
     // BOM authoring is change-control tier: status gates *which* BOM is

@@ -25,6 +25,7 @@ import {Input} from "@/components/ui/input";
 import {useParams} from "@tanstack/react-router";
 import {useDebounce} from "@/hooks/useDebounce.ts";
 import {useAddPartsMutation} from "@/hooks/useAddPartsMutation.ts";
+import { matchKey } from "@/lib/query-filters";
 
 export default function EditOrdersPartsPage() {
     const { orderId } = useParams({ from: "/editOrdersParts/$orderId" });
@@ -40,7 +41,7 @@ export default function EditOrdersPartsPage() {
     const addParts = useAddPartsMutation(orderId, {
         onSuccess: () => {
             toast.success("Parts added");
-            queryClient.invalidateQueries({ queryKey: ["parts"] });
+            queryClient.invalidateQueries(matchKey(["parts"]));
             setIsSheetOpen(false);
         },
         onError: (error: unknown) => {
@@ -63,7 +64,7 @@ export default function EditOrdersPartsPage() {
         invalidateQueryKeys:["parts"]}, {
         onSuccess: () => {
             toast.success("Parts removed");
-            queryClient.invalidateQueries({ queryKey: ["parts", orderId] });
+            queryClient.invalidateQueries(matchKey(["parts", orderId]));
             setSelectedPartIds([]);
             setIsConfirmOpen(false);
         },

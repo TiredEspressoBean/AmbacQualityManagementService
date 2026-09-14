@@ -22,6 +22,7 @@ import { Loader2, User as UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { NotificationPreferencesCard } from "@/components/notification-preferences-card";
 import { ChangePasswordCard } from "@/components/users/ChangePasswordCard";
+import { matchKey } from "@/lib/query-filters";
 
 const profileSchema = z.object({
     first_name: z.string().max(150, "First name must be 150 characters or less").optional(),
@@ -52,7 +53,7 @@ export function UserProfilePage() {
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["authUser"] });
+            queryClient.invalidateQueries(matchKey(["authUser"]));
             toast.success("Profile updated successfully");
             setIsEditing(false);
         },

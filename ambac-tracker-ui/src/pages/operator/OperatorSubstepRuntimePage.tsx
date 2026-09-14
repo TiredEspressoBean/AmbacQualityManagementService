@@ -80,7 +80,7 @@ import {
     findMissingRequired,
     summarizeResponses,
 } from "@/lib/dwi/build-captures";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { type CapturedMeasurement } from "@/components/dwi/ReceivingAcceptanceStage";
 import { useSamplePlan } from "@/hooks/useReceivingMutations";
@@ -89,6 +89,16 @@ import {
     advanceToNextQueuedPart,
     type CompletionContext,
 } from "./completion-adapters";
+
+const captureStateOptions = (executionId: unknown, enabled: boolean) =>
+    queryOptions({
+        queryKey: ["capture-state", executionId],
+        queryFn: () =>
+            api.api_StepExecutions_capture_state_retrieve({
+                params: { id: executionId as string },
+            }),
+        enabled,
+    });
 
 type RouteParams = { stepId: string };
 type SearchParams = {
@@ -221,14 +231,8 @@ export function OperatorSubstepRuntimePage() {
     // into the in-session map and derive confirmed via the SAME findMissingRequired
     // the live capture path uses. Skipped in receiving unit-mode (each unit is a
     // deliberately fresh pass).
-    const { data: captureState } = useQuery({
-        queryKey: ["capture-state", search.execution],
-        queryFn: () =>
-            api.api_StepExecutions_capture_state_retrieve({
-                params: { id: search.execution as string },
-            }),
-        enabled: Boolean(search.execution) && !isUnitMode,
-    });
+    const { data: captureState } = useQuery(
+        captureStateOptions(search.execution, Boolean(search.execution) && !isUnitMode));
 
     const hydratedExecutionRef = useRef<string | null>(null);
     useEffect(() => {

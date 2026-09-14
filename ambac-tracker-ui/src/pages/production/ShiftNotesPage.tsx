@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { StickyNote, Users, X } from "lucide-react";
 
@@ -22,6 +22,13 @@ import {
     useRetractShiftNote,
 } from "@/hooks/shiftNotes";
 
+// Audience options = the tenant's groups (empty selection → everyone).
+const shiftNoteAudienceOptions = () =>
+    queryOptions({
+        queryKey: ["tenant-groups", "shift-note-audience"],
+        queryFn: () => api.api_TenantGroups_list({ queries: { limit: 100 } }),
+    });
+
 export default function ShiftNotesPage() {
     const { data: notes = [] } = useShiftNotes();
     const publish = usePublishShiftNote();
@@ -32,10 +39,7 @@ export default function ShiftNotesPage() {
     const [ackRequired, setAckRequired] = useState(false);
 
     // Audience options = the tenant's groups (empty selection → everyone).
-    const { data: groupPage } = useQuery({
-        queryKey: ["tenant-groups", "shift-note-audience"],
-        queryFn: () => api.api_TenantGroups_list({ queries: { limit: 100 } }),
-    });
+    const { data: groupPage } = useQuery(shiftNoteAudienceOptions());
     const groups = groupPage?.results ?? [];
 
     const toggleRole = (name: string) =>

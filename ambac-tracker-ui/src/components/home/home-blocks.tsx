@@ -22,7 +22,7 @@
  */
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { Badge } from "@/components/ui/badge";
@@ -189,8 +189,12 @@ type QueueWo = {
     related_order_info?: { name?: string | null } | null;
 };
 
-function WorkOrderQueue({ variant }: { variant: "operator" | "lead" }) {
-    const { data: wosResp, isLoading } = useQuery({
+/* --------------------------- home-block queries ---------------------------
+ * Each `home` cache key is declared exactly once here. Keys are unchanged from
+ * when they sat inline in the blocks. */
+
+const woQueueOptions = () =>
+    queryOptions({
         queryKey: ["home", "wo-queue"],
         queryFn: () =>
             api.api_WorkOrders_list({
@@ -198,6 +202,37 @@ function WorkOrderQueue({ variant }: { variant: "operator" | "lead" }) {
             } as never) as Promise<{ results?: QueueWo[] }>,
         staleTime: 15_000,
     });
+
+const myDispositionsOptions = (userPk: AuthUser["pk"]) =>
+    queryOptions({
+        queryKey: ["home", "my-dispositions", userPk],
+        enabled: userPk != null,
+        queryFn: () =>
+            api.api_QuarantineDispositions_list({
+                queries: { assigned_to: userPk, current_state: "OPEN", limit: 10 },
+            } as never) as Promise<{ results?: Array<{ id: string; disposition_number: string }> }>,
+        staleTime: 30_000,
+    });
+
+const docsDueForReviewOptions = () =>
+    queryOptions({
+        queryKey: ["home", "documents", "due-for-review"],
+        queryFn: () => api.api_Documents_due_for_review_list({ queries: { limit: 10 } } as never),
+        staleTime: 60_000,
+    });
+
+const wosOnHoldOptions = () =>
+    queryOptions({
+        queryKey: ["home", "wos-on-hold"],
+        queryFn: () =>
+            api.api_WorkOrders_list({
+                queries: { workorder_status: "ON_HOLD", ordering: "-updated_at", limit: 25 },
+            } as never) as Promise<{ results?: QueueWo[] }>,
+        staleTime: 30_000,
+    });
+
+function WorkOrderQueue({ variant }: { variant: "operator" | "lead" }) {
+    const { data: wosResp, isLoading } = useQuery(woQueueOptions());
 
     const wos = useMemo(() => {
         const all = (wosResp?.results ?? []).slice();
@@ -330,15 +365,7 @@ function InspectionQueueBlock() {
 function MyQualityActionsBlock({ user }: { user: AuthUser }) {
     const { data: approvals = [] } = useMyPendingApprovals();
     const { data: tasks = [] } = useMyCapaTasks();
-    const { data: dispResp } = useQuery({
-        queryKey: ["home", "my-dispositions", user.pk],
-        enabled: user.pk != null,
-        queryFn: () =>
-            api.api_QuarantineDispositions_list({
-                queries: { assigned_to: user.pk, current_state: "OPEN", limit: 10 },
-            } as never) as Promise<{ results?: Array<{ id: string; disposition_number: string }> }>,
-        staleTime: 30_000,
-    });
+    const { data: dispResp } = useQuery(myDispositionsOptions(user.pk));
 
     const openTasks = (tasks ?? []).filter((t) => t.status !== "COMPLETED");
     const overdue = openTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date()).length;
@@ -687,11 +714,7 @@ function DocumentsBlock() {
 type DocRow = Pick<Schema<"Documents">, "id" | "file_name" | "version" | "review_date">;
 
 function DocReviewDueBlock() {
-    const { data } = useQuery({
-        queryKey: ["home", "documents", "due-for-review"],
-        queryFn: () => api.api_Documents_due_for_review_list({ queries: { limit: 10 } } as never),
-        staleTime: 60_000,
-    });
+    const { data } = useQuery(docsDueForReviewOptions());
     const docs = rowsOf<DocRow>(data);
     if (docs.length === 0) return null;
 
@@ -918,13 +941,11 @@ function CapaStatusBlock() {
 
 const JOBS_LATE_HORIZON_DAYS = 3;
 
-function JobsGoingLateBlock() {
-    const horizonISO = useMemo(() => {
-        const d = new Date();
-        d.setDate(d.getDate() + JOBS_LATE_HORIZON_DAYS);
-        return d.toISOString().slice(0, 10);
-    }, []);
-    const { data: wosResp } = useQuery({
+/** Two blocks render off this one fetch. They previously declared the key and
+ *  the queryFn separately, character for character — one factory keeps the
+ *  sharing true rather than coincidental. */
+const wosGoingLateOptions = (horizonISO: string) =>
+    queryOptions({
         queryKey: ["home", "wos-going-late", horizonISO],
         queryFn: () =>
             api.api_WorkOrders_list({
@@ -937,6 +958,19 @@ function JobsGoingLateBlock() {
             } as never) as Promise<{ results?: QueueWo[] }>,
         staleTime: 30_000,
     });
+
+/** The shared horizon date both blocks key on. */
+function useLateHorizonISO() {
+    return useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + JOBS_LATE_HORIZON_DAYS);
+        return d.toISOString().slice(0, 10);
+    }, []);
+}
+
+function JobsGoingLateBlock() {
+    const horizonISO = useLateHorizonISO();
+    const { data: wosResp } = useQuery(wosGoingLateOptions(horizonISO));
     const wos = wosResp?.results ?? [];
     if (wos.length === 0) return null;
     const today = new Date().toISOString().slice(0, 10);
@@ -995,25 +1029,9 @@ function JobsGoingLateBlock() {
 // ---------------------------------------------------------------------------
 
 function ShiftLeadHeroBlock() {
-    const horizonISO = useMemo(() => {
-        const d = new Date();
-        d.setDate(d.getDate() + JOBS_LATE_HORIZON_DAYS);
-        return d.toISOString().slice(0, 10);
-    }, []);
-    const { data: wosResp } = useQuery({
-        // Same key as JobsGoingLateBlock so both blocks share one fetch.
-        queryKey: ["home", "wos-going-late", horizonISO],
-        queryFn: () =>
-            api.api_WorkOrders_list({
-                queries: {
-                    workorder_status: "IN_PROGRESS",
-                    expected_completion__lte: horizonISO,
-                    ordering: "expected_completion",
-                    limit: 25,
-                },
-            } as never) as Promise<{ results?: QueueWo[] }>,
-        staleTime: 30_000,
-    });
+    // Same factory as JobsGoingLateBlock, so both blocks share one fetch.
+    const horizonISO = useLateHorizonISO();
+    const { data: wosResp } = useQuery(wosGoingLateOptions(horizonISO));
     const top = wosResp?.results?.[0];
     if (!top) return null;
     const today = new Date().toISOString().slice(0, 10);
@@ -1064,14 +1082,7 @@ function ShiftLeadHeroBlock() {
 // ---------------------------------------------------------------------------
 
 function WosOnHoldBlock() {
-    const { data: wosResp } = useQuery({
-        queryKey: ["home", "wos-on-hold"],
-        queryFn: () =>
-            api.api_WorkOrders_list({
-                queries: { workorder_status: "ON_HOLD", ordering: "-updated_at", limit: 25 },
-            } as never) as Promise<{ results?: QueueWo[] }>,
-        staleTime: 30_000,
-    });
+    const { data: wosResp } = useQuery(wosOnHoldOptions());
     const wos = wosResp?.results ?? [];
     if (wos.length === 0) return null;
     return (

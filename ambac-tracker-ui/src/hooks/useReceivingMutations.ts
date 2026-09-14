@@ -258,3 +258,16 @@ export const samplePlanOptions = (lotId: string | undefined, plan?: string) =>
 
 export const useSamplePlan = (lotId: string | undefined, plan?: string) =>
     useQuery({ ...samplePlanOptions(lotId, plan), enabled: !!lotId });
+
+/** One lot's detail row. ReceivingInspectionPage and ReceivingAcceptanceStage
+ *  both read it and had declared this key and queryFn separately, character for
+ *  character — two writers on one cache entry, which is the drift this factory
+ *  exists to prevent. `invalidateReceiving` above already targets the key. */
+export const materialLotOptions = (lotId: string) =>
+    queryOptions({
+        queryKey: ["material-lot", lotId],
+        queryFn: () =>
+            api.api_MaterialLots_retrieve({
+                params: { id: lotId },
+            } as never) as Promise<Schema<"MaterialLot">>,
+    });

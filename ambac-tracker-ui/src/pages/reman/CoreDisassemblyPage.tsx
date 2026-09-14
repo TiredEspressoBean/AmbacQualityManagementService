@@ -50,6 +50,7 @@ import { format } from "date-fns";
 import { ArrowLeft, Plus, CheckCircle, Trash2, Package, Loader2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { matchKey } from "@/lib/query-filters";
 
 function getConditionVariant(grade: string): "default" | "secondary" | "destructive" | "outline" {
     switch (grade) {
@@ -92,8 +93,8 @@ export function CoreDisassemblyPage() {
     const startDisassemblyMutation = useMutation({
         mutationFn: () => api.api_Cores_start_disassembly_create(undefined, { params: { id } }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["core", id] });
-            queryClient.invalidateQueries({ queryKey: ["cores"] });
+            queryClient.invalidateQueries(matchKey(["core", id]));
+            queryClient.invalidateQueries(matchKey(["cores"]));
             toast.success("Disassembly started");
         },
         onError: (error: any) => {
@@ -105,8 +106,8 @@ export function CoreDisassemblyPage() {
     const completeDisassemblyMutation = useMutation({
         mutationFn: () => api.api_Cores_complete_disassembly_create(undefined, { params: { id } }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["core", id] });
-            queryClient.invalidateQueries({ queryKey: ["cores"] });
+            queryClient.invalidateQueries(matchKey(["core", id]));
+            queryClient.invalidateQueries(matchKey(["cores"]));
             toast.success("Disassembly completed");
             navigate({ to: "/reman/cores/$id", params: { id } });
         },
@@ -124,7 +125,7 @@ export function CoreDisassemblyPage() {
             }),
         onSuccess: () => {
             refetchComponents();
-            queryClient.invalidateQueries({ queryKey: ["cores"] });
+            queryClient.invalidateQueries(matchKey(["cores"]));
             setHarvestDialogOpen(false);
             setNewComponent({
                 component_type: "",

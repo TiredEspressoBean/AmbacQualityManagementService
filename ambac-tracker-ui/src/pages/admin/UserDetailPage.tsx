@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRetrieveUser } from "@/hooks/useRetrieveUser";
 import { useTrainingRecords } from "@/hooks/useTrainingRecords";
@@ -26,6 +26,20 @@ import { ArrowLeft, Factory, GraduationCap, Pencil, Plus, Star, User as UserIcon
 import { ReportButton } from "@/components/reports/ReportButton";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 
+const userMembershipsOptions = (userId: number) =>
+    queryOptions({
+        queryKey: ["userwc-memberships", userId] as const,
+        queryFn: () => api.api_UserWorkCenterMemberships_list({
+            queries: { user: userId, limit: 100 },
+        } as never),
+    });
+
+const membershipPickerWorkCentersOptions = () =>
+    queryOptions({
+        queryKey: ["work-centers", "for-membership-picker"] as const,
+        queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
+    });
+
 type Kind = "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
 const KIND_TONE: Record<Kind, string> = {
     PRODUCTION: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
@@ -41,19 +55,10 @@ function WorkCentersTab({ userId }: { userId: number }) {
     const canManage = usePermissionSet().hasAny(
         "add_userworkcentermembership", "change_userworkcentermembership");
 
-    const membersKey = ["userwc-memberships", userId] as const;
-    const { data: page, isLoading } = useQuery({
-        queryKey: membersKey,
-        queryFn: () => api.api_UserWorkCenterMemberships_list({
-            queries: { user: userId, limit: 100 },
-        } as never),
-    });
+    const { data: page, isLoading } = useQuery(userMembershipsOptions(userId));
     const memberships = page?.results ?? [];
 
-    const { data: wcPage } = useQuery({
-        queryKey: ["work-centers", "for-membership-picker"] as const,
-        queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
-    });
+    const { data: wcPage } = useQuery(membershipPickerWorkCentersOptions());
     const workCenters = wcPage?.results ?? [];
     const memberWcIds = new Set(memberships.map((m) => m.work_center));
     const availableWcs = workCenters.filter((wc) => !memberWcIds.has(wc.id));
@@ -63,7 +68,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
             user: userId, work_center: wcId, is_primary: false,
         } as never),
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: membersKey });
+            qc.invalidateQueries(userMembershipsOptions(userId));
             setAddWcId("");
             toast.success("Added.");
         },
@@ -72,7 +77,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
     const removeMut = useMutation({
         mutationFn: (id: string) => api.api_UserWorkCenterMemberships_destroy(undefined as never, { params: { id } }),
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: membersKey });
+            qc.invalidateQueries(userMembershipsOptions(userId));
             toast.success("Removed.");
         },
         onError: (e) => toast.error(`Couldn't remove: ${(e as Error).message}`),
@@ -82,7 +87,7 @@ function WorkCentersTab({ userId }: { userId: number }) {
             undefined as never, { params: { id } },
         ),
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: membersKey });
+            qc.invalidateQueries(userMembershipsOptions(userId));
             toast.success("Primary station set.");
         },
         onError: (e) => toast.error(`Couldn't set primary: ${(e as Error).message}`),

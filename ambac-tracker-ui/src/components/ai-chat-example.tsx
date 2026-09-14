@@ -13,6 +13,7 @@ import {EphemeralAttachmentAdapter} from "@/lib/attachmentAdapter";
 import {ChatHistorySidebar} from "@/components/chat-history-sidebar";
 import {SidebarProvider, SidebarInset} from "@/components/ui/sidebar";
 import {useCreateChatSession, useUpdateChatSession, useChatSessions, CHAT_SESSIONS_QUERY_KEY} from "@/hooks/useChatSessions";
+import { matchKey } from "@/lib/query-filters";
 
 // Query key for API token
 const API_TOKEN_QUERY_KEY = ['user-api-token'] as const;
@@ -286,7 +287,7 @@ export function AiChatExample() {
             } : {};
 
             // Invalidate chat sessions query to reorder sidebar
-            queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
+            queryClient.invalidateQueries(matchKey(CHAT_SESSIONS_QUERY_KEY));
 
             // Stream with error handling
             try {

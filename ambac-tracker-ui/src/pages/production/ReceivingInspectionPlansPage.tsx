@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
@@ -15,6 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PackagePlus, Settings } from "lucide-react";
 import { useCreateReceivingPlan } from "@/hooks/useReceivingPlans";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
+
+const receivingPlansOptions = (queries: Record<string, unknown>) =>
+  queryOptions({
+    queryKey: ["receiving-plans", queries] as const,
+    queryFn: () =>
+      api.api_Steps_list({ queries } as never) as Promise<components["schemas"]["PaginatedStepsList"]>,
+  });
 
 const col = createColumnHelper<Schema<"Steps">>();
 
@@ -35,11 +42,7 @@ function useReceivingPlansList(params: { offset: number; limit: number; ordering
   };
   if (params.ordering) queries.ordering = params.ordering;
   if (params.search) queries.search = params.search;
-  return useQuery({
-    queryKey: ["receiving-plans", queries] as const,
-    queryFn: () =>
-      api.api_Steps_list({ queries } as never) as Promise<components["schemas"]["PaginatedStepsList"]>,
-  });
+  return useQuery(receivingPlansOptions(queries));
 }
 
 export function ReceivingInspectionPlansPage() {

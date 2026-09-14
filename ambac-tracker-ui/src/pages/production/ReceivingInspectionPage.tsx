@@ -13,8 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { Schema } from "@/lib/api/types";
 import {
     useSamplePlan, useOpenInspection, useRecordUnits, useRecordBulk, useAcceptLot, useRejectLot, useRaiseScar,
-    useUploadLotCoC,
-} from "@/hooks/useReceivingMutations";
+    useUploadLotCoC, materialLotOptions } from "@/hooks/useReceivingMutations";
 import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualifications";
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
@@ -86,10 +85,7 @@ export function ReceivingInspectionPage() {
     const { lotId } = useParams({ strict: false }) as { lotId: string };
     const navigate = useNavigate();
 
-    const lotQuery = useQuery({
-        queryKey: ["material-lot", lotId],
-        queryFn: () => api.api_MaterialLots_retrieve({ params: { id: lotId } } as never) as Promise<Schema<"MaterialLot">>,
-    });
+    const lotQuery = useQuery(materialLotOptions(lotId));
     const lot = lotQuery.data;
 
     const { data: samplePlan, isError: noPlan } = useSamplePlan(lotId);

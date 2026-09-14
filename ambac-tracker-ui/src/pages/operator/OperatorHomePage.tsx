@@ -27,7 +27,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,29 @@ import { ScanBox } from "@/components/home/home-blocks";
 import { useNotificationFeed, useMarkNotificationRead } from "@/hooks/notificationFeed";
 import { useActiveShiftNotes, useAcknowledgeShiftNote, type ShiftNote } from "@/hooks/shiftNotes";
 import { useWorkQueue, type WorkQueueRow } from "@/hooks/workQueue";
+import { matchKey } from "@/lib/query-filters";
+
+/** The operator's own open runs, scoped to production surface + station. */
+const myWorkloadOptions = (scopedWcIds: string[]) =>
+    queryOptions({
+        queryKey: ["step-executions", "my-workload", "PRODUCTION", scopedWcIds.slice().sort().join(",")],
+        queryFn: () => api.api_StepExecutions_my_workload_list({
+            queries: {
+                limit: 5,
+                step__work_center__kind: "PRODUCTION",
+                ...(scopedWcIds.length ? { step__work_center__in: scopedWcIds } : {}),
+            } as never,
+        }),
+    });
+
+/** Clock state: my one open time entry (end_time is null). */
+const openTimeEntryOptions = (userPk: AuthUser["pk"]) =>
+    queryOptions({
+        queryKey: ["time-entries", "open", userPk],
+        queryFn: () => api.api_TimeEntries_list({
+            queries: { user: userPk, end_time__isnull: true, ordering: "-start_time", limit: 1 },
+        }),
+    });
 
 // ---------------------------------------------------------------------------
 // MOCK — drives the PREVIEW (dimmed) tiles so the planned layout is legible.
@@ -154,27 +177,13 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     }, [memberships, activeWcId]);
 
     // LIVE — the operator's own open runs, scoped to production surface + station.
-    const { data: workload } = useQuery({
-        queryKey: ["step-executions", "my-workload", "PRODUCTION", scopedWcIds.slice().sort().join(",")],
-        queryFn: () => api.api_StepExecutions_my_workload_list({
-            queries: {
-                limit: 5,
-                step__work_center__kind: "PRODUCTION",
-                ...(scopedWcIds.length ? { step__work_center__in: scopedWcIds } : {}),
-            } as never,
-        }),
-    });
+    const { data: workload } = useQuery(myWorkloadOptions(scopedWcIds));
     const runs = workload?.results ?? [];
     const activeRun = runs.find((r) => r.status === "IN_PROGRESS") ?? runs[0] ?? null;
 
     // LIVE — clock state: my one open time entry (end_time is null).
     const queryClient = useQueryClient();
-    const { data: openEntryPage } = useQuery({
-        queryKey: ["time-entries", "open", user.pk],
-        queryFn: () => api.api_TimeEntries_list({
-            queries: { user: user.pk, end_time__isnull: true, ordering: "-start_time", limit: 1 },
-        }),
-    });
+    const { data: openEntryPage } = useQuery(openTimeEntryOptions(user.pk));
     const openEntry = openEntryPage?.results?.[0] ?? null;
     const onLunch = openEntry?.entry_type === "LUNCH";
     const paused = openEntry?.entry_type === "BREAK" || onLunch;
@@ -209,7 +218,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
             return null; // clockout — nothing reopened
         },
         onSuccess: (_data, action) => {
-            queryClient.invalidateQueries({ queryKey: ["time-entries", "open", user.pk] });
+            queryClient.invalidateQueries(matchKey(["time-entries", "open", user.pk]));
             if (action.kind === "clockin") toast.success("Clocked in.");
             else if (action.kind === "pause") toast.success(action.type === "LUNCH" ? "On lunch — labor paused." : "On break — labor paused.");
             else if (action.kind === "resume") toast.success("Welcome back — back on shift.");

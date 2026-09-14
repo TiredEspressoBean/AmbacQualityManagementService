@@ -58,6 +58,7 @@ import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader"
 import { schemas } from "@/lib/api/generated"
 import type { Schema } from "@/lib/api/types"
 import { isFieldRequired } from "@/lib/zod-config"
+import { matchKey } from "@/lib/query-filters";
 
 // Use generated schema - error messages handled by global error map
 const formSchema = schemas.QuarantineDispositionRequest.pick({
@@ -362,7 +363,7 @@ export default function EditDispositionFormPage() {
                 if (typeChanged) await authorizeDecision(values)
                 await savePatch(values)
                 toast.success("Disposition updated")
-                queryClient.invalidateQueries({ queryKey: ["disposition", dispositionId] })
+                queryClient.invalidateQueries(matchKey(["disposition", dispositionId]))
             } else {
                 const result = await api.api_QuarantineDispositions_create(values as never, {
                     headers: csrf(),
@@ -389,7 +390,7 @@ export default function EditDispositionFormPage() {
             setCosignOpen(false)
             setPendingDecision(null)
             toast.success("Disposition updated")
-            queryClient.invalidateQueries({ queryKey: ["disposition", dispositionId] })
+            queryClient.invalidateQueries(matchKey(["disposition", dispositionId]))
         } catch (err: any) {
             // Surface the server's own co-sign error (throttled / wrong person /
             // not permitted / missing concession) verbatim.

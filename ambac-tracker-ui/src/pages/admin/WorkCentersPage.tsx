@@ -7,7 +7,7 @@
  * OSP) that drives which surface a step lands on.
  */
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MapPin, MoreHorizontal, Plus, Search } from "lucide-react";
 
@@ -30,6 +30,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StationDialog } from "@/components/stations/StationDialog";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { matchKey } from "@/lib/query-filters";
+
+const workCentersAdminOptions = (search: string) =>
+    queryOptions({
+        queryKey: ["work-centers", "admin", search] as const,
+        queryFn: () => api.api_WorkCenters_list({
+            queries: { limit: 100, ...(search ? { search } : {}) },
+        } as never),
+    });
 
 type WorkCenter = components["schemas"]["WorkCenter"];
 type Kind = "PRODUCTION" | "INSPECTION" | "RECEIVING" | "OSP";
@@ -74,19 +83,14 @@ export default function WorkCentersPage() {
     const canCreate = has("add_workcenter");
     const canEdit = has("change_workcenter");
 
-    const { data: page, isLoading } = useQuery({
-        queryKey: ["work-centers", "admin", search] as const,
-        queryFn: () => api.api_WorkCenters_list({
-            queries: { limit: 100, ...(search ? { search } : {}) },
-        } as never),
-    });
+    const { data: page, isLoading } = useQuery(workCentersAdminOptions(search));
     const rows: WorkCenter[] = page?.results ?? [];
 
     const createMut = useMutation({
         mutationFn: (payload: { code: string; name: string; kind: Kind; description: string; is_constraint: boolean; is_critical: boolean }) =>
             api.api_WorkCenters_create(payload as never),
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ["work-centers"] });
+            qc.invalidateQueries(matchKey(["work-centers"]));
             toast.success("Work center created.");
             setDraft(EMPTY_DRAFT);
         },
@@ -96,7 +100,7 @@ export default function WorkCentersPage() {
         mutationFn: ({ id, ...payload }: { id: string; code: string; name: string; kind: Kind; description: string; is_constraint: boolean; is_critical: boolean }) =>
             api.api_WorkCenters_partial_update(payload as never, { params: { id } }),
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ["work-centers"] });
+            qc.invalidateQueries(matchKey(["work-centers"]));
             toast.success("Work center updated.");
             setDraft(EMPTY_DRAFT);
         },
@@ -106,7 +110,7 @@ export default function WorkCentersPage() {
         mutationFn: (id: string) =>
             api.api_WorkCenters_partial_update({ archived: true } as never, { params: { id } }),
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ["work-centers"] });
+            qc.invalidateQueries(matchKey(["work-centers"]));
             toast.success("Archived.");
         },
         onError: (e: unknown) => toast.error(`Couldn't archive: ${(e as Error).message}`),

@@ -18,7 +18,7 @@ import { Loader2, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useReportActivity } from "@/hooks/useReportActivity";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
@@ -31,8 +31,8 @@ type ReconcileSummary = Awaited<
     ReturnType<typeof api.api_SamplingDecisions_reconcile_create>
 >;
 
-function usePendingDecisionsForWorkOrder(workOrderId: string) {
-    return useQuery({
+const pendingDecisionsOptions = (workOrderId: string) =>
+    queryOptions({
         queryKey: ["samplingDecisions", "pending-by-wo", workOrderId] as const,
         queryFn: () =>
             api.api_SamplingDecisions_list({
@@ -48,6 +48,9 @@ function usePendingDecisionsForWorkOrder(workOrderId: string) {
         enabled: !!workOrderId,
         staleTime: 15_000,
     });
+
+function usePendingDecisionsForWorkOrder(workOrderId: string) {
+    return useQuery(pendingDecisionsOptions(workOrderId));
 }
 
 function useReconcilePendingDecisions() {

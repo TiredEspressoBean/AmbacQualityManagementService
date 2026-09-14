@@ -29,6 +29,7 @@ import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { useRetrieveCustomers } from "@/hooks/useRetrieveCustomers";
 import { ArrowLeft, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
+import { matchKey } from "@/lib/query-filters";
 
 const formSchema = z.object({
     core_number: z.string().min(1, "Core number is required"),
@@ -85,7 +86,7 @@ export function CoreReceiveFormPage() {
             return api.api_Cores_create(payload);
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ["cores"] });
+            queryClient.invalidateQueries(matchKey(["cores"]));
             toast.success("Core received successfully");
             navigate({ to: `/reman/cores/${data.id}` });
         },

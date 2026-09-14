@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import type { Node } from '@xyflow/react';
 import { api } from '@/lib/api/generated';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,15 @@ import { StepTrainingRequirementsEditor } from './step-training-requirements-edi
 import { StepBomSection } from './StepBomSection';
 import { useTrainingRequirements } from '@/hooks/useTrainingRequirements';
 import { parseDurationToMinutes, formatMinutesToDuration, formatDurationDisplay } from '@/lib/duration-utils';
+
+// Work-center list for the routing picker. WCs are stable master data —
+// long staleTime is fine. See Documents/WORK_CENTER_DESIGN.md.
+const stepEditorWorkCentersOptions = () =>
+  queryOptions({
+    queryKey: ['workCenters', 'stepEditor'] as const,
+    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } }),
+    staleTime: 5 * 60 * 1000,
+  });
 
 /** Terminal status options */
 export const TERMINAL_STATUS_OPTIONS = [
@@ -158,11 +167,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   // State for editor dialogs
   // Work-center list for the routing picker. WCs are stable master data —
   // long staleTime is fine. See Documents/WORK_CENTER_DESIGN.md.
-  const { data: workCentersPage } = useQuery({
-    queryKey: ['workCenters', 'stepEditor'] as const,
-    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } }),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: workCentersPage } = useQuery(stepEditorWorkCentersOptions());
   const workCenters = workCentersPage?.results ?? [];
   const [measurementsOpen, setMeasurementsOpen] = useState(false);
   const [samplingOpen, setSamplingOpen] = useState(false);

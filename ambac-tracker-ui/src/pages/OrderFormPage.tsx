@@ -47,6 +47,7 @@ import { api, schemas } from '@/lib/api/generated';
 import { ordersEditFormRoute } from "@/router";
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader";
 import { isFieldRequired } from "@/lib/zod-config";
+import { matchKey } from "@/lib/query-filters";
 
 const ORDER_STATUS = schemas.OrdersStatusEnum.options;
 
@@ -124,7 +125,7 @@ export default function OrderFormPage() {
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+            queryClient.invalidateQueries(matchKey(["order", orderId]));
             setNewNote("");
             toast.success("Note added");
         },

@@ -47,8 +47,26 @@ import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
 import { useShifts } from "@/hooks/useScheduling";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useAuthUser } from "@/hooks/useAuthUser";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
+
+// Work centers + memberships back the WC filter (station membership → people).
+const calendarWorkCentersOptions = () =>
+  queryOptions({
+    queryKey: ["work-centers", "calendar-filter"] as const,
+    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never) as Promise<{
+      results?: Array<{ id: string; code: string; name: string }>
+    }>,
+  });
+
+const calendarMembershipsOptions = (enabled: boolean) =>
+  queryOptions({
+    queryKey: ["userwc-memberships", "calendar-filter"] as const,
+    enabled,
+    queryFn: () => api.api_UserWorkCenterMemberships_list({
+      queries: { limit: 500 },
+    } as never) as Promise<{ results?: Array<{ user: number; work_center: string }> }>,
+  });
 
 const KIND_COLOR: Record<string, string> = {
   // closures
@@ -165,20 +183,9 @@ export function SchedulingCalendarPage() {
   };
 
   // Work centers + memberships back the WC filter (station membership → people).
-  const { data: wcPage } = useQuery({
-    queryKey: ["work-centers", "calendar-filter"] as const,
-    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never) as Promise<{
-      results?: Array<{ id: string; code: string; name: string }>
-    }>,
-  });
+  const { data: wcPage } = useQuery(calendarWorkCentersOptions());
   const workCenters = wcPage?.results ?? [];
-  const { data: membershipsPage } = useQuery({
-    queryKey: ["userwc-memberships", "calendar-filter"] as const,
-    enabled: Boolean(wcFilter),
-    queryFn: () => api.api_UserWorkCenterMemberships_list({
-      queries: { limit: 500 },
-    } as never) as Promise<{ results?: Array<{ user: number; work_center: string }> }>,
-  });
+  const { data: membershipsPage } = useQuery(calendarMembershipsOptions(Boolean(wcFilter)));
   const wcMemberIds = useMemo(() => {
     if (!wcFilter) return null;
     const rows = membershipsPage?.results ?? [];

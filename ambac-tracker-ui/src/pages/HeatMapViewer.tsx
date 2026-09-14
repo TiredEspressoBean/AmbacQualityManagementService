@@ -99,6 +99,7 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { matchKey } from "@/lib/query-filters";
 
 // Helper to normalize media URLs to relative paths (for Vite proxy to work)
 function normalizeMediaUrl(url: string | undefined | null): string | undefined {
@@ -941,10 +942,10 @@ function HeatMapViewerContent({
                 },
             });
             // Invalidate all annotation queries to refresh the data
-            queryClient.invalidateQueries({ queryKey: ["heatMapAnnotation"] });
-            queryClient.invalidateQueries({ queryKey: ["heatmap-annotations"] });
-            queryClient.invalidateQueries({ queryKey: ["heatmap-annotations-all"] });
-            queryClient.invalidateQueries({ queryKey: ["heatmap-facets"] });
+            queryClient.invalidateQueries(matchKey(["heatMapAnnotation"]));
+            queryClient.invalidateQueries(matchKey(["heatmap-annotations"]));
+            queryClient.invalidateQueries(matchKey(["heatmap-annotations-all"]));
+            queryClient.invalidateQueries(matchKey(["heatmap-facets"]));
             toast.success("Annotation updated");
             setIsEditing(false);
         } catch (error) {

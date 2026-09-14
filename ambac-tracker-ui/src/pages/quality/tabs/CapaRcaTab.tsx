@@ -14,6 +14,7 @@ import { Plus, Pencil } from "lucide-react"
 import { useCreateRcaRecord } from "@/hooks/useCreateRcaRecord"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { matchKey } from "@/lib/query-filters";
 
 type CapaRcaTabProps = {
     capa: any
@@ -125,7 +126,7 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
             }
 
             await createRcaMutation.mutateAsync(payload)
-            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
             toast.success("RCA record created successfully")
             setDialogOpen(false)
         } catch (error) {

@@ -19,6 +19,7 @@ const capasExceptionsOptions = () => queryOptions({
 import type { DowntimeEvent, QuarantineDisposition, CAPA } from "@/lib/api/generated";
 import type { ExceptionItem, ExceptionSeverity } from "./mockData";
 import { getCookie } from "@/lib/utils";
+import { matchKey } from "@/lib/query-filters";
 
 // Unified exceptions view over three real API surfaces.
 //
@@ -129,7 +130,7 @@ export function useExceptions() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["downtime-events"] });
+            queryClient.invalidateQueries(matchKey(["downtime-events"]));
         },
     });
 

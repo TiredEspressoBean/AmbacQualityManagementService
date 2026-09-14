@@ -23,6 +23,7 @@ import {
 } from "@/components/approval/SignatureVerification"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { matchKey } from "@/lib/query-filters";
 
 type CapaTasksTabProps = {
     capa: any
@@ -123,7 +124,7 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                 await createTaskMutation.mutateAsync(payload)
                 toast.success("Task created successfully")
             }
-            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
             setDialogOpen(false)
         } catch (error) {
             toast.error(editingTask ? "Failed to update task" : "Failed to create task")
@@ -135,7 +136,7 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
         if (!confirm("Are you sure you want to delete this task?")) return
         try {
             await deleteTaskMutation.mutateAsync(taskId)
-            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
             toast.success("Task deleted successfully")
         } catch (error) {
             toast.error("Failed to delete task")
@@ -189,8 +190,8 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                         : {}),
                 } as never,
             })
-            queryClient.invalidateQueries({ queryKey: ["capa", capa?.id] })
-            queryClient.invalidateQueries({ queryKey: ["capa-my-tasks"] })
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
+            queryClient.invalidateQueries(matchKey(["capa-my-tasks"]))
             toast.success("Task completed")
             setCompleteDialogOpen(false)
         } catch (error: any) {

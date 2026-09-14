@@ -58,6 +58,7 @@ import {
     type SignatureVerificationData,
 } from "@/components/approval/SignatureVerification";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { matchKey } from "@/lib/query-filters";
 
 // ============================================================================
 // TYPES
@@ -491,7 +492,7 @@ function InboxItemCard({ item }: { item: InboxItem }) {
                 onSuccess: () => {
                     toast.success(`Task completed: ${item.title}`);
                     setShowCompleteModal(false);
-                    queryClient.invalidateQueries({ queryKey: ["capa-my-tasks"] });
+                    queryClient.invalidateQueries(matchKey(["capa-my-tasks"]));
                 },
                 onError: (error: any) => {
                     const message = error?.response?.data?.error || "Failed to complete task";

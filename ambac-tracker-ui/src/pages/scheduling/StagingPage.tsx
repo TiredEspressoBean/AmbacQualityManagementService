@@ -18,13 +18,19 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { Input } from "@/components/ui/input";
 import {
   useStagingList, useMarkStaged, useRecordPick,
   type StagingJob, type StagingMaterial,
 } from "@/hooks/useScheduling";
+
+const stagingPickerWorkCentersOptions = () =>
+  queryOptions({
+    queryKey: ["work-centers", "staging-picker"] as const,
+    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
+  });
 
 const WINDOWS = [4, 8, 12, 24];
 const ALL = "__all__";
@@ -271,10 +277,7 @@ export function StagingPage() {
   const toggleStaged = (job: StagingJob, staged: boolean) =>
     markStaged.mutate({ work_order: job.work_order_id, step: job.step_id, staged });
 
-  const { data: wcData } = useQuery({
-    queryKey: ["work-centers", "staging-picker"] as const,
-    queryFn: () => api.api_WorkCenters_list({ queries: { limit: 100 } } as never),
-  });
+  const { data: wcData } = useQuery(stagingPickerWorkCentersOptions());
   const workCenters: { id: string; name: string }[] = wcData?.results ?? [];
 
   // One row per material across every station, with where each portion goes.

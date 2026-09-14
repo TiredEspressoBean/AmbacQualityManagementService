@@ -29,6 +29,7 @@ import { DataImportDialog } from "@/components/data-import-dialog";
 import { Link } from "@tanstack/react-router";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useAuthUser } from "@/hooks/useAuthUser";
+import { matchKey } from "@/lib/query-filters";
 
 export type SortOption = { label: string; value: string };
 
@@ -585,7 +586,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                             <DataImportDialog
                                 modelName={apiEndpoint}
                                 onImportComplete={() => {
-                                    queryClient.invalidateQueries({ queryKey: [modelName] });
+                                    queryClient.invalidateQueries(matchKey([modelName]));
                                 }}
                             />
                             <DataExportMenu

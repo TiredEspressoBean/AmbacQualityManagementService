@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import { useListMilestoneTemplates } from "@/hooks/useListMilestoneTemplates";
+import { matchKey } from "@/lib/query-filters";
 
 type Milestone = {
     id: string;
@@ -124,7 +125,7 @@ export function MilestonesEditorPage() {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["milestoneTemplates"] }),
+        onSuccess: () => queryClient.invalidateQueries(matchKey(["milestoneTemplates"])),
     });
 
     const createMilestone = useMutation({
@@ -133,7 +134,7 @@ export function MilestonesEditorPage() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["milestoneTemplates"] });
+            queryClient.invalidateQueries(matchKey(["milestoneTemplates"]));
             toast.success("Milestone added");
         },
     });
@@ -145,7 +146,7 @@ export function MilestonesEditorPage() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["milestoneTemplates"] });
+            queryClient.invalidateQueries(matchKey(["milestoneTemplates"]));
             toast.success("Milestone removed");
         },
     });
