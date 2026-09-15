@@ -130,7 +130,15 @@ export function DefectAnalysisPage() {
         part_type: filters.part_type,
         limit: 100,
     });
-    const { data: trendData, isLoading: isLoadingTrend } = useDefectTrend({ days });
+    // The chart takes the same filters as the table below it. Previously it
+    // took only `days`, so a selection re-filtered the table while the trend
+    // above carried on showing the whole shop.
+    const { data: trendData, isLoading: isLoadingTrend } = useDefectTrend({
+        days,
+        defect_type: filters.defect_type,
+        process: filters.process,
+        part_type: filters.part_type,
+    });
     const { data: qualityRates } = useQualityRates({ days });
 
     // Transform data
@@ -239,7 +247,29 @@ export function DefectAnalysisPage() {
                         </p>
                     </div>
                 </div>
+                {/* Scope controls. Part type sits here with the date range, not
+                    in the breakdown sidebar: both answer "what am I looking at",
+                    whereas By Defect Type / By Process are findings you click to
+                    drill into. It was previously the third card in that sidebar,
+                    below two variable-height lists, which on a laptop put it
+                    around a thousand pixels down — below the fold before you
+                    could pick a part. */}
                 <div className="flex items-center gap-2">
+                    <Select
+                        value={filters.part_type ?? ""}
+                        onValueChange={(v) => toggleFilter("part_type", v)}
+                    >
+                        <SelectTrigger className="h-8 w-48 text-sm">
+                            <SelectValue placeholder="All part types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {filterOptions?.part_types.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label} ({opt.count})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <DateRangeToggle value={range} onChange={setRange} />
                 </div>
             </div>
@@ -454,30 +484,6 @@ export function DefectAnalysisPage() {
                                     />
                                 ))
                             )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Part Type Filter */}
-                    <Card>
-                        <CardHeader className="py-3 px-4">
-                            <CardTitle className="text-sm font-medium">By Part Type</CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-3 pb-3">
-                            <Select
-                                value={filters.part_type ?? ""}
-                                onValueChange={(v) => toggleFilter("part_type", v)}
-                            >
-                                <SelectTrigger className="h-8 text-sm">
-                                    <SelectValue placeholder="All part types" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {filterOptions?.part_types.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value}>
-                                            {opt.label} ({opt.count})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         </CardContent>
                     </Card>
 

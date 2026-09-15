@@ -32510,6 +32510,21 @@ paths:
           type: integer
           default: 30
         description: Number of days to include
+      - in: query
+        name: defect_type
+        schema:
+          type: string
+        description: Filter by error type name
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter by part type name
+      - in: query
+        name: process
+        schema:
+          type: string
+        description: Filter by step/process name
       tags:
       - api
       security:

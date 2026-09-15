@@ -54687,6 +54687,12 @@ export interface operations {
             query?: {
                 /** @description Number of days to include */
                 days?: number;
+                /** @description Filter by error type name */
+                defect_type?: string;
+                /** @description Filter by part type name */
+                part_type?: string;
+                /** @description Filter by step/process name */
+                process?: string;
             };
             header?: never;
             path?: never;

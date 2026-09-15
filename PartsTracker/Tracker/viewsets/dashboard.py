@@ -1356,6 +1356,14 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
     @extend_schema(
         parameters=[
             OpenApiParameter(name='days', type=int, required=False, default=30, description='Number of days to include'),
+            # Same three filters defect-records takes, with the same matching,
+            # so the chart and the table underneath it always describe the same
+            # set of defects. Without them the chart ignored every selection:
+            # picking a part type re-filtered the table while the trend above it
+            # carried on showing the unfiltered shop.
+            OpenApiParameter(name='defect_type', type=str, required=False, description='Filter by error type name'),
+            OpenApiParameter(name='process', type=str, required=False, description='Filter by step/process name'),
+            OpenApiParameter(name='part_type', type=str, required=False, description='Filter by part type name'),
         ],
         responses={200: inline_serializer(
             name='DefectTrendResponse',
@@ -1388,19 +1396,35 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         }
         """
         days = int(request.query_params.get('days', 30))
+        defect_type = request.query_params.get('defect_type')
+        process = request.query_params.get('process')
+        part_type = request.query_params.get('part_type')
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days - 1)
 
         # Get daily defect counts
-        daily_counts = self.qs_for_user(QualityReports).filter(
+        trend_qs = self.qs_for_user(QualityReports).filter(
             created_at__date__gte=start_date,
             created_at__date__lte=end_date,
             status='FAIL',
             archived=False,
-        ).annotate(
+        )
+
+        # Identical matching to defect-records, so the chart and the table
+        # below it never disagree about what is being counted.
+        if defect_type:
+            trend_qs = trend_qs.filter(errors__error_name__icontains=defect_type)
+        if process:
+            trend_qs = trend_qs.filter(step__name__icontains=process)
+        if part_type:
+            trend_qs = trend_qs.filter(part__part_type__name__icontains=part_type)
+
+        # distinct() matters once errors (m2m) is joined: a report with two
+        # matching error rows would otherwise be counted twice for that day.
+        daily_counts = trend_qs.annotate(
             date=TruncDate('created_at')
         ).values('date').annotate(
-            count=Count('id')
+            count=Count('id', distinct=True)
         ).order_by('date')
 
         counts_by_date = {c['date']: c['count'] for c in daily_counts}
