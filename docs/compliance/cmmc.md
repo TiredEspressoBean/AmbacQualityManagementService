@@ -173,10 +173,10 @@ python manage.py setup_audit_triggers
 | Domain | Files |
 |--------|-------|
 | Access Control | `Tracker/permissions.py`, `Tracker/middleware.py` |
-| Audit | `settings.py` (AUDITLOG), `Tracker/models/core.py` |
+| Audit | `PartsTrackerApp/settings.py` (AUDITLOG), `Tracker/models/core.py` |
 | Configuration | `Tracker/models/core.py` (SecureModel) |
 | Media Protection | `Tracker/models/core.py` (ClassificationLevel) |
-| System Protection | `Tracker/migrations/0003_enable_rls.py` |
+| System Protection | `Tracker/management/commands/setup_rls.py`, `Tracker/middleware.py` |
 
 ## Shared Responsibility Model
 

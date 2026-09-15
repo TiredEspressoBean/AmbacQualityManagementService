@@ -7,9 +7,8 @@ Document management for regulated environments.
 | Standard | Key Requirements |
 |----------|------------------|
 | **ISO 9001** | Document control procedure, revision control |
-| **ISO 13485** | Controlled documents, approval before release |
 | **AS9100D** | Configuration management |
-| **21 CFR Part 11** | Electronic records integrity |
+| **IATF 16949** | Controlled documents, approval before release |
 
 ## Document Control Features
 

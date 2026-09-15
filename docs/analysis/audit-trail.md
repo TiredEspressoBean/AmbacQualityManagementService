@@ -109,7 +109,7 @@ Audit records are **immutable**:
 - Tamper-evident
 
 !!! warning "Compliance Requirement"
-    Audit log immutability is required for regulatory compliance (ISO 13485, 21 CFR Part 11, AS9100D).
+    Audit log immutability is required for regulatory compliance (AS9100D, IATF 16949, ISO 9001).
 
 ## Special Audit Events
 
@@ -176,7 +176,7 @@ When available, standard reports will include:
 - **Login Report**: Authentication activity
 - **Change Summary**: Aggregate change statistics
 
-Custom and compliance-focused reports (FDA 21 CFR Part 11, ISO 13485, AS9100D) are also planned.
+Custom and compliance-focused reports (AS9100D, IATF 16949, ISO 9001) are also planned.
 
 ## Exporting Audit Data
 

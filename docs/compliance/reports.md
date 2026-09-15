@@ -156,7 +156,7 @@ Build reports for specific needs:
 
 ## Planned: Regulatory Templates
 
-### FDA Inspection
+### AS9100 / IATF Audit Pack
 - Device history records
 - CAPA summary
 - Complaint records

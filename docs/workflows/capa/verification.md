@@ -190,8 +190,8 @@ Closure-related metrics:
 
 For regulated industries:
 
-- **FDA**: CAPA is required element of QMS
-- **ISO 13485**: Clause 8.5.2/8.5.3
+- **AS9100D**: Clause 10.2 corrective action
+- **IATF 16949**: Clause 10.2 problem solving
 - **AS9100**: Clause 10.2
 - **IATF 16949**: Clause 10.2.3
 

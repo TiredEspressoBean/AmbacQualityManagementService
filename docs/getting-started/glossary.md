@@ -80,7 +80,7 @@ A category for documents (e.g., Work Instruction, Specification, Certificate) th
 A code identifying items subject to export controls under the Export Administration Regulations (EAR).
 
 ### Electronic Signature
-A secure method of signing records that requires password verification and is linked to a unique user identity. Compliant with 21 CFR Part 11.
+A secure method of signing records that requires password verification and is linked to a unique user identity. Records the signer, the meaning of the signature, the verification method used, and a server timestamp.
 
 ### Equipment
 Physical machines or tools used in manufacturing. Equipment records track calibration status, usage, and maintenance.

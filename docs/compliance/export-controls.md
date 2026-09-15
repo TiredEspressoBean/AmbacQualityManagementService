@@ -47,9 +47,14 @@ Non-US Persons require licenses for ITAR access.
 ### Automatic Restrictions
 
 For ITAR-controlled parts:
-- Only US Persons can access
-- Non-US Persons see access denied
-- Access attempts logged
+
+- Only US Persons can access them
+- **Non-US Persons do not see the records at all.** Enforcement is queryset
+  filtering (`for_export_control`), so controlled rows are absent from lists
+  rather than shown with an error. Direct document access returns an explicit
+  denial with a reason.
+- Denials are logged to a dedicated `compliance.access_control` logger,
+  separate from the application log for SIEM ingestion
 
 ### Manual Verification
 
@@ -105,10 +110,14 @@ All ITAR-related events logged:
 ## Document Control
 
 For ITAR-controlled documents:
-- Visibility limited to US Persons
+
+- Visibility limited to US Persons, enforced by `check_document_access`
 - Download tracking
-- Watermarking (if configured)
 - Distribution records
+
+!!! note "No watermarking"
+    Documents are not watermarked. Nothing marks an exported or downloaded
+    file as export-controlled.
 
 ## Reporting
 
@@ -125,10 +134,18 @@ For ITAR-controlled documents:
 
 ## Country Restrictions
 
-Configure country-based restrictions:
-- Denied parties screening
-- Embargoed countries
-- License requirements by destination
+A user's **country of citizenship** is recorded and used in the US Person
+determination that gates ITAR access.
+
+!!! warning "Screening is not implemented"
+    Beyond that citizenship check, there is no country-based screening:
+
+    - No denied/restricted parties screening
+    - No embargoed country list
+    - No license requirements tracked by destination
+
+    If your programme requires these, they must be handled outside uqmes. Do
+    not treat the absence of a warning here as a clearance.
 
 ## Permissions
 

@@ -1,6 +1,23 @@
 # Compliance Overview
 
-Technical compliance analysis of uqmes against major regulatory frameworks for defense, aerospace, automotive, and general manufacturing.
+Technical compliance analysis of uqmes against the regulatory frameworks it is
+built for: defense, aerospace, automotive, and general manufacturing.
+
+## Standards in scope
+
+| Standard | Domain |
+|----------|--------|
+| **AS9100D** | Aerospace quality management |
+| **IATF 16949** | Automotive quality management |
+| **ISO 9001** | General quality management |
+| **CMMC** | Defense contractor cybersecurity |
+| **NIST 800-171** | Controlled Unclassified Information |
+| **ITAR / EAR** | Export control |
+
+!!! note "Not in scope"
+    Medical-device and pharmaceutical regulation — **21 CFR Part 11**,
+    **ISO 13485**, **EU MDR** — are not design goals, and no conformance with
+    them is claimed or assessed anywhere in this documentation.
 
 !!! tip "Demo: Compliance Evidence"
     In demo mode, you can see compliance features in action:
@@ -71,7 +88,7 @@ The following depend on deployment configuration and are **not application featu
 - **PermissionChangeLog**: Tracks all permission grants/revocations
 - **Document access logging**: `Documents.log_access()` captures user, IP, classification
 
-**Key files**: `settings.py`, `Tracker/models/core.py`, `Tracker/management/commands/setup_audit_triggers.py`
+**Key files**: `PartsTrackerApp/settings.py`, `Tracker/models/core.py`, `Tracker/management/commands/setup_audit_triggers.py`
 
 ### 2. Multi-Layer Tenant Isolation
 
@@ -79,7 +96,24 @@ The following depend on deployment configuration and are **not application featu
 - **Database layer**: Row-Level Security policies on 97 tables
 - **API layer**: `TenantScopedMixin` filters all querysets
 
-**Key files**: `Tracker/middleware.py`, `Tracker/migrations/0003_enable_rls.py`, `Tracker/viewsets/base.py`
+**Key files**: `Tracker/middleware.py`, `Tracker/management/commands/setup_rls.py`, `Tracker/viewsets/base.py`
+
+!!! note "RLS is opt-in, not automatic"
+    Row-Level Security is applied by the `setup_rls` management command (also
+    run by `setup_database` unless `--skip-rls` is passed) — **not** by a
+    migration. It therefore does not switch itself on when you deploy.
+
+    It takes effect only when all three hold:
+
+    1. `ENABLE_RLS=true` in settings
+    2. Django connects as the `partstracker_app` role, not a superuser —
+       RLS does not apply to superusers
+    3. `TenantMiddleware` sets `app.current_tenant_id` on the connection
+
+    Treat RLS as defence-in-depth beneath the application-level scoping
+    (`SecureModel` / `SecureManager` / `TenantMiddleware`), which is what
+    enforces isolation on every request regardless.
+
 
 ### 3. Granular RBAC
 
@@ -97,7 +131,7 @@ The following depend on deployment configuration and are **not application featu
 | Supplier_Quality | Incoming inspection, supplier CAPAs |
 | Customer | Read-only portal access |
 
-**Key files**: `Tracker/permissions.py`, `Tracker/services/permission_service.py`
+**Key files**: `Tracker/permissions.py`
 
 ### 4. Full CAPA System
 
@@ -172,9 +206,9 @@ The following depend on deployment configuration and are **not application featu
 
 | Capability | Primary Files |
 |------------|---------------|
-| Audit Logging | `settings.py`, `Tracker/models/core.py` |
-| RBAC/Permissions | `Tracker/permissions.py`, `Tracker/services/permission_service.py` |
-| Tenant Isolation | `Tracker/middleware.py`, `Tracker/migrations/0003_enable_rls.py` |
+| Audit Logging | `PartsTrackerApp/settings.py`, `Tracker/models/core.py` |
+| RBAC/Permissions | `Tracker/permissions.py` |
+| Tenant Isolation | `Tracker/middleware.py`, `Tracker/management/commands/setup_rls.py` |
 | Document Control | `Tracker/models/core.py` (Documents class) |
 | Approval Workflows | `Tracker/models/core.py`, `Tracker/signals.py` |
 | CAPA System | `Tracker/models/qms.py`, `Tracker/signals.py` |
@@ -194,6 +228,6 @@ The following depend on deployment configuration and are **not application featu
 ## Cross-Cutting Features
 
 - [Audit Trails](audit-trails.md) - Logging and traceability
-- [Electronic Signatures](signatures.md) - 21 CFR Part 11 compliance
+- [Electronic Signatures](signatures.md) - Attributable approvals and records
 - [Document Control](document-control.md) - Controlled document management
 - [Compliance Reports](reports.md) - Audit report generation

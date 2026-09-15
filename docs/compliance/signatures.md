@@ -1,16 +1,25 @@
 # Electronic Signatures
 
-Compliant electronic signatures for approvals and records.
+Electronic signatures on approvals and records — who signed, what they were
+attesting to, and how their identity was verified.
 
-## Regulatory Requirements
+## Why signatures are captured
 
-Electronic signatures must comply with:
+The standards uqmes targets require that approvals be **attributable** and
+**recorded**:
 
-| Standard | Key Requirements |
-|----------|------------------|
-| **21 CFR Part 11** | Unique ID, password verification, signature meaning |
-| **ISO 13485** | Authorized signatures, records |
-| **EU MDR** | Electronic identification |
+| Standard | What it needs from a signature |
+|----------|-------------------------------|
+| **AS9100D** | Authorized approval of documents, processes, and dispositions |
+| **IATF 16949** | Approval records for control plans and process changes |
+| **ISO 9001** | Documented evidence of who authorized what, and when |
+
+!!! note "Medical-device and FDA regulation is not a target"
+    uqmes is not built for 21 CFR Part 11, ISO 13485, or EU MDR, and no claim
+    of conformance with them is made. The signature mechanism described below
+    is designed for aerospace and automotive quality requirements. If you need
+    medical-device compliance, treat these controls as a starting point to be
+    independently assessed, not as evidence.
 
 ## How Signatures Work
 
@@ -46,13 +55,15 @@ Meanings are configured per approval template.
 
 ### For Approvals
 
-1. Review item requiring approval
-2. Click **Approve** (or Reject)
-3. Enter password
+1. Review the item requiring approval
+2. Click **Submit Response**
+3. Choose a **Decision** — Approved, Rejected, or Delegated
 4. Add comments (optional)
-5. Submit
+5. Sign, if the approval template requires verification
+6. Submit
 
-Signature is recorded with all required data.
+The response is recorded with your identity, the decision, a timestamp, the
+verification method used, and the originating IP address.
 
 ### For Records
 
@@ -159,18 +170,26 @@ For audit preparation.
 4. **Clear meanings** - Unambiguous signature text
 5. **Timely signing** - Sign when completing work
 
-## Compliance Mapping
+## What a signature records
 
-### 21 CFR Part 11 Requirements
+| Property | Implementation |
+|----------|----------------|
+| Unique to the individual | UUID user ID, never reused or reassigned |
+| Identity verification | `verification_method` — `PASSWORD`, `SSO`, or `NONE` |
+| Signature meaning | `signature_meaning`, e.g. "I approve as QA Manager" |
+| Signature image | `signature_data`, a base64 PNG, when one is captured |
+| Date and time | Server UTC timestamp |
+| Origin | `ip_address` of the signing request |
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Unique to individual | UUID user ID |
-| Not reused or reassigned | IDs never reused |
-| Two distinct components | User ID + password |
-| Signature meaning | Configurable meaning text |
-| Date/time of signing | Server UTC timestamp |
-| Manifest during signing | Meaning displayed before sign |
+!!! warning "`NONE` is a valid verification method"
+    Signing can be configured to require no identity verification at all. A
+    signature recorded with `verification_method = NONE` attributes the action
+    to a user account but does **not** evidence that the account holder
+    personally authorized it.
+
+    If you are relying on signatures as controls, confirm your approval
+    templates require `PASSWORD` or `SSO` — the model does not enforce this
+    for you.
 
 ## Next Steps
 

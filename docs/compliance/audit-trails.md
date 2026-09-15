@@ -20,8 +20,6 @@ Audit trails are required by:
 | Standard | Requirement |
 |----------|-------------|
 | **ISO 9001** | Records of monitoring and measurement |
-| **ISO 13485** | Device history records |
-| **21 CFR Part 11** | Audit trail, computer-generated timestamps |
 | **AS9100D** | Configuration management, traceability |
 | **IATF 16949** | Process control records |
 
@@ -114,20 +112,21 @@ Log**, and on any record's **History** tab.
 
 ## Regulatory Mappings
 
-### 21 CFR Part 11
-| Requirement | Implementation |
-|-------------|----------------|
+### Audit trail properties
+
+| Property | Implementation |
+|----------|----------------|
 | Secure, computer-generated timestamps | Server-side UTC timestamps |
 | Audit trail for changes | All changes logged |
 | Record of operator identity | User ID on all records |
 | Previous values retained | Before/after values stored |
-
-### ISO 13485
-| Requirement | Implementation |
-|-------------|----------------|
-| Device history records | Part history with all events |
-| Change records | Full change logging |
 | Traceability | Part-to-lot-to-material tracking |
+
+!!! note "Medical-device and FDA regulation is not a target"
+    uqmes targets aerospace and automotive quality standards. 21 CFR Part 11,
+    ISO 13485, and EU MDR are **not** design goals and no conformance with
+    them is claimed.
+
 
 ## Data Retention
 
