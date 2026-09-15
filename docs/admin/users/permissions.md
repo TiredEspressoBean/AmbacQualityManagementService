@@ -20,10 +20,18 @@ delete_orders  - Can remove orders
 Special actions beyond CRUD:
 
 ```
-approve_document   - Can approve documents
-close_capa         - Can close CAPAs
-disposition_part   - Can make disposition decisions
+respond_to_approval  - Eligible to respond to approval requests
+approve_disposition  - Can record (or co-sign) a disposition decision
+close_capa           - Can close CAPAs
+override_training_gate - Can authorize an unqualified operator onto a step
+void_substepcompletion - Can void a recorded substep completion
 ```
+
+!!! warning "Eligibility is not authorization"
+    `respond_to_approval` makes you *eligible*. Whether a given request
+    actually reaches you is decided by its approval template — see [Who can
+    approve](../../workflows/approvals/overview.md#who-can-approve). Granting
+    the permission to someone who was never assigned changes nothing.
 
 ## Assigning via Groups
 
@@ -128,7 +136,7 @@ The recommended approach:
 |------------|--------|
 | `view_auditlog` | Access full audit trail |
 | `change_tenant` | Modify organization settings |
-| `manage_users` | Full user management |
+| `add_user`, `change_user` | Create and edit users |
 
 ## Checking User Permissions
 

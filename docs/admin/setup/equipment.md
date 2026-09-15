@@ -223,7 +223,7 @@ Navigate to **Quality** > **Calibrations**.
 | `add_equipments` | Create equipment |
 | `change_equipments` | Edit equipment |
 | `delete_equipments` | Remove equipment |
-| `record_calibration` | Record calibrations |
+| `add_calibrationrecord` | Record a calibration |
 
 ## Next Steps
 

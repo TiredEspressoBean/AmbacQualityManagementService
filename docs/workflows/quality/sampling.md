@@ -309,7 +309,7 @@ All sampling decisions are logged:
 |------------|--------|
 | `view_samplingrule` | View sampling configuration |
 | `change_samplingrule` | Modify sampling rules |
-| `record_sampling` | Record sampling results |
+| `add_samplingdecision` | Record a sampling decision |
 
 ## Next Steps
 

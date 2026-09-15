@@ -132,7 +132,7 @@ Permissions are organized by model:
 | **Orders** | view_orders, add_orders, change_orders |
 | **Parts** | view_parts, change_parts, delete_parts |
 | **Quality** | add_qualityreport, approve_disposition |
-| **Documents** | view_document, approve_document |
+| **Documents** | view_document, respond_to_approval |
 | **CAPA** | add_capa, close_capa |
 | **Admin** | view_user, change_settings |
 

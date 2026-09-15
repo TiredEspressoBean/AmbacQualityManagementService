@@ -315,53 +315,81 @@ By the end of this module, you will:
 
 ---
 
-### 4.3 Recommending Disposition
+### 4.3 Deciding a Disposition
 
-**Your role:** Recommend the appropriate disposition based on:
+**Your role:** Decide the disposition based on the nature of the defect, its
+impact on function and safety, cost, and what the customer requires.
 
-- Nature of defect
-- Impact on function/safety
-- Cost considerations
-- Customer requirements
+There is no "recommend then wait" step. Recording the decision *is* the
+authorized act, and the record stores who authorized it and when — that pair is
+what ISO 9001 8.7 asks for.
 
 **Steps:**
 
-1. Open the quality report
-2. Review all information
-3. Click **Recommend Disposition**
-4. Select disposition type
-5. Provide justification
-6. Submit for approval
+1. Open the disposition from **Quality** > **Dispositions**, or from the
+   *Exceptions* list on the work order
+2. Record the **containment action** if it hasn't been captured yet — what was
+   done immediately to stop the nonconforming part escaping
+3. Choose the disposition type
+4. Enter the justification
+5. Submit
 
-**Exercise 4.1:** Recommend a Disposition
+!!! info "If you don't hold approve_disposition, co-sign"
+    You do not hand the record off. An authorized approver enters **their own
+    email** as co-signer on your submission, and the decision is recorded
+    against them as the authority with you as the caller.
 
-1. Find quality report "QR-TRAIN-001"
+    This keeps routine decisions moving without misattributing who authorized
+    them.
+
+!!! warning "Use As Is and Repair will not save without an approval reference"
+    Both accept known-nonconforming product, so both need a recorded customer
+    or design approval — a concession or deviation — before the decision can be
+    recorded. Obtain it through your normal channel first, then enter its
+    reference. The system rejects the decision outright without one.
+
+Full detail: [Dispositions](../workflows/quality/dispositions.md).
+
+**Exercise 4.1:** Decide a Disposition
+
+1. Find the training disposition DISP-TRAIN-001
 2. Review the issue details
-3. Click **Recommend Disposition**
-4. Select "Rework"
-5. Justification: "Surface scratch can be polished out without affecting dimensions or function. Recommend rework and re-inspection."
-6. Submit
+3. Choose **Rework**
+4. Justification: "Surface scratch can be polished out without affecting
+   dimensions or function. Rework and re-inspect."
+5. Submit, co-signing with your assessor if you do not hold the permission
+6. Note what the part's status became, and why the rest of its lot is affected
 
 ---
 
-### 4.4 After Disposition Approval
+### 4.4 After the Decision
 
-Once QA Manager approves:
+Recording the type moves the disposition to **In Progress** and cascades to the
+part:
 
-| Disposition | Next Steps |
-|-------------|------------|
-| Use As-Is | Release part from quarantine |
-| Rework | Return to production, re-inspect after |
-| Scrap | Mark scrapped, update counts |
-| Return to Supplier | Initiate RMA process |
+| Disposition | Part becomes | Then |
+|-------------|--------------|------|
+| Use As Is | Ready for next step | Continues production |
+| Rework / Repair | Rework needed | Redone, then re-inspected |
+| Scrap | Scrapped | Verify and record the scrap method |
+| Return to Supplier | Cancelled | RMA / credit process |
 
----
+Two things will look like bugs and are not:
+
+- **The part didn't move.** Rework and Repair only route a part still held
+  awaiting a decision. If it was already routed onward, your disposition is a
+  paper record of what was authorized — correctly so.
+- **A decision didn't stick on a scrapped part.** Scrap dominates; nothing
+  less severe revives it.
+
+Completing the resolution closes the record, and a closed disposition's
+decision can no longer be changed.
 
 ### Knowledge Check: Module 4
 
 1. What is the purpose of quarantine?
-2. Who approves dispositions?
-3. What disposition would you recommend for a part with a minor cosmetic defect that doesn't affect function?
+2. Who can record a disposition decision, and what do you do if you cannot?
+3. A part has a minor cosmetic defect that does not affect function. Which disposition, and what must you have in hand before the system will record it?
 
 ---
 

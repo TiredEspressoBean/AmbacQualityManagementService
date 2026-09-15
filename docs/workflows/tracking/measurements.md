@@ -104,46 +104,56 @@ Measurements may require calibrated equipment:
 !!! warning "Expired Calibration"
     If equipment calibration has expired, you may be blocked from recording measurements or warned to use different equipment.
 
-## Measurement History
+## Where recorded measurements appear
 
-View all measurements for a part:
+There is no **Measurements** tab on a part. A measurement recorded at an
+inspection-point substep is written as a measurement result against the
+**Quality Report** that substep produced, and that report is where the numeric
+evidence is listed — name, value, specification, pass/fail, who recorded it and
+when.
 
-1. Open the part detail
-2. Go to **Measurements** tab
-3. See chronological list of all measurements
-4. Each entry shows:
-   - Measurement name
-   - Recorded value
-   - Pass/fail status
-   - Date/time
-   - Operator
-   - Equipment used
+Numeric results also flow into SPC, so they appear in control charts and
+capability analysis without anything further being done to them. See [SPC
+Charts](../../analysis/spc.md).
 
-## Editing Measurements
+## Correcting a measurement
 
-To correct a measurement error:
+**A recorded measurement cannot be edited.** There is no edit action, for any
+role — a measurement result is evidence, and evidence that can be quietly
+rewritten is not evidence. How you fix a wrong value depends entirely on
+whether you have confirmed it yet.
 
-1. Find the measurement in history
-2. Click **Edit** (if permitted)
-3. Enter the corrected value
-4. Provide a reason for the change
-5. Save
+### Before you confirm — the review screen
 
-!!! info "Audit Trail"
-    Both original and corrected values are retained in the audit trail.
+The review screen at the end of the step player lists everything you recorded.
+This is the last easy place to fix a mistyped value: tap the entry, correct it,
+carry on. Nothing has been sealed as a completion yet.
 
-## Measurement Attachments
+### After you confirm — QA voids the completion
 
-Attach evidence to measurements:
+Once confirmed, the substep completion holding that measurement can only be
+**voided**, by QA Inspector, QA Manager, or Tenant Admin, with a reason. The
+work is then redone and a fresh measurement recorded.
 
-- Photos of measurement setup
-- Inspection reports
-- CMM output files
-- Calibration certificates
+!!! warning "Voiding is not a quiet correction"
+    A voided completion no longer satisfies its substep, so the part stops
+    where it is — and because unsplit parts advance as a cohort, its whole lot
+    stops with it. The original value stays visible, struck through, with the
+    reason and who voided it.
 
-1. Record the measurement
-2. Click **Attach File**
-3. Upload supporting documentation
+    This is the intended cost. Correcting a sealed quality record is a
+    deliberate, visible act, not a typo fix. See [Voiding a
+    completion](../dwi/running.md#voiding-a-completion).
+
+## Evidence alongside a measurement
+
+Photos, files and scans are not attached to a measurement. They are **captures
+in their own right** — a photo substep, a file substep — recorded next to the
+measurement in the same step and sealed the same way.
+
+Authoring the step is what decides whether evidence is required. If an
+inspection needs a photo of the setup, the step needs a photo substep; there is
+no ad-hoc attach.
 
 ## Failed Measurements
 

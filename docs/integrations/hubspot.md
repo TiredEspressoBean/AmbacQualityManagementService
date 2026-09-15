@@ -155,6 +155,6 @@ Open the integration from **Admin > Settings > Integrations** to see its status:
 
 | Permission | Allows |
 |------------|--------|
-| `manage_integrations` | Configure HubSpot (admin) |
+| `change_integrationconfig` | Configure HubSpot |
 | `view_integrationconfig` | View integration status |
 

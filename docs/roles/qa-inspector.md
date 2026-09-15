@@ -95,13 +95,20 @@ When problems are found:
 
 ### Recording Measurements
 
-1. Select part(s) to measure
-2. Click **Record Measurements**
-3. For each measurement:
-   - Enter measured value
-   - System calculates pass/fail
-   - Note any observations
-4. Save all measurements
+Where you record depends on what you are inspecting.
+
+**In-process, on parts** — measurements are substeps inside the step player.
+Work the step's inspection-point substep and enter the value there; the system
+evaluates it against the specification as you confirm, and writes it to a
+Quality Report alongside the completion.
+
+**Incoming lots** — receiving inspection has its own surface. Open the lot from
+the receiving inspection queue and use **Record Measurements** there.
+
+!!! note "There is no Record Measurements button on a part"
+    The per-part button older instructions describe does not exist. For parts,
+    the step player is the recording surface. See [Recording
+    Measurements](../workflows/tracking/measurements.md).
 
 !!! example "Demo: Flow Testing Measurement"
     At Flow Testing step, record Flow Rate @ 1000 bar. Spec: 105-135 mL/min. If you measure 142 mL/min (like INJ-0042-017), system shows FAIL and part routes to quarantine.
@@ -282,7 +289,7 @@ You may be assigned CAPA tasks:
 
 | Task | Steps |
 |------|-------|
-| Record measurement | Select part → Record Measurements → Enter values → Save |
+| Record measurement | On a part: step player → inspection substep → enter value → **Confirm & next** · On an incoming lot: receiving inspection → **Record Measurements** |
 | Create NCR | Select part → Create Quality Report → Fill form → Submit |
 | Add annotation | Heat Map → Click location → Enter details → Save |
 | Approve FPI | View FPI → Review data → Approve/Reject |
