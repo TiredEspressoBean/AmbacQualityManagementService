@@ -70,6 +70,8 @@ nav:
       - Overview: workflows/supply/overview.md
       - Outside Processing: workflows/supply/outside-processing.md
       - Part Approvals: workflows/supply/part-approvals.md
+    - Approvals:
+      - Overview: workflows/approvals/overview.md
     - Change Control:
       - Overview: workflows/change-control/overview.md
     - Digital Work Instructions:
