@@ -455,18 +455,24 @@ def _enforce_sequencing(substep, step_execution=None, batch_execution=None) -> N
         step=step, order__lt=substep.order, is_optional=False,
     ).exclude(pk=substep.pk)
 
+    # A voided completion no longer satisfies its substep — that is what
+    # voiding means, and both sibling gates (advancement_gate, batch_lifecycle)
+    # already read it that way. Without `is_voided=False` here, QA could void
+    # substep #2 and the operator could still complete #3, because the retracted
+    # row still counted as done. The part would then block at the advancement
+    # gate instead, one step downstream of the cause and looking unrelated.
     if batch_execution is not None:
         prior = prior.filter(scope=SubstepScope.BATCH)
         done_ids = set(
             SubstepCompletion.objects
-            .filter(batch_execution=batch_execution)
+            .filter(batch_execution=batch_execution, is_voided=False)
             .values_list('substep_id', flat=True)
         )
     else:
         prior = prior.exclude(scope=SubstepScope.BATCH)
         done_ids = set(
             SubstepCompletion.objects
-            .filter(step_execution=step_execution)
+            .filter(step_execution=step_execution, is_voided=False)
             .values_list('substep_id', flat=True)
         )
 
