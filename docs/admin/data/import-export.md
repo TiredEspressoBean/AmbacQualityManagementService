@@ -302,15 +302,6 @@ GET /api/{Model}/import-template/csv/
 GET /api/{Model}/import-template/xlsx/
 ```
 
-## Best Practices
-
-1. **Always use templates** - Ensures correct format
-2. **Export before major imports** - Create a backup
-3. **Test with small batches** - Verify mapping before large imports
-4. **Use upsert mode** - Most flexible, handles both new and existing
-5. **Review errors carefully** - Fix issues before re-importing
-6. **Filter exports** - Only export what you need
-
 ## Next Steps
 
 - [API Documentation](../../integrations/api.md) - Programmatic access

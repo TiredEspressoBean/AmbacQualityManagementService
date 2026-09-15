@@ -241,14 +241,6 @@ Parts record which process version they used:
 | `respond_to_approval` | Respond to a process approval request (eligibility also set by the approval template) |
 | `delete_processes` | Remove processes |
 
-## Best Practices
-
-1. **Start simple** - Add complexity as needed
-2. **Review with operations** - Validate with users
-3. **Test thoroughly** - Before production use
-4. **Document changes** - Version notes
-5. **Train users** - On new processes
-
 ## Next Steps
 
 - [Step Configuration](steps.md) - Detailed step setup

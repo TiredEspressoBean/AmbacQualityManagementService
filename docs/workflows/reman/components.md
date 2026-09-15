@@ -133,14 +133,6 @@ Track disassembly performance:
 - Value recovered from cores
 - Most common component types harvested
 
-## Best Practices
-
-1. **Disposition promptly** - Don't leave components pending long
-2. **Document scrap reasons** - Helps identify recurring issues
-3. **Verify condition** - Double-check grades before accepting
-4. **Track yield** - Compare to expected fallout rates
-5. **Review traceability** - Ensure links are maintained
-
 ## Troubleshooting
 
 ### Cannot Accept to Inventory

@@ -155,14 +155,6 @@ View in Admin > Audit Log.
 | `view_user` | See inactive users |
 | `delete_user` | Permanent deletion (rarely used) |
 
-## Best Practices
-
-1. **Process, not ad-hoc** - Document offboarding steps
-2. **Timely** - Remove access promptly
-3. **Complete** - All systems, not just uqmes
-4. **Documented** - Record in change log
-5. **Reviewed** - Periodic access audits
-
 ## Checklist: User Offboarding
 
 - [ ] Identify user to deactivate

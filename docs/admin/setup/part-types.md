@@ -187,14 +187,6 @@ Don't delete—inactivate to preserve history.
 | `change_parttypes` | Edit part types |
 | `delete_parttypes` | Deactivate part types |
 
-## Best Practices
-
-1. **Consistent numbering** - Standard part number format
-2. **Complete configuration** - Fill in all relevant fields
-3. **Link processes** - Connect to manufacturing
-4. **Attach drawings** - Documents readily available
-5. **Regular review** - Keep current
-
 ## Next Steps
 
 - [Process Configuration](../processes/overview.md) - Manufacturing workflows

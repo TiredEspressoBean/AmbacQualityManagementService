@@ -230,14 +230,6 @@ Link measurements to drawing callouts:
 | `delete_measurementdefinition` | Remove definitions |
 | `view_measurementdefinition` | View definitions |
 
-## Best Practices
-
-1. **Match drawing** - Exact specifications
-2. **Clear names** - Descriptive, unambiguous
-3. **Appropriate precision** - Match capability
-4. **Group logically** - Related measurements together
-5. **Document changes** - Track spec changes
-
 ## Troubleshooting
 
 ### Measurement Not Appearing

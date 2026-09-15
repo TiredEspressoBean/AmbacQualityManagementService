@@ -200,14 +200,6 @@ Document improvement in CAPA verification.
 | `view_heatmapannotations` | View heat maps and their annotation details |
 | `export_data` | Export heat map data |
 
-## Best Practices
-
-1. **Regular review** - Check heat maps weekly
-2. **Filter strategically** - Focus analysis
-3. **Look for changes** - Compare time periods
-4. **Act on findings** - Heat maps drive improvement
-5. **Share with team** - Visualizations communicate issues
-
 ## Next Steps
 
 - [Creating Annotations](annotations.md) - Add defect data

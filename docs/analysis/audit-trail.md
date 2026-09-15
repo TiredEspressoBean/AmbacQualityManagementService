@@ -230,14 +230,6 @@ Old audit logs may be archived:
 Standard users can view history of records they can access.
 Full audit log access is typically admin-only.
 
-## Best Practices
-
-1. **Review regularly** - Check for anomalies
-2. **Investigate issues** - Use trail for root cause
-3. **Prepare for audits** - Use API to extract data for compliance reviews
-4. **Monitor sensitive** - Watch critical record types
-5. **Protect access** - Limit who can view full audit log
-
 ## Next Steps
 
 - [Compliance](../compliance/audit-trails.md) - Compliance requirements

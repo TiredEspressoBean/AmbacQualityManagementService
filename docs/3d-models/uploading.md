@@ -164,14 +164,6 @@ Thumbnails are auto-generated:
 - Use glTF binary (.glb)
 - Simplify geometry
 
-## Best Practices
-
-1. **Use glTF** - Best performance
-2. **Optimize first** - Reduce before upload
-3. **Set scale correctly** - Annotations depend on it
-4. **Version control** - Track model changes
-5. **Link to part types** - Enable annotations
-
 ## Next Steps
 
 - [Viewing Models](viewing.md) - Navigation and interaction

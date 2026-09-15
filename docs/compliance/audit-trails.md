@@ -127,7 +127,6 @@ Log**, and on any record's **History** tab.
     ISO 13485, and EU MDR are **not** design goals and no conformance with
     them is claimed.
 
-
 ## Data Retention
 
 Audit logs retained per policy:
@@ -158,14 +157,6 @@ Prepare data for external audits:
 | `export_auditlog` | Export audit data for auditors | Admin |
 
 Standard users see history of records they can access via record detail pages.
-
-## Best Practices
-
-1. **Review regularly** - Spot anomalies early
-2. **Prepare reports** - Have audit data ready
-3. **Train users** - Understanding of requirements
-4. **Test procedures** - Verify logging works
-5. **Protect access** - Limit audit log access
 
 ## Next Steps
 

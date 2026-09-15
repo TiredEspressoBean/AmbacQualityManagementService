@@ -254,10 +254,3 @@ API access requires:
 - User must have permission for action
 - Tenant context determined by token
 
-## Best Practices
-
-1. **Secure tokens** - Never expose in client code
-2. **Use HTTPS** - Always encrypted
-3. **Handle errors** - Implement retry logic
-4. **Respect rate limits** - Implement backoff
-5. **Use pagination** - For large datasets

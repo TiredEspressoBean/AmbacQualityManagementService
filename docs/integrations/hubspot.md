@@ -158,10 +158,3 @@ Open the integration from **Admin > Settings > Integrations** to see its status:
 | `manage_integrations` | Configure HubSpot (admin) |
 | `view_integrationconfig` | View integration status |
 
-## Best Practices
-
-1. **Test in sandbox** - Before production
-2. **Map carefully** - Verify field alignment
-3. **Monitor logs** - Watch for errors
-4. **Document configuration** - For maintenance
-5. **Train users** - On integrated workflow

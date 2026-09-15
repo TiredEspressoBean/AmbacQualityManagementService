@@ -251,14 +251,6 @@ If documents have expiration dates:
 | `change_documents` | Submit for approval |
 | `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 
-## Best Practices
-
-1. **Complete before submit** - Minimize iterations
-2. **Clear change notes** - Help approvers
-3. **Respond promptly** - As approver, don't delay
-4. **Constructive feedback** - If rejecting, explain why
-5. **Document training** - Approvers understand content
-
 ## Next Steps
 
 - [Document Revisions](revisions.md) - Version control

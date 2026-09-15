@@ -234,14 +234,6 @@ current selection.
 | `view_measurementresult` | Access measurement data |
 | `change_spcbaseline` | Modify baselines |
 
-## Best Practices
-
-1. **Monitor regularly** - Check charts daily/weekly
-2. **React to signals** - Investigate out-of-control points
-3. **Don't over-adjust** - Only adjust for assignable causes
-4. **Update baselines** - After confirmed improvements
-5. **Document changes** - Note process adjustments
-
 ## Next Steps
 
 - [SPC Practitioner Guide](spc-practitioner-guide.md) - Investigation workflows, CAPA criteria, baseline management

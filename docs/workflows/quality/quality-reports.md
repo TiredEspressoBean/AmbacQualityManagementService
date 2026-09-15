@@ -178,14 +178,6 @@ Quality reports trigger notifications:
 
 Note: Disposition decisions use separate permissions (`approve_disposition`, `close_disposition`).
 
-## Best Practices
-
-1. **Report immediately** - Don't wait, document while fresh
-2. **Be specific** - Exact measurements, locations, quantities
-3. **Add photos** - Visual evidence is invaluable
-4. **Include context** - Equipment, operator, conditions
-5. **Link related items** - Previous similar issues, parts, orders
-
 ## Next Steps
 
 - [Dispositions](dispositions.md) - Making disposition decisions

@@ -81,14 +81,6 @@ For multi-shift operations:
 | `view_equipments` | See equipment options |
 | `view_user` | See operator options |
 
-## Best Practices
-
-1. **Assign early** - Helps planning visibility
-2. **Check availability** - Avoid conflicts
-3. **Verify qualifications** - Ensure training current
-4. **Update on change** - Keep assignments accurate
-5. **Use notes** - Communicate special instructions
-
 ## Next Steps
 
 - [Work Order Progress](progress.md) - Tracking completion

@@ -157,15 +157,6 @@ Material-related CAPAs can:
 - Track supplier-related corrective actions
 - Drive incoming inspection improvements
 
-## Best Practices
-
-1. **Assign clear lot numbers** - Use consistent numbering schemes
-2. **Record supplier info** - Always capture supplier lot numbers
-3. **Track usage promptly** - Record consumption as it happens
-4. **Investigate signals** - Check lot correlation for quality issues
-5. **Document splits** - Maintain parent-child relationships
-6. **Quarantine fast** - Isolate suspect material immediately
-
 ## Permissions
 
 | Permission | Allows |

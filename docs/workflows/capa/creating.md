@@ -191,14 +191,6 @@ On CAPA creation:
 | `change_capa` | Edit CAPAs |
 | `assign_capa` | Assign team members |
 
-## Best Practices
-
-1. **Clear problem statement** - Specific, measurable
-2. **Right priority** - Drives response urgency
-3. **Appropriate team** - Include needed expertise
-4. **Realistic timeline** - Achievable dates
-5. **Link everything** - Connect related records
-
 ## Next Steps
 
 - [CAPA Tasks](tasks.md) - Creating action items

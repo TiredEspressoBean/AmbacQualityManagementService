@@ -149,14 +149,6 @@ DIM-US,Under Size,Smaller than specified,DIM
 | `change_qualityerrorslist` | Edit error types |
 | `delete_qualityerrorslist` | Deactivate error types |
 
-## Best Practices
-
-1. **Keep it simple** - Start with major categories
-2. **Add detail gradually** - Expand as needed
-3. **Consistent definitions** - Clear when to use
-4. **Train users** - Everyone uses same categories
-5. **Review periodically** - Adjust based on use
-
 ## Next Steps
 
 - [Quality Reports](../../workflows/quality/quality-reports.md) - Using error types

@@ -215,14 +215,6 @@ For multiple defects of same type:
 | `delete_heatmapannotations` | Remove annotations |
 | `view_heatmapannotations` | View annotations |
 
-## Best Practices
-
-1. **Accurate placement** - Precise location matters for analysis
-2. **Consistent classification** - Use correct error types
-3. **Add context** - Descriptions help investigation
-4. **Include photos** - Visual evidence is valuable
-5. **Link to NCRs** - Connects data for traceability
-
 ## Troubleshooting
 
 ### Can't Click on Model

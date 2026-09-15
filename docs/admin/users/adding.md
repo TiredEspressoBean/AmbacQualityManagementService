@@ -188,14 +188,6 @@ SSO users follow IdP password policies.
 | `change_user` | Edit users |
 | `delete_user` | Deactivate users |
 
-## Best Practices
-
-1. **Use SSO when available** - Centralized management
-2. **Assign groups, not individual permissions** - Easier to manage
-3. **Verify email addresses** - Ensure delivery
-4. **Document user roles** - Who should have what
-5. **Regular access review** - Periodic audit of users
-
 ## Next Steps
 
 - [Roles & Groups](roles.md) - Understanding permissions

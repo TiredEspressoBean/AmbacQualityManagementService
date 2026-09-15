@@ -223,14 +223,6 @@ Ensure documentation meets requirements.
 | `approve_capa` | Approve closure |
 | `change_capa` | Reopen closed CAPAs |
 
-## Best Practices
-
-1. **Don't rush closure** - Verify thoroughly
-2. **Evidence-based** - Document everything
-3. **Measurable criteria** - Objective effectiveness
-4. **Follow up** - Monitor post-closure
-5. **Share learnings** - Prevent elsewhere
-
 ## Next Steps
 
 - [CAPA Overview](overview.md) - Process reference

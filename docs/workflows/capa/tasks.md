@@ -212,14 +212,6 @@ For multiple tasks:
 | `change_capatasks` | Edit, complete tasks |
 | `delete_capatasks` | Remove tasks |
 
-## Best Practices
-
-1. **Clear titles** - Action-oriented, specific
-2. **Realistic due dates** - Achievable
-3. **Single owner** - One person responsible
-4. **Evidence always** - Document completion
-5. **Update promptly** - Keep status current
-
 ## Next Steps
 
 - [Verification & Closure](verification.md) - Completing the CAPA

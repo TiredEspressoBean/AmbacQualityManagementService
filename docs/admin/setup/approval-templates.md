@@ -159,10 +159,3 @@ Step 4: Management (for major changes)
 | `change_approvaltemplate` | Edit templates |
 | `delete_approvaltemplate` | Remove templates |
 
-## Best Practices
-
-1. **Match to risk** - More approvals for critical items
-2. **Include backups** - Handle absences
-3. **Clear naming** - Describe purpose
-4. **Test thoroughly** - Verify flow works
-5. **Review periodically** - Adjust as org changes

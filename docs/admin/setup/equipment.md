@@ -225,14 +225,6 @@ Navigate to **Quality** > **Calibrations**.
 | `delete_equipments` | Remove equipment |
 | `record_calibration` | Record calibrations |
 
-## Best Practices
-
-1. **Unique identifiers** - Clear naming convention
-2. **Track calibration** - Maintain compliance
-3. **Record usage** - Build utilization data
-4. **Attach documents** - Keep certs accessible
-5. **Update status** - Reflect current state
-
 ## Next Steps
 
 - [Equipment Types](equipment.md) - Configure categories

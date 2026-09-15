@@ -156,14 +156,6 @@ determination that gates ITAR access.
 
 Note: Access to ITAR-controlled items is determined by the user's `us_person` attribute, not a permission. The `ExportControlService` automatically filters querysets based on user export control status.
 
-## Best Practices
-
-1. **Train staff** - ITAR awareness training
-2. **Verify promptly** - Don't delay verification
-3. **Document everything** - Audit trail matters
-4. **Regular review** - Periodic access review
-5. **Consult experts** - Export counsel for questions
-
 ## Compliance Notes
 
 !!! warning "Legal Requirements"

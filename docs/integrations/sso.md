@@ -223,10 +223,3 @@ administrator in backend settings at deployment time.
     planned. Until then, contact your system administrator to change SSO
     configuration.
 
-## Best Practices
-
-1. **Test thoroughly** - Before production rollout
-2. **Document configuration** - For disaster recovery
-3. **Monitor logs** - Watch for issues
-4. **Plan offboarding** - Deactivate in both systems
-5. **Use groups** - Simplify permission management

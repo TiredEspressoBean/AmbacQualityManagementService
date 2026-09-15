@@ -162,14 +162,6 @@ For audit preparation.
 | `respond_to_approval` | Sign approvals when assigned |
 | `approve_*` (e.g., `approve_capa`) | Approve specific record types |
 
-## Best Practices
-
-1. **Unique accounts** - No shared credentials
-2. **Strong passwords** - Meet policy requirements
-3. **MFA recommended** - Via SSO/IdP
-4. **Clear meanings** - Unambiguous signature text
-5. **Timely signing** - Sign when completing work
-
 ## What a signature records
 
 | Property | Implementation |

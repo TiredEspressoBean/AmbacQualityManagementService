@@ -244,13 +244,6 @@ Exports may be limited by data retention policies.
 | `view_*` | Must have view permission for data type |
 | `view_auditlog` | View audit trail (export planned) |
 
-## Best Practices
-
-1. **Filter first** - Export only what you need
-2. **Use API for automation** - Part traveler and other data available via REST API
-3. **Secure downloads** - Exported data is sensitive
-4. **Archive properly** - Store exports per retention policy
-
 ## Next Steps
 
 - [Dashboard Overview](dashboard.md) - Visualize before export

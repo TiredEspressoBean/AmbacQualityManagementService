@@ -169,14 +169,6 @@ Retention per document type:
 | `view_secret_documents` | Access SECRET docs |
 | `respond_to_approval` | Approve documents when assigned |
 
-## Best Practices
-
-1. **Use templates** - Consistent formatting
-2. **Clear naming** - Standard conventions
-3. **Complete metadata** - Aid searchability
-4. **Timely review** - Keep documents current
-5. **Train users** - Document control procedures
-
 ## Next Steps
 
 - [Document Approval](../workflows/documents/approval.md) - Approval process

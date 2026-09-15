@@ -161,14 +161,6 @@ Revisions are never deleted (may be archived).
 | `view_documents` | View revision history |
 | `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 
-## Best Practices
-
-1. **Increment correctly** - Follow revision scheme
-2. **Clear change notes** - What and why
-3. **Submit promptly** - Don't leave drafts lingering
-4. **Review before release** - Verify changes
-5. **Link to changes** - ECO, CAPA, etc.
-
 ## Next Steps
 
 - [Document Approval](approval.md) - Approval workflows

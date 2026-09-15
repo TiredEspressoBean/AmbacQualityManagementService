@@ -151,14 +151,6 @@ Issue Flagged → Quarantine → Investigation → Disposition → Resolution
 
 See [Dispositions](../quality/dispositions.md) for disposition workflow.
 
-## Best Practices
-
-1. **Flag immediately** - Don't wait, quarantine suspect parts
-2. **Be specific** - Detailed descriptions help investigation
-3. **Add photos** - Visual evidence is invaluable
-4. **Include measurements** - Attach failed measurement data
-5. **Note environment** - Conditions, equipment, operator info
-
 ## Permissions
 
 | Permission | Allows |

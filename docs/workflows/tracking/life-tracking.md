@@ -176,15 +176,6 @@ For materials with shelf life:
 
 If reference date is Jan 1 and today is July 1, current value = 181 days.
 
-## Best Practices
-
-1. **Set realistic limits** - Use manufacturer or engineering specifications
-2. **Document sources** - Record where life data came from
-3. **Review warnings** - Act on WARNING status before expiration
-4. **Track overrides** - Require engineering approval for extensions
-5. **Audit regularly** - Review expired items for proper disposition
-6. **Maintain traceability** - Link back to source documentation
-
 ## Integration Points
 
 ### CAPA

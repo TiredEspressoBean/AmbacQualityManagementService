@@ -120,9 +120,3 @@ Examples: WI-001 Assembly Process, WI-002 Packaging
 | `change_documenttype` | Edit document types |
 | `delete_documenttype` | Remove document types |
 
-## Best Practices
-
-1. **Clear definitions** - When to use each type
-2. **Appropriate controls** - Match approval to risk
-3. **Consistent naming** - Standard codes
-4. **Review periodically** - Adjust as needed

@@ -339,14 +339,6 @@ Part of process version history.
 | `delete_steps` | Remove steps |
 | `view_steps` | View step configuration |
 
-## Best Practices
-
-1. **Clear names** - Unambiguous operation names
-2. **Appropriate detail** - Not too granular
-3. **Document requirements** - Training, equipment, docs
-4. **Test flow** - Before production
-5. **Review regularly** - Keep current
-
 ## Troubleshooting
 
 ### Parts Stuck at Step

@@ -118,10 +118,3 @@ Company records show HubSpot link.
 | `change_companies` | Edit companies |
 | `delete_companies` | Remove companies |
 
-## Best Practices
-
-1. **Unique codes** - Use consistent identifiers
-2. **Complete information** - Fill in key fields
-3. **Track contacts** - Maintain contact list
-4. **Regular review** - Update stale information
-5. **Link documents** - Keep contracts attached

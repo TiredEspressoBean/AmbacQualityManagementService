@@ -94,14 +94,6 @@ Once received, cores can be:
 2. **Scrapped** - If inspection reveals core is not usable
 3. **Held** - Awaiting decision or additional information
 
-## Best Practices
-
-1. **Inspect immediately** - Assess condition while receiving
-2. **Document thoroughly** - Take photos, note damage
-3. **Verify identity** - Confirm core matches paperwork
-4. **Handle carefully** - Prevent additional damage
-5. **Route appropriately** - Move to staging area
-
 ## Troubleshooting
 
 ### Core Number Already Exists

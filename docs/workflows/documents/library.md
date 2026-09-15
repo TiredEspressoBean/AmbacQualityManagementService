@@ -186,14 +186,6 @@ From record:
 | `delete_documents` | Remove documents |
 | `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 
-## Best Practices
-
-1. **Descriptive titles** - Clear, searchable names
-2. **Correct type** - Proper categorization
-3. **Link appropriately** - Connect to related records
-4. **Use revisions** - Don't overwrite, create new version
-5. **Complete metadata** - Fill in all relevant fields
-
 ## Next Steps
 
 - [Uploading Documents](uploading.md) - Adding new documents

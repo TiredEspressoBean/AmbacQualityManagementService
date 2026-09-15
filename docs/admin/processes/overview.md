@@ -178,14 +178,6 @@ Track process performance:
 | `respond_to_approval` | Respond to a process approval request (eligibility also set by the approval template) |
 | `delete_processes` | Remove processes |
 
-## Best Practices
-
-1. **Match reality** - Process should reflect actual workflow
-2. **Clear step names** - Unambiguous operations
-3. **Appropriate detail** - Not too granular, not too broad
-4. **Review regularly** - Update as operations change
-5. **Version carefully** - Track changes properly
-
 ## Next Steps
 
 - [Creating Processes](creating.md) - Build new processes

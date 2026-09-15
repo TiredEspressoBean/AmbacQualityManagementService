@@ -127,14 +127,6 @@ Validation errors show before upload completes.
 | `add_documents` | Upload new documents |
 | `add_documenttype` | Create new document types |
 
-## Best Practices
-
-1. **PDF for controlled docs** - Non-editable format
-2. **Clear naming** - Descriptive, consistent
-3. **Complete metadata** - Improve searchability
-4. **Link appropriately** - Connect to related records
-5. **Right visibility** - Consider audience
-
 ## Next Steps
 
 - [Document Revisions](revisions.md) - Version control

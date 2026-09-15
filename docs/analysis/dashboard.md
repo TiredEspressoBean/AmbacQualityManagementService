@@ -236,15 +236,6 @@ For shop floor displays:
     each chart shows is then limited by the permissions on the underlying
     records.
 
-
-## Best Practices
-
-1. **Check daily** - Stay on top of trends
-2. **Use filters** - Focus on relevant data
-3. **Act on insights** - Dashboard is for action
-4. **Share regularly** - Keep team informed
-5. **Set targets** - Visible goals drive improvement
-
 ## Next Steps
 
 - [SPC Charts](spc.md) - Process control analysis

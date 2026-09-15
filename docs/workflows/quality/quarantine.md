@@ -193,14 +193,6 @@ Quarantine is implemented as a part status (QUARANTINED), so standard part permi
 | `approve_disposition` | Approve disposition decisions |
 | `close_disposition` | Close dispositions and release parts |
 
-## Best Practices
-
-1. **Quarantine immediately** - Don't let suspect parts continue
-2. **Segregate physically** - Prevent accidental use
-3. **Document clearly** - What's wrong, where found
-4. **Investigate promptly** - Reduce aging
-5. **Decide and execute** - Clear the queue
-
 ## Next Steps
 
 - [Dispositions](dispositions.md) - Making decisions
