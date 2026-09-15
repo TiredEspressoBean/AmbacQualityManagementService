@@ -1,6 +1,7 @@
-site_name: Ambac Tracker Documentation
-site_description: User documentation for Ambac Tracker QMS/MES
-site_url: https://docs.ambactracker.com
+site_name: uqmes Documentation
+site_description: User documentation for uqmes — Unified Quality Manufacturing Execution System
+# Served from the application host at /docs/ (see admin/deployment/documentation-site.md).
+# Set site_url per deployment if canonical URLs or a sitemap are needed.
 
 theme:
   name: readthedocs

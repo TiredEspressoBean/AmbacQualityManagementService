@@ -216,7 +216,7 @@ GET /api/docs/
 ```python
 import requests
 
-BASE_URL = "https://yourcompany.ambactracker.com/api"
+BASE_URL = "https://yourcompany.uqmes.com/api"
 TOKEN = "your-token"
 
 headers = {
