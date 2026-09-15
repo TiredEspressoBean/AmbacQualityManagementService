@@ -197,24 +197,21 @@ The player shows **one substep at a time**, with a progress rail along the top.
 
 ---
 
-### 2.4 Individual Part Quality Reports
+### 2.4 Where Quality Data Goes
 
-For individual parts requiring quality documentation or in-process checks:
+**Concept:** You do not raise quality records separately from your work. The
+substeps you complete *are* the quality record.
 
-**Steps:**
+When a step carries an **inspection point** substep, what you record there —
+the pass/fail status, any defects against their error types, your signature —
+is written as a Quality Report as well as a substep completion. One entry,
+both records.
 
-1. From your work order, find the part in the parts list
-2. Click the **Quality Report** button
-3. Fill in the quality report form:
-   - Operator (your name)
-   - Machine/equipment used
-   - Measurements
-   - Pass/fail status
-4. Submit the form
-
-**When to use:** When recording in-process measurements or quality data for specific parts during your operation.
-
----
+!!! warning "There is no Quality Report button on a part"
+    Older instructions described clicking **Quality Report** on a part in the
+    parts list. That button does not exist. Quality data is captured in the
+    step player, and issues found outside it are raised from the work order —
+    see Module 4.
 
 ### 2.5 When Parts Don't Advance
 
@@ -274,26 +271,30 @@ Types of measurements:
 
 ### 3.2 Entering Measurements
 
-**Using the Quality Report form:**
+Measurements are **substeps in the step player**. You reach them by working the
+step, not by opening a form against a part.
 
-1. Click **Quality Report** on a part
-2. The quality report form opens
-3. Fill in required fields:
-   - Operator (your name)
-   - Machine/equipment used
-   - Measurement values
-   - Status (pass/fail)
-4. Submit the form
+**Steps:**
+
+1. Work through the step's substeps until you reach a measurement capture
+2. Read the specification shown with it
+3. Enter the measured value
+4. The system evaluates it against the spec immediately and shows pass or fail
+5. Tap **Confirm & next**
+
+The value is sealed when you confirm it. Your name, the timestamp, and the
+equipment in play are recorded with it — that is what makes it usable as
+evidence later.
 
 **Exercise 3.1:** Recording a Measurement
 
-1. Find a part requiring measurement
-2. Click **Quality Report**
-3. Enter the measurement values
-4. Set the appropriate status
-5. Submit the form
+1. Start work on a part and work to a measurement substep
+2. Enter the measured value
+3. Note whether the system shows pass or fail, and the spec it used
+4. Tap **Confirm & next**
 
----
+**Expected result:** The value is recorded against the part and the player
+advances to the next substep.
 
 ### 3.3 Out-of-Tolerance Measurements
 
@@ -353,39 +354,38 @@ By the end of this module, you will:
 
 ---
 
-### 4.2 Creating a Quality Report for Issues
+### 4.2 How to Raise an Issue
 
-Issues are reported through the same **Quality Report** form used for measurements, but with a FAIL status.
+Where a problem goes depends on where you find it. Full detail:
+[Flagging Issues](../workflows/tracking/flagging-issues.md).
 
-**Steps:**
+| Where you are | What to do |
+|---------------|------------|
+| Working the step, and it has an inspection substep | Record the fail status and the defect there, then confirm |
+| The part is past that step | Tick it in the parts list, click **Quarantine** |
+| The problem is the machine, the batch, or the process | Open the work order, click **Report…** |
 
-1. From your work order, find the part in the parts list
-2. Click **Quality Report**
-3. Fill in the form:
-   - Select your name as Operator
-   - Select the equipment/machine used
-   - Set Status to **FAIL**
-   - Select the Error Type that best matches the defect
-   - Add a description of what you observed
-4. Submit
+**Quarantining from the parts list:**
 
-**What happens:**
+1. Open the work order's **control** page
+2. Tick the affected part or parts
+3. Click **Quarantine**
 
-- Quality report is created with FAIL status
-- Part may be quarantined depending on severity
-- QA is notified
-- Part cannot advance until resolved
+!!! warning "Quarantine applies to everything you ticked"
+    It is a bulk action on the selection, not on one row. Check what is ticked
+    before you click, or you will hold parts nobody meant to hold.
 
 **Exercise 4.1:** Reporting a Quality Issue
 
-1. From your work order, find a part in the parts list
-2. Click **Quality Report**
-3. Set Status to FAIL
-4. Select error type "Visual Defect"
-5. Add description: "Training exercise - surface scratch observed"
-6. Submit the report
+1. Open your work order's control page
+2. Tick one part in the parts list
+3. Click **Quarantine**
+4. Confirm the part's status changes to Quarantined
+5. Open the work order's **Report…** dialog and look at the three exception
+   types available — do not submit one
 
----
+**Expected result:** The part is held, and you have seen where process-level
+exceptions are raised.
 
 ### 4.3 After Reporting
 
@@ -504,19 +504,20 @@ Complete these tasks to demonstrate competency:
 3. Work through the step's substeps, tapping **Confirm & next**
 4. On the review screen, tap **Complete step**
 
-### Task 2: Quality Report
+### Task 2: Recording a Measurement
 
-1. From your work order, find a part in the parts list
-2. Click **Quality Report**
-3. Fill in measurements and status
-4. Submit the form
+1. Start work on a part and work to a measurement substep
+2. Enter the measured value
+3. Confirm the system evaluated it against the specification
+4. Tap **Confirm & next**
 
 ### Task 3: Issue Reporting
 
-1. From your work order, find a part
-2. Click **Quality Report**
-3. Set status to FAIL, select error type "Dimensional"
-4. Add appropriate description and submit
+1. Open your work order's **control** page
+2. Tick one part in the parts list
+3. Click **Quarantine**
+4. Confirm the part now shows as Quarantined and explain, to your assessor,
+   why the rest of its lot is affected
 
 ### Task 4: Navigation
 
@@ -595,11 +596,13 @@ Print this for your workstation:
     what moves a part — that is the whole mechanism. If a part hasn't moved,
     something is still outstanding on it or on another part in its lot.
 
-### Quality Report / In-Process Check
-1. Work Orders → Find work order → Find part → **Quality Report** → Fill form → **Submit**
+### Recording a Measurement
+1. Step player → measurement substep → enter value → **Confirm & next**
 
 ### Reporting Issues
-1. From work order → Find part → **Quality Report** → Set FAIL status → Select error type → Describe → **Submit**
+1. In the player → record fail status + defect on the inspection substep
+2. Part already past the step → tick it in the parts list → **Quarantine**
+3. Machine, batch or process → open the work order → **Report…**
 
 ### Need Help?
 - Check the part's current step and requirements

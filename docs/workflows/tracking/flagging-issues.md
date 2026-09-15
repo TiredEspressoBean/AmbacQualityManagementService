@@ -13,41 +13,64 @@ Flag an issue when:
 - Process deviation occurs
 - Customer reports a problem
 
-## Reporting Issues via Quality Report
+## How to raise it
 
-The primary way to flag a quality issue is through a Quality Report with FAIL status:
+There is **no Flag button on a part**. Which route you take depends on what you
+found and where you are standing when you find it.
 
-1. From your work order, find the part in the parts list
-2. Click the **Quality Report** button
-3. Fill in the form with status set to **FAIL**
-4. Select the error type
-5. Add a description of the issue
-6. Submit
+| Situation | Route |
+|-----------|-------|
+| You're working the step and the substep asks for a result | Record it **in the step player** |
+| The part is already past that step, or you're not the one running it | **Quarantine** it from the parts list |
+| The problem is the process, the machine, or the whole lot | **Report…** an exception on the work order |
 
-The part enters quarantine status and cannot proceed until disposition is determined.
+### In the step player (the in-process path)
 
-## Quality Report Details
+If the step has an **inspection point** substep, that is where a bad result
+belongs. Record the quality status, the defects against their error types, and
+any signatures the substep asks for, then confirm.
 
-When creating a quality report:
+You do not raise anything separately: an inspection point's captures write a
+Quality Report as well as the substep record, so the nonconformance becomes a
+queryable quality record on its own. This is the path that keeps the finding
+attached to the work that produced it.
 
-1. From your work order, find the part in the parts list
-2. Click **Quality Report**
-3. Fill in the report form:
+### Quarantining from the parts list
 
-| Field | Description |
-|-------|-------------|
-| **Title** | Brief description of the issue |
-| **Error Type** | Category of defect |
-| **Severity** | Minor, Major, or Critical |
-| **Description** | Detailed explanation |
-| **Immediate Action** | What was done immediately |
-| **Parts Affected** | Auto-populated with selection |
+To hold parts that are already past the step, or that you are not running
+yourself:
 
-4. Set **Status** to FAIL for non-conforming parts
-5. Add attachments (photos, measurements)
-6. Submit the report
+1. Open the work order's **control** page
+2. **Tick the parts** in the parts list
+3. Click **Quarantine** in the actions that appear
 
-See [Quality Reports](../quality/quality-reports.md) for full details.
+The same selection also offers **Rework**, **Scrap**, and **Split selection…**.
+Quarantine holds the parts; it does not by itself say what is wrong with them,
+so follow it with a quality report or a disposition.
+
+!!! warning "Quarantine acts on the selection, not the row you clicked"
+    These are bulk actions on every ticked part. Check the selection before
+    clicking — quarantining a lot you did not mean to select stops all of it.
+
+### Reporting an exception on the work order
+
+When the problem is bigger than one part — a machine down, a bad batch, a
+process out of control:
+
+1. Open the work order in the **WO Control Center** or its control page
+2. Click **Report…**
+3. Choose the type — **Quarantine (quality hold)**, **Downtime (equipment /
+   resource)**, or **CAPA (corrective action)**
+4. Add the reason and notes, then submit
+
+The type routes the event to the right record, and the exception is listed on
+the work order until it is resolved. See [Quarantine](../quality/quarantine.md).
+
+### Raising a report after the fact
+
+For something found later — a customer complaint, an audit finding, a problem
+noticed off the floor — create the report directly under **Quality** >
+**Quality Reports**. See [Quality Reports](../quality/quality-reports.md).
 
 ## Error Types
 

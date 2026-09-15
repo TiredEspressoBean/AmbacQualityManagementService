@@ -51,26 +51,16 @@ step**.
     the requirements that normally gate a step. Use it to recover from a stuck
     state, not as part of routine operation.
 
-## Quality Reports (Individual Parts)
+## Quality data on individual parts
 
-For detailed quality documentation on individual parts:
+Quality data is captured **in the step player**, not from a button on the part.
+A substep marked as an inspection point writes a Quality Report alongside its
+completion record, so recording the result at the step is what creates the
+quality record.
 
-### Steps
-
-1. From your work order, find the specific part in the parts list
-2. Click **Quality Report**
-3. Fill in the form:
-   - Operator
-   - Machine/equipment used
-   - Measurements
-   - Status (pass/fail)
-4. Submit
-
-### When to Use
-
-- Recording detailed measurements
-- Documenting quality checks
-- Parts requiring individual attention
+To raise something on a part you are not currently running — or on the lot, the
+machine, or the process — see [Flagging
+Issues](flagging-issues.md).
 
 ## Step Requirements
 

@@ -36,8 +36,19 @@ Some events automatically quarantine parts:
 
 ### Manual Quarantine
 
-Quarantine is raised as an **exception** against the work order, not from a
-button on the part:
+There are two manual routes, and they record different things.
+
+**Holding specific parts** — from the work order's control page, tick the parts
+in the list and click **Quarantine**. This sets their status and nothing more:
+it holds the material but does not say what is wrong with it, so follow it with
+a quality report or a disposition.
+
+!!! warning "It acts on the whole selection"
+    **Quarantine**, like **Rework** and **Scrap** beside it, applies to every
+    ticked part rather than one row. Check the selection first.
+
+**Raising it as an exception** — when the problem belongs to the work order
+rather than to particular parts:
 
 1. Open the work order in the **WO Control Center** or its control page
 2. Click **Report…** to open the **Report exception** dialog

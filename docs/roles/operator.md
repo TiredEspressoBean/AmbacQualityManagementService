@@ -129,17 +129,17 @@ separate "Record Measurements" button:
 
 ## Flagging Issues
 
-When you find a problem:
+There is **no Flag button on a part**. Where a problem goes depends on where
+you find it:
 
-### Quick Flag
+- **Working the step** — record the result on the inspection-point substep in
+  the step player. That writes the quality record for you.
+- **Part already past the step** — tick it in the work order's parts list and
+  click **Quarantine**.
+- **Bigger than one part** — open the work order and click **Report…**.
 
-1. Select the part
-2. Click **Flag** or **Quarantine**
-3. Select error type (Dimensional, Visual, etc.)
-4. Add brief description
-5. Submit
-
-Part goes to quarantine immediately.
+See [Flagging Issues](../workflows/tracking/flagging-issues.md) for the full
+procedure and when to use each.
 
 ### When to Flag
 
@@ -225,7 +225,7 @@ If FPI is required at your step:
 | Record measurement | Step player → measurement substep → enter value → **Confirm & next** |
 | Substep doesn't apply | Step player → **Mark N/A** → pick a reason |
 | Finish a step | Step player → review screen → **Complete step** |
-| Flag issue | **Quality** > **Quality Reports** → create a report against the part |
+| Flag issue | In the player: record it on the inspection substep · Otherwise: tick the part → **Quarantine** |
 | View instructions | Open work order → Documents → Click instruction |
 
 ## What You CAN'T Do
