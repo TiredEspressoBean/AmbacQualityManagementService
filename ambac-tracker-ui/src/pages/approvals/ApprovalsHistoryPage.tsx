@@ -32,6 +32,7 @@ import {
 } from "lucide-react"
 import { useApprovalRequests } from "@/hooks/useApprovalRequests"
 import { useAuthUser } from "@/hooks/useAuthUser"
+import { getApprovalDetailLink } from "@/lib/approvals/approval-detail-link"
 import { schemas } from "@/lib/api/generated"
 import { api } from "@/lib/api/generated"
 import { queryOptions } from "@tanstack/react-query"
@@ -48,23 +49,6 @@ export const approvalsHistoryOptions = () => queryOptions({
 export const prefetchApprovalsHistory = (queryClient: QueryClient) => {
     queryClient.prefetchQuery(approvalsHistoryOptions());
 };
-
-// Helper to get the detail link for an approval based on its type
-function getApprovalDetailLink(approval: any): string {
-    const contentType = approval.content_object_info?.type?.toLowerCase();
-    const objectId = approval.object_id;
-
-    switch (contentType) {
-        case "document":
-            return `/documents/${objectId}`;
-        case "capa":
-            return `/quality/capas/${objectId}`;
-        case "process":
-            return `/process-flow?processId=${objectId}`;
-        default:
-            return `/details/${contentType}/${objectId}`;
-    }
-}
 
 const APPROVAL_TYPES = schemas.ApprovalTypeEnum.options;
 const APPROVAL_STATUSES = schemas.ApprovalStatusEnum.options;

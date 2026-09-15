@@ -16,36 +16,13 @@ import {
 import { useMyPendingApprovals, myPendingApprovalsOptions } from "@/hooks/useMyPendingApprovals"
 import { useMySubmittedRequests } from "@/hooks/useApprovalRequests"
 import { useAuthUser } from "@/hooks/useAuthUser"
+import { getApprovalDetailLink } from "@/lib/approvals/approval-detail-link"
 import type { QueryClient } from "@tanstack/react-query"
 
 // Prefetch function for route loader
 export const prefetchApprovalsOverview = (queryClient: QueryClient) => {
     queryClient.prefetchQuery(myPendingApprovalsOptions());
 };
-
-// Helper to get the detail link for an approval based on its type
-function getApprovalDetailLink(approval: any): string {
-    const contentType = approval.content_object_info?.type?.toLowerCase();
-    const objectId = approval.object_id;
-
-    switch (contentType) {
-        case "document":
-            return `/documents/${objectId}`;
-        case "capa":
-            return `/quality/capas/${objectId}`;
-        case "process":
-            return `/process-flow?processId=${objectId}`;
-        case "processchangerequest":
-            return `/quality/change-control/pcrs/${objectId}`;
-        case "processchangeorder":
-            return `/quality/change-control/pcos/${objectId}`;
-        case "processchangenotice":
-            return `/quality/change-control/pcns/${objectId}`;
-        default:
-            // Fallback - try to construct from content type name
-            return `/details/${contentType}/${objectId}`;
-    }
-}
 
 // Helper to format approval type for display
 function formatApprovalType(type: string): string {
