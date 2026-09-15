@@ -43,7 +43,12 @@ Inspect every part:
 - New products/suppliers
 - After quality issues
 
-Note: Full AQL tables per ANSI/ASQ Z1.4 are not currently implemented. Use percentage or fixed sampling for similar coverage.
+!!! tip "For incoming lots, prefer a lot-acceptance plan"
+    100% inspection is the blunt instrument. ANSI/ASQ Z1.4 (with Normal,
+    Tightened and Reduced severities), C=0, and Z1.9 variables sampling are all
+    implemented and give defensible protection from a fraction of the
+    inspection. See [Choosing a
+    rule](../../workflows/quality/sampling.md#choosing-a-rule).
 
 ## Creating Sampling Rules
 
@@ -252,14 +257,6 @@ For regulatory compliance.
 | `add_samplingrule` | Create rules |
 | `change_samplingrule` | Edit rules |
 | `delete_samplingrule` | Remove rules |
-
-## Best Practices
-
-1. **Match risk** - Tighter sampling for critical parts
-2. **Document rationale** - Why this AQL level
-3. **Review performance** - Adjust based on results
-4. **Train inspectors** - Proper technique
-5. **Audit regularly** - Verify compliance
 
 ## Next Steps
 

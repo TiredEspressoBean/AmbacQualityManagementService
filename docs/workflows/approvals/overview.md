@@ -39,14 +39,8 @@ Four figures at the top:
 Below them, the items awaiting you, a **by type** breakdown, and your own
 submitted requests.
 
-!!! warning "Known issue: document approvals link to the wrong page"
-    Clicking a **Document Release** row here opens the generic record page
-    (headed *"documents Detail"*), which has no Approval tab and no way to
-    respond.
-
-    Open the document from **Documents** instead, or use the **Review** action
-    in your Inbox, which routes correctly. CAPA approvals from this list are
-    unaffected.
+Clicking a row opens the record the approval is for, on the page where you can
+respond to it.
 
 ### Approval History
 

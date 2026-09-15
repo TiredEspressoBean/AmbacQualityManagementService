@@ -3,7 +3,7 @@
 First Piece Inspection ensures production setup is correct before running full batches. This guide covers FPI workflow in uqmes.
 
 !!! example "Demo: FPI Failure Scenario"
-    In demo mode, work order WO-0042-A demonstrates FPI workflow:
+    In demo mode, work order WO-2024-0042-A demonstrates FPI workflow:
 
     - **INJ-0042-025** failed FPI at Assembly step (torque spec exceeded)
     - Operator Mike Rodriguez sees batch is held pending FPI resolution
@@ -241,14 +241,6 @@ FPI is routine; FAI is comprehensive qualification.
 | `submit_fpi` | Submit first piece for review |
 | `sign_off_fpi` | Approve/reject FPI |
 | `view_fpirecord` | View FPI status and records |
-
-## Best Practices
-
-1. **Complete measurements** - Record all required data
-2. **Include photos** - Visual evidence of setup
-3. **Don't skip** - FPI catches setup errors early
-4. **Review promptly** - Don't delay batch release
-5. **Document failures** - Track and improve
 
 ## Next Steps
 

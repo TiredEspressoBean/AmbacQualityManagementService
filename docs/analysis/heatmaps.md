@@ -137,7 +137,7 @@ Look for:
 | Consistent location | Fixture or tooling issue |
 | Random distribution | Multiple causes |
 
-!!! example "Nozzle Tip Defect Pattern"
+!!! example "Demo: Nozzle Tip Defect Pattern"
     In order ORD-2024-0038, the heat map revealed a cluster of defects on the nozzle tip area across multiple injectors. This visual pattern - invisible in tabular data - triggered CAPA-2024-003 and traced back to a supplier batch issue with nozzle tip geometry.
 
 ### Correlation
@@ -180,14 +180,6 @@ Filter annotations by date range to see how defect patterns evolve.
 | `view_heatmapannotations` | View heat maps and their annotations |
 | `add_heatmapannotations` | Create annotations |
 | `view_threedmodel` | Access 3D models |
-
-## Best Practices
-
-1. **Annotate accurately** - Precise location matters
-2. **Use consistently** - Train all inspectors
-3. **Review patterns** - Regular analysis
-4. **Act on insights** - Improve processes
-5. **Track over time** - Measure improvement
 
 ## Next Steps
 

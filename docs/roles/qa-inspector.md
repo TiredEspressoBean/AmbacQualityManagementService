@@ -103,7 +103,7 @@ When problems are found:
    - Note any observations
 4. Save all measurements
 
-!!! example "Flow Testing Measurement"
+!!! example "Demo: Flow Testing Measurement"
     At Flow Testing step, record Flow Rate @ 1000 bar. Spec: 105-135 mL/min. If you measure 142 mL/min (like INJ-0042-017), system shows FAIL and part routes to quarantine.
 
 ### Measurement Best Practices

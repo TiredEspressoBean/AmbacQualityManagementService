@@ -120,6 +120,72 @@ Their plan parameters (AQL, inspection level, severity, strategy) are set on
 the **rule set**. See [Sampling
 Rules](../../admin/setup/sampling-rules.md).
 
+## Choosing a rule
+
+The rule types are not interchangeable. Each is blind to something, and the
+choice is really about *which failure you are trying to catch*.
+
+### In-process (streaming) rules
+
+| Rule | Catches | Blind to |
+|------|---------|----------|
+| **First N Parts** | Setup and first-off errors | Anything that develops during the run |
+| **Last N Parts** | Tool wear, drift, thermal growth | Setup errors — the lot is already made |
+| **Every Nth Part** | Steady-state process shift | Periodic faults that sync with your interval |
+| **Percentage** | Scales coverage with lot size | Small lots get very few samples |
+| **Pure Random** | Anything — it has no pattern to defeat | Nothing systematic, but the workload is unpredictable |
+| **Exact Count** | Gives a fixed, plannable workload | Detection power falls as lots get bigger |
+
+!!! tip "First N and Last N are complements, not alternatives"
+    Setup errors and drift are different failure modes with different causes.
+    A rule set containing both brackets the run at each end, and is a far more
+    common configuration than either alone.
+
+!!! warning "Every Nth has a blind spot by construction"
+    If a fault recurs on a cycle that shares a factor with your interval — a
+    4-cavity mould sampled every 4th part, one bad spindle in a 6-spindle
+    machine sampled every 6th — you can inspect forever and always miss it.
+    Where the process has a natural cycle, **Pure Random** removes the problem.
+
+### Lot-acceptance rules (receiving)
+
+These decide **accept or reject for the whole lot**, so the question is how
+much risk you will carry and how much inspection you will pay for.
+
+| Rule | Choose when | Cost |
+|------|-------------|------|
+| **Zero-Acceptance (C=0)** | You cannot knowingly accept *any* defective unit | Smallest attribute sample for equivalent protection |
+| **Acceptance Sampling (Z1.4)** | You have an established AQL agreement with the supplier or customer | Larger samples; accept numbers above zero |
+| **Variables (Z1.9)** | The characteristic is *measured*, and reasonably normal | Much smaller samples — but one characteristic per plan |
+
+**The practical difference between C=0 and Z1.4** is what happens when the
+inspector finds one defect. Under a Z1.4 plan with an accept number above zero,
+the lot is still accepted. Under C=0 it is rejected. If your customer would be
+astonished to learn you accepted a lot after finding a defect in the sample,
+you want C=0 — which is why it has largely displaced Z1.4 in aerospace work.
+
+**Variables sampling buys smaller samples with stronger assumptions.** Z1.9
+judges the lot from the sample's mean and spread against an acceptability
+constant, which is dramatically more efficient than counting defectives — but
+it needs a genuinely measured characteristic, an approximately normal
+distribution, and a separate plan per characteristic. It cannot judge
+attributes, and it is the wrong tool for a mixed pass/fail inspection.
+
+!!! warning "AQL is not a quality target"
+    An AQL is the worst average quality that will still be *accepted* routinely
+    — a limit on what you tolerate, not a goal to aim at. Treating "AQL 1.0" as
+    "1% defects is fine" inverts its meaning. It is the boundary of
+    acceptability, and a process sitting at it is performing as badly as the
+    plan permits.
+
+### Sample size is not the same as protection
+
+A bigger sample from a bigger lot does not automatically mean better detection.
+With **Exact Count**, inspecting 5 parts gives real coverage of a 20-part lot
+and almost none of a 2,000-part lot — the rule is unchanged but the protection
+has collapsed. If lot sizes vary a lot, prefer **Percentage** or a proper
+lot-acceptance plan, which size the sample from the lot.
+
 ## Viewing Sampling Requirements
 
 When parts arrive at an inspection step:
@@ -244,14 +310,6 @@ All sampling decisions are logged:
 | `view_samplingrule` | View sampling configuration |
 | `change_samplingrule` | Modify sampling rules |
 | `record_sampling` | Record sampling results |
-
-## Best Practices
-
-1. **Match to risk** - Critical features need tighter sampling
-2. **Review regularly** - Adjust based on performance
-3. **Train inspectors** - Proper sampling technique
-4. **Document decisions** - Audit trail matters
-5. **Use history** - Leverage skip-lot for proven suppliers
 
 ## Next Steps
 

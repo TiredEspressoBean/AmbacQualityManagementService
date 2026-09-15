@@ -34,9 +34,9 @@ All demo accounts use password: `demo123`
 |----------|----------|
 | **Orders** | ORD-2024-0042 (in progress), ORD-2024-0038 (completed), ORD-2024-0048 (pending) |
 | **Parts** | INJ-0042-001 through INJ-0042-024 (various statuses) |
-| **Work Orders** | WO-0042-A (67% complete) |
-| **Quality Reports** | QR-2024-0187 (nozzle defects) |
-| **Dispositions** | QD-2024-0001 (Rework), QD-2024-0002 (Use As Is), QD-2024-0003 (Scrap) |
+| **Work Orders** | WO-2024-0042-A, WO-2024-0038-A, WO-2024-0048-A, plus WO-QA-INSPECT-01 (the QA inspector walkthrough) |
+| **Quality Reports** | QR-0042-001-FT, QR-0038-003-NI — numbered `QR-{order}-{part}-{step}`, where `FT` is Flow Testing and `NI` is Nozzle Inspection |
+| **Dispositions** | DISP-QAI-004-REW (Rework, closed), DISP-QAI-006-OPEN (raised but untriaged), DISP-TRAIN-001 and -002 (training exercises) |
 | **CAPA** | CAPA-2024-003 (nozzle defect investigation) |
 | **Equipment** | Flow Test Stand #1, #2, Torque Wrench TW-25 (overdue calibration) |
 | **Customers** | Midwest Fleet (Tom Bradley), Northern Trucking Co |

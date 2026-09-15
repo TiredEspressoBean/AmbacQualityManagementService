@@ -4,6 +4,12 @@
 **Prerequisites:** None (Operator training recommended)
 **Goal:** Learn to perform inspections, record results, create quality reports, and manage dispositions
 
+!!! abstract "Curriculum revision"
+    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
+    competence evidence names what was actually taught. Reference documentation
+    changes continuously; this curriculum is revised deliberately.
+
+
 !!! info "Demo Environment Login"
     **Email:** sarah.qa@demo.ambac.com
     **Password:** `demo123`
@@ -613,6 +619,36 @@ Complete these tasks to demonstrate competency:
 - [ ] Follows documentation standards
 
 ---
+
+
+### Recording the qualification
+
+Ticking the boxes above is the *assessment*. It is not the record.
+
+A signed-off trainee is not yet qualified in the system, and the difference is
+operational, not clerical: training requirements gate who may start a step, so
+until the record exists the person is still refused the work they were just
+signed off to do. That refusal surfaces downstream as a part nobody can pick
+up — see [Parts stuck at a
+step](../troubleshooting/common-issues.md).
+
+To close it out, create a **Training Record** for the trainee under **Quality**
+> **Training**:
+
+| Field | Set it to |
+|-------|-----------|
+| **Training type** | The qualification being awarded |
+| **Completed date** | The date of the assessment, not today |
+| **Level** | The competency level actually demonstrated |
+| **Trainer** | Whoever conducted and assessed it |
+| **Expires** | Leave blank only if the qualification genuinely never lapses |
+| **Documents** | Attach the signed sign-off sheet as evidence |
+
+!!! note "Level is an assessed result, not attendance"
+    The competency level is clause 7.2 evidence of what the person can actually
+    do. Recording everyone at the same level because they sat the course
+    defeats the control, and the training matrix that supervisors plan from
+    becomes fiction.
 
 ## Quick Reference Card
 

@@ -127,7 +127,7 @@ Supplier quality is **not** analysed on this page. Use **Supply** >
 rejected, reject rate, CoC compliance, on-time delivery, and open SCARs. See
 [Supply](../workflows/supply/overview.md#supplier-quality).
 
-!!! example "Supplier Quality Issue"
+!!! example "Demo: Supplier Quality Issue"
     Analysis of nozzle defects in order ORD-2024-0038 traced the issue to a specific Delphi batch. This data supported CAPA-2024-003's root cause finding.
 
 Use for:
@@ -216,14 +216,6 @@ Export defect data from the Quality Reports table (**Quality > Quality Reports**
 | `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
 | `view_qualityreports` | See underlying data |
 | `export_data` | Export reports |
-
-## Best Practices
-
-1. **Review regularly** - Weekly minimum
-2. **Focus on trends** - Not just snapshots
-3. **Use Pareto** - Prioritize the vital few
-4. **Drill down** - Understand root causes
-5. **Track improvements** - Verify actions worked
 
 ## Next Steps
 

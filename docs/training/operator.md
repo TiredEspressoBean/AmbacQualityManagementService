@@ -4,6 +4,12 @@
 **Prerequisites:** None
 **Goal:** Learn to track parts through production steps and record measurements
 
+!!! abstract "Curriculum revision"
+    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
+    competence evidence names what was actually taught. Reference documentation
+    changes continuously; this curriculum is revised deliberately.
+
+
 !!! note "Role Name"
     This training is for the **Production_Operator** role in the system.
 
@@ -540,15 +546,54 @@ By completing this training, I confirm that I:
 
 ---
 
+
+### Recording the qualification
+
+Ticking the boxes above is the *assessment*. It is not the record.
+
+A signed-off trainee is not yet qualified in the system, and the difference is
+operational, not clerical: training requirements gate who may start a step, so
+until the record exists the person is still refused the work they were just
+signed off to do. That refusal surfaces downstream as a part nobody can pick
+up — see [Parts stuck at a
+step](../troubleshooting/common-issues.md).
+
+To close it out, create a **Training Record** for the trainee under **Quality**
+> **Training**:
+
+| Field | Set it to |
+|-------|-----------|
+| **Training type** | The qualification being awarded |
+| **Completed date** | The date of the assessment, not today |
+| **Level** | The competency level actually demonstrated |
+| **Trainer** | Whoever conducted and assessed it |
+| **Expires** | Leave blank only if the qualification genuinely never lapses |
+| **Documents** | Attach the signed sign-off sheet as evidence |
+
+!!! note "Level is an assessed result, not attendance"
+    The competency level is clause 7.2 evidence of what the person can actually
+    do. Recording everyone at the same level because they sat the course
+    defeats the control, and the training matrix that supervisors plan from
+    becomes fiction.
+
 ## Quick Reference Card
 
 Print this for your workstation:
 
 ### Starting Work
-1. Get assignment from supervisor → **Work Orders** → Find your work order
+1. **Production** → **Work Orders** → open your work order
+2. **Start Work** → in **Start work on parts**, check your parts *in the order
+   you'll work them* → Confirm
 
-### Passing Parts (Batch)
-1. Work Orders → Find work order → **Pass** → Select step → **Submit**
+### Completing a Step
+1. The player shows **one substep at a time**
+2. Do the work, record what it asks for, tap **Confirm & next**
+3. The part advances when its required substeps are done
+
+!!! warning "There is no Pass button"
+    Parts are not passed along by hand. Completing the required substeps is
+    what moves a part — that is the whole mechanism. If a part hasn't moved,
+    something is still outstanding on it or on another part in its lot.
 
 ### Quality Report / In-Process Check
 1. Work Orders → Find work order → Find part → **Quality Report** → Fill form → **Submit**

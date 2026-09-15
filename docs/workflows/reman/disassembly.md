@@ -123,15 +123,6 @@ When a component is accepted to inventory:
 - Source is marked as `TRANSFERRED`
 - Maintains traceability of accumulated life
 
-## Best Practices
-
-1. **Follow the BOM** - Use as a checklist
-2. **Grade consistently** - Apply same standards to all components
-3. **Document damage** - Note any issues found
-4. **Handle carefully** - Prevent damage during extraction
-5. **Clean workspace** - Keep components organized
-6. **Complete promptly** - Don't leave cores partially disassembled
-
 ## Troubleshooting
 
 ### Cannot Start Disassembly
@@ -143,8 +134,18 @@ When a component is accepted to inventory:
 ### Component Type Not Found
 
 - Component types come from Part Types
-- Ask administrator to add the part type
-- Use a similar type temporarily if urgent
+- Ask an administrator to add the part type
+
+!!! danger "Never record a component under a different type"
+    Not even temporarily, and not to keep the job moving. The component type is
+    what carries life-limit tracking and traceability for the rest of that
+    part's service life — a component logged under the wrong type inherits the
+    wrong life limit and cannot be found when its real type is recalled or
+    superseded.
+
+    Hold the work and get the part type added. A stalled teardown is a
+    scheduling problem; a mis-typed component is a traceability failure that
+    surfaces years later.
 
 ### Life Tracking Not Transferring
 

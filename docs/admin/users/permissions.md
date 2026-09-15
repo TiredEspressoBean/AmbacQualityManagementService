@@ -238,13 +238,26 @@ view_*, add_*, change_* for quality records
 approve_disposition, approve_capa
 ```
 
-## Best Practices
+## Existing tenants and new permissions
 
-1. **Document group purposes** - Clear descriptions
-2. **Audit regularly** - Quarterly reviews
-3. **Least privilege** - Minimum necessary access
-4. **Use groups consistently** - Same group for same role
-5. **Test before deploy** - Verify with test users
+Role presets are applied **when a tenant is created**. When an upgrade adds a
+permission to a preset role, tenants that already exist do not pick it up on
+their own — their groups keep the grants they were created with.
+
+After an upgrade that changes role presets, reconcile them:
+
+```
+python manage.py sync_tenant_permissions
+```
+
+It reports what it changed, for example *1 group reconciled, 1 grant added,
+0 revoked*. Until it is run, a role can be missing a permission the release
+notes say it has — which presents as a user not seeing a control they should.
+
+!!! tip "Check this first when a new feature's control is missing"
+    If a release adds an action for a role and that role can't see it, confirm
+    the sync has been run before investigating the feature itself. It is a far
+    more common cause than a broken permission check.
 
 ## Next Steps
 

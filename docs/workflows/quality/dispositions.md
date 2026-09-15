@@ -1,237 +1,161 @@
 # Dispositions
 
-Dispositions are decisions about what to do with non-conforming parts. This guide covers the disposition workflow.
+A **disposition** is the recorded decision about what happens to nonconforming
+product. It is the controlled act at the centre of ISO 9001 **8.7** and AS9100 —
+the record has to say what was decided, on what authority, and why.
 
-!!! example "Demo Dispositions"
-    In demo mode, three dispositions demonstrate the workflow:
+**Quality** > **Dispositions**
 
-    - **QD-2024-0001** (Rework): INJ-0042-017 failed flow test (142 mL/min vs 135 max), sent to nozzle rework step
-    - **QD-2024-0002** (Use As Is): INJ-0042-019 minor cosmetic scratch, approved by QA Manager with customer concurrence
-    - **QD-2024-0003** (Scrap): INJ-0042-023 cracked body detected at inspection, cannot be repaired
+Dispositions also surface where the nonconformance was found: the work order
+**control** page lists open ones under *Exceptions on this WO*, each with an
+**Open disposition** button.
 
-    QA Manager Maria Santos handles all disposition approvals. Production Manager Jennifer Walsh tracks rework progress.
+## The five decisions
 
-## What is a Disposition?
+Choosing between these is the judgement the system asks you to make. They are
+not interchangeable, and the standard treats them very differently.
 
-A **disposition** is the formal decision about how to handle a part that doesn't meet specifications:
+| Decision | Use when | Part becomes |
+|----------|----------|--------------|
+| **Rework** | The part can be brought back to **full** conformance | `REWORK_NEEDED` |
+| **Repair** | The part can be made acceptable but will **still deviate** from spec | `REWORK_NEEDED` |
+| **Scrap** | The part cannot be used or economically corrected | `SCRAPPED` |
+| **Use As Is** | The nonconformance is real but the part is acceptable **as it stands** | `READY_FOR_NEXT_STEP` |
+| **Return to Supplier** | The supplier is responsible; return for credit or replacement | `CANCELLED` |
 
-- Can it be used anyway?
-- Can it be fixed?
-- Must it be scrapped?
-- Should it be returned to the vendor?
+!!! info "Rework vs Repair is the distinction auditors check"
+    **Rework** restores full conformance — afterwards the part meets the
+    drawing, and nothing is given up. **Repair** leaves a known, accepted
+    deviation. They look similar on the floor and are entirely different
+    records: repair is a concession against the design, rework is not.
 
-## Disposition Options
+    Choosing *Repair* when you mean *Rework* creates a deviation record against
+    a part that doesn't have one. Choosing *Rework* when you mean *Repair*
+    hides one that does.
 
-| Disposition | Code | When to Use |
-|-------------|------|-------------|
-| **Use As Is** | USE_AS_IS | Non-conformance doesn't affect function or safety |
-| **Rework** | REWORK | Part can be corrected and re-inspected to full conformance |
-| **Repair** | REPAIR | Part corrected but may deviate from spec (AS9100: requires approval) |
-| **Scrap** | SCRAP | Part cannot be used or repaired |
-| **Return to Supplier** | RETURN_TO_SUPPLIER | Supplier responsible, return for credit/replacement |
+Rework and Repair both increment the part's **rework count**.
 
-!!! info "Rework vs Repair (AS9100)"
-    Rework restores full conformance. Repair may result in a part that deviates from original specs but is still acceptable for use (requires engineering approval).
+## Use As Is and Repair require recorded approval
 
-## Disposition Workflow
+These two accept known-nonconforming product, so they carry the highest
+authority burden. The system **will not record the decision without an approval
+reference**:
+
+> *A 'Use As Is' decision accepts nonconforming product and requires recorded
+> customer/design approval — provide an approval reference.*
+
+This is a hard stop, not a warning. Obtain the concession or deviation through
+your normal customer/engineering channel first, then enter its reference. The
+reference, the date, and who authorized the decision are all stored on the
+record.
+
+Scrap, Rework, and Return to Supplier need no approval reference.
+
+!!! warning "There is no scrap value threshold"
+    Scrap does not trigger an approval step based on part value. If your
+    procedure requires one, it is a procedural control, not a system-enforced
+    one.
+
+## Who can decide, and co-signing
+
+Recording a decision requires **`approve_disposition`**.
+
+If you don't hold it, you don't have to hand the record off: an authorized
+approver can **co-sign inline**. Enter their email as the co-signer and the
+decision is recorded against *them* as the authority, with you as the caller.
+This keeps the QA Manager out of the loop for routine decisions without
+misattributing authority.
+
+Either way the record stores **who authorized it and when** — that pair is what
+8.7 asks for.
+
+## Severity
+
+| Severity | Meaning |
+|----------|---------|
+| **Critical** | Safety or regulatory impact; needs special handling |
+| **Major** | Affects function, correctable (the default) |
+| **Minor** | Cosmetic, no functional impact |
+
+## Containment comes first
+
+Before the disposition decision, record the **containment action** — the
+immediate step taken to stop nonconforming product escaping: parts pulled to
+quarantine, a machine stopped, a lot put on hold.
+
+Containment is time-stamped with who completed it. It is deliberately separate
+from the decision, because containment is urgent and the decision often is not.
+An auditor reading the record wants to see the gap between *found* and
+*contained* be short, regardless of how long the disposition took.
+
+## States
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Quality   │────▶│  Disposition│────▶│   Execute   │
-│   Report    │     │   Decision  │     │  Decision   │
-└─────────────┘     └─────────────┘     └─────────────┘
-                          │
-                          ▼
-                    ┌─────────────┐
-                    │   Approval  │
-                    │ (if needed) │
-                    └─────────────┘
+OPEN  ──(decision recorded)──▶  IN_PROGRESS  ──(resolution completed)──▶  CLOSED
 ```
 
-### Step 1: Quality Report Created
+- **Open** — raised, not yet decided. A disposition can sit here untriaged with
+  no type set at all.
+- **In Progress** — a decision has been recorded and is being implemented.
+  Setting the disposition type is what moves it here.
+- **Closed** — the resolution is complete.
 
-A quality report documents the non-conformance and affected parts.
+!!! warning "A closed disposition's decision cannot be changed"
+    Attempting it is rejected: *"This disposition is closed; its decision can no
+    longer be changed."* Raise a new record instead — the original stays as the
+    history of what was decided at the time.
 
-### Step 2: Investigation
+## What the decision does to the part
 
-Review the issue:
+Recording the type cascades to the part's status using the table above — but
+with two guards that are worth understanding, because they explain cases where
+the part *doesn't* move.
 
-- What exactly is wrong?
-- How many parts affected?
-- What caused it?
-- What are the options?
+**A disposition is a documented decision, not a routing action.**
 
-### Step 3: Disposition Decision
+**Rework and Repair only route a part that is still held** — quarantined, or
+not yet started. If the operator has already routed the part onward (in
+progress at a step, awaiting QA, already in rework), the disposition is recorded
+as a **paper record** of what was authorized and the part's status is left
+alone. It would otherwise drag a part that has moved on backwards.
 
-Select the disposition:
+**A less severe decision cannot undo a terminal one.** Scrap dominates
+everything; a Rework, Repair, or Use As Is decision cannot revive a part that is
+already scrapped or cancelled. Reversing a terminal status is a separate,
+deliberate, permission-gated operation — never a side effect of another
+disposition.
 
-1. Open the quality report
-2. Go to **Disposition** section
-3. Select disposition type
-4. Enter justification
-5. Select parts (if partial disposition)
-6. Submit
+## Scrap verification
 
-### Step 4: Approval (if required)
+Scrapped parts carry their own verification fields: whether scrap was verified,
+**by what method**, by whom, and when. Recording the method matters — "rendered
+unusable and placed in the scrap bin" is a different assurance from "witnessed
+into the crusher", and for critical parts the difference is the whole point of
+the control.
 
-Some dispositions require approval:
+This is what prevents scrapped product re-entering the supply chain, and it is
+routinely sampled in audits.
 
-| Disposition | Approval Required |
-|-------------|-------------------|
-| **Use As Is** | Yes (customer approval auto-required) |
-| **Repair** | Yes (customer approval auto-required) |
-| **Scrap** | Configurable by value threshold |
-| **Return to Supplier** | Configurable |
-| **Rework** | No (unless configured) |
+## Closing a disposition
 
-### Step 5: Execution
-
-After approval:
-
-- **Use As Is**: Parts released, continue production
-- **Rework**: Parts routed to rework step
-- **Scrap**: Parts marked scrapped, removed from active
-- **RTV**: Parts tagged for return, RMA created
-
-## Making a Disposition
-
-1. Open the quality report
-2. Review affected parts
-3. Click **Make Disposition**
-4. Select disposition type
-5. Fill in required fields:
-
-| Field | Description |
-|-------|-------------|
-| **Disposition** | Use As Is, Rework, Repair, Scrap, or Return to Supplier |
-| **Justification** | Why this decision |
-| **Parts** | Which parts (all or select) |
-| **Rework/Repair Instructions** | For rework/repair: what needs to be done |
-| **Approval Required** | Auto-set based on rules |
-
-6. Submit
-
-## Partial Disposition
-
-Different parts may get different dispositions:
-
-1. Open quality report with multiple parts
-2. Select subset of parts
-3. Make disposition for selected
-4. Repeat for remaining parts
-
-Example:
-- 5 parts: 3 rework, 2 scrap
-
-!!! tip "Demo: Partial Disposition"
-    Quality Report QR-2024-0187 for ORD-2024-0038 shows partial disposition in action: 3 parts sent to rework (nozzle adjustment), 2 parts scrapped (cracked bodies). This contributed to CAPA-2024-003 when the pattern indicated a systemic supplier issue.
-
-## Disposition Approval
-
-When approval is required:
-
-1. Disposition is submitted
-2. Request goes to approver(s)
-3. Approver reviews and approves/rejects
-4. If approved, disposition executes
-5. If rejected, returns to requester
-
-### Approval Levels
-
-| Disposition | Typical Approver |
-|-------------|------------------|
-| Use As Is | Quality Manager + Customer |
-| Repair | Quality Manager + Customer |
-| Rework | Production Supervisor |
-| Scrap | Quality Manager (based on value) |
-| Return to Supplier | Quality Manager |
-
-### Approval Records
-
-All approvals are recorded:
-
-- Who approved
-- When approved
-- Electronic signature (password verified)
-- Comments
-
-## Disposition Execution
-
-### Use As Is
-
-1. Parts are released from quarantine
-2. Continue to next step
-3. Record attached to part history
-
-### Rework
-
-1. Parts routed to rework step (specified in process)
-2. Rework operation performed
-3. Re-inspection required
-4. Pass: Continue production
-5. Fail: New disposition needed
-
-### Scrap
-
-1. Parts marked as scrapped
-2. Removed from active production
-3. Physical segregation
-4. Disposal per procedures
-5. Cost captured (if tracked)
-
-### RTV
-
-1. Parts tagged for return
-2. RMA/credit request generated
-3. Awaiting supplier pickup
-4. Closed when returned
-
-## Customer Approval
-
-For dispositions requiring customer approval (Use As Is, Repair):
-
-1. The system automatically flags these for customer approval
-2. Enter justification and deviation details
-3. Contact customer through your normal channels
-4. Record customer response in the system
-5. Execute if approved
-
-## Disposition Metrics
-
-Track disposition patterns:
-
-- **Disposition by type**: What outcomes are most common
-- **Scrap rate**: Cost of quality
-- **Rework rate**: Efficiency impact
-- **Time to disposition**: Cycle time
-
-## Disposition History
-
-View disposition history:
-
-- On the part record
-- On the quality report
-- In disposition reports
-- Audit trail
+Completing the resolution closes the record — but only once nothing is
+outstanding against it. If blockers remain (for example pending part
+annotations), the close is rejected and names what is in the way. Clear those
+first.
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
 | `view_quarantinedisposition` | View disposition records |
-| `add_quarantinedisposition` | Make disposition decisions |
-| `approve_disposition` | Approve dispositions |
+| `add_quarantinedisposition` | Raise a disposition |
+| `approve_disposition` | Record the decision, or co-sign someone else's |
 
-## Best Practices
-
-1. **Decide promptly** - Quarantine ties up inventory
-2. **Document thoroughly** - Justification matters for audits
-3. **Consider cost** - Rework vs scrap economics
-4. **Follow procedures** - Use defined criteria
-5. **Escalate appropriately** - Get right approvals
+Closing a resolution does not require `add_quarantinedisposition` — the person
+who authorizes or closes a record needn't be the one who raised it.
 
 ## Next Steps
 
 - [Quarantine](quarantine.md) - Managing held parts
 - [Quality Reports](quality-reports.md) - Creating NCRs
-- [CAPA Overview](../capa/overview.md) - Corrective actions
+- [CAPA Overview](../capa/overview.md) - When a pattern needs root-cause work

@@ -12,8 +12,8 @@ A **Work Order** defines:
 - **When** it should be completed
 - **Priority** level
 
-!!! example "Work Order Example"
-    Work Order `WO-0042-A` processes 24 fuel injectors for order `ORD-2024-0042` (Midwest Fleet Services) using the "Common Rail Injector Remanufacturing" process. Parts are tracked from Core Receiving through Final Test and Packaging.
+!!! example "Demo: Work Order"
+    Work Order `WO-2024-0042-A` processes 24 fuel injectors for order `ORD-2024-0042` (Midwest Fleet Services) using the "Common Rail Injector Remanufacturing" process. Parts are tracked from Core Receiving through Final Test and Packaging.
 
 ## Work Order vs Order
 
@@ -79,8 +79,19 @@ When a work order is created:
 
 1. Parts from the order are associated with the work order
 2. Each part starts at Step 1 of the process
-3. Parts progress through steps independently
+3. Parts advance **as a cohort**, not individually
 4. Work order tracks aggregate progress
+
+!!! warning "Parts do not move independently"
+    Parts that have not been split advance together — all parts at the same work
+    order and step move on, or none do. A part only advances on its own once it
+    has been **split** out of the lot.
+
+    This catches people out constantly: a part whose own work is finished sits
+    at its step because a *different* part in the lot still has something
+    outstanding. Nothing is broken and nothing is stuck on that part — it is
+    waiting for its lot. See [Moving Parts
+    Forward](../tracking/moving-parts.md).
 
 ## Work Order Progress
 
@@ -182,14 +193,6 @@ Parts remain in the system but are no longer associated with this work order.
 | `add_workorder` | Create work orders |
 | `change_workorder` | Edit and status changes |
 | `delete_workorder` | Delete work orders |
-
-## Best Practices
-
-1. **One process per work order** - Keeps tracking clean
-2. **Set realistic due dates** - Based on capacity
-3. **Update status promptly** - Keeps dashboards accurate
-4. **Link documents** - Work instructions at hand
-5. **Use notes** - Communicate with team
 
 ## Next Steps
 

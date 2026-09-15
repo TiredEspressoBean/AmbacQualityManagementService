@@ -22,7 +22,7 @@ Create a CAPA for:
 | **Near misses** | Potential safety issues |
 | **Trend analysis** | Data shows concerning patterns |
 
-!!! example "Real Example: CAPA-2024-003"
+!!! example "Demo: CAPA-2024-003"
     When 5 of 12 injectors (42%) from order ORD-2024-0038 required rework due to nozzle defects, this triggered a CAPA investigation. The 5-Whys analysis traced the root cause to a supplier batch issue with nozzle tips. Corrective actions included updating incoming inspection procedures and tightening sampling rules.
 
 ## CAPA Process (8D Methodology)
@@ -164,15 +164,6 @@ Track CAPA performance:
 | `close_capa` | Close CAPAs |
 | `approve_capa` | Approve CAPAs |
 | `verify_capa` | Verify CAPA effectiveness |
-
-## Best Practices
-
-1. **Start promptly** - Don't delay after trigger
-2. **Contain first** - Protect customers
-3. **Find true root cause** - Not symptoms
-4. **Verify actions** - Confirm they worked
-5. **Prevent recurrence** - Systemic changes
-6. **Document thoroughly** - Audit evidence
 
 ## Next Steps
 

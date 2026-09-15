@@ -78,6 +78,14 @@ cause is by far the most common and the least obvious:
 4. **The part is quarantined.** It won't move until a disposition is decided.
 5. **The operator isn't trained for the step**, so the work can't be completed
    or assigned.
+6. **A completion at that step was voided.** The gate ignores voided rows, so
+   the part waits for the work to be redone. Expand the part's traveler and
+   look for a red **"N voided"** badge on the step — see [Running Work
+   Instructions](../workflows/dwi/running.md#voiding-a-completion).
+
+    If several parts stalled at once, suspect a **shared cycle** — voiding a
+    batch record (wash, heat treat, plating) retracts it for every part in
+    that load, so the whole load blocks together.
 
 !!! tip "A pending sampling decision is not the cause"
     If a substep's sampling rule can't decide yet, the part advances
