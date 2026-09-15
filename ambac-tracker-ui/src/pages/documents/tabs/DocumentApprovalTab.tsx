@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { ApprovalResponseModal } from "@/components/approval/ApprovalResponseModal";
 import { useSubmitDocumentForApproval } from "@/hooks/useSubmitDocumentForApproval";
-import { useDocumentApprovalRequest, type ApprovalRequest, type ApprovalResponse } from "@/hooks/useDocumentApprovalRequest";
+import { useDocumentApprovalRequest, type ApprovalResponse } from "@/hooks/useDocumentApprovalRequest";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import {
     CheckCircle2,
@@ -22,33 +22,12 @@ import {
     Users,
     Send,
 } from "lucide-react";
+import { isUserAnApprover } from "@/lib/approvals/is-user-an-approver";
 
 type DocumentApprovalTabProps = {
     document: any;
 };
 
-function isUserAnApprover(
-    userId: number | string | undefined,
-    userGroupIds: Array<number | string> | undefined,
-    approvalRequest: ApprovalRequest | null
-): boolean {
-    if (!userId || !approvalRequest) return false;
-
-    const uid = String(userId);
-    if (approvalRequest.required_approvers?.some(a => String(a) === uid)) {
-        return true;
-    }
-
-    const gids = (userGroupIds ?? []).map(String);
-    if (gids.length && approvalRequest.approver_groups?.length) {
-        const hasMatchingGroup = gids.some(gid =>
-            approvalRequest.approver_groups.some(g => String(g) === gid)
-        );
-        if (hasMatchingGroup) return true;
-    }
-
-    return false;
-}
 
 function hasUserResponded(userId: number | string | undefined, responses: ApprovalResponse[]): boolean {
     if (!userId || !responses) return false;

@@ -47,7 +47,11 @@ export interface ApprovalRequest {
     reason?: string;
     notes?: string;
     is_overdue?: boolean;
-    required_approvers: string[];
+    // `required_approvers` used to be declared here as a flat id list. The
+    // API never emits it — ApprovalRequestSerializer sends
+    // `required_approvers_info` — so the declaration was a lie that let
+    // `approvalRequest.required_approvers?.some(...)` compile and return
+    // false for everyone. Removed so that read cannot type-check again.
     optional_approvers: string[];
     approver_groups: string[];
     responses: ApprovalResponse[];

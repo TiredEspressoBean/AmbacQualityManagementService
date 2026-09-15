@@ -7,8 +7,9 @@ import { Separator } from "@/components/ui/separator";
 import { ApprovalResponseModal } from "@/components/approval/ApprovalResponseModal";
 import { useApprovalRequestsFor } from "@/hooks/useApprovalRequestsFor";
 import { useAuthUser } from "@/hooks/useAuthUser";
-import type { ApprovalRequest, ApprovalResponse } from "@/hooks/useDocumentApprovalRequest";
+import type { ApprovalResponse } from "@/hooks/useDocumentApprovalRequest";
 import { FileSignature, Loader2, ShieldCheck, User, Users } from "lucide-react";
+import { isUserAnApprover } from "@/lib/approvals/is-user-an-approver";
 
 /**
  * Signature-collection progress + respond affordance for any content
@@ -34,32 +35,6 @@ type Props = {
     description?: string;
 };
 
-function isUserAnApprover(
-    userId: number | string | undefined,
-    userGroupIds: Array<number | string> | undefined,
-    approvalRequest: ApprovalRequest | null,
-): boolean {
-    if (!userId || !approvalRequest) return false;
-    const uid = String(userId);
-    // Prefer `required_approvers_info` (objects with id) — the
-    // serializer emits that, not the flat `required_approvers` array
-    // the older interface assumed. Compare loosely since ids arrive as
-    // numbers (User pk) here but strings (TenantGroup uuid) elsewhere.
-    if (approvalRequest.required_approvers_info?.some((a) => String(a.id) === uid)) {
-        return true;
-    }
-    if (approvalRequest.required_approvers?.some((a) => String(a) === uid)) {
-        return true;
-    }
-    const groupIds = (userGroupIds ?? []).map(String);
-    if (groupIds.length && approvalRequest.approver_groups_info?.length) {
-        return approvalRequest.approver_groups_info.some((g) => groupIds.includes(String(g.id)));
-    }
-    if (groupIds.length && approvalRequest.approver_groups?.length) {
-        return approvalRequest.approver_groups.some((g) => groupIds.includes(String(g)));
-    }
-    return false;
-}
 
 function hasUserResponded(userId: number | string | undefined, responses: ApprovalResponse[]): boolean {
     if (!userId || !responses) return false;
