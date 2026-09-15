@@ -12,22 +12,31 @@ Create and manage user accounts for your organization.
 
 ## Creating a User
 
-### From User Editor
+### From User Management
 
-1. Navigate to **Data Management** > **Users**
-2. Click **New Users**
-3. Fill in user details:
+1. Navigate to **Admin** > **User Management**
+2. Click **Add user**
+3. Fill in the details:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Email** | User's email (login ID) | Yes |
-| **First Name** | User's first name | Yes |
-| **Last Name** | User's last name | Yes |
-| **Role Type** | Staff, Customer, Auditor | Yes |
-| **Groups** | Permission groups | Recommended |
-| **Active** | Account enabled | Yes |
+| **Username** | Login identifier | Yes |
+| **First Name** / **Last Name** | The person's name | No |
+| **Email** | Contact email | No |
+| **Company** | Company, for customer users | No |
+| **Role** | Which role the user holds | No |
 
-4. Click **Save**
+4. Click **Create User**
+
+The **Role** picker offers: Auditor, Customer, Document Controller,
+Engineering, Operator, Production Manager, Purchasing, QA Inspector,
+QA Manager, Shift Lead, Tenant Admin.
+
+!!! note "User Management is the surface to use"
+    **Data Management > Users** reaches the same records through the generic
+    editor, but User Management adds what you normally want — invite status
+    filters (Active, Pending invite, Expired invite, Inactive), group
+    filtering, and bulk actions.
 
 ### Invitation Email
 
@@ -40,20 +49,25 @@ After creating the user:
 
 ## Inviting Users
 
-### Quick Invite
+### Bulk invite
 
-1. Click **Invite User** button
-2. Enter email address
-3. Select role/groups
-4. Click **Send Invitation**
+Invitations are issued from the bulk surface rather than a per-user invite
+dialog:
 
-### Bulk Invite
+1. In **User Management**, click **Bulk Actions**
+2. Add a row per person with **Manual entry**, or **Upload workbook** for a
+   batch
+3. Set the group and status for each row
+4. Click **Apply rows**
 
-Import multiple users:
+Invite state is then visible on the User Management list through the **Pending
+invite** and **Expired invite** filters.
 
-1. Click **Import Users**
-2. Download CSV template
-3. Fill in user data:
+!!! note "No single-user invite dialog"
+    There is no **Invite User** button. To invite one person, use Bulk Actions
+    with a single row.
+
+A workbook upload accepts the same columns as the manual rows:
 ```csv
 email,first_name,last_name,role_type,groups
 john@company.com,John,Smith,staff,"QA Inspector"

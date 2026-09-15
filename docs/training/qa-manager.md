@@ -143,7 +143,7 @@ By the end of this module, you will:
 **Signing a disposition:**
 
 1. Review complete
-2. Click **Approve** (or **Reject**)
+2. Click **Submit Response** and choose **Approved** (or **Rejected**)
 3. Add comments (required for reject)
 4. Enter your password
 5. System records: your name, timestamp, decision
@@ -155,7 +155,7 @@ By the end of this module, you will:
 
 1. Open disposition "DISP-TRAIN-002"
 2. Review the request
-3. Click **Approve**
+3. Click **Submit Response** and choose **Approved**
 4. Enter your password
 5. Observe the audit trail update
 

@@ -10,7 +10,8 @@ uqmes serves different roles in your organization:
 |------|--------------|--------------|
 | **Operators** | Move parts through production steps, record measurements, flag issues | Mike Rodriguez |
 | **QA Inspectors** | Perform inspections, create quality reports, manage dispositions | Sarah Chen |
-| **Production Managers** | Oversee CAPA, approve documents, review analytics | Jennifer Walsh |
+| **Production Managers** | Plan and schedule production, manage orders and work orders, monitor progress | Jennifer Walsh |
+| **QA Managers** | Oversee CAPA, approve dispositions, review quality analytics | Maria Santos |
 | **Administrators** | Configure processes, manage users, set up system | Alex Demo |
 | **Customers** | View order status, access documents (portal access) | Tom Bradley (Midwest Fleet) |
 
@@ -26,6 +27,12 @@ An **Order** represents a customer request—typically a purchase order or sales
 
 ### Processes & Steps
 A **Process** defines the workflow for manufacturing a part type. It consists of **Steps**—the individual operations like "Machining," "Inspection," or "Assembly."
+
+### Substeps
+Each step's work instructions are made up of **Substeps**—the individual things
+an operator does and records at that step. Completing them is what moves a part
+forward; there is no "next step" button. See [Digital Work
+Instructions](../workflows/dwi/overview.md).
 
 ### Work Orders
 A **Work Order** links a process to an order, defining what work needs to be done. It tracks which step each part is currently at.

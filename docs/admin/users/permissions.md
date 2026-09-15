@@ -136,7 +136,7 @@ The recommended approach:
 
 Users get permissions through their group memberships:
 
-1. Navigate to **Data Management > Users**
+1. Navigate to **Admin** > **User Management**
 2. Open user record and note their assigned **Groups**
 3. Navigate to **Data Management > User Groups**
 4. Open each group to view its **Permissions** tab

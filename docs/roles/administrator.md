@@ -37,14 +37,14 @@ For a new uqmes instance:
 | **Settings** | Admin > Settings | Organization config |
 | **Data Management** | Admin > Data Management | All editors |
 | **Audit Log** | Admin > Audit Log | System activity |
-| **Users** | Data Management > Users | User management |
+| **Users** | Admin > User Management | User accounts, invites, bulk actions |
 | **Groups** | Data Management > User Groups | Permission groups |
 
 ## User Management
 
 ### Adding Users
 
-1. Navigate to **Data Management** > **Users**
+1. Navigate to **Admin** > **User Management**
 2. Click **New Users**
 3. Fill in:
    - Email (login ID)
@@ -268,7 +268,7 @@ When you can't resolve:
 
 | Task | Location |
 |------|----------|
-| Add user | Data Management > Users > **New Users** |
+| Add user | Admin > User Management > **Add user** |
 | Create group | Data Management > User Groups > **New User Groups** |
 | Edit permissions | Groups > [Group] > Permissions |
 | Configure process | Production > Processes |

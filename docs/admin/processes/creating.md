@@ -31,21 +31,26 @@ Before creating in uqmes:
 
 Process is created in **Draft** status.
 
-### From Visual Editor
+### Building the flow
 
-1. Go to `/process-flow` in your browser
-2. Click **New Process**
-3. Use drag-and-drop to build flow
-4. Add steps and connections
-5. Save
+Once the process exists, its steps and routing are built on the **Process
+Flow** editor (`/process-flow`):
+
+1. Open the process and turn on **Edit Mode**
+2. **Add Step** for each operation
+3. Draw the connections between steps on the graph
+4. Click a step to set its properties, and **Advanced** for its gates
+
+This is the surface to use — a step's routing and its properties are edited
+together, which is not possible from the legacy step form.
 
 ## Adding Steps
 
 ### Sequential Steps
 
-1. Open the process
+1. Open the process in the **Process Flow** editor and turn on **Edit Mode**
 2. Click **Add Step**
-3. Enter step details:
+3. Click the new step to open its properties and enter its details:
 
 | Field | Description |
 |-------|-------------|

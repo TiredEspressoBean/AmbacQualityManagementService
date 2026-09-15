@@ -13,10 +13,18 @@ Receive a core when:
 
 ## Receiving Workflow
 
-### Step 1: Navigate to Core Receiving
+### Step 1: Open the receiving form
 
-1. Go to **Remanufacturing > Cores** in the sidebar
-2. Click **New Cores** to receive a new core
+Go to `/reman/cores/receive` for the **Receive Core** form.
+
+!!! warning "Don't use New Cores"
+    **Remanufacturing > Cores** is a record list with a generic **New Cores**
+    create button. It will make a core record, but it is not the receiving
+    form — use **Receive Core**, which captures source type, condition grade,
+    and credit value together.
+
+    For a delivery of several cores at once, use
+    `/reman/cores/receive-batch`.
 
 ### Step 2: Enter Core Information
 
@@ -26,18 +34,21 @@ Receive a core when:
 |-------|-------------|
 | **Core Number** | Unique identifier for this core |
 | **Core Type** | Type of unit (select from part types) |
-| **Received Date** | Date core was received |
-| **Condition Grade** | Overall condition assessment |
+| **Source Type** | How the core was obtained, e.g. Customer Return |
+| **Received Date** | Date the core was received |
+| **Condition Grade** | Overall condition, e.g. Grade B - Good |
 
 **Optional Fields:**
 
 | Field | Description |
 |-------|-------------|
 | **Serial Number** | Original equipment serial number |
+| **Reference Number** | RMA, PO, or other reference |
 | **Customer** | Customer who returned the core |
-| **Source Type** | How the core was obtained |
-| **Source Reference** | RMA, PO, or other reference number |
+| **Credit Value ($)** | Core credit owed for the return |
 | **Condition Notes** | Detailed observations |
+
+Submit with **Receive Core**.
 | **Core Credit Value** | Credit amount owed for return |
 
 ### Step 3: Assess Condition

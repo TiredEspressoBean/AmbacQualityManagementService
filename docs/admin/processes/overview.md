@@ -114,11 +114,14 @@ What's needed to complete a step:
 - Document requirements
 - Approval requirements
 
-### Branching (if enabled)
-Conditional paths through process:
-- Decision points
-- Alternative routes
-- Parallel paths
+### Branching
+Conditional paths through a process, built on the
+[Process Flow](#process-flow) graph:
+
+- **Decision points** — a step marked *Decision point* branches on its outcome
+  (for example Pass / Fail)
+- **Alternative routes** — rework and scrap paths off a failed decision
+- **Terminal steps** — where a route ends, with its terminal status
 
 ## Viewing Processes
 
@@ -140,12 +143,18 @@ Click a process to see:
 - Linked part types
 - Version history
 
-### Visual Flow (if enabled)
+### Process Flow
 
-Go to `/process-flow` for the visual editor:
-- Flowchart representation
-- Drag-and-drop editing
-- Visual branching
+**Process Flow** (`/process-flow`) is the editor for a process's steps and
+routing — not an optional extra view:
+
+- The routing as a flowchart, including branches and decision points
+- **Edit Mode** to add, connect, and delete steps
+- A properties panel per step (name, operation number, work center, timing)
+  with an **Advanced** section for its gates
+- A **Substeps** control opening that step's work instructions
+
+See [Step Configuration](steps.md).
 
 ## Process Metrics
 

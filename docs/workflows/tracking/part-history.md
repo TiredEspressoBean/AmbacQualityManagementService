@@ -5,30 +5,34 @@ Every action on a part is recorded for full traceability. This guide covers view
 ## Accessing Part History
 
 1. Navigate to the part (from order or search)
-2. Click on the part to open detail view
-3. Select the **History** or **Audit Trail** tab
+2. Click the part to open its detail view
+3. The audit trail is shown on the detail page itself
 
-## History Timeline
+The detail page is laid out as sections on a single page, not tabs:
 
-The history displays chronologically, newest first:
+**General Information** · **Production Details** · **Quality Control** ·
+**System Information** · **Quality Reports** · **Dispositions** ·
+**Documents** · **Activity History**
 
-```
-March 15, 2026 - 2:30 PM
-  Part moved from "Final QA" to "Complete"
-  By: Jane Smith
-  Duration at step: 45 minutes
+## Activity History
 
-March 15, 2026 - 1:45 PM
-  Measurement recorded: Outer Diameter = 25.003mm (Pass)
-  By: John Doe
-  Equipment: CMM-001
+The **Activity History** section shows the record's audit trail, newest first.
+Each entry carries:
 
-March 15, 2026 - 11:00 AM
-  Part moved from "Assembly" to "Final QA"
-  By: Mike Johnson
+| Element | Shows |
+|---------|-------|
+| Action badge | **Created**, **Updated**, or **Deleted**, colour-coded |
+| Actor | Who made the change, or **System** for automated changes |
+| Time | Relative age, e.g. "3 days ago" |
+| Change details | The fields that changed, with before and after values |
 
-...
-```
+An entry whose changes are all internal shows *"No significant changes"*, and a
+record with no entries yet shows *"No audit history."*
+
+!!! note "Quality events are separate sections"
+    Quality reports and dispositions are not entries in the activity history —
+    they have their own **Quality Reports** and **Dispositions** sections on the
+    same page.
 
 ## Event Types
 
@@ -88,15 +92,19 @@ For parts with extensive history:
 
 ## Exporting History
 
-Generate a part traveler or history report:
+!!! note "No export from the history view"
+    The audit trail on the detail page has no export or print control. Part
+    history is available through the API:
 
-1. Open part history
-2. Click **Export** or **Print**
-3. Select format (PDF, CSV)
-4. Download the report
+    ```
+    GET /api/Parts/{id}/traveler/
+    ```
+
+    A **Work Order Traveler** PDF can be generated from the work order detail
+    page — see [Exporting Data](../../analysis/exporting.md).
 
 ### Part Traveler
-A comprehensive document showing:
+The traveler data returned by the API covers:
 
 - Part identification
 - Complete step history
@@ -113,12 +121,10 @@ Useful for:
 
 ## Comparing Parts
 
-To compare history of multiple parts:
-
-1. Select parts from the order
-2. Click **Compare History**
-3. View side-by-side timelines
-4. Identify differences in processing
+!!! note "Planned Feature"
+    Side-by-side comparison of two parts' histories is not available. To
+    compare processing, open each part's detail page separately, or pull both
+    travelers from the API.
 
 ## Root Cause Analysis
 

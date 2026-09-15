@@ -25,13 +25,63 @@ A step represents a single operation in a process:
 | **Shipping** | Ship preparation |
 | **Hold** | Waiting point |
 
-## Creating a Step
+## Where Steps Are Edited
 
-1. Open the process
-2. Click **Add Step** or go to Steps tab
-3. Fill in step details
-4. Configure requirements
-5. Save
+Steps are edited on the **Process Flow** viewer, in the context of the process
+graph — not from a standalone step form.
+
+1. Go to **Production** > **Processes** and open the process, or open
+   **Process Flow** directly
+2. Turn on **Edit Mode**
+3. Click a step to open its properties panel
+4. Click **Advanced** for the full settings
+
+**Add Step** creates a new step in the flow; **Delete Step** removes the
+selected one. Connections between steps are drawn on the graph itself, which is
+why this is the right surface — a step's routing and its properties are edited
+together.
+
+!!! note "The legacy step form"
+    `/StepForm/edit/{id}` still exists and exposes a reduced set of fields.
+    It is a legacy route being phased out; use the Process Flow editor.
+
+## Step Properties
+
+The properties panel covers:
+
+| Field | Purpose |
+|-------|---------|
+| **Name** | Step name |
+| **Operation number** | Op number within the routing |
+| **Description** | What the step is |
+| **Work center** | Where the step runs |
+
+### Timing
+
+| Field | Purpose |
+|-------|---------|
+| **Needs an operator** | Whether the step is attended |
+| **Setup (min)** | Setup time |
+| **Cycle, per piece (min)** | Run time per piece |
+| **Operator attention** | e.g. tied to the machine for the whole run |
+
+!!! warning "Cycle time feeds capacity planning"
+    A step with no cycle time contributes **no load**, so capacity planning
+    shows more free capacity than exists and release dates come out too late.
+    See [Capacity Planning](../../workflows/scheduling/capacity.md).
+
+### Advanced
+
+| Setting | Purpose |
+|---------|---------|
+| **Decision point** | The step branches on an outcome |
+| **Terminal step** | The routing ends here |
+| **Expected duration** | Planned duration |
+| **Max visits (rework limit)** | How many times a part may revisit the step |
+| **Requires QA signoff** | QA must sign the step off |
+| **Sampling required** | Sampling applies at this step |
+| **Requires first-piece inspection** | FPI gates the step |
+| **Move lot as a unit** | Parts advance as a cohort rather than individually |
 
 ## Step Requirements
 
@@ -49,24 +99,44 @@ Parts cannot advance if required measurements are missing.
 
 ### Training Requirements
 
-Require operator training:
+A training requirement names a **training type** and a **minimum competency
+level** (1–4), and is scoped to exactly one of:
 
-1. Go to **Training** section
-2. Click **Add Training Requirement**
-3. Select training type
-4. Set as required or recommended
-5. Save
+| Scope | Meaning |
+|-------|---------|
+| **Step** | Required to work this step |
+| **Process** | Required across the whole process |
+| **Equipment type** | Required to operate that equipment |
+| **Job role** | Part of a role's competence profile |
+
+!!! note "Not editable on the step form"
+    The step edit form has no training section — it covers the step's name,
+    operation number, description, part type, first-piece inspection, sampling,
+    measurements, fallback, and documents. Training requirements are managed
+    from the training surfaces under **Quality** > **Training**, and through
+    the API.
+
+!!! tip "This is what gates operator dispatch"
+    Scheduling only assigns an operator to a step they are qualified for, at
+    the required minimum level. A step whose requirement nobody meets shows up
+    as unassignable work — see [Training
+    Matrix](../../workflows/tracking/training-matrix.md).
 
 Operators without required training may be blocked.
 
 ### Equipment Requirements
 
-Specify equipment to use:
+Equipment relates to a step in two distinct ways:
 
-1. Go to **Equipment** section
-2. Click **Add Equipment**
-3. Select equipment type or specific equipment
-4. Save
+| Mechanism | Purpose |
+|-----------|---------|
+| **Step equipment affinity** | Which equipment this step prefers or requires — used by scheduling |
+| **Equipment + roles capture** | What equipment was *actually* used, recorded by the operator on a substep |
+
+!!! note "Not editable on the step form"
+    The step edit form has no equipment section. Affinities are configured
+    through the work-center and scheduling surfaces; the capture is configured
+    when [authoring work instructions](../../workflows/dwi/authoring.md).
 
 Used for:
 - Equipment utilization tracking
@@ -77,11 +147,10 @@ Used for:
 
 Link work instructions and references:
 
-1. Go to **Documents** section
-2. Click **Link Document**
-3. Select document(s)
-4. Set as required or reference
-5. Save
+1. Open the step in the editor
+2. Use **Attach Documents**
+3. Select the document(s)
+4. Save
 
 Required documents must be attached/accessed to proceed.
 
@@ -216,13 +285,10 @@ For planning:
 
 ## Copying Steps
 
-Copy configuration between steps:
-
-1. Open source step
-2. Click **Copy Step**
-3. Select destination process
-4. Adjust as needed
-5. Save
+!!! note "Planned Feature"
+    There is no step-level copy. A whole process can be duplicated from the
+    process flow editor with **Duplicate as Template**; copying the
+    configuration of a single step between processes is not available.
 
 ## Step Templates
 

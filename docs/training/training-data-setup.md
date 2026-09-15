@@ -123,7 +123,7 @@ For basic training exercises, create:
 
 #### 1. Users (one per role being trained)
 
-Navigate to **Data Management > Users**:
+Navigate to **Admin** > **User Management**:
 
 | User | Groups | Purpose |
 |------|--------|---------|

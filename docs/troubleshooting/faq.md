@@ -50,7 +50,7 @@ captures, quarantine, or a training gap. See
 Parts are soft-deleted (archived). They're hidden from active views but retained for audit compliance.
 
 ### How do I view part history?
-Open the part detail and click **History** tab. Shows all transitions, measurements, and events.
+Open the part detail. The **Activity History** section on that page shows the audit trail; quality reports and dispositions have their own sections. See [Part History](../workflows/tracking/part-history.md).
 
 ## Quality
 
@@ -77,7 +77,7 @@ Navigate to **Documents**, click **Upload Document**, select file, enter metadat
 Controlled document types require approval. Click **Submit for Approval** to start the workflow.
 
 ### How do I create a new revision?
-Open the document, click **New Revision**, upload new file, and submit for approval.
+Open the document, click **Create Revision**, upload new file, and submit for approval.
 
 ### Who can see my documents?
 Visibility depends on document settings (Public, Internal, Confidential) and user permissions.
@@ -85,7 +85,7 @@ Visibility depends on document settings (Public, Internal, Confidential) and use
 ## Administration
 
 ### How do I add a new user?
-Navigate to **Data Management** > **Users**, click **New Users**, fill in details.
+Navigate to **Admin** > **User Management**, click **Add user**, fill in the details, then **Create User**.
 
 ### How do I reset someone's password?
 If using SSO, this is handled by your identity provider. Otherwise, use "Password Reset" function.

@@ -90,10 +90,11 @@ Start with the Quality Dashboard:
 
 ### Signing Approval
 
-1. Click **Approve** or **Reject**
-2. Add comments (especially for reject)
-3. Enter password to sign
-4. Submit
+1. Click **Submit Response**
+2. Choose a **Decision** — Approved, Rejected, or Delegated
+3. Add comments (especially when rejecting)
+4. Sign if the approval template requires it
+5. Submit the response
 
 ### High-Value Dispositions
 
@@ -168,9 +169,9 @@ Before closure:
 
 ### Electronic Signature
 
-1. Click **Approve**
-2. Review signature meaning
-3. Enter password
+1. Click **Submit Response** and choose **Approved**
+2. Review the signature meaning
+3. Sign as the template requires
 4. Submit
 
 ## Quality Analytics

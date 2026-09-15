@@ -36,10 +36,11 @@ Your administrator configures which types require approval.
 ### From Document Detail
 
 1. Open the document (in Draft status)
-2. Click **Submit for Approval**
-3. Select approval template (if multiple available)
-4. Add submission notes
-5. Click **Submit**
+2. Go to the **Approval** tab — it shows *"Document Not Yet Submitted"*
+3. Click **Submit for Approval**
+
+Once submitted, the designated approvers are notified and the document moves to
+**Under Review**.
 
 ### Approval Templates
 
@@ -79,37 +80,76 @@ Document owner:
 As an approver:
 
 1. Open the document from approval queue
-2. Click **View Document** to see contents
+2. Click **Download** or **Download to View** to see the contents
 3. Review the file
 4. Check revision notes
 5. Verify changes are correct
 
-## Approving Documents
+## Responding to an Approval Request
 
-1. Open the document or approval request
-2. Click **Approve**
-3. Add approval comments (optional)
-4. Enter password to sign
-5. Submit
+Approving and rejecting are one action, not two buttons:
 
-Your electronic signature is recorded with:
-- Your user identity
-- Timestamp
-- IP address (if logged)
-- Approval comments
+1. Open the document and go to the **Approval** tab
+2. Click **Submit Response**
+3. Choose a **Decision**:
 
-## Rejecting Documents
+| Decision | Effect |
+|----------|--------|
+| **Approved** | You approve the document |
+| **Rejected** | You reject it; the owner is notified and can revise and resubmit |
+| **Delegated** | You pass the decision to someone else |
 
-If the document is not acceptable:
+4. Add comments, and sign if the approval template requires it
+5. Submit the response
 
-1. Click **Reject**
-2. Enter rejection reason (required)
-3. Submit
+!!! warning "Only assigned approvers see the button"
+    **Submit Response** appears only if you are an assigned approver on the
+    pending request — by name or through a group — and have not already
+    responded. Everyone else sees *"You are not assigned as an approver for
+    this document."*
 
-The document:
-- Returns to Draft status
-- Owner is notified with rejection reason
-- Can be revised and resubmitted
+    Being a tenant administrator does **not** let you respond. Approval is
+    authorized **per request**, not by a global permission, so an admin who was
+    not assigned to a document sees no action available. Granting someone a
+    permission will not change this.
+
+## Who gets assigned as an approver
+
+If the wrong people — or nobody — can approve a document, the cause is almost
+always the **approval template**, not permissions. Each template decides who is
+assigned when a request is raised:
+
+| Template setting | Effect |
+|------------------|--------|
+| **Default approvers** | Specific users assigned every time |
+| **Default groups** | Every member of those groups assigned |
+| **Auto-assign by role** | Assigns the named group, e.g. `QA_Manager` |
+
+The starter **Document Release** template has no default approvers and no
+default groups — it auto-assigns by role to **QA Manager** only. So a Document
+Controller cannot approve a document release out of the box, even though
+document control is their job.
+
+!!! tip "To let another role approve"
+    Change the template, not the permissions — add the group to **Default
+    groups**, or change **Auto-assign by role**. See
+    [Approval Templates](../../admin/setup/approval-templates.md).
+
+Templates also control the flow: how many approvals are required, whether they
+run in parallel or in sequence, whether delegation is allowed, and whether a
+requester may approve their own request.
+
+Your electronic signature is recorded with your user identity, a timestamp, the
+IP address, and your comments. See [Electronic
+Signatures](../../compliance/signatures.md).
+
+## What the Approval Tab Shows
+
+| Section | Contents |
+|---------|----------|
+| **Approval Status** | The document's workflow status, e.g. Under Review |
+| **Assigned Approvers** | Each approver and whether they are Pending or have responded |
+| **Approval History** | Every response recorded against the request |
 
 ## Multi-Level Approval
 
@@ -147,12 +187,12 @@ On the document:
 
 ## Recalling a Submission
 
-To withdraw a pending approval:
+!!! note "Not available"
+    There is no recall or withdraw control on the document approval tab. A
+    submitted document stays under review until the assigned approvers respond.
 
-1. Open the document
-2. Click **Recall** or **Withdraw**
-3. Enter reason
-4. Document returns to Draft
+    If a submission was made in error, ask an approver to **reject** it — the
+    document returns to the owner and can be revised and resubmitted.
 
 Use when:
 - Errors found after submission

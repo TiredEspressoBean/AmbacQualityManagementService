@@ -90,11 +90,14 @@ Primary responsible person:
 - Reports status
 
 ### Team Members
-Assign additional team members:
 
-1. Click **Add Team Member**
-2. Select user
-3. Assign role (Investigator, SME, Approver)
+!!! note "A CAPA has one assignee, not a team roster"
+    There is no team-member list with roles. A CAPA carries a single
+    **assigned_to** owner.
+
+    To involve other people, create **CAPA tasks** and assign them
+    individually — the set of task assignees is what functions as the team.
+    See [CAPA Tasks](tasks.md).
 
 ### Stakeholders
 Notify stakeholders without assigning work:
@@ -105,17 +108,13 @@ Notify stakeholders without assigning work:
 
 ## Containment Actions (D3)
 
-Document immediate actions:
+Containment is recorded as a single **Immediate Action** field on the CAPA —
+describe what was done to contain the problem while the root cause is
+investigated. It is not a list of separately-tracked action items.
 
-1. Go to **Containment** section
-2. Click **Add Action**
-3. Describe the action:
-   - What was done
-   - When
-   - Who did it
-4. Mark complete when done
+If containment needs tracked, assignable work, raise **CAPA tasks** for it.
 
-Common containment actions:
+Typical containment to describe:
 
 - Quarantine suspect material
 - Stop production

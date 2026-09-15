@@ -75,13 +75,22 @@ A **material lot** represents a batch of material received or produced:
 
 ### Receiving Lots
 
-When material arrives:
+When material arrives, use the receiving form rather than creating a lot
+record by hand:
 
-1. Create material lot record
-2. Enter lot number and supplier information
-3. Record quantity received
-4. Perform incoming inspection
-5. Release to IN_USE or quarantine if issues found
+1. Go to **Supply** > **Materials** and click **Receive**
+2. Add a row per lot — the form takes several at once, so a delivery of
+   multiple lots is one submission
+3. Enter the lot number, supplier, and quantity for each
+4. Submit with **Receive N Lot(s)**
+
+The lots land in **Awaiting inspection**. They become **On hand** once
+[incoming inspection](../supply/overview.md#incoming-inspection) passes, or go
+to **Held** if it doesn't.
+
+!!! tip "Expecting material"
+    **Expect** records a lot you know is coming before it arrives, so it shows
+    under **On order**.
 
 ### Using Material
 

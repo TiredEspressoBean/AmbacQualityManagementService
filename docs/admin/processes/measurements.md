@@ -14,13 +14,17 @@ Measurement definitions specify:
 
 ## Creating Measurements
 
-### From Process Step
+### From the step
 
-1. Open the process
-2. Open the step where measurement is collected
-3. Click **Add Measurement** in Measurements section
-4. Fill in definition
-5. Save
+1. Open the step where the measurement is collected
+2. In the **Measurement Definitions** section, click **Add Measurement**
+3. Fill in the definition
+4. Save
+
+!!! note "Which surface"
+    The **Process Flow** editor shows a step's measurement *count* and is where
+    you edit the step's properties and routing, but the definitions themselves
+    are edited on the step form reached from the process editor.
 
 !!! note "No standalone measurements editor"
     Measurement definitions are configured on the step that collects them, using

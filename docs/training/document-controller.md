@@ -203,7 +203,7 @@ By the end of this module, you will:
 **Steps:**
 
 1. Open existing document
-2. Click **New Revision**
+2. Click **Create Revision**
 3. Upload new file
 4. Fill in revision details:
    - New Revision: Next in sequence (B, C or 2, 3)
@@ -214,7 +214,7 @@ By the end of this module, you will:
 **Exercise 3.1:** Create a Revision
 
 1. Open document "WI-TRAIN-001"
-2. Click **New Revision**
+2. Click **Create Revision**
 3. Upload revised file
 4. Fill in:
    - New Revision: B
@@ -591,7 +591,7 @@ By the end of this module, you will:
 Documents → **Upload Document** → Select file → Fill metadata → **Upload**
 
 ### Create Revision
-Open document → **New Revision** → Upload new file → Fill change notes → **Submit**
+Open document → **Create Revision** → Upload new file → Fill change notes → **Submit**
 
 ### Submit for Approval
 Open document → **Submit for Approval** → Select template → **Submit**

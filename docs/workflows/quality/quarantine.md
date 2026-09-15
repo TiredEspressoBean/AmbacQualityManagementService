@@ -36,11 +36,21 @@ Some events automatically quarantine parts:
 
 ### Manual Quarantine
 
-1. Select part(s) in Tracker or part list
-2. Click **Quarantine** or **Hold**
-3. Select reason/error type
-4. Add notes
+Quarantine is raised as an **exception** against the work order, not from a
+button on the part:
+
+1. Open the work order in the **WO Control Center** or its control page
+2. Click **Report…** to open the **Report exception** dialog
+3. Choose type **Quarantine (quality hold)**
+
+   The same dialog also raises **Downtime (equipment / resource)** and
+   **CAPA (corrective action)** — the type routes the event to the right
+   record.
+4. Add the reason and notes
 5. Submit
+
+A quality report against a part also puts it into quarantine — see
+[Quality Reports](quality-reports.md).
 
 Parts immediately show quarantine status.
 

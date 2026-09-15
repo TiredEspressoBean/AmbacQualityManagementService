@@ -15,7 +15,7 @@ Properly offboard users when they leave the organization or no longer need acces
 
 ### Quick Deactivation
 
-1. Navigate to **Data Management** > **Users**
+1. Navigate to **Admin** > **User Management**
 2. Find the user
 3. Click the action menu (...)
 4. Select **Deactivate**
@@ -90,7 +90,7 @@ For urgent access removal:
 For multiple users:
 
 1. Navigate to **Admin** > **User Management**
-2. Open **Bulk User Actions**
+2. Click **Bulk Actions**
 3. Add a row per user (**Manual entry**) or **Upload workbook** for a batch
 4. Set their status, then click **Apply rows**
 
@@ -103,7 +103,7 @@ Use for:
 
 If user needs access again:
 
-1. Navigate to **Data Management > Users**
+1. Navigate to **Admin** > **User Management**
 2. Show inactive users (filter toggle)
 3. Find the user
 4. Open user record

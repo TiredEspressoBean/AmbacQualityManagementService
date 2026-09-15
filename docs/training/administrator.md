@@ -40,7 +40,7 @@ Your configuration decisions affect all users.
 | Page | Location | Purpose |
 |------|----------|---------|
 | **Data Management** | Admin > Data Management | All editors |
-| **Users** | Data Management > Users | User accounts |
+| **Users** | Admin > User Management | User accounts, invites, bulk actions |
 | **Groups** | Data Management > User Groups | Permission groups |
 | **Settings** | Admin > Settings | System configuration |
 | **Audit Log** | Admin > Audit Log | Activity monitoring |
@@ -95,7 +95,7 @@ By the end of this module, you will:
 
 **Steps:**
 
-1. Navigate to **Data Management** > **Users**
+1. Navigate to **Admin** > **User Management**
 2. Click **New Users**
 3. Fill in:
    - Email address (will be login)
@@ -329,14 +329,15 @@ Processes define how parts move through production.
 
 **For each step:**
 
-1. Click **Add Step**
-2. Configure:
+1. In the **Process Flow** editor with **Edit Mode** on, click **Add Step**
+2. Click the step to open its properties and configure:
    - Name: Step name (e.g., "Machining")
-   - Sequence: Order in process
+   - Operation number: Order in the routing
    - Description: What happens here
-   - Equipment type: (optional) Required equipment
-3. Save
-4. Add requirements
+   - Work center: Where it runs
+   - Timing: setup and cycle time per piece
+3. Use **Advanced** for QA signoff, first-piece inspection, sampling, and
+   rework limits
 
 **Exercise 4.2:** Add Steps
 

@@ -106,13 +106,13 @@ Organize by:
 ### Creating New Revision
 
 1. Open existing document
-2. Click **New Revision**
+2. Click **Create Revision**
 3. Upload new file
 4. Fill in revision details:
 
 | Field | Description |
 |-------|-------------|
-| **New Revision** | Next version (auto-suggested) |
+| **Create Revision** | Next version (auto-suggested) |
 | **Change Summary** | What changed |
 | **Reason** | Why the change |
 
@@ -279,7 +279,7 @@ When documents update:
 | Task | Steps |
 |------|-------|
 | Upload document | Documents → **Upload Document** → Fill form → Save |
-| Create revision | Open doc → New Revision → Upload → Submit |
+| Create revision | Open doc → **Create Revision** → Upload → Submit |
 | Submit for approval | Open doc → Submit for Approval → Select template |
 | Check approval status | Open doc → View Approvals section |
 

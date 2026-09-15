@@ -39,18 +39,26 @@ Your administrator configures the scheme.
 ### From Document Detail
 
 1. Open the document
-2. Click **New Revision** or **Create Revision**
-3. Upload the new file
-4. Enter revision information:
+2. Click **Create Revision**
+3. Optionally upload a new file — keeping the existing file is allowed
+4. Enter the **reason for the revision**
 
-| Field | Description |
-|-------|-------------|
-| **New Revision ID** | Next revision (auto-suggested) |
-| **Change Summary** | What changed |
-| **Reason for Change** | Why the change was made |
-| **Effective Date** | When revision takes effect |
+!!! warning "The reason is required"
+    A revision cannot be created without a justification. The request is
+    rejected with *"change_justification is required when creating a
+    revision"*.
 
-5. Click **Create Revision**
+    This is deliberate: the justification is the controlled record of **why** a
+    document changed, and it is what document-control and configuration-
+    management audits ask for. See [Document
+    Control](../../compliance/document-control.md).
+
+Creating a revision:
+
+- Increments the version number
+- Links the new version to the previous one
+- Resets status to **Draft**
+- Preserves the document type, classification, and any linked object
 
 ### Revision Status
 

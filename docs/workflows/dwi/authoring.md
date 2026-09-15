@@ -9,13 +9,14 @@ This guide covers building substeps on a step. See
 
 ## Opening the substep editor
 
-1. Navigate to **Production** > **Processes**
-2. Open the process you're authoring
-3. Open the step (Op) you want to add instructions to
-4. Open its **substeps**
+1. Open the process in the **Process Flow** editor
+2. Turn on **Edit Mode**
+3. Click the step (Op) you want to add instructions to
+4. In its properties panel, use the **Substeps** control
 
-The editor is at
-`/editor/processes/{processId}/steps/{stepId}/substeps`.
+The editor opens at
+`/editor/processes/{processId}/steps/{stepId}/substeps`. With Edit Mode off the
+same control opens the substeps read-only.
 
 ## Adding a substep
 

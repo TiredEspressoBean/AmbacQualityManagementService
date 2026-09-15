@@ -67,13 +67,14 @@ The **Disassembly BOM** defines expected yields:
 
 When a core arrives:
 
-1. Navigate to **Remanufacturing > Cores**, then click **New Cores**
-2. Enter core number and serial (if available)
-3. Select core type
-4. Assign condition grade
-5. Record source (customer return, purchase, etc.)
-6. Set core credit value if applicable
-7. Save to create core record
+1. Open the **Receive Core** form (`/reman/cores/receive`)
+2. Enter the core number and serial (if available)
+3. Select the core type and source type
+4. Assign a condition grade
+5. Set the core credit value if applicable
+6. Click **Receive Core**
+
+See [Receiving Cores](receiving.md).
 
 ### 2. Disassembly
 

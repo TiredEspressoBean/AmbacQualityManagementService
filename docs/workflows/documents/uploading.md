@@ -83,7 +83,7 @@ For large files, consider:
 To upload a new version of an existing document:
 
 1. Open the existing document
-2. Click **New Revision** (not new upload)
+2. Click **Create Revision** (not a new upload)
 3. Upload the new file
 4. Enter revision notes
 5. Submit for approval (if controlled)
