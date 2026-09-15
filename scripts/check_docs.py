@@ -6,7 +6,7 @@ Run from the repo root before merging to master:
 
     python scripts/check_docs.py
 
-Three checks, all of which have caught real defects:
+Four checks, all of which have caught real defects:
 
 1. LINKS + ANCHORS — every relative markdown link resolves to a file that
    exists, and every `#fragment` resolves to a heading in the target page.
@@ -27,6 +27,17 @@ Three checks, all of which have caught real defects:
 
    If you add a demo illustration, put it in an admonition whose title
    contains "Demo".
+
+4. PERMISSION NAMES — every `codename` the docs quote in backticks exists in
+   the Django permission registry. Six invented names were found the first
+   time this ran, including one file that listed `approve_document` as an
+   action permission and then said, eighty lines later, that document
+   approvals have no dedicated `approve_*` permission.
+
+   The registry is derived from the app registry rather than the Permission
+   table, so this needs `django.setup()` but no database. If Django cannot be
+   imported the check is skipped with a note rather than failing, so the other
+   three still run anywhere.
 
 Exit codes:
     0 — all checks pass
@@ -179,6 +190,78 @@ def check_demo_data(files):
     return bad
 
 
+# --- 4. permission names ---------------------------------------------------
+
+DJANGO_PROJECT = 'PartsTracker'
+DJANGO_SETTINGS = 'PartsTrackerApp.settings'
+
+# Backticked tokens that look like permission codenames but are not, and so
+# would otherwise be reported forever.
+NON_PERMISSIONS = {
+    # An API field on the revision endpoint ("change_justification is required
+    # when creating a revision"), quoted in the error text the docs reproduce.
+    'change_justification',
+    # Named by docs that state explicitly it does not exist. Keep them listed:
+    # saying "there is no X permission" is useful and should not trip a check.
+    'change_sso_settings',
+    'view_analytics',
+}
+
+PERM_TOKEN = re.compile(
+    r'`((?:view|add|change|delete|approve|close|respond|export'
+    r'|manage|override|void|record|sign|verify)_[a-z_]+)`'
+)
+
+
+def _registry():
+    """Every valid permission codename, or None if Django is unavailable.
+
+    Derived from the model metadata rather than the Permission table -- the
+    two were verified identical, and this way the check needs no database.
+    """
+    project = os.path.abspath(DJANGO_PROJECT)
+    if not os.path.isdir(project):
+        return None
+    sys.path.insert(0, project)
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', DJANGO_SETTINGS)
+    try:
+        import logging
+        logging.disable(logging.CRITICAL)  # app-ready hooks are chatty
+        import django
+        django.setup()
+        from django.apps import apps
+    except Exception:
+        return None
+    finally:
+        logging.disable(logging.NOTSET)
+    codenames = set()
+    for model in apps.get_models():
+        meta = model._meta
+        for action in meta.default_permissions:
+            codenames.add('%s_%s' % (action, meta.model_name))
+        for codename, _label in meta.permissions:
+            codenames.add(codename)
+    return codenames
+
+
+def check_permissions(files):
+    valid = _registry()
+    if valid is None:
+        print('NOTE  permission check skipped (Django not importable here)')
+        return 0
+    bad = 0
+    for path, body in sorted(files.items()):
+        for i, line in enumerate(body.splitlines(), 1):
+            for m in PERM_TOKEN.finditer(line):
+                codename = m.group(1)
+                if codename in valid or codename in NON_PERMISSIONS:
+                    continue
+                print('NO SUCH PERM %s:%d  %s'
+                      % (path[len(DOCS) + 1:], i, codename))
+                bad += 1
+    return bad
+
+
 def main():
     if not os.path.isdir(DOCS):
         print('error: run from the repo root (no %s/ here)' % DOCS)
@@ -188,6 +271,7 @@ def main():
     total += check_links(files)
     total += check_nav(files)
     total += check_demo_data(files)
+    total += check_permissions(files)
     print('\n%d markdown files checked, %d problem(s)' % (len(files), total))
     return 1 if total else 0
 
