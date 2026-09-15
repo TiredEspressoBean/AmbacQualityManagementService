@@ -17,6 +17,7 @@ from Tracker.models import (
     Parts, PartTypes, Processes, ProcessStep, StepExecution, Steps,
     Substep, SubstepCompletion, WorkOrder, WorkOrderStatus,
 )
+from Tracker.presets import GROUP_PRESETS
 from Tracker.tests.base import TenantTestCase
 
 # What every floor role holds for this model. These are the permissions that
@@ -25,8 +26,9 @@ from Tracker.tests.base import TenantTestCase
 # `full_tenant_access` is in here so both cases reach the permission gate at
 # all. Without it `SecureQuerySet.for_user` narrows to records related to the
 # user's own orders, `get_object()` 404s, and the test would pass for the wrong
-# reason — reporting "denied" when the row was merely invisible. Both real QA
-# presets hold it, so this matches production rather than working around it.
+# reason — reporting "denied" when the row was merely invisible. Every preset
+# that can void holds it, so this matches production rather than working
+# around it.
 CRUD_ONLY = [
     'view_substepcompletion',
     'add_substepcompletion',
@@ -106,3 +108,37 @@ class VoidCompletionPermissionTests(TenantTestCase):
 
         self.completion.refresh_from_db()
         self.assertFalse(self.completion.is_voided)
+
+
+class VoidPermissionPresetTests(TenantTestCase):
+    """Who holds `void_substepcompletion`, asserted against the presets.
+
+    The gate above proves the permission is *enforced*; this proves it is
+    *granted to the right roles*. Both halves are needed — a correctly enforced
+    permission that nobody holds is just as broken as an unenforced one, and
+    the failure looks like "the button never appears" rather than an error.
+    """
+
+    # Voiding retracts a quality record, so it is deliberately withheld from
+    # the production chain of command: Shift Lead and Production Manager
+    # supervise the work, they don't adjudicate it.
+    EXPECTED_HOLDERS = {'qa_inspector', 'qa_manager', 'tenant_admin'}
+
+    def _holders(self):
+        return {
+            key for key, preset in GROUP_PRESETS.items()
+            if 'void_substepcompletion' in preset['permissions']
+        }
+
+    def test_exactly_the_intended_roles_hold_it(self):
+        self.assertEqual(self._holders(), self.EXPECTED_HOLDERS)
+
+    def test_floor_roles_do_not_hold_it(self):
+        """Spelled out separately because this is the direction that matters.
+
+        Widening is the silent failure: an Operator who can void their own
+        rejected work erases the evidence, and nothing errors.
+        """
+        holders = self._holders()
+        for role in ('operator', 'shift_lead', 'production_manager'):
+            self.assertNotIn(role, holders, f"{role} must not be able to void")

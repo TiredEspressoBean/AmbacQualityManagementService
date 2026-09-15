@@ -443,12 +443,13 @@ class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """
 
     # `void` retracts a record of work someone else signed, so it is gated on
-    # its own marker perm (QA Inspector / QA Manager) rather than the CRUD
-    # default. As a POST the default would be `add_substepcompletion`, which
-    # every role holds — including the Operator whose completion is being
-    # invalidated — and `change_` is no narrower. Same independence argument as
-    # `sign_off_fpi`. crud_exempt_actions keeps the add gate from also
-    # applying, which would silently re-widen it to everyone.
+    # its own marker perm (QA Inspector / QA Manager / Tenant Admin) rather
+    # than the CRUD default. As a POST the default would be
+    # `add_substepcompletion`, which every role holds — including the Operator
+    # whose completion is being invalidated — and `change_` is no narrower.
+    # Same independence argument as `sign_off_fpi`. crud_exempt_actions keeps
+    # the add gate from also applying, which would silently re-widen it to
+    # everyone.
     crud_exempt_actions = {'void'}
     action_permissions = {
         'void': ['void_substepcompletion'],

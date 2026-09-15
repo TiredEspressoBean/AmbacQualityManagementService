@@ -396,10 +396,12 @@ FPI_SIGNOFF_PERMISSIONS = [
 ]
 
 # Voiding a substep completion: retracting a record of work someone else
-# signed. Narrower than FPI sign-off on purpose — QA Inspector and QA Manager
-# only, deliberately withheld from Shift Lead and Production Manager as well as
-# the Operator, because this is a quality-record judgement rather than a
-# production override.
+# signed. QA Inspector, QA Manager, and Tenant Admin — deliberately withheld
+# from Shift Lead and Production Manager as well as the Operator, because this
+# is a quality-record judgement rather than a production override. Tenant Admin
+# holds it for the same reason it holds every other marker perm: the tenant's
+# administrator must be able to correct a bad record without first granting
+# themselves the permission to do so.
 #
 # It needs its own perm because the CRUD default for a POST action is
 # `add_substepcompletion`, which every role holds — including the Operator
@@ -559,6 +561,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Void an erroneous substep completion (quality-record judgement)
+            *VOID_COMPLETION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Author shift notes (floor handoff)
