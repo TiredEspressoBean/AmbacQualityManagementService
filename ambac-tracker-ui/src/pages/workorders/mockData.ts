@@ -38,6 +38,15 @@ export type MockStepVisit = {
     operator: string | null;
     equipment: string | null;
     quality_status: "PASS" | "FAIL" | null;
+    /** Executions behind this row, oldest visit first. A row is per-step, so
+     *  rework collapses several into it; the substep completions QA can void
+     *  hang off these. Empty for a step the part hasn't reached. */
+    step_execution_ids?: string[];
+    /** Substep completions recorded across those executions, and how many were
+     *  voided. Counts so a collapsed row can say whether it's worth opening
+     *  and flag retracted work without fetching the rows. */
+    completion_count?: number;
+    voided_completion_count?: number;
 };
 
 export type MockPart = {

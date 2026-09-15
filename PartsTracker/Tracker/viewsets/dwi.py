@@ -455,11 +455,19 @@ class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     }
 
     queryset = SubstepCompletion.unscoped.select_related(
-        'step_execution', 'substep', 'completed_by',
+        'step_execution', 'substep', 'completed_by', 'voided_by',
     )
     serializer_class = SubstepCompletionSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['step_execution', 'substep', 'completed_by', 'marked_not_applicable']
+    # `step_execution` takes `in` as well as `exact` because a traveler row is
+    # per-step: rework means several executions sit behind one row, and QA
+    # reviews the completions across all of them together.
+    filterset_fields = {
+        'step_execution': ['exact', 'in'],
+        'substep': ['exact'],
+        'completed_by': ['exact'],
+        'marked_not_applicable': ['exact'],
+    }
     ordering_fields = ['completed_at']
     ordering = ['-completed_at']
 

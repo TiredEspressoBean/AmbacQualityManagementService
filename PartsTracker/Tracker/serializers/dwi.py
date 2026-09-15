@@ -281,6 +281,7 @@ class SubstepCompletionSerializer(SecureModelMixin):
 
     substep_title = serializers.CharField(source='substep.title', read_only=True, allow_null=True)
     completed_by_name = serializers.SerializerMethodField()
+    voided_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = SubstepCompletion
@@ -295,14 +296,32 @@ class SubstepCompletionSerializer(SecureModelMixin):
             'signature_data', 'signature_meaning',
             'verified_at', 'verification_method',
             'ip_address',
+            # The void state travels with the row. A voided completion is not
+            # deleted — it stays in the list as the audit record of work that
+            # was retracted — so a reader who can't see these four fields
+            # cannot tell a live completion from a retracted one, and the UI
+            # would offer "Void" on a row already voided.
+            'is_voided', 'voided_at', 'voided_by', 'voided_by_name', 'void_reason',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('completed_at', 'created_at', 'updated_at')
+        # Voiding goes through the `void` action, which is gated on
+        # `void_substepcompletion`. Leaving these writable would let anyone
+        # with `change_` PATCH around that gate.
+        read_only_fields = (
+            'completed_at', 'created_at', 'updated_at',
+            'is_voided', 'voided_at', 'voided_by', 'void_reason',
+        )
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_completed_by_name(self, obj) -> str | None:
         if obj.completed_by:
             return obj.completed_by.get_full_name() or obj.completed_by.username
+        return None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_voided_by_name(self, obj) -> str | None:
+        if obj.voided_by:
+            return obj.voided_by.get_full_name() or obj.voided_by.username
         return None
 
 

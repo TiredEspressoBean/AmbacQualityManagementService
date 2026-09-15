@@ -24214,6 +24214,16 @@ paths:
           type: string
           format: uuid
       - in: query
+        name: step_execution__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
         name: substep
         schema:
           type: string
@@ -63290,6 +63300,29 @@ components:
           type: string
           nullable: true
           description: Client IP at signing time; captured for audit defense.
+        is_voided:
+          type: boolean
+          readOnly: true
+          description: Whether this record has been voided
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When this record was voided
+        voided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who voided this record
+        voided_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        void_reason:
+          type: string
+          readOnly: true
+          description: Reason for voiding this record
         created_at:
           type: string
           format: date-time
@@ -63304,9 +63337,14 @@ components:
       - completed_by_name
       - created_at
       - id
+      - is_voided
       - substep
       - substep_title
       - updated_at
+      - void_reason
+      - voided_at
+      - voided_by
+      - voided_by_name
     SubstepCompletionRequest:
       type: object
       description: Per-execution completion record.
@@ -66583,6 +66621,15 @@ components:
           type: string
         step_order:
           type: integer
+        step_execution_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        completion_count:
+          type: integer
+        voided_completion_count:
+          type: integer
         visit_number:
           type: integer
           default: 1
@@ -66641,6 +66688,7 @@ components:
       - attachments
       - batch_cycles
       - completed_at
+      - completion_count
       - defects_found
       - duration_seconds
       - equipment_used
@@ -66650,9 +66698,11 @@ components:
       - quality_status
       - started_at
       - status
+      - step_execution_ids
       - step_id
       - step_name
       - step_order
+      - voided_completion_count
     TravelerStepQualityStatusEnum:
       enum:
       - PASS

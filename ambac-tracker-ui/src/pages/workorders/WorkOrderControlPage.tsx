@@ -98,6 +98,7 @@ import { useSplitPartFromLot, useRejoinPartToLot } from "@/hooks/parts";
 import type { PartSplitReason } from "@/hooks/parts";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { PendingDecisionsPanel } from "@/components/dwi/PendingDecisionsPanel";
+import { StepCompletionsList } from "@/components/dwi/StepCompletionsList";
 import { PendingFpiPanel } from "@/components/workorders/PendingFpiPanel";
 import { OutsideProcessPanel } from "@/components/workorder/OutsideProcessPanel";
 import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
@@ -200,7 +201,18 @@ function adaptTravelerEntry(t: TravelerStepEntry): MockStepVisit {
         operator: op,
         equipment: eq,
         quality_status: qs === "PASS" ? "PASS" : qs === "FAIL" ? "FAIL" : null,
+        step_execution_ids: t.step_execution_ids ?? [],
+        completion_count: t.completion_count ?? 0,
+        voided_completion_count: t.voided_completion_count ?? 0,
     };
+}
+
+/** Traveler timestamps are absent for steps the part hasn't reached. Rendering
+ *  those through `new Date("")` printed a literal "Invalid Date" in the table. */
+function formatTravelerTime(value: string | null | undefined): string {
+    if (!value) return "—";
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
 
 function StepHistoryPanelLive({ partId }: { partId: string }) {
@@ -745,6 +757,21 @@ function StepStrip({
 }
 
 function StepHistoryPanel({ part }: { part: MockPart }) {
+    // Which traveler rows have their completions open. Keyed by step order,
+    // which is unique within a traveler (one row per step).
+    const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
+    const toggleStep = (order: number) => {
+        setOpenSteps((prev) => {
+            const next = new Set(prev);
+            if (next.has(order)) {
+                next.delete(order);
+            } else {
+                next.add(order);
+            }
+            return next;
+        });
+    };
+
     return (
         <div className="space-y-2 rounded-md border bg-muted/30 p-3">
             <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -761,22 +788,34 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
                         <TableHead className="h-8 text-xs">Started</TableHead>
                         <TableHead className="h-8 text-xs">Ended</TableHead>
                         <TableHead className="h-8 text-xs">QA</TableHead>
+                        <TableHead className="h-8 w-8 text-xs sr-only">Completions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {part.traveler.map((v, i) => (
-                        <TableRow key={i} className="hover:bg-transparent">
+                    {part.traveler.map((v, i) => {
+                    const execIds = v.step_execution_ids ?? [];
+                    const completionCount = v.completion_count ?? 0;
+                    const voidedCount = v.voided_completion_count ?? 0;
+                    const isOpen = openSteps.has(v.step_order);
+                    // A step the part never reached has no visit to number;
+                    // "#1" there read as though it had been run once.
+                    const hasRun = execIds.length > 0;
+                    return (
+                        <Fragment key={i}>
+                        <TableRow className="hover:bg-transparent">
                             <TableCell className="py-1.5 text-xs">
                                 {v.step_order}. {v.step_name}
                             </TableCell>
-                            <TableCell className="py-1.5 text-xs">#{v.visit_number}</TableCell>
+                            <TableCell className="py-1.5 text-xs">
+                                {hasRun ? `#${v.visit_number}` : "—"}
+                            </TableCell>
                             <TableCell className="py-1.5 text-xs">{v.operator ?? "—"}</TableCell>
                             <TableCell className="py-1.5 text-xs">{v.equipment ?? "—"}</TableCell>
                             <TableCell className="py-1.5 text-xs">
-                                {new Date(v.started_at).toLocaleString()}
+                                {formatTravelerTime(v.started_at)}
                             </TableCell>
                             <TableCell className="py-1.5 text-xs">
-                                {v.ended_at ? new Date(v.ended_at).toLocaleString() : "—"}
+                                {formatTravelerTime(v.ended_at)}
                             </TableCell>
                             <TableCell className="py-1.5 text-xs">
                                 {v.quality_status ? (
@@ -785,8 +824,59 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
                                     <span className="text-muted-foreground">—</span>
                                 )}
                             </TableCell>
+                            <TableCell className="py-1.5 text-xs">
+                                {/* Offered only where there is something to
+                                    open. Keyed on the count, not on the step
+                                    having run: an executed step with no
+                                    substeps has nothing behind the expander,
+                                    and a control that opens onto "nothing
+                                    recorded" teaches people to stop clicking
+                                    it. */}
+                                {completionCount > 0 && (
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                                            onClick={() => toggleStep(v.step_order)}
+                                            aria-expanded={isOpen}
+                                        >
+                                            {isOpen ? (
+                                                <ChevronDown className="h-3 w-3" />
+                                            ) : (
+                                                <ChevronRight className="h-3 w-3" />
+                                            )}
+                                            Checks ({completionCount})
+                                        </Button>
+                                        {/* Retracted work is the thing QA most
+                                            needs to notice, so it shows on the
+                                            collapsed row rather than only to
+                                            someone who expands every step. */}
+                                        {voidedCount > 0 && (
+                                            <Badge
+                                                variant="destructive"
+                                                className="h-4 px-1 text-[10px]"
+                                            >
+                                                {voidedCount} voided
+                                            </Badge>
+                                        )}
+                                    </div>
+                                )}
+                            </TableCell>
                         </TableRow>
-                    ))}
+                        {isOpen && (
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={8} className="bg-muted/40 p-0">
+                                    <StepCompletionsList
+                                        stepExecutionIds={execIds}
+                                        stepName={v.step_name}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        </Fragment>
+                    );
+                    })}
                 </TableBody>
             </Table>
         </div>

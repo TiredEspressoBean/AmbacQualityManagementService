@@ -29108,6 +29108,18 @@ export interface components {
             verification_method?: components["schemas"]["VerificationMethodEnum"];
             /** @description Client IP at signing time; captured for audit defense. */
             ip_address?: string | null;
+            /** @description Whether this record has been voided */
+            readonly is_voided: boolean;
+            /**
+             * Format: date-time
+             * @description When this record was voided
+             */
+            readonly voided_at: string | null;
+            /** @description User who voided this record */
+            readonly voided_by: number | null;
+            readonly voided_by_name: string | null;
+            /** @description Reason for voiding this record */
+            readonly void_reason: string;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -30768,6 +30780,9 @@ export interface components {
             step_id: string;
             step_name: string;
             step_order: number;
+            step_execution_ids: string[];
+            completion_count: number;
+            voided_completion_count: number;
             /** @default 1 */
             visit_number: number;
             status: components["schemas"]["TravelerStepStatusEnum"];
@@ -48508,6 +48523,8 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 step_execution?: string;
+                /** @description Multiple values may be separated by commas. */
+                step_execution__in?: string[];
                 substep?: string;
             };
             header?: never;

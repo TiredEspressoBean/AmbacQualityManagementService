@@ -929,6 +929,15 @@ class TravelerStepEntrySerializer(serializers.Serializer):
     step_id = serializers.UUIDField()
     step_name = serializers.CharField()
     step_order = serializers.IntegerField()
+    # The executions behind this row, oldest visit first. A row is per-step, so
+    # rework collapses several executions into it — the caller needs all of
+    # them to look up the substep completions recorded at this step.
+    step_execution_ids = serializers.ListField(child=serializers.UUIDField())
+    # Counts rather than the rows themselves: the collapsed traveler row needs
+    # to know whether there is anything to open, and whether any of it was
+    # retracted, without pulling every completion for every step.
+    completion_count = serializers.IntegerField()
+    voided_completion_count = serializers.IntegerField()
     visit_number = serializers.IntegerField(default=1)
     status = serializers.ChoiceField(choices=['COMPLETED', 'IN_PROGRESS', 'PENDING', 'SKIPPED'])
 

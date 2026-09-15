@@ -1049,6 +1049,22 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 execution_map[ex.step_id] = []
             execution_map[ex.step_id].append(ex)
 
+        # Substep-completion counts per execution, in one query for the whole
+        # part. The traveler row needs to say *whether* there is anything to
+        # open before the client opens it — otherwise every step offers an
+        # expander and most of them turn out empty — and a voided count so
+        # retracted work is visible on the collapsed row instead of only to
+        # someone who expands all twelve steps looking for it.
+        from Tracker.models import SubstepCompletion
+        completion_counts = {}  # step_execution_id -> [total, voided]
+        for exec_id, voided in SubstepCompletion.objects.filter(
+            step_execution__part=part,
+        ).values_list('step_execution_id', 'is_voided'):
+            entry = completion_counts.setdefault(exec_id, [0, 0])
+            entry[0] += 1
+            if voided:
+                entry[1] += 1
+
         # Get time entries for this part
         time_entries = TimeEntry.objects.filter(
             part=part
@@ -1352,6 +1368,22 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 'step_id': step_id,
                 'step_name': step.name,
                 'step_order': order,
+                # Plural, because a row is per-step and `visit_number` above is
+                # a *count* of visits, not an index into one. Rework means
+                # several executions collapse into this row, and the substep
+                # completions hanging off them are what QA voids — so the UI
+                # needs every id, not the latest. Ordered by visit so the
+                # caller can tell the attempts apart.
+                'step_execution_ids': [
+                    str(ex.id)
+                    for ex in sorted(step_execs, key=lambda e: e.visit_number or 0)
+                ],
+                'completion_count': sum(
+                    completion_counts.get(ex.id, (0, 0))[0] for ex in step_execs
+                ),
+                'voided_completion_count': sum(
+                    completion_counts.get(ex.id, (0, 0))[1] for ex in step_execs
+                ),
                 'visit_number': visit_number,
                 'status': step_status,
                 'started_at': started_at,

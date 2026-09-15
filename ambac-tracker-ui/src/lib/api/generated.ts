@@ -8053,6 +8053,23 @@ export type SubstepCompletion = {
      */
     (string | null)
     | undefined;
+  /**
+   * Whether this record has been voided
+   */
+  is_voided: boolean;
+  /**
+   * When this record was voided
+   */
+  voided_at: string | null;
+  /**
+   * User who voided this record
+   */
+  voided_by: number | null;
+  voided_by_name: string | null;
+  /**
+   * Reason for voiding this record
+   */
+  void_reason: string;
   created_at: string;
   updated_at: string;
 };
@@ -9694,6 +9711,9 @@ export type TravelerStepEntry = {
   step_id: string;
   step_name: string;
   step_order: number;
+  step_execution_ids: Array<string>;
+  completion_count: number;
+  voided_completion_count: number;
   visit_number?: /**
    * @default 1
    */
@@ -18503,6 +18523,9 @@ const TravelerStepEntry = z.object({
   step_id: z.string().uuid(),
   step_name: z.string(),
   step_order: z.number().int(),
+  step_execution_ids: z.array(z.string().uuid()),
+  completion_count: z.number().int(),
+  voided_completion_count: z.number().int(),
   visit_number: z.number().int().optional().default(1),
   status: TravelerStepStatusEnum,
   started_at: z.string().datetime({ offset: true }).nullable(),
@@ -20383,6 +20406,11 @@ const SubstepCompletion = z.object({
   verified_at: z.string().datetime({ offset: true }).nullish(),
   verification_method: VerificationMethodEnum.optional(),
   ip_address: z.string().nullish(),
+  is_voided: z.boolean(),
+  voided_at: z.string().datetime({ offset: true }).nullable(),
+  voided_by: z.number().int().nullable(),
+  voided_by_name: z.string().nullable(),
+  void_reason: z.string(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });
@@ -44709,6 +44737,11 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
         name: "step_execution",
         type: "Query",
         schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step_execution__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
       },
       {
         name: "substep",
