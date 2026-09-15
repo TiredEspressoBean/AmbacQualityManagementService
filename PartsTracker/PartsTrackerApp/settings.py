@@ -481,8 +481,20 @@ import re as _re
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
+    # Dev origins. Both spellings of loopback are listed on purpose: the Vite
+    # dev server answers on either, and `localhost` and `127.0.0.1` are
+    # DIFFERENT origins to a browser. With only `localhost` trusted, driving the
+    # app on the IP made every unsafe request fail CSRF origin checking — most
+    # visibly the app's own POST /auth/logout/, so "Log out" appeared to do
+    # nothing and left the user signed in.
+    #
+    # This is not a widening of trust: loopback is the same machine, and
+    # `localhost:5173` was already trusted. Anything able to send from
+    # 127.0.0.1 can already send from localhost.
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 CORS_ALLOWED_ORIGIN_REGEXES = []  # populated below for our own-domain subdomains
 
