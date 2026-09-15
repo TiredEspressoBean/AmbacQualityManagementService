@@ -159,19 +159,26 @@ class IntegrationConfigViewSet(viewsets.ModelViewSet):
 
         return Response(catalog)
 
+    # request=None: no body — the action operates on the object named in the
+    # path. Undeclared, spectacular assumed the model serializer and the
+    # generated client demanded a full body the caller does not have.
+    #
+    # One decorator, not two stacked. Spectacular merges a stack field by
+    # field, so a stack works right up until two of them set the SAME field —
+    # at which point the outer silently wins. That is exactly how
+    # bulk_reconcile_template ended up documented with the status endpoint's
+    # schema. Stacking is for per-method variants (`methods=[...]`), not for
+    # splitting one operation's request and response.
     @extend_schema(
+        request=None,
         responses=inline_serializer(
             name='TestConnectionResult',
             fields={
                 'success': drf_serializers.BooleanField(),
                 'message': drf_serializers.CharField(),
             },
-        )
+        ),
     )
-    # request=None: no body — the action operates on the object named in the
-    # path. Undeclared, spectacular assumed the model serializer and the
-    # generated client demanded a full body the caller does not have.
-    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     def test_connection(self, request, pk=None):
         """Test that the integration's credentials work."""

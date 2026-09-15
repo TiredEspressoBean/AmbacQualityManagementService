@@ -114,27 +114,21 @@ export const useReceiveExpectedLot = () => {
 };
 
 // ----- Certificate of Conformance capture (multipart PATCH of the lot) -----
-// The generated client types certificate_of_conformance as a URL string, so a
-// File upload goes through a raw multipart PATCH (mirrors useDocumentUpload).
+// Through the typed client. This was a hand-rolled multipart fetch, justified
+// by a comment saying the client types certificate_of_conformance as a URL
+// string — true of the RESPONSE, but the request schema already typed it as a
+// File. What actually blocked it was requestFormat: the viewset took DRF's
+// default parser order, so JSON was advertised first and the client would have
+// serialised the File as JSON. MaterialLotViewSet now declares MultiPart first
+// (as DocumentViewSet already did) and the endpoint generates as form-data.
 export const useUploadLotCoC = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (vars: { id: string; file: File }) => {
-            const form = new FormData();
-            form.append("certificate_of_conformance", vars.file);
-            const res = await fetch(`/api/MaterialLots/${vars.id}/`, {
-                method: "PATCH",
-                credentials: "include",
-                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
-                body: form,
-            });
-            if (!res.ok) {
-                let detail = "Upload failed";
-                try { const b = await res.json(); detail = b.detail ?? JSON.stringify(b); } catch { /* ignore */ }
-                throw new Error(`${res.status}: ${detail}`);
-            }
-            return res.json();
-        },
+        mutationFn: (vars: { id: string; file: File }) =>
+            api.api_MaterialLots_partial_update(
+                { certificate_of_conformance: vars.file },
+                { params: { id: vars.id }, headers: csrf() },
+            ),
         onSuccess: (_data, vars) => {
             invalidateReceiving(queryClient);
             queryClient.invalidateQueries({

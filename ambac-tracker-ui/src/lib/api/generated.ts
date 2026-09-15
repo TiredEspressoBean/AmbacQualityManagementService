@@ -808,6 +808,21 @@ export type BulkReconcileResultRowOutcomeEnum =
    * @enum created, updated, unchanged, error
    */
   "created" | "updated" | "unchanged" | "error";
+export type BulkReconcileStatusResponse = {
+  task_id: string;
+  /**
+   * Celery state: PENDING / PROGRESS / SUCCESS / FAILURE.
+   */
+  status: string;
+  progress?: BulkReconcileStatusProgress | undefined;
+  result?: {} | undefined;
+  error?: string | undefined;
+};
+export type BulkReconcileStatusProgress = {
+  current: number;
+  total: number;
+  percent: number;
+};
 export type BulkReconcileUsersRequestRequest = Partial<{
   /**
    * List of row dicts: {email, first_name, last_name, group, status, message}. Either `rows` (this field) or a `file` upload must be provided.
@@ -21047,6 +21062,13 @@ const RegenerateDemoQueued = z.object({
   status: z.string(),
   message: z.string(),
 });
+const RegenerateDemoStatusResponse = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  progress: z.object({}).partial().passthrough().optional(),
+  result: z.object({}).partial().passthrough().optional(),
+  error: z.string().optional(),
+});
 const ProcessingStatusEnum = z.enum([
   "PENDING",
   "PROCESSING",
@@ -21497,6 +21519,18 @@ const BulkReconcileResultRow = z.object({
 const BulkReconcileUsersResponse = z.object({
   summary: BulkReconcileSummary,
   results: z.array(BulkReconcileResultRow),
+});
+const BulkReconcileStatusProgress = z.object({
+  current: z.number().int(),
+  total: z.number().int(),
+  percent: z.number().int(),
+});
+const BulkReconcileStatusResponse = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  progress: BulkReconcileStatusProgress.optional(),
+  result: z.object({}).partial().passthrough().optional(),
+  error: z.string().optional(),
 });
 const SendInvitationInputRequest = z.object({ user_id: z.number().int() });
 const SendInvitationResponse = z.object({
@@ -24168,6 +24202,7 @@ export const schemas = {
   TenantRequest,
   PatchedTenantRequest,
   RegenerateDemoQueued,
+  RegenerateDemoStatusResponse,
   ProcessingStatusEnum,
   ThreeDModel,
   PaginatedThreeDModelList,
@@ -24214,6 +24249,8 @@ export const schemas = {
   BulkReconcileResultRowOutcomeEnum,
   BulkReconcileResultRow,
   BulkReconcileUsersResponse,
+  BulkReconcileStatusProgress,
+  BulkReconcileStatusResponse,
   SendInvitationInputRequest,
   SendInvitationResponse,
   UserInvitation,
@@ -32876,7 +32913,7 @@ keep running (only PlantCalendarException stops machines).`,
     path: "/api/MaterialLots/",
     alias: "api_MaterialLots_create",
     description: `Material lot tracking with split capability`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -32906,7 +32943,7 @@ keep running (only PlantCalendarException stops machines).`,
     path: "/api/MaterialLots/:id/",
     alias: "api_MaterialLots_update",
     description: `Material lot tracking with split capability`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -32926,7 +32963,7 @@ keep running (only PlantCalendarException stops machines).`,
     path: "/api/MaterialLots/:id/",
     alias: "api_MaterialLots_partial_update",
     description: `Material lot tracking with split capability`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -32991,7 +33028,7 @@ keep running (only PlantCalendarException stops machines).`,
     path: "/api/MaterialLots/:id/extend_shelf_life/",
     alias: "api_MaterialLots_extend_shelf_life_create",
     description: `Governed shelf-life extension (re-tested material gets a new use-by).`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -33042,7 +33079,7 @@ keep running (only PlantCalendarException stops machines).`,
     alias: "api_MaterialLots_receive_create",
     description: `Book in an ON_ORDER lot that has physically arrived (→ RECEIVED, then routed
 to incoming inspection like any other receipt).`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -33062,7 +33099,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/:id/record_bulk/",
     alias: "api_MaterialLots_record_bulk_create",
     description: `Material lot tracking with split capability`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -33082,7 +33119,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/:id/record_inspection/",
     alias: "api_MaterialLots_record_inspection_create",
     description: `Material lot tracking with split capability`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -33102,7 +33139,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/:id/record_units/",
     alias: "api_MaterialLots_record_units_create",
     description: `Material lot tracking with split capability`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -33152,7 +33189,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/:id/split/",
     alias: "api_MaterialLots_split_create",
     description: `Split a lot into a child lot`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -33172,7 +33209,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/bulk_create/",
     alias: "api_MaterialLots_bulk_create_create",
     description: `Receive N lots from a shipment (paste-grid). All-or-nothing - any row error rolls back.`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -33197,7 +33234,7 @@ to incoming inspection like any other receipt).`,
 Not a plain create: &#x60;perform_create&#x60; routes every new lot to receiving inspection,
 which is wrong for something that has not arrived. This goes through the service
 so the lot lands ON_ORDER with a generated placeholder lot number.`,
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -46789,7 +46826,7 @@ Only available in SaaS mode and requires superuser/staff.`,
         schema: z.string(),
       },
     ],
-    response: z.unknown(),
+    response: RegenerateDemoStatusResponse,
   },
   {
     method: "post",
@@ -48395,7 +48432,7 @@ untouched. Request/response shape is unchanged.`,
         schema: z.string(),
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: BulkReconcileStatusResponse,
   },
   {
     method: "get",
@@ -48409,13 +48446,8 @@ untouched. Request/response shape is unchanged.`,
         type: "Query",
         schema: z.boolean().optional(),
       },
-      {
-        name: "task_id",
-        type: "Path",
-        schema: z.string(),
-      },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: z.instanceof(File),
   },
   {
     method: "post",

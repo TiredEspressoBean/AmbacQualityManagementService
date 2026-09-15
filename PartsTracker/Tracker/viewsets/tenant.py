@@ -725,7 +725,19 @@ class TenantViewSet(viewsets.ModelViewSet):
                 description="Celery task id from a queued regenerate-demo-data call",
             ),
         ],
-        responses={200: {"description": "Task status payload."}},
+        # Previously a description with no schema at all, which generated
+        # `unknown` — the client could say nothing about the payload.
+        responses={200: inline_serializer(
+            name="RegenerateDemoStatusResponse",
+            fields={
+                "task_id": serializers.CharField(),
+                "status": serializers.CharField(
+                    help_text="Celery state: PENDING / PROGRESS / SUCCESS / FAILURE."),
+                "progress": serializers.DictField(required=False),
+                "result": serializers.DictField(required=False),
+                "error": serializers.CharField(required=False),
+            },
+        )},
         tags=["Tenants"],
     )
     @action(

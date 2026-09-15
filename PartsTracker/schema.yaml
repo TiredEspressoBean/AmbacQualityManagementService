@@ -10867,13 +10867,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/MaterialLotRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/MaterialLotRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/MaterialLotRequest'
         required: true
@@ -10926,13 +10926,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/MaterialLotRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/MaterialLotRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/MaterialLotRequest'
         required: true
@@ -10961,13 +10961,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/PatchedMaterialLotRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/PatchedMaterialLotRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/PatchedMaterialLotRequest'
       security:
@@ -11066,13 +11066,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/ExtendShelfLifeRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/ExtendShelfLifeRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/ExtendShelfLifeRequest'
         required: true
@@ -11153,13 +11153,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/ReceiveExpectedLotRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/ReceiveExpectedLotRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/ReceiveExpectedLotRequest'
         required: true
@@ -11189,13 +11189,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/RecordBulkRequestRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/RecordBulkRequestRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/RecordBulkRequestRequest'
         required: true
@@ -11225,13 +11225,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/RecordInspectionRequestRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/RecordInspectionRequestRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/RecordInspectionRequestRequest'
         required: true
@@ -11261,13 +11261,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/RecordUnitsRequestRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/RecordUnitsRequestRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/RecordUnitsRequestRequest'
         required: true
@@ -11346,13 +11346,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/MaterialLotSplitRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/MaterialLotSplitRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/MaterialLotSplitRequest'
         required: true
@@ -11375,13 +11375,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
         required: true
@@ -11414,13 +11414,13 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/ExpectedReceiptRequest'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/ExpectedReceiptRequest'
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/ExpectedReceiptRequest'
         required: true
@@ -27288,7 +27288,7 @@ paths:
           content:
             application/json:
               schema:
-                description: Task status payload.
+                $ref: '#/components/schemas/RegenerateDemoStatusResponse'
           description: ''
   /api/Tenants/{slug}/suspend/:
     post:
@@ -29629,9 +29629,8 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
-          description: Task status + result if done
+                $ref: '#/components/schemas/BulkReconcileStatusResponse'
+          description: ''
   /api/User/bulk-reconcile-template/:
     get:
       operationId: api_User_bulk_reconcile_template_retrieve
@@ -29647,12 +29646,6 @@ paths:
         description: If true, pre-fill the Data sheet with the tenant's current users
           (snapshot-and-edit workflow). Default false returns an empty template (add-new-users
           workflow).
-      - in: path
-        name: task_id
-        schema:
-          type: string
-        description: Celery task ID from a queued bulk-reconcile
-        required: true
       tags:
       - Users
       security:
@@ -29663,9 +29656,10 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
-          description: Task status + result if done
+                type: string
+                format: binary
+                description: XLSX workbook
+          description: ''
   /api/User/debug-filter/:
     get:
       operationId: api_User_debug_filter_retrieve
@@ -39799,6 +39793,37 @@ components:
           type: string
       required:
       - email
+    BulkReconcileStatusProgress:
+      type: object
+      properties:
+        current:
+          type: integer
+        total:
+          type: integer
+        percent:
+          type: integer
+      required:
+      - current
+      - percent
+      - total
+    BulkReconcileStatusResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          description: 'Celery state: PENDING / PROGRESS / SUCCESS / FAILURE.'
+        progress:
+          $ref: '#/components/schemas/BulkReconcileStatusProgress'
+        result:
+          type: object
+          additionalProperties: {}
+        error:
+          type: string
+      required:
+      - status
+      - task_id
     BulkReconcileSummary:
       type: object
       properties:
@@ -58662,6 +58687,25 @@ components:
           type: string
       required:
       - message
+      - status
+      - task_id
+    RegenerateDemoStatusResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          description: 'Celery state: PENDING / PROGRESS / SUCCESS / FAILURE.'
+        progress:
+          type: object
+          additionalProperties: {}
+        result:
+          type: object
+          additionalProperties: {}
+        error:
+          type: string
+      required:
       - status
       - task_id
     Register:

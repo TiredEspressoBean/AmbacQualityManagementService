@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { schemas } from "@/lib/api/generated";
+import { api, schemas } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 /**
@@ -112,13 +112,18 @@ export function isReconcileResult(
 
 export type BulkReconcileStatus = z.infer<typeof BulkReconcileStatus>;
 
-/** Poll a queued bulk-reconcile job by task id. */
+/** Poll a queued bulk-reconcile job by task id.
+ *
+ *  The envelope goes through the typed client now that the action declares it
+ *  — it used to respond `dict`, which generated a bare passthrough object and
+ *  left this a raw fetch. The local parse stays on top, and deliberately: the
+ *  backend leaves `result` loose because it is polymorphic ({summary, results}
+ *  on a finished run, {status, message} on the task's own early-out above), and
+ *  that union is only expressible here where both arms are known. So the client
+ *  checks the envelope and this narrows the payload. */
 export async function fetchBulkReconcileStatus(taskId: string): Promise<BulkReconcileStatus> {
-    const r = await fetch(`/api/User/bulk-reconcile-status/${taskId}/`, {
-        credentials: "include",
+    const envelope = await api.api_User_bulk_reconcile_status_retrieve({
+        params: { task_id: taskId },
     });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    // `result` is the same {summary, results} the sync arm returns, so it
-    // reuses that schema instead of a second hand-written copy.
-    return BulkReconcileStatus.parse(await r.json());
+    return BulkReconcileStatus.parse(envelope);
 }

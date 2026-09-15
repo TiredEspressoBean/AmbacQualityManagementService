@@ -50,10 +50,11 @@ export async function fetchRegenerateDemoStatus(
     slug: string,
     taskId: string,
 ): Promise<RegenerateDemoStatus> {
-    const r = await fetch(
-        `/api/Tenants/${encodeURIComponent(slug)}/regenerate-demo-status/${encodeURIComponent(taskId)}/`,
-        { credentials: "include" },
-    );
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
+    // Typed client now that the action declares its payload. It used to
+    // respond with only a description and no schema, which generated
+    // `unknown` — so this was a raw fetch with the shape hand-written above.
+    const body = await api.api_Tenants_regenerate_demo_status_retrieve({
+        params: { slug, task_id: taskId },
+    });
+    return body as RegenerateDemoStatus;
 }

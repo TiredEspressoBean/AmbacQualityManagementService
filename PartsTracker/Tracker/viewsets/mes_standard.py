@@ -10,7 +10,7 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import viewsets, status, serializers
+from rest_framework import viewsets, status, serializers, parsers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
@@ -378,6 +378,14 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         'material_type', 'supplier', 'parent_lot', 'received_by'
     ).prefetch_related('life_tracking__definition')
     serializer_class = MaterialLotSerializer
+    # Explicit, with MultiPart first, so the schema advertises multipart ahead
+    # of JSON and the generated client gets requestFormat "form-data" on
+    # PATCH. `certificate_of_conformance` is a FileField, and the request
+    # schema already types it as a File — but under the DRF defaults JSON was
+    # listed first, the client serialised as JSON, and a CoC upload had to
+    # bypass the client with a hand-rolled multipart fetch. DocumentViewSet
+    # already declares its parsers this way for the same reason.
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['lot_number', 'supplier_lot_number', 'material_description']
     filterset_fields = ['status', 'supplier', 'material_type']

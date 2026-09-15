@@ -16717,6 +16717,21 @@ export interface components {
             status?: string;
             message?: string;
         };
+        BulkReconcileStatusProgress: {
+            current: number;
+            total: number;
+            percent: number;
+        };
+        BulkReconcileStatusResponse: {
+            task_id: string;
+            /** @description Celery state: PENDING / PROGRESS / SUCCESS / FAILURE. */
+            status: string;
+            progress?: components["schemas"]["BulkReconcileStatusProgress"];
+            result?: {
+                [key: string]: unknown;
+            };
+            error?: string;
+        };
         BulkReconcileSummary: {
             total: number;
             created: number;
@@ -26687,6 +26702,18 @@ export interface components {
             task_id: string;
             status: string;
             message: string;
+        };
+        RegenerateDemoStatusResponse: {
+            task_id: string;
+            /** @description Celery state: PENDING / PROGRESS / SUCCESS / FAILURE. */
+            status: string;
+            progress?: {
+                [key: string]: unknown;
+            };
+            result?: {
+                [key: string]: unknown;
+            };
+            error?: string;
         };
         Register: {
             username: string;
@@ -39557,9 +39584,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MaterialLotRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotRequest"];
                 "multipart/form-data": components["schemas"]["MaterialLotRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotRequest"];
+                "application/json": components["schemas"]["MaterialLotRequest"];
             };
         };
         responses: {
@@ -39607,9 +39634,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MaterialLotRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotRequest"];
                 "multipart/form-data": components["schemas"]["MaterialLotRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotRequest"];
+                "application/json": components["schemas"]["MaterialLotRequest"];
             };
         };
         responses: {
@@ -39656,9 +39683,9 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedMaterialLotRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialLotRequest"];
                 "multipart/form-data": components["schemas"]["PatchedMaterialLotRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialLotRequest"];
+                "application/json": components["schemas"]["PatchedMaterialLotRequest"];
             };
         };
         responses: {
@@ -39728,9 +39755,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExtendShelfLifeRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ExtendShelfLifeRequest"];
                 "multipart/form-data": components["schemas"]["ExtendShelfLifeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExtendShelfLifeRequest"];
+                "application/json": components["schemas"]["ExtendShelfLifeRequest"];
             };
         };
         responses: {
@@ -39800,9 +39827,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReceiveExpectedLotRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ReceiveExpectedLotRequest"];
                 "multipart/form-data": components["schemas"]["ReceiveExpectedLotRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReceiveExpectedLotRequest"];
+                "application/json": components["schemas"]["ReceiveExpectedLotRequest"];
             };
         };
         responses: {
@@ -39828,9 +39855,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RecordBulkRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RecordBulkRequestRequest"];
                 "multipart/form-data": components["schemas"]["RecordBulkRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordBulkRequestRequest"];
+                "application/json": components["schemas"]["RecordBulkRequestRequest"];
             };
         };
         responses: {
@@ -39856,9 +39883,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RecordInspectionRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RecordInspectionRequestRequest"];
                 "multipart/form-data": components["schemas"]["RecordInspectionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordInspectionRequestRequest"];
+                "application/json": components["schemas"]["RecordInspectionRequestRequest"];
             };
         };
         responses: {
@@ -39884,9 +39911,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RecordUnitsRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RecordUnitsRequestRequest"];
                 "multipart/form-data": components["schemas"]["RecordUnitsRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordUnitsRequestRequest"];
+                "application/json": components["schemas"]["RecordUnitsRequestRequest"];
             };
         };
         responses: {
@@ -39956,9 +39983,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MaterialLotSplitRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotSplitRequest"];
                 "multipart/form-data": components["schemas"]["MaterialLotSplitRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotSplitRequest"];
+                "application/json": components["schemas"]["MaterialLotSplitRequest"];
             };
         };
         responses: {
@@ -39981,9 +40008,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MaterialLotBulkCreateRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotBulkCreateRequest"];
                 "multipart/form-data": components["schemas"]["MaterialLotBulkCreateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotBulkCreateRequest"];
+                "application/json": components["schemas"]["MaterialLotBulkCreateRequest"];
             };
         };
         responses: {
@@ -40014,9 +40041,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExpectedReceiptRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ExpectedReceiptRequest"];
                 "multipart/form-data": components["schemas"]["ExpectedReceiptRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExpectedReceiptRequest"];
+                "application/json": components["schemas"]["ExpectedReceiptRequest"];
             };
         };
         responses: {
@@ -50724,7 +50751,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["RegenerateDemoStatusResponse"];
                 };
             };
         };
@@ -52469,15 +52496,12 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Task status + result if done */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BulkReconcileStatusResponse"];
                 };
             };
         };
@@ -52489,23 +52513,17 @@ export interface operations {
                 populate?: boolean;
             };
             header?: never;
-            path: {
-                /** @description Celery task ID from a queued bulk-reconcile */
-                task_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Task status + result if done */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": string;
                 };
             };
         };

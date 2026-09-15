@@ -690,19 +690,6 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                name="task_id",
-                location=OpenApiParameter.PATH,
-                type=str,
-                description="Celery task ID from a queued bulk-reconcile",
-                required=True,
-            ),
-        ],
-        responses={200: OpenApiResponse(response=dict, description="Task status + result if done")},
-        tags=["Users"],
-    )
-    @extend_schema(
-        parameters=[
-            OpenApiParameter(
                 name="populate",
                 location=OpenApiParameter.QUERY,
                 type=bool,
@@ -842,7 +829,31 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
                 required=True,
             ),
         ],
-        responses={200: OpenApiResponse(response=dict, description="Task status + result if done")},
+        # `response=dict` generated a bare passthrough object, so the client
+        # learned nothing and the caller hand-wrote the shape in zod. Declared
+        # properly: a Celery envelope whose optional arms depend on `status`.
+        # `result` stays a DictField deliberately — it carries the finished
+        # job's {summary, results}, which the 207 arm already declares, and a
+        # second copy here would be one more thing to keep in step.
+        responses={200: inline_serializer(
+            name="BulkReconcileStatusResponse",
+            fields={
+                "task_id": serializers.CharField(),
+                "status": serializers.CharField(
+                    help_text="Celery state: PENDING / PROGRESS / SUCCESS / FAILURE."),
+                "progress": inline_serializer(
+                    name="BulkReconcileStatusProgress",
+                    fields={
+                        "current": serializers.IntegerField(),
+                        "total": serializers.IntegerField(),
+                        "percent": serializers.IntegerField(),
+                    },
+                    required=False,
+                ),
+                "result": serializers.DictField(required=False),
+                "error": serializers.CharField(required=False),
+            },
+        )},
         tags=["Users"],
     )
     @action(
