@@ -57,6 +57,7 @@ export function useBulkReconcileUsers() {
                 headers["Content-Type"] = "application/json";
                 body = JSON.stringify({ rows: vars.rows });
             }
+            // eslint-disable-next-line no-restricted-syntax -- Two things this endpoint does cannot be expressed as one Zodios operation: the request is EITHER JSON `rows` OR a multipart file (one operation carries one requestFormat), and the STATUS CODE discriminates the response — 207 is the synchronous {summary, results}, 202 the queued {task_id}. Zodios exposes a single declared response and cannot branch on status. Both shapes are still parsed through the generated schemas below, so only the transport is hand-rolled.
             const r = await fetch("/api/User/bulk-reconcile/", {
                 method: "POST",
                 credentials: "include",

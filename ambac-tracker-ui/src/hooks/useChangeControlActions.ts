@@ -46,6 +46,7 @@ export class PcrRebaseConflictError extends Error {
 }
 
 async function post(artifact: Artifact, id: string, action: string, body?: unknown) {
+    // eslint-disable-next-line no-restricted-syntax -- The artifact AND the action are both runtime values, so the URL names no single operation: this one helper covers every (PCR|PCO|PCN) × (submit|approve|reject|...) pair. The generated client is a fixed map of alias -> path, so there is no call to make without enumerating the whole matrix here. The response is narrowed by the callers below.
     const r = await fetch(`/api/${artifact}/${id}/${action}/`, {
         method: "POST",
         credentials: "include",
