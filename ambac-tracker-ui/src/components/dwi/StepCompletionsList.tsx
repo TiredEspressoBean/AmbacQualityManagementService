@@ -29,7 +29,7 @@ type CompletionRow = Awaited<
 >["results"][number];
 
 /** `substepCompletions` root so VoidCompletionDialog's invalidation reaches
- *  this list — it matches on `queryKey[0]`. */
+ *  these lists — it matches on `queryKey[0]`. */
 export const stepCompletionsOptions = (stepExecutionIds: string[]) =>
     queryOptions({
         queryKey: ["substepCompletions", { stepExecutionIds }] as const,
@@ -39,13 +39,34 @@ export const stepCompletionsOptions = (stepExecutionIds: string[]) =>
             }),
     });
 
-function useStepCompletions(stepExecutionIds: string[]) {
-    return useQuery({
+export const batchCompletionsOptions = (batchExecutionIds: string[]) =>
+    queryOptions({
+        queryKey: ["substepCompletions", { batchExecutionIds }] as const,
+        queryFn: () =>
+            api.api_SubstepCompletions_list({
+                queries: { batch_execution__in: batchExecutionIds },
+            }),
+    });
+
+/** Two queries rather than one: a completion binds to either a step_execution
+ *  or a batch_execution, never both, and the filter backend ANDs its params —
+ *  so a single call carrying both would match nothing. */
+function useStepCompletions(stepExecutionIds: string[], batchExecutionIds: string[]) {
+    const perPart = useQuery({
         ...stepCompletionsOptions(stepExecutionIds),
         // Only meaningful once the row has executions behind it; a step the
         // part hasn't reached has none, and `__in: []` would list the tenant.
         enabled: stepExecutionIds.length > 0,
     });
+    const perBatch = useQuery({
+        ...batchCompletionsOptions(batchExecutionIds),
+        enabled: batchExecutionIds.length > 0,
+    });
+    return {
+        rows: [...(perPart.data?.results ?? []), ...(perBatch.data?.results ?? [])],
+        isLoading: perPart.isLoading || perBatch.isLoading,
+        error: perPart.error ?? perBatch.error,
+    };
 }
 
 function completionLabel(c: CompletionRow) {
@@ -54,12 +75,18 @@ function completionLabel(c: CompletionRow) {
 
 export function StepCompletionsList({
     stepExecutionIds,
+    batchCycles,
     stepName,
 }: {
     stepExecutionIds: string[];
+    /** Cycles this part shared at this step, with how many parts rode each —
+     *  the count is what tells the reader a void here reaches other parts. */
+    batchCycles: { batch_id: string; part_count: number }[];
     stepName: string;
 }) {
-    const { data, isLoading, error } = useStepCompletions(stepExecutionIds);
+    const batchIds = batchCycles.map((b) => b.batch_id);
+    const { rows, isLoading, error } = useStepCompletions(stepExecutionIds, batchIds);
+    const partCountByBatch = new Map(batchCycles.map((b) => [b.batch_id, b.part_count]));
     const canVoid = usePermissionSet().has("void_substepcompletion");
     const [target, setTarget] = useState<CompletionRow | null>(null);
 
@@ -79,7 +106,6 @@ export function StepCompletionsList({
         );
     }
 
-    const rows = data?.results ?? [];
     if (rows.length === 0) {
         return (
             <div className="px-3 py-2 text-xs text-muted-foreground">
@@ -92,21 +118,42 @@ export function StepCompletionsList({
     // visit numbering below reads chronologically.
     const byExecution = stepExecutionIds
         .map((execId, i) => ({
-            execId,
-            visit: i + 1,
+            key: execId,
+            // Only worth labelling the visit when there was more than one —
+            // on the common single-visit step it's noise.
+            label: stepExecutionIds.length > 1 ? `Visit #${i + 1}` : null,
+            sharedWith: 0,
             completions: rows.filter((c) => c.step_execution === execId),
         }))
         .filter((g) => g.completions.length > 0);
 
+    // Shared-cycle work is always labelled, even when it's the only group: the
+    // reader has to know before voiding that this record belongs to the load
+    // rather than to this part.
+    const byBatch = batchCycles
+        .map((b) => ({
+            key: b.batch_id,
+            label: "Shared cycle",
+            sharedWith: partCountByBatch.get(b.batch_id) ?? 0,
+            completions: rows.filter((c) => c.batch_execution === b.batch_id),
+        }))
+        .filter((g) => g.completions.length > 0);
+
+    const groups = [...byExecution, ...byBatch];
+
     return (
         <div className="space-y-2 px-3 py-2">
-            {byExecution.map((group) => (
-                <div key={group.execId} className="space-y-1">
-                    {/* Only worth labelling the visit when there was more than
-                        one — on the common single-visit step it's noise. */}
-                    {byExecution.length > 1 && (
+            {groups.map((group) => (
+                <div key={group.key} className="space-y-1">
+                    {group.label && (
                         <div className="text-[10px] font-medium uppercase text-muted-foreground">
-                            Visit #{group.visit}
+                            {group.label}
+                            {group.sharedWith > 1 && (
+                                <span className="ml-1 normal-case text-destructive">
+                                    · shared by {group.sharedWith} parts — voiding
+                                    affects all of them
+                                </span>
+                            )}
                         </div>
                     )}
                     {group.completions.map((c) => (
@@ -174,8 +221,19 @@ export function StepCompletionsList({
 
             <VoidCompletionDialog
                 completionId={target?.id ?? null}
+                // The dialog warns about blocking "any part downstream". For a
+                // shared cycle that's the whole load, so say so in the title —
+                // the confirmation is the last place to learn the blast radius.
                 completionTitle={
-                    target ? `${completionLabel(target)} · ${stepName}` : undefined
+                    target
+                        ? `${completionLabel(target)} · ${stepName}${
+                              target.batch_execution
+                                  ? ` · shared cycle, ${
+                                        partCountByBatch.get(target.batch_execution) ?? 0
+                                    } parts`
+                                  : ""
+                          }`
+                        : undefined
                 }
                 open={target !== null}
                 onClose={() => setTarget(null)}

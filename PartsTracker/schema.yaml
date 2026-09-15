@@ -24183,6 +24183,21 @@ paths:
         Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
       parameters:
       - in: query
+        name: batch_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: batch_execution__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
         name: completed_by
         schema:
           type: integer
@@ -54647,6 +54662,12 @@ components:
           description: Set when the substep is per-part (scope=SAMPLED). Exactly one
             of step_execution / batch_execution should be set; check constraint enforces
             this at the DB level.
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when the substep is per-batch (scope=BATCH). Exactly one
+            of step_execution / batch_execution should be set.
         substep:
           type: string
           format: uuid
@@ -63244,6 +63265,12 @@ components:
           description: Set when the substep is per-part (scope=SAMPLED). Exactly one
             of step_execution / batch_execution should be set; check constraint enforces
             this at the DB level.
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when the substep is per-batch (scope=BATCH). Exactly one
+            of step_execution / batch_execution should be set.
         substep:
           type: string
           format: uuid
@@ -63356,6 +63383,12 @@ components:
           description: Set when the substep is per-part (scope=SAMPLED). Exactly one
             of step_execution / batch_execution should be set; check constraint enforces
             this at the DB level.
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when the substep is per-batch (scope=BATCH). Exactly one
+            of step_execution / batch_execution should be set.
         substep:
           type: string
           format: uuid

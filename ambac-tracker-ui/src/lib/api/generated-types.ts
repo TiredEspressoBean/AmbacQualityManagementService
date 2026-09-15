@@ -24589,6 +24589,11 @@ export interface components {
             step_execution?: string | null;
             /**
              * Format: uuid
+             * @description Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
+             */
+            batch_execution?: string | null;
+            /**
+             * Format: uuid
              * @description The substep that was completed (or marked N/A).
              */
             substep?: string;
@@ -29073,6 +29078,11 @@ export interface components {
             step_execution?: string | null;
             /**
              * Format: uuid
+             * @description Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
+             */
+            batch_execution?: string | null;
+            /**
+             * Format: uuid
              * @description The substep that was completed (or marked N/A).
              */
             substep: string;
@@ -29132,6 +29142,11 @@ export interface components {
              * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
              */
             step_execution?: string | null;
+            /**
+             * Format: uuid
+             * @description Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
+             */
+            batch_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep that was completed (or marked N/A).
@@ -48514,6 +48529,9 @@ export interface operations {
     api_SubstepCompletions_list: {
         parameters: {
             query?: {
+                batch_execution?: string;
+                /** @description Multiple values may be separated by commas. */
+                batch_execution__in?: string[];
                 completed_by?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;

@@ -7997,6 +7997,12 @@ export type SubstepCompletion = {
      */
     (string | null)
     | undefined;
+  batch_execution?:
+    | /**
+     * Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
+     */
+    (string | null)
+    | undefined;
   /**
    * The substep that was completed (or marked N/A).
    */
@@ -11765,6 +11771,10 @@ export type PatchedSubstepCompletionRequest = Partial<{
    */
   step_execution: string | null;
   /**
+   * Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
+   */
+  batch_execution: string | null;
+  /**
    * The substep that was completed (or marked N/A).
    */
   substep: string;
@@ -14116,6 +14126,12 @@ export type SubstepCompletionRequest = {
   step_execution?:
     | /**
      * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
+     */
+    (string | null)
+    | undefined;
+  batch_execution?:
+    | /**
+     * Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
      */
     (string | null)
     | undefined;
@@ -20394,6 +20410,7 @@ const CreateReceivingPlanInputRequest = z.object({
 const SubstepCompletion = z.object({
   id: z.string().uuid(),
   step_execution: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   substep_title: z.string().nullable(),
   completed_by: z.number().int(),
@@ -20422,6 +20439,7 @@ const PaginatedSubstepCompletionList = z.object({
 });
 const SubstepCompletionRequest = z.object({
   step_execution: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   completed_by: z.number().int(),
   marked_not_applicable: z.boolean().optional(),
@@ -20435,6 +20453,7 @@ const SubstepCompletionRequest = z.object({
 const PatchedSubstepCompletionRequest = z
   .object({
     step_execution: z.string().uuid().nullable(),
+    batch_execution: z.string().uuid().nullable(),
     substep: z.string().uuid(),
     completed_by: z.number().int(),
     marked_not_applicable: z.boolean(),
@@ -44708,6 +44727,16 @@ Returns the active + fallback rulesets for a given step`,
 Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "batch_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "batch_execution__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
       {
         name: "completed_by",
         type: "Query",

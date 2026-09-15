@@ -1065,6 +1065,20 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             if voided:
                 entry[1] += 1
 
+        # BATCH-scope completions hang off a BatchExecution and have no
+        # step_execution at all, so the per-part query above cannot see them.
+        # Counted separately and folded into the same row totals: a shared
+        # wash/heat-treat cycle's completion is work recorded at this step for
+        # this part, even though the record belongs to the whole load.
+        batch_completion_counts = {}  # batch_execution_id -> [total, voided]
+        for batch_id, voided in SubstepCompletion.objects.filter(
+            batch_execution__parts=part,
+        ).values_list('batch_execution_id', 'is_voided'):
+            entry = batch_completion_counts.setdefault(batch_id, [0, 0])
+            entry[0] += 1
+            if voided:
+                entry[1] += 1
+
         # Get time entries for this part
         time_entries = TimeEntry.objects.filter(
             part=part
@@ -1378,11 +1392,22 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                     str(ex.id)
                     for ex in sorted(step_execs, key=lambda e: e.visit_number or 0)
                 ],
-                'completion_count': sum(
-                    completion_counts.get(ex.id, (0, 0))[0] for ex in step_execs
+                # Per-part and batch-scope completions counted together — the
+                # row offers one expander covering both, since to the reader
+                # they are all "what was recorded at this step".
+                'completion_count': (
+                    sum(completion_counts.get(ex.id, (0, 0))[0] for ex in step_execs)
+                    + sum(
+                        batch_completion_counts.get(b.id, (0, 0))[0]
+                        for b in batch_map.get(step_id, [])
+                    )
                 ),
-                'voided_completion_count': sum(
-                    completion_counts.get(ex.id, (0, 0))[1] for ex in step_execs
+                'voided_completion_count': (
+                    sum(completion_counts.get(ex.id, (0, 0))[1] for ex in step_execs)
+                    + sum(
+                        batch_completion_counts.get(b.id, (0, 0))[1]
+                        for b in batch_map.get(step_id, [])
+                    )
                 ),
                 'visit_number': visit_number,
                 'status': step_status,

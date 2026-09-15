@@ -287,7 +287,11 @@ class SubstepCompletionSerializer(SecureModelMixin):
         model = SubstepCompletion
         fields = (
             'id',
-            'step_execution',
+            # Exactly one of these is set: per-part work binds to a
+            # step_execution, shared-cycle work to a batch_execution. A reader
+            # that can't see which is which can't tell the reader that voiding
+            # this row affects one part or the whole load.
+            'step_execution', 'batch_execution',
             'substep', 'substep_title',
             'completed_by', 'completed_by_name',
             'completed_at',

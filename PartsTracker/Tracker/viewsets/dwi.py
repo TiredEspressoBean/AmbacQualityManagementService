@@ -455,15 +455,21 @@ class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     }
 
     queryset = SubstepCompletion.unscoped.select_related(
-        'step_execution', 'substep', 'completed_by', 'voided_by',
+        'step_execution', 'batch_execution', 'substep', 'completed_by', 'voided_by',
     )
     serializer_class = SubstepCompletionSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     # `step_execution` takes `in` as well as `exact` because a traveler row is
     # per-step: rework means several executions sit behind one row, and QA
     # reviews the completions across all of them together.
+    #
+    # `batch_execution` is filterable for the same reason it exists at all: a
+    # BATCH-scope completion has no step_execution, so a caller filtering only
+    # on step_execution sees none of the shared-cycle work and would conclude
+    # nothing was recorded.
     filterset_fields = {
         'step_execution': ['exact', 'in'],
+        'batch_execution': ['exact', 'in'],
         'substep': ['exact'],
         'completed_by': ['exact'],
         'marked_not_applicable': ['exact'],

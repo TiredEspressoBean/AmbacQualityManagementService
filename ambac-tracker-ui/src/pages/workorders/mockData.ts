@@ -47,6 +47,10 @@ export type MockStepVisit = {
      *  and flag retracted work without fetching the rows. */
     completion_count?: number;
     voided_completion_count?: number;
+    /** Cycles this part shared at this step. BATCH-scope completions bind to
+     *  these rather than to a step_execution, and `part_count` is how many
+     *  parts a void here would reach. */
+    batch_cycles?: { batch_id: string; part_count: number }[];
 };
 
 export type MockPart = {

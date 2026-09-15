@@ -204,6 +204,10 @@ function adaptTravelerEntry(t: TravelerStepEntry): MockStepVisit {
         step_execution_ids: t.step_execution_ids ?? [],
         completion_count: t.completion_count ?? 0,
         voided_completion_count: t.voided_completion_count ?? 0,
+        batch_cycles: (t.batch_cycles ?? []).map((b) => ({
+            batch_id: b.batch_id,
+            part_count: b.part_count,
+        })),
     };
 }
 
@@ -869,6 +873,7 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
                                 <TableCell colSpan={8} className="bg-muted/40 p-0">
                                     <StepCompletionsList
                                         stepExecutionIds={execIds}
+                                        batchCycles={v.batch_cycles ?? []}
                                         stepName={v.step_name}
                                     />
                                 </TableCell>
