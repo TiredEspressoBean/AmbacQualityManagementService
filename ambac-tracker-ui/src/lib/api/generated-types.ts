@@ -67,7 +67,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Get list of pending approvers for this request */
-        get: operations["api_ApprovalRequests_pending_approvers_retrieve"];
+        get: operations["api_ApprovalRequests_pending_approvers_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2000,7 +2000,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Get the full version history for this document */
-        get: operations["api_Documents_version_history_retrieve"];
+        get: operations["api_Documents_version_history_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -16082,6 +16082,10 @@ export interface components {
          * @enum {string}
          */
         ApprovalResponseDecisionEnum: "APPROVED" | "REJECTED" | "DELEGATED";
+        ApprovalResponseDelegateRequestRequest: {
+            delegatee_id: number;
+            reason: string;
+        };
         /** @description Approval response serializer */
         ApprovalResponseRequest: {
             /** Format: uuid */
@@ -16177,6 +16181,12 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
             readonly version: number;
+        };
+        ApprovalTemplateActivateResponse: {
+            status: string;
+        };
+        ApprovalTemplateDeactivateResponse: {
+            status: string;
         };
         /**
          * @description Approval template serializer.
@@ -18015,6 +18025,16 @@ export interface components {
             links: {
                 [key: string]: unknown;
             }[];
+        };
+        DocumentReviseRequestRequest: {
+            /** @description Why this revision exists. Required. */
+            change_justification: string;
+            /**
+             * Format: binary
+             * @description New file for the revision. Omit to keep the current one.
+             */
+            file?: string;
+            file_name?: string;
         };
         DocumentStatsResponse: {
             total: number;
@@ -31792,9 +31812,40 @@ export interface operations {
             };
         };
     };
-    api_ApprovalRequests_pending_approvers_retrieve: {
+    api_ApprovalRequests_pending_approvers_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description * `DOCUMENT_RELEASE` - Document Release
+                 *     * `CAPA_APPROVAL` - CAPA Approval
+                 *     * `CAPA_CRITICAL` - CAPA Critical
+                 *     * `CAPA_MAJOR` - CAPA Major
+                 *     * `ECO` - Engineering Change Order
+                 *     * `TRAINING_CERT` - Training Certification
+                 *     * `PROCESS_APPROVAL` - Process Approval
+                 *     * `PCR_APPROVAL` - Process Change Request Approval
+                 *     * `PCO_APPROVAL` - Process Change Order Approval
+                 *     * `PCN_RELEASE` - Process Change Notice Release
+                 *     * `PPAP` - PPAP
+                 *     * `FAI` - First Article (FAI / AS9102)
+                 */
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                content_type?: number;
+                object_id?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                requested_by?: number;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `NOT_REQUIRED` - Not Required
+                 *     * `PENDING` - Pending
+                 *     * `APPROVED` - Approved
+                 *     * `REJECTED` - Rejected
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "APPROVED" | "CANCELLED" | "NOT_REQUIRED" | "PENDING" | "REJECTED";
+            };
             header?: never;
             path: {
                 /** @description A UUID string identifying this Approval Request. */
@@ -31809,7 +31860,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApprovalRequest"];
+                    "application/json": components["schemas"]["UserSelect"][];
                 };
             };
         };
@@ -32171,9 +32222,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ApprovalResponseRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ApprovalResponseRequest"];
-                "multipart/form-data": components["schemas"]["ApprovalResponseRequest"];
+                "application/json": components["schemas"]["ApprovalResponseDelegateRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ApprovalResponseDelegateRequestRequest"];
+                "multipart/form-data": components["schemas"]["ApprovalResponseDelegateRequestRequest"];
             };
         };
         responses: {
@@ -32183,6 +32234,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApprovalResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -32416,20 +32497,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApprovalTemplateRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ApprovalTemplateRequest"];
-                "multipart/form-data": components["schemas"]["ApprovalTemplateRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApprovalTemplate"];
+                    "application/json": components["schemas"]["ApprovalTemplateActivateResponse"];
                 };
             };
         };
@@ -32444,20 +32519,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApprovalTemplateRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ApprovalTemplateRequest"];
-                "multipart/form-data": components["schemas"]["ApprovalTemplateRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApprovalTemplate"];
+                    "application/json": components["schemas"]["ApprovalTemplateDeactivateResponse"];
                 };
             };
         };
@@ -36283,9 +36352,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["DocumentsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
-                "application/json": components["schemas"]["DocumentsRequest"];
+                "multipart/form-data": components["schemas"]["DocumentReviseRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DocumentReviseRequestRequest"];
+                "application/json": components["schemas"]["DocumentReviseRequestRequest"];
             };
         };
         responses: {
@@ -36295,6 +36364,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Documents"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -36321,9 +36400,28 @@ export interface operations {
             };
         };
     };
-    api_Documents_version_history_retrieve: {
+    api_Documents_version_history_list: {
         parameters: {
-            query?: never;
+            query?: {
+                content_type?: number;
+                document_type?: string;
+                is_image?: boolean;
+                object_id?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description Document workflow status
+                 *
+                 *     * `DRAFT` - Draft
+                 *     * `UNDER_REVIEW` - Under Review
+                 *     * `APPROVED` - Approved
+                 *     * `RELEASED` - Released
+                 *     * `OBSOLETE` - Obsolete
+                 */
+                status?: "APPROVED" | "DRAFT" | "OBSOLETE" | "RELEASED" | "UNDER_REVIEW";
+            };
             header?: never;
             path: {
                 /** @description A UUID string identifying this Document. */
@@ -36338,7 +36436,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["Documents"][];
                 };
             };
         };

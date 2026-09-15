@@ -12,22 +12,22 @@ export function useReviseDocument() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, change_justification, file, file_name }: ReviseDocumentParams) => {
-            const formData = new FormData();
-            formData.append("change_justification", change_justification);
-            if (file) {
-                formData.append("file", file);
-                if (file_name) {
-                    formData.append("file_name", file_name);
-                }
-            }
-
-            // Use the generated API client's revise endpoint
-            return api.api_Documents_revise_create(
-                formData as never,
+        mutationFn: ({ id, change_justification, file, file_name }: ReviseDocumentParams) =>
+            // The endpoint is form-data, so the typed client builds the
+            // multipart body. This used to hand-roll FormData and cast it past
+            // the schema, which made revise dead: zod rejected the FormData
+            // outright and no request was ever sent. The schema was wrong too —
+            // it fell back to the whole DocumentsRequest, which has no
+            // `change_justification` field, so even a corrected body would have
+            // had the justification stripped before it reached the server.
+            api.api_Documents_revise_create(
+                {
+                    change_justification,
+                    ...(file ? { file } : {}),
+                    ...(file && file_name ? { file_name } : {}),
+                },
                 { params: { id } },
-            );
-        },
+            ),
         onSuccess: (_data, variables) => {
             // Invalidate document queries
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "document" && q.queryKey[1] === variables.id });

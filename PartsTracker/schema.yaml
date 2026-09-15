@@ -239,9 +239,43 @@ paths:
           description: ''
   /api/ApprovalRequests/{id}/pending-approvers/:
     get:
-      operationId: api_ApprovalRequests_pending_approvers_retrieve
+      operationId: api_ApprovalRequests_pending_approvers_list
       description: Get list of pending approvers for this request
       parameters:
+      - in: query
+        name: approval_type
+        schema:
+          type: string
+          enum:
+          - CAPA_APPROVAL
+          - CAPA_CRITICAL
+          - CAPA_MAJOR
+          - DOCUMENT_RELEASE
+          - ECO
+          - FAI
+          - PCN_RELEASE
+          - PCO_APPROVAL
+          - PCR_APPROVAL
+          - PPAP
+          - PROCESS_APPROVAL
+          - TRAINING_CERT
+        description: |-
+          * `DOCUMENT_RELEASE` - Document Release
+          * `CAPA_APPROVAL` - CAPA Approval
+          * `CAPA_CRITICAL` - CAPA Critical
+          * `CAPA_MAJOR` - CAPA Major
+          * `ECO` - Engineering Change Order
+          * `TRAINING_CERT` - Training Certification
+          * `PROCESS_APPROVAL` - Process Approval
+          * `PCR_APPROVAL` - Process Change Request Approval
+          * `PCO_APPROVAL` - Process Change Order Approval
+          * `PCN_RELEASE` - Process Change Notice Release
+          * `PPAP` - PPAP
+          * `FAI` - First Article (FAI / AS9102)
+      - in: query
+        name: content_type
+        schema:
+          type: integer
       - in: path
         name: id
         schema:
@@ -249,6 +283,42 @@ paths:
           format: uuid
         description: A UUID string identifying this Approval Request.
         required: true
+      - in: query
+        name: object_id
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: requested_by
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - CANCELLED
+          - NOT_REQUIRED
+          - PENDING
+          - REJECTED
+        description: |-
+          * `NOT_REQUIRED` - Not Required
+          * `PENDING` - Pending
+          * `APPROVED` - Approved
+          * `REJECTED` - Rejected
+          * `CANCELLED` - Cancelled
       tags:
       - api
       security:
@@ -259,7 +329,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApprovalRequest'
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSelect'
           description: ''
   /api/ApprovalRequests/{id}/submit-response/:
     post:
@@ -777,13 +849,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
+              $ref: '#/components/schemas/ApprovalResponseDelegateRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
+              $ref: '#/components/schemas/ApprovalResponseDelegateRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
+              $ref: '#/components/schemas/ApprovalResponseDelegateRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -794,6 +866,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApprovalResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/ApprovalResponses/export/{export_format}/:
     get:
@@ -1088,18 +1181,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalTemplateRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ApprovalTemplateRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ApprovalTemplateRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1108,7 +1189,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApprovalTemplate'
+                $ref: '#/components/schemas/ApprovalTemplateActivateResponse'
           description: ''
   /api/ApprovalTemplates/{id}/deactivate/:
     post:
@@ -1124,18 +1205,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalTemplateRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ApprovalTemplateRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ApprovalTemplateRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1144,7 +1213,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApprovalTemplate'
+                $ref: '#/components/schemas/ApprovalTemplateDeactivateResponse'
           description: ''
   /api/ApprovalTemplates/{id}/revisions/:
     post:
@@ -6148,13 +6217,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentReviseRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentReviseRequestRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentReviseRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -6165,6 +6234,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Documents'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Documents/{id}/submit-for-approval/:
     post:
@@ -6192,9 +6268,18 @@ paths:
           description: ''
   /api/Documents/{id}/version-history/:
     get:
-      operationId: api_Documents_version_history_retrieve
+      operationId: api_Documents_version_history_list
       description: Get the full version history for this document
       parameters:
+      - in: query
+        name: content_type
+        schema:
+          type: integer
+      - in: query
+        name: document_type
+        schema:
+          type: string
+          format: uuid
       - in: path
         name: id
         schema:
@@ -6202,6 +6287,44 @@ paths:
           format: uuid
         description: A UUID string identifying this Document.
         required: true
+      - in: query
+        name: is_image
+        schema:
+          type: boolean
+      - in: query
+        name: object_id
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - DRAFT
+          - OBSOLETE
+          - RELEASED
+          - UNDER_REVIEW
+        description: |-
+          Document workflow status
+
+          * `DRAFT` - Draft
+          * `UNDER_REVIEW` - Under Review
+          * `APPROVED` - Approved
+          * `RELEASED` - Released
+          * `OBSOLETE` - Obsolete
       tags:
       - api
       security:
@@ -6212,7 +6335,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Documents'
           description: ''
   /api/Documents/due-for-review/:
     get:
@@ -38445,6 +38570,17 @@ components:
         * `APPROVED` - Approved
         * `REJECTED` - Rejected
         * `DELEGATED` - Delegated
+    ApprovalResponseDelegateRequestRequest:
+      type: object
+      properties:
+        delegatee_id:
+          type: integer
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - delegatee_id
+      - reason
     ApprovalResponseRequest:
       type: object
       description: Approval response serializer
@@ -38649,6 +38785,20 @@ components:
       - template_name
       - updated_at
       - version
+    ApprovalTemplateActivateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    ApprovalTemplateDeactivateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
     ApprovalTemplateRequest:
       type: object
       description: |-
@@ -42379,6 +42529,22 @@ components:
             additionalProperties: {}
       required:
       - links
+    DocumentReviseRequestRequest:
+      type: object
+      properties:
+        change_justification:
+          type: string
+          minLength: 1
+          description: Why this revision exists. Required.
+        file:
+          type: string
+          format: binary
+          description: New file for the revision. Omit to keep the current one.
+        file_name:
+          type: string
+          minLength: 1
+      required:
+      - change_justification
     DocumentStatsResponse:
       type: object
       properties:

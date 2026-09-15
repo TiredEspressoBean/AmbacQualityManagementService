@@ -15278,6 +15278,10 @@ const PatchedApprovalResponseRequest = z
     archived: z.boolean(),
   })
   .partial();
+const ApprovalResponseDelegateRequestRequest = z.object({
+  delegatee_id: z.number().int(),
+  reason: z.string().min(1),
+});
 const ApprovalTemplate = z.object({
   id: z.string().uuid(),
   template_name: z.string().max(100),
@@ -15380,6 +15384,8 @@ const PatchedApprovalTemplateRequest = z
     archived: z.boolean(),
   })
   .partial();
+const ApprovalTemplateActivateResponse = z.object({ status: z.string() });
+const ApprovalTemplateDeactivateResponse = z.object({ status: z.string() });
 const AssemblyUsage = z.object({
   id: z.string().uuid(),
   assembly: z.string().uuid(),
@@ -16557,6 +16563,11 @@ const DocumentLinkDetachRequestRequest = z.object({
 });
 const DocumentLinksDetachResponse = z.object({
   links: z.array(z.object({}).partial().passthrough()),
+});
+const DocumentReviseRequestRequest = z.object({
+  change_justification: z.string().min(1),
+  file: z.instanceof(File).optional(),
+  file_name: z.string().min(1).optional(),
 });
 const DocumentStatsResponse = z.object({
   total: z.number().int(),
@@ -23586,10 +23597,13 @@ export const schemas = {
   PaginatedApprovalResponseList,
   ApprovalResponseRequest,
   PatchedApprovalResponseRequest,
+  ApprovalResponseDelegateRequestRequest,
   ApprovalTemplate,
   PaginatedApprovalTemplateList,
   ApprovalTemplateRequest,
   PatchedApprovalTemplateRequest,
+  ApprovalTemplateActivateResponse,
+  ApprovalTemplateDeactivateResponse,
   AssemblyUsage,
   PaginatedAssemblyUsageList,
   AssemblyUsageRequest,
@@ -23702,6 +23716,7 @@ export const schemas = {
   DocumentLinksResponse,
   DocumentLinkDetachRequestRequest,
   DocumentLinksDetachResponse,
+  DocumentReviseRequestRequest,
   DocumentStatsResponse,
   DowntimeCategoryEnum,
   DowntimeEvent,
@@ -24744,17 +24759,75 @@ POST: Executes the query.`,
   {
     method: "get",
     path: "/api/ApprovalRequests/:id/pending-approvers/",
-    alias: "api_ApprovalRequests_pending_approvers_retrieve",
+    alias: "api_ApprovalRequests_pending_approvers_list",
     description: `Get list of pending approvers for this request`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "approval_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "CAPA_APPROVAL",
+            "CAPA_CRITICAL",
+            "CAPA_MAJOR",
+            "DOCUMENT_RELEASE",
+            "ECO",
+            "FAI",
+            "PCN_RELEASE",
+            "PCO_APPROVAL",
+            "PCR_APPROVAL",
+            "PPAP",
+            "PROCESS_APPROVAL",
+            "TRAINING_CERT",
+          ])
+          .optional(),
+      },
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
       {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "requested_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "APPROVED",
+            "CANCELLED",
+            "NOT_REQUIRED",
+            "PENDING",
+            "REJECTED",
+          ])
+          .optional(),
+      },
     ],
-    response: ApprovalRequest,
+    response: z.array(UserSelect),
   },
   {
     method: "post",
@@ -25113,7 +25186,7 @@ identity verification, and delegation support.`,
       {
         name: "body",
         type: "Body",
-        schema: ApprovalResponseRequest,
+        schema: ApprovalResponseDelegateRequestRequest,
       },
       {
         name: "id",
@@ -25122,6 +25195,20 @@ identity verification, and delegation support.`,
       },
     ],
     response: ApprovalResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+      {
+        status: 403,
+        schema: z.object({}).partial().passthrough(),
+      },
+      {
+        status: 404,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -25309,17 +25396,12 @@ identity verification, and delegation support.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: ApprovalTemplateRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
-    response: ApprovalTemplate,
+    response: z.object({ status: z.string() }),
   },
   {
     method: "post",
@@ -25329,17 +25411,12 @@ identity verification, and delegation support.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: ApprovalTemplateRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
-    response: ApprovalTemplate,
+    response: z.object({ status: z.string() }),
   },
   {
     method: "post",
@@ -29123,7 +29200,7 @@ The new version will:
       {
         name: "body",
         type: "Body",
-        schema: DocumentsRequest,
+        schema: DocumentReviseRequestRequest,
       },
       {
         name: "id",
@@ -29132,6 +29209,12 @@ The new version will:
       },
     ],
     response: Documents,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -29151,17 +29234,54 @@ The new version will:
   {
     method: "get",
     path: "/api/Documents/:id/version-history/",
-    alias: "api_Documents_version_history_retrieve",
+    alias: "api_Documents_version_history_list",
     description: `Get the full version history for this document`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "document_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
       {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
+      {
+        name: "is_image",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum(["APPROVED", "DRAFT", "OBSOLETE", "RELEASED", "UNDER_REVIEW"])
+          .optional(),
+      },
     ],
-    response: Documents,
+    response: z.array(Documents),
   },
   {
     method: "get",

@@ -10,7 +10,7 @@ from django.http import HttpResponse, FileResponse, Http404
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema_view, extend_schema, inline_serializer, OpenApiResponse, OpenApiParameter
+from drf_spectacular.utils import extend_schema_view, extend_schema, inline_serializer, OpenApiResponse, OpenApiParameter, OpenApiTypes
 from rest_framework import viewsets, status, filters, serializers, parsers, permissions
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
@@ -1416,6 +1416,26 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
         detach_document_from(document, target)
         return Response(self._links_payload(document))
 
+    # Undeclared, the body fell back to DocumentsRequest — the whole document,
+    # requiring file + file_name and with no `change_justification` field at
+    # all. So the generated client rejected the real payload outright (revise
+    # was dead through the UI), and had it not, zod would have stripped the
+    # justification, which this action requires and which is the compliance
+    # record for why the revision exists.
+    @extend_schema(
+        request=inline_serializer(
+            name='DocumentReviseRequest',
+            fields={
+                'change_justification': serializers.CharField(
+                    help_text='Why this revision exists. Required.'),
+                'file': serializers.FileField(
+                    required=False,
+                    help_text='New file for the revision. Omit to keep the current one.'),
+                'file_name': serializers.CharField(required=False),
+            },
+        ),
+        responses={200: DocumentsSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'])
     def revise(self, request, pk=None):
         """Create a new revision of this document.
@@ -1484,7 +1504,14 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=True, methods=['get'], url_path='version-history')
+    # Undeclared, spectacular assumed the detail serializer — a single object —
+    # while this returns `many=True`. The generated client then rejected every
+    # response with "expected object, received array", so the version-history
+    # panel never had data. pagination_class=None because the action returns a
+    # bare list, not a paginated envelope.
+    @extend_schema(responses=DocumentsSerializer(many=True))
+    @action(detail=True, methods=['get'], url_path='version-history',
+            pagination_class=None)
     def version_history(self, request, pk=None):
         """Get the full version history for this document"""
         document = self.get_object()
@@ -1801,6 +1828,19 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
 
         return queryset.select_related().prefetch_related('default_approvers', 'default_groups')
 
+    # request=None: acts on the template named in the path, reads no body.
+    # Undeclared, the body fell back to ApprovalTemplateRequest (the whole
+    # template) and the response to ApprovalTemplate, while this returns
+    # `{status}`. That combination fails AFTER the toggle has already been
+    # written — the worst shape for a state-changing action, since a user
+    # retrying the "failure" flips it back.
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='ApprovalTemplateDeactivateResponse',
+            fields={'status': serializers.CharField()},
+        )},
+    )
     @action(detail=True, methods=['post'], url_path='deactivate')
     def deactivate(self, request, pk=None):
         """Deactivate an approval template"""
@@ -1810,6 +1850,19 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
         template.save(update_fields=['deactivated_at'])
         return Response({'status': 'Template deactivated'})
 
+    # request=None: acts on the template named in the path, reads no body.
+    # Undeclared, the body fell back to ApprovalTemplateRequest (the whole
+    # template) and the response to ApprovalTemplate, while this returns
+    # `{status}`. That combination fails AFTER the toggle has already been
+    # written — the worst shape for a state-changing action, since a user
+    # retrying the "failure" flips it back.
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='ApprovalTemplateActivateResponse',
+            fields={'status': serializers.CharField()},
+        )},
+    )
     @action(detail=True, methods=['post'], url_path='activate')
     def activate(self, request, pk=None):
         """Reactivate an approval template"""
@@ -1952,7 +2005,13 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
         instance.status = 'CANCELLED'
         instance.save(update_fields=['status'])
 
-    @action(detail=True, methods=['get'], url_path='pending-approvers')
+    # Returns a list of users, not the ApprovalRequest the undeclared
+    # fallback assumed — the client rejected every response with
+    # "expected object, received array". pagination_class=None because it
+    # returns a bare list.
+    @extend_schema(responses=UserSelectSerializer(many=True))
+    @action(detail=True, methods=['get'], url_path='pending-approvers',
+            pagination_class=None)
     def pending_approvers(self, request, pk=None):
         """Get list of pending approvers for this request"""
         approval = self.get_object()
@@ -2161,6 +2220,22 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
             'approval_request', 'approver', 'delegated_to'
         )
 
+    # The action reads `delegatee_id` + `reason`, both required. Undeclared,
+    # the body fell back to ApprovalResponseRequest (the whole response row),
+    # so the real payload was rejected client-side and the call never left
+    # the browser.
+    @extend_schema(
+        request=inline_serializer(
+            name='ApprovalResponseDelegateRequest',
+            fields={
+                'delegatee_id': serializers.IntegerField(),
+                'reason': serializers.CharField(),
+            },
+        ),
+        responses={200: ApprovalResponseSerializer,
+                   400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT,
+                   404: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='delegate')
     def delegate(self, request, pk=None):
         """Delegate this approval to another user"""
