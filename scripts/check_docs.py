@@ -205,12 +205,28 @@ NON_PERMISSIONS = {
     # saying "there is no X permission" is useful and should not trip a check.
     'change_sso_settings',
     'view_analytics',
+    # Model fields on Documents, quoted beside `effective_date` in the
+    # compliance tables. Shares the `review_` prefix with review_rca.
+    'review_date',
 }
 
-PERM_TOKEN = re.compile(
-    r'`((?:view|add|change|delete|approve|close|respond|export'
-    r'|manage|override|void|record|sign|verify)_[a-z_]+)`'
-)
+# Any backticked snake_case token. Which of these are *meant* to be
+# permissions is decided by the registry's own prefixes -- see _perm_token().
+BACKTICKED = re.compile(r'`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`')
+
+
+def _perm_token(valid):
+    """A matcher for tokens that claim to be permissions.
+
+    The prefix set is taken from the registry rather than hardcoded. Django
+    generates most codenames as {action}_{model}, so a fixed verb list covers
+    those easily -- but it silently misses the custom Meta.permissions, which
+    are the ones docs actually get wrong (accept_component, scrap_core,
+    initiate_capa, conduct_rca...). Deriving the prefixes means a new custom
+    permission is covered the moment it exists, with nothing to update here.
+    """
+    prefixes = {c.split('_', 1)[0] for c in valid}
+    return lambda token: token.split('_', 1)[0] in prefixes
 
 
 def _registry():
@@ -249,12 +265,15 @@ def check_permissions(files):
     if valid is None:
         print('NOTE  permission check skipped (Django not importable here)')
         return 0
+    claims_to_be_perm = _perm_token(valid)
     bad = 0
     for path, body in sorted(files.items()):
         for i, line in enumerate(body.splitlines(), 1):
-            for m in PERM_TOKEN.finditer(line):
+            for m in BACKTICKED.finditer(line):
                 codename = m.group(1)
                 if codename in valid or codename in NON_PERMISSIONS:
+                    continue
+                if not claims_to_be_perm(codename):
                     continue
                 print('NO SUCH PERM %s:%d  %s'
                       % (path[len(DOCS) + 1:], i, codename))
