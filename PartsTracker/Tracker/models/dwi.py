@@ -570,6 +570,18 @@ class SubstepCompletion(SecureModel, VoidableModel):
             models.Index(fields=['batch_execution', 'substep'], name='dwi_subcomp_batch_subs_idx'),
             models.Index(fields=['completed_by', '-completed_at'], name='dwi_subcomp_user_time_idx'),
         ]
+        permissions = [
+            # Retracting someone else's completed work is its own authority, so
+            # it gets a marker perm rather than riding the CRUD default. The
+            # default for a POST action is `add_substepcompletion` — held by
+            # every role, including the Operator whose record is being
+            # invalidated, which is the wrong shape for this: voiding makes the
+            # advancement gate ignore the row, blocking the part, and on an
+            # unsplit lot it holds the whole lot. Same reasoning as
+            # `sign_off_fpi`: the check must be independent of the person who
+            # did the work.
+            ('void_substepcompletion', 'Can void an erroneous substep completion'),
+        ]
 
     def __str__(self) -> str:
         suffix = ' (N/A)' if self.marked_not_applicable else ''

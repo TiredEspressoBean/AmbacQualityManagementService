@@ -442,6 +442,18 @@ class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
     """
 
+    # `void` retracts a record of work someone else signed, so it is gated on
+    # its own marker perm (QA Inspector / QA Manager) rather than the CRUD
+    # default. As a POST the default would be `add_substepcompletion`, which
+    # every role holds — including the Operator whose completion is being
+    # invalidated — and `change_` is no narrower. Same independence argument as
+    # `sign_off_fpi`. crud_exempt_actions keeps the add gate from also
+    # applying, which would silently re-widen it to everyone.
+    crud_exempt_actions = {'void'}
+    action_permissions = {
+        'void': ['void_substepcompletion'],
+    }
+
     queryset = SubstepCompletion.unscoped.select_related(
         'step_execution', 'substep', 'completed_by',
     )

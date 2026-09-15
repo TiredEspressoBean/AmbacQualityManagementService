@@ -395,6 +395,21 @@ FPI_SIGNOFF_PERMISSIONS = [
     'sign_off_fpi',
 ]
 
+# Voiding a substep completion: retracting a record of work someone else
+# signed. Narrower than FPI sign-off on purpose — QA Inspector and QA Manager
+# only, deliberately withheld from Shift Lead and Production Manager as well as
+# the Operator, because this is a quality-record judgement rather than a
+# production override.
+#
+# It needs its own perm because the CRUD default for a POST action is
+# `add_substepcompletion`, which every role holds — including the Operator
+# whose completion is being invalidated. And the act has teeth: the advancement
+# gate ignores a voided row, so the part blocks until the work is redone, and
+# on an unsplit lot that holds the entire lot.
+VOID_COMPLETION_PERMISSIONS = [
+    'void_substepcompletion',
+]
+
 # Record retention: deleting operational records is manager-tier only. Line
 # roles void / supersede / archive, never delete. (Authoring artifacts delete
 # via AUTHORING_PERMISSIONS; soft-delete-only models grant no delete at all —
@@ -578,6 +593,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Void an erroneous substep completion
+            *VOID_COMPLETION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Formally raise a CAPA
@@ -605,6 +622,8 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            # Void an erroneous substep completion
+            *VOID_COMPLETION_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
             # Formally raise a CAPA
