@@ -27,11 +27,12 @@ The first piece must pass inspection before remaining parts can proceed.
 
 FPI is configured per process step:
 
-1. Navigate to **Production** > **Processes**
-2. Edit the process
-3. On the relevant step, enable **Requires First Piece Inspection**
-4. Select the **FPI Scope** (when FPI resets)
-5. Save
+1. Open the process in the **Process Flow** editor and turn on **Edit Mode**
+2. Click the step, then open **Advanced**
+3. Enable **Requires first-piece inspection**
+4. Set the **FPI scope** — when the requirement resets
+
+See [Step Configuration](../../admin/processes/steps.md).
 
 When enabled, the first part at that step triggers FPI workflow.
 
@@ -97,6 +98,16 @@ If rejected:
 3. Operator adjusts setup
 4. New first piece is produced
 5. FPI repeats
+
+### Conditional Pass
+
+An inspection can also be recorded as a **Conditional Pass** — accepted with a
+qualification rather than a clean pass or an outright fail. The record keeps
+the outcome separately from the status, so a conditionally-passed FPI reads as
+**Passed** on the step while the result itself shows the condition.
+
+Use it when the setup is acceptable to run but something was noted that the
+next inspection should re-check.
 
 ## FPI Status Indicators
 

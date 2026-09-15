@@ -113,6 +113,9 @@ Approving and rejecting are one action, not two buttons:
     not assigned to a document sees no action available. Granting someone a
     permission will not change this.
 
+See [Approvals](../approvals/overview.md) for how the approval system works
+across documents, CAPAs, and change control.
+
 ## Who gets assigned as an approver
 
 If the wrong people — or nobody — can approve a document, the cause is almost

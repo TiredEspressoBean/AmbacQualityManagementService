@@ -54,9 +54,22 @@ D7: Preventive   D8: Close &
 - Stop shipment if needed
 
 ### D4: Root Cause Analysis
-- Identify why it happened
-- Use tools: 5 Why, Fishbone, etc.
-- Verify root cause
+Recorded as an **RCA record** linked to the CAPA, with one of four methods:
+
+| Method | |
+|--------|--|
+| **5 Whys** | Iterative questioning, captured as structured whys |
+| **Fishbone Diagram** | Cause categories, captured as a fishbone |
+| **Fault Tree** | Logical decomposition of failure paths |
+| **Pareto Analysis** | Ranking causes by contribution |
+
+Each RCA carries a problem description, the identified root causes, a root
+cause summary, and who conducted it.
+
+The root cause then has its own **verification status** — **Unverified**,
+**Verified**, or **Disputed**. *Disputed* matters: a root cause can be
+challenged rather than silently accepted, and the CAPA shows that it is
+contested.
 
 ### D5: Develop Corrective Actions
 - Define permanent fixes

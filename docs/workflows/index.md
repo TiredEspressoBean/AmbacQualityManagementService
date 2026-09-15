@@ -49,6 +49,7 @@ Moving parts through production steps.
 - [Digital Work Instructions](dwi/overview.md) - Substeps, captures, and how work is recorded
 - [Scheduling](scheduling/overview.md) - The Gantt board, capacity, staging, and requirements
 - [Supply](supply/overview.md) - Inbound material, outside processing, and suppliers
+- [Approvals](approvals/overview.md) - How approval requests are raised, routed, and closed
 - [Change Control](change-control/overview.md) - PCR, PCO, and PCN for process changes
 - [Training Matrix](tracking/training-matrix.md) - Competency coverage and staffing risk
 - [Shift Notes](tracking/shift-notes.md) - Handing off to the floor

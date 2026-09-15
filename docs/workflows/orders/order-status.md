@@ -73,6 +73,9 @@ For example:
 | **In Stock** | Green | In inventory |
 | **Scrapped** | Red | Rejected permanently |
 | **Cancelled** | Red | Removed from production |
+| **Scrapped** | Red | Rejected permanently |
+| **At Outside Process** | Blue | Sent to a subcontract vendor — the part has left the building |
+| **Awaiting Pickup** | Green | Ready for the customer to collect |
 
 ### Due Date Indicators
 

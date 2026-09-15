@@ -13,19 +13,27 @@ Part Types define:
 
 ## Creating a Part Type
 
-1. Navigate to **Data Management** > **Part Types**
+1. Navigate to **Admin** > **Data Management** > **Part Types**
 2. Click **New Part Types**
 3. Fill in details:
 
 | Field | Description | Required |
 |-------|-------------|----------|
 | **Name** | Part type name | Yes |
-| **Part Number** | Product identifier | Yes |
-| **Description** | Product description | No |
-| **Default Process** | Manufacturing workflow | Recommended |
-| **Active** | Available for use | Yes |
+| **ERP ID Prefix** | Prefix used when generating part identifiers | No |
+| **ERP ID** | External identifier for this type | No |
+| **Made in-house** | This type can be manufactured | No |
+| **Purchased** | This type can be bought | No |
+| **ITAR Controlled** | Subject to ITAR | No |
+| **ECCN** | Export Control Classification Number | No |
+| **USML Category** | US Munitions List category | No |
 
-4. Save
+4. Click **Create Part Type**
+
+!!! tip "Make, buy, or both"
+    **Made in-house** and **Purchased** are independent. A type that is both
+    can be manufactured or sourced, which is what lets it appear in production
+    and in [sourcing requirements](../../workflows/scheduling/overview.md#requirements).
 
 ## Part Type Fields
 
@@ -34,28 +42,35 @@ Part Types define:
 | Field | Description |
 |-------|-------------|
 | **Name** | Display name |
-| **Part Number** | Your numbering scheme |
-| **Customer Part Number** | Customer's identifier |
-| **Revision** | Drawing revision |
-| **UOM** | Unit of measure (each, ft, kg) |
+| **ERP ID Prefix** | Prefix for generated part identifiers |
+| **ERP ID** | External identifier |
 
-### Manufacturing
+### Sourcing
 
 | Field | Description |
 |-------|-------------|
-| **Default Process** | Primary manufacturing process |
-| **Alternate Processes** | Other valid processes |
-| **Estimated Cycle Time** | Per-part production time |
-| **Material** | Primary material |
+| **Made in-house** | Can be manufactured |
+| **Purchased** | Can be bought |
+| **Preferred supplier** | Default supplier for purchased types |
+| **Purchase lead time (days)** | Lead time used by sourcing requirements |
+| **Requires supplier qualification** | Only qualified suppliers may supply it |
+| **Requires part approval** | Lots are held from suppliers without a [part approval](../../workflows/supply/part-approvals.md) |
 
-### Quality
+### Export Control
 
 | Field | Description |
 |-------|-------------|
-| **Inspection Level** | Default inspection requirements |
-| **Critical Dimensions** | Key measurements |
-| **3D Model** | Linked visual model |
-| **Drawing** | Linked drawing document |
+| **ITAR Controlled** | Subject to ITAR |
+| **ECCN** | Export Control Classification Number |
+| **USML Category** | US Munitions List category |
+
+See [Export Controls](../../compliance/export-controls.md).
+
+!!! note "Not part-type fields"
+    Cycle time is set per **step** in the process, not on the part type — see
+    [Step Configuration](../processes/steps.md). There is no customer part
+    number, revision, unit of measure, inspection level, or critical-dimension
+    field on a part type.
 
 ### Export Control
 

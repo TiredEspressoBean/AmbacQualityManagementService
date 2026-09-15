@@ -4,6 +4,9 @@ Configure approval workflows for documents, processes, and other records.
 
 ## What are Approval Templates?
 
+See [Approvals](../../workflows/approvals/overview.md) for how requests are
+raised, routed, and closed.
+
 Approval Templates define:
 - **Who** needs to approve
 - **How many** approvals required
@@ -12,18 +15,26 @@ Approval Templates define:
 
 ## Creating Approval Templates
 
-1. Navigate to **Data Management** > **Approval Templates**
+1. Navigate to **Admin** > **Data Management** > **Approval Templates**
 2. Click **New Approval Templates**
 3. Fill in details:
 
 | Field | Description |
 |-------|-------------|
-| **Name** | Template name |
-| **Description** | When to use |
-| **Applies To** | Documents, Processes, CAPAs |
+| **Template Name** *(required)* | Template name |
+| **Approval Type** *(required)* | What this template approves, e.g. Document Release, CAPA Approval |
+| **Approval Flow** | **All Required**, **Threshold**, or **Any** |
+| **Sequence** | **Parallel** or **Sequential** |
+| **Threshold (if applicable)** | How many approvals are needed when the flow is Threshold |
+| **Delegation** | **Optional** or **Disabled** |
+| **Auto-assign to Group** | Assign everyone in a group when a request is raised |
+| **Allow Self-Approval** | Whether a requester may approve their own request |
+| **Due Days** | Days until the request is due |
+| **Escalation Days** | Days before it escalates |
+| **Escalation Target** | Who it escalates to |
 
-4. Add approval steps
-5. Save
+Add approvers with **Add Person** and **Add Role**, then click **Create
+Template**.
 
 ## Approval Steps
 
@@ -31,18 +42,21 @@ Each step defines required approvals:
 
 | Field | Description |
 |-------|-------------|
-| **Name** | Step name (e.g., "Engineering Review") |
-| **Approvers** | Who can approve |
-| **Required Count** | How many must approve |
-| **Order** | Sequential or parallel |
+!!! note "Templates have no named steps"
+    A template does not contain a list of steps with their own names and
+    approver sets. It has **one** set of approvers, plus a flow and a sequence
+    that decide how their responses are counted.
+
+    To model "Engineering review, then QA release", use **Sequential** with the
+    approvers in order, or use two approval types.
 
 ### Approver Selection
 
 | Option | Description |
 |--------|-------------|
-| **Specific Users** | Named individuals |
-| **Group Members** | Anyone in a group |
-| **Role** | Anyone with specific role |
+| **Add Person** | Named individuals |
+| **Add Role** | Anyone holding that role |
+| **Auto-assign to Group** | Every member of the group, assigned automatically |
 
 ## Approval Flow Types
 
@@ -60,13 +74,22 @@ Step 1: Engineering + QA + Management (all at once)
 ```
 Complete when all approve.
 
-### Mixed
-Combination:
-```
-Step 1: Engineering (sequential first)
-Step 2: QA + Production (parallel)
-Step 3: Final approval (sequential last)
-```
+!!! note "No mixed flow"
+    A template is either Parallel or Sequential — the two cannot be combined
+    within one template.
+
+## How responses are counted
+
+**Sequence** decides the order approvers are asked. **Approval Flow** decides
+how many responses close the request:
+
+| Flow | Closes when |
+|------|-------------|
+| **All Required** | Every assigned approver has approved |
+| **Threshold** | The configured number of approvals is reached |
+| **Any** | Any one approver approves |
+
+These are independent: a Threshold flow can run Sequential or Parallel.
 
 ## Approval Rules
 

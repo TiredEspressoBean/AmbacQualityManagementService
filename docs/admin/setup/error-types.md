@@ -34,84 +34,54 @@ Common categories:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Name** | Error type name | Yes |
-| **Code** | Short code (DIM, VIS) | Yes |
-| **Description** | Detailed description | No |
-| **Category** | Parent category | No |
-| **Active** | Available for selection | Yes |
+| **Error Name** | Error type name | Yes |
+| **Error Example** | A concrete example of the defect, so inspectors pick consistently | Yes |
+| **Part Type** | Scope this error type to one part type, or leave blank for all | No |
+| **Requires 3D Annotation** | The defect must be marked on the part's 3D model | No |
+
+Submit with **Create Error Type**.
+
+!!! tip "Requires 3D Annotation"
+    Error types with this set appear in the **Part Annotator**, where the
+    inspector marks the defect location on the model. Use it for defects whose
+    position matters — see [Annotations](../../3d-models/annotations.md).
 
 4. Save
 
 ## Error Type Hierarchy
 
-Organize in hierarchy:
+!!! note "Not supported"
+    Error types are a flat list. There is no parent field and no rollup
+    reporting across a hierarchy.
 
-```
-Dimensional
-├── Over Size
-├── Under Size
-├── Out of Position
-└── Wrong Angle
-
-Visual
-├── Scratch
-├── Dent
-├── Discoloration
-└── Surface Finish
-```
-
-Benefits:
-- Detailed tracking
-- Rollup reporting
-- Easier selection
-
-### Creating Hierarchy
-
-1. Create parent error type (e.g., "Dimensional")
-2. Create child types
-3. Set **Parent** field to parent type
-4. Save
+    To get similar grouping, name types consistently (for example
+    "Dimensional - Over Size", "Dimensional - Under Size") so they sort
+    together, or scope them to a **part type** so inspectors only see the ones
+    relevant to what they are working on.
 
 ## Error Type Fields
 
-### Required
+| Field | Required | Description |
+|-------|:--------:|-------------|
+| **Error Name** | Yes | Display name |
+| **Error Example** | Yes | A concrete example of the defect |
+| **Part Type** | No | Restricts the type to one part type |
+| **Requires 3D Annotation** | No | Defect must be marked on the 3D model |
 
-| Field | Description |
-|-------|-------------|
-| **Name** | Display name |
-| **Code** | Short identifier |
-
-### Optional
-
-| Field | Description |
-|-------|-------------|
-| **Description** | Detailed definition |
-| **Parent** | Parent category |
-| **Default Severity** | Suggested severity |
-| **Requires CAPA** | Auto-trigger CAPA |
-| **Color** | Display color |
-| **Icon** | Visual identifier |
+There is no code, description, parent, severity, colour, or icon field.
 
 ## Error Type Rules
 
 Configure automatic behavior:
 
 ### Default Severity
-Pre-set severity for this type:
-- Minor (cosmetic issues)
-- Major (functional issues)
-- Critical (safety/regulatory)
+!!! note "Planned Feature"
+    Error types carry no rules of their own — no default severity, no
+    auto-quarantine, and no automatic CAPA trigger.
 
-### Auto-Quarantine
-Automatically quarantine parts:
-- When this error type selected
-- No manual step needed
-
-### CAPA Trigger
-Automatically create CAPA:
-- After N occurrences
-- For specific severity
-- Based on rules
+    Severity is set on the **quality report** and the **CAPA** when they are
+    raised. Quarantine follows from the quality report rather than from the
+    error type. A CAPA is raised deliberately, not by a threshold rule.
 
 ## Reporting and Analysis
 

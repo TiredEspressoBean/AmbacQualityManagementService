@@ -14,51 +14,43 @@ A Quality Report is a formal record of:
 
 ## Creating a Quality Report
 
-### From Part Tracking
-
-1. Select the affected part(s)
-2. Click **Create Quality Report**
-3. Complete the form
-4. Submit
-
-### From Quality Menu
-
 1. Navigate to **Quality** > **Quality Reports**
 2. Click **New Quality Reports**
-3. Search for and select affected parts
-4. Complete the form
-5. Submit
+3. Complete the form
+4. Click **Submit**
 
-### From Mobile/Shop Floor
+A report can also be produced by an inspection substep in the step player — a
+substep marked an **inspection point** writes a quality report from what the
+operator captures. See [Authoring Work
+Instructions](../dwi/authoring.md).
 
-1. Scan part barcode or enter serial
-2. Tap **Report Issue**
-3. Quick-fill form
-4. Submit
+!!! note "No scan-to-report flow"
+    There is no barcode-scan shortcut that opens a pre-filled report.
 
 ## Quality Report Form
 
-### Required Fields
+| Field | Required | Description |
+|-------|:--------:|-------------|
+| **Status** | Yes | Where the report stands, e.g. Pending Review |
+| **Part** | No | The affected part |
+| **Process Step** | No | Where it was found |
+| **Machine/Equipment** | No | Equipment involved |
+| **Description** | No | Explanation of the issue |
+| **Detected By** | No | Who found it |
+| **Verified By** | No | Who verified it |
+| **First Piece Inspection** | No | Links the report to an FPI record |
+| **Archived** | No | Archive the report |
 
-| Field | Description |
-|-------|-------------|
-| **Part** | The affected part |
-| **Error Type(s)** | Category/categories (Dimensional, Visual, etc.) via defect list |
-| **Detected By** | Inspector/operator who found the defect |
-| **Description** | Detailed explanation of the issue |
+!!! note "Defects are added separately"
+    **Error types are not fields on the report.** Each defect is its own entry
+    with an error type, a **count**, a **location**, a **severity**, and notes.
+    One report can carry several defects at different severities, which is why
+    severity sits on the defect rather than the report.
 
-Note: Severity is specified per defect type, not on the report itself. Each defect entry can have its own severity (Minor, Major, Critical).
-
-### Optional Fields
-
-| Field | Description |
-|-------|-------------|
-| **Detected At** | Process step where found |
-| **Detected By** | Who found the issue |
-| **Quantity Affected** | Number of parts |
-| **Customer Ref** | Customer complaint number |
-| **Immediate Action** | Containment steps taken |
-| **Root Cause** | Initial assessment |
+!!! note "Not on the form"
+    There is no quantity-affected, customer-reference, immediate-action, or
+    root-cause field. Containment and root cause belong to the
+    [CAPA](../capa/creating.md) raised from the report.
 
 ### Attachments
 

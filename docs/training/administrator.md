@@ -82,12 +82,12 @@ By the end of this module, you will:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Email** | Login ID, must be unique | Yes |
-| **First Name** | Display name | Yes |
-| **Last Name** | Display name | Yes |
-| **User Type** | Internal or Portal | Yes |
-| **Groups** | Permission groups | Yes |
-| **Active** | Can login if checked | Yes |
+| **Username** | Login identifier, must be unique | Yes |
+| **First Name** | Given name | No |
+| **Last Name** | Family name | No |
+| **Email** | Contact email | No |
+| **Company** | Company, for customer users | No |
+| **Role** | Which role the user holds | No |
 
 ---
 
@@ -96,13 +96,19 @@ By the end of this module, you will:
 **Steps:**
 
 1. Navigate to **Admin** > **User Management**
-2. Click **New Users**
+2. Click **Add user**
 3. Fill in:
-   - Email address (will be login)
-   - First and last name
-   - User type (Internal for employees, Portal for external customers)
-   - Assign to appropriate groups
-4. Save
+   - Username (the login identifier)
+   - First and last name, and email
+   - Role — **Customer** for external users, one of the internal roles
+     otherwise
+   - Company, for customer users
+4. Click **Create User**
+
+!!! note "No separate user type"
+    There is no Internal/Portal switch. **Role** carries that distinction:
+    a user with the Customer role gets the customer view of their own
+    company's orders.
 
 **What happens:**
 
@@ -676,7 +682,7 @@ By the end of this module, you will:
 
 1. Check their groups
 2. Verify group has permission
-3. Check user type restrictions (Internal vs Portal)
+3. Check the user's role — a Customer-role user only sees their own company's orders
 4. Confirm tenant assignment (if multi-tenant)
 
 **Exercise 9.1:** Troubleshoot Access

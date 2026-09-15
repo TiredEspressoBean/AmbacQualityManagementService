@@ -4,53 +4,42 @@ The Tracker is the primary interface for monitoring parts as they move through p
 
 ## Accessing the Tracker
 
-Navigate to **Tracker** in the Portal section of the sidebar. This is typically the default landing page for production users.
+Click **Tracker** in the sidebar — it sits near the top, with Home and
+Help & Docs, and is available to every signed-in user.
+
+!!! note "Not the landing page"
+    **Home** is the landing page, and it is role-aware — an Operator, a QA
+    Inspector and a Production Manager each land on a different surface. The
+    Tracker is the order-status view, reached deliberately. See [Role
+    Guides](../../roles/index.md).
 
 ## Tracker Interface
 
-The Tracker displays orders as cards with real-time status:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ [Search]                    [Filters] [View Options]    │
-├─────────────────────────────────────────────────────────┤
-│ ┌─────────────────────┐ ┌─────────────────────┐        │
-│ │ ORD-2024-0042       │ │ ORD-2024-0038       │        │
-│ │ Midwest Fleet       │ │ Great Lakes Diesel  │        │
-│ │ ████████░░ 67%      │ │ ██████████ 100%     │        │
-│ │ Due: Mar 15         │ │ Complete            │        │
-│ │ [16 Complete][2 QA] │ │ [12 Shipped]        │        │
-│ └─────────────────────┘ └─────────────────────┘        │
-│                                                         │
-│ ┌─────────────────────┐                                │
-│ │ ORD-2024-0048       │                                │
-│ │ Northern Trucking   │                                │
-│ │ ░░░░░░░░░░ 0%       │ [HIGH] Due: Mar 20            │
-│ │ [Pending]           │                                │
-│ └─────────────────────┘                                │
-└─────────────────────────────────────────────────────────┘
-```
+The Tracker displays orders as cards showing current status. Figures are
+polled rather than pushed, so a change made elsewhere appears within a couple
+of minutes rather than instantly.
 
 ## Order Cards
 
-Each card displays:
+Each card shows:
 
 | Element | Description |
 |---------|-------------|
-| **Order Number** | Clickable to open order details |
-| **Customer** | Company name |
-| **Progress Bar** | Visual completion percentage |
-| **Due Date** | Color-coded (green/yellow/red) |
-| **Part Counts** | Parts at each status |
-| **Priority Badge** | Urgent, High, Normal, or Low |
+| **Order name** | The order's name, e.g. "Great Lakes Diesel Order - 12 Injectors" |
+| **Company** and **customer** | Who the order is for |
+| **Delivery** | The delivery date, with a badge for how far away it is — "Today", "6d", or "Not started" |
+| **Current stage** | The stage the order is at, e.g. "Current: Core Receiving" |
+| **Progress** | A progress bar with stages completed out of total, e.g. 3/11 stages |
+| **Latest note** | The most recent note on the order, with who left it |
+
+!!! note "No priority on the tracker"
+    Cards carry no priority badge. Priority is a work order field — see
+    [Work Order Basics](../work-orders/basics.md).
 
 ## Expanding Orders
 
-Click an order card to expand and see:
-
-- **Step Distribution** - Parts at each process step
-- **Part List** - Individual parts with status
-- **Quick Actions** - Move parts, create reports
+Cards are collapsible. Click one to expand it and see the order's detail
+in place.
 
 ## Searching
 

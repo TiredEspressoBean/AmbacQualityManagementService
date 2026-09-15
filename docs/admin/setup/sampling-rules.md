@@ -53,10 +53,20 @@ Note: Full AQL tables per ANSI/ASQ Z1.4 are not currently implemented. Use perce
 
 | Field | Description |
 |-------|-------------|
-| **Name** | Rule name |
-| **Rule Type** | Every Nth, Percentage, First N, Last N, Exact, Random |
-| **Applies To** | Part type, supplier, step |
-| **Active** | Available for use |
+| **Rule Set** *(required)* | The rule set this rule belongs to |
+| **Rule Type** *(required)* | How parts are selected (below) |
+| **Sampling Rule Value** *(required)* | The rule's number — N, a percentage, or a count |
+| **Order** | Position when a set holds several rules |
+
+Submit with **Create Sampling Rule**.
+
+!!! important "Rules live inside a rule set"
+    A sampling rule is not standalone and carries no name or scope of its own.
+    It belongs to a **Sampling Rule Set**, and the set is what decides *where*
+    the sampling applies — its part type, process, step, or supplier — along
+    with AQL, inspection level, severity, strategy, and fallback behaviour.
+
+    Create the rule set first, then add rules to it.
 
 4. Configure rule parameters
 5. Save
@@ -110,6 +120,63 @@ Fixed sample size regardless of lot size.
 | **Value (N)** | Randomly select N parts |
 
 SHA-256 hash-based random selection for audit compliance.
+
+## Lot-Acceptance Rule Types
+
+The types above stream per part. These three judge a **whole lot** from a
+sample, and are what receiving inspection uses. Their plan parameters —
+**AQL**, **inspection level**, **severity**, and **strategy** — live on the
+rule set, not the rule.
+
+| Type | Standard | Accepts on |
+|------|----------|-----------|
+| **Acceptance Sampling** | ANSI/ASQ Z1.4 | Defects found in the sample against the AQL plan |
+| **Zero-Acceptance** | C=0 (Squeglia) | Any defect in the sample rejects the lot |
+| **Variables Sampling** | ANSI/ASQ Z1.9 | A measured characteristic — sample mean and spread against an acceptability constant |
+
+!!! note "Variables sampling needs a characteristic"
+    A Variables rule measures one characteristic, so the rule set must name
+    which one. Without it the rule cannot be evaluated.
+
+## Gates: reacting to bad results
+
+A rule set can carry a **gate** — a rule that watches results and fires actions
+when quality degrades. This is what escalates a problem instead of letting it
+repeat.
+
+**What it watches:**
+
+| Metric | Trips on |
+|--------|----------|
+| **Consecutive failures** | A run of failures in a row |
+| **Failure rate (%)** | Failure percentage over the window |
+| **Defective count** | Number of defectives in the window |
+
+**Over what window:**
+
+| Window | Meaning |
+|--------|---------|
+| **Whole work order at this step** | Everything at that step on the job |
+| **Rolling last N inspections** | The most recent N |
+| **Receiving lot sample** | The lot's sample |
+
+**What it does when it trips** — one or more of:
+
+| Action | Effect |
+|--------|--------|
+| **Route to alternate edge** | Send parts down a different path |
+| **Tighten sampling** | Switch to a stricter rule set |
+| **Hold / quarantine** | Stop the material |
+| **Raise CAPA / SCAR** | Open a CAPA, or a SCAR when the type is Supplier |
+| **Require approval** | Demand an approval before continuing |
+
+A gate also sets a **minimum sample** before it can trip, so it does not fire
+on one bad reading.
+
+!!! tip "Tighten sampling is the ANSI/ASQ switching rule"
+    Pairing **Tighten sampling** with a stricter rule set implements normal →
+    tightened inspection switching: quality drops, sampling intensifies, and
+    it relaxes again when the process settles.
 
 ## Applying Rules
 

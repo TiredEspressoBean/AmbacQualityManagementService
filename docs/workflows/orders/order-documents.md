@@ -18,31 +18,32 @@ Common documents attached to orders:
 
 ## Attaching Documents
 
-### Upload New Document
+### Upload a new document
 
-1. Open the order
-2. Go to the **Documents** tab or section
-3. Click **Attach**
-4. Select the file from your computer
-5. Fill in document metadata:
+Documents are uploaded once, centrally, then attached to the records they
+relate to:
 
-| Field | Description |
-|-------|-------------|
-| **Document Type** | Category (Drawing, Spec, etc.) |
-| **Title** | Descriptive name |
-| **Revision** | Version identifier |
-| **Notes** | Optional description |
+1. Go to **Documents** and click **Upload Document**
+2. Fill in the document details and upload the file
+3. Attach it to the order (below)
 
-6. Click **Upload Document**
+See [Uploading Documents](../documents/uploading.md).
 
-### Link Existing Document
+### Attach an existing document
 
-If the document already exists in the system:
+From the document's own page:
 
-1. Click **Link Document**
-2. Search for the document
-3. Select it from the results
-4. The document is now linked to this order
+1. Open the document
+2. Click **Attach**
+3. Choose the entity type, then search for the record
+4. The document is now linked to it
+
+A document can be attached to several records — its detail page lists what it
+is **Linked To** and what it is **Also Linked To**.
+
+!!! note "One attach action, not two"
+    There is no separate "link existing" versus "upload new" flow on the order.
+    Upload centrally, then attach.
 
 ## Viewing Documents
 

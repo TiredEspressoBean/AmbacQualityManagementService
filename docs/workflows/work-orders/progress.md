@@ -18,12 +18,14 @@ Work order progress shows how much work is complete:
 
 ### Work Order List
 
-The work order list shows:
+**Production** > **Work Orders** lists: Work Order, Process, **QA Progress**,
+Due Date, Customer, Order, and a Details link.
 
-- Progress bar per work order
-- Status badge
-- Priority indicator
-- Due date (color-coded)
+!!! tip "Status and priority are on the Control Center"
+    This list carries neither. **WO Control Center** is the fleet view — it
+    adds status and priority columns, and filters for **Due today**,
+    **Overdue**, **On hold**, **With exceptions** and **Expedited**, plus a
+    priority selector. Use it when you are working across many work orders.
 
 ### Work Order Detail
 
@@ -34,14 +36,12 @@ Detailed progress view includes:
 - **Parts In Process**: Currently being worked
 - **Parts Quarantine**: Held for quality
 
-### Dashboard Widgets
+### On the Home page
 
-The Production Dashboard shows:
-
-- Active work orders
-- On-time vs. delayed
-- Completion rate
-- Work in process (WIP)
+There is no separate production dashboard. The **Home** page surfaces work
+order state for production roles — jobs going late, work orders in flight, and
+the biggest fire — alongside links into the Control Center. See [Role
+Guides](../../roles/index.md).
 
 ## Progress Calculation
 
@@ -96,12 +96,15 @@ Status updates automatically based on progress:
 | Part quarantined | No change (tracked separately) |
 
 ### Manual Updates
-Change status manually when needed:
 
-1. Open work order
-2. Click status dropdown
-3. Select new status
-4. Enter reason (for hold/cancel)
+Status changes are explicit actions on the work order, not a dropdown:
+
+| Action | Effect |
+|--------|--------|
+| **Place on hold** | Opens *Put Work Order on Hold*, which requires a **Reason** |
+| **Cancel Work Order** | Cancels the work order |
+| **Process order** | Moves the order forward |
+| **Split…** | Splits the work order |
 
 ## Bottleneck Detection
 
@@ -131,13 +134,15 @@ Work orders are flagged:
 - **Yellow**: At risk (1-2 days to due date)
 - **Red**: Overdue
 
-## Real-Time Updates
+## How current the figures are
 
-Progress updates in real-time:
+Progress figures are **polled, not pushed**. There are no websockets: the
+dashboard queries refresh on an interval — every 2 minutes for actionable
+items such as failures and approvals, every 5 minutes for slower-moving
+summaries.
 
-- Parts move → Progress bar updates
-- No refresh needed
-- Changes visible to all users
+So a change another user makes appears within a couple of minutes rather than
+instantly. Reload if you need the current position immediately.
 
 ## Notifications
 

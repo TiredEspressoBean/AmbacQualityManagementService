@@ -31,11 +31,19 @@ Document Types define:
 
 | Field | Description |
 |-------|-------------|
-| **Name** | Type name |
-| **Code** | Short code (WI, SPEC) |
-| **Description** | When to use |
-| **Requires Approval** | Yes/No |
-| **Approval Template** | Which approval flow |
+| **Name** *(required)* | Type name |
+| **Code** *(required)* | Short code, e.g. WI, SPEC |
+| **Description** | When to use this type |
+| **Review Period (days)** | How often documents of this type should be reviewed |
+| **Retention Period (days)** | How long to keep them |
+| **Requires Approval** | Whether documents need approval before release |
+| **Approval Template** | Which approval flow to use when approval is required |
+
+Submit with **Create Document Type**.
+
+!!! tip "Review period drives the review queue"
+    **Review Period** is what populates **Due for review** on the Documents
+    dashboard. A type with no review period never prompts a review.
 
 4. Save
 
@@ -46,44 +54,46 @@ Document Types define:
 | Setting | Description |
 |---------|-------------|
 | **Requires Approval** | Documents need approval before release |
-| **Approval Template** | Default approval workflow |
-| **Auto-Archive Previous** | Archive old revision on new approval |
+| **Approval Template** | Which approval flow is used |
+
+There is no auto-archive-previous setting. Superseding is handled by
+[revisions](../../workflows/documents/revisions.md): a new revision links to
+the version it replaces.
 
 ### Retention Settings
 
 | Setting | Description |
 |---------|-------------|
-| **Retention Period** | How long to keep |
-| **Retention Action** | Archive, Review, Delete |
-| **Category** | Regulatory, Business, Operational |
+| **Retention Period (days)** | How long to keep documents of this type |
+| **Review Period (days)** | How often they should be reviewed |
+
+There is no retention *action* or retention category — the period is recorded,
+and acting on it is a procedural decision.
 
 ### Access Settings
 
-| Setting | Description |
-|---------|-------------|
-| **Default Visibility** | Public, Internal, Confidential |
-| **Customer Visible** | Show to customers |
+!!! note "Not set on the document type"
+    Visibility is a property of each **document**, through its
+    **classification** (e.g. Internal), not of its type. Two documents of the
+    same type can carry different classifications. See [Export
+    Controls](../../compliance/export-controls.md).
 
 ## Document Numbering
 
-Configure automatic numbering per type:
-
-| Pattern | Example | Result |
-|---------|---------|--------|
-| `{TYPE}-{YEAR}-{SEQ}` | WI-2026-0001 | Per type per year |
-| `{SEQ}` | 00001 | Simple sequential |
-| Manual | User enters | No auto-numbering |
+!!! note "Planned Feature"
+    There is no configurable numbering pattern per document type. Document
+    identifiers are entered as part of the file name when uploading.
 
 ## Permissions by Type
 
-Control who can access document types:
+Access is not configured per document type. It is governed by:
 
-1. Edit document type
-2. Go to **Permissions**
-3. Set per group:
-   - View
-   - Create
-   - Edit
+- **Document permissions** — `view_documents`, `add_documents`,
+  `change_documents`, `classify_documents`
+- **Classification** on the individual document, filtered by
+  `view_confidential_documents` and `view_restricted_documents`
+
+See [Permissions](../users/permissions.md).
    - Approve
 
 Example:

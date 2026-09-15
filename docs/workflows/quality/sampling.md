@@ -83,11 +83,18 @@ Sampling rules are configured by administrators:
 
 | Component | Description |
 |-----------|-------------|
-| **Rule Type** | Every Nth, Percentage, Random, First N, Last N, Exact Count |
-| **Ruleset** | Part type + Process + Step combination |
+| **Rule Type** | How parts are selected — nine types, streaming or lot-acceptance |
+| **Rule Set** | The set the rule belongs to; the set carries the scope (part type, process, step, supplier) |
 | **Value** | The N value (interval, percentage, count) |
-| **Order** | Priority when multiple rules apply |
-| **Fallback Ruleset** | Tighter sampling triggered after consecutive failures |
+| **Order** | Position when a set holds several rules |
+| **Fallback Rule Set** | Tighter sampling switched to when quality degrades |
+
+!!! tip "Gates decide when sampling tightens"
+    Switching to the fallback set is one of the actions a **gate** can fire —
+    alongside holding the lot, routing to an alternate path, raising a
+    CAPA/SCAR, or requiring approval. The gate watches consecutive failures,
+    failure rate, or defective count over a window. See [Sampling
+    Rules](../../admin/setup/sampling-rules.md#gates-reacting-to-bad-results).
 
 ### Rule Types
 
@@ -99,6 +106,19 @@ Sampling rules are configured by administrators:
 | **First N Parts** | Inspect first N parts (setup verification) |
 | **Last N Parts** | Inspect last N parts (end-of-run check) |
 | **Exact Count** | Always inspect exactly N parts (no variance) |
+
+Three further types judge a **whole lot** from a sample rather than streaming
+per part, and are what receiving inspection uses:
+
+| Type | Standard |
+|------|----------|
+| **Acceptance Sampling** | ANSI/ASQ Z1.4 — defects in the sample against an AQL plan |
+| **Zero-Acceptance** | C=0 (Squeglia) — any defect rejects the lot |
+| **Variables Sampling** | ANSI/ASQ Z1.9 — a measured characteristic against an acceptability constant |
+
+Their plan parameters (AQL, inspection level, severity, strategy) are set on
+the **rule set**. See [Sampling
+Rules](../../admin/setup/sampling-rules.md).
 
 ## Viewing Sampling Requirements
 

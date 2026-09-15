@@ -7,24 +7,43 @@ Work order assignment in uqmes operates at the **step execution level** rather t
 
 ## How Assignment Works
 
-### Step Execution Assignment
+There are two routes: the scheduler plans assignments ahead, and the operator's
+own action records who actually did the work.
 
-When an operator begins work on a step:
+### Planned: dispatch
 
-1. Navigate to the work order or part
-2. Start the step execution
-3. The system records:
-   - **Operator**: The user performing the work
-   - **Equipment**: The machine/tool used (if applicable)
-   - **Timestamp**: When work began
+**Dispatch** is the second pass of scheduling. The solve schedules *machines*;
+dispatch then assigns an *operator* to each attended operation, taking the
+machine schedule as given — start and end times do not move.
+
+Two properties matter:
+
+- It assigns **per lot, not per piece**. A work order's parts sitting at one
+  step ran as a single machine occupancy and need one operator, so they are
+  grouped and assigned together.
+- An operator is only given a step they are **qualified for**, at the required
+  training level. Training gaps surface here as unassignable work.
+
+See [Schedule (Gantt)](../scheduling/gantt.md#dispatch).
+
+### Actual: step execution
+
+When an operator begins work on a step, the system records who is doing it:
+
+1. Open the work order and click **Start Work**
+2. Check the parts to be worked
+3. The step player records the **operator** and **timestamps** as each substep
+   is confirmed
 
 ### Recording Equipment Used
 
-Equipment is captured during step completion:
+Equipment is captured as part of the work instructions: a step can include an
+**Equipment + roles** capture, which records what was actually used against
+that part's record. See
+[Authoring Work Instructions](../dwi/authoring.md).
 
-1. Complete the step measurements or quality report
-2. Select the equipment/machine used
-3. This links the work to a specific piece of equipment
+A step can also carry an **equipment affinity**, which tells the scheduler
+which equipment the step prefers or requires.
 
 ## Operator Qualifications
 
@@ -39,11 +58,9 @@ The system can validate operator qualifications:
 ## Viewing Assignment History
 
 ### On Part Detail
-View the step execution history to see:
-
-- Which operator performed each step
-- What equipment was used
-- When each step was completed
+The **Activity History** section on the part's detail page records each change
+with the actor and a timestamp. See [Part
+History](../tracking/part-history.md).
 
 ### On Work Order
 The work order shows overall progress and which parts are at which steps.

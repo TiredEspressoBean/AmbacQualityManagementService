@@ -44,16 +44,21 @@ Focus: Quality metrics and performance
 
 ### KPI Cards
 
-Top-level metrics at a glance:
+Four metrics across the top:
 
 | KPI | Description |
 |-----|-------------|
-| **Open CAPAs** | Active corrective actions |
-| **Open NCRs** | Quality reports awaiting disposition |
-| **Pending Approvals** | Items awaiting your approval |
-| **FPY (This Month)** | First Pass Yield percentage |
+| **First Pass Yield** | Percentage passing without rework, against a 95% target |
+| **Scrap Rate** | Percentage of parts scrapped |
+| **Active CAPAs** | CAPAs in progress |
+| **Overdue** | CAPAs past their due date |
 
-Click any card to drill down to details.
+Below them, a **needs-attention** row surfaces NCRs open more than 7 days,
+CAPAs past due, parts in quarantine, and CAPAs pending verification — the same
+counts the Home page shows.
+
+**View Issues**, **NCR Analysis**, **Full Analysis** and **SPC** open the
+detailed views.
 
 ### Charts
 
@@ -80,17 +85,15 @@ Click any card to drill down to details.
 
 ## Analytics Dashboard
 
-### Filters
+### Period
 
-Customize your view:
+The dashboard has one control: a period selector offering **30 days**,
+**60 days**, and **90 days**.
 
-| Filter | Options |
-|--------|---------|
-| **Date Range** | Preset or custom |
-| **Part Type** | All or specific |
-| **Process** | All or specific |
-| **Customer** | All or specific |
-| **Error Type** | All or specific |
+!!! note "No dimension filters here"
+    There is no part type, process, customer, or error type filter on the
+    dashboard. To slice defects that way, use
+    [Defect Analysis](defects.md), which has its own filters and CSV export.
 
 ### KPI Trends
 

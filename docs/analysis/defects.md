@@ -30,17 +30,33 @@ Focus improvement efforts on the "vital few":
 3. Corrective action
 4. Monitor improvement
 
-### Filtering Pareto
+### Filtering
 
-Filter the Pareto chart:
+The page offers:
 
-| Filter | Purpose |
-|--------|---------|
-| **Date Range** | Period to analyze |
-| **Part Type** | Specific product |
-| **Process** | Specific workflow |
-| **Step** | Where detected |
-| **Severity** | Minor/Major/Critical |
+| Control | Purpose |
+|---------|---------|
+| **Period** | 30, 60, or 90 days |
+| **Part type** | All part types, or one |
+
+Defects are broken down by **type** and by the **step** where they were found,
+each with a count. Below that, **Defect Records** lists the individual defects:
+
+| Column | Shows |
+|--------|-------|
+| **Part** | The affected part |
+| **Part Type** | Its type |
+| **Process** | The process it was running |
+| **Defect** | The error type recorded |
+| **Date** | When it was found |
+| **Status** | Where the defect stands |
+
+**Export** downloads the current view as CSV, respecting the period and part
+type you have selected.
+
+!!! note "No severity filter"
+    Defects cannot be filtered by severity here. Severity lives on the CAPA
+    and the disposition, not on the defect record shown in this view.
 
 ## Trend Analysis
 
@@ -106,13 +122,10 @@ Compare:
 
 ## By Supplier/Lot
 
-Track quality by material source:
-
-| Supplier | Lots | Defect Rate |
-|----------|------|-------------|
-| Delphi Fuel Systems | 24 | 1.2% |
-| Bosch Rexroth | 18 | 4.5% |
-| Denso America | 12 | 0.5% |
+Supplier quality is **not** analysed on this page. Use **Supply** >
+**Supplier Quality**, which scores each supplier on lots received, accepted and
+rejected, reject rate, CoC compliance, on-time delivery, and open SCARs. See
+[Supply](../workflows/supply/overview.md#supplier-quality).
 
 !!! example "Supplier Quality Issue"
     Analysis of nozzle defects in order ORD-2024-0038 traced the issue to a specific Delphi batch. This data supported CAPA-2024-003's root cause finding.
@@ -141,14 +154,12 @@ Same error type + same part type occurring multiple times.
 
 ## Defect Cost Analysis
 
-Track cost of quality:
+!!! note "Planned Feature"
+    Cost of quality is not tracked. Nothing records the cost of scrap, rework,
+    inspection, or returns, and no cost figures appear in defect analysis.
 
-| Category | Cost |
-|----------|------|
-| **Scrap** | Material + labor lost |
-| **Rework** | Additional labor |
-| **Inspection** | Sorting/reinspection |
-| **Returns** | Customer returns |
+    The scrap **rate** is reported on the [Quality
+    Dashboard](dashboard.md) as a percentage of parts, not a monetary value.
 
 Use for:
 - Prioritizing improvements

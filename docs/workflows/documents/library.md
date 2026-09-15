@@ -20,17 +20,18 @@ The Document Library provides:
 
 The Documents landing page shows:
 
-### Quick Stats
-- Total documents
-- Pending approval
-- Recently updated
-- Expiring soon
+Two cards:
 
-### Recent Documents
-Last 10 documents you accessed or were shared with you.
+| Card | Goes to |
+|------|---------|
+| **View All Documents** | Browse and search documents |
+| **Upload Document** | Add a new document to the system |
 
-### Pending Actions
-Documents requiring your attention (review, approval).
+When something needs you, a **Documents Needing Approval** card appears with
+the count, e.g. *"1 document(s) require your review"*.
+
+Below the cards is a list of recent documents, each showing its name, who
+uploaded it, and when.
 
 ## Browsing Documents
 
@@ -40,39 +41,45 @@ See all documents in a table:
 
 | Column | Description |
 |--------|-------------|
-| **Title** | Document name |
-| **Type** | Category (Drawing, Spec, etc.) |
-| **Revision** | Current version |
+| **File Name** | Document name |
+| **ID** | Record identifier |
+| **Version** | Current version |
 | **Status** | Draft, Under Review, Approved, Released, Obsolete |
-| **Updated** | Last modified date |
+| **Type** | Category (Drawing, Work Instruction, etc.) |
+| **Classification** | e.g. Internal |
+| **Uploaded** | Upload date |
+| **Uploaded By** | Who uploaded it |
+| **Actions** | Row actions |
 
 ### Filtering
 
-Narrow results by:
+Narrow results with:
 
-- **Document Type**: Work Instruction, Drawing, etc.
-- **Status**: Draft, Under Review, Approved, Released, Obsolete
-- **Date Range**: Created or modified within period
-- **Created By**: Author
-- **Linked To**: Associated order, part type
+- **All document types** — Work Instruction, Drawing, etc.
+- **All Status** — Draft, Under Review, Approved, Released, Obsolete
+- **All Is Image** — whether the file is an image
+- **Needs My Approval** — only documents awaiting your response
+
+!!! note "No date or author filter"
+    There is no date-range or created-by filter. To find a document by its
+    uploader, use the search box — it matches on file name and uploader email.
 
 ### Sorting
 
-Click column headers to sort:
-
-- By title (A-Z, Z-A)
-- By date (newest, oldest)
-- By type
-- By status
+Use the **Sort by...** dropdown. Column headers are not clickable.
 
 ## Searching Documents
 
-Use the search bar to find documents by:
+The search box on the document list is scoped, as its placeholder says —
+*"Search by File Name, Uploaded By Email..."*:
 
-- Title or filename
-- Document number
-- Content (if text-searchable)
-- Associated records
+- **File name**
+- **Uploader email**
+
+!!! note "Not full-text search"
+    Document *contents* are not searched. Neither are associated records. To
+    find a document by what it is attached to, open that record and look at its
+    Documents section instead.
 
 ## Document Types
 

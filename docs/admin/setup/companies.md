@@ -4,31 +4,38 @@ Manage customer and supplier company records.
 
 ## Company Types
 
-| Type | Purpose |
-|------|---------|
-| **Customer** | Companies that place orders |
-| **Supplier** | Companies that provide materials |
-| **Both** | Companies that are both customer and supplier |
+A company has **no type field**. What a company *is* follows from how it is
+used:
+
+| Acts as | Because it has |
+|---------|----------------|
+| **Customer** | Orders, returned cores, or portal users |
+| **Supplier** | Supplied material lots or part types, supplier qualifications, outside-process shipments |
+| **Both** | Any combination of the above |
+
+So the same record serves both roles without being flagged as either.
 
 ## Creating a Company
 
-1. Navigate to **Data Management** > **Companies**
+1. Navigate to **Admin** > **Data Management** > **Companies**
 2. Click **New Companies**
-3. Fill in company details
-4. Save
+3. Fill in the details
+4. Click **Create Company**
 
 ### Company Fields
 
+The record is deliberately minimal:
+
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Name** | Company name | Yes |
-| **Type** | Customer, Supplier, Both | Yes |
-| **Code** | Short identifier | No |
-| **Contact Email** | Primary contact | No |
-| **Phone** | Contact number | No |
-| **Address** | Business address | No |
-| **Website** | Company website | No |
-| **Notes** | Internal notes | No |
+| **Company Name** | Company name | Yes |
+| **Description** | What this company is to you | Yes |
+| **Outside-process turnaround (days)** | Default turnaround when sending work to this vendor | No |
+
+!!! note "No address, phone, or contact fields"
+    A company record holds no postal address, phone number, website, or contact
+    email. People are held separately as **external contacts**, and a company
+    can have several.
 
 ## Customer-Specific Fields
 
@@ -42,17 +49,16 @@ For customer companies:
 | **Shipping Address** | Delivery address |
 | **Terms** | Payment terms |
 
-## Supplier-Specific Fields
+## Supplier Information
 
-For supplier companies:
+None of this lives on the company record itself:
 
-| Field | Description |
-|-------|-------------|
-| **Vendor Code** | Your internal code |
-| **Quality Rating** | Supplier quality score |
-| **Approved** | Approved supplier list |
-| **Lead Time** | Default lead time |
-| **Certifications** | ISO, AS, etc. |
+| What you want | Where it lives |
+|---------------|----------------|
+| Approved supplier list | [Supplier qualifications](../../workflows/supply/overview.md#approved-suppliers), per supplier and part type, with expiry |
+| Quality rating | [Supplier Quality](../../workflows/supply/overview.md#supplier-quality) scorecards, computed from receiving inspection |
+| Lead time | **Purchase lead time** on the [part type](part-types.md) |
+| Outside-process turnaround | The turnaround field on the company |
 
 ## Company Contacts
 

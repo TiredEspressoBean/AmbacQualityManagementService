@@ -52,7 +52,7 @@ When something goes wrong, a **Quality Report** (also called a Non-Conformance R
 
     - Track parts through manufacturing steps
     - Record measurements and inspection data
-    - View real-time order status
+    - View current order status
     - Manage work orders and assignments
 
 === "Quality"

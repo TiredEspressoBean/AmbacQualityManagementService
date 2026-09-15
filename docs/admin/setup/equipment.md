@@ -29,11 +29,21 @@ Equipment records represent:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Name** | Equipment identifier | Yes |
-| **Equipment Type** | Category | Yes |
+| **Equipment Name** | Equipment identifier | Yes |
+| **Equipment Type** | Category | No |
 | **Serial Number** | Manufacturer serial | No |
-| **Location** | Physical location | No |
-| **Status** | Active, Maintenance, Retired | Yes |
+| **Manufacturer** | Who made it | No |
+| **Model Number** | Model | No |
+| **Location** | Where it is | No |
+| **Status** | Operational status | No |
+| **Schedulable resource** | Whether the scheduler may plan work onto it | No |
+| **Notes** | Free text | No |
+
+Submit with **Create Equipment**.
+
+!!! tip "Schedulable resource"
+    Only equipment marked schedulable is planned onto by the scheduler. A gauge
+    or hand tool is usually not schedulable; a test stand or press is.
 
 4. Save
 
@@ -69,26 +79,35 @@ Define equipment categories:
 | **Name** | Your identifier |
 | **Equipment Type** | Category |
 | **Serial Number** | Manufacturer's number |
-| **Asset Number** | Your asset tag |
 | **Manufacturer** | Equipment maker |
-| **Model** | Model number |
+| **Model Number** | Model |
+
+There is no asset-number field.
 
 ### Location
 
-| Field | Description |
-|-------|-------------|
-| **Building** | Facility |
-| **Area** | Department/zone |
-| **Station** | Specific location |
+**Location** is a single free-text field — there is no separate building, area,
+and station breakdown.
 
 ### Status
 
 | Status | Meaning |
 |--------|---------|
-| **Active** | In service, available |
-| **Maintenance** | Under repair/maintenance |
-| **Calibration** | Out for calibration |
+| **In Service** | Available for use (the default) |
+| **Out of Service** | Not available |
+| **In Calibration** | Out for calibration |
+| **In Maintenance** | Under repair or maintenance |
 | **Retired** | No longer in service |
+
+### Scheduling
+
+| Field | Description |
+|-------|-------------|
+| **Schedulable resource** | Whether the scheduler plans work onto it |
+| **Runs unattended** | Can run without an operator present |
+| **Batch mode** and **batch capacity** | Whether it processes a batch, and how large |
+| **Operating shifts** | Which shifts it runs |
+| **Work centers** | Which work centers it belongs to |
 
 ## Calibration Tracking
 
@@ -98,11 +117,14 @@ Configure per equipment:
 
 | Field | Description |
 |-------|-------------|
-| **Requires Calibration** | Yes/No |
-| **Calibration Interval** | Days between calibrations |
-| **Last Calibration** | Date of last cal |
-| **Next Due** | Calculated due date |
-| **Calibration Procedure** | Reference document |
+| **Requires calibration** | Set on the **equipment type**, not the individual item |
+| **Default calibration interval** | Days, set on the equipment type |
+| **Calibration interval (days)** | Per-item override of the type's interval |
+
+Dates are not fields on the equipment. Each calibration is a **calibration
+record** carrying its own **calibration date**, **due date**, result,
+certificate number, standards used, whether it was found in tolerance, and any
+adjustments made. The next due date comes from the most recent record.
 
 ### Calibration Status
 

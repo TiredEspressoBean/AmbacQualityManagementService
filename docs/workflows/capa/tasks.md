@@ -23,23 +23,21 @@ Note: Root cause analysis is tracked separately via RCA records linked to the CA
 
 | Field | Description |
 |-------|-------------|
-| **Title** | Clear action description |
-| **Type** | Containment, Investigation, etc. |
-| **Assigned To** | Responsible person |
+| **Description** | What the task is |
+| **Type** | Containment, Corrective Action, or Preventive Action — there are only these three |
+| **Assigned To** | The owner |
+| **Assignees** | Additional people, when more than one person is involved |
+| **Completion Mode** | Who has to complete it — see below |
 | **Due Date** | Target completion |
-| **Description** | Detailed instructions |
-| **Priority** | Follows CAPA priority |
+| **Requires Signature** | Completion needs a signature and password verification |
+
+Tasks are numbered automatically.
 
 5. Click **Save**
 
-### Bulk Task Creation
-
-For standard CAPA types, create multiple tasks:
-
-1. Click **Add Standard Tasks**
-2. Select task template
-3. Adjust assignments and dates
-4. Create all tasks
+!!! note "No task templates"
+    There is no **Add Standard Tasks** action and no library of task templates
+    to apply to a CAPA type. Tasks are added one at a time.
 
 ## Task Status
 
@@ -59,6 +57,16 @@ Tasks can have different completion requirements:
 | **Single Owner** | One person completes the task |
 | **Any Assignee** | Any one assignee can complete for the group |
 | **All Assignees** | All assigned users must complete their portion |
+
+### Signed completion
+
+A task can be marked **Requires Signature**. Completing it then needs a
+signature and password verification, and the record keeps the signature, who
+completed it, when, and their completion notes.
+
+Use it for tasks whose completion is itself evidence — a verification step, or
+an action someone must attest to personally. See [Electronic
+Signatures](../../compliance/signatures.md).
 
 ## Working on Tasks
 

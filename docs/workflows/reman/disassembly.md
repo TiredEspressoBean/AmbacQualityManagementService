@@ -28,13 +28,18 @@ Before starting disassembly:
 
 As you extract each component:
 
-### Step 1: Add Component
+### Step 1: Harvest the component
 
-1. On the disassembly page, click **Add Component**
-2. Select the **Component Type** from part types
-3. Optionally enter:
-   - **Position** - Location within core (e.g., "Cyl 1", "Position A")
-   - **Original Part Number** - If readable from component
+1. On the disassembly page, click **Harvest Component**
+2. Fill in the dialog:
+
+| Field | Required | Description |
+|-------|:--------:|-------------|
+| **Component Type** | Yes | Which component this is |
+| **Condition Grade** | Yes | Its condition, e.g. *Grade B - Good* |
+| **Position** | No | Location within the core, e.g. "Cyl 1" |
+| **Original Part Number** | No | If readable from the component |
+| **Condition Notes** | No | Anything notable |
 
 ### Step 2: Assess Condition
 
@@ -49,36 +54,36 @@ Assign a condition grade:
 
 Add condition notes for anything notable.
 
-### Step 3: Save Component
+### Step 3: Record it
 
-Click **Save** to record the harvested component.
+Click **Harvest** to record the component.
 
 ### Repeat for Each Component
 
-Continue adding components until all usable parts are extracted.
+Continue harvesting until all usable parts are extracted, then click
+**Complete Disassembly**.
 
 ## Component Disposition
 
 After harvesting, each component needs disposition:
 
+### Scrap during disassembly
+
+A component you can see is unusable can be scrapped here — **Scrap** is
+available on the disassembly page as you work through the core.
+
 ### Accept to Inventory
 
-For usable components:
+Accepting happens afterwards, from **Remanufacturing** > **Components**, not on
+the disassembly page:
 
-1. Click **Accept to Inventory** on the component
-2. System creates a Parts record
-3. Component is now available for production
-4. Life tracking transfers from core (if applicable)
+1. Open the component from the Harvested Components list
+2. Click **Accept to Inventory**
+3. The system creates a Parts record and links the component to it
+4. Life tracking transfers from the core, if applicable
 
-The created part receives an ERP ID like: `HC-[CoreNumber]-[TypePrefix][ID]`
-
-### Scrap Component
-
-For unusable components:
-
-1. Click **Scrap** on the component
-2. Enter scrap reason
-3. Component is marked as scrapped
+The created part receives an ERP ID of the form
+`HC-{core number}-{type prefix}{id}`.
 
 ## Completing Disassembly
 

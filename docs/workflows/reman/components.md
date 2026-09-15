@@ -23,13 +23,13 @@ Each component displays:
 | Field | Description |
 |-------|-------------|
 | **Component Type** | Type of component |
-| **Core** | Source core it came from |
-| **Condition Grade** | A, B, C, or Scrap |
-| **Position** | Location within core |
+| **Source Core** | The core it came from |
+| **Position** | Location within the core |
+| **Condition** | A, B, C, or Scrap |
 | **Status** | In Inventory, Pending, or Scrapped |
-| **Part ID** | Linked part if accepted to inventory |
-| **Harvested Date** | When extracted |
-| **Harvested By** | Who extracted it |
+| **Part ID** | Linked part, if accepted to inventory |
+| **Harvested** | When it was extracted |
+| **By** | Who extracted it |
 
 ## Component Statuses
 
@@ -52,13 +52,11 @@ Converts a pending component into inventory:
 
 The part can then enter production workflows.
 
-### Scrap
+### Scrapping
 
-Marks a component as unusable:
-
-1. Click **Scrap**
-2. Enter scrap reason (required)
-3. Component marked with scrap timestamp
+A component that cannot be used carries the **Scrapped** status. Scrapping is
+decided during [disassembly](disassembly.md) when the component is graded,
+rather than as an action on this list.
 
 ### View Linked Part
 
@@ -70,13 +68,12 @@ For components in inventory:
 
 ## Filtering Components
 
-Filter by:
+The list has a single control — a **search** box ("Search harvested
+components...") — plus **Import** and **Export**.
 
-- **Core** - Components from specific core
-- **Component Type** - Specific part types
-- **Condition Grade** - A, B, C, or Scrap
-- **Status** - Pending, In Inventory, Scrapped
-- **Date Range** - Harvested date
+!!! note "No filter dropdowns"
+    There is no filtering by core, component type, condition, status, or
+    date on this page. Use search, or export to CSV and slice it there.
 
 ## Traceability
 

@@ -28,20 +28,37 @@ Common verification tasks:
 ### Recording Verification
 
 1. Open the CAPA
-2. Go to **Verification** tab
-3. For each corrective action:
-   - Document verification method
-   - Record results
-   - Attach evidence
-4. Conclude effectiveness
+2. Go to the **Verification** tab
+3. Record:
+
+| Field | Description |
+|-------|-------------|
+| **Verification method** | How effectiveness was checked |
+| **Verification criteria** | What would count as effective |
+| **Verification date** | When it was checked |
+| **Verified by** | Who checked |
+| **Verification notes** | What was found |
+
+4. Decide the effectiveness result
+
+!!! warning "Self-verification is recorded"
+    If the person verifying is the CAPA's own initiator or assignee, the record
+    is flagged **self-verified**. It is allowed, but it is visible — an auditor
+    can see which CAPAs were closed on their owner's own word.
+
+    The same flag exists on the root cause analysis, for a conductor who
+    verifies their own RCA.
 
 ### Verification Outcome
 
-| Outcome | Next Step |
-|---------|-----------|
-| **Confirmed** | CAPA auto-closes, corrective actions verified effective |
-| **Not Confirmed** | Additional RCA review required, new corrective action task created |
-| **Inconclusive** | More data needed, continue monitoring |
+| Outcome | Meaning | Next step |
+|---------|---------|-----------|
+| **Confirmed Effective** | The action worked | The CAPA can close |
+| **Not Effective** | It did not work | Revisit the root cause and raise further action |
+| **Inconclusive** | Not yet decidable — the default | Keep monitoring and gather more data |
+
+Inconclusive is the starting state, so a verification that was opened but never
+concluded reads as inconclusive rather than as a pass.
 
 ## Effectiveness Review
 
