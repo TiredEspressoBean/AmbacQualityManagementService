@@ -85,12 +85,15 @@ export function EntityDocumentsEditor({
         if (!selectedFile || !contentTypeId) return;
         setIsUploading(true);
         try {
-            const payload: Record<string, unknown> = {
+            // Built in one expression so the shape stays visible to the client's
+            // type; the Record<string, unknown> annotation hid it and needed a cast.
+            const payload = {
                 file: selectedFile, file_name: fileName || selectedFile.name,
-                content_type: contentTypeId, object_id: objectId, classification: "INTERNAL",
+                content_type: contentTypeId, object_id: objectId,
+                classification: "INTERNAL" as const,
+                ...(docType ? { document_type: docType } : {}),
             };
-            if (docType) payload.document_type = docType;
-            await createDocument.mutateAsync(payload as never);
+            await createDocument.mutateAsync(payload);
             toast.success("Document uploaded");
             setSelectedFile(null); setFileName(""); setDocType("");
             if (fileInputRef.current) fileInputRef.current.value = "";

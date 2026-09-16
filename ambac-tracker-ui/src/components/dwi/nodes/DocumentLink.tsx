@@ -88,7 +88,9 @@ export function DocumentLinkEditForm({ node, updateAttributes }: NodeViewProps) 
     // in context (the authoring page on its own doesn't have one).
     const trimmed = search.trim();
     const fallback = useRetrieveDocuments(
-        !workOrderId && trimmed.length > 1 ? ({ search: trimmed, page_size: 10 } as never) : undefined,
+        // `limit`, not `page_size`: the endpoint declares no page_size, so the
+        // cap was dropped and this fallback search returned the default page.
+        !workOrderId && trimmed.length > 1 ? { search: trimmed, limit: 10 } : undefined,
         undefined,
         { enabled: !workOrderId && trimmed.length > 1 },
     );

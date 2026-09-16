@@ -15,6 +15,7 @@ import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { useTrainingTypes } from "@/hooks/useTrainingTypes";
 import { useCreateTrainingRequirement } from "@/hooks/useCreateTrainingRequirement";
 import { useDeleteTrainingRequirement } from "@/hooks/useDeleteTrainingRequirement";
+import { api } from "@/lib/api/generated";
 
 /**
  * Reusable "required training" editor for any TrainingRequirement scope
@@ -56,7 +57,11 @@ export function TrainingRequirementsEditor({
     const deleteReq = useDeleteTrainingRequirement();
 
     const [typeId, setTypeId] = useState("");
-    const [level, setLevel] = useState("3");
+    // min_level is a 1-4 enum in the contract; keeping the select's value as a
+    // string and Number()-ing it produced a plain `number`, which the cast then
+    // hid from the check.
+    type MinLevel = NonNullable<Parameters<typeof api.api_TrainingRequirements_create>[0]["min_level"]>;
+    const [level, setLevel] = useState<MinLevel>(3);
 
     const usedTypeIds = new Set(requirements.map((r) => r.training_type));
     const available = trainingTypes.filter((t) => !usedTypeIds.has(t.id));
@@ -64,9 +69,9 @@ export function TrainingRequirementsEditor({
     const add = () => {
         if (!typeId) return;
         createReq.mutate(
-            { training_type: typeId, ...scope, min_level: Number(level) } as never,
+            { training_type: typeId, ...scope, min_level: level },
             {
-                onSuccess: () => { toast.success("Requirement added."); setTypeId(""); setLevel("3"); },
+                onSuccess: () => { toast.success("Requirement added."); setTypeId(""); setLevel(3); },
                 onError: () => toast.error("Failed to add requirement."),
             },
         );
@@ -129,7 +134,7 @@ export function TrainingRequirementsEditor({
                     </div>
                     <div className="w-[140px]">
                         <label className="mb-1 block text-xs text-muted-foreground">Min level</label>
-                        <Select value={level} onValueChange={setLevel}>
+                        <Select value={String(level)} onValueChange={(v) => setLevel(Number(v) as MinLevel)}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {LEVELS.map((l) => (<SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>))}

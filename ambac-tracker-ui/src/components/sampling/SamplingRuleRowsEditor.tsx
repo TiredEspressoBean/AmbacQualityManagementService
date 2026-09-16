@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2 } from "lucide-react";
 import { useRetrieveSamplingRules } from "@/hooks/useRetrieveSamplingRules";
 import { useCreateSamplingRule } from "@/hooks/useCreateSamplingRule";
+import { api } from "@/lib/api/generated";
 import { useUpdateSamplingRule } from "@/hooks/useUpdateSamplingRule";
 import { useDeleteSamplingRule } from "@/hooks/useDeleteSamplingRule";
 
@@ -40,7 +41,10 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
         .slice()
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-    const [newType, setNewType] = useState("EVERY_NTH_PART");
+    // The contract's enum rather than a bare string, so the dropdown can only
+    // offer rule types the endpoint accepts.
+    type RuleType = Parameters<typeof api.api_Sampling_rules_create>[0]["rule_type"];
+    const [newType, setNewType] = useState<RuleType>("EVERY_NTH_PART");
     const [newValue, setNewValue] = useState("");
 
     const add = async () => {
@@ -50,7 +54,7 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
                 rule_type: newType,
                 value: needsValue(newType) && newValue !== "" ? Number(newValue) : null,
                 order: rows.length + 1,
-            } as never);
+            });
             setNewValue("");
             toast.success("Rule added");
             refetch();
@@ -117,7 +121,7 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
             <div className="flex items-end gap-2 rounded-md border border-dashed p-3">
                 <div className="space-y-1.5">
                     <Label className="text-xs">Rule type</Label>
-                    <Select value={newType} onValueChange={setNewType}>
+                    <Select value={newType} onValueChange={(v) => setNewType(v as RuleType)}>
                         <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {RULE_TYPES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
