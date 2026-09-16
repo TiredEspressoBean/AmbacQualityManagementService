@@ -215,12 +215,33 @@ cause is by far the most common and the least obvious:
 3. Contact support with details
 
 ### "Not found (404)"
-**Cause**: Page or record doesn't exist
+**Cause**: The URL doesn't match any page, or the record it names doesn't
+exist.
 
 **Solutions**:
-1. Check URL is correct
-2. Record may have been deleted
-3. Navigate from known page
+1. Check the URL is complete — a link truncated in chat or email is the most
+   common cause
+2. The record may have been deleted or belongs to another tenant
+3. Navigate from a page you know rather than editing the URL
+
+### "This link isn't valid"
+**Cause**: The URL is the right shape but one of its values isn't — usually a
+truncated or mistyped record id in a pasted link.
+
+The message names which parameter is wrong.
+
+**Solution**: Get the link again from its source rather than repairing it by
+hand. Ids are not guessable, and editing one digit lands you on a different
+record rather than the one you wanted.
+
+### A filtered list looks wrong, or a filter you didn't set is applied
+
+**Cause**: Filters live in the URL, so a bookmarked or shared link carries
+whoever's filters were active when it was copied.
+
+**Solution**: Clear the filters, or open the page from the sidebar to start
+clean. A filter value that is no longer valid is dropped and the full list
+renders, so a stale link degrades to "unfiltered" rather than to an error.
 
 ### "Session expired"
 **Cause**: Inactivity timeout

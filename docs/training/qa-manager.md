@@ -229,7 +229,7 @@ By the end of this module, you will:
 |-------|-------------|
 | **Title** | Clear problem statement |
 | **Source** | Where issue originated |
-| **Priority** | Low, Medium, High, Critical |
+| **Severity** | Critical, Major, or Minor |
 | **Owner** | Person responsible |
 | **Due Date** | Target completion |
 | **Problem Description** | Detailed issue description |

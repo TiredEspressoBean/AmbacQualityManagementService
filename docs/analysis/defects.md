@@ -58,6 +58,36 @@ type you have selected.
     Defects cannot be filtered by severity here. Severity lives on the CAPA
     and the disposition, not on the defect record shown in this view.
 
+### How the filters apply
+
+Everything on the page follows your filters — the KPI cards included. Two rules
+are worth knowing, because both look like bugs until you know them.
+
+**The breakdowns each ignore their own axis.** *By Defect Type* respects every
+filter except defect type; *By Process* respects every filter except process.
+Filtering by process narrows *By Defect Type* to that process's defects, while
+*By Process* keeps listing every process.
+
+That is deliberate: each breakdown is also the control you click to *set* that
+filter. If *By Defect Type* filtered itself, clicking **Porosity** would leave
+one bar at 100% with nothing left to click.
+
+**Choosing a defect type changes the numerator only.** Defect rate is failures
+over inspections, and an inspection is not tagged with a defect type — it
+either happened or it didn't. So filtering by defect type narrows the failure
+count but leaves the inspected total alone.
+
+!!! warning "Expect the rate to move less than you think"
+    Narrowing the denominator the same way would leave only inspections that
+    already found that defect, and **every rate would read 100%**.
+
+    Process and part type are different: those describe the inspection itself,
+    so they narrow both sides and the rate moves as you would expect.
+
+    If a rate looks stubbornly high after picking a defect type, this is why —
+    you are seeing that defect against *all* inspections in scope, which is the
+    useful number.
+
 ## Trend Analysis
 
 ### Defect Trend Over Time

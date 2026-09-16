@@ -85,11 +85,22 @@ Signatures](../../compliance/signatures.md).
 
 ### Completing a Task
 
-1. Open the task
-2. Add completion notes
-3. Attach deliverables (documents, data)
-4. Click **Complete**
-5. Task moves to Complete status
+A task can be completed from either surface — whichever you are already on:
+
+- **Personal > Inbox**, against the task in your list
+- The CAPA's **Tasks** tab
+
+In both, add your completion notes and click **Mark Complete**. The notes are
+saved with the completion, so say what was actually done rather than "done" —
+this is the record a verifier reads when checking the action was effective.
+
+If the task **requires a signature**, completing it asks for your password as
+well. See [Signed completion](#signed-completion).
+
+!!! note "Completion mode decides whether that finishes it"
+    On a task with several assignees, whether your completion closes the task
+    or only records your part of it depends on its completion mode. See
+    [Completion Mode](#completion-mode).
 
 ## Task Dependencies
 

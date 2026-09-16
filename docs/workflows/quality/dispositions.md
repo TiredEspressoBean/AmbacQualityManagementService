@@ -88,6 +88,15 @@ from the decision, because containment is urgent and the decision often is not.
 An auditor reading the record wants to see the gap between *found* and
 *contained* be short, regardless of how long the disposition took.
 
+### Attaching evidence
+
+Containment usually has evidence behind it — a photo of the segregated bin, a
+signed hold tag, the tooling report that prompted the stop. Documents can be
+attached to the disposition, under **Containment Action** on its edit page.
+
+Attach the evidence rather than describing it. "Parts moved to quarantine cage"
+is an assertion; the same sentence with a photo and a timestamp is a record.
+
 ## States
 
 ```
