@@ -36,8 +36,7 @@ export function EditPartActionsCell({ partId }: Props) {
         updatePart.mutate(
             {
                 id: partId,
-                // eslint-disable-next-line local/no-as-any -- PatchedPartsRequest requires many fields; only patching archived flag
-                data:{archived:true} as any
+                data: { archived: true },
             },
             {
                 onSuccess: () => {

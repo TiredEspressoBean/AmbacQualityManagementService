@@ -2,31 +2,27 @@ import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { useContentTypeMapping } from "./useContentTypes";
 
-export interface PendingDocumentApproval {
-    id: string;
-    approval_number: string;
-    approval_type: string;
-    approval_type_display: string;
-    status: string;
-    content_type: string;
-    object_id: string;
-    content_object_display?: string;
-    requested_at: string;
-    due_date: string | null;
-    is_overdue?: boolean;
-}
+/** A row from the approvals list, narrowed to the fields this surface renders.
+ *
+ *  Derived from the contract rather than hand-written. The hand-written version
+ *  declared `content_type: string` where the API sends a number, and the filter
+ *  below compared it with `=== String(id)` -- never true, so this hook returned
+ *  an empty list no matter how many document approvals were pending. Both sides
+ *  came from the same wrong assumption, so neither looked out of place. */
+export type PendingDocumentApproval = Awaited<
+    ReturnType<typeof api.api_ApprovalRequests_my_pending_list>
+>["results"][number];
 
 export const documentsPendingApprovalOptions = (documentsContentTypeId: number | undefined) => queryOptions({
     queryKey: ["documents", "pending-approval", documentsContentTypeId] as const,
     queryFn: async () => {
-        // Get all pending approvals and filter to documents
-        // eslint-disable-next-line local/no-as-any -- api_ApprovalRequests_my_pending_list has untyped response; shape is normalized below
-        const response = await api.api_ApprovalRequests_my_pending_list() as any;
-        const results = response?.results || response || [];
+        // The response is typed (PaginatedApprovalRequestList) -- the cast that
+        // used to be here claimed otherwise, and hid the mismatch below.
+        const response = await api.api_ApprovalRequests_my_pending_list();
 
-        // Filter to only document approvals
-        return results.filter((approval: PendingDocumentApproval) =>
-            approval.content_type === String(documentsContentTypeId)
+        // Numeric comparison: content_type is an integer pk on both sides.
+        return response.results.filter(
+            (approval) => approval.content_type === documentsContentTypeId,
         );
     },
 });

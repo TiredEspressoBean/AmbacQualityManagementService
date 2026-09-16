@@ -19978,14 +19978,14 @@ const api_StepExecutionMeasurements_bulk_record_create_Body = z
   .object({
     step_execution: z.string().uuid(),
     measurements: z.array(
-      z
-        .object({
-          measurement_definition: z.string().uuid(),
-          value: z.number(),
-          string_value: z.string(),
-          equipment: z.string().uuid(),
-        })
-        .partial()
+      z.object({
+        measurement_definition: z.string().uuid(),
+        substep: z.string().uuid(),
+        value: z.number().optional(),
+        string_value: z.string().optional(),
+        equipment: z.string().uuid().optional(),
+        sample_number: z.number().int().optional(),
+      })
     ),
   })
   .partial();
@@ -29280,6 +29280,11 @@ Response:
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "needs_my_approval",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "object_id",

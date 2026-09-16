@@ -56,7 +56,6 @@ function useDocumentsListWithFilter(needsMyApproval: boolean, documentTypeId: st
     }) {
 
         return useRetrieveDocuments(
-            // eslint-disable-next-line local/no-as-any -- `needs_my_approval` is a backend-only filter not declared in the OpenAPI spec
             {
                 offset,
                 limit,
@@ -65,7 +64,7 @@ function useDocumentsListWithFilter(needsMyApproval: boolean, documentTypeId: st
                 needs_my_approval: needsMyApproval ? true : undefined,
                 ...(documentTypeId ? { document_type: documentTypeId } : {}),
                 ...filters,
-            } as any,
+            },
         );
     };
 }

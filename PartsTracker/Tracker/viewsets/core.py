@@ -1142,6 +1142,21 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 # ===== DOCUMENT VIEWSETS =====
 
 @extend_schema_view(
+    # `needs_my_approval` is read straight off query_params in get_queryset
+    # rather than through filterset_fields, so drf-spectacular cannot see it and
+    # the generated client did not know the param existed. Callers had to cast
+    # the mismatch away, which is indistinguishable from the case where a filter
+    # is genuinely undeclared and silently dropped. Declaring it keeps the two
+    # apart. (Same treatment as inspection_pending on MaterialLots.)
+    list=extend_schema(parameters=[
+        OpenApiParameter(
+            name='needs_my_approval', type=OpenApiTypes.BOOL, required=False,
+            description=(
+                "'true' narrows to documents with a pending ApprovalRequest on "
+                "which the calling user is an eligible approver."
+            ),
+        ),
+    ]),
     create=extend_schema(request={'multipart/form-data': DocumentsSerializer}),
     update=extend_schema(request={'multipart/form-data': DocumentsSerializer}),
     partial_update=extend_schema(request={'multipart/form-data': DocumentsSerializer})

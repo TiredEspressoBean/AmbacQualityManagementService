@@ -36277,6 +36277,8 @@ export interface operations {
                 is_image?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /** @description 'true' narrows to documents with a pending ApprovalRequest on which the calling user is an eligible approver. */
+                needs_my_approval?: boolean;
                 object_id?: string;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
@@ -47481,11 +47483,14 @@ export interface operations {
                     step_execution?: string;
                     measurements?: {
                         /** Format: uuid */
-                        measurement_definition?: string;
+                        measurement_definition: string;
+                        /** Format: uuid */
+                        substep: string;
                         value?: number;
                         string_value?: string;
                         /** Format: uuid */
                         equipment?: string;
+                        sample_number?: number;
                     }[];
                 };
             };

@@ -22,8 +22,7 @@ export function ArchivePartDialog({ partId }: { partId: string }) {
             try {
                 await updatePart({
                     id: partId,
-                    // eslint-disable-next-line local/no-as-any -- PatchedPartsRequest has many required fields; only patching archived flag
-                    data: { archived: true } as any,
+                    data: { archived: true },
                 });
                 toast.success("Part archived");
                 setOpen(false);

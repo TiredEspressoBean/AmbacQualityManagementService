@@ -5980,6 +5980,12 @@ paths:
         schema:
           type: integer
       - in: query
+        name: needs_my_approval
+        schema:
+          type: boolean
+        description: '''true'' narrows to documents with a pending ApprovalRequest
+          on which the calling user is an eligible approver.'
+      - in: query
         name: object_id
         schema:
           type: string
