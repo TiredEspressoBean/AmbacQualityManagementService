@@ -1,7 +1,16 @@
 import {z} from "zod";
 
-// Must match backend SamplingRuleType choices in mes_standard.py
-// (values are UPPERCASE — see RuleTypeEnum in the generated API schema).
+// A deliberate SUBSET of backend SamplingRuleType (mes_standard.py): the six
+// per-part streaming rules, in UPPERCASE to match.
+//
+// AQL, C_ZERO and VARIABLES are missing on purpose — do not "complete" this
+// list. They are lot-acceptance rules for RECEIVING steps: lot-terminal rather
+// than per-part, evaluated by services.qms.acceptance_sampling, and
+// parameterised on the RULESET (aql / level / severity / strategy, plus
+// variables_characteristic for Z1.9) rather than on the rule row this editor
+// writes. Offering them here would produce a rule the per-part evaluator
+// (services/dwi/sampling_decisions.py) silently ignores, because it only
+// branches on the six below.
 export const ruleTypes = [
     { value: "EVERY_NTH_PART", label: "Every Nth Part" },
     { value: "PERCENTAGE", label: "Percentage of Parts" },

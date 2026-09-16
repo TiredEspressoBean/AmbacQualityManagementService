@@ -18,7 +18,7 @@ from Tracker.models import (
     # QMS models
     QualityReports, QualityErrorsList, QuarantineDisposition, SupplierQualification,
     PartApproval,
-    CAPA, CapaTasks, RcaRecord, CapaVerification, CapaStatus,
+    CAPA, CapaTasks, RcaRecord, CapaVerification, CapaStatus, CapaTaskStatus,
     FiveWhys, Fishbone,
     ThreeDModel, HeatMapAnnotations,
     # MES models
@@ -684,10 +684,15 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         # Filter for overdue CAPAs if requested
         overdue = self.request.query_params.get('overdue', '').lower() == 'true'
         if overdue:
-            queryset = [capa for capa in queryset if capa.is_overdue()]
-            # Convert back to queryset
-            ids = [capa.id for capa in queryset]
-            queryset = self.qs_for_user(CAPA).filter(id__in=ids)
+            # Expressed in SQL rather than by pulling every CAPA into Python and
+            # re-querying by id. CAPA.is_overdue() is: not CLOSED, has a due
+            # date, and that date has passed -- all three are expressible, so
+            # the scan bought nothing and the rebuild dropped the select_related
+            # / prefetch_related applied above.
+            queryset = queryset.exclude(status=CapaStatus.CLOSED).filter(
+                due_date__isnull=False,
+                due_date__lt=timezone.now().date(),
+            )
 
         # Filter for CAPAs needing current user's approval
         needs_my_approval = self.request.query_params.get('needs_my_approval', '').lower() == 'true'
@@ -930,10 +935,15 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
         # Filter for overdue tasks if requested
         overdue = self.request.query_params.get('overdue', '').lower() == 'true'
         if overdue:
-            queryset = [task for task in queryset if task.is_overdue()]
-            # Convert back to queryset
-            ids = [task.id for task in queryset]
-            queryset = self.qs_for_user(CapaTasks).filter(id__in=ids)
+            # This called task.is_overdue(), which does not exist on CapaTasks
+            # -- the model has check_overdue(), returning (bool, days). So
+            # ?overdue=true raised AttributeError and returned a 500 for every
+            # caller. Expressed in SQL here, matching check_overdue's rule: not
+            # COMPLETED, has a due date, and that date has passed.
+            queryset = queryset.exclude(status=CapaTaskStatus.COMPLETED).filter(
+                due_date__isnull=False,
+                due_date__lt=timezone.now().date(),
+            )
 
         return queryset
 
