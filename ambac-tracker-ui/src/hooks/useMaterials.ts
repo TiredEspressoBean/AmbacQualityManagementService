@@ -64,7 +64,8 @@ export function useRetrieveMaterial(id?: string) {
 export function useCreateMaterial() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.api_Materials_create(body as never),
+    mutationFn: (body: Parameters<typeof api.api_Materials_create>[0]) =>
+      api.api_Materials_create(body),
     onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "materials" || q.queryKey[0] === "material" }),
   });
 }

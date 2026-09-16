@@ -152,7 +152,10 @@ export function BomLineDialog({
 
   function onSubmit() {
     const [kind, id] = (componentId ?? "").split(":");
-    const body: Record<string, unknown> = {
+    // Inferred, not annotated as Record<string, unknown>: the annotation hid
+    // the shape from the client's type, which is how a numeric `quantity` got
+    // past the compiler and failed every save (see the note below).
+    const body = {
       bom: bomId,
       source,
       component_type: kind === "PART_TYPE" ? id : null,

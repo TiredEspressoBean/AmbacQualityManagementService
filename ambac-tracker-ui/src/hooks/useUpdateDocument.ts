@@ -3,7 +3,12 @@ import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import type { Schema } from "@/lib/api/types";
 
-type UpdateDocumentInput = Schema<"PatchedDocumentsRequest">;
+// Derived from the zodios client, not from openapi-typescript's Schema<>.
+// The two generators disagree on multipart file fields -- Schema<> types
+// `file` as a string, the client as a File -- and the client is right for a
+// form-data upload. Typing it from Schema<> and casting the mismatch away
+// let a caller pass a string that zod would reject at runtime.
+type UpdateDocumentInput = Parameters<typeof api.api_Documents_partial_update>[0];
 type UpdateDocumentResponse = Schema<"Documents">;
 
 type UpdateDocumentVariables = {
@@ -16,7 +21,7 @@ export const useUpdateDocument = () => {
 
     return useMutation<UpdateDocumentResponse, unknown, UpdateDocumentVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_Documents_partial_update(data as never, {
+            api.api_Documents_partial_update(data, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateDocumentResponse>,

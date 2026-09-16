@@ -95,7 +95,8 @@ export function useCreateBomRevision() {
 export function useCreateBomLine() {
   const invalidate = useInvalidateBoms();
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.api_BOMLines_create(body as never),
+    mutationFn: (body: Parameters<typeof api.api_BOMLines_create>[0]) =>
+      api.api_BOMLines_create(body),
     onSuccess: () => { invalidate(); toast.success("Line added"); },
     onError: (e: any) => toast.error(bomLineError(e) ?? "Couldn't add line"),
   });

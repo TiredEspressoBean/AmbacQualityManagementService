@@ -63,8 +63,8 @@ export function useOvertimeWindows() {
 export function useCreatePlantClosure() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      api.api_PlantCalendarExceptions_create(body as never),
+    mutationFn: (body: Parameters<typeof api.api_PlantCalendarExceptions_create>[0]) =>
+      api.api_PlantCalendarExceptions_create(body),
     onSuccess: () => {
       qc.invalidateQueries(plantClosuresOptions());
       toast.success("Closure added");
@@ -115,8 +115,8 @@ export function useDeleteLaborBlock() {
 export function useCreateOvertime() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      api.api_OvertimeWindows_create(body as never),
+    mutationFn: (body: Parameters<typeof api.api_OvertimeWindows_create>[0]) =>
+      api.api_OvertimeWindows_create(body),
     onSuccess: () => {
       qc.invalidateQueries(overtimeWindowsOptions());
       toast.success("Overtime added");

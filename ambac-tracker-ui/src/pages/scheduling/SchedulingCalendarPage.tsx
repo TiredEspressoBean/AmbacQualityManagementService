@@ -116,7 +116,9 @@ type AddState = {
   type: "closure" | "labor" | "overtime";
   // closure
   closureName: string;
-  closureKind: string;
+  // The contract's enum, not a bare string: as a string an invalid kind
+  // compiled and was rejected by the client at runtime.
+  closureKind: NonNullable<Parameters<typeof api.api_PlantCalendarExceptions_create>[0]["kind"]>;
   closureRecurrence: "ONCE" | "YEARLY";
   // labor
   who: string; // "" = whole company, else user id
@@ -522,19 +524,18 @@ export function SchedulingCalendarPage() {
 
     if (add.type === "overtime") {
       if (!add.overtimeShift) return;
-      const ot: Record<string, unknown> = {
+      // Built in one expression rather than mutated after the fact: the
+      // client's param type is deep-readonly, and the assignment form needed a
+      // Record<string, unknown> annotation that hid the shape from the type.
+      const dr = add.recurrence === "ONCE" ? selectedDateRange() : null;
+      if (add.recurrence === "ONCE" && !dr) return;
+      const ot: Parameters<typeof api.api_OvertimeWindows_create>[0] = {
         shift: add.overtimeShift, // Shift PKs are UUID strings — Number() here made every OT create 400
         recurrence: add.recurrence,
         reason: add.reason,
         is_active: true,
+        ...(dr ?? { days_of_week: [...add.days].join(",") }),
       };
-      if (add.recurrence === "ONCE") {
-        const dr = selectedDateRange();
-        if (!dr) return;
-        Object.assign(ot, dr);
-      } else {
-        ot.days_of_week = [...add.days].join(",");
-      }
       createOvertime.mutate(ot, { onSuccess: reset });
       return;
     }
@@ -1044,11 +1045,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function KindSelect({ value, onChange, options }: {
-  value: string; onChange: (v: string) => void; options: [string, string][];
+function KindSelect<T extends string>({ value, onChange, options }: {
+  // Generic so an enum-typed caller keeps its enum instead of widening to
+  // string and needing a cast at the call site.
+  value: T; onChange: (v: T) => void; options: [T, string][];
 }) {
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={(v) => onChange(v as T)}>
       <SelectTrigger><SelectValue /></SelectTrigger>
       <SelectContent>
         {options.map(([v, label]) => <SelectItem key={v} value={v}>{label}</SelectItem>)}
