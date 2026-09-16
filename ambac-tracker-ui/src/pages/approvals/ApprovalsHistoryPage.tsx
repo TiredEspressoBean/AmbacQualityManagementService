@@ -30,13 +30,14 @@ import {
     ChevronLeft,
     ChevronRight,
 } from "lucide-react"
-import { useApprovalRequests } from "@/hooks/useApprovalRequests"
+import { useApprovalRequests, type ApprovalRequestsFilters } from "@/hooks/useApprovalRequests"
 import { useAuthUser } from "@/hooks/useAuthUser"
 import { getApprovalDetailLink } from "@/lib/approvals/approval-detail-link"
 import { schemas } from "@/lib/api/generated"
 import { api } from "@/lib/api/generated"
 import { queryOptions } from "@tanstack/react-query"
 import type { QueryClient } from "@tanstack/react-query"
+import type { ApprovalsHistorySearchParams } from "@/lib/routes/search-params";
 
 export const approvalsHistoryOptions = () => queryOptions({
     queryKey: ["approvals", "list", { ordering: "-requested_at", limit: 50, offset: 0 }] as const,
@@ -57,12 +58,17 @@ const PAGE_SIZE = 20;
 
 export function ApprovalsHistoryPage() {
     const { data: user } = useAuthUser()
-    const searchParams = useSearch({ strict: false }) as Record<string, any>
+    // Validated by the route (ApprovalsHistorySearch) rather than cast to any.
+    const searchParams = useSearch({ strict: false }) as ApprovalsHistorySearchParams
 
     // Filter state
     const [search, setSearch] = useState("")
-    const [statusFilter, setStatusFilter] = useState<string>(searchParams?.status || "all")
-    const [typeFilter, setTypeFilter] = useState<string>("all")
+    // "all" is the UI's own sentinel; the rest of each union comes from the
+    // contract, so a filter value the endpoint rejects cannot be constructed.
+    type StatusFilter = NonNullable<ApprovalRequestsFilters["status"]> | "all"
+    type TypeFilter = NonNullable<ApprovalRequestsFilters["approval_type"]> | "all"
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>(searchParams?.status ?? "all")
+    const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
     const [showMyRequestsOnly, setShowMyRequestsOnly] = useState(searchParams?.myRequests === true)
     const [page, setPage] = useState(0)
 
@@ -143,7 +149,7 @@ export function ApprovalsHistoryPage() {
                             <Select
                                 value={statusFilter}
                                 onValueChange={(v) => {
-                                    setStatusFilter(v)
+                                    setStatusFilter(v as StatusFilter)
                                     setPage(0)
                                 }}
                             >
@@ -166,7 +172,7 @@ export function ApprovalsHistoryPage() {
                             <Select
                                 value={typeFilter}
                                 onValueChange={(v) => {
-                                    setTypeFilter(v)
+                                    setTypeFilter(v as TypeFilter)
                                     setPage(0)
                                 }}
                             >

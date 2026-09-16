@@ -13,7 +13,32 @@ paths:
         name: approval_type
         schema:
           type: string
-        description: Filter by approval type
+          enum:
+          - CAPA_APPROVAL
+          - CAPA_CRITICAL
+          - CAPA_MAJOR
+          - DOCUMENT_RELEASE
+          - ECO
+          - FAI
+          - PCN_RELEASE
+          - PCO_APPROVAL
+          - PCR_APPROVAL
+          - PPAP
+          - PROCESS_APPROVAL
+          - TRAINING_CERT
+        description: |-
+          * `DOCUMENT_RELEASE` - Document Release
+          * `CAPA_APPROVAL` - CAPA Approval
+          * `CAPA_CRITICAL` - CAPA Critical
+          * `CAPA_MAJOR` - CAPA Major
+          * `ECO` - Engineering Change Order
+          * `TRAINING_CERT` - Training Certification
+          * `PROCESS_APPROVAL` - Process Approval
+          * `PCR_APPROVAL` - Process Change Request Approval
+          * `PCO_APPROVAL` - Process Change Order Approval
+          * `PCN_RELEASE` - Process Change Notice Release
+          * `PPAP` - PPAP
+          * `FAI` - First Article (FAI / AS9102)
       - in: query
         name: content_type
         schema:
@@ -60,7 +85,18 @@ paths:
         name: status
         schema:
           type: string
-        description: Filter by status (PENDING, APPROVED, REJECTED, CANCELLED)
+          enum:
+          - APPROVED
+          - CANCELLED
+          - NOT_REQUIRED
+          - PENDING
+          - REJECTED
+        description: |-
+          * `NOT_REQUIRED` - Not Required
+          * `PENDING` - Pending
+          * `APPROVED` - Approved
+          * `REJECTED` - Rejected
+          * `CANCELLED` - Cancelled
       tags:
       - api
       security:
@@ -645,7 +681,14 @@ paths:
         name: decision
         schema:
           type: string
-        description: Filter by decision (APPROVED, REJECTED, DELEGATED)
+          enum:
+          - APPROVED
+          - DELEGATED
+          - REJECTED
+        description: |-
+          * `APPROVED` - Approved
+          * `REJECTED` - Rejected
+          * `DELEGATED` - Delegated
       - name: limit
         required: false
         in: query
@@ -981,7 +1024,32 @@ paths:
         name: approval_type
         schema:
           type: string
-        description: Filter by approval type
+          enum:
+          - CAPA_APPROVAL
+          - CAPA_CRITICAL
+          - CAPA_MAJOR
+          - DOCUMENT_RELEASE
+          - ECO
+          - FAI
+          - PCN_RELEASE
+          - PCO_APPROVAL
+          - PCR_APPROVAL
+          - PPAP
+          - PROCESS_APPROVAL
+          - TRAINING_CERT
+        description: |-
+          * `DOCUMENT_RELEASE` - Document Release
+          * `CAPA_APPROVAL` - CAPA Approval
+          * `CAPA_CRITICAL` - CAPA Critical
+          * `CAPA_MAJOR` - CAPA Major
+          * `ECO` - Engineering Change Order
+          * `TRAINING_CERT` - Training Certification
+          * `PROCESS_APPROVAL` - Process Approval
+          * `PCR_APPROVAL` - Process Change Request Approval
+          * `PCO_APPROVAL` - Process Change Order Approval
+          * `PCN_RELEASE` - Process Change Notice Release
+          * `PPAP` - PPAP
+          * `FAI` - First Article (FAI / AS9102)
       - in: query
         name: delegation_policy
         schema:
@@ -2263,12 +2331,22 @@ paths:
         name: assigned_to
         schema:
           type: integer
-        description: Filter by assigned user ID
       - in: query
         name: capa_type
         schema:
           type: string
-        description: Filter by CAPA type (CORRECTIVE, PREVENTIVE)
+          enum:
+          - CORRECTIVE
+          - CUSTOMER_COMPLAINT
+          - INTERNAL_AUDIT
+          - PREVENTIVE
+          - SUPPLIER
+        description: |-
+          * `CORRECTIVE` - Corrective Action
+          * `PREVENTIVE` - Preventive Action
+          * `CUSTOMER_COMPLAINT` - Customer Complaint
+          * `INTERNAL_AUDIT` - Internal Audit
+          * `SUPPLIER` - Supplier Issue
       - in: query
         name: initiated_by
         schema:
@@ -2306,12 +2384,32 @@ paths:
         name: severity
         schema:
           type: string
-        description: Filter by severity (LOW, MEDIUM, HIGH, CRITICAL)
+          enum:
+          - CRITICAL
+          - MAJOR
+          - MINOR
+        description: |-
+          * `CRITICAL` - Critical
+          * `MAJOR` - Major
+          * `MINOR` - Minor
       - in: query
         name: status
         schema:
           type: string
-        description: Filter by status
+          enum:
+          - CANCELLED
+          - CLOSED
+          - IN_PROGRESS
+          - OPEN
+          - PENDING_VERIFICATION
+        description: |-
+          Status (computed)
+
+          * `OPEN` - Open
+          * `IN_PROGRESS` - In Progress
+          * `PENDING_VERIFICATION` - Pending Verification
+          * `CLOSED` - Closed
+          * `CANCELLED` - Cancelled
       - in: query
         name: supplier
         schema:
@@ -2770,7 +2868,18 @@ paths:
         name: calibration_type
         schema:
           type: string
-        description: Filter by calibration type
+          enum:
+          - AFTER_ADJUSTMENT
+          - AFTER_REPAIR
+          - INITIAL
+          - SCHEDULED
+          - VERIFICATION
+        description: |-
+          * `SCHEDULED` - Scheduled
+          * `INITIAL` - Initial
+          * `AFTER_REPAIR` - After Repair
+          * `AFTER_ADJUSTMENT` - After Adjustment
+          * `VERIFICATION` - Verification Check
       - in: query
         name: equipment
         schema:
@@ -2798,7 +2907,14 @@ paths:
         name: result
         schema:
           type: string
-        description: Filter by result (pass, fail, limited)
+          enum:
+          - FAIL
+          - LIMITED
+          - PASS
+        description: |-
+          * `PASS` - Pass
+          * `FAIL` - Fail
+          * `LIMITED` - Limited/Restricted Use
       - name: search
         required: false
         in: query
@@ -3405,12 +3521,28 @@ paths:
         name: status
         schema:
           type: string
-        description: Filter by status
+          enum:
+          - CANCELLED
+          - COMPLETED
+          - IN_PROGRESS
+          - NOT_STARTED
+        description: |-
+          * `NOT_STARTED` - Not Started
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `CANCELLED` - Cancelled
       - in: query
         name: task_type
         schema:
           type: string
-        description: Filter by task type
+          enum:
+          - CONTAINMENT
+          - CORRECTIVE
+          - PREVENTIVE
+        description: |-
+          * `CONTAINMENT` - Containment
+          * `CORRECTIVE` - Corrective Action
+          * `PREVENTIVE` - Preventive Action
       tags:
       - api
       security:
@@ -3766,7 +3898,14 @@ paths:
         name: effectiveness_result
         schema:
           type: string
-        description: Filter by effectiveness result
+          enum:
+          - CONFIRMED
+          - INCONCLUSIVE
+          - NOT_EFFECTIVE
+        description: |-
+          * `CONFIRMED` - Confirmed Effective
+          * `NOT_EFFECTIVE` - Not Effective
+          * `INCONCLUSIVE` - Inconclusive
       - name: limit
         required: false
         in: query
@@ -8349,7 +8488,20 @@ paths:
         name: status
         schema:
           type: string
-        description: Filter by status (pending, passed, failed, waived)
+          enum:
+          - FAILED
+          - NOT_REQUIRED
+          - PASSED
+          - PENDING
+          - WAIVED
+        description: |-
+          Current status of the FPI
+
+          * `NOT_REQUIRED` - Not Required
+          * `PENDING` - Pending
+          * `PASSED` - Passed
+          * `FAILED` - Failed
+          * `WAIVED` - Waived
       - in: query
         name: step
         schema:
@@ -9973,7 +10125,17 @@ paths:
         name: severity
         schema:
           type: string
-        description: Filter by severity (low, medium, high, critical)
+          nullable: true
+          enum:
+          - CRITICAL
+          - HIGH
+          - LOW
+          - MEDIUM
+        description: |-
+          * `LOW` - Low
+          * `MEDIUM` - Medium
+          * `HIGH` - High
+          * `CRITICAL` - Critical
       - in: query
         name: updated_at__gte
         schema:
@@ -18694,12 +18856,28 @@ paths:
         name: rca_method
         schema:
           type: string
-        description: Filter by RCA method (FIVE_WHYS, FISHBONE, etc.)
+          enum:
+          - FAULT_TREE
+          - FISHBONE
+          - FIVE_WHYS
+          - PARETO
+        description: |-
+          * `FIVE_WHYS` - 5 Whys
+          * `FISHBONE` - Fishbone Diagram
+          * `FAULT_TREE` - Fault Tree
+          * `PARETO` - Pareto Analysis
       - in: query
         name: rca_review_status
         schema:
           type: string
-        description: Filter by RCA review status
+          enum:
+          - COMPLETED
+          - NOT_REQUIRED
+          - REQUIRED
+        description: |-
+          * `NOT_REQUIRED` - Not Required
+          * `REQUIRED` - Required
+          * `COMPLETED` - Completed
       - in: query
         name: root_cause_verified_by
         schema:
@@ -23197,7 +23375,32 @@ paths:
         name: block_type
         schema:
           type: string
-        description: Filter by block type
+          enum:
+          - BATCH_INCOMPLETE
+          - CALIBRATION_EXPIRED
+          - FPI_REQUIRED
+          - MEASUREMENT_FAILED
+          - OTHER
+          - QA_SIGNOFF
+          - QUARANTINE
+          - REGULATORY_HOLD
+          - ROLLBACK
+          - SAMPLING_REQUIRED
+          - TRAINING_EXPIRED
+        description: |-
+          Type of block being overridden
+
+          * `QA_SIGNOFF` - QA Signoff Required
+          * `FPI_REQUIRED` - FPI Required
+          * `MEASUREMENT_FAILED` - Measurement Failed
+          * `QUARANTINE` - Part Quarantined
+          * `SAMPLING_REQUIRED` - Sampling Required
+          * `BATCH_INCOMPLETE` - Batch Incomplete
+          * `TRAINING_EXPIRED` - Training Expired
+          * `CALIBRATION_EXPIRED` - Calibration Expired
+          * `REGULATORY_HOLD` - Regulatory Hold
+          * `ROLLBACK` - Step Rollback
+          * `OTHER` - Other
       - name: limit
         required: false
         in: query
@@ -23220,7 +23423,18 @@ paths:
         name: status
         schema:
           type: string
-        description: Filter by status (pending, approved, rejected, expired)
+          enum:
+          - APPROVED
+          - EXPIRED
+          - PENDING
+          - REJECTED
+        description: |-
+          Current status of the override request
+
+          * `PENDING` - Pending
+          * `APPROVED` - Approved
+          * `REJECTED` - Rejected
+          * `EXPIRED` - Expired
       - in: query
         name: step_execution
         schema:

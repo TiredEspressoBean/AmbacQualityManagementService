@@ -5,9 +5,15 @@ import type { Schema } from "@/lib/api/types";
 export type ApprovalRequest = Schema<"ApprovalRequest">;
 type PaginatedApprovalRequestList = Schema<"PaginatedApprovalRequestList">;
 
+type ApprovalRequestQueries = NonNullable<
+    Parameters<typeof api.api_ApprovalRequests_list>[0]
+>["queries"];
+
 export interface ApprovalRequestsFilters {
-    approval_type?: string;
-    status?: string;
+    // From the contract: both are choice fields server-side, and typing them as
+    // bare strings let an unknown value through to a 400.
+    approval_type?: NonNullable<ApprovalRequestQueries>["approval_type"];
+    status?: NonNullable<ApprovalRequestQueries>["status"];
     requested_by?: number;
     overdue?: boolean;
     search?: string;

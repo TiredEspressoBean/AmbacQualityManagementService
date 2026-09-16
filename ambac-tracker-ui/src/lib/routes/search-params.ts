@@ -17,6 +17,7 @@
  * which would start appending params to links that don't carry them today.
  */
 import { z } from "zod";
+import { schemas } from "@/lib/api/generated";
 
 /** `/dispositions/new` and `/dispositions/edit/$id` — prefill from a part or QR. */
 export const DispositionSearch = z.object({
@@ -47,16 +48,14 @@ export type ProcessFlowSearchParams = z.infer<typeof ProcessFlowSearch>;
  *  typed. Catching turns a stale link into the unfiltered list, which is what a
  *  list filter should degrade to.
  *
- *  `capa_type` is NOT validated here, and a bogus one still reaches the API and
- *  400s the list. It is a choice field server-side, but drf-spectacular emits
- *  `z.string()` for it -- as it does for `status` and `severity`, including the
- *  explicitly-declared ChoiceFilter -- so the contract carries no enum to
- *  validate against. Hardcoding the choices here would duplicate them and rot;
- *  the fix belongs in the schema, after which this should become
- *  `.catch(undefined)` on the generated enum like `supplier` above. */
+ *  `capa_type` validates against the generated enum rather than a copy of the
+ *  choice list -- the schema now carries one, so there is nothing to duplicate
+ *  and nothing to go stale. A value outside it is dropped instead of forwarded
+ *  into a 400 that renders as "Couldn't load capas" over a filter the user
+ *  never typed. */
 export const CapaListSearch = z.object({
     supplier: z.string().uuid().optional().catch(undefined),
-    capa_type: z.string().optional().catch(undefined),
+    capa_type: schemas.CapaTypeEnum.optional().catch(undefined),
 });
 export type CapaListSearchParams = z.infer<typeof CapaListSearch>;
 
@@ -66,3 +65,14 @@ export const SignupSearch = z.object({
     token: z.string().optional(),
 });
 export type SignupSearchParams = z.infer<typeof SignupSearch>;
+
+/** `/approvals/history` — deep links from dashboards preselect a status tab.
+ *
+ *  `status` validates against the generated enum, so a renamed or stale status
+ *  in a saved link falls back to "all" instead of being handed to the API.
+ *  Replaces a hand-rolled validator that did `search.status as string`. */
+export const ApprovalsHistorySearch = z.object({
+    status: schemas.ApprovalStatusEnum.optional().catch(undefined),
+    myRequests: z.coerce.boolean().optional().catch(undefined),
+});
+export type ApprovalsHistorySearchParams = z.infer<typeof ApprovalsHistorySearch>;

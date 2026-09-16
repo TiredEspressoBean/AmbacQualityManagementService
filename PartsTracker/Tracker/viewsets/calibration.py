@@ -24,8 +24,6 @@ from .mixins import DataExportMixin
         description="List calibration records with filtering",
         parameters=[
             OpenApiParameter(name='equipment', description='Filter by equipment ID', required=False, type=str),
-            OpenApiParameter(name='result', description='Filter by result (pass, fail, limited)', required=False, type=str),
-            OpenApiParameter(name='calibration_type', description='Filter by calibration type', required=False, type=str),
             OpenApiParameter(name='status', description='Filter by status (current, due_soon, overdue, failed)', required=False, type=str),
         ]
     ),

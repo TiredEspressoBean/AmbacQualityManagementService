@@ -24805,7 +24805,22 @@ POST: Executes the query.`,
       {
         name: "approval_type",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum([
+            "CAPA_APPROVAL",
+            "CAPA_CRITICAL",
+            "CAPA_MAJOR",
+            "DOCUMENT_RELEASE",
+            "ECO",
+            "FAI",
+            "PCN_RELEASE",
+            "PCO_APPROVAL",
+            "PCR_APPROVAL",
+            "PPAP",
+            "PROCESS_APPROVAL",
+            "TRAINING_CERT",
+          ])
+          .optional(),
       },
       {
         name: "content_type",
@@ -24850,7 +24865,15 @@ POST: Executes the query.`,
       {
         name: "status",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum([
+            "APPROVED",
+            "CANCELLED",
+            "NOT_REQUIRED",
+            "PENDING",
+            "REJECTED",
+          ])
+          .optional(),
       },
     ],
     response: PaginatedApprovalRequestList,
@@ -25262,7 +25285,7 @@ POST: Executes the query.`,
       {
         name: "decision",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.enum(["APPROVED", "DELEGATED", "REJECTED"]).optional(),
       },
       {
         name: "limit",
@@ -25472,7 +25495,22 @@ identity verification, and delegation support.`,
       {
         name: "approval_type",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum([
+            "CAPA_APPROVAL",
+            "CAPA_CRITICAL",
+            "CAPA_MAJOR",
+            "DOCUMENT_RELEASE",
+            "ECO",
+            "FAI",
+            "PCN_RELEASE",
+            "PCO_APPROVAL",
+            "PCR_APPROVAL",
+            "PPAP",
+            "PROCESS_APPROVAL",
+            "TRAINING_CERT",
+          ])
+          .optional(),
       },
       {
         name: "delegation_policy",
@@ -26363,7 +26401,15 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
       {
         name: "calibration_type",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum([
+            "AFTER_ADJUSTMENT",
+            "AFTER_REPAIR",
+            "INITIAL",
+            "SCHEDULED",
+            "VERIFICATION",
+          ])
+          .optional(),
       },
       {
         name: "equipment",
@@ -26388,7 +26434,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
       {
         name: "result",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.enum(["FAIL", "LIMITED", "PASS"]).optional(),
       },
       {
         name: "search",
@@ -26771,7 +26817,15 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
       {
         name: "capa_type",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum([
+            "CORRECTIVE",
+            "CUSTOMER_COMPLAINT",
+            "INTERNAL_AUDIT",
+            "PREVENTIVE",
+            "SUPPLIER",
+          ])
+          .optional(),
       },
       {
         name: "initiated_by",
@@ -26806,12 +26860,20 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
       {
         name: "severity",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.enum(["CRITICAL", "MAJOR", "MINOR"]).optional(),
       },
       {
         name: "status",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum([
+            "CANCELLED",
+            "CLOSED",
+            "IN_PROGRESS",
+            "OPEN",
+            "PENDING_VERIFICATION",
+          ])
+          .optional(),
       },
       {
         name: "supplier",
@@ -27166,12 +27228,14 @@ capa_type, status, severity, …) so a scoped list and its stat cards agree.`,
       {
         name: "status",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum(["CANCELLED", "COMPLETED", "IN_PROGRESS", "NOT_STARTED"])
+          .optional(),
       },
       {
         name: "task_type",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.enum(["CONTAINMENT", "CORRECTIVE", "PREVENTIVE"]).optional(),
       },
     ],
     response: PaginatedCapaTasksList,
@@ -27401,7 +27465,9 @@ If task.requires_signature is True, signature_data and password are required.`,
       {
         name: "effectiveness_result",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum(["CONFIRMED", "INCONCLUSIVE", "NOT_EFFECTIVE"])
+          .optional(),
       },
       {
         name: "limit",
@@ -31664,7 +31730,9 @@ operations against the quantity available (cumulative capacity).`,
       {
         name: "status",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum(["FAILED", "NOT_REQUIRED", "PASSED", "PENDING", "WAIVED"])
+          .optional(),
       },
       {
         name: "step",
@@ -32234,7 +32302,7 @@ Components are created during core disassembly, then either:
       {
         name: "severity",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.enum(["CRITICAL", "HIGH", "LOW", "MEDIUM"]).nullish(),
       },
       {
         name: "updated_at__gte",
@@ -40409,12 +40477,14 @@ the completion blockers.`,
       {
         name: "rca_method",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum(["FAULT_TREE", "FISHBONE", "FIVE_WHYS", "PARETO"])
+          .optional(),
       },
       {
         name: "rca_review_status",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.enum(["COMPLETED", "NOT_REQUIRED", "REQUIRED"]).optional(),
       },
       {
         name: "root_cause_verified_by",
@@ -44197,7 +44267,21 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       {
         name: "block_type",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum([
+            "BATCH_INCOMPLETE",
+            "CALIBRATION_EXPIRED",
+            "FPI_REQUIRED",
+            "MEASUREMENT_FAILED",
+            "OTHER",
+            "QA_SIGNOFF",
+            "QUARANTINE",
+            "REGULATORY_HOLD",
+            "ROLLBACK",
+            "SAMPLING_REQUIRED",
+            "TRAINING_EXPIRED",
+          ])
+          .optional(),
       },
       {
         name: "limit",
@@ -44217,7 +44301,9 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       {
         name: "status",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z
+          .enum(["APPROVED", "EXPIRED", "PENDING", "REJECTED"])
+          .optional(),
       },
       {
         name: "step_execution",

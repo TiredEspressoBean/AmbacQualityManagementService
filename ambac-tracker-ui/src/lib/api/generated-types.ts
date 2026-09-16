@@ -31758,8 +31758,21 @@ export interface operations {
     api_ApprovalRequests_list: {
         parameters: {
             query?: {
-                /** @description Filter by approval type */
-                approval_type?: string;
+                /**
+                 * @description * `DOCUMENT_RELEASE` - Document Release
+                 *     * `CAPA_APPROVAL` - CAPA Approval
+                 *     * `CAPA_CRITICAL` - CAPA Critical
+                 *     * `CAPA_MAJOR` - CAPA Major
+                 *     * `ECO` - Engineering Change Order
+                 *     * `TRAINING_CERT` - Training Certification
+                 *     * `PROCESS_APPROVAL` - Process Approval
+                 *     * `PCR_APPROVAL` - Process Change Request Approval
+                 *     * `PCO_APPROVAL` - Process Change Order Approval
+                 *     * `PCN_RELEASE` - Process Change Notice Release
+                 *     * `PPAP` - PPAP
+                 *     * `FAI` - First Article (FAI / AS9102)
+                 */
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -31774,8 +31787,14 @@ export interface operations {
                 requested_by?: number;
                 /** @description A search term. */
                 search?: string;
-                /** @description Filter by status (PENDING, APPROVED, REJECTED, CANCELLED) */
-                status?: string;
+                /**
+                 * @description * `NOT_REQUIRED` - Not Required
+                 *     * `PENDING` - Pending
+                 *     * `APPROVED` - Approved
+                 *     * `REJECTED` - Rejected
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "APPROVED" | "CANCELLED" | "NOT_REQUIRED" | "PENDING" | "REJECTED";
             };
             header?: never;
             path?: never;
@@ -32182,8 +32201,12 @@ export interface operations {
                 approval_request?: number;
                 /** @description Filter by approver user ID */
                 approver?: number;
-                /** @description Filter by decision (APPROVED, REJECTED, DELEGATED) */
-                decision?: string;
+                /**
+                 * @description * `APPROVED` - Approved
+                 *     * `REJECTED` - Rejected
+                 *     * `DELEGATED` - Delegated
+                 */
+                decision?: "APPROVED" | "DELEGATED" | "REJECTED";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -32458,8 +32481,21 @@ export interface operations {
                  *     * `SEQUENTIAL` - Sequential
                  */
                 approval_sequence?: "PARALLEL" | "SEQUENTIAL";
-                /** @description Filter by approval type */
-                approval_type?: string;
+                /**
+                 * @description * `DOCUMENT_RELEASE` - Document Release
+                 *     * `CAPA_APPROVAL` - CAPA Approval
+                 *     * `CAPA_CRITICAL` - CAPA Critical
+                 *     * `CAPA_MAJOR` - CAPA Major
+                 *     * `ECO` - Engineering Change Order
+                 *     * `TRAINING_CERT` - Training Certification
+                 *     * `PROCESS_APPROVAL` - Process Approval
+                 *     * `PCR_APPROVAL` - Process Change Request Approval
+                 *     * `PCO_APPROVAL` - Process Change Order Approval
+                 *     * `PCN_RELEASE` - Process Change Notice Release
+                 *     * `PPAP` - PPAP
+                 *     * `FAI` - First Article (FAI / AS9102)
+                 */
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
                 /**
                  * @description * `OPTIONAL` - Optional
                  *     * `DISABLED` - Disabled
@@ -33480,10 +33516,15 @@ export interface operations {
     api_CAPAs_list: {
         parameters: {
             query?: {
-                /** @description Filter by assigned user ID */
                 assigned_to?: number;
-                /** @description Filter by CAPA type (CORRECTIVE, PREVENTIVE) */
-                capa_type?: string;
+                /**
+                 * @description * `CORRECTIVE` - Corrective Action
+                 *     * `PREVENTIVE` - Preventive Action
+                 *     * `CUSTOMER_COMPLAINT` - Customer Complaint
+                 *     * `INTERNAL_AUDIT` - Internal Audit
+                 *     * `SUPPLIER` - Supplier Issue
+                 */
+                capa_type?: "CORRECTIVE" | "CUSTOMER_COMPLAINT" | "INTERNAL_AUDIT" | "PREVENTIVE" | "SUPPLIER";
                 initiated_by?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -33495,10 +33536,22 @@ export interface operations {
                 overdue?: boolean;
                 /** @description A search term. */
                 search?: string;
-                /** @description Filter by severity (LOW, MEDIUM, HIGH, CRITICAL) */
-                severity?: string;
-                /** @description Filter by status */
-                status?: string;
+                /**
+                 * @description * `CRITICAL` - Critical
+                 *     * `MAJOR` - Major
+                 *     * `MINOR` - Minor
+                 */
+                severity?: "CRITICAL" | "MAJOR" | "MINOR";
+                /**
+                 * @description Status (computed)
+                 *
+                 *     * `OPEN` - Open
+                 *     * `IN_PROGRESS` - In Progress
+                 *     * `PENDING_VERIFICATION` - Pending Verification
+                 *     * `CLOSED` - Closed
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "CANCELLED" | "CLOSED" | "IN_PROGRESS" | "OPEN" | "PENDING_VERIFICATION";
                 supplier?: string;
             };
             header?: never;
@@ -33860,8 +33913,14 @@ export interface operations {
     api_CalibrationRecords_list: {
         parameters: {
             query?: {
-                /** @description Filter by calibration type */
-                calibration_type?: string;
+                /**
+                 * @description * `SCHEDULED` - Scheduled
+                 *     * `INITIAL` - Initial
+                 *     * `AFTER_REPAIR` - After Repair
+                 *     * `AFTER_ADJUSTMENT` - After Adjustment
+                 *     * `VERIFICATION` - Verification Check
+                 */
+                calibration_type?: "AFTER_ADJUSTMENT" | "AFTER_REPAIR" | "INITIAL" | "SCHEDULED" | "VERIFICATION";
                 /** @description Filter by equipment ID */
                 equipment?: string;
                 /** @description Number of results to return per page. */
@@ -33870,8 +33929,12 @@ export interface operations {
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
-                /** @description Filter by result (pass, fail, limited) */
-                result?: string;
+                /**
+                 * @description * `PASS` - Pass
+                 *     * `FAIL` - Fail
+                 *     * `LIMITED` - Limited/Restricted Use
+                 */
+                result?: "FAIL" | "LIMITED" | "PASS";
                 /** @description A search term. */
                 search?: string;
                 /** @description Filter by status (current, due_soon, overdue, failed) */
@@ -34282,10 +34345,19 @@ export interface operations {
                 overdue?: boolean;
                 /** @description A search term. */
                 search?: string;
-                /** @description Filter by status */
-                status?: string;
-                /** @description Filter by task type */
-                task_type?: string;
+                /**
+                 * @description * `NOT_STARTED` - Not Started
+                 *     * `IN_PROGRESS` - In Progress
+                 *     * `COMPLETED` - Completed
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "CANCELLED" | "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED";
+                /**
+                 * @description * `CONTAINMENT` - Containment
+                 *     * `CORRECTIVE` - Corrective Action
+                 *     * `PREVENTIVE` - Preventive Action
+                 */
+                task_type?: "CONTAINMENT" | "CORRECTIVE" | "PREVENTIVE";
             };
             header?: never;
             path?: never;
@@ -34566,8 +34638,12 @@ export interface operations {
             query?: {
                 /** @description Filter by CAPA UUID */
                 capa?: string;
-                /** @description Filter by effectiveness result */
-                effectiveness_result?: string;
+                /**
+                 * @description * `CONFIRMED` - Confirmed Effective
+                 *     * `NOT_EFFECTIVE` - Not Effective
+                 *     * `INCONCLUSIVE` - Inconclusive
+                 */
+                effectiveness_result?: "CONFIRMED" | "INCONCLUSIVE" | "NOT_EFFECTIVE";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -37738,8 +37814,16 @@ export interface operations {
                 part_type?: string;
                 /** @description Filter by shift date (YYYY-MM-DD) */
                 shift_date?: string;
-                /** @description Filter by status (pending, passed, failed, waived) */
-                status?: string;
+                /**
+                 * @description Current status of the FPI
+                 *
+                 *     * `NOT_REQUIRED` - Not Required
+                 *     * `PENDING` - Pending
+                 *     * `PASSED` - Passed
+                 *     * `FAILED` - Failed
+                 *     * `WAIVED` - Waived
+                 */
+                status?: "FAILED" | "NOT_REQUIRED" | "PASSED" | "PENDING" | "WAIVED";
                 /** @description Filter by step UUID */
                 step?: string;
                 /** @description Filter by work order UUID */
@@ -39001,8 +39085,13 @@ export interface operations {
                 part__work_order?: string;
                 /** @description A search term. */
                 search?: string;
-                /** @description Filter by severity (low, medium, high, critical) */
-                severity?: string;
+                /**
+                 * @description * `LOW` - Low
+                 *     * `MEDIUM` - Medium
+                 *     * `HIGH` - High
+                 *     * `CRITICAL` - Critical
+                 */
+                severity?: "CRITICAL" | "HIGH" | "LOW" | "MEDIUM" | null;
                 updated_at__gte?: string;
                 updated_at__lte?: string;
             };
@@ -44957,10 +45046,19 @@ export interface operations {
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
-                /** @description Filter by RCA method (FIVE_WHYS, FISHBONE, etc.) */
-                rca_method?: string;
-                /** @description Filter by RCA review status */
-                rca_review_status?: string;
+                /**
+                 * @description * `FIVE_WHYS` - 5 Whys
+                 *     * `FISHBONE` - Fishbone Diagram
+                 *     * `FAULT_TREE` - Fault Tree
+                 *     * `PARETO` - Pareto Analysis
+                 */
+                rca_method?: "FAULT_TREE" | "FISHBONE" | "FIVE_WHYS" | "PARETO";
+                /**
+                 * @description * `NOT_REQUIRED` - Not Required
+                 *     * `REQUIRED` - Required
+                 *     * `COMPLETED` - Completed
+                 */
+                rca_review_status?: "COMPLETED" | "NOT_REQUIRED" | "REQUIRED";
                 root_cause_verified_by?: number;
             };
             header?: never;
@@ -48021,16 +48119,37 @@ export interface operations {
     api_StepOverrides_list: {
         parameters: {
             query?: {
-                /** @description Filter by block type */
-                block_type?: string;
+                /**
+                 * @description Type of block being overridden
+                 *
+                 *     * `QA_SIGNOFF` - QA Signoff Required
+                 *     * `FPI_REQUIRED` - FPI Required
+                 *     * `MEASUREMENT_FAILED` - Measurement Failed
+                 *     * `QUARANTINE` - Part Quarantined
+                 *     * `SAMPLING_REQUIRED` - Sampling Required
+                 *     * `BATCH_INCOMPLETE` - Batch Incomplete
+                 *     * `TRAINING_EXPIRED` - Training Expired
+                 *     * `CALIBRATION_EXPIRED` - Calibration Expired
+                 *     * `REGULATORY_HOLD` - Regulatory Hold
+                 *     * `ROLLBACK` - Step Rollback
+                 *     * `OTHER` - Other
+                 */
+                block_type?: "BATCH_INCOMPLETE" | "CALIBRATION_EXPIRED" | "FPI_REQUIRED" | "MEASUREMENT_FAILED" | "OTHER" | "QA_SIGNOFF" | "QUARANTINE" | "REGULATORY_HOLD" | "ROLLBACK" | "SAMPLING_REQUIRED" | "TRAINING_EXPIRED";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
-                /** @description Filter by status (pending, approved, rejected, expired) */
-                status?: string;
+                /**
+                 * @description Current status of the override request
+                 *
+                 *     * `PENDING` - Pending
+                 *     * `APPROVED` - Approved
+                 *     * `REJECTED` - Rejected
+                 *     * `EXPIRED` - Expired
+                 */
+                status?: "APPROVED" | "EXPIRED" | "PENDING" | "REJECTED";
                 /** @description Filter by step execution UUID */
                 step_execution?: string;
             };

@@ -619,13 +619,21 @@ class CAPAFilterSet(django_filters.FilterSet):
 @extend_schema_view(
     list=extend_schema(
         description="List CAPAs with filtering and search",
+        # status / capa_type / severity / assigned_to are NOT declared here on
+        # purpose. They come from CAPAFilterSet, and declaring them by hand
+        # overrode the filterset-derived schema with a bare `type=str` -- so the
+        # generated client typed them as plain strings and a bogus value sailed
+        # past validation into a 400 from the server.
+        #
+        # The hand-written value lists had also drifted: capa_type documented
+        # (CORRECTIVE, PREVENTIVE) against five real choices, and severity
+        # documented (LOW, MEDIUM, HIGH, CRITICAL) against the actual
+        # CRITICAL/MAJOR/MINOR -- three of those four values do not exist. A
+        # hand-maintained copy of a choice list is a copy that goes stale.
+        #
+        # `overdue` stays: it is read straight off query_params in get_queryset,
+        # so nothing else can see it.
         parameters=[
-            OpenApiParameter(name='status', description='Filter by status', required=False, type=str),
-            OpenApiParameter(name='capa_type', description='Filter by CAPA type (CORRECTIVE, PREVENTIVE)', required=False,
-                             type=str),
-            OpenApiParameter(name='severity', description='Filter by severity (LOW, MEDIUM, HIGH, CRITICAL)',
-                             required=False, type=str),
-            OpenApiParameter(name='assigned_to', description='Filter by assigned user ID', required=False, type=int),
             OpenApiParameter(name='overdue', description='Show only overdue CAPAs', required=False, type=bool),
         ]
     ),
@@ -883,8 +891,6 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         description="List CAPA tasks with filtering",
         parameters=[
             OpenApiParameter(name='capa', description='Filter by CAPA UUID', required=False, type=str),
-            OpenApiParameter(name='status', description='Filter by status', required=False, type=str),
-            OpenApiParameter(name='task_type', description='Filter by task type', required=False, type=str),
             OpenApiParameter(name='assigned_to', description='Filter by assigned user ID', required=False, type=int),
             OpenApiParameter(name='overdue', description='Show only overdue tasks', required=False, type=bool),
         ]
@@ -1013,9 +1019,6 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
         description="List RCA records with filtering",
         parameters=[
             OpenApiParameter(name='capa', description='Filter by CAPA UUID', required=False, type=str),
-            OpenApiParameter(name='rca_method', description='Filter by RCA method (FIVE_WHYS, FISHBONE, etc.)',
-                             required=False, type=str),
-            OpenApiParameter(name='rca_review_status', description='Filter by RCA review status', required=False, type=str),
         ]
     ),
     create=extend_schema(description="Create a new RCA record"),
@@ -1096,8 +1099,6 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
         description="List CAPA verifications with filtering",
         parameters=[
             OpenApiParameter(name='capa', description='Filter by CAPA UUID', required=False, type=str),
-            OpenApiParameter(name='effectiveness_result', description='Filter by effectiveness result', required=False,
-                             type=str),
         ]
     ),
     create=extend_schema(description="Create a new CAPA verification"),
@@ -1347,8 +1348,6 @@ class ThreeDModelViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
         parameters=[
             OpenApiParameter(name='model', description='Filter by 3D model UUID', required=False, type=str),
             OpenApiParameter(name='part', description='Filter by part UUID', required=False, type=str),
-            OpenApiParameter(name='severity', description='Filter by severity (low, medium, high, critical)',
-                             required=False, type=str),
             OpenApiParameter(name='defect_type', description='Filter by defect type', required=False, type=str),
             OpenApiParameter(name='ordering', description='Order by field (prepend "-" for descending)', required=False,
                              type=str),
@@ -1476,8 +1475,6 @@ class HeatMapAnnotationsViewSet(TenantScopedMixin, ListMetadataMixin, DataExport
     list=extend_schema(
         description="List step override requests with filtering",
         parameters=[
-            OpenApiParameter(name='status', description='Filter by status (pending, approved, rejected, expired)', required=False, type=str),
-            OpenApiParameter(name='block_type', description='Filter by block type', required=False, type=str),
             OpenApiParameter(name='step_execution', description='Filter by step execution UUID', required=False, type=str),
         ]
     ),
@@ -1591,7 +1588,6 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
         parameters=[
             OpenApiParameter(name='work_order', description='Filter by work order UUID', required=False, type=str),
             OpenApiParameter(name='step', description='Filter by step UUID', required=False, type=str),
-            OpenApiParameter(name='status', description='Filter by status (pending, passed, failed, waived)', required=False, type=str),
             OpenApiParameter(name='shift_date', description='Filter by shift date (YYYY-MM-DD)', required=False, type=str),
         ]
     ),

@@ -10,12 +10,15 @@ import { Button } from "@/components/ui/button";
 import { FileSignature } from "lucide-react";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
+import type { CapaListSearchParams } from "@/lib/routes/search-params";
 
 const col = createColumnHelper<Schema<"CAPA">>();
 
 // Custom wrapper hook with filter support. URL filters (supplier, capa_type) let
 // other pages deep-link into a scoped list — e.g. a supplier scorecard → its SCARs.
-function useCapasListWithFilter(urlFilters: { supplier?: string; capa_type?: string }) {
+// Takes the validated search params rather than bare strings: capa_type is a
+// choice field, and the route's schema already narrowed it to the real enum.
+function useCapasListWithFilter(urlFilters: CapaListSearchParams) {
     return function useCapasList({
         offset,
         limit,
@@ -42,7 +45,8 @@ function useCapasListWithFilter(urlFilters: { supplier?: string; capa_type?: str
 
 export function CapaListPage() {
     const navigate = useNavigate();
-    const search = useSearch({ strict: false }) as { supplier?: string; capa_type?: string };
+    // No cast: the route declares CapaListSearch, so this is already validated.
+    const search = useSearch({ strict: false }) as CapaListSearchParams;
     const [needsMyApproval, setNeedsMyApproval] = useState(false);
     const canInitiateCapa = usePermissionSet().has("initiate_capa");
 

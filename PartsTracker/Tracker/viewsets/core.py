@@ -1815,7 +1815,6 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
     list=extend_schema(
         description="List approval templates with filtering and search",
         parameters=[
-            OpenApiParameter(name='approval_type', description='Filter by approval type', required=False, type=str),
             OpenApiParameter(name='active', description='Filter by active status', required=False, type=bool),
         ]
     ),
@@ -1957,9 +1956,6 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
     list=extend_schema(
         description="List approval requests with filtering and search",
         parameters=[
-            OpenApiParameter(name='status', description='Filter by status (PENDING, APPROVED, REJECTED, CANCELLED)',
-                             required=False, type=str),
-            OpenApiParameter(name='approval_type', description='Filter by approval type', required=False, type=str),
             OpenApiParameter(name='requested_by', description='Filter by requester user ID', required=False, type=int),
             OpenApiParameter(name='overdue', description='Show only overdue approvals', required=False, type=bool),
         ]
@@ -2210,8 +2206,6 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
             OpenApiParameter(name='approval_request', description='Filter by approval request ID',
                              required=False, type=int),
             OpenApiParameter(name='approver', description='Filter by approver user ID', required=False, type=int),
-            OpenApiParameter(name='decision', description='Filter by decision (APPROVED, REJECTED, DELEGATED)',
-                             required=False, type=str),
         ]
     ),
     create=extend_schema(description="Create a new approval response"),

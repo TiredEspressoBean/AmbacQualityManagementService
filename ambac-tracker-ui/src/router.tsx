@@ -1,7 +1,8 @@
 import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link} from "@tanstack/react-router"
 import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
-    CapaListSearch, CreateCapaSearch, DispositionSearch, ProcessFlowSearch, SignupSearch,
+    ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, DispositionSearch,
+    ProcessFlowSearch, SignupSearch,
 } from "@/lib/routes/search-params"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -979,10 +980,7 @@ export const approvalsOverviewRoute = createRoute({
 export const approvalsHistoryRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/approvals/history',
-    validateSearch: (search: Record<string, unknown>) => ({
-        status: (search.status as string) || undefined,
-        myRequests: search.myRequests === true || search.myRequests === "true" || undefined,
-    }),
+    validateSearch: ApprovalsHistorySearch,
     component: lazyRouteComponent(() => import("@/pages/approvals/ApprovalsHistoryPage"), "ApprovalsHistoryPage"),
     loader: async ({ context }) => {
         const { prefetchApprovalsHistory } = await import("@/pages/approvals/ApprovalsHistoryPage");
