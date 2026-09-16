@@ -97,7 +97,10 @@ export default function WorkCentersPage() {
         onError: (e: unknown) => toast.error(`Couldn't create: ${(e as Error).message}`),
     });
     const updateMut = useMutation({
-        mutationFn: ({ id, ...payload }: { id: string; code: string; name: string; kind: Kind; description: string; is_constraint: boolean; is_critical: boolean }) =>
+        // The body is the PATCH shape (every field optional) rather than a
+        // hand-listed full record: the caller deliberately sends only the fields
+        // that changed, and the full-record type is what forced the cast there.
+        mutationFn: ({ id, ...payload }: { id: string } & Parameters<typeof api.api_WorkCenters_partial_update>[0]) =>
             api.api_WorkCenters_partial_update(payload, { params: { id } }),
         onSuccess: () => {
             qc.invalidateQueries(matchKey(["work-centers"]));
@@ -156,7 +159,7 @@ export default function WorkCentersPage() {
                 setDraft(EMPTY_DRAFT);
                 return;
             }
-            updateMut.mutate({ id: draft.editing.id, ...changed } as never);
+            updateMut.mutate({ id: draft.editing.id, ...changed });
         } else createMut.mutate(payload);
     };
 

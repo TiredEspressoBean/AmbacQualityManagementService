@@ -56,18 +56,20 @@ export function DocumentUploader({
     const { mutate: uploadDocument, isPending, isSuccess } = useCreateDocument();
 
     function onSubmit(values: FormValues) {
-        const formData = new FormData();
-        formData.append("file", values.file);
-        formData.append("classification", values.classification);
-        formData.append("object_id", String(objectId));
-        formData.append("content_type", contentType);
-        if (documentTypeCode) {
-            formData.append("document_type_code", documentTypeCode);
-        }
-
-        // backend now fills file_name automatically from the file if omitted
-
-        uploadDocument(formData as never, {
+        // A plain object, not a hand-rolled FormData: api_Documents_create is
+        // generated with requestFormat "form-data", so the client builds the
+        // multipart body itself and validates the object first. A FormData
+        // instance fails that validation ("Input not instance of File", plus a
+        // missing file_name), so the upload was rejected client-side and no
+        // request was ever sent -- this uploader could not attach anything.
+        uploadDocument({
+            file: values.file,
+            file_name: values.file.name,
+            classification: values.classification,
+            object_id: String(objectId),
+            content_type: Number(contentType),
+            ...(documentTypeCode ? { document_type_code: documentTypeCode } : {}),
+        }, {
             onSuccess: () => {
                 form.reset();
                 setFileInputKey(Date.now()); // reset file input

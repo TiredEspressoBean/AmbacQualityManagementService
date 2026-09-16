@@ -39680,6 +39680,8 @@ export interface operations {
     api_MaterialLots_list: {
         parameters: {
             query?: {
+                /** @description 'true'/'1' narrows to lots still needing a receiving disposition: RECEIVED, AWAITING_INSPECTION, plus lots soft-held at receiving (QUARANTINE with a hold_reason). */
+                inspection_pending?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 material_type?: string;

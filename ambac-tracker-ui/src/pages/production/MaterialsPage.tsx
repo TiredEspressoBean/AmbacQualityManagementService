@@ -57,7 +57,7 @@ export function MaterialsPage() {
     // Funnel counts — cheap (limit:1, read total) and double as the manager's
     // at-a-glance of where material is piling up.
     const onorder = useListMaterialLots({ status: "ON_ORDER", limit: 1 });
-    const awaiting = useListMaterialLots({ inspection_pending: "true", limit: 1 } as never);
+    const awaiting = useListMaterialLots({ inspection_pending: "true", limit: 1 });
     const onhand = useListMaterialLots({ status: "ACCEPTED", limit: 1 });
     const held = useListMaterialLots({ status: "QUARANTINE", limit: 1 });
     const counts: Record<Tab, number | undefined> = {

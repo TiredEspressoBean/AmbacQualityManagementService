@@ -10811,6 +10811,13 @@ paths:
       operationId: api_MaterialLots_list
       description: Material lot tracking with split capability
       parameters:
+      - in: query
+        name: inspection_pending
+        schema:
+          type: string
+        description: '''true''/''1'' narrows to lots still needing a receiving disposition:
+          RECEIVED, AWAITING_INSPECTION, plus lots soft-held at receiving (QUARANTINE
+          with a hold_reason).'
       - name: limit
         required: false
         in: query

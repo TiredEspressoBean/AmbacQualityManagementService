@@ -9,7 +9,7 @@ ViewSets for MES Standard tier models:
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import viewsets, status, serializers, parsers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -372,6 +372,23 @@ class MaterialViewSet(TenantScopedMixin, DataExportMixin, ListMetadataMixin, vie
     ordering = ['name']
 
 
+# `inspection_pending` is read straight off query_params in get_queryset rather
+# than declared in filterset_fields, so drf-spectacular cannot see it and the
+# generated client didn't know the param existed. Callers had to cast the
+# mismatch away, which is indistinguishable from the case where the filter is
+# genuinely undeclared and silently dropped. Declaring it keeps the two apart.
+@extend_schema_view(
+    list=extend_schema(parameters=[
+        OpenApiParameter(
+            name='inspection_pending', type=OpenApiTypes.STR, required=False,
+            description=(
+                "'true'/'1' narrows to lots still needing a receiving disposition: "
+                "RECEIVED, AWAITING_INSPECTION, plus lots soft-held at receiving "
+                "(QUARANTINE with a hold_reason)."
+            ),
+        ),
+    ]),
+)
 class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""
     queryset = MaterialLot.unscoped.select_related(

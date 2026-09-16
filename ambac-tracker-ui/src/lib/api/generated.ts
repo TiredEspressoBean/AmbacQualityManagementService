@@ -33061,6 +33061,11 @@ keep running (only PlantCalendarException stops machines).`,
     requestFormat: "json",
     parameters: [
       {
+        name: "inspection_pending",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
