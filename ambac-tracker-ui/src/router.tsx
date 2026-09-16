@@ -1,5 +1,8 @@
 import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link} from "@tanstack/react-router"
 import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
+import {
+    CapaListSearch, CreateCapaSearch, DispositionSearch, ProcessFlowSearch, SignupSearch,
+} from "@/lib/routes/search-params"
 import type { QueryClient } from "@tanstack/react-query"
 
 import Layout from "@/components/layout";
@@ -25,8 +28,57 @@ function DefaultPendingComponent() {
     );
 }
 
+/** Pull the zod issues out of a router error, if that's what this is.
+ *
+ *  TanStack wraps a failed `validateSearch` in a SearchParamError whose
+ *  `message` is the stringified zod issue array, so an invalid link rendered as
+ *  a raw JSON blob in the user's face — `[{"validation":"uuid","code": ...}]`.
+ *  Worth unwrapping rather than pretty-printing: a bad search param is a broken
+ *  *link*, not a crash, and the two want different words and different exits. */
+function searchParamIssues(error: unknown): { path: string[] }[] | null {
+    const direct = (error as { issues?: unknown })?.issues;
+    if (Array.isArray(direct)) return direct as { path: string[] }[];
+    const message = (error as Error)?.message;
+    if (typeof message !== "string" || !message.trim().startsWith("[")) return null;
+    try {
+        const parsed = JSON.parse(message);
+        return Array.isArray(parsed) && parsed.every((i) => i && typeof i === "object" && "path" in i)
+            ? parsed
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 // Default error component for route errors
 function DefaultErrorComponent({ error, reset }: { error: Error; reset?: () => void }) {
+    const issues = searchParamIssues(error);
+    if (issues) {
+        const params = [...new Set(issues.map((i) => i.path?.join(".")).filter(Boolean))];
+        return (
+            <div className="flex items-center justify-center p-6">
+                <Alert className="max-w-lg">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>This link isn't valid</AlertTitle>
+                    <AlertDescription className="mt-2">
+                        <p className="mb-4">
+                            {params.length
+                                ? `The link carries a malformed ${params.join(", ")} value.`
+                                : "The link carries a malformed value."}{" "}
+                            It may be a stale bookmark or a damaged copy-paste.
+                        </p>
+                        <Button variant="outline" size="sm" asChild>
+                            <Link to="/">Go to home</Link>
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+    return <GenericErrorComponent error={error} reset={reset} />;
+}
+
+function GenericErrorComponent({ error, reset }: { error: Error; reset?: () => void }) {
     return (
         <div className="flex items-center justify-center p-6">
             <Alert variant="destructive" className="max-w-lg">
@@ -40,6 +92,30 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset?: () => v
                             Try again
                         </Button>
                     )}
+                </AlertDescription>
+            </Alert>
+        </div>
+    );
+}
+
+// Shown for any URL that matches no route. Without it TanStack renders its
+// built-in fallback -- the bare string "Not Found" on an otherwise empty page,
+// with no way back and nothing identifying the app. Easy to hit: a stale
+// bookmark, a renamed route, or a hand-edited id.
+function DefaultNotFoundComponent() {
+    return (
+        <div className="flex items-center justify-center p-6">
+            <Alert className="max-w-lg">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Page not found</AlertTitle>
+                <AlertDescription className="mt-2">
+                    <p className="mb-4">
+                        That URL doesn't match anything in UQMES. It may have moved, or the
+                        link may be out of date.
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link to="/">Go to home</Link>
+                    </Button>
                 </AlertDescription>
             </Alert>
         </div>
@@ -65,7 +141,9 @@ const loginRote = createRoute({
 })
 
 const signupRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "/signup", component: () => <SignupPage/>,
+    getParentRoute: () => rootRoute, path: "/signup",
+    validateSearch: SignupSearch,
+    component: () => <SignupPage/>,
 })
 
 const passwordResetRequestRoute = createRoute({
@@ -662,6 +740,7 @@ export const analysisRoute = createRoute({
 
 export const processFlowRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/process-flow',
+    validateSearch: ProcessFlowSearch,
     component: lazyRouteComponent(() => import("@/pages/ProcessFlowPage")),
 });
 
@@ -703,11 +782,13 @@ export const pcnDetailRoute = createRoute({
 
 export const capaListRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/quality/capas',
+    validateSearch: CapaListSearch,
     component: lazyRouteComponent(() => import("@/pages/quality/CapaListPage"), "CapaListPage"),
 });
 
 export const capaCreateRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/quality/capas/new',
+    validateSearch: CreateCapaSearch,
     component: lazyRouteComponent(() => import("@/pages/quality/CreateCapaPage"), "CreateCapaPage"),
 });
 
@@ -844,11 +925,13 @@ export const dispositionsRoute = createRoute({
 // Disposition Form Routes
 export const dispositionCreateRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/dispositions/create',
+    validateSearch: DispositionSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDispositionFormPage")),
 });
 
 export const dispositionEditRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/dispositions/edit/$id',
+    validateSearch: DispositionSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDispositionFormPage")),
 });
 
@@ -1250,6 +1333,7 @@ export function createAppRouter(queryClient: QueryClient) {
         defaultPendingMs: 200, // Only show loading if navigation takes >200ms
         defaultPendingComponent: DefaultPendingComponent,
         defaultErrorComponent: DefaultErrorComponent,
+        defaultNotFoundComponent: DefaultNotFoundComponent,
         context: {
             queryClient,
         },
