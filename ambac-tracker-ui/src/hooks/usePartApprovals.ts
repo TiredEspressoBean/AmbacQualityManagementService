@@ -62,8 +62,11 @@ export const usePartApprovalStatus = (partTypeId: string | undefined, supplierId
 export const useCreatePartApproval = () => {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (body: Partial<Schema<"PartApproval">>) =>
-            api.api_PartApprovals_create(body as never, { headers: csrf() }),
+        // The request shape, not Partial<the response model>: that typed the
+        // body from the read schema and made required fields optional, so a
+        // body missing them compiled and was rejected by zod at the call.
+        mutationFn: (body: Parameters<typeof api.api_PartApprovals_create>[0]) =>
+            api.api_PartApprovals_create(body, { headers: csrf() }),
         onSuccess: () => invalidate(qc),
     });
 };

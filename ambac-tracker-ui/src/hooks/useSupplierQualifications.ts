@@ -61,8 +61,8 @@ export const useSupplierQualificationStatus = (
 export const useCreateSupplierQualification = () => {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (body: Partial<Schema<"SupplierQualification">>) =>
-            api.api_SupplierQualifications_create(body as never, { headers: csrf() }),
+        mutationFn: (body: Parameters<typeof api.api_SupplierQualifications_create>[0]) =>
+            api.api_SupplierQualifications_create(body, { headers: csrf() }),
         onSuccess: () => invalidate(qc),
     });
 };

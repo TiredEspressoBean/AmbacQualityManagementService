@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { api } from "@/lib/api/generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +35,12 @@ export function PartApprovalFormPage() {
 
     const [supplier, setSupplier] = useState("");
     const [partType, setPartType] = useState("");
-    const [approvalType, setApprovalType] = useState("PPAP");
+    // Typed from the create contract so an option the endpoint doesn't accept
+    // fails to compile rather than being rejected at the call.
+    type ApprovalType = NonNullable<
+        Parameters<typeof api.api_PartApprovals_create>[0]["approval_type"]
+    >;
+    const [approvalType, setApprovalType] = useState<ApprovalType>("PPAP");
     const [reference, setReference] = useState("");
     const [effectiveDate, setEffectiveDate] = useState("");
     const [expiryDate, setExpiryDate] = useState("");
@@ -56,7 +62,9 @@ export function PartApprovalFormPage() {
         if (!supplier) return toast.error("Supplier is required");
         if (!partType) return toast.error("Part type is required");
 
-        const body: Record<string, unknown> = {
+        // Inferred rather than annotated Record<string, unknown>, which hid the
+        // payload shape from the client's type and needed a cast at the call.
+        const body = {
             supplier, part_type: partType, approval_type: approvalType,
             reference, effective_date: effectiveDate || null,
             expiry_date: expiryDate || null, notes,
@@ -128,7 +136,7 @@ export function PartApprovalFormPage() {
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
                             <Label>Approval type</Label>
-                            <Select value={approvalType} onValueChange={setApprovalType}>
+                            <Select value={approvalType} onValueChange={(v) => setApprovalType(v as ApprovalType)}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {APPROVAL_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.value}</SelectItem>)}

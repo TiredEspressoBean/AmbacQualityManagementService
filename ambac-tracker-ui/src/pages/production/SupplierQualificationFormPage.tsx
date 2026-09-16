@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { api } from "@/lib/api/generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,10 +37,16 @@ export function SupplierQualificationFormPage() {
     const update = useUpdateSupplierQualification();
 
     const [supplier, setSupplier] = useState("");
-    const [scopeType, setScopeType] = useState("PART_TYPE");
+    type ScopeType = NonNullable<
+        Parameters<typeof api.api_SupplierQualifications_create>[0]["scope_type"]
+    >;
+    type Basis = NonNullable<
+        Parameters<typeof api.api_SupplierQualifications_create>[0]["basis"]
+    >;
+    const [scopeType, setScopeType] = useState<ScopeType>("PART_TYPE");
     const [partType, setPartType] = useState("");
     const [scopeLabel, setScopeLabel] = useState("");
-    const [basis, setBasis] = useState("");
+    const [basis, setBasis] = useState<Basis>("");
     const [effectiveDate, setEffectiveDate] = useState("");
     const [expiryDate, setExpiryDate] = useState("");
     const [notes, setNotes] = useState("");
@@ -64,11 +71,12 @@ export function SupplierQualificationFormPage() {
         if (isPartTypeScope && !partType) return toast.error("Part type is required for PART_TYPE scope");
         if (!isPartTypeScope && !scopeLabel) return toast.error("Scope label is required");
 
-        const body: Record<string, unknown> = {
+        // Inferred, not Record<string, unknown> -- see PartApprovalFormPage.
+        const body = {
             supplier, scope_type: scopeType,
             part_type: isPartTypeScope ? partType : null,
             scope_label: isPartTypeScope ? "" : scopeLabel,
-            basis: basis || "",
+            basis,
             effective_date: effectiveDate || null,
             expiry_date: expiryDate || null,
             notes,
@@ -127,7 +135,7 @@ export function SupplierQualificationFormPage() {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label>Scope type</Label>
-                            <Select value={scopeType} onValueChange={setScopeType}>
+                            <Select value={scopeType} onValueChange={(v) => setScopeType(v as ScopeType)}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {SCOPE_TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
@@ -158,7 +166,7 @@ export function SupplierQualificationFormPage() {
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
                             <Label>Basis</Label>
-                            <Select value={basis || "NONE"} onValueChange={(v) => setBasis(v === "NONE" ? "" : v)}>
+                            <Select value={basis || "NONE"} onValueChange={(v) => setBasis(v === "NONE" ? "" : (v as Basis))}>
                                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="NONE">—</SelectItem>

@@ -23,8 +23,11 @@ export function useAddTenantGroupPermissions(groupId: string) {
     return useMutation({
         mutationFn: (permissions: string[]) =>
 
+            // `{name: ""}` was padding for a schema that no longer applies: the
+            // action declares {permissions} and zod was silently stripping the
+            // name on every call.
             api.api_TenantGroups_permissions_create(
-                { name: "", permissions } as never,
+                { permissions },
                 { params: { id: groupId } }
             ),
         onSuccess: () => {
@@ -42,7 +45,7 @@ export function useSetTenantGroupPermissions(groupId: string) {
         mutationFn: (permissions: string[]) =>
 
             api.api_TenantGroups_permissions_update(
-                { name: "", permissions } as never,
+                { permissions },
                 { params: { id: groupId } }
             ),
         onSuccess: () => {
