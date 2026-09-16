@@ -45,6 +45,7 @@ import MeasurementDefinitionsManager from "@/components/measurement-definitions-
 import { schemas } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
 import { isFieldRequired } from "@/lib/zod-config";
+import { api } from "@/lib/api/generated";
 
 type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "part_type" | "requires_first_piece_inspection" | "operation_number"> & {
     rules: { rule_type: string; value: string | number | null; order: number }[]
@@ -141,12 +142,24 @@ export default function StepFormPage() {
         }
     }, [mode, step, form])
 
+    // Return type comes from the endpoint. Written by hand it allowed `value` as
+    // a string where the contract types it as a number, and the `as never` on
+    // the call sites hid the difference. Latent rather than live: the rule
+    // editor's own schema (sampling-rule-form) parses value as a number, so
+    // what actually reached the wire was fine. The coercion below closes the
+    // gap the outer form schema still permits.
+    type SamplingRulePayload = NonNullable<
+        Parameters<typeof api.api_Steps_update_sampling_rules_create>[0]["rules"]
+    >[number];
+
     function normalizeRules(
         rules: { rule_type: string; value: string | number | null | undefined }[]
-    ): { rule_type: string; value: string | number | null; order: number }[] {
+    ): SamplingRulePayload[] {
         return rules.map((rule, index) => ({
-            rule_type: rule.rule_type,
-            value: rule.value ?? null, // prevent undefined
+            rule_type: rule.rule_type as SamplingRulePayload["rule_type"],
+            value: rule.value === null || rule.value === undefined || rule.value === ""
+                ? null
+                : Number(rule.value),
             order: index + 1,          // 1-based indexing
         }));
     }
@@ -160,8 +173,8 @@ export default function StepFormPage() {
             ...stepData
         } = values;
 
-        const normalizedRules = normalizeRules(rules) as never;
-        const normalizedFallbackRules = normalizeRules(fallback_rules ?? []) as never;
+        const normalizedRules = normalizeRules(rules);
+        const normalizedFallbackRules = normalizeRules(fallback_rules ?? []);
 
         if (mode === "edit" && stepId) {
             updateStep.mutate(

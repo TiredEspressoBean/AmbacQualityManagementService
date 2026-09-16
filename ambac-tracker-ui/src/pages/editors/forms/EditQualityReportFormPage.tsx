@@ -3,7 +3,6 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import type { Schema } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -40,8 +39,11 @@ const formSchema = schemas.QualityReportsRequest.pick({
     is_first_piece: true,
     archived: true,
 }).extend({
-    // Make measurements optional for the form (can be added separately)
-    measurements: z.array(z.any()).optional(),
+    // Optional for the form (measurements are added separately via the DWI
+    // flow), but keeping the generated element shape rather than z.any(): as
+    // `unknown[]` the payload no longer matched the request type and every
+    // submit cast the mismatch away.
+    measurements: schemas.QualityReportsRequest.shape.measurements.optional(),
 });
 
 // Strict request type from openapi-typescript, plus form-only fields.
@@ -50,7 +52,7 @@ type FormValues = Pick<
     Schema<"QualityReportsRequest">,
     "step" | "part" | "production_equipment" | "status" | "description" | "detected_by" | "verified_by" | "is_first_piece" | "archived"
 > & {
-    measurements?: unknown[];
+    measurements?: Schema<"QualityReportsRequest">["measurements"];
 };
 
 // Pre-compute required fields for labels
@@ -162,7 +164,7 @@ export default function EditQualityReportFormPage() {
 
         if (mode === "edit" && qualityReportId) {
             updateQualityReport.mutate(
-                { id: qualityReportId, data: submitData as never },
+                { id: qualityReportId, data: submitData },
                 {
                     onSuccess: () => {
                         toast.success("Quality Report updated successfully!");
@@ -174,7 +176,7 @@ export default function EditQualityReportFormPage() {
                 }
             );
         } else {
-            createQualityReport.mutate(submitData as never, {
+            createQualityReport.mutate(submitData, {
                 onSuccess: () => {
                     toast.success("Quality Report created successfully!");
                     form.reset();

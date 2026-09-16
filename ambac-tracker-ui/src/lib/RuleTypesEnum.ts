@@ -11,9 +11,16 @@ export const ruleTypes = [
     { value: "EXACT_COUNT", label: "Exact Count (No Variance)" },
 ] as const;
 
-// Extract just the values for zod enum validation
-// ruleTypes is `as const` so values are string literals; z.enum needs a mutable tuple — use a cast here.
+// Extract just the values for zod enum validation.
+//
+// The tuple type keeps the literal union. Casting to `[string, ...string[]]`
+// (as this did) widens it away, so the inferred `rule_type` became a bare
+// `string` and every form payload built from it then needed its own cast at the
+// call. The cast to a tuple is still needed -- z.enum wants a non-empty tuple
+// and Array.map gives an array -- but it should not throw the literals away.
+export type RuleTypeValue = (typeof ruleTypes)[number]["value"];
+
 export const ruleTypesEnum = z.enum(
-    // eslint-disable-next-line local/no-double-cast-via-unknown -- z.enum requires [string, ...string[]] tuple; Array.map returns string[] which is not assignable without this cast
-    ruleTypes.map(rt => rt.value) as unknown as [string, ...string[]]
+    // eslint-disable-next-line local/no-double-cast-via-unknown -- z.enum requires a [T, ...T[]] tuple; Array.map returns T[], which is not assignable without this cast
+    ruleTypes.map(rt => rt.value) as unknown as [RuleTypeValue, ...RuleTypeValue[]]
 );

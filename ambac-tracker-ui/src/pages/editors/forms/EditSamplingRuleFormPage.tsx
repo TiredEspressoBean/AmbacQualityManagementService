@@ -118,7 +118,7 @@ export default function SamplingRuleFormPage() {
 
         if (mode === "edit" && ruleId) {
             updateSamplingRule.mutate(
-                { id: ruleId, data: payload } as never,
+                { id: ruleId, data: payload },
                 {
                     onSuccess: () => toast.success("Sampling Rule updated successfully!"),
                     onError: (error) => {
@@ -128,7 +128,7 @@ export default function SamplingRuleFormPage() {
                 }
             );
         } else {
-            createSamplingRule.mutate(payload as never, {
+            createSamplingRule.mutate(payload, {
                 onSuccess: () => {
                     toast.success("Sampling Rule created successfully!");
                     form.reset();
