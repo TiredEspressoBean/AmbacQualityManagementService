@@ -108,9 +108,59 @@ _PROCESS_INFO_SCHEMA = {
 
 # One entry from the customer_note timeline. timestamp is null for notes in the
 # pre-timeline format, which get_notes still parses.
-_NOTE_SCHEMA = {
+# The aggregate read-only fields below were `DictField()` / `ListField()` with
+# no inner shape, which generates `{}` / `unknown[]` in the client -- so a
+# consumer could read any property off them and get undefined rather than a
+# compile error. OrderDetailsPage cast the whole response to `any` to cope,
+# which then opted every field on it out of checking.
+
+_STAGE_SCHEMA = {
+    "type": "object",
+    "required": ["name", "is_completed", "is_current", "step_id", "order"],
+    "properties": {
+        "name": {"type": "string"},
+        "is_completed": {"type": "boolean"},
+        "is_current": {"type": "boolean"},
+        "step_id": {"type": "string", "format": "uuid"},
+        "order": {"type": "integer"},
+        # Added by get_detailed_stage_info on top of get_process_stages.
+        "sampling_info": {
+            "type": "object",
+            "properties": {
+                "total_parts": {"type": "integer"},
+                "sampled_parts": {"type": "integer"},
+                "sampling_rate": {"type": "number"},
+            },
+        },
+    },
+}
+
+_PARTS_SUMMARY_SCHEMA = {
     "type": "object",
     "nullable": True,
+    "required": ["total_parts", "completed_parts"],
+    "properties": {
+        "total_parts": {"type": "integer"},
+        "completed_parts": {"type": "integer"},
+        # step_id -> count, so the keys are dynamic.
+        "step_distribution": {"type": "object", "additionalProperties": True},
+    },
+}
+
+_CUSTOMER_PARTS_SUMMARY_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "required": ["total_parts", "completed_parts", "progress_percent"],
+    "properties": {
+        "total_parts": {"type": "integer"},
+        "completed_parts": {"type": "integer"},
+        "progress_percent": {"type": "number"},
+    },
+}
+
+# One note. Not nullable: an entry in a timeline is always a note.
+_NOTE_ITEM_SCHEMA = {
+    "type": "object",
     "required": ["timestamp", "user", "visibility", "message"],
     "properties": {
         "timestamp": {"type": "string", "nullable": True},
@@ -119,6 +169,12 @@ _NOTE_SCHEMA = {
         "message": {"type": "string"},
     },
 }
+
+# `latest_note` is the nullable one -- an order may have no notes yet. Keeping
+# the nullability on the FIELD rather than on the item schema matters: reused
+# as an array item it made every timeline entry `Note | null`, forcing callers
+# to null-check rows that cannot be null.
+_NOTE_SCHEMA = {**_NOTE_ITEM_SCHEMA, "nullable": True}
 
 
 # ===== STAGE SERIALIZERS =====
@@ -200,13 +256,13 @@ class OrdersSerializer(SecureModelMixin, BulkOperationsMixin):
         """Safe access to company name"""
         return obj.company.name if obj.company else None
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_PARTS_SUMMARY_SCHEMA)
     def get_parts_summary(self, obj):
         """Use model method for parts distribution"""
         return {'total_parts': obj.parts.count(), 'step_distribution': obj.get_step_distribution(),
                 'completed_parts': obj.parts.filter(part_status=PartsStatus.COMPLETED).count()}
 
-    @extend_schema_field(serializers.ListField())
+    @extend_schema_field({"type": "array", "items": _STAGE_SCHEMA})
     def get_process_stages(self, obj):
         """Use enhanced model method for detailed stage info"""
         return obj.get_detailed_stage_info()
@@ -221,7 +277,7 @@ class OrdersSerializer(SecureModelMixin, BulkOperationsMixin):
         """Get the most recent note"""
         return obj.get_latest_note()
 
-    @extend_schema_field(serializers.ListField())
+    @extend_schema_field({"type": "array", "items": _NOTE_ITEM_SCHEMA})
     def get_notes_timeline(self, obj):
         """Get all notes (staff sees all, including internal)"""
         return obj.get_notes(customer_view=False)
@@ -306,7 +362,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields  # All fields are read-only
 
-    @extend_schema_field(serializers.ListField())
+    @extend_schema_field({"type": "array", "items": _STAGE_SCHEMA})
     def get_process_stages(self, obj):
         """Get detailed stage info for progress tracking"""
         return obj.get_detailed_stage_info()
@@ -316,7 +372,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
         """Get milestone/gate progress information. Reads from current_milestone, falls back to legacy HubSpot."""
         return obj.get_gate_info()
 
-    @extend_schema_field(serializers.DictField(allow_null=True))
+    @extend_schema_field(_CUSTOMER_PARTS_SUMMARY_SCHEMA)
     def get_parts_summary(self, obj):
         """Summary of parts progress using weighted position through workflow."""
         from Tracker.models import ProcessStep
@@ -385,7 +441,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
         """Get the most recent visible note"""
         return obj.get_latest_note(customer_view=True)
 
-    @extend_schema_field(serializers.ListField())
+    @extend_schema_field({"type": "array", "items": _NOTE_ITEM_SCHEMA})
     def get_notes_timeline(self, obj):
         """Get all visible notes (internal notes filtered out)"""
         return obj.get_notes(customer_view=True)

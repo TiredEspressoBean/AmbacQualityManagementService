@@ -42024,7 +42024,6 @@ components:
           readOnly: true
         latest_note:
           type: object
-          nullable: true
           required:
           - timestamp
           - user
@@ -42040,10 +42039,27 @@ components:
               type: string
             message:
               type: string
+          nullable: true
           readOnly: true
         notes_timeline:
           type: array
-          items: {}
+          items:
+            type: object
+            required:
+            - timestamp
+            - user
+            - visibility
+            - message
+            properties:
+              timestamp:
+                type: string
+                nullable: true
+              user:
+                type: string
+              visibility:
+                type: string
+              message:
+                type: string
           readOnly: true
         order_status:
           type: string
@@ -42063,7 +42079,35 @@ components:
           nullable: true
         process_stages:
           type: array
-          items: {}
+          items:
+            type: object
+            required:
+            - name
+            - is_completed
+            - is_current
+            - step_id
+            - order
+            properties:
+              name:
+                type: string
+              is_completed:
+                type: boolean
+              is_current:
+                type: boolean
+              step_id:
+                type: string
+                format: uuid
+              order:
+                type: integer
+              sampling_info:
+                type: object
+                properties:
+                  total_parts:
+                    type: integer
+                  sampled_parts:
+                    type: integer
+                  sampling_rate:
+                    type: number
           readOnly: true
         gate_info:
           type: object
@@ -42107,8 +42151,18 @@ components:
           readOnly: true
         parts_summary:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - total_parts
+          - completed_parts
+          - progress_percent
+          properties:
+            total_parts:
+              type: integer
+            completed_parts:
+              type: integer
+            progress_percent:
+              type: number
           readOnly: true
         company_name:
           type: string
@@ -47930,7 +47984,6 @@ components:
           nullable: true
         latest_note:
           type: object
-          nullable: true
           required:
           - timestamp
           - user
@@ -47946,10 +47999,27 @@ components:
               type: string
             message:
               type: string
+          nullable: true
           readOnly: true
         notes_timeline:
           type: array
-          items: {}
+          items:
+            type: object
+            required:
+            - timestamp
+            - user
+            - visibility
+            - message
+            properties:
+              timestamp:
+                type: string
+                nullable: true
+              user:
+                type: string
+              visibility:
+                type: string
+              message:
+                type: string
           readOnly: true
         customer:
           type: integer
@@ -47989,12 +48059,50 @@ components:
           nullable: true
         parts_summary:
           type: object
-          additionalProperties: {}
           nullable: true
+          required:
+          - total_parts
+          - completed_parts
+          properties:
+            total_parts:
+              type: integer
+            completed_parts:
+              type: integer
+            step_distribution:
+              type: object
+              additionalProperties: true
           readOnly: true
         process_stages:
           type: array
-          items: {}
+          items:
+            type: object
+            required:
+            - name
+            - is_completed
+            - is_current
+            - step_id
+            - order
+            properties:
+              name:
+                type: string
+              is_completed:
+                type: boolean
+              is_current:
+                type: boolean
+              step_id:
+                type: string
+                format: uuid
+              order:
+                type: integer
+              sampling_info:
+                type: object
+                properties:
+                  total_parts:
+                    type: integer
+                  sampled_parts:
+                    type: integer
+                  sampling_rate:
+                    type: number
           readOnly: true
         gate_info:
           type: object

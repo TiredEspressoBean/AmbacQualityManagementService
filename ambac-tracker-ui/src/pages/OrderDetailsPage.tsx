@@ -289,8 +289,7 @@ export function OrderDetailsPage() {
         name,
         created_at,
         parts_summary,
-        // eslint-disable-next-line local/no-as-any -- useOrderDetails returns an aggregated shape (notes_timeline, parts_summary, etc.) not declared in OpenAPI schema
-    } = data as any;
+    } = data;
 
     const customerName = customer_first_name && customer_last_name
         ? `${customer_first_name} ${customer_last_name}`
@@ -475,7 +474,11 @@ export function OrderDetailsPage() {
                             {/* Notes Timeline */}
                             {notes_timeline && notes_timeline.length > 0 ? (
                                 <div className="space-y-3">
-                                    {(notesExpanded ? notes_timeline : [latest_note]).filter(Boolean).map((note: { user?: string; timestamp?: string; [key: string]: any }, idx: number) => (
+                                    {/* `latest_note` is nullable, the timeline entries are not, so the
+                                        collapsed branch drops the null here rather than relying on
+                                        .filter(Boolean) -- which strips it at runtime but does not
+                                        narrow the type, leaving every row typed `Note | null`. */}
+                                    {(notesExpanded ? notes_timeline : latest_note ? [latest_note] : []).map((note, idx) => (
                                         <div key={idx} className="flex gap-3 text-sm">
                                             <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-primary" />
                                             <div className="flex-1 min-w-0">

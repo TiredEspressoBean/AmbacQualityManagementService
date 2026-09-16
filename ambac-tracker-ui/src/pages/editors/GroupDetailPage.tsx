@@ -94,8 +94,15 @@ export function GroupDetailPage() {
     const availableUsers = usersData?.results || [];
 
     const { data: permissionsData } = useAvailablePermissions();
-    // eslint-disable-next-line local/no-as-any -- useAvailablePermissions returns an untyped response; `.permissions` is the runtime field name
-    const allPermissions: Permission[] = useMemo(() => (permissionsData as any)?.permissions ?? [], [permissionsData]);
+    // The response IS typed (PermissionListResponse); what is loose is its
+    // elements, declared `ListField(child=DictField())` because the endpoint
+    // returns two different shapes depending on `?grouped=`: flat permission
+    // rows, or category buckets. This page asks for the flat form, so it
+    // narrows the elements rather than the whole response.
+    const allPermissions: Permission[] = useMemo(
+        () => (permissionsData?.permissions ?? []) as Permission[],
+        [permissionsData],
+    );
 
     const addMemberMutation = useAddTenantGroupMember(groupId);
     const removeMemberMutation = useRemoveTenantGroupMember(groupId);

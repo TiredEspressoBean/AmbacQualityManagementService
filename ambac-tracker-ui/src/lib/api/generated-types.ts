@@ -17640,14 +17640,31 @@ export interface components {
                 visibility: string;
                 message: string;
             } | null;
-            readonly notes_timeline: unknown[];
+            readonly notes_timeline: {
+                timestamp: string | null;
+                user: string;
+                visibility: string;
+                message: string;
+            }[];
             readonly order_status: string;
             readonly order_status_code: string;
             /** Format: date */
             readonly estimated_completion: string | null;
             /** Format: date-time */
             readonly original_completion_date: string | null;
-            readonly process_stages: unknown[];
+            readonly process_stages: {
+                name: string;
+                is_completed: boolean;
+                is_current: boolean;
+                /** Format: uuid */
+                step_id: string;
+                order: number;
+                sampling_info?: {
+                    total_parts?: number;
+                    sampled_parts?: number;
+                    sampling_rate?: number;
+                };
+            }[];
             readonly gate_info: {
                 current_gate_name: string;
                 current_gate_full_name: string;
@@ -17663,7 +17680,9 @@ export interface components {
                 }[];
             } | null;
             readonly parts_summary: {
-                [key: string]: unknown;
+                total_parts: number;
+                completed_parts: number;
+                progress_percent: number;
             } | null;
             readonly company_name: string | null;
             readonly customer_first_name: string | null;
@@ -20472,7 +20491,12 @@ export interface components {
                 visibility: string;
                 message: string;
             } | null;
-            readonly notes_timeline: unknown[];
+            readonly notes_timeline: {
+                timestamp: string | null;
+                user: string;
+                visibility: string;
+                message: string;
+            }[];
             customer?: number | null;
             readonly customer_info: {
                 [key: string]: unknown;
@@ -20492,9 +20516,25 @@ export interface components {
             /** Format: uuid */
             current_milestone?: string | null;
             readonly parts_summary: {
-                [key: string]: unknown;
+                total_parts: number;
+                completed_parts: number;
+                step_distribution?: {
+                    [key: string]: unknown;
+                };
             } | null;
-            readonly process_stages: unknown[];
+            readonly process_stages: {
+                name: string;
+                is_completed: boolean;
+                is_current: boolean;
+                /** Format: uuid */
+                step_id: string;
+                order: number;
+                sampling_info?: {
+                    total_parts?: number;
+                    sampled_parts?: number;
+                    sampling_rate?: number;
+                };
+            }[];
             readonly gate_info: {
                 current_gate_name: string;
                 current_gate_full_name: string;

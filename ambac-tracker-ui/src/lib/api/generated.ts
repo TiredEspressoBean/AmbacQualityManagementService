@@ -3807,7 +3807,12 @@ export type Orders = {
     visibility: string;
     message: string;
   };
-  notes_timeline: Array<unknown>;
+  notes_timeline: Array<{
+    timestamp: string | null;
+    user: string;
+    visibility: string;
+    message: string;
+  }>;
   customer?: (number | null) | undefined;
   customer_info: {};
   company?: (string | null) | undefined;
@@ -3817,8 +3822,25 @@ export type Orders = {
   order_status: OrdersStatusEnum;
   current_hubspot_gate?: (string | null) | undefined;
   current_milestone?: (string | null) | undefined;
-  parts_summary: {};
-  process_stages: Array<unknown>;
+  parts_summary: {
+    total_parts: number;
+    completed_parts: number;
+    step_distribution?: {} | undefined;
+  };
+  process_stages: Array<{
+    name: string;
+    is_completed: boolean;
+    is_current: boolean;
+    step_id: string;
+    order: number;
+    sampling_info?:
+      | Partial<{
+          total_parts: number;
+          sampled_parts: number;
+          sampling_rate: number;
+        }>
+      | undefined;
+  }>;
   gate_info: {
     current_gate_name: string;
     current_gate_full_name: string;
@@ -4377,12 +4399,30 @@ export type CustomerOrder = {
     visibility: string;
     message: string;
   };
-  notes_timeline: Array<unknown>;
+  notes_timeline: Array<{
+    timestamp: string | null;
+    user: string;
+    visibility: string;
+    message: string;
+  }>;
   order_status: string;
   order_status_code: string;
   estimated_completion: string | null;
   original_completion_date: string | null;
-  process_stages: Array<unknown>;
+  process_stages: Array<{
+    name: string;
+    is_completed: boolean;
+    is_current: boolean;
+    step_id: string;
+    order: number;
+    sampling_info?:
+      | Partial<{
+          total_parts: number;
+          sampled_parts: number;
+          sampling_rate: number;
+        }>
+      | undefined;
+  }>;
   gate_info: {
     current_gate_name: string;
     current_gate_full_name: string;
@@ -4397,7 +4437,11 @@ export type CustomerOrder = {
       is_completed: boolean;
     }>;
   };
-  parts_summary: {};
+  parts_summary: {
+    total_parts: number;
+    completed_parts: number;
+    progress_percent: number;
+  };
   company_name: string | null;
   customer_first_name: string | null;
   customer_last_name: string | null;
@@ -17933,7 +17977,14 @@ const Orders = z.object({
       message: z.string(),
     })
     .nullable(),
-  notes_timeline: z.array(z.unknown()),
+  notes_timeline: z.array(
+    z.object({
+      timestamp: z.string().nullable(),
+      user: z.string(),
+      visibility: z.string(),
+      message: z.string(),
+    })
+  ),
   customer: z.number().int().nullish(),
   customer_info: z.object({}).partial().passthrough().nullable(),
   company: z.string().uuid().nullish(),
@@ -17943,8 +17994,30 @@ const Orders = z.object({
   order_status: OrdersStatusEnum,
   current_hubspot_gate: z.string().uuid().nullish(),
   current_milestone: z.string().uuid().nullish(),
-  parts_summary: z.object({}).partial().passthrough().nullable(),
-  process_stages: z.array(z.unknown()),
+  parts_summary: z
+    .object({
+      total_parts: z.number().int(),
+      completed_parts: z.number().int(),
+      step_distribution: z.object({}).partial().passthrough().optional(),
+    })
+    .nullable(),
+  process_stages: z.array(
+    z.object({
+      name: z.string(),
+      is_completed: z.boolean(),
+      is_current: z.boolean(),
+      step_id: z.string().uuid(),
+      order: z.number().int(),
+      sampling_info: z
+        .object({
+          total_parts: z.number().int(),
+          sampled_parts: z.number().int(),
+          sampling_rate: z.number(),
+        })
+        .partial()
+        .optional(),
+    })
+  ),
   gate_info: z
     .object({
       current_gate_name: z.string(),
@@ -21325,12 +21398,35 @@ const CustomerOrder = z.object({
       message: z.string(),
     })
     .nullable(),
-  notes_timeline: z.array(z.unknown()),
+  notes_timeline: z.array(
+    z.object({
+      timestamp: z.string().nullable(),
+      user: z.string(),
+      visibility: z.string(),
+      message: z.string(),
+    })
+  ),
   order_status: z.string(),
   order_status_code: z.string(),
   estimated_completion: z.string().nullable(),
   original_completion_date: z.string().datetime({ offset: true }).nullable(),
-  process_stages: z.array(z.unknown()),
+  process_stages: z.array(
+    z.object({
+      name: z.string(),
+      is_completed: z.boolean(),
+      is_current: z.boolean(),
+      step_id: z.string().uuid(),
+      order: z.number().int(),
+      sampling_info: z
+        .object({
+          total_parts: z.number().int(),
+          sampled_parts: z.number().int(),
+          sampling_rate: z.number(),
+        })
+        .partial()
+        .optional(),
+    })
+  ),
   gate_info: z
     .object({
       current_gate_name: z.string(),
@@ -21349,7 +21445,13 @@ const CustomerOrder = z.object({
       ),
     })
     .nullable(),
-  parts_summary: z.object({}).partial().passthrough().nullable(),
+  parts_summary: z
+    .object({
+      total_parts: z.number().int(),
+      completed_parts: z.number().int(),
+      progress_percent: z.number(),
+    })
+    .nullable(),
   company_name: z.string().nullable(),
   customer_first_name: z.string().nullable(),
   customer_last_name: z.string().nullable(),
