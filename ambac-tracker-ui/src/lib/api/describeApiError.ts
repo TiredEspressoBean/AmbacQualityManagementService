@@ -61,3 +61,43 @@ export function describeApiError(error: unknown): ApiErrorDescription | null {
 
     return null;
 }
+/** A DRF error body: `{field: ["message", ...]}`, or `{detail: "message"}`,
+ *  or one-off keys like `{invitation_url: "..."}`. Values are deliberately
+ *  `unknown` — the shape varies per endpoint, so reading one goes through
+ *  `apiErrorField` below rather than being asserted. */
+export type ApiErrorBody = Record<string, unknown>;
+
+/**
+ * Pull the parsed error body off an Axios-style rejection.
+ *
+ * Four call sites each wrote `(error as any)?.response?.data`, with a disable
+ * comment saying narrowing would be too verbose. It is verbose — once. Doing it
+ * here means `any` doesn't leak into four components, where it silently opts
+ * every subsequent property read out of checking.
+ *
+ * Duck-typed rather than importing axios, matching describeApiError above.
+ */
+export function apiErrorBody(error: unknown): ApiErrorBody | undefined {
+    if (!error || typeof error !== "object") return undefined;
+    const response = (error as { response?: unknown }).response;
+    if (!response || typeof response !== "object") return undefined;
+    const data = (response as { data?: unknown }).data;
+    if (!data || typeof data !== "object") return undefined;
+    return data as ApiErrorBody;
+}
+
+/**
+ * Read one field's message out of an error body.
+ *
+ * DRF sends field errors as arrays (`{"old_password": ["Too short."]}`) but
+ * plain strings for one-off keys (`{"invitation_url": "https://..."}`), so both
+ * are handled. Returns undefined rather than throwing on any other shape — an
+ * error handler that itself throws replaces a useful message with a blank
+ * screen.
+ */
+export function apiErrorField(body: ApiErrorBody | undefined, field: string): string | undefined {
+    const value = body?.[field];
+    if (typeof value === "string") return value;
+    if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+    return undefined;
+}

@@ -17,6 +17,7 @@ import { useDeleteUser } from "@/hooks/useDeleteUser.ts";
 import { useSendUserInvitation } from "@/hooks/useSendUserInvitation.ts";
 import { InviteLinkDialog } from "@/components/users/InviteLinkDialog.tsx";
 import { toast } from "sonner";
+import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 
 type Props = {
     userId: number;
@@ -62,10 +63,9 @@ export function EditUserActionsCell({ userId }: Props) {
             onError: (error) => {
                 // A pending invitation already exists — surface its live link
                 // (email may be off) instead of dead-ending on an error toast.
-                // eslint-disable-next-line local/no-as-any -- axios error body needs verbose narrowing
-                const apiError = (error as any)?.response?.data;
-                if (apiError?.invitation_url) {
-                    setInviteUrl(apiError.invitation_url);
+                const invitationUrl = apiErrorField(apiErrorBody(error), "invitation_url");
+                if (invitationUrl) {
+                    setInviteUrl(invitationUrl);
                     setInviteOpen(true);
                     toast.info("User already has a pending invitation — here's the link.");
                     return;

@@ -157,8 +157,7 @@ export default function OrderFormPage() {
                 estimated_completion: order.estimated_completion ? new Date(order.estimated_completion) : undefined,
                 order_status: order.order_status || ORDER_STATUS[0],
                 current_hubspot_gate: order.current_hubspot_gate ?? undefined,
-                // eslint-disable-next-line local/no-as-any -- current_milestone not in generated Order schema; backend returns it as an extra field
-                current_milestone: (order as any).current_milestone ?? undefined,
+                current_milestone: order.current_milestone ?? undefined,
                 company: order.company ?? undefined,
                 archived: order.archived || false,
             });
@@ -454,7 +453,7 @@ export default function OrderFormPage() {
                     />
 
                     {/* Milestone dropdown — only show if milestones exist for this tenant */}
-                    {(milestones as any[]).length > 0 && (
+                    {milestones.length > 0 && (
                     <FormField
                         control={form.control}
                         name="current_milestone"
@@ -480,7 +479,7 @@ export default function OrderFormPage() {
                                         </FormControl>
                                         <SelectContent>
                                             <SelectItem value="null">No milestone</SelectItem>
-                                            {(milestones as any[]).map((milestone: any) => (
+                                            {milestones.map((milestone) => (
                                                 <SelectItem key={milestone.id} value={String(milestone.id)}>
                                                     {milestone.display_name || milestone.name}
                                                 </SelectItem>
@@ -526,14 +525,14 @@ export default function OrderFormPage() {
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-base">Notes</CardTitle>
-                                    {order.notes_timeline && (order.notes_timeline as any[]).length > 1 && (
+                                    {order.notes_timeline && order.notes_timeline.length > 1 && (
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setNotesExpanded(!notesExpanded)}
                                         >
-                                            {notesExpanded ? "Show Latest" : `Show All (${(order.notes_timeline as any[]).length})`}
+                                            {notesExpanded ? "Show Latest" : `Show All (${order.notes_timeline.length})`}
                                             <ChevronDown className={cn("h-4 w-4 ml-1 transition-transform", notesExpanded && "rotate-180")} />
                                         </Button>
                                     )}
@@ -576,10 +575,10 @@ export default function OrderFormPage() {
                                 </div>
 
                                 {/* Notes Timeline */}
-                                {order.notes_timeline && (order.notes_timeline as any[]).length > 0 ? (
+                                {order.notes_timeline && order.notes_timeline.length > 0 ? (
                                     <div className="space-y-3 pt-2 border-t">
                                         {(notesExpanded
-                                            ? (order.notes_timeline as any[])
+                                            ? order.notes_timeline
                                             : [order.latest_note]
                                         ).filter(Boolean).map((note: any, idx: number) => (
                                             <div key={idx} className="flex gap-3 text-sm">

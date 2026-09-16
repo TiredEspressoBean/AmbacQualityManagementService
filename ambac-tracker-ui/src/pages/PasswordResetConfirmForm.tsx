@@ -24,18 +24,20 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, CheckCircle, AlertCircle } from 'lucide-react'
 import { PasswordInput } from '@/components/ui/password-input'
+import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 
 // Helper to extract user-friendly error messages from API errors
 function getPasswordResetErrorMessage(error: unknown, fallback: string): string {
-    // eslint-disable-next-line local/no-as-any -- error from fetch/axios may have .response.data; unknown requires narrowing which would be verbose for an error helper
-    const apiError = (error as any)?.response?.data;
-    if (apiError?.email?.[0]) return apiError.email[0];
-    if (apiError?.new_password1?.[0]) return apiError.new_password1[0];
-    if (apiError?.new_password2?.[0]) return apiError.new_password2[0];
-    if (apiError?.non_field_errors?.[0]) return apiError.non_field_errors[0];
-    if (apiError?.detail) return apiError.detail;
-    if (apiError?.token?.[0]) return "Invalid or expired reset link";
-    if (apiError?.uid?.[0]) return "Invalid reset link";
+    const body = apiErrorBody(error);
+    // Field errors first, then the generic detail, then the link-specific
+    // cases -- a bad token should read as "expired link", not as its raw
+    // serializer message.
+    for (const field of ["email", "new_password1", "new_password2", "non_field_errors", "detail"]) {
+        const message = apiErrorField(body, field);
+        if (message) return message;
+    }
+    if (apiErrorField(body, "token")) return "Invalid or expired reset link";
+    if (apiErrorField(body, "uid")) return "Invalid reset link";
     if (error instanceof Error) return error.message;
     return fallback;
 }

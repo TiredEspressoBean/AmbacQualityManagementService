@@ -67,6 +67,7 @@ import { useSendUserInvitation } from "@/hooks/useSendUserInvitation";
 import { useAddUserToTenantGroup } from "@/hooks/useAddUserToTenantGroup";
 import { InviteLinkDialog } from "@/components/users/InviteLinkDialog";
 import { format, formatDistanceToNow } from "date-fns";
+import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 
 // ---------------------------------------------------------------------------
 // Status derivation
@@ -205,10 +206,9 @@ export function UserManagementPage() {
             }
             toast.success(`Invitation link ready for ${email}`);
         } catch (err) {
-            // eslint-disable-next-line local/no-as-any -- axios error body needs verbose narrowing
-            const apiError = (err as any)?.response?.data;
-            if (apiError?.invitation_url) {
-                setInviteLinkUrl(apiError.invitation_url);
+            const invitationUrl = apiErrorField(apiErrorBody(err), "invitation_url");
+            if (invitationUrl) {
+                setInviteLinkUrl(invitationUrl);
                 setInviteLinkEmail(email);
                 setInviteLinkOpen(true);
                 toast.info(`${email} already has a pending invitation — here's the link.`);

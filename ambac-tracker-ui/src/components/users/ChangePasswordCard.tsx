@@ -32,6 +32,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
+import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 
 const schema = z
     .object({
@@ -68,25 +69,19 @@ export function ChangePasswordCard() {
             form.reset();
         },
         onError: (error: unknown) => {
-            // eslint-disable-next-line local/no-as-any -- axios error body needs verbose narrowing
-            const apiError = (error as any)?.response?.data;
+            const body = apiErrorBody(error);
             let handled = false;
-            if (apiError?.old_password?.[0]) {
-                form.setError("old_password", { message: apiError.old_password[0] });
-                handled = true;
-            }
-            if (apiError?.new_password1?.[0]) {
-                form.setError("new_password1", { message: apiError.new_password1[0] });
-                handled = true;
-            }
-            if (apiError?.new_password2?.[0]) {
-                form.setError("new_password2", { message: apiError.new_password2[0] });
-                handled = true;
+            for (const field of ["old_password", "new_password1", "new_password2"] as const) {
+                const message = apiErrorField(body, field);
+                if (message) {
+                    form.setError(field, { message });
+                    handled = true;
+                }
             }
             if (!handled) {
                 toast.error("Could not change password", {
                     description:
-                        apiError?.detail ??
+                        apiErrorField(body, "detail") ??
                         (error instanceof Error ? error.message : undefined),
                 });
             }
