@@ -164,6 +164,11 @@ Overdue tasks:
 - Trigger escalation (if configured)
 - Block CAPA closure
 
+The task list can be filtered to **overdue only**, which is the quickest way to
+see what is actually holding a CAPA open. Note this is the task-level filter —
+filtering *CAPAs* by overdue tells you which CAPAs are late overall, not which
+tasks inside them are.
+
 ## Reassigning Tasks
 
 If someone can't complete a task:

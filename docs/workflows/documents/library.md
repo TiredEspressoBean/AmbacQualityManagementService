@@ -18,20 +18,35 @@ The Document Library provides:
 
 ## Document Dashboard
 
-The Documents landing page shows:
-
-Two cards:
+The Documents landing page shows two cards:
 
 | Card | Goes to |
 |------|---------|
 | **View All Documents** | Browse and search documents |
 | **Upload Document** | Add a new document to the system |
 
-When something needs you, a **Documents Needing Approval** card appears with
-the count, e.g. *"1 document(s) require your review"*.
-
 Below the cards is a list of recent documents, each showing its name, who
 uploaded it, and when.
+
+### When approvals are waiting for you
+
+Two separate things surface them, and they are not duplicates:
+
+**Documents Needing Approval** — an orange banner that appears only when there
+is something to do, e.g. *"1 document(s) require your review"*. Clicking it
+opens the document list already filtered to what needs you.
+
+**Pending My Approval** — a panel listing the documents themselves, with a
+count badge, each linking straight to the document. When there is nothing
+outstanding it reads *"No approvals pending"*.
+
+The banner tells you there is work; the panel is how you pick it up.
+
+!!! note "If the panel is empty, check you are an assigned approver"
+    Approval is authorized per request, so a document can be awaiting approval
+    generally and still not be *yours*. Holding a permission does not put a
+    request in your list — the approval template's assignment does. See [Who
+    can approve](../approvals/overview.md#who-can-approve).
 
 ## Browsing Documents
 
