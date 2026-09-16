@@ -143,13 +143,11 @@ export function useRecordMeasurement() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: {
-            step_execution: string;
-            measurement_definition: string;
-            value?: number | string;
-            string_value?: string;
-            equipment?: string;
-        }) => api.api_StepExecutionMeasurements_create(data as never, {
+        // Typed from the contract. The hand-written shape allowed `value` as a
+        // number; measurements are DecimalFields, which the client types as a
+        // string -- the same mismatch that silently failed every BOM-line save.
+        mutationFn: (data: Parameters<typeof api.api_StepExecutionMeasurements_create>[0]) =>
+            api.api_StepExecutionMeasurements_create(data, {
             headers: {
                 "X-CSRFToken": getCookie("csrftoken") ?? "",
             },

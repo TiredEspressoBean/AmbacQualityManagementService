@@ -187,7 +187,10 @@ const invalidateAllParts = (queryClient: QueryClient) =>
         predicate: (q) => q.queryKey[0] === partsKeys.all[0],
     });
 
-type BulkSetStatusVariables = { ids: string[]; status: string; reason?: string };
+// `status` from the contract, not a bare string: the endpoint takes a
+// PartsStatusEnum, and as a string an unknown status compiled and was rejected
+// by the client at the call.
+type BulkSetStatusVariables = Parameters<typeof api.api_Parts_bulk_set_status_create>[0];
 
 // =============================================================================
 // Mutation option factories
@@ -281,9 +284,7 @@ export const bulkSetStatusPartsMutationOptions = (queryClient: QueryClient) =>
         mutationKey: partsMutationKeys.bulkSetStatus,
         mutationFn: (payload) =>
             api.api_Parts_bulk_set_status_create(
-                // Schema gap: the action's request body (ids/status/reason) isn't
-                // declared on the endpoint, so the generated type is the Parts shape.
-                { ids: payload.ids, status: payload.status, reason: payload.reason } as never,
+                { ids: payload.ids, status: payload.status, reason: payload.reason },
                 { headers: csrfHeaders() },
             ),
         onSuccess: () => invalidateAllParts(queryClient),

@@ -20,9 +20,11 @@ export const myDispositionsOptions = (userPk: number | null | undefined) =>
         queryKey: ["my-dispositions", userPk] as const,
         enabled: userPk != null,
         queryFn: async () => {
+            // `userPk!` rather than a cast: `enabled: userPk != null` above
+            // already guarantees it, and the cast hid the guard from the type.
             const resp = await api.api_QuarantineDispositions_list({
-                queries: { assigned_to: userPk, limit: 50 },
-            } as never);
+                queries: { assigned_to: userPk!, limit: 50 },
+            });
             // No cast: the zod-inferred rows structurally satisfy the
             // schema-derived MyDisposition (BlankEnum is patched to
             // z.literal("") by scripts/fix-generated-api.cjs).

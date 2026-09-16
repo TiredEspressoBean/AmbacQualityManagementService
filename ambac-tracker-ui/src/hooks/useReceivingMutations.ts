@@ -239,19 +239,22 @@ export const useRaiseScar = () => {
 
 // ----- Derived sample plan (GET) -----
 
-export const samplePlanOptions = (lotId: string | undefined, plan?: string) =>
+// No `plan` argument: the endpoint takes none. The server derives the plan from
+// the lot's part type + supplier ruleset, so the parameter this used to accept
+// was passed as a query param the contract doesn't declare -- dropped on the way
+// out, and never supplied by any caller in the first place.
+export const samplePlanOptions = (lotId: string | undefined) =>
     queryOptions({
-        queryKey: ["sample-plan", lotId, plan] as const,
+        queryKey: ["sample-plan", lotId] as const,
         queryFn: () =>
             api.api_MaterialLots_sample_plan_retrieve({
                 params: { id: lotId as string },
-                queries: plan ? { plan } : undefined,
-            } as never) as Promise<Schema<"SamplePlanResponse">>,
+            }) as Promise<Schema<"SamplePlanResponse">>,
         meta: { suppressGlobalError: true },
     });
 
-export const useSamplePlan = (lotId: string | undefined, plan?: string) =>
-    useQuery({ ...samplePlanOptions(lotId, plan), enabled: !!lotId });
+export const useSamplePlan = (lotId: string | undefined) =>
+    useQuery({ ...samplePlanOptions(lotId), enabled: !!lotId });
 
 /** One lot's detail row. ReceivingInspectionPage and ReceivingAcceptanceStage
  *  both read it and had declared this key and queryFn separately, character for
