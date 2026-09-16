@@ -120,8 +120,25 @@ export function DefectAnalysisPage() {
     const hasActiveFilters = filters.defect_type || filters.process || filters.part_type;
 
     // API Hooks
-    const { data: paretoResponse, isLoading: isLoadingPareto } = useDefectPareto({ days, limit: 8 });
-    const { data: processData, isLoading: isLoadingProcess } = useDefectsByProcess({ days });
+    //
+    // Cross-facet: each breakdown takes every filter EXCEPT the one it is the
+    // axis for, because each is also the control that sets that filter. Filter
+    // the Pareto by defect_type and clicking "Porosity" leaves one bar at 100%
+    // and nothing else to click. Filter it by part type and it correctly shows
+    // which defects that part suffers.
+    const { data: paretoResponse, isLoading: isLoadingPareto } = useDefectPareto({
+        days,
+        limit: 8,
+        process: filters.process,
+        part_type: filters.part_type,
+    });
+    const { data: processData, isLoading: isLoadingProcess } = useDefectsByProcess({
+        days,
+        defect_type: filters.defect_type,
+        part_type: filters.part_type,
+    });
+    // Unfiltered on purpose: these populate the filter dropdowns, so they have
+    // to keep offering every option or a selection could not be changed.
     const { data: filterOptions } = useFilterOptions({ days });
     const { data: recordsResponse, isLoading: isLoadingRecords } = useDefectRecords({
         days,
@@ -139,7 +156,17 @@ export function DefectAnalysisPage() {
         process: filters.process,
         part_type: filters.part_type,
     });
-    const { data: qualityRates } = useQualityRates({ days });
+    // The KPI cards sit directly above filtered content with nothing marking
+    // them as a different scope, so they follow the drill-down too. The Trend
+    // card beside them already did (it reads the filtered trend summary), which
+    // made the row inconsistent: some cards moved on a selection and some
+    // didn't.
+    const { data: qualityRates } = useQualityRates({
+        days,
+        defect_type: filters.defect_type,
+        process: filters.process,
+        part_type: filters.part_type,
+    });
 
     // Transform data
     const defectTypes = paretoResponse?.data ?? [];

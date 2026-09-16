@@ -10,31 +10,61 @@ export type QualityRatesResponse = {
     total_failed: number;
 };
 
-type UseQualityRatesParams = {
+type UseQualityRatesParams = QualityRatesFilters & {
     days?: number;
     enabled?: boolean;
 };
 
-const fetchQualityRates = (days: number) =>
-    api.api_dashboard_quality_rates_retrieve({ queries: { days } }) as Promise<QualityRatesResponse>;
+/** The KPI cards follow the same drill-down as everything under them.
+ *
+ *  `defect_type` narrows the FAILED count only, never the inspected total --
+ *  an inspection carries no defect type, so narrowing the denominator would
+ *  leave only inspections that already had that defect and every rate would
+ *  read 100%. The server enforces that; it is stated here because the
+ *  asymmetry is surprising from the call site. */
+export type QualityRatesFilters = {
+    defect_type?: string | null;
+    process?: string | null;
+    part_type?: string | null;
+};
 
-export const qualityRatesOptions = (days: number) => queryOptions({
-    queryKey: ["quality-rates", days] as const,
-    queryFn: () => fetchQualityRates(days),
-    placeholderData: (previousData) => previousData,
-    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - rate data
-});
+const fetchQualityRates = (days: number, filters: QualityRatesFilters = {}) => {
+    const { defect_type, process, part_type } = filters;
+    return api.api_dashboard_quality_rates_retrieve({
+        queries: {
+            days,
+            ...(defect_type ? { defect_type } : {}),
+            ...(process ? { process } : {}),
+            ...(part_type ? { part_type } : {}),
+        },
+    }) as Promise<QualityRatesResponse>;
+};
 
-export const useQualityRates = ({ days = 30, enabled = true }: UseQualityRatesParams = {}) => {
+export const qualityRatesOptions = (days: number, filters: QualityRatesFilters = {}) => {
+    const { defect_type, process, part_type } = filters;
+    return queryOptions({
+        queryKey: ["quality-rates", days, defect_type ?? null, process ?? null, part_type ?? null] as const,
+        queryFn: () => fetchQualityRates(days, { defect_type, process, part_type }),
+        placeholderData: (previousData) => previousData,
+        refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - rate data
+    });
+};
+
+export const useQualityRates = ({
+    days = 30, enabled = true, defect_type = null, process = null, part_type = null,
+}: UseQualityRatesParams = {}) => {
     const queryClient = useQueryClient();
 
-    // Prefetch other common ranges on mount
+    // Prefetch other ranges for the current filter set only.
     useEffect(() => {
         const rangesToPrefetch = [30, 60, 90].filter(d => d !== days);
         rangesToPrefetch.forEach(d => {
-            queryClient.prefetchQuery(qualityRatesOptions(d));
+            queryClient.prefetchQuery(qualityRatesOptions(d, { defect_type, process, part_type }));
         });
-    }, [days, queryClient]);
+    }, [days, queryClient, defect_type, process, part_type]);
 
-    return useQuery({ ...qualityRatesOptions(days), enabled });
+    return useQuery({
+        ...qualityRatesOptions(days, { defect_type, process, part_type }),
+        enabled,
+    });
 };

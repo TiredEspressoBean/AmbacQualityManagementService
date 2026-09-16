@@ -215,6 +215,13 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         parameters=[
             OpenApiParameter(name='days', type=int, required=False, default=30, description='Number of days to include'),
             OpenApiParameter(name='limit', type=int, required=False, default=10, description='Max number of error types'),
+            # Cross-facet: this breakdown IS the defect_type axis and doubles as
+            # the control that sets it, so it deliberately does not filter by
+            # defect_type -- doing so would leave a single bar at 100% and no
+            # way to pick anything else. It does respect the other two, so
+            # narrowing to a part type narrows which defects are counted.
+            OpenApiParameter(name='process', type=str, required=False, description='Filter by step/process name'),
+            OpenApiParameter(name='part_type', type=str, required=False, description='Filter by part type name'),
         ],
         responses={200: inline_serializer(
             name='DefectParetoResponse',
@@ -245,15 +252,30 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         """
         days = int(request.query_params.get('days', 30))
         limit = int(request.query_params.get('limit', 10))
+        process = request.query_params.get('process')
+        part_type = request.query_params.get('part_type')
         start_date = timezone.now() - timedelta(days=days)
 
         # Get counts by error type through QualityReportDefect -> QualityReports
         # Path: QualityErrorsList -> report_instances (QualityReportDefect) -> report (QualityReports)
-        error_counts = self.qs_for_user(QualityErrorsList).filter(
-            report_instances__report__created_at__gte=start_date,
-            report_instances__report__status='FAIL',
-            archived=False,
-        ).values(
+        # Every condition on `report_instances` goes in ONE filter() call. Chained
+        # filter() calls across a multi-valued relation each add their own JOIN,
+        # so Count('report_instances') would count the cross-product: filtering
+        # to one process tripled the counts, reporting more defects for a single
+        # station than the whole shop had.
+        error_filters = {
+            'report_instances__report__created_at__gte': start_date,
+            'report_instances__report__status': 'FAIL',
+            'archived': False,
+        }
+        # Same matching as defect-records / defect-trend, reached through the
+        # report the error instance hangs off.
+        if process:
+            error_filters['report_instances__report__step__name__icontains'] = process
+        if part_type:
+            error_filters['report_instances__report__part__part_type__name__icontains'] = part_type
+
+        error_counts = self.qs_for_user(QualityErrorsList).filter(**error_filters).values(
             'error_name'
         ).annotate(
             count=Count('report_instances')
@@ -526,6 +548,19 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
     @extend_schema(
         parameters=[
             OpenApiParameter(name='days', type=int, required=False, default=30, description='Number of days to include'),
+            # The KPI cards sit directly above filtered content, so they follow
+            # the same filters -- otherwise someone narrows to one part type,
+            # reads "4.2%", and attributes a shop-wide number to that part.
+            #
+            # `defect_type` is applied to the FAILED count only, never to the
+            # inspected count. Inspections are not tagged with a defect type;
+            # narrowing the denominator to "inspections that had this defect"
+            # would make every rate 100% by construction. Scoping filters
+            # (process, part_type) apply to both sides.
+            OpenApiParameter(name='defect_type', type=str, required=False,
+                             description='Filter the failure count by error type name (does not narrow the inspected total)'),
+            OpenApiParameter(name='process', type=str, required=False, description='Filter by step/process name'),
+            OpenApiParameter(name='part_type', type=str, required=False, description='Filter by part type name'),
         ],
         responses={200: inline_serializer(
             name='QualityRatesResponse',
@@ -556,26 +591,61 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         }
         """
         days = int(request.query_params.get('days', 30))
+        defect_type = request.query_params.get('defect_type')
+        process = request.query_params.get('process')
+        part_type = request.query_params.get('part_type')
         start_date = timezone.now() - timedelta(days=days)
 
+        def _scope(qs):
+            """Apply the scoping filters -- which inspections are in view.
+
+            Deliberately excludes defect_type: see the note on the decorator.
+            An inspection is not tagged with a defect type, so narrowing the
+            denominator by one would leave only inspections that already had
+            that defect and every rate would come out at 100%.
+            """
+            if process:
+                qs = qs.filter(step__name__icontains=process)
+            if part_type:
+                qs = qs.filter(part__part_type__name__icontains=part_type)
+            return qs
+
         # Total inspections in period
-        total_inspected = self.qs_for_user(QualityReports).filter(
+        total_inspected = _scope(self.qs_for_user(QualityReports).filter(
             created_at__gte=start_date,
             archived=False,
-        ).count()
+        )).count()
 
         # Failed inspections that led to dispositions
-        total_failed = self.qs_for_user(QualityReports).filter(
+        failed_qs = _scope(self.qs_for_user(QualityReports).filter(
             created_at__gte=start_date,
             status='FAIL',
             archived=False,
-        ).count()
+        ))
+        if defect_type:
+            # distinct(): joining errors multiplies a report by its matching rows.
+            failed_qs = failed_qs.filter(errors__error_name__icontains=defect_type).distinct()
+        total_failed = failed_qs.count()
 
-        # Disposition counts by type
-        disposition_counts = self.qs_for_user(QuarantineDisposition).filter(
+        # Disposition counts by type. Scoped through the related part/step on
+        # the disposition's own quality reports so the rates match the counts
+        # above rather than staying shop-wide.
+        disposition_qs = self.qs_for_user(QuarantineDisposition).filter(
             created_at__gte=start_date,
             archived=False,
-        ).values('disposition_type').annotate(
+        )
+        if process:
+            disposition_qs = disposition_qs.filter(
+                quality_reports__step__name__icontains=process
+            )
+        if part_type:
+            disposition_qs = disposition_qs.filter(
+                part__part_type__name__icontains=part_type
+            )
+        if process or part_type:
+            disposition_qs = disposition_qs.distinct()
+
+        disposition_counts = disposition_qs.values('disposition_type').annotate(
             count=Count('id')
         )
 
@@ -959,6 +1029,11 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         parameters=[
             OpenApiParameter(name='days', type=int, required=False, default=30, description='Number of days to include'),
             OpenApiParameter(name='limit', type=int, required=False, default=10, description='Max number of processes'),
+            # Cross-facet, mirroring defect-pareto: this breakdown is the
+            # `process` axis and sets that filter, so it does not filter by
+            # process -- but it does respect the other two.
+            OpenApiParameter(name='defect_type', type=str, required=False, description='Filter by error type name'),
+            OpenApiParameter(name='part_type', type=str, required=False, description='Filter by part type name'),
         ],
         responses={200: inline_serializer(
             name='DefectsByProcessResponse',
@@ -989,18 +1064,28 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         """
         days = int(request.query_params.get('days', 30))
         limit = int(request.query_params.get('limit', 10))
+        defect_type = request.query_params.get('defect_type')
+        part_type = request.query_params.get('part_type')
         start_date = timezone.now() - timedelta(days=days)
 
         # Count failed reports by step
-        step_counts = self.qs_for_user(QualityReports).filter(
+        step_qs = self.qs_for_user(QualityReports).filter(
             created_at__gte=start_date,
             status='FAIL',
             archived=False,
             step__isnull=False,
-        ).values(
+        )
+        if defect_type:
+            step_qs = step_qs.filter(errors__error_name__icontains=defect_type)
+        if part_type:
+            step_qs = step_qs.filter(part__part_type__name__icontains=part_type)
+
+        step_counts = step_qs.values(
             'step__name'
         ).annotate(
-            count=Count('id')
+            # distinct=True because filtering on `errors__` joins the error rows:
+            # a report with three matching defects would otherwise count as three.
+            count=Count('id', distinct=True)
         ).order_by('-count')[:limit]
 
         data = []

@@ -28576,6 +28576,16 @@ Response:
         type: "Query",
         schema: z.number().int().optional().default(10),
       },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().optional(),
+      },
     ],
     response: DefectParetoResponse,
   },
@@ -28735,9 +28745,19 @@ Response:
         schema: z.number().int().optional().default(30),
       },
       {
+        name: "defect_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional().default(10),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
       },
     ],
     response: DefectsByProcessResponse,
@@ -29051,6 +29071,21 @@ Response:
         name: "days",
         type: "Query",
         schema: z.number().int().optional().default(30),
+      },
+      {
+        name: "defect_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().optional(),
       },
     ],
     response: QualityRatesResponse,

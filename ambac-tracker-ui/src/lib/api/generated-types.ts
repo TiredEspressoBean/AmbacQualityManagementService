@@ -54907,6 +54907,10 @@ export interface operations {
                 days?: number;
                 /** @description Max number of error types */
                 limit?: number;
+                /** @description Filter by part type name */
+                part_type?: string;
+                /** @description Filter by step/process name */
+                process?: string;
             };
             header?: never;
             path?: never;
@@ -54989,8 +54993,12 @@ export interface operations {
             query?: {
                 /** @description Number of days to include */
                 days?: number;
+                /** @description Filter by error type name */
+                defect_type?: string;
                 /** @description Max number of processes */
                 limit?: number;
+                /** @description Filter by part type name */
+                part_type?: string;
             };
             header?: never;
             path?: never;
@@ -55226,6 +55234,12 @@ export interface operations {
             query?: {
                 /** @description Number of days to include */
                 days?: number;
+                /** @description Filter the failure count by error type name (does not narrow the inspected total) */
+                defect_type?: string;
+                /** @description Filter by part type name */
+                part_type?: string;
+                /** @description Filter by step/process name */
+                process?: string;
             };
             header?: never;
             path?: never;

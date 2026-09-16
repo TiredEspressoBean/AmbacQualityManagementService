@@ -32599,6 +32599,16 @@ paths:
           type: integer
           default: 10
         description: Max number of error types
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter by part type name
+      - in: query
+        name: process
+        schema:
+          type: string
+        description: Filter by step/process name
       tags:
       - api
       security:
@@ -32787,11 +32797,21 @@ paths:
           default: 30
         description: Number of days to include
       - in: query
+        name: defect_type
+        schema:
+          type: string
+        description: Filter by error type name
+      - in: query
         name: limit
         schema:
           type: integer
           default: 10
         description: Max number of processes
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter by part type name
       tags:
       - api
       security:
@@ -33205,6 +33225,22 @@ paths:
           type: integer
           default: 30
         description: Number of days to include
+      - in: query
+        name: defect_type
+        schema:
+          type: string
+        description: Filter the failure count by error type name (does not narrow
+          the inspected total)
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter by part type name
+      - in: query
+        name: process
+        schema:
+          type: string
+        description: Filter by step/process name
       tags:
       - api
       security:
