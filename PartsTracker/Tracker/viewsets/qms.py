@@ -37,6 +37,9 @@ from Tracker.serializers.qms import (
     FPIRecordSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
+# Module-level so `request_approval` can name it in @extend_schema; the
+# function-local import stays for the runtime path.
+from Tracker.serializers.core import ApprovalRequestSerializer
 from .core import ListMetadataMixin
 from .mixins import DataExportMixin
 from .base import TenantScopedMixin
@@ -150,6 +153,10 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
                                                              'batch_execution').prefetch_related(
             'quality_reports', 'documents', 'batch_execution__parts').distinct()
 
+    @extend_schema(
+        request=None,
+        responses={200: QuarantineDispositionSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='close')
     def close(self, request, pk=None):
         """Complete (close) a disposition. Gated by `close_disposition` via
@@ -839,7 +846,14 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
 
     # No body. Without request=None the inferred schema is CAPA, which the
     # generated client then requires and rejects the call against.
-    @extend_schema(request=None)
+    #
+    # Same story on the way back: this returns an ApprovalRequest, not a CAPA.
+    # Undeclared, the client rejected the response after the approval request
+    # had been created, so a retry would raise a second one.
+    @extend_schema(
+        request=None,
+        responses={201: ApprovalRequestSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='request-approval')
     def request_approval(self, request, pk=None):
         """Manually request approval for CAPA (typically for Critical/Major severity)"""
@@ -923,6 +937,26 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
         # Ensure tenant is set for proper sequence generation
         serializer.save(tenant=capa.tenant if capa else None)
 
+    @extend_schema(
+        # Undeclared, the body fell back to CapaTasksRequest, which demands
+        # capa / task_type / description -- the whole task row. The generated
+        # client rejected the real `{completion_notes}` payload client-side, so
+        # "Mark Complete" was dead in both the Inbox and the CAPA Tasks tab and
+        # no request was ever sent. Both call sites had cast the mismatch away.
+        request=inline_serializer(
+            name='CapaTaskCompleteRequest',
+            fields={
+                'completion_notes': serializers.CharField(
+                    required=False, allow_blank=True,
+                ),
+                # Required only when the task sets requires_signature; the
+                # model enforces that, so they stay optional here.
+                'signature_data': serializers.CharField(required=False, allow_blank=True),
+                'password': serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={200: CapaTasksSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='complete')
     def complete_task(self, request, pk=None):
         """Mark task as complete
@@ -1016,6 +1050,10 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
             'capa', 'conducted_by', 'root_cause_verified_by'
         ).prefetch_related('root_causes', 'five_whys', 'fishbone')
 
+    @extend_schema(
+        request=None,
+        responses={200: RcaRecordSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='submit-for-review')
     def submit_for_review(self, request, pk=None):
         """Submit RCA for review"""
@@ -1032,6 +1070,10 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @extend_schema(
+        request=None,
+        responses={200: RcaRecordSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_rca(self, request, pk=None):
         """Approve RCA record"""

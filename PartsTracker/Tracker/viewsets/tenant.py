@@ -9,6 +9,7 @@ Provides:
 """
 
 from drf_spectacular.utils import extend_schema, extend_schema_field, inline_serializer, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -611,6 +612,13 @@ class TenantViewSet(viewsets.ModelViewSet):
             return TenantCreateSerializer
         return TenantSerializer
 
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='TenantSuspendResponse',
+            fields={'status': serializers.CharField(), 'tenant': serializers.CharField()},
+        )},
+    )
     @action(detail=True, methods=['post'])
     def suspend(self, request, slug=None):
         """Suspend a tenant."""
@@ -621,6 +629,13 @@ class TenantViewSet(viewsets.ModelViewSet):
         tenant.save(update_fields=['status', 'status_changed_at'])
         return Response({'status': 'suspended', 'tenant': tenant.slug})
 
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='TenantActivateResponse',
+            fields={'status': serializers.CharField(), 'tenant': serializers.CharField()},
+        )},
+    )
     @action(detail=True, methods=['post'])
     def activate(self, request, slug=None):
         """Activate a suspended tenant."""
@@ -1213,6 +1228,10 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
         parameters=[OpenApiParameter(name='user_id', location='path', type=int, description='User pk to remove')],
         responses={200: inline_serializer(name='RemoveMemberResponse', fields={'status': serializers.CharField()})}
     )
+    # DELETE carries no body, so nothing falls back here -- request=None is
+    # stated only so the "undeclared action" scan stays clean and a reader
+    # doesn't have to re-derive that this one is safe.
+    @extend_schema(request=None)
     @action(detail=True, methods=['delete'], url_path='members/(?P<user_id>[^/.]+)')
     def remove_member(self, request, id=None, user_id=None):
         """Remove a user from the group."""
@@ -1305,6 +1324,16 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
             'unchanged_count': len(current_perms & preset_perms)
         })
 
+    @extend_schema(
+        request=inline_serializer(
+            name='TenantGroupFromPresetRequest',
+            fields={
+                'preset': serializers.CharField(),
+                'name': serializers.CharField(required=False),
+            },
+        ),
+        responses={201: TenantGroupDetailSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=['post'], url_path='from-preset')
     def from_preset(self, request):
         """Create a new group from a preset template."""
@@ -1963,6 +1992,16 @@ class TenantLLMProviderViewSet(viewsets.ModelViewSet):
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='TenantLLMProviderSetDefaultResponse',
+            fields={
+                'success': serializers.BooleanField(),
+                'message': serializers.CharField(),
+            },
+        )},
+    )
     @action(detail=True, methods=['post'], url_path='set-default')
     def set_default(self, request, id=None):
         """Set this provider as the default for the tenant."""

@@ -5775,7 +5775,9 @@ export type ProcessChangeOrder = {
      */
     (string | null)
     | undefined;
-  migration_disposition?: MigrationDispositionEnum | undefined;
+  migration_disposition?:
+    | ProcessChangeOrderMigrationDispositionEnum
+    | undefined;
   migration_reason?: string | undefined;
   migrated_workorder_ids: unknown;
   approved_at: string | null;
@@ -5802,7 +5804,7 @@ export type ProcessChangeOrderStatusEnum =
    * @enum DRAFT, APPROVED, IN_IMPLEMENTATION, IMPLEMENTED, CANCELLED
    */
   "DRAFT" | "APPROVED" | "IN_IMPLEMENTATION" | "IMPLEMENTED" | "CANCELLED";
-export type MigrationDispositionEnum =
+export type ProcessChangeOrderMigrationDispositionEnum =
   /**
    * * `PENDING` - Pending
    * `MIGRATE_ALL` - Migrate All
@@ -11003,7 +11005,7 @@ export type PatchedProcessChangeOrderRequest = Partial<{
    * Calendar date the change takes effect.
    */
   effective_date: string | null;
-  migration_disposition: MigrationDispositionEnum;
+  migration_disposition: ProcessChangeOrderMigrationDispositionEnum;
   migration_reason: string;
 }>;
 export type PatchedProcessChangeRequestRequest = Partial<{
@@ -12411,6 +12413,36 @@ export type PatchedWorkOrderRequest = Partial<{
   notes: string | null;
   archived: boolean;
 }>;
+export type PcoApproveResponse = {
+  pco: ProcessChangeOrder;
+  approval_request_id: string;
+};
+export type PcoImplementPayloadRequest = {
+  migration_disposition: PcoImplementPayloadMigrationDispositionEnum;
+  migration_reason?: /**
+   * @default ""
+   */
+  string | undefined;
+  selected_workorder_ids?: Array<string> | undefined;
+  stranded_resolutions?: unknown | undefined;
+};
+export type PcoImplementPayloadMigrationDispositionEnum =
+  /**
+   * * `MIGRATE_ALL` - MIGRATE_ALL
+   * `MIGRATE_SELECTED` - MIGRATE_SELECTED
+   * `KEEP_ALL` - KEEP_ALL
+   *
+   * @enum MIGRATE_ALL, MIGRATE_SELECTED, KEEP_ALL
+   */
+  "MIGRATE_ALL" | "MIGRATE_SELECTED" | "KEEP_ALL";
+export type PcoImplementResponse = {
+  pco: ProcessChangeOrder;
+  pcn: ProcessChangeNotice;
+};
+export type PcrApproveResponse = {
+  pcr: ProcessChangeRequest;
+  pco: ProcessChangeOrder;
+};
 export type PersonalRuleRequest = {
   /**
    * @minLength 1
@@ -12541,7 +12573,9 @@ export type ProcessChangeOrderRequest = {
      */
     (string | null)
     | undefined;
-  migration_disposition?: MigrationDispositionEnum | undefined;
+  migration_disposition?:
+    | ProcessChangeOrderMigrationDispositionEnum
+    | undefined;
   migration_reason?: string | undefined;
 };
 export type ProcessChangeRequestRequest = {
@@ -16043,6 +16077,13 @@ const PatchedCapaTasksRequest = z
     archived: z.boolean(),
   })
   .partial();
+const CapaTaskCompleteRequestRequest = z
+  .object({
+    completion_notes: z.string(),
+    signature_data: z.string(),
+    password: z.string(),
+  })
+  .partial();
 const PaginatedCapaVerificationList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -16615,6 +16656,9 @@ const DocumentLinkDetachRequestRequest = z.object({
 const DocumentLinksDetachResponse = z.object({
   links: z.array(z.object({}).partial().passthrough()),
 });
+const DocumentReleaseRequestRequest = z
+  .object({ effective_date: z.string() })
+  .partial();
 const DocumentReviseRequestRequest = z.object({
   change_justification: z.string().min(1),
   file: z.instanceof(File).optional(),
@@ -20956,6 +21000,10 @@ const TenantGroupPermissionsResponse = z.object({
   status: z.string(),
   count: z.number().int(),
 });
+const TenantGroupFromPresetRequestRequest = z.object({
+  preset: z.string().min(1),
+  name: z.string().min(1).optional(),
+});
 const TenantLLMProviderProviderEnum = z.enum(["ollama", "openai", "anthropic"]);
 const TenantLLMProvider = z.object({
   id: z.string().uuid(),
@@ -20994,6 +21042,10 @@ const PatchedTenantLLMProviderRequest = z
     api_key: z.string(),
   })
   .partial();
+const TenantLLMProviderSetDefaultResponse = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
 const TenantLLMProviderDefault = z.object({
   configured: z.boolean(),
   provider: z.string().optional(),
@@ -21104,6 +21156,10 @@ const PatchedTenantRequest = z
     default_timezone: z.string().min(1).max(50),
   })
   .partial();
+const TenantActivateResponse = z.object({
+  status: z.string(),
+  tenant: z.string(),
+});
 const RegenerateDemoQueued = z.object({
   task_id: z.string(),
   status: z.string(),
@@ -21115,6 +21171,10 @@ const RegenerateDemoStatusResponse = z.object({
   progress: z.object({}).partial().passthrough().optional(),
   result: z.object({}).partial().passthrough().optional(),
   error: z.string().optional(),
+});
+const TenantSuspendResponse = z.object({
+  status: z.string(),
+  tenant: z.string(),
 });
 const ProcessingStatusEnum = z.enum([
   "PENDING",
@@ -22849,6 +22909,9 @@ const ProcessChangeNoticeRequest = z.object({
 const PatchedProcessChangeNoticeRequest = z
   .object({ notice_content: z.string().min(1), closure_evidence: z.string() })
   .partial();
+const PcnClosePayloadRequest = z.object({
+  closure_evidence: z.string().min(1),
+});
 const ProcessChangeOrderStatusEnum = z.enum([
   "DRAFT",
   "APPROVED",
@@ -22856,7 +22919,7 @@ const ProcessChangeOrderStatusEnum = z.enum([
   "IMPLEMENTED",
   "CANCELLED",
 ]);
-const MigrationDispositionEnum = z.enum([
+const ProcessChangeOrderMigrationDispositionEnum = z.enum([
   "PENDING",
   "MIGRATE_ALL",
   "MIGRATE_SELECTED",
@@ -22874,7 +22937,7 @@ const ProcessChangeOrder = z.object({
   draft_process_version_id: z.string().uuid(),
   implementation_plan: z.string(),
   effective_date: z.string().nullish(),
-  migration_disposition: MigrationDispositionEnum.optional(),
+  migration_disposition: ProcessChangeOrderMigrationDispositionEnum.optional(),
   migration_reason: z.string().optional(),
   migrated_workorder_ids: z.unknown(),
   approved_at: z.string().datetime({ offset: true }).nullable(),
@@ -22899,14 +22962,14 @@ const PaginatedProcessChangeOrderList = z.object({
 const ProcessChangeOrderRequest = z.object({
   implementation_plan: z.string().min(1),
   effective_date: z.string().nullish(),
-  migration_disposition: MigrationDispositionEnum.optional(),
+  migration_disposition: ProcessChangeOrderMigrationDispositionEnum.optional(),
   migration_reason: z.string().optional(),
 });
 const PatchedProcessChangeOrderRequest = z
   .object({
     implementation_plan: z.string().min(1),
     effective_date: z.string().nullable(),
-    migration_disposition: MigrationDispositionEnum,
+    migration_disposition: ProcessChangeOrderMigrationDispositionEnum,
     migration_reason: z.string(),
   })
   .partial();
@@ -22931,6 +22994,34 @@ const AvailableStep = z.object({ id: z.string().uuid(), name: z.string() });
 const AffectedWorkordersResponse = z.object({
   results: z.array(AffectedWorkorderRow),
   available_steps: z.array(AvailableStep),
+});
+const PcoApproveResponse = z.object({
+  pco: ProcessChangeOrder,
+  approval_request_id: z.string(),
+});
+const PcoAuthorPayloadRequest = z
+  .object({
+    implementation_plan: z.string(),
+    effective_date: z.string().nullable(),
+  })
+  .partial();
+const PcoCancelPayloadRequest = z
+  .object({ reason: z.string().default("") })
+  .partial();
+const PcoImplementPayloadMigrationDispositionEnum = z.enum([
+  "MIGRATE_ALL",
+  "MIGRATE_SELECTED",
+  "KEEP_ALL",
+]);
+const PcoImplementPayloadRequest = z.object({
+  migration_disposition: PcoImplementPayloadMigrationDispositionEnum,
+  migration_reason: z.string().optional().default(""),
+  selected_workorder_ids: z.array(z.string().uuid()).optional(),
+  stranded_resolutions: z.unknown().optional(),
+});
+const PcoImplementResponse = z.object({
+  pco: ProcessChangeOrder,
+  pcn: ProcessChangeNotice,
 });
 const ProcessChangeStatusEnum = z.enum([
   "DRAFT",
@@ -23001,6 +23092,14 @@ const PatchedProcessChangeRequestRequest = z
     proposed_change_diff: z.unknown().nullable(),
   })
   .partial();
+const PcrApproveResponse = z.object({
+  pcr: ProcessChangeRequest,
+  pco: ProcessChangeOrder,
+});
+const PcrCancelPayloadRequest = z
+  .object({ reason: z.string().default("") })
+  .partial();
+const PcrRejectPayloadRequest = z.object({ reason: z.string().min(1) });
 const ProposeProcessChangeRequestRequest = z.object({
   target_process_id: z.string().uuid(),
   title: z.string().optional(),
@@ -23741,6 +23840,7 @@ export const schemas = {
   PaginatedCapaTasksList,
   CapaTasksRequest,
   PatchedCapaTasksRequest,
+  CapaTaskCompleteRequestRequest,
   PaginatedCapaVerificationList,
   CapaVerificationRequest,
   PatchedCapaVerificationRequest,
@@ -23797,6 +23897,7 @@ export const schemas = {
   DocumentLinksResponse,
   DocumentLinkDetachRequestRequest,
   DocumentLinksDetachResponse,
+  DocumentReleaseRequestRequest,
   DocumentReviseRequestRequest,
   DocumentStatsResponse,
   DowntimeCategoryEnum,
@@ -24234,11 +24335,13 @@ export const schemas = {
   RemoveMemberResponse,
   TenantGroupPermissionsRequestRequest,
   TenantGroupPermissionsResponse,
+  TenantGroupFromPresetRequestRequest,
   TenantLLMProviderProviderEnum,
   TenantLLMProvider,
   PaginatedTenantLLMProviderList,
   TenantLLMProviderRequest,
   PatchedTenantLLMProviderRequest,
+  TenantLLMProviderSetDefaultResponse,
   TenantLLMProviderDefault,
   TierEnum,
   TenantStatusEnum,
@@ -24248,8 +24351,10 @@ export const schemas = {
   TenantCreate,
   TenantRequest,
   PatchedTenantRequest,
+  TenantActivateResponse,
   RegenerateDemoQueued,
   RegenerateDemoStatusResponse,
+  TenantSuspendResponse,
   ProcessingStatusEnum,
   ThreeDModel,
   PaginatedThreeDModelList,
@@ -24460,8 +24565,9 @@ export const schemas = {
   PaginatedProcessChangeNoticeList,
   ProcessChangeNoticeRequest,
   PatchedProcessChangeNoticeRequest,
+  PcnClosePayloadRequest,
   ProcessChangeOrderStatusEnum,
-  MigrationDispositionEnum,
+  ProcessChangeOrderMigrationDispositionEnum,
   ProcessChangeOrder,
   PaginatedProcessChangeOrderList,
   ProcessChangeOrderRequest,
@@ -24470,12 +24576,21 @@ export const schemas = {
   AffectedWorkorderRow,
   AvailableStep,
   AffectedWorkordersResponse,
+  PcoApproveResponse,
+  PcoAuthorPayloadRequest,
+  PcoCancelPayloadRequest,
+  PcoImplementPayloadMigrationDispositionEnum,
+  PcoImplementPayloadRequest,
+  PcoImplementResponse,
   ProcessChangeStatusEnum,
   ChangeControlPriorityEnum,
   ProcessChangeRequest,
   PaginatedProcessChangeRequestList,
   ProcessChangeRequestRequest,
   PatchedProcessChangeRequestRequest,
+  PcrApproveResponse,
+  PcrCancelPayloadRequest,
+  PcrRejectPayloadRequest,
   ProposeProcessChangeRequestRequest,
   ProposeProcessChangeResponse,
   GenerateReportRequest,
@@ -26834,7 +26949,13 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
         schema: z.string().uuid(),
       },
     ],
-    response: CAPA,
+    response: ApprovalRequest,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -27152,7 +27273,7 @@ If task.requires_signature is True, signature_data and password are required.`,
       {
         name: "body",
         type: "Body",
-        schema: CapaTasksRequest,
+        schema: CapaTaskCompleteRequestRequest,
       },
       {
         name: "id",
@@ -27161,6 +27282,12 @@ If task.requires_signature is True, signature_data and password are required.`,
       },
     ],
     response: CapaTasks,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -29238,13 +29365,8 @@ Returns the document&#x27;s current &#x60;links&#x60;.`,
     description: `Mark a released/approved document as obsolete.
 
 Sets status to OBSOLETE and records the obsolete_date.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: DocumentsRequest,
-      },
       {
         name: "id",
         type: "Path",
@@ -29252,6 +29374,12 @@ Sets status to OBSOLETE and records the obsolete_date.`,
       },
     ],
     response: Documents,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -29269,7 +29397,7 @@ Optional body:
       {
         name: "body",
         type: "Body",
-        schema: DocumentsRequest,
+        schema: z.object({ effective_date: z.string() }).partial(),
       },
       {
         name: "id",
@@ -29278,6 +29406,12 @@ Optional body:
       },
     ],
     response: Documents,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -29328,7 +29462,13 @@ The new version will:
         schema: z.string().uuid(),
       },
     ],
-    response: Documents,
+    response: ApprovalRequest,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -38016,7 +38156,7 @@ is disallowed. Lifecycle endpoints:
       {
         name: "body",
         type: "Body",
-        schema: ProcessChangeNoticeRequest,
+        schema: z.object({ closure_evidence: z.string().min(1) }),
       },
       {
         name: "id",
@@ -38025,6 +38165,12 @@ is disallowed. Lifecycle endpoints:
       },
     ],
     response: ProcessChangeNotice,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -38040,17 +38186,18 @@ is disallowed. Lifecycle endpoints:
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: ProcessChangeNoticeRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
     response: ProcessChangeNotice,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -38282,17 +38429,18 @@ ApprovalRequest). Once signatures are collected, call
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: ProcessChangeOrderRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
-    response: ProcessChangeOrder,
+    response: PcoApproveResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -38315,7 +38463,7 @@ Lifecycle endpoints:
       {
         name: "body",
         type: "Body",
-        schema: ProcessChangeOrderRequest,
+        schema: PcoAuthorPayloadRequest,
       },
       {
         name: "id",
@@ -38324,6 +38472,12 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeOrder,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -38346,7 +38500,7 @@ Lifecycle endpoints:
       {
         name: "body",
         type: "Body",
-        schema: ProcessChangeOrderRequest,
+        schema: z.object({ reason: z.string().default("") }).partial(),
       },
       {
         name: "id",
@@ -38355,6 +38509,12 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeOrder,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -38377,7 +38537,7 @@ Lifecycle endpoints:
       {
         name: "body",
         type: "Body",
-        schema: ProcessChangeOrderRequest,
+        schema: PcoImplementPayloadRequest,
       },
       {
         name: "id",
@@ -38385,7 +38545,13 @@ Lifecycle endpoints:
         schema: z.string().uuid(),
       },
     ],
-    response: ProcessChangeOrder,
+    response: PcoImplementResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -38396,17 +38562,18 @@ Enforces separation of duties (approver !&#x3D; PCO author).`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: ProcessChangeOrderRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
     response: ProcessChangeOrder,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -38597,17 +38764,22 @@ Lifecycle endpoints:
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: ProcessChangeRequestRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
-    response: ProcessChangeRequest,
+    response: PcrApproveResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+      {
+        status: 409,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -38625,7 +38797,7 @@ Lifecycle endpoints:
       {
         name: "body",
         type: "Body",
-        schema: ProcessChangeRequestRequest,
+        schema: z.object({ reason: z.string().default("") }).partial(),
       },
       {
         name: "id",
@@ -38634,6 +38806,12 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeRequest,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -38651,7 +38829,7 @@ Lifecycle endpoints:
       {
         name: "body",
         type: "Body",
-        schema: ProcessChangeRequestRequest,
+        schema: z.object({ reason: z.string().min(1) }),
       },
       {
         name: "id",
@@ -38660,6 +38838,12 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeRequest,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -40114,17 +40298,18 @@ the completion blockers.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: QuarantineDispositionRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
     response: QuarantineDisposition,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -40327,17 +40512,18 @@ the completion blockers.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: RcaRecordRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
     response: RcaRecord,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -40347,17 +40533,18 @@ the completion blockers.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: RcaRecordRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
     response: RcaRecord,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -46519,10 +46706,16 @@ Returns added/removed permissions vs the preset template.`,
       {
         name: "body",
         type: "Body",
-        schema: TenantGroupRequest,
+        schema: TenantGroupFromPresetRequestRequest,
       },
     ],
-    response: TenantGroup,
+    response: TenantGroupDetail,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -46702,17 +46895,12 @@ Endpoints:
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: TenantLLMProviderRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
-    response: TenantLLMProvider,
+    response: TenantLLMProviderSetDefaultResponse,
   },
   {
     method: "get",
@@ -46852,17 +47040,12 @@ Only available in SaaS mode and requires superuser/staff.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: TenantRequest,
-      },
-      {
         name: "slug",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: Tenant,
+    response: TenantActivateResponse,
   },
   {
     method: "post",
@@ -46913,17 +47096,12 @@ Only available in SaaS mode and requires superuser/staff.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: TenantRequest,
-      },
-      {
         name: "slug",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: Tenant,
+    response: TenantSuspendResponse,
   },
   {
     method: "get",

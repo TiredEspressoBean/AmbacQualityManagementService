@@ -51,6 +51,7 @@ class ChatSessionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     # path. Undeclared, spectacular assumed the model serializer and the
     # generated client demanded a full body the caller does not have.
     @extend_schema(request=None)
+    @extend_schema(request=None, responses={200: ChatSessionSerializer})
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
         """Archive a chat session."""
@@ -63,6 +64,7 @@ class ChatSessionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     # path. Undeclared, spectacular assumed the model serializer and the
     # generated client demanded a full body the caller does not have.
     @extend_schema(request=None)
+    @extend_schema(request=None, responses={200: ChatSessionSerializer})
     @action(detail=True, methods=['post'])
     def unarchive(self, request, pk=None):
         """Unarchive a chat session."""

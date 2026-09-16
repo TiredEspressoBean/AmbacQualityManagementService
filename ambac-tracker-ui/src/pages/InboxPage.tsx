@@ -484,9 +484,7 @@ function InboxItemCard({ item }: { item: InboxItem }) {
         completeTask.mutate(
             {
                 id: item.numericId,
-                 
-                // eslint-disable-next-line local/no-double-cast-via-unknown -- complete-task endpoint only consumes `completion_notes` server-side; generated type re-uses the full CapaTasksRequest shape
-                data: { completion_notes: data.notes } as unknown as Parameters<typeof completeTask.mutate>[0]["data"],
+                data: { completion_notes: data.notes },
             },
             {
                 onSuccess: () => {

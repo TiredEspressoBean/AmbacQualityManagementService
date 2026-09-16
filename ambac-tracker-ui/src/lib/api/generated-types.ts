@@ -17049,6 +17049,11 @@ export interface components {
             completion_notes?: string | null;
             archived?: boolean;
         };
+        CapaTaskCompleteRequestRequest: {
+            completion_notes?: string;
+            signature_data?: string;
+            password?: string;
+        };
         /**
          * @description * `NOT_STARTED` - Not Started
          *     * `IN_PROGRESS` - In Progress
@@ -18040,6 +18045,10 @@ export interface components {
             links: {
                 [key: string]: unknown;
             }[];
+        };
+        DocumentReleaseRequestRequest: {
+            /** Format: date */
+            effective_date?: string;
         };
         DocumentReviseRequestRequest: {
             /** @description Why this revision exists. Required. */
@@ -20217,14 +20226,6 @@ export interface components {
             value_pass_fail?: (components["schemas"]["ValuePassFailEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             archived?: boolean;
         };
-        /**
-         * @description * `PENDING` - Pending
-         *     * `MIGRATE_ALL` - Migrate All
-         *     * `MIGRATE_SELECTED` - Migrate Selected
-         *     * `KEEP_ALL` - Keep All
-         * @enum {string}
-         */
-        MigrationDispositionEnum: "PENDING" | "MIGRATE_ALL" | "MIGRATE_SELECTED" | "KEEP_ALL";
         /** @description Single milestone within a template. */
         Milestone: {
             /** Format: uuid */
@@ -23876,7 +23877,7 @@ export interface components {
              * @description Calendar date the change takes effect.
              */
             effective_date?: string | null;
-            migration_disposition?: components["schemas"]["MigrationDispositionEnum"];
+            migration_disposition?: components["schemas"]["ProcessChangeOrderMigrationDispositionEnum"];
             migration_reason?: string;
         };
         /**
@@ -25255,6 +25256,51 @@ export interface components {
             notes?: string | null;
             archived?: boolean;
         };
+        PcnClosePayloadRequest: {
+            closure_evidence: string;
+        };
+        PcoApproveResponse: {
+            pco: components["schemas"]["ProcessChangeOrder"];
+            approval_request_id: string;
+        };
+        PcoAuthorPayloadRequest: {
+            implementation_plan?: string;
+            /** Format: date */
+            effective_date?: string | null;
+        };
+        PcoCancelPayloadRequest: {
+            /** @default  */
+            reason: string;
+        };
+        /**
+         * @description * `MIGRATE_ALL` - MIGRATE_ALL
+         *     * `MIGRATE_SELECTED` - MIGRATE_SELECTED
+         *     * `KEEP_ALL` - KEEP_ALL
+         * @enum {string}
+         */
+        PcoImplementPayloadMigrationDispositionEnum: "MIGRATE_ALL" | "MIGRATE_SELECTED" | "KEEP_ALL";
+        PcoImplementPayloadRequest: {
+            migration_disposition: components["schemas"]["PcoImplementPayloadMigrationDispositionEnum"];
+            /** @default  */
+            migration_reason: string;
+            selected_workorder_ids?: string[];
+            stranded_resolutions?: unknown;
+        };
+        PcoImplementResponse: {
+            pco: components["schemas"]["ProcessChangeOrder"];
+            pcn: components["schemas"]["ProcessChangeNotice"];
+        };
+        PcrApproveResponse: {
+            pcr: components["schemas"]["ProcessChangeRequest"];
+            pco: components["schemas"]["ProcessChangeOrder"];
+        };
+        PcrCancelPayloadRequest: {
+            /** @default  */
+            reason: string;
+        };
+        PcrRejectPayloadRequest: {
+            reason: string;
+        };
         PermissionListResponse: {
             permissions: {
                 [key: string]: unknown;
@@ -25581,7 +25627,7 @@ export interface components {
              * @description Calendar date the change takes effect.
              */
             effective_date?: string | null;
-            migration_disposition?: components["schemas"]["MigrationDispositionEnum"];
+            migration_disposition?: components["schemas"]["ProcessChangeOrderMigrationDispositionEnum"];
             migration_reason?: string;
             readonly migrated_workorder_ids: unknown;
             /** Format: date-time */
@@ -25603,6 +25649,14 @@ export interface components {
             readonly data_origin: components["schemas"]["DataOriginEnum"];
         };
         /**
+         * @description * `PENDING` - Pending
+         *     * `MIGRATE_ALL` - Migrate All
+         *     * `MIGRATE_SELECTED` - Migrate Selected
+         *     * `KEEP_ALL` - Keep All
+         * @enum {string}
+         */
+        ProcessChangeOrderMigrationDispositionEnum: "PENDING" | "MIGRATE_ALL" | "MIGRATE_SELECTED" | "KEEP_ALL";
+        /**
          * @description Read/write serializer for PCOs.
          *
          *     Implementation actions (author, approve, implement, cancel) flow
@@ -25617,7 +25671,7 @@ export interface components {
              * @description Calendar date the change takes effect.
              */
             effective_date?: string | null;
-            migration_disposition?: components["schemas"]["MigrationDispositionEnum"];
+            migration_disposition?: components["schemas"]["ProcessChangeOrderMigrationDispositionEnum"];
             migration_reason?: string;
         };
         /**
@@ -29769,6 +29823,10 @@ export interface components {
             /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
             default_timezone?: string;
         };
+        TenantActivateResponse: {
+            status: string;
+            tenant: string;
+        };
         /**
          * @description dj-rest-auth user-details payload + the fields the frontend needs.
          *
@@ -29884,6 +29942,10 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             readonly permissions: string[];
+        };
+        TenantGroupFromPresetRequestRequest: {
+            preset: string;
+            name?: string;
         };
         TenantGroupMemberRequestRequest: {
             user_id: number;
@@ -30011,6 +30073,10 @@ export interface components {
             base_url?: string;
             /** @description API key (write-only, never returned in responses) */
             api_key?: string;
+        };
+        TenantLLMProviderSetDefaultResponse: {
+            success: boolean;
+            message: string;
         };
         TenantLogoDeleteResponse: {
             logo_url: string | null;
@@ -30229,6 +30295,10 @@ export interface components {
          * @enum {string}
          */
         TenantStatusEnum: "ACTIVE" | "TRIAL" | "SUSPENDED" | "PENDING_DELETION";
+        TenantSuspendResponse: {
+            status: string;
+            tenant: string;
+        };
         /**
          * @description * `COMPLETED` - Completed Successfully
          *     * `SHIPPED` - Shipped to Customer
@@ -33627,12 +33697,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CAPA"];
+                    "application/json": components["schemas"]["ApprovalRequest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -34357,11 +34437,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["CapaTasksRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["CapaTasksRequest"];
-                "multipart/form-data": components["schemas"]["CapaTasksRequest"];
+                "application/json": components["schemas"]["CapaTaskCompleteRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CapaTaskCompleteRequestRequest"];
+                "multipart/form-data": components["schemas"]["CapaTaskCompleteRequestRequest"];
             };
         };
         responses: {
@@ -34371,6 +34451,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CapaTasks"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -36351,13 +36441,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["DocumentsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
-                "application/json": components["schemas"]["DocumentsRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -36365,6 +36449,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Documents"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -36379,11 +36473,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "multipart/form-data": components["schemas"]["DocumentsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
-                "application/json": components["schemas"]["DocumentsRequest"];
+                "multipart/form-data": components["schemas"]["DocumentReleaseRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DocumentReleaseRequestRequest"];
+                "application/json": components["schemas"]["DocumentReleaseRequestRequest"];
             };
         };
         responses: {
@@ -36393,6 +36487,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Documents"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -36447,12 +36551,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["ApprovalRequest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -44716,13 +44830,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["QuarantineDispositionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["QuarantineDispositionRequest"];
-                "multipart/form-data": components["schemas"]["QuarantineDispositionRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -44730,6 +44838,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuarantineDisposition"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -44993,13 +45111,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RcaRecordRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RcaRecordRequest"];
-                "multipart/form-data": components["schemas"]["RcaRecordRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -45007,6 +45119,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RcaRecord"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -45021,13 +45143,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RcaRecordRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RcaRecordRequest"];
-                "multipart/form-data": components["schemas"]["RcaRecordRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -45035,6 +45151,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RcaRecord"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -50353,18 +50479,28 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TenantGroupRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupRequest"];
-                "multipart/form-data": components["schemas"]["TenantGroupRequest"];
+                "application/json": components["schemas"]["TenantGroupFromPresetRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantGroupFromPresetRequestRequest"];
+                "multipart/form-data": components["schemas"]["TenantGroupFromPresetRequestRequest"];
             };
         };
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantGroup"];
+                    "application/json": components["schemas"]["TenantGroupDetail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -50529,20 +50665,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TenantLLMProviderRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantLLMProviderRequest"];
-                "multipart/form-data": components["schemas"]["TenantLLMProviderRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TenantLLMProvider"];
+                    "application/json": components["schemas"]["TenantLLMProviderSetDefaultResponse"];
                 };
             };
         };
@@ -50721,20 +50851,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TenantRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantRequest"];
-                "multipart/form-data": components["schemas"]["TenantRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Tenant"];
+                    "application/json": components["schemas"]["TenantActivateResponse"];
                 };
             };
         };
@@ -50800,20 +50924,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TenantRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["TenantRequest"];
-                "multipart/form-data": components["schemas"]["TenantRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Tenant"];
+                    "application/json": components["schemas"]["TenantSuspendResponse"];
                 };
             };
         };
@@ -56844,9 +56962,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProcessChangeNoticeRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeNoticeRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeNoticeRequest"];
+                "application/json": components["schemas"]["PcnClosePayloadRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcnClosePayloadRequest"];
+                "multipart/form-data": components["schemas"]["PcnClosePayloadRequest"];
             };
         };
         responses: {
@@ -56856,6 +56974,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeNotice"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -56870,13 +56998,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProcessChangeNoticeRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeNoticeRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeNoticeRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -56884,6 +57006,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeNotice"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57086,20 +57218,24 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProcessChangeOrderRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeOrderRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeOrderRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProcessChangeOrder"];
+                    "application/json": components["schemas"]["PcoApproveResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57114,11 +57250,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["ProcessChangeOrderRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeOrderRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeOrderRequest"];
+                "application/json": components["schemas"]["PcoAuthorPayloadRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcoAuthorPayloadRequest"];
+                "multipart/form-data": components["schemas"]["PcoAuthorPayloadRequest"];
             };
         };
         responses: {
@@ -57128,6 +57264,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeOrder"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57142,11 +57288,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["ProcessChangeOrderRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeOrderRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeOrderRequest"];
+                "application/json": components["schemas"]["PcoCancelPayloadRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcoCancelPayloadRequest"];
+                "multipart/form-data": components["schemas"]["PcoCancelPayloadRequest"];
             };
         };
         responses: {
@@ -57156,6 +57302,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeOrder"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57172,9 +57328,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProcessChangeOrderRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeOrderRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeOrderRequest"];
+                "application/json": components["schemas"]["PcoImplementPayloadRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcoImplementPayloadRequest"];
+                "multipart/form-data": components["schemas"]["PcoImplementPayloadRequest"];
             };
         };
         responses: {
@@ -57183,7 +57339,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProcessChangeOrder"];
+                    "application/json": components["schemas"]["PcoImplementResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57198,13 +57364,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProcessChangeOrderRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeOrderRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeOrderRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -57212,6 +57372,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeOrder"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57394,20 +57564,34 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                    "application/json": components["schemas"]["PcrApproveResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57422,11 +57606,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/json": components["schemas"]["PcrCancelPayloadRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcrCancelPayloadRequest"];
+                "multipart/form-data": components["schemas"]["PcrCancelPayloadRequest"];
             };
         };
         responses: {
@@ -57436,6 +57620,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -57452,9 +57646,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
-                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/json": components["schemas"]["PcrRejectPayloadRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcrRejectPayloadRequest"];
+                "multipart/form-data": components["schemas"]["PcrRejectPayloadRequest"];
             };
         };
         responses: {
@@ -57464,6 +57658,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

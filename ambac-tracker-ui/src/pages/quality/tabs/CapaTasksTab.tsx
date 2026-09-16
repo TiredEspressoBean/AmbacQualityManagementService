@@ -188,7 +188,7 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                             password: signatureVerification.password,
                         }
                         : {}),
-                } as never,
+                },
             })
             queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
             queryClient.invalidateQueries(matchKey(["capa-my-tasks"]))

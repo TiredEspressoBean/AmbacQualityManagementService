@@ -2535,11 +2535,18 @@ paths:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CAPA'
+                $ref: '#/components/schemas/ApprovalRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/CAPAs/export/{export_format}/:
     get:
@@ -3576,14 +3583,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CapaTasksRequest'
+              $ref: '#/components/schemas/CapaTaskCompleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CapaTasksRequest'
+              $ref: '#/components/schemas/CapaTaskCompleteRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CapaTasksRequest'
-        required: true
+              $ref: '#/components/schemas/CapaTaskCompleteRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -3593,6 +3599,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CapaTasks'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/CapaTasks/export/{export_format}/:
     get:
@@ -6123,18 +6136,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -6144,6 +6145,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Documents'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Documents/{id}/release/:
     post:
@@ -6170,14 +6178,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentReleaseRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentReleaseRequestRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-        required: true
+              $ref: '#/components/schemas/DocumentReleaseRequestRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -6187,6 +6194,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Documents'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Documents/{id}/revise/:
     post:
@@ -6260,11 +6274,18 @@ paths:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                $ref: '#/components/schemas/ApprovalRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Documents/{id}/version-history/:
     get:
@@ -18494,18 +18515,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QuarantineDispositionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/QuarantineDispositionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/QuarantineDispositionRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -18515,6 +18524,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QuarantineDisposition'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/QuarantineDispositions/{id}/decide/:
     post:
@@ -18846,18 +18862,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RcaRecordRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/RcaRecordRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/RcaRecordRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -18867,6 +18871,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RcaRecord'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/RcaRecords/{id}/submit-for-review/:
     post:
@@ -18882,18 +18893,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RcaRecordRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/RcaRecordRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/RcaRecordRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -18903,6 +18902,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RcaRecord'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/RcaRecords/export/{export_format}/:
     get:
@@ -26721,23 +26727,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantGroupRequest'
+              $ref: '#/components/schemas/TenantGroupFromPresetRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TenantGroupRequest'
+              $ref: '#/components/schemas/TenantGroupFromPresetRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TenantGroupRequest'
+              $ref: '#/components/schemas/TenantGroupFromPresetRequestRequest'
         required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantGroup'
+                $ref: '#/components/schemas/TenantGroupDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/TenantLLMProviders/:
     get:
@@ -26993,18 +27006,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TenantLLMProviderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TenantLLMProviderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TenantLLMProviderRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27013,7 +27014,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TenantLLMProvider'
+                $ref: '#/components/schemas/TenantLLMProviderSetDefaultResponse'
           description: ''
   /api/TenantLLMProviders/default/:
     get:
@@ -27232,18 +27233,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TenantRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TenantRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TenantRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27252,7 +27241,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Tenant'
+                $ref: '#/components/schemas/TenantActivateResponse'
           description: ''
   /api/Tenants/{slug}/regenerate-demo-data/:
     post:
@@ -27328,18 +27317,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TenantRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TenantRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TenantRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27348,7 +27325,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Tenant'
+                $ref: '#/components/schemas/TenantSuspendResponse'
           description: ''
   /api/Tenants/{slug}/users/:
     get:
@@ -35438,13 +35415,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+              $ref: '#/components/schemas/PcnClosePayloadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+              $ref: '#/components/schemas/PcnClosePayloadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+              $ref: '#/components/schemas/PcnClosePayloadRequest'
         required: true
       security:
       - cookieAuth: []
@@ -35455,6 +35432,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-notices/{id}/release/:
     post:
@@ -35477,18 +35461,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -35498,6 +35470,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-orders/:
     get:
@@ -35826,18 +35805,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -35846,7 +35813,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProcessChangeOrder'
+                $ref: '#/components/schemas/PcoApproveResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-orders/{id}/author/:
     post:
@@ -35878,14 +35852,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+              $ref: '#/components/schemas/PcoAuthorPayloadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+              $ref: '#/components/schemas/PcoAuthorPayloadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-        required: true
+              $ref: '#/components/schemas/PcoAuthorPayloadRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -35895,6 +35868,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-orders/{id}/cancel/:
     post:
@@ -35926,14 +35906,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+              $ref: '#/components/schemas/PcoCancelPayloadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+              $ref: '#/components/schemas/PcoCancelPayloadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-        required: true
+              $ref: '#/components/schemas/PcoCancelPayloadRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -35943,6 +35922,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-orders/{id}/implement/:
     post:
@@ -35974,13 +35960,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+              $ref: '#/components/schemas/PcoImplementPayloadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+              $ref: '#/components/schemas/PcoImplementPayloadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+              $ref: '#/components/schemas/PcoImplementPayloadRequest'
         required: true
       security:
       - cookieAuth: []
@@ -35990,7 +35976,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProcessChangeOrder'
+                $ref: '#/components/schemas/PcoImplementResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-orders/{id}/mark-approved/:
     post:
@@ -36008,18 +36001,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeOrderRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -36029,6 +36010,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-requests/:
     get:
@@ -36309,18 +36297,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -36329,7 +36305,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProcessChangeRequest'
+                $ref: '#/components/schemas/PcrApproveResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-requests/{id}/cancel/:
     post:
@@ -36356,14 +36346,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+              $ref: '#/components/schemas/PcrCancelPayloadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+              $ref: '#/components/schemas/PcrCancelPayloadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
-        required: true
+              $ref: '#/components/schemas/PcrCancelPayloadRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -36373,6 +36362,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-requests/{id}/reject/:
     post:
@@ -36399,13 +36395,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+              $ref: '#/components/schemas/PcrRejectPayloadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+              $ref: '#/components/schemas/PcrRejectPayloadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+              $ref: '#/components/schemas/PcrRejectPayloadRequest'
         required: true
       security:
       - cookieAuth: []
@@ -36416,6 +36412,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/process-change-requests/{id}/submit/:
     post:
@@ -40548,6 +40551,15 @@ components:
       required:
       - task
       - user
+    CapaTaskCompleteRequestRequest:
+      type: object
+      properties:
+        completion_notes:
+          type: string
+        signature_data:
+          type: string
+        password:
+          type: string
     CapaTaskStatusEnum:
       enum:
       - NOT_STARTED
@@ -42594,6 +42606,12 @@ components:
             additionalProperties: {}
       required:
       - links
+    DocumentReleaseRequestRequest:
+      type: object
+      properties:
+        effective_date:
+          type: string
+          format: date
     DocumentReviseRequestRequest:
       type: object
       properties:
@@ -47120,18 +47138,6 @@ components:
           type: boolean
       required:
       - definition
-    MigrationDispositionEnum:
-      enum:
-      - PENDING
-      - MIGRATE_ALL
-      - MIGRATE_SELECTED
-      - KEEP_ALL
-      type: string
-      description: |-
-        * `PENDING` - Pending
-        * `MIGRATE_ALL` - Migrate All
-        * `MIGRATE_SELECTED` - Migrate Selected
-        * `KEEP_ALL` - Keep All
     Milestone:
       type: object
       description: Single milestone within a template.
@@ -53537,7 +53543,7 @@ components:
           nullable: true
           description: Calendar date the change takes effect.
         migration_disposition:
-          $ref: '#/components/schemas/MigrationDispositionEnum'
+          $ref: '#/components/schemas/ProcessChangeOrderMigrationDispositionEnum'
         migration_reason:
           type: string
     PatchedProcessChangeRequestRequest:
@@ -55743,6 +55749,99 @@ components:
           nullable: true
         archived:
           type: boolean
+    PcnClosePayloadRequest:
+      type: object
+      properties:
+        closure_evidence:
+          type: string
+          minLength: 1
+      required:
+      - closure_evidence
+    PcoApproveResponse:
+      type: object
+      properties:
+        pco:
+          $ref: '#/components/schemas/ProcessChangeOrder'
+        approval_request_id:
+          type: string
+      required:
+      - approval_request_id
+      - pco
+    PcoAuthorPayloadRequest:
+      type: object
+      properties:
+        implementation_plan:
+          type: string
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+    PcoCancelPayloadRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          default: ''
+    PcoImplementPayloadMigrationDispositionEnum:
+      enum:
+      - MIGRATE_ALL
+      - MIGRATE_SELECTED
+      - KEEP_ALL
+      type: string
+      description: |-
+        * `MIGRATE_ALL` - MIGRATE_ALL
+        * `MIGRATE_SELECTED` - MIGRATE_SELECTED
+        * `KEEP_ALL` - KEEP_ALL
+    PcoImplementPayloadRequest:
+      type: object
+      properties:
+        migration_disposition:
+          $ref: '#/components/schemas/PcoImplementPayloadMigrationDispositionEnum'
+        migration_reason:
+          type: string
+          default: ''
+        selected_workorder_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        stranded_resolutions: {}
+      required:
+      - migration_disposition
+    PcoImplementResponse:
+      type: object
+      properties:
+        pco:
+          $ref: '#/components/schemas/ProcessChangeOrder'
+        pcn:
+          $ref: '#/components/schemas/ProcessChangeNotice'
+      required:
+      - pcn
+      - pco
+    PcrApproveResponse:
+      type: object
+      properties:
+        pcr:
+          $ref: '#/components/schemas/ProcessChangeRequest'
+        pco:
+          $ref: '#/components/schemas/ProcessChangeOrder'
+      required:
+      - pco
+      - pcr
+    PcrCancelPayloadRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          default: ''
+    PcrRejectPayloadRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     PermissionListResponse:
       type: object
       properties:
@@ -56389,7 +56488,7 @@ components:
           nullable: true
           description: Calendar date the change takes effect.
         migration_disposition:
-          $ref: '#/components/schemas/MigrationDispositionEnum'
+          $ref: '#/components/schemas/ProcessChangeOrderMigrationDispositionEnum'
         migration_reason:
           type: string
         migrated_workorder_ids:
@@ -56468,6 +56567,18 @@ components:
       - target_process_name
       - tenant
       - updated_at
+    ProcessChangeOrderMigrationDispositionEnum:
+      enum:
+      - PENDING
+      - MIGRATE_ALL
+      - MIGRATE_SELECTED
+      - KEEP_ALL
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `MIGRATE_ALL` - Migrate All
+        * `MIGRATE_SELECTED` - Migrate Selected
+        * `KEEP_ALL` - Keep All
     ProcessChangeOrderRequest:
       type: object
       description: |-
@@ -56488,7 +56599,7 @@ components:
           nullable: true
           description: Calendar date the change takes effect.
         migration_disposition:
-          $ref: '#/components/schemas/MigrationDispositionEnum'
+          $ref: '#/components/schemas/ProcessChangeOrderMigrationDispositionEnum'
         migration_reason:
           type: string
       required:
@@ -64486,6 +64597,16 @@ components:
       - slug
       - updated_at
       - user_count
+    TenantActivateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        tenant:
+          type: string
+      required:
+      - status
+      - tenant
     TenantAwareUserDetails:
       type: object
       description: |-
@@ -64758,6 +64879,17 @@ components:
       - permissions
       - preset_key
       - updated_at
+    TenantGroupFromPresetRequestRequest:
+      type: object
+      properties:
+        preset:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+      required:
+      - preset
     TenantGroupMemberRequestRequest:
       type: object
       properties:
@@ -65013,6 +65145,16 @@ components:
       required:
       - model_name
       - provider
+    TenantLLMProviderSetDefaultResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
     TenantLogoDeleteResponse:
       type: object
       properties:
@@ -65505,6 +65647,16 @@ components:
         * `TRIAL` - Trial
         * `SUSPENDED` - Suspended
         * `PENDING_DELETION` - Pending Deletion
+    TenantSuspendResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        tenant:
+          type: string
+      required:
+      - status
+      - tenant
     TerminalStatusEnum:
       enum:
       - COMPLETED

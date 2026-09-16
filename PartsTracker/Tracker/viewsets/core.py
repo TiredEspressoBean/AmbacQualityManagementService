@@ -1300,7 +1300,15 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
 
     # No body. Without request=None the inferred schema is Documents, which the
     # generated client then requires and rejects the call against.
-    @extend_schema(request=None)
+    #
+    # The response is an ApprovalRequest, not a Document. Undeclared it inferred
+    # Documents, so the client rejected the *response* after the server had
+    # already created the approval request -- the submit succeeded and the UI
+    # reported failure, inviting a retry that creates a second request.
+    @extend_schema(
+        request=None,
+        responses={201: ApprovalRequestSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='submit-for-approval')
     def submit_for_approval(self, request, pk=None):
         """Submit document for approval workflow"""
@@ -1530,6 +1538,13 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
         serializer = self.get_serializer(versions, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name='DocumentReleaseRequest',
+            fields={'effective_date': serializers.DateField(required=False)},
+        ),
+        responses={200: DocumentsSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'])
     def release(self, request, pk=None):
         """
@@ -1566,6 +1581,10 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @extend_schema(
+        request=None,
+        responses={200: DocumentsSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='mark-obsolete')
     def mark_obsolete(self, request, pk=None):
         """

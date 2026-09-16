@@ -17,6 +17,7 @@ Mode resolution:
 from __future__ import annotations
 
 from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -246,6 +247,16 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='PcrApproveResponse',
+            fields={
+                'pcr': ProcessChangeRequestSerializer(),
+                'pco': ProcessChangeOrderSerializer(),
+            },
+        ), 400: OpenApiTypes.OBJECT, 409: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='approve')
     def approve(self, request, pk=None):
         from Tracker.services.change_control.process_change import PcrRebaseConflict
@@ -331,6 +342,10 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             'rebase': getattr(pco, '_rebase_metadata', {'rebased': False}),
         })
 
+    @extend_schema(
+        request=PcrRejectPayloadSerializer,
+        responses={200: ProcessChangeRequestSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='reject')
     def reject(self, request, pk=None):
         pcr = self.get_object()
@@ -343,6 +358,10 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         pcr.refresh_from_db()
         return Response(self.get_serializer(pcr).data)
 
+    @extend_schema(
+        request=PcrCancelPayloadSerializer,
+        responses={200: ProcessChangeRequestSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):
         pcr = self.get_object()
@@ -428,6 +447,10 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             status=status.HTTP_405_METHOD_NOT_ALLOWED,
         )
 
+    @extend_schema(
+        request=PcoAuthorPayloadSerializer,
+        responses={200: ProcessChangeOrderSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='author')
     def author(self, request, pk=None):
         pco = self.get_object()
@@ -445,6 +468,16 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         pco.refresh_from_db()
         return Response(self.get_serializer(pco).data)
 
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name='PcoApproveResponse',
+            fields={
+                'pco': ProcessChangeOrderSerializer(),
+                'approval_request_id': serializers.CharField(),
+            },
+        ), 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='approve')
     def approve(self, request, pk=None):
         """Submit PCO for approval (REGULATED mode — creates an
@@ -460,6 +493,10 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             'approval_request_id': str(approval_request.id),
         })
 
+    @extend_schema(
+        request=None,
+        responses={200: ProcessChangeOrderSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='mark-approved')
     def mark_approved(self, request, pk=None):
         """Finalize PCO approval after signatures are collected.
@@ -569,6 +606,16 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         )
         return Response({'results': rows, 'available_steps': available_steps})
 
+    @extend_schema(
+        request=PcoImplementPayloadSerializer,
+        responses={200: inline_serializer(
+            name='PcoImplementResponse',
+            fields={
+                'pco': ProcessChangeOrderSerializer(),
+                'pcn': ProcessChangeNoticeSerializer(),
+            },
+        ), 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='implement')
     def implement(self, request, pk=None):
         pco = self.get_object()
@@ -597,6 +644,10 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             'pcn': ProcessChangeNoticeSerializer(pcn, context=self.get_serializer_context()).data,
         })
 
+    @extend_schema(
+        request=PcoCancelPayloadSerializer,
+        responses={200: ProcessChangeOrderSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):
         pco = self.get_object()
@@ -667,6 +718,10 @@ class ProcessChangeNoticeViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             status=status.HTTP_405_METHOD_NOT_ALLOWED,
         )
 
+    @extend_schema(
+        request=None,
+        responses={200: ProcessChangeNoticeSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='release')
     def release(self, request, pk=None):
         pcn = self.get_object()
@@ -677,6 +732,10 @@ class ProcessChangeNoticeViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         pcn.refresh_from_db()
         return Response(self.get_serializer(pcn).data)
 
+    @extend_schema(
+        request=PcnClosePayloadSerializer,
+        responses={200: ProcessChangeNoticeSerializer, 400: OpenApiTypes.OBJECT},
+    )
     @action(detail=True, methods=['post'], url_path='close')
     def close(self, request, pk=None):
         pcn = self.get_object()
