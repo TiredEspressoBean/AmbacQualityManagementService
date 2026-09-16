@@ -1049,12 +1049,17 @@ class StepsSerializer(SecureModelMixin):
             'change_description',
             # Timestamps
             'created_at', 'updated_at', 'archived',
-            # Versioning
-            'version',
+            # Versioning. `is_current_version` is exposed because the list
+            # endpoint spans versions: callers that want the live routing have
+            # to be able to tell a current Step from a superseded one. Without
+            # it, StationDialog's `s.is_current_version !== false` filter read
+            # `undefined !== false` on every row -- always true -- so the
+            # station's step list silently included every historical version.
+            'version', 'is_current_version',
         )
         read_only_fields = (
             'created_at', 'updated_at', 'part_type_info', 'part_type_name',
-            'work_center_name', 'version',
+            'work_center_name', 'version', 'is_current_version',
         )
 
     def update(self, instance, validated_data):

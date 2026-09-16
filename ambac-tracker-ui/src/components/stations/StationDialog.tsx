@@ -51,27 +51,27 @@ const stationStepsOptions = (stationId: string) =>
         queryKey: ["station-steps", stationId] as const,
         queryFn: () => api.api_Steps_list({
             queries: { work_center: stationId, limit: 200 },
-        }) as Promise<any>,
+        }),
     });
 
 const allStepsOptions = (enabled: boolean) =>
     queryOptions({
         queryKey: ["station-steps", "all"] as const,
         enabled,
-        queryFn: () => api.api_Steps_list({ queries: { limit: 500 } }) as Promise<any>,
+        queryFn: () => api.api_Steps_list({ queries: { limit: 500 } }),
     });
 
 const stationDetailOptions = (stationId: string) =>
     queryOptions({
         queryKey: ["work-centers", "detail", stationId] as const,
-        queryFn: () => api.api_WorkCenters_retrieve({ params: { id: stationId } }) as Promise<any>,
+        queryFn: () => api.api_WorkCenters_retrieve({ params: { id: stationId } }),
     });
 
 const equipmentPickerOptions = (enabled: boolean) =>
     queryOptions({
         queryKey: ["equipment", "station-picker"] as const,
         enabled,
-        queryFn: () => api.api_Equipment_list({ queries: { limit: 500 } }) as Promise<any>,
+        queryFn: () => api.api_Equipment_list({ queries: { limit: 500 } }),
     });
 
 const stationMembersOptions = (stationId: string) =>
@@ -79,14 +79,14 @@ const stationMembersOptions = (stationId: string) =>
         queryKey: ["station-members", stationId] as const,
         queryFn: () => api.api_UserWorkCenterMemberships_list({
             queries: { work_center: stationId, limit: 200 },
-        }) as Promise<any>,
+        }),
     });
 
 const usersPickerOptions = (enabled: boolean) =>
     queryOptions({
         queryKey: ["users", "station-picker"] as const,
         enabled,
-        queryFn: () => api.api_User_list({ queries: { limit: 500 } }) as Promise<any>,
+        queryFn: () => api.api_User_list({ queries: { limit: 500 } }),
     });
 
 function useInvalidate() {
@@ -108,12 +108,12 @@ function StepsTab({ station }: { station: StationLite }) {
 
     // Steps stationed here (current versions only — the list endpoint spans versions).
     const { data: herePage, isLoading } = useQuery(stationStepsOptions(station.id));
-    const here: any[] = ((herePage?.results ?? []) as any[]).filter(
+    const here = (herePage?.results ?? []).filter(
         (s) => s.is_current_version !== false);
 
     // Every current step, for the assign picker (shows its present station).
     const { data: allPage } = useQuery(allStepsOptions(pickerOpen));
-    const assignable: any[] = ((allPage?.results ?? []) as any[]).filter(
+    const assignable = (allPage?.results ?? []).filter(
         (s) => s.is_current_version !== false && s.work_center !== station.id);
 
     const patchStep = useMutation({
@@ -205,7 +205,7 @@ function EquipmentTab({ station }: { station: StationLite }) {
     const placedNames: string[] = wc?.equipment_names ?? station.equipment_names ?? [];
 
     const { data: allEquip } = useQuery(equipmentPickerOptions(pickerOpen));
-    const candidates: any[] = ((allEquip?.results ?? []) as any[]).filter(
+    const candidates = (allEquip?.results ?? []).filter(
         (e) => !placedIds.includes(String(e.id)));
 
     const setEquipment = useMutation({
@@ -286,11 +286,11 @@ function PeopleTab({ station }: { station: StationLite }) {
     const canEdit = hasAny("add_userworkcentermembership", "change_userworkcentermembership");
 
     const { data: page, isLoading } = useQuery(stationMembersOptions(station.id));
-    const members: any[] = (page?.results ?? []) as any[];
+    const members = page?.results ?? [];
     const memberUserIds = new Set(members.map((m) => m.user));
 
     const { data: usersPage } = useQuery(usersPickerOptions(pickerOpen));
-    const candidates: any[] = ((usersPage?.results ?? []) as any[]).filter(
+    const candidates = (usersPage?.results ?? []).filter(
         (u) => !memberUserIds.has(u.id));
 
     const addMember = useMutation({

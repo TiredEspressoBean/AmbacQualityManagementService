@@ -7928,6 +7928,7 @@ export type Steps = {
   updated_at: string;
   archived?: boolean | undefined;
   version: number;
+  is_current_version: boolean;
 };
 export type StepTiming = Partial<{
   /**
@@ -20255,6 +20256,7 @@ const Steps = z.object({
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
   version: z.number().int(),
+  is_current_version: z.boolean(),
 });
 const PaginatedStepsList = z.object({
   count: z.number().int(),

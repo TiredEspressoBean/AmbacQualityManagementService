@@ -28942,6 +28942,7 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
             readonly version: number;
+            readonly is_current_version: boolean;
         };
         /**
          * @description Steps serializer - represents step node properties.

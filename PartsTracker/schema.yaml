@@ -63287,9 +63287,13 @@ components:
         version:
           type: integer
           readOnly: true
+        is_current_version:
+          type: boolean
+          readOnly: true
       required:
       - created_at
       - id
+      - is_current_version
       - name
       - part_type
       - part_type_info
