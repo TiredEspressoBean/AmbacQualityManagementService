@@ -12,20 +12,19 @@ const invalidate = (qc: ReturnType<typeof useQueryClient>) => {
     qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "part-approval-status" });
 };
 
-export type PartApprovalListParams = {
-    supplier?: string;
-    part_type?: string;
-    approval_type?: string;
-    status?: string;
-    search?: string;
-    limit?: number;
-    offset?: number;
-};
+/** Derived from the generated contract rather than hand-written. The hand-rolled
+ *  version typed `status` as a bare string while the endpoint takes an enum, and
+ *  the mismatch was cast away at the call -- so an invalid status compiled
+ *  cleanly and was rejected at runtime. Deriving it makes that a type error at
+ *  the caller, and keeps the two in step when the backend filter set changes. */
+export type PartApprovalListParams = NonNullable<
+    NonNullable<Parameters<typeof api.api_PartApprovals_list>[0]>["queries"]
+>;
 
 export const listPartApprovalsOptions = (params: PartApprovalListParams = {}) =>
     queryOptions({
         queryKey: ["part-approvals", params] as const,
-        queryFn: () => api.api_PartApprovals_list({ queries: params } as never),
+        queryFn: () => api.api_PartApprovals_list({ queries: params }),
     });
 
 export const useListPartApprovals = (params: PartApprovalListParams = {}) =>

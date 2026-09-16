@@ -17,14 +17,21 @@ import { MoreHorizontal, Plus } from "lucide-react";
 import {
     useListPartApprovals, useGrantPartApproval, useSuspendPartApproval, useDisqualifyPartApproval,
 } from "@/hooks/usePartApprovals";
+import type { PartApprovalListParams } from "@/hooks/usePartApprovals";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     APPROVED: "default", CONDITIONAL: "secondary", PENDING: "outline",
     SUSPENDED: "destructive", EXPIRED: "outline", DISQUALIFIED: "destructive",
 };
 
-const STATUS_FILTERS = ["", "PENDING", "APPROVED", "CONDITIONAL", "SUSPENDED", "EXPIRED", "DISQUALIFIED"];
-const TYPE_FILTERS = ["", "PPAP", "FAI"];
+// Typed from the list contract so the dropdowns can only offer values the
+// endpoint accepts. As bare strings these were cast away at the call site, so a
+// stale option would have been dropped server-side instead of failing to compile.
+type StatusFilter = NonNullable<PartApprovalListParams["status"]> | "";
+type TypeFilter = NonNullable<PartApprovalListParams["approval_type"]> | "";
+
+const STATUS_FILTERS: StatusFilter[] = ["", "PENDING", "APPROVED", "CONDITIONAL", "SUSPENDED", "EXPIRED", "DISQUALIFIED"];
+const TYPE_FILTERS: TypeFilter[] = ["", "PPAP", "FAI"];
 
 function expiryTone(expiry: string | null): string {
     if (!expiry) return "";
@@ -37,8 +44,8 @@ function expiryTone(expiry: string | null): string {
 type ActionKind = "grant" | "suspend" | "disqualify";
 
 export function PartApprovalsPage() {
-    const [status, setStatus] = useState("");
-    const [approvalType, setApprovalType] = useState("");
+    const [status, setStatus] = useState<StatusFilter>("");
+    const [approvalType, setApprovalType] = useState<TypeFilter>("");
     const [search, setSearch] = useState("");
     const { data, isLoading } = useListPartApprovals({
         status: status || undefined,
@@ -100,7 +107,7 @@ export function PartApprovalsPage() {
             <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
                     <Label className="text-xs">Status</Label>
-                    <Select value={status || "ALL"} onValueChange={(v) => setStatus(v === "ALL" ? "" : v)}>
+                    <Select value={status || "ALL"} onValueChange={(v) => setStatus(v === "ALL" ? "" : (v as StatusFilter))}>
                         <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {STATUS_FILTERS.map((s) => (
@@ -111,7 +118,7 @@ export function PartApprovalsPage() {
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-xs">Type</Label>
-                    <Select value={approvalType || "ALL"} onValueChange={(v) => setApprovalType(v === "ALL" ? "" : v)}>
+                    <Select value={approvalType || "ALL"} onValueChange={(v) => setApprovalType(v === "ALL" ? "" : (v as TypeFilter))}>
                         <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {TYPE_FILTERS.map((t) => (

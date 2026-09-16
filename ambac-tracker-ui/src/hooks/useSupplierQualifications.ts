@@ -10,20 +10,17 @@ const invalidate = (qc: ReturnType<typeof useQueryClient>) => {
     qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "qualification-status" });
 };
 
-export type QualificationListParams = {
-    supplier?: string;
-    part_type?: string;
-    status?: string;
-    scope_type?: string;
-    search?: string;
-    limit?: number;
-    offset?: number;
-};
+/** Derived from the generated contract rather than hand-written -- see the note
+ *  on PartApprovalListParams. The hand-rolled version widened `status` and
+ *  `scope_type` to bare strings, and the mismatch was cast away at the call. */
+export type QualificationListParams = NonNullable<
+    NonNullable<Parameters<typeof api.api_SupplierQualifications_list>[0]>["queries"]
+>;
 
 export const listSupplierQualificationsOptions = (params: QualificationListParams = {}) =>
     queryOptions({
         queryKey: ["supplier-qualifications", params] as const,
-        queryFn: () => api.api_SupplierQualifications_list({ queries: params } as never),
+        queryFn: () => api.api_SupplierQualifications_list({ queries: params }),
     });
 
 export const useListSupplierQualifications = (params: QualificationListParams = {}) =>

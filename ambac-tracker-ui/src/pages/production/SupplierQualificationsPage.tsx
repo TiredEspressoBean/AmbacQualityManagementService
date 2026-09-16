@@ -18,13 +18,17 @@ import {
     useListSupplierQualifications, useGrantQualification, useSuspendQualification,
     useDisqualifyQualification,
 } from "@/hooks/useSupplierQualifications";
+import type { QualificationListParams } from "@/hooks/useSupplierQualifications";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     APPROVED: "default", CONDITIONAL: "secondary", PENDING: "outline",
     SUSPENDED: "destructive", EXPIRED: "outline", DISQUALIFIED: "destructive",
 };
 
-const STATUS_FILTERS = ["", "PENDING", "APPROVED", "CONDITIONAL", "SUSPENDED", "EXPIRED", "DISQUALIFIED"];
+// Typed from the list contract -- see PartApprovalsPage for the reasoning.
+type StatusFilter = NonNullable<QualificationListParams["status"]> | "";
+
+const STATUS_FILTERS: StatusFilter[] = ["", "PENDING", "APPROVED", "CONDITIONAL", "SUSPENDED", "EXPIRED", "DISQUALIFIED"];
 
 function expiryTone(expiry: string | null): string {
     if (!expiry) return "";
@@ -37,7 +41,7 @@ function expiryTone(expiry: string | null): string {
 type ActionKind = "grant" | "suspend" | "disqualify";
 
 export function SupplierQualificationsPage() {
-    const [status, setStatus] = useState("");
+    const [status, setStatus] = useState<StatusFilter>("");
     const [search, setSearch] = useState("");
     const { data, isLoading } = useListSupplierQualifications({
         status: status || undefined,
@@ -98,7 +102,7 @@ export function SupplierQualificationsPage() {
             <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
                     <Label className="text-xs">Status</Label>
-                    <Select value={status || "ALL"} onValueChange={(v) => setStatus(v === "ALL" ? "" : v)}>
+                    <Select value={status || "ALL"} onValueChange={(v) => setStatus(v === "ALL" ? "" : (v as StatusFilter))}>
                         <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {STATUS_FILTERS.map((s) => (
