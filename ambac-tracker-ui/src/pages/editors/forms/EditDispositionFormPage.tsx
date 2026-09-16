@@ -330,13 +330,23 @@ export default function EditDispositionFormPage() {
         })
 
     // Authorize the disposition_type decision via the co-signable `decide` action.
-    const authorizeDecision = (values: FormValues, cosign?: { email: string; password: string }) =>
-        api.api_QuarantineDispositions_decide_create({
-            disposition_type: values.disposition_type,
+    const authorizeDecision = (values: FormValues, cosign?: { email: string; password: string }) => {
+        // `decide` requires a real disposition type; the form's field allows ""
+        // and undefined. Both call sites are already behind `typeChanged`, which
+        // tests `!!values.disposition_type` -- this states that invariant instead
+        // of casting it away, so a future caller that skips the guard fails
+        // loudly rather than having the request rejected client-side.
+        const dispositionType = values.disposition_type
+        if (!dispositionType) {
+            throw new Error("authorizeDecision called without a disposition_type")
+        }
+        return api.api_QuarantineDispositions_decide_create({
+            disposition_type: dispositionType,
             customer_approval_reference: values.customer_approval_reference || undefined,
             customer_approval_date: values.customer_approval_date || undefined,
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
-        } as never, { params: { id: dispositionId! }, headers: csrf() })
+        }, { params: { id: dispositionId! }, headers: csrf() })
+    }
 
     // Form submission
     const onSubmit = async (values: FormValues) => {

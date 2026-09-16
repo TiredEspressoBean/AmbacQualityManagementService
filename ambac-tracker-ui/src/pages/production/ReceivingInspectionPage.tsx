@@ -199,7 +199,7 @@ export function ReceivingInspectionPage() {
                         description: values.description,
                         part: null,
                         quality_reports: qr?.id ? [qr.id] : [],
-                    } as never,
+                    },
                     { headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } },
                 );
             } catch {

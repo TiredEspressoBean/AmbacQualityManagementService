@@ -79,8 +79,11 @@ export const partsKeys = {
  *      consumers see `NoInfer<TQueryFnData>` placeholder types.
  *   2. Runtime options typed as `Omit<ReturnType<typeof xOptions>, "queryKey"
  *      | "queryFn">` — derives from the factory's own return type.
- *   3. `as never` cast on `{ queries, ...config }` bridges zodios's
- *      deep-readonly Args vs the strict OpenAPI queries shape.
+ *   3. No cast on `{ queries, ...config }`. This used to say an `as never` was
+ *      needed to bridge zodios's deep-readonly Args against the OpenAPI queries
+ *      shape; it isn't, provided the queries type is indexed off the client
+ *      (`NonNullable<Parameters<typeof api.foo_list>[0]>["queries"]`) rather
+ *      than extracted with a conditional type that can fall through.
  *   4. `as Promise<XResponse>` is the single contract for the return type.
  */
 export const partsOptions = (queries?: PartsListQueries, config?: ListHookConfig) =>

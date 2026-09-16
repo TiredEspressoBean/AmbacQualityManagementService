@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { api } from "@/lib/api/generated";
 
 /** Disposition types relevant to rejected purchased material (subset of the
  *  full DispositionTypeEnum — REPAIR is AS9100-rework-centric, not receiving). */
@@ -23,9 +24,14 @@ const SEVERITIES = [
     { value: "MINOR", label: "Minor — cosmetic" },
 ] as const;
 
+type DispositionCreateBody = Parameters<typeof api.api_QuarantineDispositions_create>[0];
+
 export type RejectDispositionValues = {
-    disposition_type: string;
-    severity: string;
+    // From the create contract, not bare strings: both feed straight into the
+    // QuarantineDisposition body, and as strings the two call sites had to cast
+    // the mismatch away.
+    disposition_type: NonNullable<DispositionCreateBody["disposition_type"]>;
+    severity: NonNullable<DispositionCreateBody["severity"]>;
     description: string;
     quantity_affected: number;
     raise_scar: boolean;
@@ -61,8 +67,8 @@ export function RejectDispositionDialog({
             : "Rejected at receiving inspection.")
         + (defectBreakdown ? ` Defects — ${defectBreakdown}.` : "");
 
-    const [dispositionType, setDispositionType] = useState<string>("RETURN_TO_SUPPLIER");
-    const [severity, setSeverity] = useState<string>("MAJOR");
+    const [dispositionType, setDispositionType] = useState<RejectDispositionValues["disposition_type"]>("RETURN_TO_SUPPLIER");
+    const [severity, setSeverity] = useState<RejectDispositionValues["severity"]>("MAJOR");
     const [description, setDescription] = useState<string>(prefill);
     const [raiseScar, setRaiseScar] = useState<boolean>(hasSupplier);
 
@@ -95,7 +101,7 @@ export function RejectDispositionDialog({
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label>What happens to it?</Label>
-                            <Select value={dispositionType} onValueChange={setDispositionType}>
+                            <Select value={dispositionType} onValueChange={(v) => setDispositionType(v as RejectDispositionValues["disposition_type"])}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {DISPOSITION_TYPES.map((d) => (
@@ -106,7 +112,7 @@ export function RejectDispositionDialog({
                         </div>
                         <div className="space-y-1.5">
                             <Label>Severity</Label>
-                            <Select value={severity} onValueChange={setSeverity}>
+                            <Select value={severity} onValueChange={(v) => setSeverity(v as RejectDispositionValues["severity"])}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {SEVERITIES.map((s) => (
