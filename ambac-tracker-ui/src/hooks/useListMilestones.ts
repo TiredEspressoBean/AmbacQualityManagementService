@@ -1,13 +1,15 @@
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
-type MilestonesListQueries = Parameters<typeof api.api_Milestones_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_Milestones_list>[0];
+// The `extends { queries?: infer Q }` form this used fell through -- the
+// param is optional, so the check failed and Q resolved to the whole config
+// object rather than the query shape. Indexing it directly is what was
+// meant, and it is what makes the call typecheck without a cast.
+type MilestonesListQueries = NonNullable<Parameters<typeof api.api_Milestones_list>[0]>["queries"];
 
 export const listMilestonesOptions = (queries?: MilestonesListQueries) => queryOptions({
     queryKey: ["milestones", queries] as const,
-    queryFn: () => api.api_Milestones_list(
-        (queries ? { queries } : undefined) as never,
-    ),
+    queryFn: () => api.api_Milestones_list({ queries }),
 });
 
 export function useListMilestones(
