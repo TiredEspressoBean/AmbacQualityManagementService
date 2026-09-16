@@ -6,7 +6,10 @@ type CustomerResponse = Schema<"UserDetail">;
 
 export const retrieveCustomerOptions = (id?: string) => queryOptions({
     queryKey: ["customer", id] as const,
-    queryFn: () => id ? api.api_Customers_retrieve({params: {id: id as never}}) as Promise<CustomerResponse> : Promise.resolve(null),
+    // Customers are keyed by an integer pk while callers hold the route param as
+    // a string, so convert at the boundary. The cast used to paper over the
+    // mismatch instead.
+    queryFn: () => id ? api.api_Customers_retrieve({ params: { id: Number(id) } }) as Promise<CustomerResponse> : Promise.resolve(null),
 });
 
 export function useRetrieveCustomer(id?: string) {

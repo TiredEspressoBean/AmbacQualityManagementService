@@ -53,7 +53,10 @@ export function useMaterialOptions() {
 export const retrieveMaterialOptions = (id?: string) =>
   queryOptions({
     queryKey: ["material", id] as const,
-    queryFn: () => api.api_Materials_retrieve({ params: { id } } as never),
+    // `id!` rather than a cast: the hook below guards with `enabled: !!id`, so
+    // the query never runs without one. The cast hid that the guard and the
+    // type were out of step.
+    queryFn: () => api.api_Materials_retrieve({ params: { id: id! } }),
   });
 
 export function useRetrieveMaterial(id?: string) {
