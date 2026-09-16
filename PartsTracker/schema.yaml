@@ -22195,8 +22195,14 @@ paths:
                   type: array
                   items:
                     type: object
+                    required:
+                    - measurement_definition
+                    - substep
                     properties:
                       measurement_definition:
+                        type: string
+                        format: uuid
+                      substep:
                         type: string
                         format: uuid
                       value:
@@ -22206,6 +22212,8 @@ paths:
                       equipment:
                         type: string
                         format: uuid
+                      sample_number:
+                        type: integer
       security:
       - cookieAuth: []
       - tokenAuth: []

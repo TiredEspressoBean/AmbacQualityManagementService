@@ -2266,11 +2266,18 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
             "step_execution": {"type": "string", "format": "uuid"},
             "measurements": {"type": "array", "items": {
                 "type": "object",
+                "required": ["measurement_definition", "substep"],
                 "properties": {
                     "measurement_definition": {"type": "string", "format": "uuid"},
+                    # Required: `substep.is_inspection_point` is what decides
+                    # whether a reading is process data only or also lands an
+                    # inspection record. Without it there is no way to make that
+                    # call, which is how this endpoint used to skip it entirely.
+                    "substep": {"type": "string", "format": "uuid"},
                     "value": {"type": "number"},
                     "string_value": {"type": "string"},
-                    "equipment": {"type": "string", "format": "uuid"}
+                    "equipment": {"type": "string", "format": "uuid"},
+                    "sample_number": {"type": "integer"}
                 }
             }}
         }}},
@@ -2279,7 +2286,8 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
     @action(detail=False, methods=['post'], url_path='bulk-record')
     def bulk_record(self, request):
         """Record multiple measurements at once for a step execution."""
-        from Tracker.models import StepExecutionMeasurement, StepExecution, MeasurementDefinition, Equipments
+        from Tracker.models import StepExecution, MeasurementDefinition, Equipments, Substep
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
 
         step_execution_id = request.data.get('step_execution')
         measurements_data = request.data.get('measurements', [])
@@ -2315,10 +2323,21 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
                 errors.append({"index": i, "detail": "measurement_definition required"})
                 continue
 
+            substep_id = meas_data.get('substep')
+            if not substep_id:
+                errors.append({"index": i, "detail": "substep required"})
+                continue
+
             try:
                 defn = MeasurementDefinition.objects.filter(tenant=tenant).get(id=defn_id)
             except MeasurementDefinition.DoesNotExist:
                 errors.append({"index": i, "detail": f"MeasurementDefinition {defn_id} not found"})
+                continue
+
+            try:
+                substep = Substep.objects.filter(tenant=tenant).get(id=substep_id)
+            except Substep.DoesNotExist:
+                errors.append({"index": i, "detail": f"Substep {substep_id} not found"})
                 continue
 
             equipment = None
@@ -2329,15 +2348,27 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
                     errors.append({"index": i, "detail": f"Equipment {meas_data['equipment']} not found"})
                     continue
 
-            measurement = StepExecutionMeasurement.objects.create(
-                tenant=tenant,
-                step_execution=step_execution,
-                measurement_definition=defn,
-                value=meas_data.get('value'),
-                string_value=meas_data.get('string_value', ''),
-                recorded_by=request.user,
-                equipment=equipment
-            )
+            # Through the capture service, not StepExecutionMeasurement.objects
+            # .create(). This used to write the row directly, which skipped the
+            # Tier 1 / Tier 2 split: a reading on an inspection-point substep
+            # got process data and no QualityReports row, no MeasurementResult
+            # and none of the report side effects. The operator runtime has
+            # always gone through this service; this endpoint was a second way
+            # in that quietly did less.
+            try:
+                measurement = record_dwi_measurement(
+                    step_execution=step_execution,
+                    substep=substep,
+                    measurement_definition=defn,
+                    value=meas_data.get('value'),
+                    value_string=meas_data.get('string_value', ''),
+                    recorded_by=request.user,
+                    equipment=equipment,
+                    sample_number=meas_data.get('sample_number'),
+                )
+            except ValueError as exc:
+                errors.append({"index": i, "detail": str(exc)})
+                continue
             created_measurements.append(measurement)
 
         serializer = self.get_serializer(created_measurements, many=True)

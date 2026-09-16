@@ -1,6 +1,5 @@
-import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api, type TypeEnum } from "@/lib/api/generated";
-import { getCookie } from "@/lib/utils";
 
 // Types for required measurements response
 export type RequiredMeasurementsResponse = {
@@ -136,75 +135,20 @@ export function useMeasurementCompliance(
     });
 }
 
-/**
- * Mutation hook for recording a single measurement
- */
-export function useRecordMeasurement() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        // Typed from the contract. The hand-written shape allowed `value` as a
-        // number; measurements are DecimalFields, which the client types as a
-        // string -- the same mismatch that silently failed every BOM-line save.
-        mutationFn: (data: Parameters<typeof api.api_StepExecutionMeasurements_create>[0]) =>
-            api.api_StepExecutionMeasurements_create(data, {
-            headers: {
-                "X-CSRFToken": getCookie("csrftoken") ?? "",
-            },
-        }),
-
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({
-                predicate: (q) => q.queryKey[0] === "step-execution-measurements"
-            });
-            queryClient.invalidateQueries({
-                predicate: (q) =>
-                    q.queryKey[0] === "required-measurements" && q.queryKey[1] === variables.step_execution
-            });
-            queryClient.invalidateQueries({
-                predicate: (q) =>
-                    q.queryKey[0] === "measurement-compliance" && q.queryKey[1] === variables.step_execution
-            });
-        },
-    });
-}
-
-/**
- * Mutation hook for recording multiple measurements at once
- */
-export function useBulkRecordMeasurements() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (data: {
-            step_execution: string;
-            measurements: Array<{
-                measurement_definition: string;
-                value?: number;
-                string_value?: string;
-                equipment?: string;
-            }>;
-        }) => api.api_StepExecutionMeasurements_bulk_record_create(data, {
-            headers: {
-                "X-CSRFToken": getCookie("csrftoken") ?? "",
-            },
-        }) as Promise<BulkRecordResponse>,
-
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({
-                predicate: (q) => q.queryKey[0] === "step-execution-measurements"
-            });
-            queryClient.invalidateQueries({
-                predicate: (q) =>
-                    q.queryKey[0] === "required-measurements" && q.queryKey[1] === variables.step_execution
-            });
-            queryClient.invalidateQueries({
-                predicate: (q) =>
-                    q.queryKey[0] === "measurement-compliance" && q.queryKey[1] === variables.step_execution
-            });
-            queryClient.invalidateQueries({
-                predicate: (q) => q.queryKey[0] === "parts"
-            });
-        },
-    });
-}
+/* The two write hooks that lived here -- useRecordMeasurement and
+ * useBulkRecordMeasurements -- were removed. Neither had a call site, and
+ * wiring either one would have been wrong: they POST straight at
+ * /api/StepExecutionMeasurements/, bypassing
+ * services.qms.inline_capture.record_dwi_measurement, which is what actually
+ * owns this write. That service does the Tier 1 / Tier 2 split in a
+ * transaction -- always a StepExecutionMeasurement, plus a QualityReports row
+ * and MeasurementResult when the substep is an inspection point -- and fires
+ * the quality-report side effects. Measurements captured around it would be
+ * process data with no inspection record behind them.
+ *
+ * Real capture goes through the operator runtime: submit_substep ->
+ * record_dwi_measurement. If a new surface needs to record measurements, route
+ * it there rather than reinstating these.
+ *
+ * The read hooks above (required / compliance) are plain GETs and carry no
+ * such risk, so they stay. */
