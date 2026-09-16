@@ -41,8 +41,12 @@ export function CrudTable<T>({
                                  onCreate,
                                  emptyMessage = `No ${modelName.toLowerCase()} found.`,
                                  hideActions = false,
-                                 // eslint-disable-next-line local/no-as-any -- generic T has no id constraint; fallback needed for stable key
-                                 rowKey = (row) => (row as any).id ?? JSON.stringify(row),
+                                 // Probed rather than cast to `any`: T carries no id
+                                 // constraint, so the default key looks for one and
+                                 // falls back. Narrowing to `{id?: ...}` keeps the rest
+                                 // of the row checked, which `as any` would not.
+                                 rowKey = (row) =>
+                                     String((row as { id?: string | number }).id ?? JSON.stringify(row)),
                                  toolbar,
                                  renderActions,
                              }: CrudTableProps<T>) {

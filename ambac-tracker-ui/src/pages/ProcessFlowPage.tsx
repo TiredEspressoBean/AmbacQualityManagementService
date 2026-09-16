@@ -363,14 +363,18 @@ export default function ProcessFlowPage() {
     // Also update selectedNode so the editor panel shows current values
     setSelectedNode(prev => {
       if (!prev || prev.id !== nodeId) return prev;
-      // eslint-disable-next-line local/no-as-any -- ReactFlow Node.data is untyped Record; step and label are set by our FlowCanvas node factory
-      const updatedStep = { ...(prev.data as any).step, ...data };
+      // ReactFlow types Node.data as an open record, so the two fields this
+      // block reads are named rather than cast to `any`. Narrow, not accurate:
+      // the node factory in use-steps-to-flow sets ~25 fields, and typing them
+      // properly means threading a Node<StepNodeData> generic through the flow
+      // module. This at least keeps everything else on `prev` checked.
+      const nodeData = prev.data as { step?: StepData; label?: string };
+      const updatedStep = { ...nodeData.step, ...data };
       return {
         ...prev,
         data: {
           ...prev.data,
-          // eslint-disable-next-line local/no-as-any -- ReactFlow Node.data is untyped Record; label field is set by our FlowCanvas node factory
-          label: data.name ?? (prev.data as any).label,
+          label: data.name ?? nodeData.label,
           operation_number: updatedStep.operation_number ?? "",
           step: updatedStep,
           isDecisionPoint: updatedStep.is_decision_point,

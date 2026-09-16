@@ -9,7 +9,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { ruleTypes } from "@/lib/RuleTypesEnum.ts";
 import SamplingRuleForm from "./sampling-rule-form";
 
-interface SamplingRule {
+export interface SamplingRule {
   id?: string;
   rule_type: string;
   value: number | null;

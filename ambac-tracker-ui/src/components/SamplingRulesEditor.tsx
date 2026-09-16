@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Settings } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import { useEffect } from "react";
-import SamplingRuleCard from "./sampling-rule-card";
+import SamplingRuleCard, { type SamplingRule } from "./sampling-rule-card";
 import SamplingRuleForm from "./sampling-rule-form";
 
 type SamplingRulesEditorProps = {
@@ -88,11 +88,15 @@ export default function SamplingRulesEditor({ name, label = "Sampling Rules", re
                 </div>
             ) : (
                 <div className="space-y-2">
-                    {fields.map((field, index) => (
+                    {/* `name` is a prop, so useFormContext/useFieldArray cannot know
+                        the row type and `fields` comes back as {}. Narrowed to the
+                        shape the card declares rather than `any`: the id useFieldArray
+                        appends is destructured off, and a wrong property on the rest
+                        still fails to compile. */}
+                    {fields.map(({ id, ...rule }, index) => (
                         <SamplingRuleCard
-                            key={field.id}
-                            // eslint-disable-next-line local/no-as-any -- react-hook-form useFieldArray appends { id } to the field object; SamplingRuleCard expects the plain rule shape
-                            rule={field as any}
+                            key={id}
+                            rule={rule as SamplingRule}
                             index={index}
                             readOnly={readOnly}
                             onUpdate={handleUpdateRule}

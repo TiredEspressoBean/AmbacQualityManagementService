@@ -69,7 +69,13 @@ const modelEditorMetadataOptions = (modelName: string | undefined, apiEndpoint: 
     queryFn: async () => {
         if (!apiEndpoint) return null;
         // Dynamically call the metadata endpoint.
-        // eslint-disable-next-line local/no-as-any -- dynamic API alias lookup by string; zodios doesn't expose an index signature
+        // Dynamic alias lookup, and one of the few places `any` is genuinely the
+        // right tool. Two alternatives were tried and are worse: a
+        // Record<string, unknown> cast needs `as unknown as` (trading this rule
+        // for the double-cast one), and `keyof typeof api` makes tsc give up --
+        // "Type instantiation is excessively deep" against a 1005-endpoint
+        // client. The typeof guard below is what actually makes this safe.
+        // eslint-disable-next-line local/no-as-any -- dynamic API alias lookup by string; see above for what was tried
         const metadataFn = (api as any)[`api_${apiEndpoint}_metadata_retrieve`];
         if (typeof metadataFn === "function") {
             return metadataFn() as Promise<ListMetadata>;

@@ -468,8 +468,11 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 {editable ? (
                   <Select
                     value={data.decisionType || ''}
-                    // eslint-disable-next-line local/no-as-any -- decision_type is a string enum; Select returns string and the update fn accepts the wider type
-                    onValueChange={(v) => onUpdate(node.id, { decision_type: v as any })}
+                    // Narrowed to the contract's union rather than `any`: Select
+                    // hands back a bare string, so the cast is unavoidable here,
+                    // but casting to `any` would also accept a value the endpoint
+                    // rejects.
+                    onValueChange={(v) => onUpdate(node.id, { decision_type: v as StepData["decision_type"] })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="How is the outcome decided?" />
@@ -548,8 +551,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               {editable ? (
                 <Select
                   value={data.terminalStatus || ''}
-                  // eslint-disable-next-line local/no-as-any -- terminal_status is a string enum; Select returns string and the update fn accepts the wider type
-                  onValueChange={(v) => onUpdate(node.id, { terminal_status: v as any })}
+                  onValueChange={(v) => onUpdate(node.id, { terminal_status: v as StepData["terminal_status"] })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="What happens to parts here?" />
