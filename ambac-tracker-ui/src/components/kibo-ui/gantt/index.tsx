@@ -1022,7 +1022,7 @@ const GanttFeatureItemBase: FC<GanttFeatureItemProps> = ({
   const gantt = useContext(GanttContext);
   const timelineStartDate = useMemo(
     () => (gantt.boundStart ? startOfDay(gantt.boundStart) : new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1)),
-    [gantt.timelineData]
+    [gantt.timelineData, gantt.boundStart]
   );
   const [startAt, setStartAt] = useState<Date>(feature.startAt);
   const [endAt, setEndAt] = useState<Date | null>(feature.endAt);
@@ -1399,7 +1399,7 @@ export const GanttMarker: FC<
   );
   const timelineStartDate = useMemo(
     () => (gantt.boundStart ? startOfDay(gantt.boundStart) : new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1)),
-    [gantt.timelineData]
+    [gantt.timelineData, gantt.boundStart]
   );
 
   // Memoize expensive calculations
@@ -1414,6 +1414,12 @@ export const GanttMarker: FC<
         gantt.range,
         (gantt.columnWidth * gantt.zoomRef.current) / 100
       ),
+    // zoomRef is deliberately absent: zoom lives behind a ref precisely so a
+    // zoom step does NOT change context identity and re-render every consumer
+    // (see the note on GanttContextProps). Listing the ref would not make this
+    // reactive either -- the ref object's identity is stable. Positions follow
+    // the --gantt-column-width CSS variable instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [date, gantt.range, gantt.columnWidth]
   );
 
@@ -1587,9 +1593,15 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     };
   }, []);
 
-  // Fix the useCallback to include all dependencies
-  const handleScroll = useCallback(
-    throttle(() => {
+  // useMemo, not useCallback: `useCallback(throttle(fn), [])` hands the linter a
+  // function it cannot analyse, and the empty dep array froze `timelineData` at
+  // first render -- each extension would rebuild from the original array and
+  // drop the previous one. Latent here (the only consumer sets boundStart and
+  // boundEnd, so `bounded` short-circuits above), but wrong either way. The
+  // reads below go through the functional setState form so the handler needs no
+  // timelineData dependency and the throttle is not rebuilt on every change.
+  const handleScroll = useMemo(
+    () => throttle(() => {
       const scrollElement = scrollRef.current;
       if (!scrollElement) {
         return;
@@ -1605,52 +1617,50 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
       if (scrollLeft === 0) {
         // Extend timelineData to the past
-        const firstYear = timelineData[0]?.year;
-
-        if (!firstYear) {
-          return;
-        }
-
-        const newTimelineData: TimelineData = [...timelineData];
-        newTimelineData.unshift({
-          year: firstYear - 1,
-          quarters: new Array(4).fill(null).map((_, quarterIndex) => ({
-            months: new Array(3).fill(null).map((_, monthIndex) => {
-              const month = quarterIndex * 3 + monthIndex;
-              return {
-                days: getDaysInMonth(new Date(firstYear, month, 1)),
-              };
-            }),
-          })),
+        setTimelineData((current) => {
+          const firstYear = current[0]?.year;
+          if (!firstYear) {
+            return current;
+          }
+          const newTimelineData: TimelineData = [...current];
+          newTimelineData.unshift({
+            year: firstYear - 1,
+            quarters: new Array(4).fill(null).map((_, quarterIndex) => ({
+              months: new Array(3).fill(null).map((_, monthIndex) => {
+                const month = quarterIndex * 3 + monthIndex;
+                return {
+                  days: getDaysInMonth(new Date(firstYear, month, 1)),
+                };
+              }),
+            })),
+          });
+          return newTimelineData;
         });
-
-        setTimelineData(newTimelineData);
 
         // Scroll a bit forward so it's not at the very start
         scrollElement.scrollLeft = scrollElement.clientWidth;
         setScrollX(scrollElement.scrollLeft);
       } else if (scrollLeft + clientWidth >= scrollWidth) {
         // Extend timelineData to the future
-        const lastYear = timelineData.at(-1)?.year;
-
-        if (!lastYear) {
-          return;
-        }
-
-        const newTimelineData: TimelineData = [...timelineData];
-        newTimelineData.push({
-          year: lastYear + 1,
-          quarters: new Array(4).fill(null).map((_, quarterIndex) => ({
-            months: new Array(3).fill(null).map((_, monthIndex) => {
-              const month = quarterIndex * 3 + monthIndex;
-              return {
-                days: getDaysInMonth(new Date(lastYear, month, 1)),
-              };
-            }),
-          })),
+        setTimelineData((current) => {
+          const lastYear = current.at(-1)?.year;
+          if (!lastYear) {
+            return current;
+          }
+          const newTimelineData: TimelineData = [...current];
+          newTimelineData.push({
+            year: lastYear + 1,
+            quarters: new Array(4).fill(null).map((_, quarterIndex) => ({
+              months: new Array(3).fill(null).map((_, monthIndex) => {
+                const month = quarterIndex * 3 + monthIndex;
+                return {
+                  days: getDaysInMonth(new Date(lastYear, month, 1)),
+                };
+              }),
+            })),
+          });
+          return newTimelineData;
         });
-
-        setTimelineData(newTimelineData);
 
         // Scroll a bit back so it's not at the very end
         scrollElement.scrollLeft =
@@ -1658,7 +1668,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         setScrollX(scrollElement.scrollLeft);
       }
     }, 100),
-    []
+    [bounded, setScrollX, setTimelineData]
   );
 
   useEffect(() => {
@@ -1954,7 +1964,7 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
   );
   const timelineStartDate = useMemo(
     () => (gantt.boundStart ? startOfDay(gantt.boundStart) : new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1)),
-    [gantt.timelineData]
+    [gantt.timelineData, gantt.boundStart]
   );
 
   // Memoize expensive calculations
@@ -1969,6 +1979,12 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
         gantt.range,
         (gantt.columnWidth * gantt.zoomRef.current) / 100
       ),
+    // zoomRef is deliberately absent: zoom lives behind a ref precisely so a
+    // zoom step does NOT change context identity and re-render every consumer
+    // (see the note on GanttContextProps). Listing the ref would not make this
+    // reactive either -- the ref object's identity is stable. Positions follow
+    // the --gantt-column-width CSS variable instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [date, gantt.range, gantt.columnWidth]
   );
 

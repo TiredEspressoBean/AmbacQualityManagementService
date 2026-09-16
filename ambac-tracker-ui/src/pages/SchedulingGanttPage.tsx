@@ -267,13 +267,19 @@ export function SchedulingGanttPage() {
   // Stable Date objects for the horizon — a fresh `new Date()` each render was making
   // the Gantt's scroll-reset effect re-fire on every re-render (snapping scroll back
   // to the start). Memoize so the identity only changes when the schedule does.
+  // Read the ISO strings out first so each memo closes over a primitive. Keying
+  // on `schedule?.horizon_start` while reading `schedule` inside left the hook
+  // depending on something it didn't list; depending on `schedule` itself would
+  // have widened it to the whole object and defeated the point above.
+  const horizonStartIso = schedule?.horizon_start;
+  const horizonEndIso = schedule?.horizon_end;
   const horizonStart = useMemo(
-    () => (schedule ? new Date(schedule.horizon_start) : null),
-    [schedule?.horizon_start]
+    () => (horizonStartIso ? new Date(horizonStartIso) : null),
+    [horizonStartIso]
   );
   const horizonEnd = useMemo(
-    () => (schedule ? new Date(schedule.horizon_end) : null),
-    [schedule?.horizon_end]
+    () => (horizonEndIso ? new Date(horizonEndIso) : null),
+    [horizonEndIso]
   );
 
   const tasksQuery = useScheduledTasks(schedule?.id);
@@ -432,7 +438,13 @@ export function SchedulingGanttPage() {
     // not just when the schedule id changes.
   }, [current.data?.id, draft?.id, viewingDraft, tasksQuery.dataUpdatedAt]);
 
-  const allRows = (tasksQuery.data as { results?: Task[] } | undefined)?.results ?? [];
+  // Memoized because `?? []` mints a new array every render, and three memos
+  // below take allRows as a dependency -- so each of them recomputed on every
+  // render regardless of whether the task list had actually changed.
+  const allRows = useMemo(
+    () => (tasksQuery.data as { results?: Task[] } | undefined)?.results ?? [],
+    [tasksQuery.data]
+  );
   const detailTask = allRows.find((r) => r.id === detailId) ?? null;
   const focusTask = allRows.find((r) => r.id === focusId) ?? null;
 
@@ -451,7 +463,7 @@ export function SchedulingGanttPage() {
       startFrac: (viewport.scrollLeft - buffer) / dayPx,
       endFrac: (viewport.scrollLeft + width + buffer) / dayPx,
     };
-  }, [schedule, zoom, viewport]);
+  }, [schedule, zoom, viewport, horizonStart]);
   const inWindow = (f: { startAt: Date; endAt: Date | null }) => {
     if (!vizWindow) return true;
     const lf = differenceInMinutes(f.startAt, vizWindow.origin) / 1440;

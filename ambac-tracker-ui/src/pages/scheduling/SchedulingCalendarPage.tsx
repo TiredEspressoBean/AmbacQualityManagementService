@@ -143,9 +143,14 @@ export function SchedulingCalendarPage() {
   const { data: blocks = [] } = useLaborBlocks();
   const { data: overtimes = [] } = useOvertimeWindows();
   const { data: usersPage } = useRetrieveUsers({ limit: 200, user_type: "INTERNAL" });
-  const users = usersPage?.results ?? [];
+  // Memoized: `?? []` mints a new array every render, and both feed a memo below, so
+  // that memo recomputed on every render whether or not the data had changed.
+  const users = useMemo(() => usersPage?.results ?? [], [usersPage]);
   const { data: shiftsPage } = useShifts();
-  const shifts = (shiftsPage as { results?: { id: string; name: string }[] } | undefined)?.results ?? [];
+  const shifts = useMemo(
+    () => (shiftsPage as { results?: { id: string; name: string }[] } | undefined)?.results ?? [],
+    [shiftsPage]
+  );
 
   const createClosure = useCreatePlantClosure();
   const delClosure = useDeletePlantClosure();
