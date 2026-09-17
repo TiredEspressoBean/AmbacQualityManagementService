@@ -106,6 +106,35 @@ def load_and_capacity(tenant, bucket: Bucket) -> dict:
     }
 
 
+def _as_aware(when: date | datetime) -> datetime:
+    """A date/datetime as an aware datetime, matching the bucket boundaries."""
+    dt = when if isinstance(when, datetime) else datetime(when.year, when.month, when.day)
+    return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+
+
+def _window_hours(tenant, bucket: Bucket, win_start: datetime,
+                  win_end: datetime) -> tuple[float, float]:
+    """`(working, calendar)` hours of `bucket` intersected with [win_start, win_end).
+
+    The whole point of the sliding window: a bucket is a calendar month, but the
+    span a promise is measured over is not. The month containing today is only
+    available from today, and the month containing a due date is only available
+    up to that date.
+
+    Fast-paths the fully-covered case so the interior months cost no query -- only
+    the two partial ends hit the shift calendar.
+    """
+    a = max(bucket.start, win_start)
+    b = min(bucket.end, win_end)
+    if b <= a:
+        return 0.0, 0.0
+    if a == bucket.start and b == bucket.end:
+        return bucket.working_hours, bucket.calendar_hours
+    windows = sched_data.get_working_windows(tenant, a, b)
+    working = sum((y - x).total_seconds() / 3600 for x, y in windows)
+    return working, (b - a).total_seconds() / 3600
+
+
 def _bucket_index(buckets: list[Bucket], when: date | datetime) -> int | None:
     """Index of the bucket containing `when`, or None if outside the horizon."""
     dt = when if isinstance(when, datetime) else datetime(when.year, when.month, when.day)
@@ -550,14 +579,32 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
         if wc and machine_h > 0:
             cand_wc[wc[0]] += machine_h
 
-    def _fits(upto: int) -> tuple[bool, list]:
-        """Can the whole order be absorbed by the free capacity between now and bucket
-        `upto` (inclusive)? CUMULATIVE, not per-bucket: an order due in March may use
-        every free hour between now and March — asking whether it fits in the due month
-        alone would reject any order bigger than one month of capacity."""
+    def _fits(upto: int, window_end: datetime) -> tuple[bool, list]:
+        """Can the whole order be absorbed by the free capacity in [now, window_end)?
+
+        CUMULATIVE, not per-bucket: an order due in March may use every free hour
+        between now and March — asking whether it fits in the due month alone would
+        reject any order bigger than one month of capacity.
+
+        A SLIDING WINDOW, not whole months. Capacity is measured from `start` (now)
+        to `window_end`, so the two partial end buckets are clipped:
+
+          - hours already elapsed this month are gone. They are not capacity for a
+            promise made today, whatever they produced;
+          - hours after the due date cannot serve that due date.
+
+        Both used to count. An order due on the 7th was credited the whole of that
+        month plus every day already past in this one, which over-reported free
+        capacity by ~3x on a mid-month quote and told planners an order fit when it
+        could not. Load needs no matching clip: `_load_span` already refuses to place
+        remaining work earlier than the current bucket, so what has not been done
+        pushes forward and competes for the hours that are actually left.
+        """
         binding = []
+        usable = [_window_hours(tenant, buckets[i], start, window_end)
+                  for i in range(upto + 1)]
         if cand_labor > 0:
-            free = sum(max(0.0, ref.crew_size * buckets[i].working_hours - labor_load[i])
+            free = sum(max(0.0, ref.crew_size * usable[i][0] - labor_load[i])
                        for i in range(upto + 1))
             if cand_labor > free:
                 binding.append({'resource': 'Labor', 'need': round(cand_labor, 1),
@@ -567,8 +614,8 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
                 continue
             lights_out, attended = ref.wc_machine_hours.get(wc_id, (0, 0))
             free = sum(
-                max(0.0, lights_out * buckets[i].calendar_hours
-                    + attended * buckets[i].working_hours - wc_load[wc_id][i])
+                max(0.0, lights_out * usable[i][1]
+                    + attended * usable[i][0] - wc_load[wc_id][i])
                 for i in range(upto + 1))
             if need > free:
                 binding.append({'resource': ref.wc_names.get(wc_id, str(wc_id)),
@@ -584,10 +631,15 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     if tgt is None:
         return {'feasible': False, 'reason': 'Target date is outside the planning horizon.'}
 
-    fits, binding = _fits(tgt)
+    # The promise is measured to the END of the due date, not to month-end.
+    target_end = _as_aware(target_date) + timedelta(days=1)
+    fits, binding = _fits(tgt, target_end)
     # Earliest fit: cumulative free capacity only grows with time, so scan forward for
-    # the first bucket whose running total absorbs the order.
-    earliest = next((buckets[i].label for i in range(tgt, n) if _fits(i)[0]), None)
+    # the first bucket whose running total absorbs the order. Measured to each
+    # bucket's end — the question there is "by the end of which month could we?", so
+    # a whole final month is the right span, while the near end still starts at now.
+    earliest = next((buckets[i].label for i in range(tgt, n)
+                     if _fits(i, buckets[i].end)[0]), None)
 
     return {
         'feasible': fits,

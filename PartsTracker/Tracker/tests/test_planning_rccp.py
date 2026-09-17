@@ -145,6 +145,29 @@ class RccpTests(_RccpFixture, TestCase):
         self.assertTrue(later["feasible"], later)
         self.assertIsNotNone(soon["earliest_feasible_bucket"])
 
+    def test_ctp_counts_only_the_hours_between_now_and_the_due_date(self):
+        """The sliding window, pinned on a date-independent case.
+
+        The cumulative test above only catches the whole-month overcount when
+        `today + 20d` happens to cross a month boundary — it passes in the first
+        third of a month and fails in the rest, which is why this went unnoticed.
+        Due TOMORROW fails on any date: one working day cannot absorb 100 h, but
+        whole-month arithmetic credits the entire month (176 h here) and says yes.
+
+        Both halves of the window are wrong the same way and this catches both:
+        hours already elapsed this month are not capacity for a promise made
+        today, and hours after the due date cannot serve that due date.
+        """
+        today = timezone.now().date()
+        r = rccp.capable_to_promise(self.tenant, self.pt.id, 100, today + timedelta(days=1), months=6)
+        self.assertFalse(
+            r["feasible"],
+            f"100 h cannot be made by tomorrow on an 8 h/day shop; got {r}",
+        )
+        self.assertTrue(r["binding_resources"])
+        # The reported headroom must be a day or so of work, not a month of it.
+        self.assertLess(r["binding_resources"][0]["free_through_target"], 100)
+
     def test_ctp_reports_unroutable_part_type_instead_of_guessing(self):
         bare = PartTypes.objects.create(tenant=self.tenant, name="NoRoute")
         r = rccp.capable_to_promise(self.tenant, bare.id, 1, timezone.now().date(), months=3)
