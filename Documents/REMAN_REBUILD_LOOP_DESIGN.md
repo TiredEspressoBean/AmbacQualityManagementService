@@ -115,10 +115,33 @@ scope; codes are how it grows. A shop with three rebuild levels and no findings 
 sees a code — but it is using the same mechanism with an empty accumulation, not a
 different one.
 
-**Which layer does our process flow already model?** The execution layer, and only
-partly. `Processes` + `ProcessStep` + `StepEdge` describe one authored graph that a part
-walks. There is no notion of a unit doing a *subset* of it, which is exactly what an
-accumulated scope is. §5 is where that lands.
+**Which layer does our process flow already model?** More of it than the first draft of
+this section credited. `Processes` + `ProcessStep` + `StepEdge` describe one authored
+graph, but a part does not simply walk it in lockstep with its siblings — see §5.1.
+
+**And the findings layer is already built.** This document previously listed
+"finding→code mapping" as new capture work. It is not: the system already records, per
+unit and per characteristic, whether a reading met its spec.
+
+- `MeasurementDefinition` hangs off a `Steps` row with `nominal` / `upper_tol` /
+  `lower_tol`, a `NUMERIC` or `PASS_FAIL` type, and `characteristic_number` — the
+  AS9102 / control-plan balloon. The industry's own identifier for a characteristic is
+  already a column.
+- `MeasurementResult` (inspection grain, on `QualityReports`) and
+  `StepExecutionMeasurement` (production-capture grain, on `StepExecution`) both carry
+  `is_within_spec`, computed.
+- `HarvestedComponent.condition_grade` already grades each component A/B/C/SCRAP.
+
+So a repair code is a mapping from *(characteristic, out of spec)* or *(component,
+grade)* to a set of operations. The left-hand side exists and is populated by work the
+shop already does. That deletes most of what §5.1 listed as new, and it gives the
+proposal real provenance: this code is here because THIS reading on THIS component was
+out of tolerance — which is exactly what an over-and-above quote has to show a customer
+(§3.2).
+
+One wrinkle to settle when building: the two result models are parallel, both with
+`is_within_spec` against the same `MeasurementDefinition`. Scope resolution must say
+which it reads, or say it reads both and how it reconciles them.
 
 ## 4. The model
 
@@ -260,63 +283,79 @@ is named here as the former.
 
 With §4.1 decided, the shape is specific. **The rebuild process is authored as the
 SUPERSET route** — every operation the shop can perform on that core type, as one
-ordinary `Processes` graph. A resolved scope then selects the subset of its steps this
-unit visits.
+ordinary `Processes` graph. A resolved scope then selects the operations this unit
+actually performs.
 
-This is a filter over the authored DAG, not a second traversal of it, and that is what
-makes it cheap here:
+**The engine already routes per unit.** The first draft of this section did not check,
+and the next one asserted the opposite. `Parts.get_next_step` resolves the next step for
+*that part*: a `QA_RESULT` decision reads that part's latest `QualityReports.status`; a
+`MEASUREMENT` decision compares that part's own reading against the edge's
+`condition_value`; `MANUAL` takes an explicit resolution; `AGGREGATE` reads the gate
+firing. `try_advance_lot` then cascades **each distinct next step**, with the comment
+saying why in as many words — "advanced parts may have routed to DIFFERENT next steps (a
+decision step branches per part)". Divergent routing within one work order is not a gap
+to build. It ships, and it is driven by exactly the measurement data §3.3 describes.
 
-- **`StepEdge` needs nothing.** No categorical conditions, no new edge type. The graph
-  is authored once and walked as authored; scope decides which of the walked steps this
-  unit actually performs. The objection at the top of §5 — that grades are categorical
-  and don't fit a threshold comparison — dissolves, because no edge is ever asked about
-  a grade.
-- **`resolve_route`'s DEFAULT-only walk stays correct**, for the reason already given:
-  grading precedes the rebuild WO, so the route is resolved before the work exists. It
-  now yields the superset route, filtered.
-- **Steps stay shared.** `ProcessStep` already lets one `Steps` row belong to many
-  processes and versions; a repair code referencing steps rides on that rather than
-  duplicating them — which is the exact trap the stopgap above walks into.
-- **The kit falls out unchanged.** `BOMLine.consumed_at_step` already ties material to
-  the step that consumes it, so "the kit for this scope" is the existing query run over
-  the subset (§6).
-- **Scheduling needs no solver change.** Fewer steps is fewer `ScheduledTask` rows; the
-  superset route was never scheduled as such.
-- **`StepExecution.status` already has `SKIPPED`.** An excluded step has somewhere
-  truthful to land, so the traveler and the audit trail show what was deliberately not
-  done rather than silently omitting it — which matters when the record has to prove
-  what a customer's unit did and did not receive.
+That leaves two candidate implementations of a composed scope, not one:
 
-**What is genuinely new, stated plainly:**
+**(a) Bypass edges.** Each repair code becomes a decision point with its operation on
+`DEFAULT` and a skip on `ALTERNATE`. Zero new routing machinery — it is the existing DAG
+used as authored. Costs: the graph grows a decision node per code, the traveler and the
+board get noisy, and every code's decision needs a resolution source at runtime rather
+than being settled once up front.
 
-1. **A per-unit record of the included step set.** This is the "per-WO operation subset"
-   named above. It belongs on the rebuild WO (or the core), not on `Processes`, since it
-   varies per unit while the process does not.
-2. **Advancement has to respect it.** `try_advance_lot` and step advancement currently
-   walk to the next step in the route; they need to walk to the next *included* step and
-   mark the passed-over ones `SKIPPED`.
-3. **The code table itself** — code → steps (+ any material beyond what the steps' BOM
-   lines already carry), plus the finding→code mapping that generates the proposal, plus
-   the named entry-scope presets of §3.3.
+**(b) A per-unit included-step set.** Scope resolved once after grading and recorded on
+the unit; advancement walks to the next *included* step and marks the passed-over ones
+`SKIPPED`. Cleaner at a dozen codes, and it keeps the authored graph readable. Costs:
+new state, and advancement has to consult it.
 
-### 5.2 One rebuild WO per core
+(a) is the right stopgap and (b) the right destination, which happens to match the build
+order already: (a) needs nothing beyond authoring, so it can carry steps 2–7 while real
+cores establish how many codes there actually are. Neither needs `split_from_lot` —
+worth saying because that flag is for a part taking a DETOUR (quarantine, rework, scrap)
+and carries genealogy meaning. A planned scope difference is the nominal route for that
+unit, not a detour, and overloading the flag would corrupt a quality record.
 
-The subset collides with lot cohesion, and the resolution is the industry's.
+Either way the rest holds:
 
-Cohort advancement (`try_advance_lot`) assumes the parts at a `(WorkOrder, Step)` share a
-route and advance all-or-none. Two cores in one rebuild WO with different scopes do not
-share a route, so the cohort model has nothing coherent to gate on — and forcing a shared
-scope would mean rebuilding both to the union of their findings.
+- **`StepEdge` needs no new semantics for the grade itself.** Scope is resolved from
+  findings before the rebuild work exists; no edge is asked to compare a categorical
+  grade.
+- **`resolve_route`'s DEFAULT-only walk stays correct** for scheduling, since the route
+  is settled before the WO.
+- **`ProcessStep` already shares Steps across processes and versions**, so codes
+  reference steps rather than duplicating them — the trap the stopgap above walks into.
+- **`BOMLine.consumed_at_step`** already yields the kit for a step set (§6).
+- **`StepExecution.status` already has `SKIPPED`**, so under (b) an excluded step lands
+  truthfully rather than vanishing — which matters when the record has to prove what a
+  customer's unit did and did not receive.
 
-So **rebuild work orders are one per core**, unlike teardown, which deliberately batches
-(`start_teardown_batch`). That is not a workaround: it is what a SAP refurbishment order
-and an aviation shop visit both are — a serialized job against one unit, carrying its
-as-received and as-delivered condition. Teardown batches because every core in the batch
-gets the same disassembly; rebuild cannot, because the whole point is that findings
-differ.
+**What is genuinely new**, now that findings (§3.3) and per-unit routing are struck off:
+the code table itself — code → operations, and the mapping from
+`(MeasurementDefinition, out of spec)` / `(component type, grade)` to codes — plus the
+named entry-scope presets of §3.3, plus (for (b)) the included-step set and a
+scope-aware advancement walk.
 
-Worth noting this also removes the `REPAIR_RETURN` serial-continuity worry at the WO
-grain: one core, one job, one unit shipped.
+### 5.2 Work-order grain: one per core, or not
+
+An earlier revision of this section asserted that rebuild work orders must be one per
+core, because cohort advancement assumes parts at a `(WorkOrder, Step)` share a route.
+**That was wrong, and it was wrong because it reasoned from the model docstrings instead
+of the advancement code.** `try_advance_lot` handles the cohort *and* split parts, and
+routes each advanced part to its own next step; divergence inside one WO is a supported
+case with a comment explaining it.
+
+So the grain is a real choice rather than a forced one:
+
+- **One WO per core** is what a SAP refurbishment order and an aviation shop visit are,
+  and it makes serial continuity under `REPAIR_RETURN` trivial at the WO grain. It costs
+  many more work orders on the planner's board.
+- **A batched rebuild WO** is viable on the engine as it stands, with units diverging by
+  scope the way they already diverge at a decision point.
+
+Defer it. It does not gate steps 2–6, the engine supports both, and the answer will be
+obvious once a shop has run cores through and knows whether rebuild batches usefully
+share anything.
 
 ## 6. Kit resolution
 
@@ -447,9 +486,9 @@ for this loop.
 7. **`REPAIR_RETURN` gate** — quote from the proposed scope, customer approval before
    work, decline path (§10.6), serial continuity through the rebuild.
 8. **Routing support for composed scope** (§5.1) — superset process, repair-code table,
-   per-unit included-step set, advancement that skips excluded steps — and migrate off
-   the §5 stopgap. One rebuild WO per core (§5.2) is settled here if not earlier. No
-   longer gated on resolving §4.1; that is decided.
+   and the move from bypass edges (a) to a per-unit included-step set (b) with a
+   scope-aware advancement walk. WO grain (§5.2) is a deferred choice, not a
+   prerequisite. No longer gated on resolving §4.1; that is decided.
 9. **Staging reuse-vs-new** (shared with the bought-parts-staging item).
 10. **Fallout forecast** into the RCCP material lane.
 
