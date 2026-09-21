@@ -271,7 +271,7 @@ When software is used in a CMMC-certified facility to process CUI, it must suppo
 
 This summary covers the practices that are met. For the full nine, including
 the **3.3.4 gap** on alerting when audit logging itself fails, see [Audit &
-Accountability](#audit--accountability-au) above.
+Accountability](#audit-accountability-au) above.
 
 ### Media Protection (MP)
 
