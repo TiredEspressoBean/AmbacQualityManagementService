@@ -16,6 +16,18 @@
 > the note says so, because the question there is whether a second gate is
 > wanted at all.
 >
+> The sweep was then extended to the *Nice to Have* and *Yacht* tiers across
+> every section. Eight more were shipped, and three of those were **Yacht** —
+> shop floor scheduling and dispatching, work-centre capacity tracking, and
+> most of bottleneck identification, all overtaken by the APS work. Items
+> filed as "when everything else is done" shipping ahead of items filed as
+> *Needed* is the clearest sign that the tiering stopped tracking the work;
+> treat the priority labels here as history, not as a queue.
+>
+> Counts after the audit: 371 completed, 22 needed, 37 in progress, 82 nice
+> to have, 33 yacht. Every changed line carries an `audit 2026-09-21` note
+> saying what was found and where the code is.
+>
 > **Not covered at all:** CP-SAT scheduling and the whole APS surface, Digital
 > Work Instructions and substeps, outside processing, and the approvals
 > rework. Roughly seven months of subsystems postdate this document and have
@@ -438,9 +450,9 @@ of February; see the currency note above.
     - Approval Request creation via ApprovalTemplate
     - Approval Response submission with signature capture
     - Auto-status transition on approval (UNDER_REVIEW → APPROVED)
-- 🟡 **Nice to Have:** Document revision workflow (`/documents/:id/revise`) - create new version from existing
-- 🟡 **Nice to Have:** Document Type configuration model - define approval templates per doc type
-- 🟡 **Nice to Have:** Full version chain display - fetch and show all previous versions
+- ✅ **SHIPPED (audit 2026-09-21):** Document revision workflow — the revise action requires `change_justification`, so a revision cannot be created without a recorded reason
+- ✅ **SHIPPED (audit 2026-09-21):** Document type configuration — `requires_approval` and `approval_template` on `DocumentType`, so approval routing is set per type
+- ✅ **SHIPPED (audit 2026-09-21):** Version chain display — `DocumentVersionsTab.tsx`
 
 ### AI-Readable Documents
 
@@ -548,7 +560,7 @@ of February; see the currency note above.
     - PermissionChangeLog audit trail for QMS compliance
     - Management command: `python manage.py setup_permissions`
     - Post-migrate signal auto-applies permissions
-- 🟡 **Nice to Have:** Admin panel for group management UI
+- ✅ **SHIPPED (audit 2026-09-21):** Group management — `/admin/users` (UserManagementPage, UserDetailPage, BulkUserActionsPage), with group permissions editable under Data Management > User Groups
     - Group creation and editing UI
     - Permission assignment subform per group
     - Bulk assign/remove users from groups
@@ -747,7 +759,7 @@ of February; see the currency note above.
 - ✅ **Completed:** Work order bulk upload from ERP exports (backend + frontend)
 - ✅ **Completed:** Pre-import validation with error reporting
 - ✅ **Completed:** Clear error messages for malformed data
-- 🟡 **Nice to Have:** Modular CSV import system
+- ✅ **SHIPPED (audit 2026-09-21):** `viewsets/mixins/csv_import.py`, with a generated import template per model and a matching `data_export.py`
     - Extensible import framework for any entity type
     - Configurable field mapping per entity
     - Reusable frontend import component with drag-and-drop
@@ -1083,7 +1095,7 @@ of February; see the currency note above.
 ### Advanced Analytics & BI (Yacht Problems)
 
 - 🟢 **Yacht:** Changeover time tracking for OEE calculations
-- 🟢 **Yacht:** Overall Equipment Effectiveness (OEE) full implementation
+- 🟢 **Yacht:** Overall Equipment Effectiveness (OEE) full implementation — *(audit 2026-09-21: same item as the §13 OEE dashboard; still unbuilt, and `EXECUTION_ACTUALS_AND_OEE.md` is the design of record)*
 - 🟢 **Yacht:** Cost of quality tracking (scrap, rework, inspection costs)
 - 🟢 **Yacht:** Customer complaint rates and tracking
 - 🟢 **Yacht:** Operator activity timeline analysis
@@ -1113,10 +1125,10 @@ of February; see the currency note above.
 **Optional Enhancements (Nice to Have):**
 - 🟡 Add `permission_classes = [DjangoModelPermissions]` to ViewSets for API-level CRUD protection
 - 🟡 QualityReportsViewSet approval actions with separation of duties
-- 🟡 QuarantineDispositionViewSet approval/close actions
+- ✅ **SHIPPED (audit 2026-09-21):** `decide` (gated on `approve_disposition`, co-signable) and `close` on the disposition viewset
 - 🟡 DocumentsViewSet classification change protection
-- 🟡 React group management interface
-- 🟡 Permission audit view
+- ✅ **SHIPPED (audit 2026-09-21):** See section 7 — `/admin/users` plus the User Groups editor
+- ✅ **SHIPPED (audit 2026-09-21):** `PermissionChangeLog`, surfaced at `/admin/audit-log`; the log viewset is read-only and the table carries an immutability trigger
 
 ---
 
