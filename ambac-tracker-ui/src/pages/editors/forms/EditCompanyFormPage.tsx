@@ -15,6 +15,13 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useParams } from "@tanstack/react-router";
 
@@ -32,7 +39,16 @@ const formSchema = schemas.CompanyRequest.pick({
     // default → tenant default → 7 days. Turnaround is a property of the vendor, so
     // this is its natural home; without it a planner can only set it per step.
     default_outside_process_turnaround_days: true,
+    // This customer's standing arrangement for cores they send in. Receiving
+    // inherits it, so without an edit surface here the inheritance chain has
+    // nothing to inherit FROM and every receipt falls back to EXCHANGE.
+    default_core_fulfilment_mode: true,
 });
+
+// "" and null both reach us for an unset arrangement (blank=True, null=True).
+// The Select needs one sentinel, and neither empty string nor null can be a
+// SelectItem value, so UNSET stands in for both and maps back to null on save.
+const UNSET = "__unset__";
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -58,6 +74,7 @@ export default function CompanyFormPage() {
             name: "",
             description: "",
             default_outside_process_turnaround_days: null,
+            default_core_fulfilment_mode: null,
         },
     });
 
@@ -67,6 +84,12 @@ export default function CompanyFormPage() {
             form.reset({
                 name: company.name || "",
                 description: company.description || "",
+                // Both of these were missing: the form loaded blank over real
+                // values, so opening a company and saving it cleared them.
+                default_outside_process_turnaround_days:
+                    company.default_outside_process_turnaround_days ?? null,
+                default_core_fulfilment_mode:
+                    company.default_core_fulfilment_mode || null,
             });
         }
     }, [mode, company, form]);
@@ -78,6 +101,11 @@ export default function CompanyFormPage() {
         const submitData = {
             name: values.name,
             description: values.description,
+            // Previously omitted, which meant the turnaround input on this form
+            // was decorative — it rendered, and nothing it held was ever sent.
+            default_outside_process_turnaround_days:
+                values.default_outside_process_turnaround_days ?? null,
+            default_core_fulfilment_mode: values.default_core_fulfilment_mode || null,
         };
 
         if (mode === "edit" && companyId) {
@@ -198,6 +226,55 @@ export default function CompanyFormPage() {
                                     Calendar days from ship-out to return when this company runs a
                                     subcontract operation. Used unless the step sets its own; a
                                     shipped part's promised return date overrides both.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="default_core_fulfilment_mode"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Core fulfilment arrangement</FormLabel>
+                                <Select
+                                    value={field.value || UNSET}
+                                    onValueChange={(v) => {
+                                        // Radix emits "" on mount, before the
+                                        // content is mounted to match the value
+                                        // against — which lands AFTER the reset
+                                        // above and silently blanked the loaded
+                                        // arrangement. No SelectItem carries "",
+                                        // so it is never a real choice.
+                                        if (!v) return;
+                                        field.onChange(v === UNSET ? null : v);
+                                    }}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value={UNSET}>
+                                            Not recorded
+                                        </SelectItem>
+                                        <SelectItem value="EXCHANGE">
+                                            Exchange — they get a unit from stock
+                                        </SelectItem>
+                                        <SelectItem value="REPAIR_RETURN">
+                                            Repair &amp; return — their own unit goes back
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    What happens to cores this customer sends in. Receiving
+                                    proposes this for each core, and says it came from the
+                                    customer's arrangement rather than a default. Leave it
+                                    unrecorded rather than guessing: a repair-and-return unit
+                                    received as an exchange has its components pooled, and the
+                                    customer's own unit can then never be reassembled.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

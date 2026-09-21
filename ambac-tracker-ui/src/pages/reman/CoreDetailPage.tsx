@@ -51,11 +51,13 @@ const conditionLabels: Record<string, string> = {
     'scrap': 'Scrap - Not Usable',
 };
 
+// Keys match the API's casing. They were lower-case, so every lookup missed and
+// the page printed the raw enum ("CUSTOMER_RETURN") in place of every label.
 const sourceLabels: Record<string, string> = {
-    'customer_return': 'Customer Return',
-    'purchased': 'Purchased Core',
-    'warranty': 'Warranty Return',
-    'trade_in': 'Trade-In',
+    'CUSTOMER_RETURN': 'Customer Return',
+    'PURCHASED': 'Purchased Core',
+    'WARRANTY': 'Warranty Return',
+    'TRADE_IN': 'Trade-In',
 };
 
 export function CoreDetailPage() {
@@ -102,6 +104,12 @@ export function CoreDetailPage() {
                             <Badge variant={getStatusVariant(core.status || '')}>
                                 {statusLabels[core.status || ''] || core.status}
                             </Badge>
+                            {/* Only repair-and-return is flagged here. Exchange is the
+                                mode with no extra obligations, and badging both would
+                                make the one that constrains the bench read as routine. */}
+                            {core.returns_to_customer && (
+                                <Badge variant="outline">Returns to customer</Badge>
+                            )}
                         </h1>
                         <p className="text-muted-foreground">{core.core_type_name}</p>
                     </div>
@@ -197,6 +205,14 @@ export function CoreDetailPage() {
                             <div>
                                 <p className="text-sm text-muted-foreground">Customer</p>
                                 <p>{core.customer_name || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Fulfilment</p>
+                                <p>
+                                    {core.returns_to_customer
+                                        ? "Repair & return — this unit goes back"
+                                        : "Exchange — a unit from stock"}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Received Date</p>

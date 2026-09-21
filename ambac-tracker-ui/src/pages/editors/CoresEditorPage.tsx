@@ -281,6 +281,22 @@ export function CoresEditorPage() {
                         renderCell: (core) => core.customer_name || "—",
                     }),
                     col({
+                        header: "Fulfilment",
+                        // Same priority as Customer: the pair is the question this
+                        // column exists to answer — whose unit is this, and does it
+                        // go back to them.
+                        priority: 4,
+                        renderCell: (core) =>
+                            core.fulfilment_mode === "REPAIR_RETURN" ? (
+                                <Badge variant="outline">Returns</Badge>
+                            ) : (
+                                // Exchange is the unremarkable case and reads as
+                                // ordinary text, so a shelf of cores shows only the
+                                // ones that constrain what the bench may do.
+                                <span className="text-muted-foreground">Exchange</span>
+                            ),
+                    }),
+                    col({
                         header: "Received",
                         priority: 3,
                         renderCell: (core) =>
