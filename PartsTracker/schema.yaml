@@ -20901,8 +20901,15 @@ paths:
       operationId: api_ScheduledTasks_move_create
       description: |-
         Drag-to-reschedule (Layer 1). Validates the drop against the cheap local
-        constraints (horizon, release, route precedence); on success pins the task at
-        the new time and marks the schedule stale so the next Solve reflows the rest.
+        constraints (horizon, release, predecessor precedence); on success pins the task
+        at the new time, PUSHES any unpinned downstream operations that would now
+        overlap it, and marks the schedule stale so the next Solve reflows the rest.
+
+        Rippling is what makes a forward move possible at all: the successor check used
+        to refuse any move that finished after a successor started, which is every
+        forward move on a job with downstream work scheduled. A pinned successor still
+        refuses, naming itself, because a pin is a planner's decision.
+
         Returns 422 with a reason when the drop violates a local constraint.
       parameters:
       - in: path
@@ -20934,7 +20941,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledTask'
+                $ref: '#/components/schemas/MoveResult'
           description: ''
         '422':
           content:
@@ -21707,6 +21714,37 @@ paths:
                   limit_seconds:
                     type: integer
           description: ''
+  /api/Schedules/undo/:
+    post:
+      operationId: api_Schedules_undo_create
+      description: |-
+        Reverse the most recent manual edit to the active schedule.
+
+        Direct manipulation used to be self-reversing — drag a bar back and it was where
+        it started. Rippling ends that: one drag can move a dozen downstream operations,
+        and nobody restores twelve positions by hand. So the cascade and its undo ship
+        together. The schedule stays stale afterwards: reversing a manual edit does not
+        re-derive the plan any more than making one did.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/Schedules/unscheduled/:
     get:
       operationId: api_Schedules_unscheduled_retrieve
@@ -21733,6 +21771,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnscheduledDiagnosis'
+          description: ''
+  /api/Schedules/violations/:
+    get:
+      operationId: api_Schedules_violations_retrieve
+      description: |-
+        Machine double-bookings in the active schedule.
+
+        A manual move ripples along the ROUTE and deliberately leaves resource contention
+        to CP-SAT — re-implementing no-overlap locally would duplicate the solver and
+        drift from it. That division obliges us to show the overlap: a planner who pushed
+        a job right and silently double-booked a machine has made a mess they cannot
+        otherwise see until the next solve quietly undoes something they thought they had
+        decided.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Schedules/working_windows/:
     get:
@@ -47960,6 +48023,21 @@ components:
           format: date-time
       required:
       - start_time
+    MoveResult:
+      type: object
+      properties:
+        id:
+          type: string
+        rippled_count:
+          type: integer
+        rippled_task_ids:
+          type: array
+          items:
+            type: string
+      required:
+      - id
+      - rippled_count
+      - rippled_task_ids
     NcrAgingResponse:
       type: object
       properties:
@@ -56087,7 +56165,11 @@ components:
         default_timezone:
           type: string
           minLength: 1
-          description: Default timezone for the organization (IANA format, e.g., 'America/New_York')
+          description: The shop floor's clock (IANA, e.g. 'America/New_York'). Shift,
+            break and overtime windows are wall-clock time — 'we start at six' means
+            six on the wall — so they are resolved against THIS zone, not the server's.
+            Per tenant because a multi-tenant product has shops in different zones
+            and one settings.TIME_ZONE can only suit one.
           maxLength: 50
     PatchedTenantRuleRequest:
       type: object
@@ -65520,7 +65602,11 @@ components:
           description: Organization mailing address
         default_timezone:
           type: string
-          description: Default timezone for the organization (IANA format, e.g., 'America/New_York')
+          description: The shop floor's clock (IANA, e.g. 'America/New_York'). Shift,
+            break and overtime windows are wall-clock time — 'we start at six' means
+            six on the wall — so they are resolved against THIS zone, not the server's.
+            Per tenant because a multi-tenant product has shops in different zones
+            and one settings.TIME_ZONE can only suit one.
           maxLength: 50
       required:
       - created_at
@@ -66195,7 +66281,11 @@ components:
         default_timezone:
           type: string
           minLength: 1
-          description: Default timezone for the organization (IANA format, e.g., 'America/New_York')
+          description: The shop floor's clock (IANA, e.g. 'America/New_York'). Shift,
+            break and overtime windows are wall-clock time — 'we start at six' means
+            six on the wall — so they are resolved against THIS zone, not the server's.
+            Per tenant because a multi-tenant product has shops in different zones
+            and one settings.TIME_ZONE can only suit one.
           maxLength: 50
       required:
       - name

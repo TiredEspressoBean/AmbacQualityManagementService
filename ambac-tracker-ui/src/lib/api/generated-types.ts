@@ -8176,8 +8176,15 @@ export interface paths {
         put?: never;
         /**
          * @description Drag-to-reschedule (Layer 1). Validates the drop against the cheap local
-         *     constraints (horizon, release, route precedence); on success pins the task at
-         *     the new time and marks the schedule stale so the next Solve reflows the rest.
+         *     constraints (horizon, release, predecessor precedence); on success pins the task
+         *     at the new time, PUSHES any unpinned downstream operations that would now
+         *     overlap it, and marks the schedule stale so the next Solve reflows the rest.
+         *
+         *     Rippling is what makes a forward move possible at all: the successor check used
+         *     to refuse any move that finished after a successor started, which is every
+         *     forward move on a job with downstream work scheduled. A pinned successor still
+         *     refuses, naming itself, because a pin is a planner's decision.
+         *
          *     Returns 422 with a reason when the drop violates a local constraint.
          */
         post: operations["api_ScheduledTasks_move_create"];
@@ -8694,6 +8701,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Schedules/undo/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Reverse the most recent manual edit to the active schedule.
+         *
+         *     Direct manipulation used to be self-reversing — drag a bar back and it was where
+         *     it started. Rippling ends that: one drag can move a dozen downstream operations,
+         *     and nobody restores twelve positions by hand. So the cascade and its undo ship
+         *     together. The schedule stays stale afterwards: reversing a manual edit does not
+         *     re-derive the plan any more than making one did.
+         */
+        post: operations["api_Schedules_undo_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Schedules/unscheduled/": {
         parameters: {
             query?: never;
@@ -8708,6 +8740,32 @@ export interface paths {
          *     not solved) and the fix for it.
          */
         get: operations["api_Schedules_unscheduled_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/violations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Machine double-bookings in the active schedule.
+         *
+         *     A manual move ripples along the ROUTE and deliberately leaves resource contention
+         *     to CP-SAT — re-implementing no-overlap locally would duplicate the solver and
+         *     drift from it. That division obliges us to show the overlap: a planner who pushed
+         *     a job right and silently double-booked a machine has made a mess they cannot
+         *     otherwise see until the next solve quietly undoes something they thought they had
+         *     decided.
+         */
+        get: operations["api_Schedules_violations_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -20411,6 +20469,11 @@ export interface components {
             /** Format: date-time */
             start_time: string;
         };
+        MoveResult: {
+            id: string;
+            rippled_count: number;
+            rippled_task_ids: string[];
+        };
         NcrAgingResponse: {
             data: {
                 [key: string]: unknown;
@@ -25159,7 +25222,7 @@ export interface components {
             website?: string | "";
             /** @description Organization mailing address */
             address?: string;
-            /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
+            /** @description The shop floor's clock (IANA, e.g. 'America/New_York'). Shift, break and overtime windows are wall-clock time — 'we start at six' means six on the wall — so they are resolved against THIS zone, not the server's. Per tenant because a multi-tenant product has shops in different zones and one settings.TIME_ZONE can only suit one. */
             default_timezone?: string;
         };
         /** @description Admin-authored, fires tenant-wide. Recipients are internal. */
@@ -30072,7 +30135,7 @@ export interface components {
             website?: string | "";
             /** @description Organization mailing address */
             address?: string;
-            /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
+            /** @description The shop floor's clock (IANA, e.g. 'America/New_York'). Shift, break and overtime windows are wall-clock time — 'we start at six' means six on the wall — so they are resolved against THIS zone, not the server's. Per tenant because a multi-tenant product has shops in different zones and one settings.TIME_ZONE can only suit one. */
             default_timezone?: string;
         };
         TenantActivateResponse: {
@@ -30379,7 +30442,7 @@ export interface components {
             website?: string | "";
             /** @description Organization mailing address */
             address?: string;
-            /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
+            /** @description The shop floor's clock (IANA, e.g. 'America/New_York'). Shift, break and overtime windows are wall-clock time — 'we start at six' means six on the wall — so they are resolved against THIS zone, not the server's. Per tenant because a multi-tenant product has shops in different zones and one settings.TIME_ZONE can only suit one. */
             default_timezone?: string;
         };
         /** @description Admin-authored, fires tenant-wide. Recipients are internal. */
@@ -46691,7 +46754,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScheduledTask"];
+                    "application/json": components["schemas"]["MoveResult"];
                 };
             };
             422: {
@@ -47378,6 +47441,37 @@ export interface operations {
             };
         };
     };
+    api_Schedules_undo_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_Schedules_unscheduled_retrieve: {
         parameters: {
             query?: {
@@ -47396,6 +47490,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnscheduledDiagnosis"];
+                };
+            };
+        };
+    };
+    api_Schedules_violations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

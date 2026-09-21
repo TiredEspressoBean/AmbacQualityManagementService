@@ -415,7 +415,7 @@ export function OrganizationSettingsPage() {
                                     name="default_timezone"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Default Timezone</FormLabel>
+                                            <FormLabel>Shop floor timezone</FormLabel>
                                             {/* Re-key on the value so Radix Select shows the loaded
                                                 value after the async settings fetch populates the
                                                 form — without this the trigger sticks on the
@@ -441,7 +441,11 @@ export function OrganizationSettingsPage() {
                                                 </SelectContent>
                                             </Select>
                                             <FormDescription>
-                                                Used for scheduling and report timestamps
+                                                The clock your shifts are set by. A shift
+                                                starting at 06:00 means 06:00 here — working
+                                                hours, breaks and overtime are all resolved
+                                                against this zone, so the schedule shades the
+                                                right hours and the right days.
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>

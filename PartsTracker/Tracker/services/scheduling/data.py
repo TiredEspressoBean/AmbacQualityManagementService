@@ -573,7 +573,8 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
     from Tracker.models import DowntimeEvent, Equipments, Shift
 
     tenant_shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
-    tenant_base = _expand_shifts(tenant_shifts, horizon.start, horizon.end)
+    tz = plant_tz(tenant)
+    tenant_base = _expand_shifts(tenant_shifts, horizon.start, horizon.end, tz)
     base_cache: dict[tuple, list] = {}
 
     def _base_for(eq):
@@ -582,7 +583,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
             return tenant_base
         key = tuple(sorted(str(s.id) for s in own))
         if key not in base_cache:
-            base_cache[key] = _expand_shifts(own, horizon.start, horizon.end)
+            base_cache[key] = _expand_shifts(own, horizon.start, horizon.end, tz)
         return base_cache[key]
 
     downtime: dict[UUID, list[tuple]] = {}
@@ -745,7 +746,8 @@ def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:
     shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
     horizon = HorizonData(start=start, end=end, frozen_end=start, slushy_end=start)
     base = _merge_intervals(
-        _expand_shifts(shifts, start, end) + get_overtime_machine_windows(tenant, horizon))
+        _expand_shifts(shifts, start, end, plant_tz(tenant))
+        + get_overtime_machine_windows(tenant, horizon))
     closures = _merge_intervals([
         (max(e.start_time, start), min(e.end_time, end))
         for e in PlantCalendarException.objects.filter(tenant=tenant, is_active=True)
@@ -885,22 +887,66 @@ def get_material_gates(tenant, horizon: HorizonData):
     return release, short, detail
 
 
-def _expand_shifts(shifts, start: datetime, end: datetime) -> list[tuple]:
+def plant_tz(tenant):
+    """The shop floor's clock, as a tzinfo. Falls back to the server's zone.
+
+    A shift is wall-clock time: "we start at six" means six on the clock on the wall.
+    Resolving that against `settings.TIME_ZONE` is only correct when the server happens
+    to share the plant's zone — otherwise every working window is offset, and a shift
+    that starts near midnight lands on the wrong DAY, which is how this surfaced (the
+    Gantt shaded a 06:00-18:00 shift as 02:00-14:00 on a UTC-4 machine).
+
+    Reads `Tenant.default_timezone`, which already existed and is already editable on
+    the organization settings page — it was simply never consulted when expanding
+    shifts.
+
+    An unknown or empty zone falls back rather than raising: a bad string on one tenant
+    should not take the scheduler down for everyone, and the fallback is exactly the
+    old behaviour.
+    """
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    name = getattr(tenant, 'default_timezone', None)
+    if not name:
+        return timezone.get_current_timezone()
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        return timezone.get_current_timezone()
+
+
+def _combine_in(tz, day, t):
+    """A wall-clock (date, time) in `tz`, as an aware datetime.
+
+    Built with the zone attached rather than via `make_aware`, so zoneinfo resolves the
+    offset for that wall time — which is what makes a 06:00 shift stay 06:00 across a
+    DST change instead of drifting an hour.
+    """
+    return datetime.combine(day, t).replace(tzinfo=tz)
+
+
+def _expand_shifts(shifts, start: datetime, end: datetime, tz=None) -> list[tuple]:
     """Expand recurring shifts into concrete [start, end] datetime windows over
     [start, end], clipped to that range. Overnight shifts (end_time <= start_time)
-    roll into the next day. Returned sorted + merged."""
+    roll into the next day. Returned sorted + merged.
+
+    `tz` is the PLANT's zone (see `plant_tz`). Both the day loop and the wall-clock
+    combine run in it: iterating UTC dates put the day boundary in the wrong place for
+    any shop that isn't on UTC, so a Monday-only shift could be expanded onto Sunday.
+    Defaults to the server zone, which is the old behaviour.
+    """
+    tz = tz or timezone.get_current_timezone()
     windows: list[tuple] = []
-    day = start.date()
-    last = end.date()
+    day = timezone.localtime(start, tz).date()
+    last = timezone.localtime(end, tz).date()
     while day <= last:
         weekday = day.weekday()  # 0=Monday
         for sh in shifts:
             active_days = _parse_days(sh.days_of_week)
             if active_days and weekday not in active_days:
                 continue
-            w_start = timezone.make_aware(datetime.combine(day, sh.start_time))
+            w_start = _combine_in(tz, day, sh.start_time)
             end_day = day + timedelta(days=1) if sh.end_time <= sh.start_time else day
-            w_end = timezone.make_aware(datetime.combine(end_day, sh.end_time))
+            w_end = _combine_in(tz, end_day, sh.end_time)
             w_start = max(w_start, start)
             w_end = min(w_end, end)
             if w_start < w_end:
@@ -975,9 +1021,10 @@ def get_break_windows(tenant, horizon: HorizonData) -> list[tuple]:
     from Tracker.models import Shift
 
     shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
+    tz = plant_tz(tenant)
     intervals: list[tuple] = []
-    day = horizon.start.date()
-    last = horizon.end.date()
+    day = timezone.localtime(horizon.start, tz).date()
+    last = timezone.localtime(horizon.end, tz).date()
     while day <= last:
         weekday = day.weekday()
         for sh in shifts:
@@ -994,8 +1041,8 @@ def get_break_windows(tenant, horizon: HorizonData) -> list[tuple]:
                 bs, be = _parse_hhmm(br.get('start')), _parse_hhmm(br.get('end'))
                 if bs is None or be is None:
                     continue
-                w_start = max(timezone.make_aware(datetime.combine(day, bs)), horizon.start)
-                w_end = min(timezone.make_aware(datetime.combine(day, be)), horizon.end)
+                w_start = max(_combine_in(tz, day, bs), horizon.start)
+                w_end = min(_combine_in(tz, day, be), horizon.end)
                 if w_start < w_end:
                     intervals.append((w_start, w_end))
         day += timedelta(days=1)
@@ -1100,7 +1147,7 @@ def get_dispatchable_operators(tenant) -> list[OperatorData]:
     return result
 
 
-def _labor_block_intervals(block, horizon: HorizonData) -> list[tuple]:
+def _labor_block_intervals(block, horizon: HorizonData, tz=None) -> list[tuple]:
     """Concrete [start, end] datetime intervals a LaborCalendarBlock covers over the
     horizon. ONCE = its clamped datetime span; WEEKLY = its time-of-day window on each
     matching day-of-week (reusing the shift expander). Malformed rows yield nothing."""
@@ -1112,7 +1159,7 @@ def _labor_block_intervals(block, horizon: HorizonData) -> list[tuple]:
         shim = SimpleNamespace(
             days_of_week=block.days_of_week or '',
             start_time=block.window_start, end_time=block.window_end)
-        return _expand_shifts([shim], horizon.start, horizon.end)
+        return _expand_shifts([shim], horizon.start, horizon.end, tz)
     # ONCE
     if block.start_time is None or block.end_time is None:
         return []
@@ -1134,7 +1181,7 @@ def get_labor_calendar_blocks(tenant, horizon: HorizonData):
     by_user: dict[int, list[tuple]] = {}
     rows = LaborCalendarBlock.objects.filter(tenant=tenant, is_active=True)
     for b in rows:
-        intervals = _labor_block_intervals(b, horizon)
+        intervals = _labor_block_intervals(b, horizon, plant_tz(tenant))
         if not intervals:
             continue
         if b.user_id is None:
@@ -1144,7 +1191,7 @@ def get_labor_calendar_blocks(tenant, horizon: HorizonData):
     return _merge_intervals(company), {u: _merge_intervals(iv) for u, iv in by_user.items()}
 
 
-def _overtime_intervals(o, shift, horizon: HorizonData) -> list[tuple]:
+def _overtime_intervals(o, shift, horizon: HorizonData, tz=None) -> list[tuple]:
     """Concrete datetime windows for one overtime entry: the shift's hours on the days
     it runs — ONCE across [start_date, end_date], WEEKLY on days_of_week — clipped to
     the horizon. Hours come from the referenced shift (overnight handled by the shift
@@ -1157,17 +1204,20 @@ def _overtime_intervals(o, shift, horizon: HorizonData) -> list[tuple]:
             return []
         shim = SimpleNamespace(days_of_week=o.days_of_week,
                                start_time=shift.start_time, end_time=shift.end_time)
-        return _expand_shifts([shim], horizon.start, horizon.end)
+        return _expand_shifts([shim], horizon.start, horizon.end, tz)
     # ONCE — run the shift's hours on each date in [start_date, end_date]
     if not o.start_date or not o.end_date:
         return []
-    lo = max(timezone.make_aware(datetime.combine(o.start_date, _time.min)), horizon.start)
-    hi = min(timezone.make_aware(datetime.combine(o.end_date, _time.max)), horizon.end)
+    # The overtime DATES are plant-local calendar days too: "Saturday the 4th" is a day
+    # on the shop's wall calendar, not a UTC one.
+    _tz = tz or timezone.get_current_timezone()
+    lo = max(_combine_in(_tz, o.start_date, _time.min), horizon.start)
+    hi = min(_combine_in(_tz, o.end_date, _time.max), horizon.end)
     if lo >= hi:
         return []
     shim = SimpleNamespace(days_of_week='',  # every date in the range
                            start_time=shift.start_time, end_time=shift.end_time)
-    return _expand_shifts([shim], lo, hi)
+    return _expand_shifts([shim], lo, hi, tz)
 
 
 def get_overtime_windows(tenant, horizon: HorizonData) -> dict[int, list[tuple]]:
@@ -1184,7 +1234,7 @@ def get_overtime_windows(tenant, horizon: HorizonData) -> dict[int, list[tuple]]
         sh = o.shift
         if sh is None or not sh.is_active:
             continue
-        iv = _overtime_intervals(o, sh, horizon)
+        iv = _overtime_intervals(o, sh, horizon, plant_tz(tenant))
         if iv:
             by_shift.setdefault(sh.id, []).extend(iv)
     return {sid: _merge_intervals(v) for sid, v in by_shift.items()}
@@ -1217,7 +1267,7 @@ def get_operator_shift_windows(tenant, horizon: HorizonData) -> dict[int, list[t
     shift_ids = set(roster.values())
     closures = get_calendar_closures(tenant, horizon)
     by_shift = {
-        s.id: _expand_shifts([s], horizon.start, horizon.end)
+        s.id: _expand_shifts([s], horizon.start, horizon.end, plant_tz(tenant))
         for s in Shift.objects.filter(tenant=tenant, id__in=shift_ids, is_active=True, is_current_version=True)
     }
     overtime_by_shift = get_overtime_windows(tenant, horizon)  # {shift_id: [(s,e)]}
@@ -1245,7 +1295,7 @@ def get_shift_windows(tenant, horizon: HorizonData) -> list[tuple]:
     from Tracker.models import Shift
 
     shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
-    return _expand_shifts(shifts, horizon.start, horizon.end)
+    return _expand_shifts(shifts, horizon.start, horizon.end, plant_tz(tenant))
 
 
 def get_operator_unavailability(tenant, horizon: HorizonData,

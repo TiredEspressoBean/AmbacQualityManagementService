@@ -44,6 +44,7 @@ class Tenant(models.Model):
     name = models.CharField(max_length=100, help_text="Display name of the organization")
     slug = models.SlugField(unique=True, help_text="URL-safe identifier, immutable after creation")
 
+
     class Tier(models.TextChoices):
         STARTER = 'STARTER', 'Starter'
         PRO = 'PRO', 'Pro'
@@ -87,7 +88,11 @@ class Tenant(models.Model):
     default_timezone = models.CharField(
         max_length=50,
         default='UTC',
-        help_text="Default timezone for the organization (IANA format, e.g., 'America/New_York')"
+        help_text="The shop floor's clock (IANA, e.g. 'America/New_York'). Shift, break "
+                  "and overtime windows are wall-clock time — 'we start at six' means six "
+                  "on the wall — so they are resolved against THIS zone, not the "
+                  "server's. Per tenant because a multi-tenant product has shops in "
+                  "different zones and one settings.TIME_ZONE can only suit one."
     )
 
     class ChangeControlMode(models.TextChoices):

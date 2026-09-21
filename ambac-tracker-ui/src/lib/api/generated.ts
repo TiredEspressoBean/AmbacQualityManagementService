@@ -8922,7 +8922,7 @@ export type Tenant = {
    */
   string | undefined;
   default_timezone?: /**
-   * Default timezone for the organization (IANA format, e.g., 'America/New_York')
+   * The shop floor's clock (IANA, e.g. 'America/New_York'). Shift, break and overtime windows are wall-clock time — 'we start at six' means six on the wall — so they are resolved against THIS zone, not the server's. Per tenant because a multi-tenant product has shops in different zones and one settings.TIME_ZONE can only suit one.
    *
    * @maxLength 50
    */
@@ -12297,7 +12297,7 @@ export type PatchedTenantRequest = Partial<{
    */
   address: string;
   /**
-   * Default timezone for the organization (IANA format, e.g., 'America/New_York')
+   * The shop floor's clock (IANA, e.g. 'America/New_York'). Shift, break and overtime windows are wall-clock time — 'we start at six' means six on the wall — so they are resolved against THIS zone, not the server's. Per tenant because a multi-tenant product has shops in different zones and one settings.TIME_ZONE can only suit one.
    *
    * @minLength 1
    * @maxLength 50
@@ -14843,7 +14843,7 @@ export type TenantRequest = {
    */
   string | undefined;
   default_timezone?: /**
-   * Default timezone for the organization (IANA format, e.g., 'America/New_York')
+   * The shop floor's clock (IANA, e.g. 'America/New_York'). Shift, break and overtime windows are wall-clock time — 'we start at six' means six on the wall — so they are resolved against THIS zone, not the server's. Per tenant because a multi-tenant product has shops in different zones and one settings.TIME_ZONE can only suit one.
    *
    * @minLength 1
    * @maxLength 50
@@ -19786,6 +19786,11 @@ const PaginatedScheduledTaskList = z.object({
 const MoveRequestRequest = z.object({
   start_time: z.string().datetime({ offset: true }),
 });
+const MoveResult = z.object({
+  id: z.string(),
+  rippled_count: z.number().int(),
+  rippled_task_ids: z.array(z.string()),
+});
 const PinRequestRequest = z.object({ is_pinned: z.boolean() });
 const ReassignMachineRequestRequest = z.object({
   machine_id: z.string().uuid(),
@@ -24522,6 +24527,7 @@ export const schemas = {
   ScheduledTask,
   PaginatedScheduledTaskList,
   MoveRequestRequest,
+  MoveResult,
   PinRequestRequest,
   ReassignMachineRequestRequest,
   ReassignOperatorRequestRequest,
@@ -42190,8 +42196,15 @@ problem from the round-4 research).`,
     path: "/api/ScheduledTasks/:id/move/",
     alias: "api_ScheduledTasks_move_create",
     description: `Drag-to-reschedule (Layer 1). Validates the drop against the cheap local
-constraints (horizon, release, route precedence); on success pins the task at
-the new time and marks the schedule stale so the next Solve reflows the rest.
+constraints (horizon, release, predecessor precedence); on success pins the task
+at the new time, PUSHES any unpinned downstream operations that would now
+overlap it, and marks the schedule stale so the next Solve reflows the rest.
+
+Rippling is what makes a forward move possible at all: the successor check used
+to refuse any move that finished after a successor started, which is every
+forward move on a job with downstream work scheduled. A pinned successor still
+refuses, naming itself, because a pin is a planner&#x27;s decision.
+
 Returns 422 with a reason when the drop violates a local constraint.`,
     requestFormat: "json",
     parameters: [
@@ -42206,7 +42219,7 @@ Returns 422 with a reason when the drop violates a local constraint.`,
         schema: z.string().uuid(),
       },
     ],
-    response: ScheduledTask,
+    response: MoveResult,
     errors: [
       {
         status: 422,
@@ -42655,6 +42668,26 @@ schedule. Returns a task id; poll &#x60;solve_status?task_id&#x3D;&#x60;, then r
     response: z.object({}).partial().passthrough(),
   },
   {
+    method: "post",
+    path: "/api/Schedules/undo/",
+    alias: "api_Schedules_undo_create",
+    description: `Reverse the most recent manual edit to the active schedule.
+
+Direct manipulation used to be self-reversing — drag a bar back and it was where
+it started. Rippling ends that: one drag can move a dozen downstream operations,
+and nobody restores twelve positions by hand. So the cascade and its undo ship
+together. The schedule stays stale afterwards: reversing a manual edit does not
+re-derive the plan any more than making one did.`,
+    requestFormat: "json",
+    response: z.object({}).partial().passthrough(),
+    errors: [
+      {
+        status: 404,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/Schedules/unscheduled/",
     alias: "api_Schedules_unscheduled_retrieve",
@@ -42671,6 +42704,21 @@ not solved) and the fix for it.`,
       },
     ],
     response: UnscheduledDiagnosis,
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/violations/",
+    alias: "api_Schedules_violations_retrieve",
+    description: `Machine double-bookings in the active schedule.
+
+A manual move ripples along the ROUTE and deliberately leaves resource contention
+to CP-SAT — re-implementing no-overlap locally would duplicate the solver and
+drift from it. That division obliges us to show the overlap: a planner who pushed
+a job right and silently double-booked a machine has made a mess they cannot
+otherwise see until the next solve quietly undoes something they thought they had
+decided.`,
+    requestFormat: "json",
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "get",
@@ -46248,7 +46296,10 @@ process&#x27;s version of the parent Step.`,
       },
     ],
     response: PaginatedSubstepList,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/Substeps/",
@@ -46296,10 +46347,7 @@ process&#x27;s version of the parent Step.`,
       },
     ],
     response: Substep,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "put",
     path: "/api/Substeps/:id/",
@@ -50871,7 +50919,10 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/WorkOrders/metadata/",
@@ -50889,10 +50940,7 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
 so a 40-order queue costs the same handful of queries as a single order.`,
     requestFormat: "json",
     response: ReleaseQueue,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkQueue/",

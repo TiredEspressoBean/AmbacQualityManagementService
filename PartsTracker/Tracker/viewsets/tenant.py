@@ -329,7 +329,19 @@ class TenantSettingsView(APIView):
         if 'address' in request.data:
             tenant.address = request.data['address']
         if 'default_timezone' in request.data:
-            tenant.default_timezone = request.data['default_timezone']
+            # Validate, because this one is silently forgiving downstream: an unknown
+            # zone makes `scheduling.data.plant_tz` fall back to the server's, so a
+            # typo would not error — it would quietly shade the wrong working hours on
+            # every board. Better to refuse the save.
+            from zoneinfo import available_timezones
+            tz_name = request.data['default_timezone']
+            if tz_name not in available_timezones():
+                return Response(
+                    {'detail': f"'{tz_name}' is not a known IANA timezone "
+                               f"(e.g. 'America/New_York')."},
+                    status=400,
+                )
+            tenant.default_timezone = tz_name
 
         if 'change_control_mode' in request.data:
             from Tracker.models import Tenant as TenantModel
