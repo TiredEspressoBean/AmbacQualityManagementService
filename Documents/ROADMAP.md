@@ -1,5 +1,16 @@
 # Ambac Quality Management System - Full Development Roadmap
 
+> **Currency (2026-09-21): stale — last updated February 2026, not audited
+> since.** Seven months of development sit between that date and this note,
+> including the whole of CP-SAT scheduling, DWI, change control and the
+> approvals rework. The line below claiming "a complete view of all features"
+> is no longer true.
+>
+> The completed sections are still a reasonable record of what was built up to
+> February. Do not read the gaps as a to-do list — several have since shipped,
+> and nothing here has been checked against the code.
+
+
 **Last Updated:** February 18, 2026
 
 This document provides a complete view of all features: completed, in progress, needed, nice-to-have, and future aspirations.

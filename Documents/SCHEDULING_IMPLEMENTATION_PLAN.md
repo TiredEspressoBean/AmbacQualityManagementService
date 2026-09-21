@@ -1,11 +1,17 @@
 # Scheduling System Implementation Plan
 
-> **Status (2026-07-13): planned — build not started.** CP-SAT scheduling is
-> an intended Premium differentiator (MES_FEATURE_TIERS §14). Sequenced after
-> the MES maturity ladder makes its inputs honest — WorkCenter mapping,
-> routing std times, and the execution feedback loop
-> (OPERATOR_EXPERIENCE_DESIGN §10, rungs 0–3). Don't start phases 2+ before
-> those rungs; landing surfaces must not depend on scheduling until it exists.
+> **Status (2026-09-21): shipped — historical record.** CP-SAT scheduling is
+> live. The service layer is `Tracker/services/scheduling/` (solver, dispatch,
+> staleness, infeasibility, late_cause, manual_move, scenario, preflight,
+> diagnostics, auto_resolve, actuals, routing, run_status, data), with
+> coverage across `test_scheduling_*`, `test_planning_rccp` and
+> `test_celery_dispatch`. User-facing surfaces are documented under
+> `docs/workflows/scheduling/`.
+>
+> The sequencing caution below was honoured and is now spent: WorkCenter
+> mapping and the execution feedback loop landed first. Read what follows as
+> the reasoning behind the design, not as work outstanding — where the plan
+> and the code disagree, the code is right.
 
 ## Additions & open decisions (2026-08-10 review)
 

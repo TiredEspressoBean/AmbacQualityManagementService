@@ -1,5 +1,12 @@
 # Multi-Tenancy & Deployment Roadmap
 
+> **Currency (2026-09-21): stale — last updated February 2026, not audited
+> since.** Every item is checked, which means the document stopped being
+> updated rather than that the work finished. Tenant scoping, group seeding and
+> permission presets have all moved since; `Tracker/models/core.py`
+> (`SecureModel`/`SecureManager`) and `Tracker/presets.py` are authoritative.
+
+
 **Last Updated:** February 18, 2026
 **Status:** Phase 0 & 1 Complete (including Tenant Group Management API)
 **Approach:** SaaS-First, Foundation-Ready

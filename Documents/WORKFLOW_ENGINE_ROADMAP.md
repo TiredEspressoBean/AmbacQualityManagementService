@@ -1,5 +1,14 @@
 # Workflow Engine - Phased Implementation Roadmap
 
+> **Currency (2026-09-21): partially verified.** Phases 3–4 really are
+> outstanding: `WorkflowInstance`, `NodeExecution` and `WorkflowEngine` do not
+> exist in the codebase. Approvals and CAPA run on their own machinery
+> (`ApprovalRequest`, the CAPA task model), not on a generic engine, so the
+> "running on engine" items are open as written.
+>
+> Earlier phases have not been re-checked since January.
+
+
 **Last Updated:** January 16, 2026
 **Status:** Phase 1-2 Complete, Phase 3 ~95% Complete
 **Priority:** High (Customer Need)

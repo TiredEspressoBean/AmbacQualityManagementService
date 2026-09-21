@@ -338,7 +338,7 @@ clocking + payroll reporting work." All three shipped.
 
 ### Wave F — Pure niceties (no need depends on these; sequence by value later)
 - [ ] **#14. Alternate routings / rework re-entry** — n (rework half → S) · L · ☐
-- [ ] **#16. CTP/ATP capacity promising** — n · M · ☐  Schedule-derived promise date; reuses draft engine.
+- [x] **#16. CTP/ATP capacity promising** — shipped. `capable_to_promise()` in `Tracker/services/planning/rccp.py`, covered by `test_planning_rccp` (accepts a fitting order, rejects an oversized one and names the binding resource, and is cumulative so a later date can fit what an earlier one cannot).
 - [ ] **#9. Cost objective** — n · S–M · ☐  Wire existing overtime/shop-rate into the objective.
 - [ ] **#10. Order release gate / firm-planned** — n · M · ☐
 - [ ] **#12. Campaign batching** — n · M · ☐

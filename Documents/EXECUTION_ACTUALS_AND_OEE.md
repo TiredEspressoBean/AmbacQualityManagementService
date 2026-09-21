@@ -1,13 +1,21 @@
 # Execution Actuals Capture & OEE
 
-> **Status (2026-08-10): design — not started. Foundational; build first.**
-> This is the shop-floor capture loop that makes durations and OEE *honest* —
-> the execution feedback loop the scheduler is gated behind
-> (OPERATOR_EXPERIENCE_DESIGN §10, rungs 2–3). One capture feed, three
-> consumers: the CP-SAT scheduler's duration model
-> (`SCHEDULING_IMPLEMENTATION_PLAN.md` / `DURATION_ESTIMATION.md`), OEE, and
-> labor. Build this **before** the solver — it takes calendar time to season,
-> and a solver on empty/dishonest actuals produces fiction.
+> **Status (2026-09-21): partially built.** Actuals capture shipped —
+> `Tracker/services/scheduling/actuals.py` stamps real start/end onto the
+> active schedule's `ScheduledTask` as parts enter and exit steps. It is
+> deliberately capture-only: it does not re-time the plan or mark the
+> schedule stale.
+>
+> **OEE is not built.** What exists is a hook, not a rollup —
+> `EquipmentType.track_downtime` flags which equipment should be measured,
+> and downtime events are recorded, but there is no availability ×
+> performance × quality calculation anywhere.
+>
+> The sequencing argument below was overtaken: the solver shipped alongside
+> actuals capture rather than after it had seasoned. That makes the caution
+> about a solver running on thin actuals a live concern rather than a
+> hypothetical — the data is being captured now, but it has not had the
+> calendar time this doc argued for.
 
 ## Why this is its own concern
 

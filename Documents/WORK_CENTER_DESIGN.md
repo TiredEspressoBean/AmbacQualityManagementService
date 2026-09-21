@@ -1,5 +1,16 @@
 # WorkCenter — routing & surface-discriminator design
 
+> **Status (2026-09-21): substantially built.** WorkCenter is no longer the
+> skeleton this doc set out to replace. It is referenced by five models
+> (`mes_lite.py`, `mes_standard.py`) and consumed by
+> `Tracker/services/mes/work_centers.py`, `mes/staging.py`,
+> `planning/rccp.py`, `planning/flow_times.py` and `scheduling/data.py`.
+> Admin maintenance is at `/admin/work-centers`, gated on `change_workcenter`
+> so a Production Manager can hold it without full tenant admin.
+>
+> Read this as the rationale for the shape rather than as outstanding work.
+
+
 ## What this is
 
 Formalizing the WorkCenter concept from **skeleton** (the model exists, nothing binds to it) to **first-class routing anchor** — the primary discriminator between operator / QA / receiving surfaces and the foundation for future scheduling.

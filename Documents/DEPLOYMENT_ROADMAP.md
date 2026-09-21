@@ -1,5 +1,11 @@
 # Deployment Models & Roadmap
 
+> **Currency (2026-09-21): stale — last updated February 2026, not audited
+> since.** 29 items remain unchecked; none has been verified against the
+> current deployment. Azure is no longer a target — it was abandoned on cost —
+> so any Azure path here is a record of a decision reversed, not a plan.
+
+
 **Last Updated:** February 11, 2026
 
 This document outlines deployment options, compliance considerations, and the roadmap for each model.

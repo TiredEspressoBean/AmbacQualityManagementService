@@ -1,5 +1,18 @@
 # RCCP contiguity plan
 
+> **Status (2026-09-21): open — the structural problem below still stands.**
+> `_step_hours` and `_add_spread_load` in
+> `Tracker/services/planning/rccp.py` still work in hours-per-bucket with no
+> notion of elapsed time, exactly as described.
+>
+> One narrower fix has landed since: capable-to-promise measured capacity over
+> whole month buckets, so a 20-day-out promise credited a full extra month
+> whenever the window crossed a boundary — over-promising 352 h where 112 h
+> existed, and passing for roughly the first third of every month. `_fits` now
+> measures `[now, due date)`. That addressed one symptom of the bucket model,
+> not the model itself.
+
+
 Making the rough-cut layer join up with the detailed solver and the material side,
 so the three stop being islands that each re-derive the same facts differently.
 
