@@ -900,13 +900,22 @@ export const GanttFeatureItemCard: FC<GanttFeatureItemCardProps> = ({
   return (
     <Card
       className={cn(
-        "h-full w-full rounded-md bg-background p-2 text-xs shadow-sm",
+        // p-0: the padding moves INSIDE the drag surface below. It used to live here,
+        // which made the listener div — the only draggable element — 16px narrower than
+        // the bar. At low zoom a bar is a few pixels wide, so that div collapsed to zero
+        // width, the pointer landed on the Card instead, no drag ever started, and the
+        // click opened the detail popover. It worked only once the bar was wide enough
+        // to survive the padding, which is also when the label appears — so dragging
+        // looked like it needed you to be zoomed in.
+        "h-full w-full rounded-md bg-background p-0 text-xs shadow-sm",
         className
       )}
     >
       <div
         className={cn(
-          "flex h-full w-full items-center justify-between gap-2 text-left",
+          // Full-bleed, so the whole bar is grabbable however narrow it gets; `px-2`
+          // insets the CONTENT rather than the hit area.
+          "flex h-full w-full items-center justify-between gap-2 px-2 text-left",
           isPressed && "cursor-grabbing"
         )}
         {...attributes}
