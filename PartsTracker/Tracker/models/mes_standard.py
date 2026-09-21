@@ -1778,8 +1778,25 @@ class MaterialStagingLine(SecureModel):
 
     staging = models.ForeignKey(
         MaterialStaging, on_delete=models.CASCADE, related_name='lines')
+
+    # What is being kitted. Mirrors `MaterialLot`: a line is for a raw *material* /
+    # consumable (`material`) or a buyable *part* (`material_type`), never both.
+    #
+    # It was Material-only, which meant a BUY line pointing at a purchased part could
+    # be procured, received and held as stock — `MaterialLot.material_type` has always
+    # supported that — but never kitted to a bench. The Material Requisition printed
+    # "purchased part — not kitted here" on those rows, which was the system stating
+    # its own gap on a shop-floor document. `services.mes.bom.buy_line_item` already
+    # normalises both kinds behind one key; this is the row that could not hold them.
     material = models.ForeignKey(
-        'Tracker.Material', on_delete=models.PROTECT, related_name='staging_lines')
+        'Tracker.Material', null=True, blank=True,
+        on_delete=models.PROTECT, related_name='staging_lines',
+        help_text="Raw material / consumable being kitted (mutually exclusive with "
+                  "material_type, which is for buyable parts).")
+    material_type = models.ForeignKey(
+        'Tracker.PartTypes', null=True, blank=True,
+        on_delete=models.PROTECT, related_name='staging_lines',
+        help_text="Buyable part being kitted (mutually exclusive with material).")
 
     qty_required = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     qty_picked = models.DecimalField(
@@ -1803,17 +1820,60 @@ class MaterialStagingLine(SecureModel):
     class Meta:
         verbose_name = 'Material Staging Line'
         verbose_name_plural = 'Material Staging Lines'
-        ordering = ['material__name']
+        # Materials first, then parts; each alphabetical. A single `material__name`
+        # ordering put every part row in one undifferentiated NULL block.
+        ordering = ['material__name', 'material_type__name']
         constraints = [
+            # Two PARTIAL constraints rather than one over both columns. Postgres treats
+            # NULLs as distinct, so the original `(tenant, staging, material)` constraint
+            # stopped preventing anything the moment `material` became nullable — every
+            # part row has material=NULL and would collide with nothing, including
+            # itself. Each kind now gets a constraint scoped to the rows it applies to.
             models.UniqueConstraint(
                 fields=['tenant', 'staging', 'material'],
+                condition=models.Q(material__isnull=False),
                 name='unique_staging_line_per_material',
-            )
+            ),
+            models.UniqueConstraint(
+                fields=['tenant', 'staging', 'material_type'],
+                condition=models.Q(material_type__isnull=False),
+                name='unique_staging_line_per_part',
+            ),
+            # A line kits a raw material XOR a buyable part. Unlike MaterialLot there is
+            # no ad-hoc third case: a staging line exists because a BOM line asked for
+            # something, so it always has a subject.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(material__isnull=False, material_type__isnull=True)
+                    | models.Q(material__isnull=True, material_type__isnull=False)
+                ),
+                name='stagingline_material_xor_part',
+            ),
         ]
         indexes = [models.Index(fields=['tenant', 'issued_at'])]
 
     def __str__(self):
-        return f"{self.material} x{self.qty_picked or self.qty_required}"
+        return f"{self.item_name} x{self.qty_picked or self.qty_required}"
+
+    @property
+    def item(self):
+        """The Material or PartTypes this line kits — whichever it holds."""
+        return self.material or self.material_type
+
+    @property
+    def item_name(self) -> str:
+        item = self.item
+        return getattr(item, 'name', '') or str(item or '')
+
+    @property
+    def item_key(self) -> tuple:
+        """`('MATERIAL'|'PART_TYPE', id)` — the same key `services.mes.bom.BuyItem`
+        uses, so a staging line and the BOM line that produced it identify the same
+        subject. A Material and a PartTypes can share a uuid space, so the kind is
+        part of the identity, not decoration."""
+        if self.material_id is not None:
+            return ('MATERIAL', self.material_id)
+        return ('PART_TYPE', self.material_type_id)
 
     @property
     def is_reserved(self) -> bool:

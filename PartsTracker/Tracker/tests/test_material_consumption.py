@@ -189,3 +189,111 @@ class MaterialConsumptionTests(TenantContextMixin, TestCase):
         lot.refresh_from_db()
         self.assertEqual(MaterialUsage.objects.filter(part=self.part).count(), 1)
         self.assertEqual(lot.quantity_remaining, Decimal('8'))
+
+
+class PurchasedPartKittingTests(TenantContextMixin, TestCase):
+    """A bought PART is kitted and consumed like a raw material.
+
+    `MaterialLot` has always been able to hold stock of a purchased part
+    (`material_type` → PartTypes), so they could be ordered, received and counted. But
+    `MaterialStagingLine` was keyed to `Material`, so nothing could reserve one to a
+    bench or issue it against the job that consumed it — the Material Requisition
+    printed "purchased part — not kitted here" on those rows, which was the system
+    stating its own gap on a shop-floor document.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="PK", slug="part-kit", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        self.operator = get_user_model().objects.create_user(
+            username="pk-op", email="pk@c.test", password="x", tenant=self.tenant)
+
+        self.pt = PartTypes.objects.create(tenant=self.tenant, name="Injector")
+        # The bought component. `can_buy` is what makes a BUY line pointing at a part
+        # type legitimate — without it `buy_line_item` returns None and the line is a
+        # BOM defect rather than something to pick.
+        self.nozzle = PartTypes.objects.create(
+            tenant=self.tenant, name="Nozzle", can_buy=True)
+        self.process = Processes.objects.create(
+            tenant=self.tenant, name="P", part_type=self.pt)
+        self.step = Steps.objects.create(
+            tenant=self.tenant, part_type=self.pt, name="Assemble", step_type="TASK")
+        ProcessStep.objects.create(process=self.process, step=self.step, order=1)
+
+        self.bom = BOM.objects.create(
+            tenant=self.tenant, part_type=self.pt, bom_type='ASSEMBLY',
+            status='RELEASED', version=1)
+        BOMLine.objects.create(
+            tenant=self.tenant, bom=self.bom, component_type=self.nozzle, quantity=2,
+            source='BUY', consumed_at_step=self.step)
+
+        self.wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-PK", quantity=1, process=self.process,
+            workorder_status=WorkOrderStatus.IN_PROGRESS)
+        self.part = Parts.objects.create(
+            tenant=self.tenant, ERP_id="WO-PK-P0", part_type=self.pt,
+            work_order=self.wo, step=self.step)
+
+        self.lot = MaterialLot.objects.create(
+            tenant=self.tenant, material_type=self.nozzle, lot_number="NZ-1",
+            quantity=Decimal("10"), quantity_remaining=Decimal("10"),
+            unit_of_measure="EA", received_date=timezone.localdate(),
+            received_by=self.operator, status='ACCEPTED')
+
+    def test_a_purchased_part_can_be_recorded_as_picked(self):
+        from Tracker.services.mes.staging import record_pick
+
+        line = record_pick(
+            self.tenant, self.wo.id, self.step.id, self.nozzle.id, 2,
+            [{'lot_id': str(self.lot.id), 'lot_number': 'NZ-1', 'qty': 2}],
+            self.operator, qty_required=2, kind='PART_TYPE')
+
+        self.assertIsNone(line.material_id)
+        self.assertEqual(line.material_type_id, self.nozzle.id)
+        self.assertEqual(line.item_key, ('PART_TYPE', self.nozzle.id))
+
+    def test_a_picked_part_reserves_stock_against_other_jobs(self):
+        """The reservation half. `quantity_remaining` doesn't move until consumption, so
+        without this a loaded cart still reads as available and the same units get
+        promised twice."""
+        from Tracker.services.mes.consumption import plan_draw, reserved_by_lot
+        from Tracker.services.mes.staging import record_pick
+
+        key = ('PART_TYPE', self.nozzle.id)
+        self.assertEqual(reserved_by_lot(key, self.tenant), {})
+
+        record_pick(self.tenant, self.wo.id, self.step.id, self.nozzle.id, 10,
+                    [{'lot_id': str(self.lot.id), 'lot_number': 'NZ-1', 'qty': 10}],
+                    self.operator, qty_required=10, kind='PART_TYPE')
+
+        self.assertEqual(reserved_by_lot(key, self.tenant)[str(self.lot.id)],
+                         Decimal('10'))
+        # Everything on the cart, so a fresh plan finds nothing free to offer.
+        self.assertEqual(plan_draw(key, self.tenant, Decimal('1')), [])
+
+    def test_consumption_draws_the_part_down(self):
+        """The issue half — before, a bought part was skipped by the consume path
+        entirely, so stock never moved however much was built."""
+        from Tracker.services.mes.consumption import consume_for_step
+
+        result = consume_for_step(self.part, self.step, self.operator)
+
+        self.assertEqual(result.shortfalls, [])
+        self.assertEqual(len(result.usages), 1)
+        self.lot.refresh_from_db()
+        self.assertEqual(self.lot.quantity_remaining, Decimal('8'))
+
+    def test_a_line_cannot_name_both_a_material_and_a_part(self):
+        """The XOR constraint. Without it a row could claim to kit two different things
+        and every keyed lookup would pick whichever field it happened to read."""
+        from django.db.utils import IntegrityError
+        from Tracker.models import Material, MaterialStaging, MaterialStagingLine
+
+        mat = Material.objects.create(tenant=self.tenant, name="Grease")
+        staging = MaterialStaging.objects.create(
+            tenant=self.tenant, work_order=self.wo, step=self.step)
+        with self.assertRaises(IntegrityError):
+            MaterialStagingLine.objects.create(
+                tenant=self.tenant, staging=staging,
+                material=mat, material_type=self.nozzle, qty_required=1)

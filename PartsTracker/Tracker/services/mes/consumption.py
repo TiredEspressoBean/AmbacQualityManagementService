@@ -71,7 +71,29 @@ def _released_bom_lines(part_type_id, cache: dict) -> list:
     return cache[part_type_id]
 
 
-def _usable_lots(material_id, tenant):
+def item_filter(item, prefix: str = '') -> dict:
+    """ORM kwargs selecting rows for one purchased subject.
+
+    `item` is a `('MATERIAL'|'PART_TYPE', id)` key — the same shape
+    `services.mes.bom.BuyItem.key` and `MaterialStagingLine.item_key` produce. Both
+    `MaterialLot` and `MaterialStagingLine` carry the pair, so one translator serves
+    the lot query, the reservation query and the staging lookup.
+
+    Deliberately refuses a bare id. These functions took `material_id` as a scalar, and
+    a missed call site silently reading a part id as a material id would return an empty
+    lot list — i.e. "no stock", which looks like a shortage rather than a bug, on the
+    document a picker walks the crib with.
+    """
+    if not isinstance(item, tuple) or len(item) != 2:
+        raise TypeError(
+            f"expected a ('MATERIAL'|'PART_TYPE', id) key, got {item!r}. "
+            "Use BuyItem.key or MaterialStagingLine.item_key.")
+    kind, ident = item
+    field = 'material_id' if kind == 'MATERIAL' else 'material_type_id'
+    return {f'{prefix}{field}': ident}
+
+
+def _usable_lots(item, tenant):
     """Accepted stock of a material, oldest-expiry first (FEFO), then oldest receipt.
 
     Lots with no expiry date sort last: dated stock is the stock that can spoil, so it
@@ -91,13 +113,13 @@ def _usable_lots(material_id, tenant):
     # makes suggestions, not in the path that draws stock down.
     return list(
         MaterialLot.objects.filter(
-            tenant=tenant, material_id=material_id,
+            tenant=tenant, **item_filter(item),
             status__in=('ACCEPTED', 'IN_USE'), quantity_remaining__gt=0,
         ).order_by(F('expiration_date').asc(nulls_last=True), 'received_date')
     )
 
 
-def reserved_by_lot(material_id, tenant) -> dict:
+def reserved_by_lot(item, tenant) -> dict:
     """`{lot_id: quantity}` picked to a bench and not yet consumed, per lot.
 
     Read out of `MaterialStagingLine.picked_lots`, which is what the picker actually
@@ -109,7 +131,7 @@ def reserved_by_lot(material_id, tenant) -> dict:
     held: dict = {}
     # tenant-safe: explicit tenant filter
     for row in (MaterialStagingLine.objects
-                .filter(tenant=tenant, material_id=material_id, issued_at__isnull=True)
+                .filter(tenant=tenant, issued_at__isnull=True, **item_filter(item))
                 .values_list('picked_lots', flat=True)):
         for entry in (row or []):
             lot_id = entry.get('lot_id')
@@ -152,7 +174,7 @@ def available_quantity(material_id, tenant) -> Decimal:
     return max(Decimal('0'), Decimal(str(on_hand or 0)) - reserved_quantity(material_id, tenant))
 
 
-def plan_draw(material_id, tenant, needed) -> list:
+def plan_draw(item, tenant, needed) -> list:
     """Which lots a draw of `needed` WOULD take, without taking them.
 
     Shares `_usable_lots` with the real consumption, so a pick list and the record
@@ -173,8 +195,8 @@ def plan_draw(material_id, tenant, needed) -> list:
     # this function only suggests — nothing it returns gets saved. Without it two sheets
     # print correct totals against the same lot number and the second picker walks to a
     # bin that was emptied this morning.
-    held = reserved_by_lot(material_id, tenant)
-    for lot in _usable_lots(material_id, tenant):
+    held = reserved_by_lot(item, tenant)
+    for lot in _usable_lots(item, tenant):
         if drawn >= needed:
             break
         try:
@@ -224,6 +246,8 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
     # the same carve-out the material gate makes, so the two can't disagree.
     is_reman = bool(work_order and work_order.cores.exists())
 
+    from Tracker.services.mes.bom import buy_line_item
+
     cache = bom_cache if bom_cache is not None else {}
     tenant = part.tenant
     for line in _released_bom_lines(part.part_type_id, cache):
@@ -233,10 +257,12 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
             continue
         if is_reman and line.allow_harvested:
             continue
-        # A BUY line on a purchased part has no material_id. Those aren't consumed
-        # through this path (staging/reservation is Material-keyed) — the same position
-        # in-house MAKE components are in, which flow through pegging instead.
-        if line.material_id is None:
+        # Both BUY kinds draw here now. A line is either a raw material or a purchased
+        # part, and `MaterialLot` has always been able to hold stock of either — it was
+        # the staging/reservation key that was Material-only, so a bought part could be
+        # received and never issued against the job that consumed it.
+        item = buy_line_item(line)
+        if item is None:
             continue
 
         needed = Decimal(str(line.quantity))
@@ -245,8 +271,8 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
         # This is the whole point of recording them: the sheet named what the plan
         # WOULD draw, the picker took what was really on the shelf, and the record has
         # to say what happened rather than what was intended.
-        for lot in (_picked_lots_for(part, step, line.material_id, tenant)
-                    or _usable_lots(line.material_id, tenant)):
+        for lot in (_picked_lots_for(part, step, item.key, tenant)
+                    or _usable_lots(item.key, tenant)):
             if drawn >= needed:
                 break
             try:
@@ -263,13 +289,13 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
             result.usages.append(usage)
             drawn += take
 
-        _mark_line_issued(part, step, line.material_id, tenant)
+        _mark_line_issued(part, step, item.key, tenant)
 
         if drawn < needed:
             # Recorded, not raised: the part was built, so the shortfall is a stock
             # accuracy problem to surface, not a reason to refuse the advance.
             result.shortfalls.append({
-                'material': line.material.name if line.material else str(line.material_id),
+                'material': item.name,
                 'needed': float(needed), 'drawn': float(drawn),
                 'short': float(needed - drawn),
             })
@@ -297,7 +323,7 @@ def consume_for_step_safely(part, step, operator, bom_cache: dict | None = None)
     return result
 
 
-def _staging_line(part, step, material_id, tenant):
+def _staging_line(part, step, item, tenant):
     """The staging line for this part's job at this operation, if a picker recorded one."""
     from Tracker.models import MaterialStagingLine
 
@@ -307,11 +333,11 @@ def _staging_line(part, step, material_id, tenant):
     # tenant-safe: explicit tenant filter
     return (MaterialStagingLine.objects
             .filter(tenant=tenant, staging__work_order_id=wo_id,
-                    staging__step_id=step.id, material_id=material_id)
+                    staging__step_id=step.id, **item_filter(item))
             .first())
 
 
-def _picked_lots_for(part, step, material_id, tenant) -> list:
+def _picked_lots_for(part, step, item, tenant) -> list:
     """The actual lots pulled for this line, in the order recorded — or [] if none.
 
     Returning [] rather than None-as-sentinel keeps the caller's `or` fallback honest:
@@ -320,7 +346,7 @@ def _picked_lots_for(part, step, material_id, tenant) -> list:
     """
     from Tracker.models import MaterialLot
 
-    row = _staging_line(part, step, material_id, tenant)
+    row = _staging_line(part, step, item, tenant)
     if row is None or not row.picked_lots:
         return []
     ids = [e.get('lot_id') for e in row.picked_lots if e.get('lot_id')]
@@ -331,11 +357,11 @@ def _picked_lots_for(part, step, material_id, tenant) -> list:
     return [by_id[str(i)] for i in ids if str(i) in by_id]
 
 
-def _mark_line_issued(part, step, material_id, tenant) -> None:
+def _mark_line_issued(part, step, item, tenant) -> None:
     """Release the reservation: the material is in the unit now, not on a cart."""
     from django.utils import timezone
 
-    row = _staging_line(part, step, material_id, tenant)
+    row = _staging_line(part, step, item, tenant)
     if row is not None and row.issued_at is None:
         row.issued_at = timezone.now()
         row.save(update_fields=['issued_at'])

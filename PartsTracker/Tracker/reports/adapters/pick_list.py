@@ -81,9 +81,10 @@ class PickListItem(BaseModel):
     # Why this line has no lot to pull, or "" when it is genuinely pickable.
     # Without it a line the crib never holds renders exactly like an out-of-stock
     # one — both a dash — and the picker goes hunting for something that was never
-    # there. Two distinct reasons, and calling both "made in-house" would be a lie
-    # on the second: a MAKE line is built here; a BUY line pointing at a purchased
-    # *part* is bought, but parts aren't kitted through staging yet.
+    # there. Three distinct reasons: built here (MAKE), not on this job's branch, or
+    # a BUY line whose part type isn't marked buyable — which is a BOM defect rather
+    # than anything the picker can act on. Purchased PARTS are kitted like materials
+    # now, so they are no longer a reason.
     not_picked_reason: str = ""
 
     @property
@@ -196,6 +197,7 @@ class PickListAdapter(ReportAdapter):
         from Tracker.models.mes_lite import WorkOrder
         from Tracker.models.mes_standard import BOM
         from Tracker.reports.services.barcodes import render_barcode_svg
+        from Tracker.services.mes.bom import buy_line_item
         from Tracker.services.mes.consumption import plan_draw
         from Tracker.services.scheduling.manual_move import _process_graph
         from Tracker.services.scheduling.routing import resolve_route
@@ -282,11 +284,13 @@ class PickListAdapter(ReportAdapter):
                         component_name = line.component_type.name
                     else:
                         component_part_number, component_name = "", "(unset)"
-                    # Purchased lines get a pick plan; MAKE lines are built, not
-                    # picked, so they stay blank rather than showing a false shortage.
+                    # Purchased lines get a pick plan — both kinds, raw material and
+                    # bought part. MAKE lines are built, not picked, so they stay blank
+                    # rather than showing a false shortage.
                     location, lot_text, short_text = "", "", ""
-                    if line.material_id and not off_route:
-                        plan = plan_draw(line.material_id, tenant, qty_req)
+                    buy = buy_line_item(line)
+                    if buy is not None and not off_route:
+                        plan = plan_draw(buy.key, tenant, qty_req)
                         planned = sum(Decimal(str(p['take'])) for p in plan)
                         lot_text = ", ".join(p['lot_number'] for p in plan)
                         location = next(
@@ -309,16 +313,17 @@ class PickListAdapter(ReportAdapter):
                         lots=lot_text,
                         qty_short=short_text,
                         not_picked_reason=(
-                            # Off-route wins over the other two: it is a statement about
-                            # THIS job's scope, and calling an off-route MAKE line
-                            # "made in-house" would imply a child work order exists for
-                            # it on this job, which it does not.
+                            # Off-route wins over the rest: it is a statement about THIS
+                            # job's scope, and calling an off-route MAKE line "made
+                            # in-house" would imply a child work order exists for it on
+                            # this job, which it does not.
                             "not on this job's route" if off_route
                             else "made in-house — not picked" if line.source == 'MAKE'
-                            else "" if line.material_id
-                            # A bought part: procured, but staging lines are keyed to
-                            # Material, so it is not kitted from the crib today.
-                            else "purchased part — not kitted here"),
+                            else "" if buy is not None
+                            # A BUY line whose part type isn't marked buyable: the BOM
+                            # says purchase it and the part type says it can't be. That
+                            # is a BOM to fix, not a picker's problem.
+                            else "not marked buyable — check the BOM"),
                     ))
 
         return PickListContext(

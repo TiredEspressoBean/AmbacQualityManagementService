@@ -118,6 +118,10 @@ class WorkCenterViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSe
             "work_order": serializers.UUIDField(),
             "step": serializers.UUIDField(),
             "material": serializers.UUIDField(),
+            # Which subject `material` names. Defaults to MATERIAL so existing callers
+            # are unchanged; PART_TYPE kits a purchased part.
+            "kind": serializers.ChoiceField(
+                choices=['MATERIAL', 'PART_TYPE'], required=False),
             "qty": serializers.FloatField(),
             "qty_required": serializers.FloatField(required=False),
             "lots": inline_serializer(name="PickedLot", many=True, required=False, fields={
@@ -160,13 +164,22 @@ class WorkCenterViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSe
             return Response({"detail": "`qty` must be a number >= 0."},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        kind = (data.get('kind') or 'MATERIAL').upper()
+        if kind not in ('MATERIAL', 'PART_TYPE'):
+            return Response({"detail": "`kind` must be MATERIAL or PART_TYPE."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         line = svc(
             self.tenant, data['work_order'], data['step'], data['material'],
             qty, data.get('lots') or [], request.user,
-            qty_required=data.get('qty_required'),
+            qty_required=data.get('qty_required'), kind=kind,
         )
         return Response({
-            'material': str(line.material_id),
+            # Echo the subject back the way it was addressed. A Material and a PartTypes
+            # can share a uuid, so the id alone does not identify what was picked.
+            'kind': kind,
+            'material': str(line.material_id if line.material_id is not None
+                            else line.material_type_id),
             'qty_picked': float(line.qty_picked),
             'qty_required': float(line.qty_required),
             'picked_lots': line.picked_lots,

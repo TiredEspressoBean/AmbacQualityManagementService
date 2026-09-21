@@ -80,13 +80,22 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         job['units'] += 1
         job['starts_at'] = min(job['starts_at'], t.start_time)
 
-    # On-hand per material, one query rather than one per line.
-    onhand = {
-        row['material']: Decimal(str(row['q'] or 0))
-        for row in MaterialLot.objects.filter(
-            tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
-        .values('material').annotate(q=Sum('quantity_remaining'))
-    }
+    # On-hand per purchased subject, one query rather than one per line. Keyed by
+    # `('MATERIAL'|'PART_TYPE', id)` because a lot is stock of either, and the two id
+    # spaces can collide.
+    def _key(row):
+        return (('MATERIAL', row['material']) if row['material'] is not None
+                else ('PART_TYPE', row['material_type']))
+
+    onhand: dict = {}
+    for row in (MaterialLot.objects
+                .filter(tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
+                .values('material', 'material_type')
+                .annotate(q=Sum('quantity_remaining'))):
+        if row['material'] is None and row['material_type'] is None:
+            continue   # ad-hoc lot named only by material_description — not kittable
+        onhand[_key(row)] = onhand.get(_key(row), Decimal('0')) + Decimal(str(row['q'] or 0))
+
     # Net out stock already pulled to a bench and not yet consumed. `quantity_remaining`
     # doesn't move until consumption, so without this a loaded cart still reads as
     # available and the same units get promised to a second job.
@@ -94,10 +103,10 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     # tenant-safe: explicit tenant filter
     for row in (MaterialStagingLine.objects
                 .filter(tenant=tenant, issued_at__isnull=True)
-                .values('material').annotate(q=Sum('qty_picked'))):
-        if row['material'] in onhand:
-            onhand[row['material']] = max(
-                Decimal('0'), onhand[row['material']] - Decimal(str(row['q'] or 0)))
+                .values('material', 'material_type').annotate(q=Sum('qty_picked'))):
+        k = _key(row)
+        if k in onhand:
+            onhand[k] = max(Decimal('0'), onhand[k] - Decimal(str(row['q'] or 0)))
 
     bom_cache: dict = {}
     fixtures = _fixtures_by_step(tenant)
@@ -167,31 +176,37 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
     arrives in two batches shouldn't have its whole order's material staged for the
     first one.
     """
+    from Tracker.services.mes.bom import buy_line_item
     from Tracker.services.mes.consumption import _released_bom_lines, plan_draw
 
     out = []
     for line in _released_bom_lines(part_type_id, bom_cache):
         if str(line.consumed_at_step_id) != str(step_id):
             continue
-        # Raw materials only. A BUY line pointing at a purchased *part* is procured
-        # and planned like any other bought item, but MaterialStagingLine is keyed to
-        # Material, so parts aren't kitted through staging yet — they're omitted here
-        # the same way MAKE lines are, rather than half-shown with no pick plan.
-        if line.source != 'BUY' or line.material_id is None:
+        # Both BUY kinds. A purchased *part* used to be dropped here because
+        # `MaterialStagingLine` was keyed to Material — procured and received, but never
+        # kitted. `buy_line_item` returns None for a MAKE line (built, not picked) and
+        # for a part whose type isn't marked buyable, which are the cases that should
+        # still be omitted rather than shown with no pick plan.
+        item = buy_line_item(line)
+        if item is None:
             continue
         needed = Decimal(str(line.quantity)) * units
-        have = onhand.get(line.material_id, Decimal('0'))
+        have = onhand.get(item.key, Decimal('0'))
         out.append({
-            # Confirming a pick has to name the material, not just show it.
-            'material_id': str(line.material_id),
-            'material': line.material.name if line.material else str(line.material_id),
+            # Confirming a pick has to name the subject, not just show it. `kind` rides
+            # along so the client can echo back which of the two FKs to write —
+            # a Material and a PartTypes can share a uuid space.
+            'kind': item.kind,
+            'material_id': str(item.id),
+            'material': item.name,
             'needed': float(needed),
             'on_hand': float(have),
             'short': float(max(Decimal('0'), needed - have)),
             'optional': bool(line.is_optional),
             # The lots consumption WILL draw, so the picker pulls those and the
             # traceability record matches what physically went in.
-            'lots': plan_draw(line.material_id, tenant, needed),
+            'lots': plan_draw(item.key, tenant, needed),
         })
     return sorted(out, key=lambda m: (-m['short'], m['material']))
 
@@ -203,14 +218,17 @@ def _unmapped_components(part_type_id, bom_cache: dict) -> list:
     which operation. Surfaced so the gap reads as a BOM to fix rather than as a
     station with nothing to pick.
     """
+    from Tracker.services.mes.bom import buy_line_item
     from Tracker.services.mes.consumption import _released_bom_lines
 
-    return sorted(
-        (line.material.name if line.material else str(line.material_id))
-        for line in _released_bom_lines(part_type_id, bom_cache)
-        if line.source == 'BUY' and line.material_id is not None
-        and line.consumed_at_step_id is None
-    )
+    names = []
+    for line in _released_bom_lines(part_type_id, bom_cache):
+        if line.consumed_at_step_id is not None:
+            continue
+        item = buy_line_item(line)
+        if item is not None:
+            names.append(item.name)
+    return sorted(names)
 
 
 def _fixtures_by_step(tenant) -> dict:
@@ -298,37 +316,35 @@ def consolidated_pick(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_H
         return {**data, 'materials': []}
 
     from Tracker.services.mes.consumption import plan_draw
-    from Tracker.models import Material
 
+    # Keyed by ('MATERIAL'|'PART_TYPE', id) rather than by NAME. The name was only ever
+    # a stand-in for an id the row didn't carry — it needed a lookup back against
+    # Material to re-plan, it merged two distinct subjects that happened to share a
+    # name, and it had no answer at all for a purchased part. `_materials_for` now emits
+    # the key, so the walk sheet groups on identity.
     rows: dict = {}
     for st in data['stations']:
         for job in st['jobs']:
             for m in job['materials']:
-                row = rows.get(m['material'])
+                key = (m.get('kind', 'MATERIAL'), m['material_id'])
+                row = rows.get(key)
                 if row is None:
-                    row = rows[m['material']] = {
-                        'material': m['material'], 'needed': 0.0, 'on_hand': m['on_hand'],
-                        'material_id': None, 'drops': [],
+                    row = rows[key] = {
+                        'material': m['material'], 'needed': 0.0,
+                        'on_hand': m['on_hand'], 'drops': [],
                     }
                 row['needed'] += m['needed']
-                # `material_id` isn't on the staging row; recover it from the lot plan
-                # when there is one so the combined draw can be re-planned below.
                 row['drops'].append({
                     'qty': m['needed'], 'station': st['name'], 'erp_id': job['erp_id'],
                     'step_name': job['step_name'], 'staged': bool(job.get('staged_at')),
                 })
 
-    # Re-plan each material's lots against the combined quantity.
-    by_name = {}
-    if rows:
-        # tenant-safe: explicit tenant filter
-        by_name = {m.name: m.id for m in Material.objects.filter(
-            tenant=tenant, name__in=list(rows))}
+    # Re-plan each subject's lots against the combined quantity.
     out = []
-    for name, row in rows.items():
-        mid = by_name.get(name)
+    for key, row in rows.items():
+        name = row['material']
         needed = Decimal(str(row['needed']))
-        plan = plan_draw(mid, tenant, needed) if mid else []
+        plan = plan_draw(key, tenant, needed)
         planned = sum(Decimal(str(p['take'])) for p in plan)
         out.append({
             'material': name,
@@ -366,7 +382,7 @@ def _picked_map(tenant, keys) -> dict:
                       staging__step_id__in=step_ids)
               .select_related('staging')):
         out[(str(r.staging.work_order_id), str(r.staging.step_id),
-             str(r.material_id))] = {
+             str(r.material_id if r.material_id is not None else r.material_type_id))] = {
             'qty_picked': r.qty_picked,
             'picked_lots': r.picked_lots or [],
         }
@@ -374,8 +390,13 @@ def _picked_map(tenant, keys) -> dict:
 
 
 def record_pick(tenant, work_order_id, step_id, material_id, qty, lots, user,
-                qty_required=None):
-    """Record what a picker actually pulled for one material on one job-operation.
+                qty_required=None, kind='MATERIAL'):
+    """Record what a picker actually pulled for one item on one job-operation.
+
+    `kind` says which of the two subjects `material_id` names — a raw MATERIAL or a
+    purchased PART_TYPE. It is not inferable from the id: a Material and a PartTypes
+    can hold the same uuid, and guessing by lookup would silently write the wrong FK
+    on a collision rather than failing.
 
     `lots` is `[{lot_id, lot_number, qty}]` — what physically went in the tote, which is
     routinely NOT what the sheet named: the printed lot is empty, short, or someone got
@@ -393,8 +414,10 @@ def record_pick(tenant, work_order_id, step_id, material_id, qty, lots, user,
     staging, _ = MaterialStaging.objects.get_or_create(
         tenant=tenant, work_order_id=work_order_id, step_id=step_id)
 
+    subject = ({'material_id': material_id} if kind == 'MATERIAL'
+               else {'material_type_id': material_id})
     line, _ = MaterialStagingLine.objects.update_or_create(
-        tenant=tenant, staging=staging, material_id=material_id,
+        tenant=tenant, staging=staging, **subject,
         defaults={
             'qty_picked': Decimal(str(qty)),
             # What the picker was working to, as the sheet presented it. Without this

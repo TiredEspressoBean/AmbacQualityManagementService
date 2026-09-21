@@ -69,6 +69,9 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
                 pickedQty: number) =>
     recordPick.mutate({
       work_order: job.work_order_id, step: job.step_id, material: m.material_id,
+      // Echo back which subject the row was for. A purchased part and a raw material
+      // can share a uuid, so dropping this would let a pick land on the wrong FK.
+      kind: m.kind ?? "MATERIAL",
       qty: pickedQty, qty_required: m.needed, lots,
     }, { onSuccess: () => { setDeviating(false); setLotText(""); } });
 

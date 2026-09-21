@@ -393,6 +393,11 @@ export type CapacityLoad = {
      *  `critical_only` filters on. Independent of the release-pacing bottleneck flag. */
     is_critical: boolean;
   }[];
+  /** Certification-limited labour, one row per distinct qualified crew carrying gated
+   *  work. The aggregate `labor` lane asks "enough people"; these ask "enough of the
+   *  RIGHT people" — pools can overlap, so a row reads as the binding constraint for
+   *  its own work rather than a claim every pool is satisfiable at once. */
+  labor_pools: { name: string; qualified: number; series: CapacityBucket[] }[];
   /** Work centres that exist, before any filter — so a narrowed lane can say what it
    *  is hiding instead of looking like a two-centre shop. */
   work_center_total: number;
@@ -482,6 +487,10 @@ export type StagingLot = {
 };
 export type StagingMaterial = {
   material_id: string;
+  /** Whether `material_id` is a raw Material or a purchased PartTypes. The two id
+   *  spaces can collide, so this rides along rather than being inferred server-side.
+   *  Absent on older responses, which were Material-only. */
+  kind?: "MATERIAL" | "PART_TYPE";
   material: string; needed: number; on_hand: number; short: number;
   optional: boolean;
   /** What was actually recorded as pulled. Null = nobody has confirmed this line yet,
@@ -556,6 +565,10 @@ export function useRecordPick() {
   return useMutation({
     mutationFn: (v: {
       work_order: string; step: string; material: string;
+      /** Which subject `material` names. A Material and a PartTypes can hold the same
+       *  uuid, so the id alone doesn't say which FK to write — the row echoes back the
+       *  `kind` it came from rather than the server guessing. Omitted = MATERIAL. */
+      kind?: "MATERIAL" | "PART_TYPE";
       qty: number; qty_required?: number;
       lots: { lot_id: string; lot_number?: string; qty: number }[];
     }) => api.api_WorkCenters_record_pick_create(v),
