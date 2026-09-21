@@ -38,14 +38,26 @@ QA Manager, Shift Lead, Tenant Admin.
     filters (Active, Pending invite, Expired invite, Inactive), group
     filtering, and bulk actions.
 
-### Invitation Email
+### Invitation email
 
-After creating the user:
+There is no "welcome email" on account creation. The email that gets someone
+in is the **invitation**, and it is sent when you invite them — see
+[Inviting Users](#inviting-users) below.
 
-1. User receives welcome email
-2. Email contains setup link
-3. User sets password (if not SSO)
-4. User can log in
+1. The invitation email carries a signup link with a token
+2. The token is what places them in the right tenant when they sign up
+3. They set a password, unless they sign in through SSO
+4. They can log in
+
+!!! note "Email verification is optional"
+    Address verification is configured as *optional*, so a new user can sign
+    in without having clicked a verification link. Do not treat a working
+    login as proof the address is reachable.
+
+!!! warning "Creating a user is not the same as inviting one"
+    A record created without an invitation gets no email and no signup link.
+    If someone says they never received anything, check whether they were
+    invited or only created.
 
 ## Inviting Users
 

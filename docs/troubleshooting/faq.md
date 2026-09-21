@@ -121,7 +121,13 @@ Yes. Your administrator configures the schedule and how long backups are kept.
 Per your organization's retention policy, typically 7+ years for quality records.
 
 ### Can audit logs be modified?
-No. Audit logs are immutable and protected at the database level.
+Not through the application. The audit log is exposed read-only — there are no
+endpoints to edit or delete an entry, and the UI offers no such action.
+
+Be precise about the scope of that claim if an auditor asks how immutability
+is enforced: it is enforced by the application, not by a database trigger or a
+revoked grant. Anyone with direct database access is outside that control, so
+the protection around database credentials is part of the same story.
 
 ### How do I export data for an audit?
 Navigate to relevant section, apply filters, click **Export**. Choose PDF or CSV.
