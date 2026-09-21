@@ -3,9 +3,7 @@ import io
 import os
 import uuid
 
-from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import now
-from auditlog.models import LogEntry
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
@@ -1865,26 +1863,21 @@ def download_file(request, model_name, pk, field):
 
     # ✅ Log the download
     # Note: object_id omitted because UUIDs don't fit in bigint; object_pk (string) is sufficient
-    try:
-        LogEntry.objects.create(
-            actor=request.user,
-            actor_email=request.user.email if request.user.is_authenticated else None,
-            action=LogEntry.Action.ACCESS,
-            content_type=ContentType.objects.get_for_model(type(obj), for_concrete_model=False),
-            object_pk=str(obj.pk),
-            object_repr=str(obj),
-            timestamp=now(),
-            remote_addr=get_client_ip(request),
-            changes_text=f"Downloaded file from field '{field}'",
-            changes={"downloaded": True},
-            additional_data={
-                "filename": file_field.name,
-                "field": field,
-                "model": model_name,
-            }
-        )
-    except Exception as e:
-        print(f"Failed to log download: {e}")
+    from Tracker.services.core.access_log import record_access
+
+    record_access(
+        obj=obj,
+        user=request.user,
+        action_type='file_download',
+        remote_addr=get_client_ip(request),
+        payload={
+            "downloaded": True,
+            "filename": file_field.name,
+            "field": field,
+            "model": model_name,
+            "user_email": request.user.email if request.user.is_authenticated else None,
+        },
+    )
 
     return FileResponse(open(file_field.path, "rb"), as_attachment=True, filename=os.path.basename(file_field.name))
 

@@ -1027,5 +1027,20 @@ LOGGING = {
             "level": _LOG_LEVEL,
             "propagate": False,
         },
+        # Who read what. Written by Tracker.services.core.access_log, and named
+        # separately from "Tracker" so a deployment can route it somewhere with
+        # its own retention -- a SIEM, or a file the application does not rotate
+        # away. It was previously unconfigured, which meant records that read
+        # like a compliance trail fell through to the root logger and mixed into
+        # ordinary output.
+        #
+        # INFO carries successful access; ERROR carries `audit_write_failed`,
+        # which is the event NIST 800-171 3.3.4 wants someone told about. Do not
+        # raise this above INFO without moving the failure alert elsewhere.
+        "compliance.access_control": {
+            "handlers": _LOG_TARGET,
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }

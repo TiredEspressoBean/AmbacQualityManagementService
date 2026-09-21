@@ -1,7 +1,6 @@
 import logging
 from django.db.models import Q
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
-from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -14,7 +13,6 @@ from Tracker.authentication import (
 )
 from pgvector.django import CosineDistance
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes, inline_serializer
-from auditlog.models import LogEntry
 
 from .models import DocChunk, Documents
 from .serializers import DocumentsSerializer
@@ -26,8 +24,8 @@ def log_ai_data_access(user, model_class, query_params, result_count, access_typ
     """
     Log data access via AI/LLM interfaces to the audit log.
 
-    Uses LogEntry.Action.ACCESS (3) to indicate read-only access.
-    Stores AI-specific metadata in additional_data field.
+    Delegates to Tracker.services.core.access_log.record_access, which owns
+    the failure policy: never raises, logs loudly if the write fails.
 
     Args:
         user: The user who made the request
@@ -36,28 +34,20 @@ def log_ai_data_access(user, model_class, query_params, result_count, access_typ
         result_count: Number of records returned
         access_type: Type of AI access ('ai_query', 'vector_search', 'hybrid_search')
     """
-    try:
-        content_type = ContentType.objects.get_for_model(model_class)
+    from Tracker.services.core.access_log import record_access
 
-        LogEntry.objects.create(
-            content_type=content_type,
-            object_pk='',  # No specific object - this is a query/search
-            object_repr=f"AI {access_type}: {model_class.__name__} ({result_count} results)",
-            action=LogEntry.Action.ACCESS,
-            actor=user if user.is_authenticated else None,
-            changes={
-                'query_params': query_params,
-                'result_count': result_count,
-            },
-            additional_data={
-                'access_type': access_type,
-                'model': model_class.__name__,
-                'is_ai_access': True,
-            }
-        )
-    except Exception as e:
-        # Don't let audit logging failures break the request
-        logger.warning(f"Failed to log AI data access: {e}")
+    record_access(
+        obj=model_class,
+        user=user,
+        action_type=access_type,
+        object_repr=f"AI {access_type}: {model_class.__name__} ({result_count} results)",
+        payload={
+            'query_params': query_params,
+            'result_count': result_count,
+            'model': model_class.__name__,
+            'is_ai_access': True,
+        },
+    )
 
 
 class EmbedQueryRequestSerializer(serializers.Serializer):

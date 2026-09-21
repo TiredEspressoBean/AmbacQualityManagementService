@@ -845,4 +845,40 @@ class DataExportMixin:
 
         response = HttpResponse(content, content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        # Bulk egress is the access event that matters most, and it was the one
+        # not recorded: opening a single document was logged while pulling the
+        # whole filtered table to Excel was not. Record the shape of what left
+        # -- model, format, row count, and the filters in force, since
+        # "exported 4,000 parts" and "exported 4,000 parts for one supplier"
+        # are different events to anyone reviewing this later.
+        from Tracker.services.core.access_log import record_access
+        from Tracker.throttling import get_client_ip
+
+        model = queryset.model
+        # One COUNT on an already-filtered queryset, against an endpoint that
+        # just serialised the whole thing -- not worth threading a count back
+        # out of both format branches to avoid.
+        row_count = queryset.count()
+        record_access(
+            obj=model,
+            user=request.user,
+            action_type='bulk_export',
+            object_repr=f'Export {export_format}: {model.__name__} ({row_count} rows)',
+            remote_addr=get_client_ip(request),
+            payload={
+                'model': model.__name__,
+                'export_format': export_format,
+                'row_count': row_count,
+                'filename': filename,
+                'fields': fields,
+                # Query params rather than the compiled SQL: this is the record
+                # of what the user asked for, which is what a review reads.
+                'filters': {
+                    k: v for k, v in request.query_params.items()
+                    if k not in ('fields', 'filename', 'include_references')
+                },
+            },
+        )
+
         return response

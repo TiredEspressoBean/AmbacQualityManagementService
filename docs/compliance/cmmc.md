@@ -75,7 +75,7 @@ facilities, people and networks.
     | ➖ **Not the application's layer** | Satisfy this in your facility, IdP, host or process |
 
     Where a practice is a genuine shortcoming in the software rather than a
-    scope boundary, it says **gap** in the row. There is one: AU.L2-3.3.4.
+    scope boundary, the row says **gap**. There are currently none.
 
 ## What CMMC Level 2 Requires
 
@@ -125,7 +125,7 @@ does not satisfy. A control matrix is only useful if the gaps are in it.
 | AU.L2-3.3.1 | Audit record creation | ✅ | django-auditlog on all models; pgAudit at the database |
 | AU.L2-3.3.2 | User attribution | ✅ | Actor, timestamp and IP on every record |
 | AU.L2-3.3.3 | Review and update logged events | ⚠️ | Procedural. The event set is fixed in code; nothing in the application prompts or records a periodic review of *what* is logged |
-| AU.L2-3.3.4 | Alert on audit logging failure | ❌ | **Gap — a real one, in the software.** Audit-write failures are caught and logged as a warning so the request survives: availability over alerting. Nothing notifies anyone, so uqmes can be losing audit records while appearing healthy. Raise this with us rather than writing around it |
+| AU.L2-3.3.4 | Alert on audit logging failure | ⚠️ | uqmes emits the signal; you route it. A failed access-log write logs at **ERROR** to the `compliance.access_control` logger with `audit_write_failed` in the record, carrying a traceback. Point your log pipeline at that marker to make it an alert — the application does not page anyone itself. Writes stay non-fatal by design: the read has already happened, so failing the request afterwards records nothing extra |
 | AU.L2-3.3.5 | Audit correlation | ⚠️ | Both layers timestamp in UTC and record the actor, which makes correlation possible by hand. No tooling correlates them |
 | AU.L2-3.3.6 | Reduction and report generation | ✅ | The audit log is filterable by actor, content type, object and action, with search and ordering; export is permission-gated on `export_auditlog` |
 | AU.L2-3.3.7 | Authoritative timestamps | ✅ | Server-side, `TIME_ZONE = 'UTC'` with `USE_TZ`. Clock synchronisation itself is the host's responsibility, not the application's |

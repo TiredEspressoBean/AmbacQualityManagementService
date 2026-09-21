@@ -195,6 +195,30 @@ class ReportViewSet(viewsets.GenericViewSet):
             tenant_id=tenant_id,
         ))
 
+        # Recorded at request time, not on delivery: this is the point the user
+        # asked for the data, and it is the only point still inside the request
+        # where we know who asked. The Celery task that actually builds and
+        # sends it has no request context.
+        #
+        # Note this path mails the PDF out, so the access record is also the
+        # record of CUI leaving the application boundary -- worth more than the
+        # download path, not less.
+        from Tracker.services.core.access_log import record_access
+        from Tracker.throttling import get_client_ip
+
+        record_access(
+            obj=GeneratedReport,
+            user=request.user,
+            action_type='report_email_requested',
+            object_repr=f'Report emailed: {report_type}',
+            remote_addr=get_client_ip(request),
+            payload={
+                'report_type': report_type,
+                'params': params,
+                'delivered_to': user_email,
+            },
+        )
+
         return Response(
             {
                 "message": "Report is being generated. You'll receive an email shortly.",
@@ -270,6 +294,24 @@ class ReportViewSet(viewsets.GenericViewSet):
         filename = generator.get_filename(report_type, params)
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        from Tracker.services.core.access_log import record_access
+        from Tracker.throttling import get_client_ip
+
+        record_access(
+            obj=GeneratedReport,
+            user=request.user,
+            action_type='report_download',
+            object_repr=f'Report download: {report_type}',
+            remote_addr=get_client_ip(request),
+            payload={
+                'report_type': report_type,
+                'filename': filename,
+                'params': params,
+                'bytes': len(pdf_bytes),
+            },
+        )
+
         return response
 
     # ---- Metadata --------------------------------------------------------

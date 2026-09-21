@@ -443,10 +443,7 @@ def log_document_access(document, user, request=None, action_type='view'):
         request: Optional HTTP request for IP extraction.
         action_type: 'view' (metadata) or 'download' (file retrieval).
     """
-    from auditlog.models import LogEntry
-    from django.contrib.contenttypes.models import ContentType
-
-    compliance_logger = logging.getLogger('compliance.access_control')
+    from Tracker.services.core.access_log import record_access
 
     remote_addr = None
     if request:
@@ -454,41 +451,24 @@ def log_document_access(document, user, request=None, action_type='view'):
         from Tracker.throttling import get_client_ip
         remote_addr = get_client_ip(request)
 
-    access_data = {
-        'action_type': f'document_{action_type}',
-        'file_name': document.file_name,
-        'classification': document.classification,
-        'itar_controlled': getattr(document, 'itar_controlled', False),
-        'eccn': getattr(document, 'eccn', ''),
-        'is_image': document.is_image,
-    }
-
-    LogEntry.objects.create(
-        content_type=ContentType.objects.get_for_model(document),
-        object_pk=str(document.pk),
-        object_repr=str(document),
-        action=LogEntry.Action.ACCESS,
-        changes=access_data,
-        actor=user,
-        timestamp=timezone.now(),
+    record_access(
+        obj=document,
+        user=user,
+        action_type=f'document_{action_type}',
         remote_addr=remote_addr,
+        payload={
+            'file_name': document.file_name,
+            'classification': document.classification,
+            'itar_controlled': getattr(document, 'itar_controlled', False),
+            'eccn': getattr(document, 'eccn', ''),
+            'is_image': document.is_image,
+            # Export-control posture of the accessor, not the document: this is
+            # what an ITAR review asks about after the fact.
+            'user_email': getattr(user, 'email', None),
+            'user_us_person': getattr(user, 'us_person', False),
+            'user_citizenship': getattr(user, 'citizenship', 'UNKNOWN'),
+        },
     )
-
-    compliance_logger.info({
-        'event_type': 'ACCESS_GRANTED',
-        'timestamp': timezone.now().isoformat(),
-        'action': action_type,
-        'user_id': str(user.id),
-        'user_email': user.email,
-        'user_us_person': getattr(user, 'us_person', False),
-        'user_citizenship': getattr(user, 'citizenship', 'UNKNOWN'),
-        'document_id': str(document.id),
-        'document_name': document.file_name,
-        'classification': document.classification,
-        'itar_controlled': getattr(document, 'itar_controlled', False),
-        'eccn': getattr(document, 'eccn', ''),
-        'remote_addr': remote_addr,
-    })
 
 
 # =========================================================================
