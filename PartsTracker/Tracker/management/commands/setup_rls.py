@@ -219,6 +219,8 @@ class Command(BaseCommand):
         'Tracker_scheduleresult',
         'Tracker_scheduledtask',
         'Tracker_continuousmachine',
+        'Tracker_scheduleedit',
+        'Tracker_orderline',
     ]
 
     def add_arguments(self, parser):

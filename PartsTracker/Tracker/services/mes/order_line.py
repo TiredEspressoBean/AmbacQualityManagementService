@@ -71,6 +71,8 @@ def plan_order_line(line, *, user=None, quantity: int | None = None,
             expected_completion=line.due_date,
         )
         # Both pegs, for the reason in the docstring.
+        # tenant-safe: `wo` was just created by plan_work_order under line.tenant, and
+        # this addresses it by its own pk — there is no wider set to leak into.
         WorkOrder.objects.filter(pk=wo.pk).update(
             order_line=line, related_order_id=line.order_id)
         wo.refresh_from_db()

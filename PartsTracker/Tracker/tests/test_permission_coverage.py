@@ -46,6 +46,11 @@ ADMIN_ONLY_MODELS = {
     # role/user perms, and suspend/reactivate by the User viewset's
     # bulk-activate action — never by membership CRUD perms.
     'tenantmembership',
+    # Schedule-edit journal. Rows are written by the manual-move services and read
+    # back only by the schedule's undo endpoint — there is no ScheduleEdit viewset,
+    # so no role needs CRUD on it. Undo is gated by the scheduling perms on the
+    # action that performs it.
+    'scheduleedit',
     # (Scheduling models are now granted — view to staff, add/change to the planner
     # roles via SCHEDULING_PLANNER_PERMISSIONS; the solver-written perms are opted out
     # below in IMMUTABLE_MODELS / SYSTEM_WRITTEN_MODELS / SOFT_DELETE_MODELS.)

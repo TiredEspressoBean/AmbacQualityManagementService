@@ -444,7 +444,7 @@ VOID_COMPLETION_PERMISSIONS = [
 # via AUTHORING_PERMISSIONS; soft-delete-only models grant no delete at all —
 # see test_permission_coverage.py.)
 MANAGER_DELETE_PERMISSIONS = [
-    'delete_orders', 'delete_workorder', 'delete_parts',
+    'delete_orders', 'delete_orderline', 'delete_workorder', 'delete_parts',
     'delete_stepexecution',
     'delete_substepcompletion', 'delete_substepgatecompletion', 'delete_substepresponse',
     'delete_core', 'delete_harvestedcomponent',
