@@ -52,12 +52,29 @@ Every create, update, delete is logged:
 ## Audit Trail Characteristics
 
 ### Immutability
-Audit records cannot be:
-- Modified
-- Deleted
-- Backdated
 
-Protected at database level with triggers.
+There are **two audit layers**, and they protect each other:
+
+| Layer | What it records | How it is protected |
+|-------|-----------------|---------------------|
+| **django-auditlog** | Business-record changes — who changed which field, when | Exposed read-only; no endpoint edits or deletes an entry |
+| **pgAudit** | Every write, DDL and role statement at the database | Written by PostgreSQL itself, outside the application |
+
+Through the application, audit records cannot be modified, deleted, or
+backdated — there is no such action.
+
+!!! info "Tamper-evident, not tamper-proof"
+    The application role holds ordinary write permissions on its tables, so
+    someone with direct database credentials could in principle alter an
+    auditlog row. What stops that being silent is **pgAudit**, which is
+    preloaded and configured to log `write, ddl, role` statements with
+    relation names — so the alteration is itself recorded, by a different
+    mechanism, in a different place.
+
+    This is the honest formulation to give an assessor. Detection rather than
+    prevention is the normal answer for database-level audit protection, and
+    it puts the weight where it belongs: on controlling who holds database
+    credentials.
 
 ### Computer-Generated Timestamps
 - Server-side timestamp (not client)

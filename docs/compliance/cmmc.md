@@ -85,7 +85,7 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 |----------|------------|----------|
 | AU.L2-3.3.1 | Audit record creation | django-auditlog on all models |
 | AU.L2-3.3.2 | User attribution | User ID, timestamp, IP on all records |
-| AU.L2-3.3.8 | Audit protection | PostgreSQL triggers prevent modification |
+| AU.L2-3.3.8 | Audit protection | pgAudit (`shared_preload_libraries`, logging `write, ddl, role`) records any modification; application exposes the log read-only |
 | AU.L2-3.3.9 | Audit access restriction | Admin-only access to full logs |
 
 ### Configuration Management (CM)
