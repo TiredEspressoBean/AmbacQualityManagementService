@@ -1371,7 +1371,7 @@ This roadmap defines our go-to-market strategy and feature development prioritie
 
 ---
 
-## Phase 3: Pilot-Ready for Segment B (Automotive Tier 2-3) 🔶 SPC COMPLETE
+## Phase 3: Pilot-Ready for Segment B (Automotive Tier 2-3) 🔶 PPAP IS THE REMAINDER
 
 **Target Segments:** Segment A + Segment B (ISO 9001 + Automotive)
 
@@ -1379,8 +1379,8 @@ This roadmap defines our go-to-market strategy and feature development prioritie
 
 ### Critical (Must Have - Automotive Requirements)
 - ✅ SPC with Cpk/Ppk and Western Electric rules (See Section 14)
-- 🔴 Supplier quality management (See Section 12: Supplier Management)
-- 🔴 Change management - ECO/ECR workflow (See Section 12: Change Management)
+- ✅ **SHIPPED (audit 2026-09-21):** Supplier quality management — see Section 12, which the audit found built
+- ✅ **SHIPPED (audit 2026-09-21):** Change management — `ProcessChangeRequest` / `ProcessChangeOrder` / `ProcessChangeNotice`
 
 ### High Value (Automotive Competitive Features)
 - 🔶 **PPAP** - ~50% COVERAGE (4/18 complete, 7 partial, 5 missing). See Section 12 for full breakdown.
@@ -1393,13 +1393,16 @@ This roadmap defines our go-to-market strategy and feature development prioritie
 - Advanced reporting (compliance reports, audit packages)
 - 🟡 Wire ProcessFlowPage to actual Process/Step data (currently hardcoded demo)
 
-**Status: SPC module complete. PPAP ~50% coverage (4 complete, 7 partial, 5 missing). Supplier and Change Management remain for full automotive support.**
+**Status (audit 2026-09-21): SPC, supplier quality and change management are
+all complete — the two modules this phase was gated on shipped without the
+gate being lifted. PPAP is now the only substantial item left, at roughly 50%
+coverage (4 complete, 7 partial, 5 missing).**
 
 ### Enables:
-- 🔶 Deploy to Segment B - pending Supplier & Change Management modules
-- 🔶 Support IATF 16949 certification foundation - SPC ready, needs supplier/change mgmt
+- 🔶 Deploy to Segment B — no longer blocked on supplier or change management; PPAP coverage is the open question
+- 🔶 Support IATF 16949 certification foundation — SPC, supplier quality and change control in place; PPAP partial
 - ✅ Pricing: $70-80K/year (base + automotive modules)
-- 🔶 Scale to 5-10 customers - can start with SPC-focused customers
+- 🔶 Scale to 5-10 customers — the SPC-focused constraint predates supplier and change management shipping
 - ❌ Cannot yet support aerospace (needs FAI, material traceability, full PPAP)
 
 ---
