@@ -465,6 +465,19 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     'capacity_hours': serializers.FloatField(),
                     'load_hours': serializers.FloatField(),
                     'utilization': serializers.FloatField(allow_null=True)})}),
+            # Certification-limited labour. The aggregate `labor` lane answers "have
+            # we enough people"; these answer "have we enough of the RIGHT people" —
+            # the question a single crew count hides, and the one the solver refuses a
+            # plan over after rough-cut said it was fine.
+            'labor_pools': inline_serializer(
+                name='LaborPoolCapacity', many=True, fields={
+                    'name': serializers.CharField(),
+                    'qualified': serializers.IntegerField(),
+                    'series': inline_serializer(name='LaborPoolBucket', many=True, fields={
+                        'bucket': serializers.CharField(),
+                        'capacity_hours': serializers.FloatField(),
+                        'load_hours': serializers.FloatField(),
+                        'utilization': serializers.FloatField(allow_null=True)})}),
             'work_centers': inline_serializer(
                 name='WorkCenterCapacity', many=True, fields={
                     'id': serializers.CharField(),

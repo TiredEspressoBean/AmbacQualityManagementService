@@ -425,6 +425,16 @@ export function CapacityPlanningPage() {
                     name={`${data.labor.name} · ${data.labor.crew_size} crew`}
                     series={data.labor.series}
                   />
+                  {/* Certification-limited crews, directly under the aggregate they
+                      qualify. A step one person is certified for does not get the whole
+                      roster's hours, and this is the row that says so. */}
+                  {data.labor_pools?.map((p) => (
+                    <HeatRow
+                      key={p.name}
+                      name={`↳ ${p.name} · ${p.qualified} qualified`}
+                      series={p.series}
+                    />
+                  ))}
                   {data.work_centers.map((w) => (
                     <HeatRow key={w.id} name={w.name} series={w.series}
                              critical={w.is_critical} />

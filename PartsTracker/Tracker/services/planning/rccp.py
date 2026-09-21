@@ -81,7 +81,7 @@ def load_and_capacity(tenant, bucket: Bucket) -> dict:
     labor_req = 0.0
     wc_req: dict = collections.defaultdict(float)
     for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
-        labor_h, wc_h = _route_hours(ref, _route_counts(wo))
+        labor_h, _pools, wc_h = _route_hours(ref, _route_counts(wo))
         labor_req += labor_h
         for wc_id, h in wc_h.items():
             wc_req[wc_id] += h
@@ -160,6 +160,8 @@ class _RefData:
     crew_size: int
     wc_names: dict           # wc_id -> name
     wc_critical: set         # wc_ids a planner flagged worth watching (presentation only)
+    step_pools: dict         # step_id -> frozenset(user_id) qualified AND dispatchable
+    step_training: dict      # step_id -> tuple(training names), for labelling a pool
 
 
 def _load_reference(tenant) -> _RefData:
@@ -211,8 +213,22 @@ def _load_reference(tenant) -> _RefData:
     from Tracker.services.planning.flow_times import measure_flow_times
     flow = measure_flow_times(tenant)
 
+    # Certification-limited labour. The solver already caps a scarce skill at its
+    # trained crew (`get_step_operator_pools`); rough-cut counted one undifferentiated
+    # pool, so it credited every operator's hours against work only a few can do.
+    step_pools = sched_data.get_step_operator_pools(tenant)
+    step_training: dict = {}
+    if step_pools:
+        from Tracker.services.training import get_required_training
+        for step in Steps.objects.filter(tenant=tenant, is_current_version=True,
+                                         id__in=list(step_pools)):
+            req = get_required_training(step) or {}
+            names = tuple(sorted(getattr(t, 'name', str(t)) for t in req))
+            step_training[step.id] = names
+
     return _RefData(timings, labor_models, step_wc, osp_steps, osp_days, flow,
-                    wc_machine_hours, crew_size, wc_names, wc_critical)
+                    wc_machine_hours, crew_size, wc_names, wc_critical,
+                    step_pools, step_training)
 
 
 def _step_hours(ref: _RefData, step_id, quantity: int) -> tuple[float, float]:
@@ -261,9 +277,21 @@ def _route_counts(wo) -> dict:
     return counts
 
 
-def _route_hours(ref, counts: dict) -> tuple[float, dict]:
-    """A route's work content: (labor_hours, {wc_id: machine_hours})."""
+def _route_hours(ref, counts: dict) -> tuple[float, dict, dict]:
+    """A route's work content: `(labor_hours, {pool: labor_hours}, {wc_id: machine_hours})`.
+
+    Labour is reported twice on purpose. `labor_hours` is every attended hour against
+    the whole crew — the aggregate question, unchanged. `by_pool` breaks out only the
+    hours on CERTIFICATION-GATED steps, keyed by the frozenset of operators actually
+    qualified for them, which is the question the aggregate hides: a step one person is
+    certified for does not get five people's capacity just because five are rostered.
+
+    The key is the qualified set itself rather than the training names, because two
+    requirements held by exactly the same people are the same pool for capacity
+    purposes, whatever they are called.
+    """
     labor = 0.0
+    by_pool: dict = {}
     by_wc: dict = {}
     for step_id, qty in counts.items():
         machine_h, labor_h = _step_hours(ref, step_id, qty)
@@ -276,10 +304,14 @@ def _route_hours(ref, counts: dict) -> tuple[float, dict]:
         # governs how much of the run occupies an operator when it doesn't.
         if ref.labor_models.get(step_id, 'pool') != 'off':
             labor += labor_h
-    return labor, by_wc
+            pool = ref.step_pools.get(step_id)
+            if pool is not None and labor_h > 0:
+                by_pool[pool] = by_pool.get(pool, 0.0) + labor_h
+    return labor, by_pool, by_wc
 
 
-def _add_spread_load(labor_hrs, wc_hrs: dict, lo, hi, n_buckets, wc_load, labor_load):
+def _add_spread_load(labor_hrs, wc_hrs: dict, lo, hi, n_buckets, wc_load, labor_load,
+                     pool_hrs: dict | None = None, pool_load: dict | None = None):
     """Spread hours evenly over buckets lo..hi inclusive (clipped to the horizon).
     An order's work doesn't all land in its due month — it accrues over the run-up.
     Point-loading into the due bucket asked 'can it ALL happen in one month?', which
@@ -295,6 +327,8 @@ def _add_spread_load(labor_hrs, wc_hrs: dict, lo, hi, n_buckets, wc_load, labor_
         labor_load[i] += labor_hrs / span
         for wc_id, h in wc_hrs.items():
             wc_load[wc_id][i] += h / span
+        for pool, h in (pool_hrs or {}).items():
+            pool_load[pool][i] += h / span
 
 
 def _bucket_capacity(ref, bucket: Bucket, wc_id=None) -> float:
@@ -429,6 +463,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
     wc_load: dict = collections.defaultdict(lambda: [0.0] * n)
     releases: list = []
     untimed_orders: list = []
+    pool_load: dict = collections.defaultdict(lambda: [0.0] * n)
     wo_starts: dict = {}   # wo_id -> bucket its work begins in (for the material lane)
 
     # `WorkOrderData` carries only what the solver needs and `released_at` isn't on it,
@@ -442,9 +477,10 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
     today = start.date()
     for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
         counts = _route_counts(wo)
-        labor_h, wc_h = _route_hours(ref, counts)
+        labor_h, pool_h, wc_h = _route_hours(ref, counts)
         lo, hi, planned_start = _load_span(buckets, wo, ref, labor_h, wc_h, start, counts)
-        _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load)
+        _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load,
+                         pool_h, pool_load)
         wo_starts[wo.wo_id] = lo
 
         # An operation nobody has timed contributes zero hours and zero lead days, so it
@@ -475,6 +511,13 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
             })
     releases.sort(key=lambda r: (r['planned_start'], r['erp_id']))
 
+    def _pool_label(pool) -> str:
+        """Name a pool by the certifications that define it, falling back to its size.
+        Several steps can share one pool; their requirement names are unioned."""
+        names = sorted({n for sid, p in ref.step_pools.items() if p == pool
+                        for n in ref.step_training.get(sid, ())})
+        return " + ".join(names) if names else f"Certified crew ({len(pool)})"
+
     def _labor_cap(b: Bucket) -> float:
         return ref.crew_size * b.working_hours
 
@@ -496,6 +539,22 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         'buckets': [b.label for b in buckets],
         'labor': {'name': 'Labor (dispatchable crew)', 'crew_size': ref.crew_size,
                   'series': _series(_labor_cap, labor_load)},
+        # Certification-limited labour, one row per distinct qualified crew that
+        # actually carries gated work. The aggregate row above answers "have we enough
+        # people"; these answer "have we enough of the RIGHT people", which is the
+        # question a single crew count hides — and the one the solver will refuse a
+        # plan over (`preflight.find_unstaffable_steps`) after rough-cut said fine.
+        #
+        # Pools can overlap: an operator certified for two gated steps counts in both,
+        # and in the aggregate crew as well. So a pool row reads "is the certified
+        # subset the binding constraint for THIS work", not "can every pool be
+        # satisfied at once". Rough-cut, deliberately — the solver owns that fidelity.
+        'labor_pools': [
+            {'name': _pool_label(pool), 'qualified': len(pool),
+             'series': _series(lambda b, p=pool: len(p) * b.working_hours,
+                               pool_load[pool])}
+            for pool in sorted(pool_load, key=lambda p: _pool_label(p))
+        ],
         # Every work center with capacity OR load — an IDLE center must still appear,
         # since "where do we have room?" is half the question this view answers.
         'work_centers': [
@@ -546,11 +605,13 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     # existing committed load
     labor_load = [0.0] * n
     wc_load: dict = collections.defaultdict(lambda: [0.0] * n)
+    pool_load: dict = collections.defaultdict(lambda: [0.0] * n)
     for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
         counts = _route_counts(wo)
-        labor_h, wc_h = _route_hours(ref, counts)
+        labor_h, pool_h, wc_h = _route_hours(ref, counts)
         lo, hi, _ = _load_span(buckets, wo, ref, labor_h, wc_h, start, counts)
-        _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load)
+        _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load,
+                         pool_h, pool_load)
 
     # candidate routing: the part type's current process, walked from its head along
     # DEFAULT edges (same resolver as the solver — no rework branch, no terminal state)
@@ -571,10 +632,14 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     # measured differently from the load it is quoted against is not a comparison.
     cand_labor = 0.0
     cand_wc: dict = collections.defaultdict(float)
+    cand_pool: dict = collections.defaultdict(float)
     for s in cand_steps:
         machine_h, labor_h = _step_hours(ref, s, quantity)
         if ref.labor_models.get(s, 'pool') != 'off':
             cand_labor += labor_h
+            pool = ref.step_pools.get(s)
+            if pool is not None and labor_h > 0:
+                cand_pool[pool] += labor_h
         wc = ref.step_wc.get(s)
         if wc and machine_h > 0:
             cand_wc[wc[0]] += machine_h
@@ -609,6 +674,22 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
             if cand_labor > free:
                 binding.append({'resource': 'Labor', 'need': round(cand_labor, 1),
                                 'free_through_target': round(free, 1)})
+        # Certification-limited labour. Without this a quote could clear on total crew
+        # hours and then be refused by the solver, because the gated step has one
+        # certified operator rather than the whole roster — a promise made on capacity
+        # that does not exist for the work in question.
+        for pool, need in cand_pool.items():
+            if need <= 0:
+                continue
+            free = sum(max(0.0, len(pool) * usable[i][0] - pool_load[pool][i])
+                       for i in range(upto + 1))
+            if need > free:
+                names = sorted({n for sid, p in ref.step_pools.items() if p == pool
+                                for n in ref.step_training.get(sid, ())})
+                binding.append({
+                    'resource': f"Certified: {' + '.join(names)}" if names
+                                else f"Certified crew ({len(pool)})",
+                    'need': round(need, 1), 'free_through_target': round(free, 1)})
         for wc_id, need in cand_wc.items():
             if need <= 0:
                 continue
