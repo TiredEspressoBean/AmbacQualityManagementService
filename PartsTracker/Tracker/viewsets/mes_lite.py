@@ -20,7 +20,7 @@ from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 from Tracker.filters import PartFilter, OrderFilter
 from Tracker.models import (
     # MES Lite models
-    Orders, Parts, PartsStatus, PartSplitReason, WorkOrder, WorkOrderStatus, Steps, PartTypes, Processes,
+    Orders, OrderLine, Parts, PartsStatus, PartSplitReason, WorkOrder, WorkOrderStatus, Steps, PartTypes, Processes,
     StepExecution, ProcessStatus, OutsideProcessShipment,
     # MES Standard models
     Equipments, EquipmentType,
@@ -30,7 +30,7 @@ from Tracker.models import (
     MilestoneTemplate, Milestone,
 )
 from Tracker.serializers.mes_lite import (
-    OrdersSerializer, CustomerOrderSerializer, PartsSerializer, PartSelectSerializer, CustomerPartsSerializer,
+    OrdersSerializer, OrderLineSerializer, CustomerOrderSerializer, PartsSerializer, PartSelectSerializer, CustomerPartsSerializer,
     WorkOrderSerializer, WorkOrderListSerializer,
     StepsSerializer, StepSerializer, PartTypesSerializer, PartTypeSelectSerializer, ProcessesSerializer,
     ProcessWithStepsSerializer, EquipmentsSerializer, EquipmentTypeSerializer,
@@ -1434,6 +1434,65 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             'current_step_name': part.step.name if part.step else None,
             'part_status': part.part_status,
             'traveler': traveler
+        })
+
+
+class OrderLineViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
+    """Demand lines on an order, and the action that turns one into work."""
+
+    queryset = OrderLine.unscoped.select_related('order', 'part_type')
+    serializer_class = OrderLineSerializer
+    pagination_class = LimitOffsetPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = {'order': ['exact'], 'status': ['exact'],
+                        'part_type': ['exact'], 'due_date': ['exact', 'lte', 'gte']}
+    ordering_fields = ['line_number', 'due_date', 'created_at']
+    ordering = ['order', 'line_number']
+
+    # Planning a line CREATES a work order — the CRUD default for a POST here would ask
+    # for `add_orderline`, which is the permission to record what a customer asked for,
+    # not the authority to commit capacity and material to it.
+    action_permissions = {'plan': ['add_workorder']}
+    crud_exempt_actions = {'plan'}
+
+    @extend_schema(
+        request=inline_serializer(name='PlanOrderLineInput', fields={
+            'quantity': serializers.IntegerField(
+                required=False,
+                help_text="Units to plan. Defaults to everything still unplanned."),
+            'priority': serializers.IntegerField(required=False),
+        }),
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=['post'])
+    def plan(self, request, pk=None):
+        """Create a work order covering this line's remaining demand.
+
+        Returns 400 with the reason rather than guessing when the part type has no
+        approved routing or several — releasing against the wrong one produces a
+        correct-looking job that builds the wrong thing.
+        """
+        from Tracker.services.mes.order_line import CannotPlan, plan_order_line
+
+        line = self.get_object()
+        try:
+            qty = request.data.get('quantity')
+            wo = plan_order_line(
+                line, user=request.user,
+                quantity=int(qty) if qty not in (None, '') else None,
+                priority=request.data.get('priority'),
+            )
+        except CannotPlan as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        line.refresh_from_db()
+        return Response({
+            'work_order_id': str(wo.id),
+            'work_order_erp_id': wo.ERP_id,
+            'quantity': wo.quantity,
+            'remaining_quantity': line.remaining_quantity,
         })
 
 

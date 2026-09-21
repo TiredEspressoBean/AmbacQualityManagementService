@@ -1434,6 +1434,7 @@ export type CtpBindingResource = {
 export type CapacityLoad = {
   buckets: Array<string>;
   labor: LaborCapacity;
+  labor_pools: Array<LaborPoolCapacity>;
   work_centers: Array<WorkCenterCapacity>;
   planned_releases: Array<PlannedRelease>;
   untimed_orders: Array<UntimedOrder>;
@@ -1447,6 +1448,17 @@ export type LaborCapacity = {
   series: Array<LaborBucket>;
 };
 export type LaborBucket = {
+  bucket: string;
+  capacity_hours: number;
+  load_hours: number;
+  utilization: number | null;
+};
+export type LaborPoolCapacity = {
+  name: string;
+  qualified: number;
+  series: Array<LaborPoolBucket>;
+};
+export type LaborPoolBucket = {
   bucket: string;
   capacity_hours: number;
   load_hours: number;
@@ -3790,6 +3802,60 @@ export type AutoResolveEnum =
    * @enum off, live
    */
   "off" | "live";
+export type OrderLine = {
+  id: string;
+  order: string;
+  /**
+   * Position on the order, as the customer's paperwork numbers it.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  line_number: number;
+  part_type: string;
+  part_type_name: string;
+  /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  quantity: number;
+  planned_quantity: number;
+  remaining_quantity: number;
+  due_date?: (string | null) | undefined;
+  status?: OrderLineStatusEnum | undefined;
+  notes?: string | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type OrderLineStatusEnum =
+  /**
+   * * `OPEN` - Open
+   * `CANCELLED` - Cancelled
+   *
+   * @enum OPEN, CANCELLED
+   */
+  "OPEN" | "CANCELLED";
+export type OrderLineRequest = {
+  order: string;
+  /**
+   * Position on the order, as the customer's paperwork numbers it.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  line_number: number;
+  part_type: string;
+  /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  quantity: number;
+  due_date?: (string | null) | undefined;
+  status?: OrderLineStatusEnum | undefined;
+  notes?: string | undefined;
+  archived?: boolean | undefined;
+};
 export type Orders = {
   id: string;
   /**
@@ -3825,7 +3891,15 @@ export type Orders = {
   parts_summary: {
     total_parts: number;
     completed_parts: number;
-    step_distribution?: {} | undefined;
+    step_distribution?:
+      | Array<
+          Partial<{
+            id: string | null;
+            name: string;
+            count: number;
+          }>
+        >
+      | undefined;
   };
   process_stages: Array<{
     name: string;
@@ -5187,6 +5261,25 @@ export type NotificationFeedItem = {
   rendered_action_url: string;
   read_at: string | null;
   created_at: string;
+};
+export type PaginatedOrderLineList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<OrderLine>;
 };
 export type PaginatedOrdersList = {
   /**
@@ -9624,6 +9717,12 @@ export type WorkOrderList = {
    */
   number | undefined;
   related_order?: (string | null) | undefined;
+  order_line?:
+    | /**
+     * The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+     */
+    (string | null)
+    | undefined;
   related_order_info: {};
   process?: (string | null) | undefined;
   process_info: {
@@ -10861,6 +10960,26 @@ export type PatchedOptimizationConfigRequest = Partial<{
    * @maximum 2147483647
    */
   auto_resolve_min_interval_minutes: number;
+}>;
+export type PatchedOrderLineRequest = Partial<{
+  order: string;
+  /**
+   * Position on the order, as the customer's paperwork numbers it.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  line_number: number;
+  part_type: string;
+  /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  quantity: number;
+  due_date: string | null;
+  status: OrderLineStatusEnum;
+  notes: string;
+  archived: boolean;
 }>;
 export type PatchedOrdersRequest = Partial<{
   /**
@@ -12449,6 +12568,10 @@ export type PatchedWorkOrderRequest = Partial<{
    */
   quantity: number;
   related_order: string | null;
+  /**
+   * The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+   */
+  order_line: string | null;
   process: string | null;
   expected_start: string | null;
   expected_completion: string | null;
@@ -12970,10 +13093,19 @@ export type RecordPickInputRequest = {
   work_order: string;
   step: string;
   material: string;
+  kind?: RecordPickInputKindEnum | undefined;
   qty: number;
   qty_required?: number | undefined;
   lots?: Array<PickedLotRequest> | undefined;
 };
+export type RecordPickInputKindEnum =
+  /**
+   * * `MATERIAL` - MATERIAL
+   * `PART_TYPE` - PART_TYPE
+   *
+   * @enum MATERIAL, PART_TYPE
+   */
+  "MATERIAL" | "PART_TYPE";
 export type PickedLotRequest = {
   lot_id: string;
   lot_number?: string | undefined;
@@ -15074,6 +15206,12 @@ export type WorkOrder = {
    */
   number | undefined;
   related_order?: (string | null) | undefined;
+  order_line?:
+    | /**
+     * The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+     */
+    (string | null)
+    | undefined;
   related_order_info: {};
   related_order_detail: {};
   process?: (string | null) | undefined;
@@ -15193,6 +15331,12 @@ export type WorkOrderRequest = {
    */
   number | undefined;
   related_order?: (string | null) | undefined;
+  order_line?:
+    | /**
+     * The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+     */
+    (string | null)
+    | undefined;
   process?: (string | null) | undefined;
   expected_start?: (string | null) | undefined;
   expected_completion?: (string | null) | undefined;
@@ -17956,6 +18100,54 @@ const NotificationEventTypeCatalog = z.object({
   default_on: z.boolean(),
   supports_escalation: z.boolean(),
 });
+const OrderLineStatusEnum = z.enum(["OPEN", "CANCELLED"]);
+const OrderLine = z.object({
+  id: z.string().uuid(),
+  order: z.string().uuid(),
+  line_number: z.number().int().gte(0).lte(2147483647),
+  part_type: z.string().uuid(),
+  part_type_name: z.string(),
+  quantity: z.number().int().gte(0).lte(2147483647),
+  planned_quantity: z.number().int(),
+  remaining_quantity: z.number().int(),
+  due_date: z.string().nullish(),
+  status: OrderLineStatusEnum.optional(),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedOrderLineList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(OrderLine),
+});
+const OrderLineRequest = z.object({
+  order: z.string().uuid(),
+  line_number: z.number().int().gte(0).lte(2147483647),
+  part_type: z.string().uuid(),
+  quantity: z.number().int().gte(0).lte(2147483647),
+  due_date: z.string().nullish(),
+  status: OrderLineStatusEnum.optional(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedOrderLineRequest = z
+  .object({
+    order: z.string().uuid(),
+    line_number: z.number().int().gte(0).lte(2147483647),
+    part_type: z.string().uuid(),
+    quantity: z.number().int().gte(0).lte(2147483647),
+    due_date: z.string().nullable(),
+    status: OrderLineStatusEnum,
+    notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
+const PlanOrderLineInputRequest = z
+  .object({ quantity: z.number().int(), priority: z.number().int() })
+  .partial();
 const OrdersStatusEnum = z.enum([
   "RFI",
   "PENDING",
@@ -17998,7 +18190,17 @@ const Orders = z.object({
     .object({
       total_parts: z.number().int(),
       completed_parts: z.number().int(),
-      step_distribution: z.object({}).partial().passthrough().optional(),
+      step_distribution: z
+        .array(
+          z
+            .object({
+              id: z.string().nullable(),
+              name: z.string(),
+              count: z.number().int(),
+            })
+            .partial()
+        )
+        .optional(),
     })
     .nullable(),
   process_stages: z.array(
@@ -19642,6 +19844,17 @@ const LaborCapacity = z.object({
   crew_size: z.number().int(),
   series: z.array(LaborBucket),
 });
+const LaborPoolBucket = z.object({
+  bucket: z.string(),
+  capacity_hours: z.number(),
+  load_hours: z.number(),
+  utilization: z.number().nullable(),
+});
+const LaborPoolCapacity = z.object({
+  name: z.string(),
+  qualified: z.number().int(),
+  series: z.array(LaborPoolBucket),
+});
 const WorkCenterBucket = z.object({
   bucket: z.string(),
   capacity_hours: z.number(),
@@ -19683,6 +19896,7 @@ const MaterialLoad = z.object({
 const CapacityLoad = z.object({
   buckets: z.array(z.string()),
   labor: LaborCapacity,
+  labor_pools: z.array(LaborPoolCapacity),
   work_centers: z.array(WorkCenterCapacity),
   planned_releases: z.array(PlannedRelease),
   untimed_orders: z.array(UntimedOrder),
@@ -21911,6 +22125,7 @@ const MarkStagedInputRequest = z.object({
   staged: z.boolean(),
   note: z.string().optional(),
 });
+const RecordPickInputKindEnum = z.enum(["MATERIAL", "PART_TYPE"]);
 const PickedLotRequest = z.object({
   lot_id: z.string().uuid(),
   lot_number: z.string().optional(),
@@ -21920,6 +22135,7 @@ const RecordPickInputRequest = z.object({
   work_order: z.string().uuid(),
   step: z.string().uuid(),
   material: z.string().uuid(),
+  kind: RecordPickInputKindEnum.optional(),
   qty: z.number(),
   qty_required: z.number().optional(),
   lots: z.array(PickedLotRequest).optional(),
@@ -21946,6 +22162,7 @@ const WorkOrderList = z.object({
   priority: WorkOrderPriorityEnum.optional(),
   quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
   related_order: z.string().uuid().nullish(),
+  order_line: z.string().uuid().nullish(),
   related_order_info: z.object({}).partial().passthrough().nullable(),
   process: z.string().uuid().nullish(),
   process_info: z
@@ -21985,6 +22202,7 @@ const WorkOrderRequest = z.object({
   priority: WorkOrderPriorityEnum.optional(),
   quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
   related_order: z.string().uuid().nullish(),
+  order_line: z.string().uuid().nullish(),
   process: z.string().uuid().nullish(),
   expected_start: z.string().nullish(),
   expected_completion: z.string().nullish(),
@@ -22001,6 +22219,7 @@ const WorkOrder = z.object({
   priority: WorkOrderPriorityEnum.optional(),
   quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
   related_order: z.string().uuid().nullish(),
+  order_line: z.string().uuid().nullish(),
   related_order_info: z.object({}).partial().passthrough().nullable(),
   related_order_detail: z.object({}).partial().passthrough().nullable(),
   process: z.string().uuid().nullish(),
@@ -22037,6 +22256,7 @@ const PatchedWorkOrderRequest = z
     priority: WorkOrderPriorityEnum,
     quantity: z.number().int().gte(-2147483648).lte(2147483647),
     related_order: z.string().uuid().nullable(),
+    order_line: z.string().uuid().nullable(),
     process: z.string().uuid().nullable(),
     expected_start: z.string().nullable(),
     expected_completion: z.string().nullable(),
@@ -24132,6 +24352,12 @@ export const schemas = {
   MilestoneRequest,
   PatchedMilestoneRequest,
   NotificationEventTypeCatalog,
+  OrderLineStatusEnum,
+  OrderLine,
+  PaginatedOrderLineList,
+  OrderLineRequest,
+  PatchedOrderLineRequest,
+  PlanOrderLineInputRequest,
   OrdersStatusEnum,
   Orders,
   PaginatedOrdersList,
@@ -24311,6 +24537,8 @@ export const schemas = {
   CapableToPromise,
   LaborBucket,
   LaborCapacity,
+  LaborPoolBucket,
+  LaborPoolCapacity,
   WorkCenterBucket,
   WorkCenterCapacity,
   PlannedRelease,
@@ -24529,6 +24757,7 @@ export const schemas = {
   WorkCenterSelect,
   PatchedWorkCenterRequest,
   MarkStagedInputRequest,
+  RecordPickInputKindEnum,
   PickedLotRequest,
   RecordPickInputRequest,
   WorkOrderStatusEnum,
@@ -35495,6 +35724,206 @@ field metadata).`,
   },
   {
     method: "get",
+    path: "/api/OrderLines/",
+    alias: "api_OrderLines_list",
+    description: `Demand lines on an order, and the action that turns one into work.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "due_date",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "due_date__gte",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "due_date__lte",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["CANCELLED", "OPEN"]).optional(),
+      },
+    ],
+    response: PaginatedOrderLineList,
+  },
+  {
+    method: "post",
+    path: "/api/OrderLines/",
+    alias: "api_OrderLines_create",
+    description: `Demand lines on an order, and the action that turns one into work.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: OrderLineRequest,
+      },
+    ],
+    response: OrderLine,
+  },
+  {
+    method: "get",
+    path: "/api/OrderLines/:id/",
+    alias: "api_OrderLines_retrieve",
+    description: `Demand lines on an order, and the action that turns one into work.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OrderLine,
+  },
+  {
+    method: "put",
+    path: "/api/OrderLines/:id/",
+    alias: "api_OrderLines_update",
+    description: `Demand lines on an order, and the action that turns one into work.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: OrderLineRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OrderLine,
+  },
+  {
+    method: "patch",
+    path: "/api/OrderLines/:id/",
+    alias: "api_OrderLines_partial_update",
+    description: `Demand lines on an order, and the action that turns one into work.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedOrderLineRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OrderLine,
+  },
+  {
+    method: "delete",
+    path: "/api/OrderLines/:id/",
+    alias: "api_OrderLines_destroy",
+    description: `Demand lines on an order, and the action that turns one into work.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/OrderLines/:id/plan/",
+    alias: "api_OrderLines_plan_create",
+    description: `Create a work order covering this line&#x27;s remaining demand.
+
+Returns 400 with the reason rather than guessing when the part type has no
+approved routing or several — releasing against the wrong one produces a
+correct-looking job that builds the wrong thing.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PlanOrderLineInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/OrderLines/export/:export_format/",
+    alias: "api_OrderLines_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Orders/",
     alias: "api_Orders_list",
     description: `Orders CRUD with CSV import/export support.
@@ -39847,7 +40276,10 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/QualityReports/",
@@ -40174,10 +40606,7 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/QuarantineDispositions/",
@@ -45867,7 +46296,10 @@ process&#x27;s version of the parent Step.`,
       },
     ],
     response: Substep,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "put",
     path: "/api/Substeps/:id/",
@@ -46113,10 +46545,7 @@ transaction every time.`,
       },
     ],
     response: SubstepTranslation,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/SubstepTranslations/:id/",
@@ -50460,7 +50889,10 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
 so a 40-order queue costs the same handful of queries as a single order.`,
     requestFormat: "json",
     response: ReleaseQueue,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/WorkQueue/",
@@ -50616,10 +51048,7 @@ Accepts the following POST parameter: email.`,
       },
     ],
     response: z.object({ detail: z.string() }),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/auth/registration/verify-email/",

@@ -10,7 +10,7 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import {Button} from "@/components/ui/button";
-import {Archive, Pencil, Settings} from "lucide-react";
+import {Archive, Pencil} from "lucide-react";
 import {useNavigate} from "@tanstack/react-router";
 import {useState} from "react";
 import {useUpdateOrder} from "@/hooks/useUpdateOrder";
@@ -28,13 +28,6 @@ export function EditOrderActionsCell({ orderId }: Props) {
         navigate({
             to: "/OrderForm/$id",
             params: { id: String(orderId) },
-        });
-    };
-
-    const handleEditParts = () => {
-        navigate({
-            to: "/editOrdersParts/$orderId",
-            params: { orderId: String(orderId) },
         });
     };
 
@@ -61,14 +54,6 @@ export function EditOrderActionsCell({ orderId }: Props) {
                 title="Edit Order"
             >
                 <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleEditParts}
-                title="Edit Parts"
-            >
-                <Settings className="h-4 w-4" />
             </Button>
             <AlertDialog open={open} onOpenChange={setOpen}>
                 <AlertDialogTrigger asChild>

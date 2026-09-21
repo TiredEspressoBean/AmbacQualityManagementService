@@ -12797,6 +12797,303 @@ paths:
                 items:
                   $ref: '#/components/schemas/NotificationEventTypeCatalog'
           description: ''
+  /api/OrderLines/:
+    get:
+      operationId: api_OrderLines_list
+      description: Demand lines on an order, and the action that turns one into work.
+      parameters:
+      - in: query
+        name: due_date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: due_date__gte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: due_date__lte
+        schema:
+          type: string
+          format: date
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - in: query
+        name: order
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - OPEN
+        description: |-
+          * `OPEN` - Open
+          * `CANCELLED` - Cancelled
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrderLineList'
+          description: ''
+    post:
+      operationId: api_OrderLines_create
+      description: Demand lines on an order, and the action that turns one into work.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderLineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderLineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderLineRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderLine'
+          description: ''
+  /api/OrderLines/{id}/:
+    get:
+      operationId: api_OrderLines_retrieve
+      description: Demand lines on an order, and the action that turns one into work.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Order Line.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderLine'
+          description: ''
+    put:
+      operationId: api_OrderLines_update
+      description: Demand lines on an order, and the action that turns one into work.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Order Line.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderLineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderLineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderLineRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderLine'
+          description: ''
+    patch:
+      operationId: api_OrderLines_partial_update
+      description: Demand lines on an order, and the action that turns one into work.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Order Line.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderLineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderLineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderLineRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderLine'
+          description: ''
+    delete:
+      operationId: api_OrderLines_destroy
+      description: Demand lines on an order, and the action that turns one into work.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Order Line.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/OrderLines/{id}/plan/:
+    post:
+      operationId: api_OrderLines_plan_create
+      description: |-
+        Create a work order covering this line's remaining demand.
+
+        Returns 400 with the reason rather than guessing when the part type has no
+        approved routing or several — releasing against the wrong one produces a
+        correct-looking job that builds the wrong thing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Order Line.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanOrderLineInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanOrderLineInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanOrderLineInputRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/OrderLines/export/{export_format}/:
+    get:
+      operationId: api_OrderLines_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
   /api/Orders/:
     get:
       operationId: api_Orders_list
@@ -41168,6 +41465,10 @@ components:
             type: string
         labor:
           $ref: '#/components/schemas/LaborCapacity'
+        labor_pools:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaborPoolCapacity'
         work_centers:
           type: array
           items:
@@ -41192,6 +41493,7 @@ components:
       - buckets
       - critical_only
       - labor
+      - labor_pools
       - materials
       - planned_releases
       - untimed_orders
@@ -46445,6 +46747,41 @@ components:
         * `off` - Off (no crew constraint)
         * `pool` - Pool (cap at qualified crew)
         * `named` - Named (assign a specific operator)
+    LaborPoolBucket:
+      type: object
+      properties:
+        bucket:
+          type: string
+        capacity_hours:
+          type: number
+          format: double
+        load_hours:
+          type: number
+          format: double
+        utilization:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - bucket
+      - capacity_hours
+      - load_hours
+      - utilization
+    LaborPoolCapacity:
+      type: object
+      properties:
+        name:
+          type: string
+        qualified:
+          type: integer
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaborPoolBucket'
+      required:
+      - name
+      - qualified
+      - series
     LaborRecurrenceEnum:
       enum:
       - ONCE
@@ -47964,6 +48301,125 @@ components:
             of changes batches into one re-solve.'
       required:
       - id
+    OrderLine:
+      type: object
+      description: |-
+        One demand line on an order.
+
+        `remaining_quantity` is derived rather than stored: it is `quantity` minus the
+        quantity on non-cancelled work orders pegged to the line. Storing it would mean
+        keeping a counter correct across work-order create, cancel, split and quantity
+        change — five places that would each have to remember, and one that forgets leaves
+        demand that either double-plans or silently disappears.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        order:
+          type: string
+          format: uuid
+        line_number:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Position on the order, as the customer's paperwork numbers
+            it.
+        part_type:
+          type: string
+          format: uuid
+        part_type_name:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        planned_quantity:
+          type: integer
+          readOnly: true
+        remaining_quantity:
+          type: integer
+          readOnly: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/OrderLineStatusEnum'
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - line_number
+      - order
+      - part_type
+      - part_type_name
+      - planned_quantity
+      - quantity
+      - remaining_quantity
+      - updated_at
+    OrderLineRequest:
+      type: object
+      description: |-
+        One demand line on an order.
+
+        `remaining_quantity` is derived rather than stored: it is `quantity` minus the
+        quantity on non-cancelled work orders pegged to the line. Storing it would mean
+        keeping a counter correct across work-order create, cancel, split and quantity
+        change — five places that would each have to remember, and one that forgets leaves
+        demand that either double-plans or silently disappears.
+      properties:
+        order:
+          type: string
+          format: uuid
+        line_number:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Position on the order, as the customer's paperwork numbers
+            it.
+        part_type:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/OrderLineStatusEnum'
+        notes:
+          type: string
+        archived:
+          type: boolean
+      required:
+      - line_number
+      - order
+      - part_type
+      - quantity
+    OrderLineStatusEnum:
+      enum:
+      - OPEN
+      - CANCELLED
+      type: string
+      description: |-
+        * `OPEN` - Open
+        * `CANCELLED` - Cancelled
     Orders:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -48069,8 +48525,17 @@ components:
             completed_parts:
               type: integer
             step_distribution:
-              type: object
-              additionalProperties: true
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    nullable: true
+                  name:
+                    type: string
+                  count:
+                    type: integer
           readOnly: true
         process_stages:
           type: array
@@ -49400,6 +49865,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NotificationFeedItem'
+    PaginatedOrderLineList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLine'
     PaginatedOrdersList:
       type: object
       required:
@@ -53496,6 +53984,43 @@ components:
           description: 'Anti-churn floor for LIVE auto-resolve: don''t re-solve a
             schedule sooner than this many minutes after its last solve, so a burst
             of changes batches into one re-solve.'
+    PatchedOrderLineRequest:
+      type: object
+      description: |-
+        One demand line on an order.
+
+        `remaining_quantity` is derived rather than stored: it is `quantity` minus the
+        quantity on non-cancelled work orders pegged to the line. Storing it would mean
+        keeping a counter correct across work-order create, cancel, split and quantity
+        change — five places that would each have to remember, and one that forgets leaves
+        demand that either double-plans or silently disappears.
+      properties:
+        order:
+          type: string
+          format: uuid
+        line_number:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Position on the order, as the customer's paperwork numbers
+            it.
+        part_type:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/OrderLineStatusEnum'
+        notes:
+          type: string
+        archived:
+          type: boolean
     PatchedOrdersRequest:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -56101,6 +56626,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        order_line:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The demand line this job satisfies. Narrower than `related_order`:
+            an order says which customer, a line says which of their requests and
+            how many of it are still unplanned.'
         process:
           type: string
           format: uuid
@@ -56526,6 +57058,14 @@ components:
           type: boolean
       required:
       - is_pinned
+    PlanOrderLineInputRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          description: Units to plan. Defaults to everything still unplanned.
+        priority:
+          type: integer
     PlanWorkOrderInputRequest:
       type: object
       description: Input for the Gantt 'add work' action — create a WO + spawn its
@@ -59175,6 +59715,14 @@ components:
             $ref: '#/components/schemas/ReceivingMeasurementInputRequest'
       required:
       - measurements
+    RecordPickInputKindEnum:
+      enum:
+      - MATERIAL
+      - PART_TYPE
+      type: string
+      description: |-
+        * `MATERIAL` - MATERIAL
+        * `PART_TYPE` - PART_TYPE
     RecordPickInputRequest:
       type: object
       properties:
@@ -59187,6 +59735,8 @@ components:
         material:
           type: string
           format: uuid
+        kind:
+          $ref: '#/components/schemas/RecordPickInputKindEnum'
         qty:
           type: number
           format: double
@@ -68344,6 +68894,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        order_line:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The demand line this job satisfies. Narrower than `related_order`:
+            an order says which customer, a line says which of their requests and
+            how many of it are still unplanned.'
         related_order_info:
           type: object
           additionalProperties: {}
@@ -68638,6 +69195,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        order_line:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The demand line this job satisfies. Narrower than `related_order`:
+            an order says which customer, a line says which of their requests and
+            how many of it are still unplanned.'
         related_order_info:
           type: object
           additionalProperties: {}
@@ -68919,6 +69483,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        order_line:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The demand line this job satisfies. Narrower than `related_order`:
+            an order says which customer, a line says which of their requests and
+            how many of it are still unplanned.'
         process:
           type: string
           format: uuid

@@ -2650,6 +2650,92 @@ class WorkOrderStatus(models.TextChoices):
         return self.name
 
 
+class OrderLineStatus(models.TextChoices):
+    OPEN = 'OPEN', "Open"
+    CANCELLED = 'CANCELLED', "Cancelled"
+
+
+class OrderLine(SecureModel):
+    """One thing a customer asked for: a part type, a quantity, and a date.
+
+    `Orders` records the customer engagement — who, which company, the milestone, the
+    documents — but it never recorded the DEMAND. There was nowhere to say "customer X
+    wants 50 of type Y by date Z", so quantity and part type existed only on a
+    WorkOrder, i.e. only after somebody had already decided by hand what to build. An
+    order could be attached to work after the fact; it could not become work.
+
+    That is what a line is for, and why header-plus-lines is the ERP norm rather than
+    an ambition: one order routinely covers several part types with different
+    quantities and different dates, and a single set of fields on the header cannot
+    hold that.
+
+    Deliberately ADDITIVE. `WorkOrder.related_order` still works and is still what
+    `cascade_order_status` reads; existing orders simply have no lines. Nothing is
+    backfilled, because inferring a line from the work orders somebody already created
+    would be inventing demand that was never recorded and then presenting it as though
+    the customer had asked for it.
+
+    Not versioned: demand is a transactional record, not a controlled specification.
+    Changes are tracked by django-auditlog like any other operational row.
+    """
+
+    order = models.ForeignKey(
+        Orders, on_delete=models.CASCADE, related_name='lines')
+    line_number = models.PositiveIntegerField(
+        help_text="Position on the order, as the customer's paperwork numbers it.")
+
+    part_type = models.ForeignKey(
+        'Tracker.PartTypes', on_delete=models.PROTECT, related_name='order_lines')
+    quantity = models.PositiveIntegerField()
+
+    # Per LINE, not per order. Two lines on one order routinely ship on different
+    # dates, and the header's `estimated_completion` cannot express that.
+    due_date = models.DateField(null=True, blank=True)
+
+    status = models.CharField(
+        max_length=20, choices=OrderLineStatus.choices,
+        default=OrderLineStatus.OPEN)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Order Line'
+        verbose_name_plural = 'Order Lines'
+        ordering = ['order', 'line_number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'order', 'line_number'],
+                name='unique_order_line_number',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0),
+                name='orderline_quantity_positive',
+            ),
+        ]
+        indexes = [models.Index(fields=['tenant', 'status', 'due_date'])]
+
+    def __str__(self):
+        return f"{self.order.order_number} L{self.line_number}: {self.quantity} × {self.part_type}"
+
+    @property
+    def planned_quantity(self) -> int:
+        """Units already covered by work orders pegged to this line.
+
+        Cancelled work orders don't count — they cover nothing — so cancelling a job
+        returns its units to the line's remaining demand rather than leaving the line
+        looking satisfied by work that will never run.
+        """
+        from django.db.models import Sum
+        # tenant-safe: reverse FK from an in-tenant OrderLine row.
+        return self.work_orders.exclude(
+            workorder_status=WorkOrderStatus.CANCELLED
+        ).aggregate(q=Sum('quantity'))['q'] or 0
+
+    @property
+    def remaining_quantity(self) -> int:
+        """Demand not yet turned into work. Zero once the line is fully planned."""
+        return max(0, self.quantity - self.planned_quantity)
+
+
 class WorkOrderPriority(models.IntegerChoices):
     """Priority levels for work orders. Lower number = higher priority."""
     URGENT = 1, "Urgent"
@@ -2706,6 +2792,19 @@ class WorkOrder(SecureModel):
     related_order = models.ForeignKey('Orders', on_delete=models.PROTECT, related_name='related_orders', null=True,
                                       blank=True)
     """The customer-facing order this work order is derived from."""
+
+    order_line = models.ForeignKey(
+        'OrderLine', on_delete=models.PROTECT, related_name='work_orders',
+        null=True, blank=True,
+        help_text="The demand line this job satisfies. Narrower than `related_order`: "
+                  "an order says which customer, a line says which of their requests "
+                  "and how many of it are still unplanned.")
+    """The `OrderLine` this work order was planned against, when it was planned from one.
+
+    Kept ALONGSIDE `related_order` rather than replacing it. `related_order` is read by
+    `cascade_order_status`, set by CSV import and by the work-order form, and carried by
+    every seeded fixture; repointing it would be a migration across all of that for no
+    gain, since a line already knows its order. A job planned from a line sets both."""
 
     process = models.ForeignKey('Processes', on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='work_orders')

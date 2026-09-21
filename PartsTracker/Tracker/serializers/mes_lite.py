@@ -7,7 +7,8 @@ from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 from Tracker.models.scheduling import StepTiming
 from Tracker.models import (
     # MES Lite models
-    Orders, OrdersStatus, Parts, PartsStatus, WorkOrder, WorkOrderStatus,
+    Orders, OrdersStatus, OrderLine, OrderLineStatus, Parts, PartsStatus,
+    WorkOrder, WorkOrderStatus,
     Steps, PartTypes, Processes, StepExecution, ProcessStep, StepEdge, EdgeType,
     OutsideProcessShipment,
     # MES Standard models
@@ -142,8 +143,26 @@ _PARTS_SUMMARY_SCHEMA = {
     "properties": {
         "total_parts": {"type": "integer"},
         "completed_parts": {"type": "integer"},
-        # step_id -> count, so the keys are dynamic.
-        "step_distribution": {"type": "object", "additionalProperties": True},
+        # A LIST of {id, name, count}, one per step — see `Orders.get_step_distribution`.
+        # This was declared as an object ("step_id -> count, keys are dynamic"), which
+        # described an older implementation. The method returns a list and has for some
+        # time, so the generated zod client rejected EVERY /api/Orders/ response and the
+        # Orders editor rendered an empty table with the reason only in the console.
+        # Invisible to backend tests (they read Python, not the contract) and to tsc
+        # (it checks code against types, not responses against the schema).
+        "step_distribution": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    # Nullable: `Parts.step` is nullable, so a part sitting at no step
+                    # groups under a null step_id. One order in the demo data has one.
+                    "id": {"type": "string", "nullable": True},
+                    "name": {"type": "string"},
+                    "count": {"type": "integer"},
+                },
+            },
+        },
     },
 }
 
@@ -188,6 +207,43 @@ class StageSerializer(serializers.Serializer):
 
 
 # ===== ORDERS SERIALIZERS =====
+
+class OrderLineSerializer(SecureModelMixin):
+    """One demand line on an order.
+
+    `remaining_quantity` is derived rather than stored: it is `quantity` minus the
+    quantity on non-cancelled work orders pegged to the line. Storing it would mean
+    keeping a counter correct across work-order create, cancel, split and quantity
+    change — five places that would each have to remember, and one that forgets leaves
+    demand that either double-plans or silently disappears.
+    """
+
+    part_type_name = serializers.SerializerMethodField()
+    planned_quantity = serializers.SerializerMethodField()
+    remaining_quantity = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderLine
+        fields = (
+            'id', 'order', 'line_number', 'part_type', 'part_type_name',
+            'quantity', 'planned_quantity', 'remaining_quantity',
+            'due_date', 'status', 'notes', 'created_at', 'updated_at', 'archived',
+        )
+        read_only_fields = ('created_at', 'updated_at', 'part_type_name',
+                            'planned_quantity', 'remaining_quantity')
+
+    @extend_schema_field(serializers.CharField())
+    def get_part_type_name(self, obj):
+        return obj.part_type.name if obj.part_type_id else ''
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_planned_quantity(self, obj):
+        return obj.planned_quantity
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_remaining_quantity(self, obj):
+        return obj.remaining_quantity
+
 
 class OrdersSerializer(SecureModelMixin, BulkOperationsMixin):
     """Enhanced orders serializer with user filtering and features"""
@@ -669,7 +725,7 @@ class WorkOrderListSerializer(SecureModelMixin):
     class Meta:
         model = WorkOrder
         fields = (
-            'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info',
+            'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'order_line', 'related_order_info',
             'process', 'process_info', 'expected_completion', 'true_completion',
             'expected_duration', 'true_duration', 'notes', 'parts_count', 'qa_progress',
             'completed_parts_count', 'current_hold', 'released_at',
@@ -788,7 +844,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     class Meta:
         model = WorkOrder
         fields = (
-        'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info', 'related_order_detail',
+        'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'order_line', 'related_order_info', 'related_order_detail',
         'process', 'process_info', 'expected_start', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
         'notes', 'parts_summary', 'current_hold',
         'released_at', 'released_by', 'release_override_reason',

@@ -23,6 +23,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { InviteToOrderModal } from "@/components/invite-to-order-modal";
 import { OrderLineItem } from "@/components/order-line-item";
 import { OrderDocumentsModal } from "@/components/order-documents-modal";
+// Demand lines. Distinct from `order-line-item` above, which is a Part row.
+import { OrderLinesPanel } from "@/components/orders/OrderLinesPanel";
 import { QuickComposer } from "@/components/QuickComposer";
 
 function getStatusIcon(stage: any, size: "sm" | "md" = "md") {
@@ -428,6 +430,12 @@ export function OrderDetailsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* What was ordered, read-only. This page is customer-facing, so it shows
+                the itemisation and the dates and stops there — authoring demand and our
+                planning state both live on the internal order editor
+                (/editOrdersParts/$orderId). */}
+            {orderId && <OrderLinesPanel orderId={orderId} readOnly />}
 
             {/* Two Column Layout for Details */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

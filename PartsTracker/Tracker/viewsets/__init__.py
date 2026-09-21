@@ -55,6 +55,7 @@ from .mes_lite import (
     # Order ViewSets
     TrackerOrderViewSet,
     OrdersViewSet,
+    OrderLineViewSet,
     PartsByOrderView,
 
     # Part ViewSets
@@ -315,6 +316,7 @@ __all__ = [
     # MES Lite - Orders
     'TrackerOrderViewSet',
     'OrdersViewSet',
+    'OrderLineViewSet',
     'PartsByOrderView',
 
     # MES Lite - Parts

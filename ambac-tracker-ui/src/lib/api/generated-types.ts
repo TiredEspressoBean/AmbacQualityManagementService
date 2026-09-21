@@ -4602,6 +4602,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/OrderLines/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Demand lines on an order, and the action that turns one into work. */
+        get: operations["api_OrderLines_list"];
+        put?: never;
+        /** @description Demand lines on an order, and the action that turns one into work. */
+        post: operations["api_OrderLines_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OrderLines/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Demand lines on an order, and the action that turns one into work. */
+        get: operations["api_OrderLines_retrieve"];
+        /** @description Demand lines on an order, and the action that turns one into work. */
+        put: operations["api_OrderLines_update"];
+        post?: never;
+        /** @description Demand lines on an order, and the action that turns one into work. */
+        delete: operations["api_OrderLines_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Demand lines on an order, and the action that turns one into work. */
+        patch: operations["api_OrderLines_partial_update"];
+        trace?: never;
+    };
+    "/api/OrderLines/{id}/plan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Create a work order covering this line's remaining demand.
+         *
+         *     Returns 400 with the reason rather than guessing when the part type has no
+         *     approved routing or several — releasing against the wrong one produces a
+         *     correct-looking job that builds the wrong thing.
+         */
+        post: operations["api_OrderLines_plan_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OrderLines/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_OrderLines_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Orders/": {
         parameters: {
             query?: never;
@@ -17195,6 +17273,7 @@ export interface components {
         CapacityLoad: {
             buckets: string[];
             labor: components["schemas"]["LaborCapacity"];
+            labor_pools: components["schemas"]["LaborPoolCapacity"][];
             work_centers: components["schemas"]["WorkCenterCapacity"][];
             planned_releases: components["schemas"]["PlannedRelease"][];
             untimed_orders: components["schemas"]["UntimedOrder"][];
@@ -19756,6 +19835,20 @@ export interface components {
          * @enum {string}
          */
         LaborModelEnum: "off" | "pool" | "named";
+        LaborPoolBucket: {
+            bucket: string;
+            /** Format: double */
+            capacity_hours: number;
+            /** Format: double */
+            load_hours: number;
+            /** Format: double */
+            utilization: number | null;
+        };
+        LaborPoolCapacity: {
+            name: string;
+            qualified: number;
+            series: components["schemas"]["LaborPoolBucket"][];
+        };
         /**
          * @description * `ONCE` - One-off (dated)
          *     * `WEEKLY` - Weekly (recurring)
@@ -20477,6 +20570,67 @@ export interface components {
             /** @description Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve. */
             auto_resolve_min_interval_minutes?: number;
         };
+        /**
+         * @description One demand line on an order.
+         *
+         *     `remaining_quantity` is derived rather than stored: it is `quantity` minus the
+         *     quantity on non-cancelled work orders pegged to the line. Storing it would mean
+         *     keeping a counter correct across work-order create, cancel, split and quantity
+         *     change — five places that would each have to remember, and one that forgets leaves
+         *     demand that either double-plans or silently disappears.
+         */
+        OrderLine: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            order: string;
+            /** @description Position on the order, as the customer's paperwork numbers it. */
+            line_number: number;
+            /** Format: uuid */
+            part_type: string;
+            readonly part_type_name: string;
+            quantity: number;
+            readonly planned_quantity: number;
+            readonly remaining_quantity: number;
+            /** Format: date */
+            due_date?: string | null;
+            status?: components["schemas"]["OrderLineStatusEnum"];
+            notes?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /**
+         * @description One demand line on an order.
+         *
+         *     `remaining_quantity` is derived rather than stored: it is `quantity` minus the
+         *     quantity on non-cancelled work orders pegged to the line. Storing it would mean
+         *     keeping a counter correct across work-order create, cancel, split and quantity
+         *     change — five places that would each have to remember, and one that forgets leaves
+         *     demand that either double-plans or silently disappears.
+         */
+        OrderLineRequest: {
+            /** Format: uuid */
+            order: string;
+            /** @description Position on the order, as the customer's paperwork numbers it. */
+            line_number: number;
+            /** Format: uuid */
+            part_type: string;
+            quantity: number;
+            /** Format: date */
+            due_date?: string | null;
+            status?: components["schemas"]["OrderLineStatusEnum"];
+            notes?: string;
+            archived?: boolean;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        OrderLineStatusEnum: "OPEN" | "CANCELLED";
         /** @description Enhanced orders serializer with user filtering and features */
         Orders: {
             /** Format: uuid */
@@ -20519,8 +20673,10 @@ export interface components {
                 total_parts: number;
                 completed_parts: number;
                 step_distribution?: {
-                    [key: string]: unknown;
-                };
+                    id?: string | null;
+                    name?: string;
+                    count?: number;
+                }[];
             } | null;
             readonly process_stages: {
                 name: string;
@@ -21319,6 +21475,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["NotificationFeedItem"][];
+        };
+        PaginatedOrderLineList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["OrderLine"][];
         };
         PaginatedOrdersList: {
             /** @example 123 */
@@ -23655,6 +23826,29 @@ export interface components {
             /** @description Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve. */
             auto_resolve_min_interval_minutes?: number;
         };
+        /**
+         * @description One demand line on an order.
+         *
+         *     `remaining_quantity` is derived rather than stored: it is `quantity` minus the
+         *     quantity on non-cancelled work orders pegged to the line. Storing it would mean
+         *     keeping a counter correct across work-order create, cancel, split and quantity
+         *     change — five places that would each have to remember, and one that forgets leaves
+         *     demand that either double-plans or silently disappears.
+         */
+        PatchedOrderLineRequest: {
+            /** Format: uuid */
+            order?: string;
+            /** @description Position on the order, as the customer's paperwork numbers it. */
+            line_number?: number;
+            /** Format: uuid */
+            part_type?: string;
+            quantity?: number;
+            /** Format: date */
+            due_date?: string | null;
+            status?: components["schemas"]["OrderLineStatusEnum"];
+            notes?: string;
+            archived?: boolean;
+        };
         /** @description Enhanced orders serializer with user filtering and features */
         PatchedOrdersRequest: {
             name?: string;
@@ -25283,6 +25477,11 @@ export interface components {
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
+            /**
+             * Format: uuid
+             * @description The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+             */
+            order_line?: string | null;
             /** Format: uuid */
             process?: string | null;
             /** Format: date */
@@ -25499,6 +25698,11 @@ export interface components {
         };
         PinRequestRequest: {
             is_pinned: boolean;
+        };
+        PlanOrderLineInputRequest: {
+            /** @description Units to plan. Defaults to everything still unplanned. */
+            quantity?: number;
+            priority?: number;
         };
         /** @description Input for the Gantt 'add work' action — create a WO + spawn its parts. */
         PlanWorkOrderInputRequest: {
@@ -26780,6 +26984,12 @@ export interface components {
         RecordInspectionRequestRequest: {
             measurements: components["schemas"]["ReceivingMeasurementInputRequest"][];
         };
+        /**
+         * @description * `MATERIAL` - MATERIAL
+         *     * `PART_TYPE` - PART_TYPE
+         * @enum {string}
+         */
+        RecordPickInputKindEnum: "MATERIAL" | "PART_TYPE";
         RecordPickInputRequest: {
             /** Format: uuid */
             work_order: string;
@@ -26787,6 +26997,7 @@ export interface components {
             step: string;
             /** Format: uuid */
             material: string;
+            kind?: components["schemas"]["RecordPickInputKindEnum"];
             /** Format: double */
             qty: number;
             /** Format: double */
@@ -31420,6 +31631,11 @@ export interface components {
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
+            /**
+             * Format: uuid
+             * @description The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+             */
+            order_line?: string | null;
             readonly related_order_info: {
                 [key: string]: unknown;
             } | null;
@@ -31541,6 +31757,11 @@ export interface components {
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
+            /**
+             * Format: uuid
+             * @description The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+             */
+            order_line?: string | null;
             readonly related_order_info: {
                 [key: string]: unknown;
             } | null;
@@ -31656,6 +31877,11 @@ export interface components {
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
+            /**
+             * Format: uuid
+             * @description The demand line this job satisfies. Narrower than `related_order`: an order says which customer, a line says which of their requests and how many of it are still unplanned.
+             */
+            order_line?: string | null;
             /** Format: uuid */
             process?: string | null;
             /** Format: date */
@@ -41153,6 +41379,234 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationEventTypeCatalog"][];
+                };
+            };
+        };
+    };
+    api_OrderLines_list: {
+        parameters: {
+            query?: {
+                due_date?: string;
+                due_date__gte?: string;
+                due_date__lte?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                order?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /**
+                 * @description * `OPEN` - Open
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "CANCELLED" | "OPEN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOrderLineList"];
+                };
+            };
+        };
+    };
+    api_OrderLines_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderLineRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["OrderLineRequest"];
+                "multipart/form-data": components["schemas"]["OrderLineRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderLine"];
+                };
+            };
+        };
+    };
+    api_OrderLines_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Order Line. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderLine"];
+                };
+            };
+        };
+    };
+    api_OrderLines_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Order Line. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderLineRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["OrderLineRequest"];
+                "multipart/form-data": components["schemas"]["OrderLineRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderLine"];
+                };
+            };
+        };
+    };
+    api_OrderLines_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Order Line. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_OrderLines_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Order Line. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOrderLineRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedOrderLineRequest"];
+                "multipart/form-data": components["schemas"]["PatchedOrderLineRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderLine"];
+                };
+            };
+        };
+    };
+    api_OrderLines_plan_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Order Line. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PlanOrderLineInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PlanOrderLineInputRequest"];
+                "multipart/form-data": components["schemas"]["PlanOrderLineInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_OrderLines_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };

@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrderLinesPanel } from "@/components/orders/OrderLinesPanel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -518,6 +519,18 @@ export default function OrderFormPage() {
                             </FormItem>
                         )}
                     />
+
+                    {/* Order lines — the order's contents, edited with its header rather
+                        than on a page of their own. Header-plus-lines is one document:
+                        splitting "edit the order" from "edit what was ordered" into two
+                        destinations is the separation OrderLine exists to close.
+
+                        Edit mode only. On create there is no order id to hang a line on,
+                        so the header is saved first and the lines appear on the way back
+                        in — the usual two-phase shape for this. */}
+                    {isEditing && orderId && (
+                        <OrderLinesPanel orderId={orderId} />
+                    )}
 
                     {/* Notes Timeline - Only in edit mode */}
                     {isEditing && order && (
