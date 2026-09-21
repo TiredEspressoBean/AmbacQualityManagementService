@@ -141,6 +141,12 @@ INSTALLED_APPS = [
     'auditlog',
     'widget_tweaks',
     "rest_framework",
+    # The conventional registration from django-filter's own docs. It ships no models
+    # and no migrations — only templates — so with the browsable renderer switched off
+    # (see REST_FRAMEWORK below) it currently changes nothing. Kept because filtering
+    # itself is load-bearing and this is where anyone would look for it, and because
+    # re-enabling an HTML renderer without it 500s every filtered endpoint.
+    "django_filters",
     "rest_framework.authtoken",
     "dj_rest_auth",
     "dj_rest_auth.registration",
@@ -344,6 +350,17 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",  # default gate
         "Tracker.permissions.TenantAccessPermission",  # user can access current tenant
         "Tracker.permissions.TenantModelPermissions",  # tenant-scoped model perms
+    ],
+    # JSON only. DRF's default also enables `BrowsableAPIRenderer`, which was never
+    # used deliberately here — it is a leftover from when this project served Django
+    # templates. Nothing declares `renderer_classes`, the SPA's generated client asks
+    # for JSON, and the tests use the JSON test client, so the HTML renderer was dead
+    # weight that still ran content negotiation and template rendering on every
+    # request whose Accept header preferred HTML.
+    #
+    # `/api/docs/` is unaffected: `SpectacularSwaggerView` declares its own renderers.
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
     ],
     "EXCEPTION_HANDLER": "Tracker.exceptions.custom_exception_handler",
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
