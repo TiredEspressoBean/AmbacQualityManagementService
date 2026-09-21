@@ -28,7 +28,7 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 |--------|-----------|-------------|-----|
 | Access Control (AC) | 22 | 15 | 7 |
 | Awareness & Training (AT) | 3 | 0 | 3 |
-| Audit & Accountability (AU) | 9 | 8 | 1 |
+| Audit & Accountability (AU) | 9 | 6 | 3 |
 | Configuration Management (CM) | 9 | 6 | 3 |
 | Identification & Authentication (IA) | 11 | 7 | 4 |
 | Incident Response (IR) | 3 | 1 | 2 |
@@ -81,12 +81,27 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 
 ### Audit & Accountability (AU)
 
-| Practice | Capability | Evidence |
-|----------|------------|----------|
-| AU.L2-3.3.1 | Audit record creation | django-auditlog on all models |
-| AU.L2-3.3.2 | User attribution | User ID, timestamp, IP on all records |
-| AU.L2-3.3.8 | Audit protection | pgAudit (`shared_preload_libraries`, logging `write, ddl, role`) records any modification; application exposes the log read-only |
-| AU.L2-3.3.9 | Audit access restriction | Admin-only access to full logs |
+All nine AU practices are listed below, including the ones this application
+does not satisfy. A control matrix is only useful if the gaps are in it.
+
+| Practice | Capability | Status | Evidence |
+|----------|------------|--------|----------|
+| AU.L2-3.3.1 | Audit record creation | ✅ | django-auditlog on all models; pgAudit at the database |
+| AU.L2-3.3.2 | User attribution | ✅ | Actor, timestamp and IP on every record |
+| AU.L2-3.3.3 | Review and update logged events | ⚠️ | Procedural. The event set is fixed in code; nothing in the application prompts or records a periodic review of *what* is logged |
+| AU.L2-3.3.4 | Alert on audit logging failure | ❌ | **Gap.** Audit-write failures are caught and logged as a warning so the request survives — the deliberate choice is availability over alerting. Nothing notifies anyone |
+| AU.L2-3.3.5 | Audit correlation | ⚠️ | Both layers timestamp in UTC and record the actor, which makes correlation possible by hand. No tooling correlates them |
+| AU.L2-3.3.6 | Reduction and report generation | ✅ | The audit log is filterable by actor, content type, object and action, with search and ordering; export is permission-gated on `export_auditlog` |
+| AU.L2-3.3.7 | Authoritative timestamps | ✅ | Server-side, `TIME_ZONE = 'UTC'` with `USE_TZ`. Clock synchronisation itself is the host's responsibility, not the application's |
+| AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers block UPDATE/DELETE on seven audit tables, superusers included (`setup_audit_triggers`, run by `setup_database`); pgAudit independently logs write/DDL/role statements |
+| AU.L2-3.3.9 | Audit access restriction | ✅ | `view_auditlog` / `view_logentry` for reading, `export_auditlog` for extraction; the log viewset is read-only and tenant-scoped |
+
+!!! warning "3.3.4 is the one to fix before an assessment"
+    An assessor will ask what happens when audit logging itself fails. The
+    current answer is that the request proceeds and a warning goes to the
+    application log — which means the system can be losing audit records
+    while appearing healthy. Availability over alerting is a defensible
+    engineering choice; it is not a defensible answer to 3.3.4.
 
 ### Configuration Management (CM)
 
@@ -251,8 +266,12 @@ When software is used in a CMMC-certified facility to process CUI, it must suppo
 |-------------|---------|------------------|
 | Action logging | Record who did what, when | ✅ django-auditlog on all models |
 | User attribution | Trace actions to individuals | ✅ User ID, timestamp, IP on records |
-| Log protection | Prevent tampering | ✅ PostgreSQL triggers block modification |
+| Log protection | Prevent tampering | ✅ PostgreSQL triggers block modification, superusers included |
 | Log retention | Preserve for audit period | ✅ Logs retained indefinitely |
+
+This summary covers the practices that are met. For the full nine, including
+the **3.3.4 gap** on alerting when audit logging itself fails, see [Audit &
+Accountability](#audit--accountability-au) above.
 
 ### Media Protection (MP)
 

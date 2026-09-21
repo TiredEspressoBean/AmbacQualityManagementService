@@ -121,13 +121,12 @@ Yes. Your administrator configures the schedule and how long backups are kept.
 Per your organization's retention policy, typically 7+ years for quality records.
 
 ### Can audit logs be modified?
-Not through the application — the audit log is exposed read-only, with no
-endpoint or UI action that edits or deletes an entry.
+No. PostgreSQL triggers reject UPDATE and DELETE on the audit tables, and they
+apply to superusers too — so this holds even for someone connecting directly
+to the database, not just through the application.
 
-Underneath it, **pgAudit** logs every write, DDL and role statement at the
-database itself. So a change made with direct database credentials, bypassing
-the application entirely, is still recorded — by a different mechanism, in a
-different place. See [Audit
+pgAudit additionally logs write, DDL and role statements, so an attempt to
+remove a trigger would itself be recorded. See [Audit
 Trails](../compliance/audit-trails.md#immutability).
 
 ### How do I export data for an audit?

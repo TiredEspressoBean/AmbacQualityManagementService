@@ -53,28 +53,35 @@ Every create, update, delete is logged:
 
 ### Immutability
 
-There are **two audit layers**, and they protect each other:
+Audit records cannot be modified, deleted, or backdated. This is enforced in
+the database, not only in the application, and there are two independent
+layers.
 
-| Layer | What it records | How it is protected |
-|-------|-----------------|---------------------|
-| **django-auditlog** | Business-record changes — who changed which field, when | Exposed read-only; no endpoint edits or deletes an entry |
-| **pgAudit** | Every write, DDL and role statement at the database | Written by PostgreSQL itself, outside the application |
+**PostgreSQL triggers prevent the write.** `setup_audit_triggers` installs
+triggers that reject UPDATE and DELETE on the audit tables — **including for
+superusers** — covering:
 
-Through the application, audit records cannot be modified, deleted, or
-backdated — there is no such action.
+`auditlog_logentry`, `permissionchangelog`, `steptransitionlog`,
+`samplingauditlog`, `approvalresponse`, `capastatustransition`, `recordedit`.
 
-!!! info "Tamper-evident, not tamper-proof"
-    The application role holds ordinary write permissions on its tables, so
-    someone with direct database credentials could in principle alter an
-    auditlog row. What stops that being silent is **pgAudit**, which is
-    preloaded and configured to log `write, ddl, role` statements with
-    relation names — so the alteration is itself recorded, by a different
-    mechanism, in a different place.
+The command runs as step 4 of `setup_database`, which containers run on
+start, so a normal deployment has them without anyone remembering to.
 
-    This is the honest formulation to give an assessor. Detection rather than
-    prevention is the normal answer for database-level audit protection, and
-    it puts the weight where it belongs: on controlling who holds database
-    credentials.
+**pgAudit records the attempt.** PostgreSQL is preloaded with pgAudit
+(`shared_preload_libraries`) logging `write, ddl, role` statements with
+relation names. It is deliberately not `all` — the classes chosen are the
+accountability set.
+
+!!! info "Why both"
+    The triggers stop the modification; pgAudit means that even an action
+    taken to *remove* a trigger is itself a DDL statement, and therefore
+    logged. Prevention and detection by separate mechanisms is what makes the
+    control defensible rather than merely present.
+
+!!! warning "Verify the triggers on any database not built by the standard deployment"
+    A database restored from a dump, or created outside the container
+    entrypoint, may not have them. Run `python manage.py setup_audit_triggers`
+    — it is idempotent, and `--disable` exists for development only.
 
 ### Computer-Generated Timestamps
 - Server-side timestamp (not client)
