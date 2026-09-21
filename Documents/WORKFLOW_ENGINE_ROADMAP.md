@@ -1,12 +1,18 @@
 # Workflow Engine - Phased Implementation Roadmap
 
-> **Currency (2026-09-21): partially verified.** Phases 3–4 really are
-> outstanding: `WorkflowInstance`, `NodeExecution` and `WorkflowEngine` do not
-> exist in the codebase. Approvals and CAPA run on their own machinery
-> (`ApprovalRequest`, the CAPA task model), not on a generic engine, so the
-> "running on engine" items are open as written.
+> **Currency (2026-09-21): partially verified.** **Phase 4 is wholly
+> outstanding** — `WorkflowInstance`, `NodeExecution` and `WorkflowEngine` do
+> not exist in the codebase. Approvals and CAPA run on their own machinery
+> (`ApprovalRequest`, the CAPA task model) rather than a generic engine, so
+> every "running on engine" item is open as written.
 >
-> Earlier phases have not been re-checked since January.
+> **Phase 3 is not outstanding.** The visual designer shipped — it is the
+> Process Flow editor at `/process-flow`, with edit mode, a per-step
+> properties panel and substep authoring, documented under
+> `docs/admin/processes/`. The "~95%" below looks about right; the overlay
+> modes are the part still open.
+>
+> Phases 1–2 have not been re-checked since January.
 
 
 **Last Updated:** January 16, 2026

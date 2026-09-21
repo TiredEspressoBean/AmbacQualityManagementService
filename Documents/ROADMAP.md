@@ -13,7 +13,9 @@
 
 **Last Updated:** February 18, 2026
 
-This document provides a complete view of all features: completed, in progress, needed, nice-to-have, and future aspirations.
+~~This document provides a complete view of all features: completed, in
+progress, needed, nice-to-have, and future aspirations.~~ — it was complete as
+of February; see the currency note above.
 
 ---
 

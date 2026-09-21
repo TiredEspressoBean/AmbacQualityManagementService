@@ -3,6 +3,15 @@
 Working plan for taking the UQMES scheduling module to a full, well-integrated APS.
 Living doc — check items off as they land. Companion to `VERSIONING_ARCHITECTURE.md`.
 
+> **Currency (2026-09-21): open items spot-checked.** #16 CTP/ATP was
+> unchecked and is in fact shipped (`capable_to_promise()` in
+> `Tracker/services/planning/rccp.py`, with three tests) — now ticked. The
+> other open items were checked against the code and are genuinely open: no
+> notification events exist for scheduling, and no cost-objective, campaign
+> batching or DBR code exists in the solver.
+>
+> Items already ticked above that line were not re-verified.
+
 ## Goal
 
 A complete Advanced Planning & Scheduling capability **as a module of the
