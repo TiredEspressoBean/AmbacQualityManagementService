@@ -59,7 +59,7 @@ STAFF_VIEW_PERMISSIONS = [
     # Export-your-own-views
     'export_data',
     # Production
-    'view_orders', 'view_workorder', 'view_parts', 'view_parttypes',
+    'view_orders', 'view_orderline', 'view_workorder', 'view_parts', 'view_parttypes',
     'view_processes', 'view_steps', 'view_processstep', 'view_stepedge',
     'view_stepexecution', 'view_steptransitionlog', 'view_stepmeasurementrequirement',
     'view_outsideprocessshipment',
@@ -172,6 +172,11 @@ CLASSIFIED_DOCUMENT_VIEW = [
 STAFF_OPERATIONAL_WRITE = [
     # Production records
     'add_orders', 'change_orders',
+    # Recording what a customer asked for is order administration. Turning that demand
+    # into work is a different authority — `plan` on the line is gated on
+    # `add_workorder`, because committing capacity and material is not the same act as
+    # writing down the request.
+    'add_orderline', 'change_orderline',
     'add_workorder', 'change_workorder',
     'add_parts', 'change_parts',
     'add_stepexecution', 'change_stepexecution',
@@ -189,10 +194,15 @@ STAFF_OPERATIONAL_WRITE = [
     'add_substepcompletion', 'change_substepcompletion',
     'add_substepgatecompletion', 'change_substepgatecompletion',
     'add_substepresponse', 'change_substepresponse',
-    # Reman — receive + work cores, grade harvested components
+    # Reman — receive + work cores, and record what teardown found.
+    #
+    # `grade_component` stays here: the tech with the part in their hand is the one
+    # who can see its condition, and recording an observation is not the same act as
+    # acting on it. What moved out is accept/reject — see
+    # COMPONENT_DISPOSITION_PERMISSIONS.
     'add_core', 'change_core',
     'start_disassembly', 'complete_disassembly', 'scrap_core',
-    'grade_component', 'accept_component', 'reject_component',
+    'grade_component',
     'add_harvestedcomponent', 'change_harvestedcomponent',
     # Materials & BOM usage
     'add_materiallot', 'change_materiallot',
@@ -395,6 +405,23 @@ FPI_SIGNOFF_PERMISSIONS = [
     'sign_off_fpi',
 ]
 
+# Harvested-component disposition: putting a used part back into the supply of parts
+# that go into customer product, or destroying it. Same distribution as FPI sign-off
+# and decision resolution — QA / lead / manager tier, deliberately withheld from the
+# line Operator.
+#
+# The split is between observing and acting, not between production and quality. The
+# teardown tech keeps `grade_component` (STAFF_OPERATIONAL_WRITE) because they are
+# holding the part and are the only one who can see its condition. Accepting it into
+# inventory is a different act: from that moment the component is available to be
+# built into someone's injector on the strength of that judgement, and AS9100 asks for
+# the authority to assign a disposition to be *defined* rather than incidental to
+# whoever happened to run teardown. Rejecting is the same act in the other direction —
+# it destroys value and is equally a disposition.
+COMPONENT_DISPOSITION_PERMISSIONS = [
+    'accept_component', 'reject_component',
+]
+
 # Voiding a substep completion: retracting a record of work someone else
 # signed. QA Inspector, QA Manager, and Tenant Admin — deliberately withheld
 # from Shift Lead and Production Manager as well as the Operator, because this
@@ -561,6 +588,7 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            *COMPONENT_DISPOSITION_PERMISSIONS,
             # Void an erroneous substep completion (quality-record judgement)
             *VOID_COMPLETION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
@@ -597,6 +625,7 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            *COMPONENT_DISPOSITION_PERMISSIONS,
             # Void an erroneous substep completion
             *VOID_COMPLETION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
@@ -626,6 +655,7 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            *COMPONENT_DISPOSITION_PERMISSIONS,
             # Void an erroneous substep completion
             *VOID_COMPLETION_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
@@ -656,6 +686,7 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            *COMPONENT_DISPOSITION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
@@ -703,6 +734,7 @@ GROUP_PRESETS = {
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
             *FPI_SIGNOFF_PERMISSIONS,
+            *COMPONENT_DISPOSITION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             # Formally raise a CAPA

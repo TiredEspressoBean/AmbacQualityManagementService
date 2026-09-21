@@ -51,6 +51,7 @@ import { ArrowLeft, Plus, CheckCircle, Trash2, Package, Loader2, Wrench } from "
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { matchKey } from "@/lib/query-filters";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 function getConditionVariant(grade: string): "default" | "secondary" | "destructive" | "outline" {
     switch (grade) {
@@ -66,6 +67,10 @@ export function CoreDisassemblyPage() {
     const { id } = useParams({ from: '/reman/cores/$id/disassembly' });
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    // Accept-to-inventory and scrap are dispositions, held by the QA / lead / manager
+    // tier. Grading itself stays with whoever runs teardown.
+    const { has } = usePermissionSet();
+    const canDisposition = has("accept_component") && has("reject_component");
 
     const [harvestDialogOpen, setHarvestDialogOpen] = useState(false);
     const [newComponent, setNewComponent] = useState<{
@@ -449,6 +454,16 @@ export function CoreDisassemblyPage() {
                                         <TableCell className="text-right">
                                             {!component.is_scrapped && !component.component_part && (
                                                 <div className="flex justify-end gap-2">
+                                                    {/* Disposition is a held permission, not everyone who can
+                                                        record a teardown. Without this guard the buttons render
+                                                        for a grading tech and answer 403 on click, which reads
+                                                        as a broken page rather than as an authority boundary. */}
+                                                    {!canDisposition && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Awaiting disposition
+                                                        </span>
+                                                    )}
+                                                    {canDisposition && (<>
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
@@ -489,6 +504,7 @@ export function CoreDisassemblyPage() {
                                                             </AlertDialogFooter>
                                                         </AlertDialogContent>
                                                     </AlertDialog>
+                                                    </>)}
                                                 </div>
                                             )}
                                         </TableCell>

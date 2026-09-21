@@ -256,6 +256,30 @@ class HarvestedComponentViewSet(TenantScopedMixin, DataExportMixin, viewsets.Mod
     ordering_fields = ['disassembled_at', 'condition_grade']
     ordering = ['-disassembled_at']
 
+    # `grade_component`, `accept_component` and `reject_component` were declared on the
+    # model and enforced nowhere, so the CRUD default decided all three: anyone who
+    # could add a harvested component could also put one into inventory. Declaring them
+    # here is what turns them from labels into gates.
+    #
+    # Recording is separated from acting. Creating or editing a component carries its
+    # condition grade, and the tech holding the part is the one who can see it —
+    # `grade_component` ships with the general operational grant, so this changes who
+    # *can* grade for nobody today; it makes the lever exist for a tenant that wants it.
+    #
+    # Accept and scrap are dispositions: one makes a used part available to be built
+    # into customer product on the strength of that grade, the other destroys it. Both
+    # are crud-exempt because neither is "adding a harvested component" — accept creates
+    # a Parts record, scrap retires one — so the marker perm is the sole, sufficient
+    # gate rather than an additive one on top of a CRUD perm that misdescribes the act.
+    action_permissions = {
+        'create': ['grade_component'],
+        'update': ['grade_component'],
+        'partial_update': ['grade_component'],
+        'accept_to_inventory': ['accept_component'],
+        'scrap': ['reject_component'],
+    }
+    crud_exempt_actions = {'accept_to_inventory', 'scrap'}
+
     def perform_create(self, serializer):
         serializer.save(disassembled_by=self.request.user)
 

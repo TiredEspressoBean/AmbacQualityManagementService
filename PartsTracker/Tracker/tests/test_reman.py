@@ -7,7 +7,8 @@ and the complete reman workflow including life tracking transfer.
 
 from decimal import Decimal
 from datetime import date, timedelta
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
+from Tracker.tests.base import TenantTestCase
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 
@@ -1207,3 +1208,93 @@ class RemanMultiCoreIntegrationTests(RemanBaseTestCase):
 
         self.assertEqual(total_harvested, 20)  # 10 cores x 2 components
         self.assertEqual(total_scrapped, 3)  # 2 nozzles + 1 solenoid
+
+
+class ComponentDispositionPermissionTests(TenantTestCase):
+    """Accepting a used part into inventory is a held authority, not a side effect of
+    being able to record a teardown.
+
+    `grade_component`, `accept_component` and `reject_component` shipped declared on the
+    model and enforced nowhere, so the CRUD default decided all three: anyone who could
+    add a harvested component could also put one into the pool of parts that go into
+    customer product. These pin the gates now that they exist, and the distribution
+    decision behind them.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, HarvestedComponent, PartTypes
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.comp_type = PartTypes.objects.create(tenant=self.tenant_a, name='Nozzle')
+        self.core = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-PERM-1', core_type=self.core_type,
+            received_date=date.today(), received_by=self.user_a, status='IN_DISASSEMBLY')
+        self.component = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=self.core, component_type=self.comp_type,
+            condition_grade='B', disassembled_by=self.user_a)
+
+    def _as(self, *perms):
+        self.grant_tenant_permissions(
+            self.user_a, self.tenant_a,
+            ['view_harvestedcomponent', 'full_tenant_access', *perms])
+        self.authenticate_as(self.user_a)
+
+    def test_accept_is_refused_without_the_disposition_permission(self):
+        self._as('add_harvestedcomponent', 'change_harvestedcomponent')
+        resp = self.client.post(
+            f'/api/HarvestedComponents/{self.component.id}/accept_to_inventory/', {})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_accept_is_allowed_with_it(self):
+        """And the CRUD perm is NOT additionally required — accepting creates a Parts
+        record, it does not add a harvested component, so demanding `add_` would
+        misdescribe the act."""
+        self._as('accept_component')
+        resp = self.client.post(
+            f'/api/HarvestedComponents/{self.component.id}/accept_to_inventory/', {})
+        self.assertNotEqual(resp.status_code, 403)
+
+    def test_scrap_is_refused_without_the_reject_permission(self):
+        self._as('add_harvestedcomponent', 'change_harvestedcomponent')
+        resp = self.client.post(
+            f'/api/HarvestedComponents/{self.component.id}/scrap/', {'reason': 'worn'})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_recording_a_component_is_refused_without_grade_component(self):
+        """Creating a harvested component carries its condition grade, so creating one
+        IS grading it. The permission ships with the general operational grant, so this
+        changes who can grade for nobody — it makes the lever exist."""
+        self._as('add_harvestedcomponent')
+        resp = self.client.post('/api/HarvestedComponents/', {
+            'core': str(self.core.id), 'component_type': str(self.comp_type.id),
+            'condition_grade': 'B'})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_recording_a_component_is_allowed_with_it(self):
+        self._as('add_harvestedcomponent', 'grade_component')
+        resp = self.client.post('/api/HarvestedComponents/', {
+            'core': str(self.core.id), 'component_type': str(self.comp_type.id),
+            'condition_grade': 'B'})
+        self.assertNotEqual(resp.status_code, 403)
+
+
+class ComponentDispositionPresetTests(SimpleTestCase):
+    """The distribution decision, pinned. Same tier as FPI sign-off and decision
+    resolution: the line Operator records what teardown found, the QA / lead / manager
+    tier decides what becomes of it."""
+
+    def test_the_operator_records_but_does_not_disposition(self):
+        from Tracker.presets import GROUP_PRESETS
+        perms = set(GROUP_PRESETS['operator']['permissions'])
+        self.assertIn('grade_component', perms)
+        self.assertNotIn('accept_component', perms)
+        self.assertNotIn('reject_component', perms)
+
+    def test_the_qa_and_supervisor_tier_holds_disposition(self):
+        from Tracker.presets import GROUP_PRESETS
+        for role in ('qa_inspector', 'qa_manager', 'production_manager',
+                     'shift_lead', 'tenant_admin'):
+            perms = set(GROUP_PRESETS[role]['permissions'])
+            self.assertIn('accept_component', perms, role)
+            self.assertIn('reject_component', perms, role)
