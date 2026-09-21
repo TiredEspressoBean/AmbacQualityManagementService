@@ -3455,11 +3455,24 @@ class Parts(SecureModel):
                             # Get measurement value if not provided
                             if decision_result is None:
                                 from .qms import MeasurementResult
+                                # Three wrong field names lived here: the FK is
+                                # `report` (not `quality_report`), the definition FK is
+                                # `definition` (not `measurement_definition`), and the
+                                # value is `value_numeric` (not `actual_value`). Two of
+                                # them are ORM lookups, so this raised FieldError rather
+                                # than misrouting — MEASUREMENT decision steps could not
+                                # auto-route at all. MANUAL is guarded in advancement.py
+                                # for exactly this shape of failure; MEASUREMENT was not,
+                                # and nothing covered it.
                                 latest_mr = MeasurementResult.objects.filter(
-                                    quality_report__part=self,
-                                    measurement_definition=edge.condition_measurement
+                                    report__part=self,
+                                    definition=edge.condition_measurement,
                                 ).order_by('-created_at').first()
-                                decision_result = float(latest_mr.actual_value) if latest_mr else 0
+                                decision_result = (
+                                    float(latest_mr.value_numeric)
+                                    if latest_mr and latest_mr.value_numeric is not None
+                                    else 0
+                                )
 
                             threshold = float(edge.condition_value)
                             if edge.condition_operator == 'gte':
