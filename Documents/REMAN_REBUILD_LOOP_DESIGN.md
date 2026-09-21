@@ -136,10 +136,25 @@ each code carrying operations + materials, plus finding→code mapping — where
 the routing you already have. It is more machinery for a shop that may genuinely only
 have three rebuild levels.
 
-**Recommendation: repair codes, but only if the shop really does have more than a
-handful of distinct scopes.** That is a question about Ambac's actual rebuild practice
-(§10.3), not about the software. Either way, §3.1's *human curation* step is worth
-adopting immediately — auto-generate the proposal, let a person include/exclude it.
+**Decision: repair codes. The fork is false, and counting one shop's scopes was the
+wrong way to resolve it.**
+
+UQMES is deployed by shops we have not met. A model chosen to fit the number of rebuild
+scopes at the reference customer is a model that fits nobody else by construction — and
+the earlier version of this section asked exactly that question, which was a mistake.
+
+The two options are not alternatives. **A tier is a named, pre-composed set of repair
+codes.** Build the composing mechanism and a three-scope shop authors three presets and
+never sees a code; build tiers and a twelve-scope shop has to author every meaningful
+combination as its own routing path, or accept tiers coarse enough to be wrong. One
+direction degrades gracefully and the other is a migration.
+
+The genuine objection to codes survives, but it is about the AUTHORING BURDEN on a small
+shop, not about the data model — and burden is answered with seeded presets and a
+sensible authoring default, not by storing scope differently.
+
+§3.1's *human curation* step is adopted regardless: auto-generate the proposal, let a
+person include/exclude it.
 
 ### 4.2 Two fulfilment modes, and they are both in scope
 
@@ -296,12 +311,14 @@ for this loop.
    likely right — an exchange programme is usually a commercial arrangement, not a
    per-unit decision — but that means the default lives on the customer/company record
    and needs an override at receipt for the exception case.
-2. **The rollup rule** (only if §4 lands on tier-branch). How component grades produce a
-   tier. Proposal: the grader **chooses**, with a computed suggestion shown alongside;
-   promote to configuration once real grading data shows what the rule is. Avoids
-   inventing an unvalidated threshold, and matches §9.
-3. **How many distinct rebuild scopes does Ambac actually have?** The §4.1 decision turns
-   on this. A handful → tiers. Many, varying by which components failed → repair codes.
+2. ~~**The rollup rule**~~ **Moot.** It existed only under tier-branch, which §4.1 no
+   longer selects: findings map to codes directly and no rollup is needed. The principle
+   behind it stands and applies to the code proposal instead — the system suggests, the
+   grader decides (§9), rather than a threshold we invented before seeing grading data.
+3. ~~**How many distinct rebuild scopes does Ambac actually have?**~~ **Withdrawn.** It
+   was the wrong question: this is a product other shops deploy, so no single tenant's
+   count can decide the model. §4.1 now resolves to repair codes on the grounds that
+   tiers are a special case of them, and a per-tenant preset covers the small shop.
 4. **Tier vocabulary.** A/B/C are *component condition* grades. Reusing those letters for
    a core-level tier will be confusing at the bench; tiers want their own names.
 5. **What exactly is "the same unit"** under `REPAIR_RETURN`? Cross-core reuse is barred
@@ -329,8 +346,9 @@ for this loop.
    rebuilds, and it is worth shipping and using before starting §7.
 7. **`REPAIR_RETURN` gate** — quote from the proposed scope, customer approval before
    work, decline path (§10.6), serial continuity through the rebuild.
-8. **Resolve §4.1**, then build the corresponding routing support (categorical edges, or
-   the repair-code table + per-WO route assembly) and migrate off the stopgap.
+8. **Routing support for composed scope** — the repair-code table + per-WO operation-
+   subset assembly — and migrate off the §5 stopgap. (No longer gated on resolving
+   §4.1; that is decided.)
 9. **Staging reuse-vs-new** (shared with the bought-parts-staging item).
 10. **Fallout forecast** into the RCCP material lane.
 
