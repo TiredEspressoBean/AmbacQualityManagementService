@@ -40,6 +40,17 @@
 > accident rather than by audit — the 345 completed items remain unchecked,
 > and this is the direction that matters, since a false ✅ can reach a
 > customer's SSP.
+>
+> Worth being fair about how it happened: the FIPS line was **true when
+> written**, under a planned Azure deployment. It did not rot — a decision
+> reversal invalidated it downstream, and nothing walked the file afterwards
+> to find what the decision had been holding up.
+>
+> Sweeping the other completions for the same shape found only two more, both
+> minor and now noted (TLS and the mail server, each inherited from the
+> deployment). The model to copy is the password-hashing line, which was
+> written as *"FIPS-approved **when using** FIPS-validated OpenSSL"* — it
+> states the condition, so it stays true whatever the host turns out to be.
 
 
 **Last Updated:** February 18, 2026
@@ -473,7 +484,7 @@ of February; see the currency note above.
 
 - ✅ **Completed:** NotificationTask model with scheduling support
 - ✅ **Completed:** NotificationPreferenceViewSet (backend API)
-- ✅ **Completed:** Email notification infrastructure (Celery + SMTP)
+- ✅ **Completed:** Email notification plumbing (Celery tasks and SMTP client) — the mail server itself is the deployment's
 - ✅ **Completed:** Customer notification preference UI (frontend)
 - 🟡 **Nice to Have:** HubSpot gate progress notifications (automatic emails on deal stage changes)
 - 🟡 **Nice to Have:** Production milestone notifications (automatic emails on order status changes)
@@ -581,7 +592,10 @@ of February; see the currency note above.
 ### Security Features
 
 - ✅ **Completed:** Token authentication (Django REST Framework)
-- ✅ **Completed:** HTTPS/TLS encrypted transport (production)
+- ✅ **Completed:** HTTPS/TLS encrypted transport (production) — terminated
+  by the reverse proxy (`conf/Caddyfile`) self-hosted, or by the platform when
+  hosted. Inherited from the deployment rather than provided by the
+  application, so state which one when citing it
 - ✅ **Completed:** Secure cookies (HTTP-only, secure flags)
 - ✅ **Completed:** CORS configuration (whitelisted origins)
 - ✅ **Completed:** SQL injection protection (ORM-based queries)
