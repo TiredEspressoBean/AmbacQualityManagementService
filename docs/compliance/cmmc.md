@@ -97,7 +97,7 @@ does not satisfy. A control matrix is only useful if the gaps are in it.
 | AU.L2-3.3.5 | Audit correlation | ⚠️ | Both layers timestamp in UTC and record the actor, which makes correlation possible by hand. No tooling correlates them |
 | AU.L2-3.3.6 | Reduction and report generation | ✅ | The audit log is filterable by actor, content type, object and action, with search and ordering; export is permission-gated on `export_auditlog` |
 | AU.L2-3.3.7 | Authoritative timestamps | ✅ | Server-side, `TIME_ZONE = 'UTC'` with `USE_TZ`. Clock synchronisation itself is the host's responsibility, not the application's |
-| AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers block UPDATE/DELETE on seven audit tables, superusers included (`setup_audit_triggers`, run by `setup_database`); pgAudit independently logs write/DDL/role statements |
+| AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers block UPDATE/DELETE on seven audit tables, superusers included (`setup_audit_triggers`, run by `setup_database` from the app container, so present on every deployment). pgAudit adds statement-level logging on the self-hosted Compose stack only — a managed Postgres does not have it |
 | AU.L2-3.3.9 | Audit access restriction | ✅ | `view_auditlog` / `view_logentry` for reading, `export_auditlog` for extraction; the log viewset is read-only and tenant-scoped |
 
 !!! warning "3.3.4 is the one to fix before an assessment"
@@ -127,11 +127,17 @@ only if the IdP is in scope and configured.
 | IA.L2-3.5.10 | Cryptographically protected passwords | ✅ | Django's password hashers; passwords are never stored or transmitted in clear |
 | IA.L2-3.5.11 | Obscure authentication feedback | ✅ | Django's default — failures do not reveal whether the account exists |
 
-!!! warning "Sessions last two weeks and survive browser close"
-    `SESSION_COOKIE_AGE` is 14 days with `SESSION_EXPIRE_AT_BROWSER_CLOSE`
-    off. That is convenient on a personal machine and a real exposure on a
+!!! warning "Check the session lifetime for your deployment"
+    The shipped default is `SESSION_COOKIE_AGE` of 14 days with
+    `SESSION_EXPIRE_AT_BROWSER_CLOSE` off. It is a plain constant in
+    `settings.py` rather than an environment variable, so a deployment that
+    has not changed it is running the default.
+
+    Two weeks is convenient on a personal machine and a real exposure on a
     shared shop-floor tablet, where the next operator inherits the session —
-    and every record they create is attributed to whoever logged in.
+    and in a quality system every record they create is attributed to
+    whoever logged in, which makes it an attribution problem as much as an
+    access one.
 
     For a CUI environment, shorten it, and treat shared devices as an
     explicit decision rather than an accident.

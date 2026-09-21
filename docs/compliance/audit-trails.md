@@ -67,16 +67,27 @@ superusers** — covering:
 The command runs as step 4 of `setup_database`, which containers run on
 start, so a normal deployment has them without anyone remembering to.
 
-**pgAudit records the attempt.** PostgreSQL is preloaded with pgAudit
-(`shared_preload_libraries`) logging `write, ddl, role` statements with
-relation names. It is deliberately not `all` — the classes chosen are the
-accountability set.
+**pgAudit records the attempt — on the self-hosted stack.** The Docker
+Compose deployment builds PostgreSQL from `Dockerfile.postgres`, which
+installs pgAudit, and preloads it with `pgaudit.log = "write, ddl, role"`.
+Deliberately not `all`: those three classes are the accountability set.
 
-!!! info "Why both"
-    The triggers stop the modification; pgAudit means that even an action
-    taken to *remove* a trigger is itself a DDL statement, and therefore
-    logged. Prevention and detection by separate mechanisms is what makes the
-    control defensible rather than merely present.
+!!! warning "pgAudit is not part of every deployment"
+    It comes from the custom Postgres image. A deployment using a managed or
+    templated Postgres — the Railway `pgvector` service, for instance — does
+    **not** have pgAudit, and does not run `init-db.sql` either, so the
+    RLS-subject application role is absent there too.
+
+    The triggers are unaffected: they are installed by a Django management
+    command from the application container, so they travel with every
+    deployment. Confirm which layers you actually have before describing them
+    to an assessor.
+
+!!! info "Why both, where both exist"
+    The triggers stop the modification; pgAudit means an action taken to
+    *remove* a trigger is itself DDL, and therefore logged. Prevention and
+    detection by separate mechanisms is what makes the control defensible
+    rather than merely present — but only the first half is guaranteed.
 
 !!! warning "Verify the triggers on any database not built by the standard deployment"
     A database restored from a dump, or created outside the container
