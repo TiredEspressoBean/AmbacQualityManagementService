@@ -29,21 +29,30 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 | Access Control (AC) | 22 | 15 | 7 |
 | Awareness & Training (AT) | 3 | 0 | 3 |
 | Audit & Accountability (AU) | 9 | 6 | 3 |
-| Configuration Management (CM) | 9 | 6 | 3 |
+| Configuration Management (CM) | 9 | 3 | 6 |
 | Identification & Authentication (IA) | 11 | 4 | 7 |
-| Incident Response (IR) | 3 | 1 | 2 |
+| Incident Response (IR) | 3 | 0 | 3 |
 | Maintenance (MA) | 6 | 0 | 6 |
-| Media Protection (MP) | 9 | 5 | 4 |
-| Personnel Security (PS) | 2 | 1 | 1 |
+| Media Protection (MP) | 9 | 3 | 6 |
+| Personnel Security (PS) | 2 | 0 | 2 |
 | Physical Protection (PE) | 6 | 0 | 6 |
 | Risk Assessment (RA) | 3 | 0 | 3 |
-| Security Assessment (CA) | 4 | 1 | 3 |
-| System & Comms Protection (SC) | 16 | 4 | 12 |
-| System & Info Integrity (SI) | 7 | 1 | 6 |
+| Security Assessment (CA) | 4 | 0 | 4 |
+| System & Comms Protection (SC) | 16 | 3 | 13 |
+| System & Info Integrity (SI) | 7 | 0 | 7 |
 
-**Application-level coverage: 100%** (48/48 applicable practices implemented)
+!!! warning "These counts are not an assessment result"
+    An earlier revision claimed **100% (48/48)** on the reasoning that
+    "previously partial controls are now counted as implemented". Counting
+    partial as complete is how a matrix stops being useful — and it is not
+    true here: AU.L2-3.3.4 is a real gap, and seven of the eleven IA
+    practices are unmet or delegated to the identity provider.
 
-> **Note**: Previously "partial" controls are now counted as implemented. The application provides data and controls; organizational processes (compliance reviews, user lifecycle management, SIEM integration) are customer responsibilities.
+    The per-domain tables below say what was verified against the code and
+    what was not. Where a practice is delegated to the IdP, the hosting
+    platform, or an organizational process, that is stated rather than
+    counted as satisfied. Treat the numbers above as a map of where to look,
+    not as evidence.
 
 ## What CMMC Level 2 Requires
 
@@ -148,29 +157,71 @@ only if the IdP is in scope and configured.
 
 ### Configuration Management (CM)
 
-| Practice | Capability | Evidence |
-|----------|------------|----------|
-| CM.L2-3.4.1 | Baseline configurations | Version control, SPCBaseline freezing |
-| CM.L2-3.4.3 | Change tracking/approval | ApprovalRequest workflow |
-| CM.L2-3.4.5 | Access restrictions | TenantScopedMixin, RLS |
-| CM.L2-3.4.6 | Least functionality | Explicit permission requirements |
+Four of nine practices have an application component. The rest — host
+baseline inventory, software allow-listing, user-installed software — are
+platform and organizational controls.
+
+| Practice | Capability | Status | Evidence |
+|----------|------------|--------|----------|
+| CM.L2-3.4.1 | Baseline configurations | ✅ | Versioned records via `create_new_version()`; `SPCBaseline` freezes a control-chart baseline |
+| CM.L2-3.4.3 | Change tracking and approval | ✅ | `ApprovalRequest` plus change control; every revision carries a required `change_justification` |
+| CM.L2-3.4.5 | Access restrictions on change | ✅ | Row-level security (see SC below) and per-action permissions |
+| CM.L2-3.4.6 | Least functionality | ⚠️ | Permissions gate features per role, but this practice concerns the *host* — disabled services and ports — which the application cannot speak to |
 
 ### Media Protection (MP)
 
-| Practice | Capability | Evidence |
-|----------|------------|----------|
-| MP.L2-3.8.2 | CUI access limitation | Document access control |
-| MP.L2-3.8.3 | Media sanitization | Soft delete with audit |
-| MP.L2-3.8.4 | CUI marking | ClassificationLevel enum |
-| MP.L2-3.8.5 | Media access control | Classification-based permissions |
+Media protection is mostly physical. Four of nine practices have an
+application component.
+
+| Practice | Capability | Status | Evidence |
+|----------|------------|--------|----------|
+| MP.L2-3.8.2 | Limit access to CUI | ✅ | Classification filtering in `SecureManager.for_user()` |
+| MP.L2-3.8.3 | Sanitize media before disposal | ❌ | **Previously mis-mapped.** This was credited to "soft delete with audit", but soft delete *retains* the record — the opposite of sanitization, and deliberately so for traceability. Disposal of the underlying storage is the hosting platform's control |
+| MP.L2-3.8.4 | Mark media with CUI markings | ✅ | Five `ClassificationLevel` values carried on documents and shown in the UI |
+| MP.L2-3.8.5 | Control access to media | ✅ | Classification-based permissions (`view_confidential_documents`, `view_restricted_documents`) |
 
 ### System & Communications Protection (SC)
 
-| Practice | Capability | Evidence |
-|----------|------------|----------|
-| SC.L2-3.13.2 | Security architecture | Multi-tenant RLS (97 tables) |
-| SC.L2-3.13.4 | Unauthorized transfer prevention | Tenant isolation enforcement |
-| SC.L2-3.13.15 | Communication authenticity | CSRF, CORS protection |
+Sixteen practices, most of them network and boundary controls. Five have an
+application or deployment component.
+
+| Practice | Capability | Status | Evidence |
+|----------|------------|--------|----------|
+| SC.L2-3.13.2 | Security architecture | ✅ | Row-level security over **129 listed tenant-scoped tables** (`setup_rls`, run by `setup_database`), using `FORCE ROW LEVEL SECURITY` so the policy binds the table owner too, not only unprivileged roles |
+| SC.L2-3.13.4 | Prevent unauthorized transfer | ✅ | Tenant isolation via `SecureManager` and the RLS policies above |
+| SC.L2-3.13.8 | Transmission confidentiality | ⚠️ | TLS is terminated by the reverse proxy (`conf/Caddyfile`) on the self-hosted stack, or by the platform when hosted. The application does not terminate TLS itself |
+| SC.L2-3.13.15 | Communication authenticity | ✅ | CSRF protection with an explicit trusted-origin list; CORS allow-list rather than wildcard |
+| SC.L2-3.13.16 | Protect CUI at rest | ❌ | Not at the application layer. `encrypted_model_fields` protects exactly one field (a stored integration `api_key`); everything else relies on storage-level encryption from the host or volume |
+
+### Domains with no application component
+
+Four domains are wholly organizational or physical. The application cannot
+satisfy them, and a zero here reflects scope rather than a gap in the
+software:
+
+| Domain | Practices | Why |
+|--------|-----------|-----|
+| **Awareness & Training (AT)** | 3 | Security awareness and role-based training are programmes, not features. The training module tracks *manufacturing* competence, not security awareness — do not offer it as evidence for AT |
+| **Maintenance (MA)** | 6 | Physical and remote maintenance of the equipment the system runs on |
+| **Physical Protection (PE)** | 6 | Facility access, visitor escort, physical media handling |
+| **Risk Assessment (RA)** | 3 | Risk assessment and vulnerability scanning of the environment |
+
+### Domains where the application contributes only evidence
+
+These have an application component, but it is evidence for a process rather
+than the control itself. Claiming them as implemented overstates it.
+
+| Practice | Application provides | Organization must provide |
+|----------|---------------------|---------------------------|
+| **IR.L2-3.6.1–3** | CAPA gives a structured investigation and corrective-action record, with root-cause analysis and effectiveness verification | Incident *classification*, reporting timelines, and the judgement that something is a security incident rather than a quality one |
+| **PS.L2-3.9.1–2** | `is_active`, bulk deactivation, and an audit trail of permission changes | Screening before access, and the offboarding process that triggers deactivation |
+| **CA.L2-3.12.1–4** | `PermissionChangeLog` and the audit trail as evidence for review | The security assessment, the SSP, and the POA&M themselves |
+| **SI.L2-3.14.1–7** | Structured error handling; scoped rate limiting on abuse-prone unauthenticated endpoints | Flaw remediation, malicious-code protection, and monitoring — none of which live in the application |
+
+!!! note "CAPA is not an incident response plan"
+    CAPA is a genuinely good fit for tracking a security incident once one has
+    been declared, and it is worth using that way. But IR asks for detection,
+    classification and reporting, and the application does none of those.
 
 ## Shared Responsibility Model
 
