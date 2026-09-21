@@ -169,9 +169,13 @@ export function CoresEditorPage() {
         setSelected(new Map());
     }
 
+    // Selection survives pagination, so "the page" and "the selection" are not
+    // the same set: the header box reports and toggles only what is on screen.
+    const selectedOnPage = pageItems.filter((p) => selected.has(p.id)).length;
+    const pageFullySelected = pageItems.length > 0 && selectedOnPage === pageItems.length;
+
     return (
-        <>
-            <ModelEditorPage
+        <ModelEditorPage
                 title="Cores"
                 modelName="Cores"
                 showDetailsLink={true}
@@ -179,7 +183,21 @@ export function CoresEditorPage() {
                 generateDetailLink={(core) => `/reman/cores/${core.id}`}
                 columns={[
                     col({
-                        header: "",
+                        header: "Select",
+                        headerCell: (
+                            <Checkbox
+                                checked={pageFullySelected}
+                                disabled={pageItems.length === 0}
+                                onCheckedChange={() =>
+                                    pageFullySelected ? deselectPage() : selectAllOnPage()
+                                }
+                                aria-label={
+                                    pageFullySelected
+                                        ? "Deselect all cores on this page"
+                                        : `Select all ${pageItems.length} cores on this page`
+                                }
+                            />
+                        ),
                         priority: 1,
                         renderCell: (core) => {
                             const id = String(core.id);
@@ -301,15 +319,13 @@ export function CoresEditorPage() {
                 renderActions={(core) => <CoreActionsCell core={core} />}
                 onCreate={() => navigate({ to: "/reman/cores/receive" })}
                 onDataChange={handleDataChange}
-            />
-            <CoresBulkActionsBar
-                selected={Array.from(selected.values())}
-                pageItems={pageItems}
-                onSelectAllOnPage={selectAllOnPage}
-                onDeselectPage={deselectPage}
-                onClear={clearSelection}
-            />
-        </>
+                headerContent={
+                    <CoresBulkActionsBar
+                        selected={Array.from(selected.values())}
+                        onClear={clearSelection}
+                    />
+            }
+        />
     );
 }
 

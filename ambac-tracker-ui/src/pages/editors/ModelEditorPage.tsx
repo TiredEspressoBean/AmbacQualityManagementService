@@ -176,6 +176,12 @@ export function createColumnHelper<T>() {
 /** Column definition with priority-based responsive visibility */
 export interface ColumnDef<T> {
     header: string;
+    /**
+     * Rendered in place of `header` in the column's <th>. For headers that are
+     * a control rather than a label — a select-all checkbox, say. `header` is
+     * still required, and stays the accessible name.
+     */
+    headerCell?: React.ReactNode;
     renderCell: (item: T) => React.ReactNode;
     /**
      * Priority for responsive column visibility (lower = more important).
@@ -625,7 +631,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                         <TableRow>
                             {columns.map((col, i) => (
                                 <TableHead key={i} className={getPriorityClass(col.priority)}>
-                                    {col.header}
+                                    {col.headerCell ?? col.header}
                                 </TableHead>
                             ))}
                             {showDetailsLink && (

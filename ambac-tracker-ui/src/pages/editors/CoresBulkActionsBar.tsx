@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -25,7 +24,7 @@ import {
     TooltipTrigger,
     TooltipProvider,
 } from "@/components/ui/tooltip";
-import { Wrench, Trash2, X, CheckSquare, Square } from "lucide-react";
+import { Wrench, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useStartTeardownBatch } from "@/hooks/useStartTeardownBatch";
@@ -43,35 +42,15 @@ export type SelectedCore = {
 
 type CoresBulkActionsBarProps = {
     selected: SelectedCore[];
-    /**
-     * Rows currently visible on the page. Used to drive "Select all on page"
-     * and the corresponding deselect action.
-     */
-    pageItems: SelectedCore[];
-    onSelectAllOnPage: () => void;
-    onDeselectPage: () => void;
     onClear: () => void;
 };
 
-export function CoresBulkActionsBar({
-    selected,
-    pageItems,
-    onSelectAllOnPage,
-    onDeselectPage,
-    onClear,
-}: CoresBulkActionsBarProps) {
+export function CoresBulkActionsBar({ selected, onClear }: CoresBulkActionsBarProps) {
     const navigate = useNavigate();
     const [teardownOpen, setTeardownOpen] = useState(false);
     const [scrapOpen, setScrapOpen] = useState(false);
     const [scrapReason, setScrapReason] = useState("");
     const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
-
-    const selectedIds = useMemo(() => new Set(selected.map((c) => c.id)), [selected]);
-    const selectedOnPage = useMemo(
-        () => pageItems.filter((p) => selectedIds.has(p.id)).length,
-        [pageItems, selectedIds],
-    );
-    const pageFullySelected = pageItems.length > 0 && selectedOnPage === pageItems.length;
 
     const allReceived = useMemo(
         () => selected.length > 0 && selected.every((c) => c.status === "RECEIVED"),
@@ -188,86 +167,64 @@ export function CoresBulkActionsBar({
         onClear();
     }
 
-    // Hide entirely when there's nothing on the page AND nothing selected —
-    // empty list with no pending action.
-    if (selected.length === 0 && pageItems.length === 0) return null;
+    // Nothing selected, nothing to act on. The bar sits in the page flow rather
+    // than floating over the table, so an empty one would just be a gap — and a
+    // floating one covered the last rows and the pager, which is the list's own
+    // information.
+    if (selected.length === 0) return null;
 
     return (
         <TooltipProvider>
-            <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
-                <Card className="border-primary shadow-lg">
-                    <CardContent className="flex items-center gap-2 p-3">
-                        <div className="mr-2 border-r pr-2 text-sm font-medium">
-                            {selected.length} selected
-                        </div>
-                        {pageItems.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground text-sm">
+                    {selected.length} core{selected.length === 1 ? "" : "s"} selected
+                </span>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span>
                             <Button
                                 size="sm"
-                                variant="ghost"
-                                onClick={pageFullySelected ? onDeselectPage : onSelectAllOnPage}
+                                variant="outline"
+                                disabled={!canTeardown || teardownMutation.isPending}
+                                onClick={() => setTeardownOpen(true)}
                             >
-                                {pageFullySelected ? (
-                                    <>
-                                        <Square className="mr-1 h-4 w-4" />
-                                        Deselect page
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckSquare className="mr-1 h-4 w-4" />
-                                        Select all on page ({pageItems.length})
-                                    </>
-                                )}
+                                <Wrench />
+                                Start teardown batch
                             </Button>
-                        )}
-                        {selected.length > 0 && (
-                            <>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <span>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={!canTeardown || teardownMutation.isPending}
-                                                onClick={() => setTeardownOpen(true)}
-                                            >
-                                                <Wrench className="mr-1 h-4 w-4" />
-                                                Start Teardown Batch
-                                            </Button>
-                                        </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        {canTeardown
-                                            ? `Create one WO for ${selected.length} cores`
-                                            : !allReceived
-                                              ? "All selected cores must be RECEIVED"
-                                              : "All selected cores must share the same core type"}
-                                    </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <span>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={!canScrap || scrapMutation.isPending}
-                                                onClick={() => setScrapOpen(true)}
-                                            >
-                                                <Trash2 className="mr-1 h-4 w-4" />
-                                                Bulk Scrap
-                                            </Button>
-                                        </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        {canScrap ? "Scrap all selected RECEIVED cores" : "All selected cores must be RECEIVED"}
-                                    </TooltipContent>
-                                </Tooltip>
-                                <Button size="icon" variant="ghost" onClick={onClear} aria-label="Clear selection">
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        {canTeardown
+                            ? `Create one WO for ${selected.length} cores`
+                            : !allReceived
+                              ? "All selected cores must be RECEIVED"
+                              : "All selected cores must share the same core type"}
+                    </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={!canScrap || scrapMutation.isPending}
+                                onClick={() => setScrapOpen(true)}
+                            >
+                                <Trash2 />
+                                Bulk scrap
+                            </Button>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        {canScrap
+                            ? "Scrap all selected RECEIVED cores"
+                            : "All selected cores must be RECEIVED"}
+                    </TooltipContent>
+                </Tooltip>
+                <Button size="sm" variant="ghost" onClick={onClear}>
+                    <X />
+                    Clear
+                </Button>
             </div>
 
             <Dialog open={teardownOpen} onOpenChange={setTeardownOpen}>
