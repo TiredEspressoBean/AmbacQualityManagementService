@@ -2,13 +2,27 @@
 
 DoD cybersecurity certification requirements for defense contractors.
 
+!!! info "Who this page is for"
+    **uqmes is not the assessed party.** CMMC certifies *defense
+    contractors*. If you handle CUI under a DoD contract, you are assessed —
+    and uqmes is one system inside the boundary you are assessed on.
+
+    So this page is not a compliance claim. It answers two questions for a
+    customer building their System Security Plan:
+
+    1. Which practices can you point at uqmes for, and with what evidence?
+    2. Which must you satisfy yourself, because no application can do it?
+
+    A control marked *not provided* below is usually not a shortcoming in the
+    software — it is a control that lives in your facility, your identity
+    provider, or your hosting platform. The exceptions are called out as
+    such.
+
 ## Overview
 
-| Framework | Version | Target Level | Readiness |
-|-----------|---------|--------------|-----------|
-| CMMC | 2.0 | Level 2 | **100%** |
-
-CMMC is the Department of Defense's framework for assessing and certifying contractor cybersecurity practices. It became mandatory for DoD contracts starting in 2025.
+CMMC is the Department of Defense's framework for assessing and certifying
+contractor cybersecurity practices. It became mandatory for DoD contracts
+starting in 2025.
 
 ## CMMC Levels
 
@@ -18,7 +32,8 @@ CMMC is the Department of Defense's framework for assessing and certifying contr
 | **Level 2** | Advanced | 110 practices (NIST 800-171) | Third-party assessment (C3PAO) |
 | **Level 3** | Expert | 110+ practices (NIST 800-172) | Government-led assessment |
 
-This application targets **CMMC Level 2** compliance for defense contractors handling CUI.
+This page maps uqmes against **CMMC Level 2**, the tier that applies to
+contractors handling CUI.
 
 ## Level 2 Domain Summary
 
@@ -41,18 +56,26 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 | System & Comms Protection (SC) | 16 | 3 | 13 |
 | System & Info Integrity (SI) | 7 | 0 | 7 |
 
-!!! warning "These counts are not an assessment result"
-    An earlier revision claimed **100% (48/48)** on the reasoning that
-    "previously partial controls are now counted as implemented". Counting
-    partial as complete is how a matrix stops being useful — and it is not
-    true here: AU.L2-3.3.4 is a real gap, and seven of the eleven IA
-    practices are unmet or delegated to the identity provider.
+The **Implemented** column counts practices where uqmes is the mechanism —
+where you can point an assessor at the software. It is not a readiness score,
+and a low number is not a criticism of the product: most of CMMC is about
+facilities, people and networks.
 
-    The per-domain tables below say what was verified against the code and
-    what was not. Where a practice is delegated to the IdP, the hosting
-    platform, or an organizational process, that is stated rather than
-    counted as satisfied. Treat the numbers above as a map of where to look,
-    not as evidence.
+!!! warning "Don't read these as satisfied controls"
+    An earlier revision showed **100% (48/48)**, on the reasoning that
+    partial controls were now counted as implemented. That inflates exactly
+    the number a customer would most want to trust.
+
+    Each domain below uses three markers:
+
+    | | Meaning |
+    |---|---------|
+    | ✅ **Provides** | uqmes is the mechanism; cite it directly |
+    | ⚠️ **Supports** | uqmes supplies part of it — evidence, or a setting you must configure. Say what you did, not just that the feature exists |
+    | ➖ **Not the application's layer** | Satisfy this in your facility, IdP, host or process |
+
+    Where a practice is a genuine shortcoming in the software rather than a
+    scope boundary, it says **gap** in the row. There is one: AU.L2-3.3.4.
 
 ## What CMMC Level 2 Requires
 
@@ -102,7 +125,7 @@ does not satisfy. A control matrix is only useful if the gaps are in it.
 | AU.L2-3.3.1 | Audit record creation | ✅ | django-auditlog on all models; pgAudit at the database |
 | AU.L2-3.3.2 | User attribution | ✅ | Actor, timestamp and IP on every record |
 | AU.L2-3.3.3 | Review and update logged events | ⚠️ | Procedural. The event set is fixed in code; nothing in the application prompts or records a periodic review of *what* is logged |
-| AU.L2-3.3.4 | Alert on audit logging failure | ❌ | **Gap.** Audit-write failures are caught and logged as a warning so the request survives — the deliberate choice is availability over alerting. Nothing notifies anyone |
+| AU.L2-3.3.4 | Alert on audit logging failure | ❌ | **Gap — a real one, in the software.** Audit-write failures are caught and logged as a warning so the request survives: availability over alerting. Nothing notifies anyone, so uqmes can be losing audit records while appearing healthy. Raise this with us rather than writing around it |
 | AU.L2-3.3.5 | Audit correlation | ⚠️ | Both layers timestamp in UTC and record the actor, which makes correlation possible by hand. No tooling correlates them |
 | AU.L2-3.3.6 | Reduction and report generation | ✅ | The audit log is filterable by actor, content type, object and action, with search and ordering; export is permission-gated on `export_auditlog` |
 | AU.L2-3.3.7 | Authoritative timestamps | ✅ | Server-side, `TIME_ZONE = 'UTC'` with `USE_TZ`. Clock synchronisation itself is the host's responsibility, not the application's |
@@ -126,12 +149,12 @@ only if the IdP is in scope and configured.
 |----------|------------|--------|----------|
 | IA.L2-3.5.1 | Identify users and devices | ✅ | Unique account per person; no shared logins by design |
 | IA.L2-3.5.2 | Authenticate before access | ✅ | Session or SSO; every endpoint requires an authenticated user |
-| IA.L2-3.5.3 | Multifactor authentication | ⚠️ | **Not in the application.** MFA is inherited from Microsoft Entra when SSO is enabled. A password-only deployment does not satisfy this |
+| IA.L2-3.5.3 | Multifactor authentication | ➖ | Yours via the IdP. Enable SSO and enforce MFA in Microsoft Entra; cite the IdP, not uqmes. **A password-only deployment cannot evidence this at all** |
 | IA.L2-3.5.4 | Replay-resistant authentication | ⚠️ | Satisfied via the IdP's OIDC flow when SSO is used; local password login is session-cookie based |
-| IA.L2-3.5.5 | Prevent identifier reuse | ❌ | Not enforced. Accounts are deactivated rather than deleted, which preserves history but does not prevent an address being reused |
+| IA.L2-3.5.5 | Prevent identifier reuse | ➖ | Yours, as an account-administration practice. uqmes deactivates rather than deletes, which preserves history but does not itself block reuse of an address |
 | IA.L2-3.5.6 | Disable identifiers after inactivity | ⚠️ | `is_active` and bulk activate/deactivate exist; nothing disables an account automatically on inactivity |
 | IA.L2-3.5.7 | Password complexity | ⚠️ | Django validators: similarity to user attributes, minimum length, common-password list, all-numeric rejection. No character-class rule |
-| IA.L2-3.5.8 | Prohibit password reuse | ❌ | No password history is kept |
+| IA.L2-3.5.8 | Prohibit password reuse | ➖ | Yours via the IdP. uqmes keeps no password history, so a local-password deployment cannot evidence this |
 | IA.L2-3.5.9 | Temporary password on first use | ⚠️ | Invitations carry a signup link rather than a temporary password, so the practice does not map cleanly; there is no forced first-login change |
 | IA.L2-3.5.10 | Cryptographically protected passwords | ✅ | Django's password hashers; passwords are never stored or transmitted in clear |
 | IA.L2-3.5.11 | Obscure authentication feedback | ✅ | Django's default — failures do not reveal whether the account exists |
@@ -166,7 +189,7 @@ platform and organizational controls.
 | CM.L2-3.4.1 | Baseline configurations | ✅ | Versioned records via `create_new_version()`; `SPCBaseline` freezes a control-chart baseline |
 | CM.L2-3.4.3 | Change tracking and approval | ✅ | `ApprovalRequest` plus change control; every revision carries a required `change_justification` |
 | CM.L2-3.4.5 | Access restrictions on change | ✅ | Row-level security (see SC below) and per-action permissions |
-| CM.L2-3.4.6 | Least functionality | ⚠️ | Permissions gate features per role, but this practice concerns the *host* — disabled services and ports — which the application cannot speak to |
+| CM.L2-3.4.6 | Least functionality | ➖ | Yours, at the host — disabled services and ports. Role permissions narrow what users can do but are not what this practice asks about |
 
 ### Media Protection (MP)
 
@@ -176,7 +199,7 @@ application component.
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
 | MP.L2-3.8.2 | Limit access to CUI | ✅ | Classification filtering in `SecureManager.for_user()` |
-| MP.L2-3.8.3 | Sanitize media before disposal | ❌ | **Previously mis-mapped.** This was credited to "soft delete with audit", but soft delete *retains* the record — the opposite of sanitization, and deliberately so for traceability. Disposal of the underlying storage is the hosting platform's control |
+| MP.L2-3.8.3 | Sanitize media before disposal | ➖ | Yours. **Do not cite soft delete for this** — an earlier revision did, and it is backwards: soft delete *retains* the record, deliberately, so traceability survives. Sanitization applies to the storage when you dispose of it |
 | MP.L2-3.8.4 | Mark media with CUI markings | ✅ | Five `ClassificationLevel` values carried on documents and shown in the UI |
 | MP.L2-3.8.5 | Control access to media | ✅ | Classification-based permissions (`view_confidential_documents`, `view_restricted_documents`) |
 
@@ -189,9 +212,9 @@ application or deployment component.
 |----------|------------|--------|----------|
 | SC.L2-3.13.2 | Security architecture | ✅ | Row-level security over **129 listed tenant-scoped tables** (`setup_rls`, run by `setup_database`), using `FORCE ROW LEVEL SECURITY` so the policy binds the table owner too, not only unprivileged roles |
 | SC.L2-3.13.4 | Prevent unauthorized transfer | ✅ | Tenant isolation via `SecureManager` and the RLS policies above |
-| SC.L2-3.13.8 | Transmission confidentiality | ⚠️ | TLS is terminated by the reverse proxy (`conf/Caddyfile`) on the self-hosted stack, or by the platform when hosted. The application does not terminate TLS itself |
+| SC.L2-3.13.8 | Transmission confidentiality | ⚠️ | TLS terminates at the reverse proxy (`conf/Caddyfile`) self-hosted, or at the platform when hosted. Cite your TLS configuration; uqmes does not terminate TLS itself |
 | SC.L2-3.13.15 | Communication authenticity | ✅ | CSRF protection with an explicit trusted-origin list; CORS allow-list rather than wildcard |
-| SC.L2-3.13.16 | Protect CUI at rest | ❌ | Not at the application layer. `encrypted_model_fields` protects exactly one field (a stored integration `api_key`); everything else relies on storage-level encryption from the host or volume |
+| SC.L2-3.13.16 | Protect CUI at rest | ➖ | Yours, via storage-level encryption on the host or volume. uqmes encrypts one field only (a stored integration `api_key`), so do not cite application-layer encryption for CUI |
 
 ### Domains with no application component
 
