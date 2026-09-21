@@ -4,11 +4,17 @@
 > *In Progress* items were checked against the code; the 345 *Completed*, 90
 > *Nice to Have* and 36 *Yacht* items were not.
 >
-> **Eleven items were open and are in fact shipped** — marked below as
-> `SHIPPED (audit 2026-09-21)` with where the code lives. Two whole modules
-> the roadmap lists as missing exist: supplier management and change control.
-> An open item that is already built is the expensive kind of stale, because
-> it invites building it twice.
+> **Twelve items were open and are in fact shipped**, and **five more are
+> materially further along than their marker suggests** — all marked below
+> with where the code lives. Two whole modules the roadmap lists as missing
+> exist: supplier management and change control. An open item that is already
+> built is the expensive kind of stale, because it invites building it twice.
+>
+> Of 37 actionable *Needed* items, 8 were done and 5 partial — so **a third
+> were misstated**, all in the same direction. Where a partial item exists at
+> a different gate than the one described (annotation enforcement, notably),
+> the note says so, because the question there is whether a second gate is
+> wanted at all.
 >
 > **Not covered at all:** CP-SAT scheduling and the whole APS surface, Digital
 > Work Instructions and substeps, outside processing, and the approvals
@@ -17,9 +23,15 @@
 > unbuilt. `APS_ROADMAP.md` covers scheduling; `DIGITAL_WORK_INSTRUCTIONS_
 > DESIGN.md` covers DWI.
 >
-> The remaining *Needed* items were checked and are genuinely open: AS9102 /
-> FAI forms, PPAP packaging, the C of C and 8D report packages, the upload
-> hardening in §16, and the 3D-annotation advancement gate.
+> The remaining *Needed* items were checked twice and are genuinely open:
+> the six AS9102 / FAI items, the four report packages (`coc.py`,
+> `eight_d.py`, `fai.py`, `ppap.py` — none of the 22 adapters in
+> `Tracker/reports/adapters/`), MIME and file-size validation in §16,
+> `Steps.setup_duration`, WIP visualisation, commercial LLM endpoint
+> configuration, and multi-file upload for the AI assistant.
+>
+> One should be struck rather than tracked: **"Public document replication to
+> Azure"**. Azure was abandoned on cost.
 
 
 **Last Updated:** February 18, 2026
@@ -219,7 +231,7 @@ of February; see the currency note above.
     - AnnotatorPage filters quality reports to show only those needing annotation
     - Frontend-backend data flow for annotation creation/retrieval
     - Auto-link annotations to quality reports (user selects reports upfront, all annotations link automatically)
-- 🔴 **Needed:** Block part advancement until required annotations complete (backend enforcement)
+- 🔶 **Partial (audit 2026-09-21):** Backend enforcement exists, at a different gate: `QuarantineDisposition.save()` refuses to close while `has_pending_annotations()` is true. Nothing blocks **advancement** itself — worth deciding whether the disposition gate is in fact the right place before building a second one
 - 🔴 **Needed:** UI indicator for pending annotations (badge/alert on parts, work orders, quality reports needing annotation)
 - 🟡 **Nice to Have:** Timestamp-based or configuration-driven annotation requirements
 - 🟡 **Nice to Have:** Pattern recognition AI - detect recurring defect locations and suggest root causes
@@ -609,7 +621,7 @@ of February; see the currency note above.
 
 - 🔴 **Needed:** Audit-ready exports (ISO 9001, AS9100D)
 - 🔴 **Needed:** Sampling compliance reports
-- 🔴 **Needed:** Training compliance by role
+- 🔶 **Partial (audit 2026-09-21):** The per-employee Training Record report ships (`reports/adapters/training_record.py`, ISO 9001 7.2 evidence). A by-role compliance rollup does not exist
 
 ---
 
@@ -863,9 +875,9 @@ of February; see the currency note above.
 
 - ✅ **SHIPPED (audit 2026-09-21):** Change request model and workflow — `ProcessChangeRequest` (`models/change_control.py`), UI at `/quality/change-control`
 - ✅ **SHIPPED (audit 2026-09-21):** Change order with approval — `ProcessChangeOrder`, plus `ProcessChangeNotice`, on the shared `ApprovalRequest` machinery
-- 🔴 **Needed:** Impact analysis (affected parts, orders, documents)
-- 🔴 **Needed:** Effectivity tracking (by date, serial number, or lot)
-- 🔴 **Needed:** Link changes to document revisions
+- ✅ **SHIPPED (audit 2026-09-21):** Impact analysis — `services/change_control/impact_analysis.py`, snapshotted onto `affected_workorders_snapshot` at PCR submission and used to drive the PCO migration UI. Scope is in-flight **work orders**, not parts/orders/documents as worded here
+- 🔶 **Partial (audit 2026-09-21):** Date effectivity is built — `effective_date` on `BaseChangeOrder`. Serial-number and lot effectivity are not
+- 🔶 **Partial (audit 2026-09-21):** The architecture is in place — `BaseChangeOrder` implements "process version flip, document version flip" and names DCO as the sibling of PCO — but only the `Process*` concrete classes exist. The document-side order is unbuilt
 - 🟡 **Nice to Have:** Customer notification for changes requiring approval
 
 ### Counterfeit Prevention (Aerospace)
@@ -1095,7 +1107,7 @@ of February; see the currency note above.
 
 - 🔴 **Needed:** File upload MIME validation - currently only checks extension; add python-magic
 - 🔴 **Needed:** File size limits in serializers - add explicit max file size validation
-- 🔴 **Needed:** Webhook payload validation - add schema validation for HubSpot webhooks
+- 🔶 **Partial (audit 2026-09-21):** Authenticity is handled — `verify_webhook` in the adapter framework defaults to DENY and HubSpot implements it. Payload *schema* validation is still missing
 
 ### API Security
 
