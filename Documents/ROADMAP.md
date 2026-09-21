@@ -1,14 +1,25 @@
 # Ambac Quality Management System - Full Development Roadmap
 
-> **Currency (2026-09-21): stale — last updated February 2026, not audited
-> since.** Seven months of development sit between that date and this note,
-> including the whole of CP-SAT scheduling, DWI, change control and the
-> approvals rework. The line below claiming "a complete view of all features"
-> is no longer true.
+> **Audited 2026-09-21.** Last authored February 2026. The 38 *Needed* and 35
+> *In Progress* items were checked against the code; the 345 *Completed*, 90
+> *Nice to Have* and 36 *Yacht* items were not.
 >
-> The completed sections are still a reasonable record of what was built up to
-> February. Do not read the gaps as a to-do list — several have since shipped,
-> and nothing here has been checked against the code.
+> **Eleven items were open and are in fact shipped** — marked below as
+> `SHIPPED (audit 2026-09-21)` with where the code lives. Two whole modules
+> the roadmap lists as missing exist: supplier management and change control.
+> An open item that is already built is the expensive kind of stale, because
+> it invites building it twice.
+>
+> **Not covered at all:** CP-SAT scheduling and the whole APS surface, Digital
+> Work Instructions and substeps, outside processing, and the approvals
+> rework. Roughly seven months of subsystems postdate this document and have
+> no entry here, so absence from this file is not evidence a thing is
+> unbuilt. `APS_ROADMAP.md` covers scheduling; `DIGITAL_WORK_INSTRUCTIONS_
+> DESIGN.md` covers DWI.
+>
+> The remaining *Needed* items were checked and are genuinely open: AS9102 /
+> FAI forms, PPAP packaging, the C of C and 8D report packages, the upload
+> hardening in §16, and the 3D-annotation advancement gate.
 
 
 **Last Updated:** February 18, 2026
@@ -142,7 +153,7 @@ of February; see the currency note above.
 - ✅ **Completed:** Equipment-specific error tracking
 - ✅ **Completed:** CalibrationRecord model with calibration_date, next_due_date, result, certificate storage
 - ✅ **Completed:** Calibration records editor page (CalibrationRecordsPage, CalibrationDashboardPage)
-- 🔶 **Needs Logic:** Calibration due date alerting (Celery beat task)
+- 🔶 **Partial (audit 2026-09-21):** `services/qms/gauge_nag.py` implements the point-of-use nag ("gauges you used are due within 7 days"), but no scheduled beat task invokes it — unlike training, which has one
 - 🟡 **Nice to Have:** Out-of-calibration equipment lockout (prevent use in quality reports)
 - 🟡 **Nice to Have:** External calibration vendor tracking
 - 🟡 **Nice to Have:** Measurement uncertainty tracking
@@ -744,7 +755,7 @@ of February; see the currency note above.
 
 - ✅ **Completed:** TrainingType, TrainingRecord, TrainingRequirement models with full CRUD ViewSets
 - ✅ **Completed:** Training records editor pages (TrainingRecordsPage, TrainingTypesPage, TrainingDashboardPage)
-- 🔶 **Needs Logic:** Training/certification due date alerting (Celery beat task)
+- ✅ **SHIPPED (audit 2026-09-21):** `notify_expiring_training()` in `tasks.py`, with *Training expiring soon* and *Training expired* in the seeded notification rules
 - 🟡 **Nice to Have:** Training effectiveness verification
 - 🟡 **Nice to Have:** On-the-job training (OJT) documentation
 - 🟡 **Nice to Have:** Integration with part/step restrictions (only trained users can perform operations)
@@ -808,10 +819,10 @@ of February; see the currency note above.
 
 ### Supplier Management
 
-- 🔴 **Needed:** Supplier registry with contact information
-- 🔴 **Needed:** Supplier qualification and approval workflow
-- 🔴 **Needed:** Incoming inspection workflow
-- 🔴 **Needed:** Approved supplier lists per part type/material
+- ✅ **SHIPPED (audit 2026-09-21):** Supplier registry with contact information — `Companies` typed as supplier, with `supplier_standing.py` and `supplier_scorecard.py` services
+- ✅ **SHIPPED (audit 2026-09-21):** Supplier qualification and approval workflow — `SupplierQualification` (`models/qms.py`), `services/qms/supplier_qualification.py`, UI at `/production/supplier-qualifications`
+- ✅ **SHIPPED (audit 2026-09-21):** Incoming inspection workflow — `services/qms/incoming_inspection.py` and `receiving_inspection.py`, with receiving plans and a queue at `/production/incoming`
+- ✅ **SHIPPED (audit 2026-09-21):** Approved supplier lists per part type — surfaced as **Approved Suppliers**; part types carry *Requires supplier qualification*
 - 🟡 **Nice to Have:** Supplier performance metrics (on-time delivery, quality metrics)
 - 🟡 **Nice to Have:** Supplier corrective action requests (SCAR)
 - 🟡 **Nice to Have:** Supplier portal for order visibility and document exchange
@@ -830,9 +841,9 @@ of February; see the currency note above.
 - ✅ **Models Complete:** MaterialLot model with lot_number, supplier, material_type, received_date, quantity, status, expiration_date, CoC fields
 - ✅ **Models Complete:** MaterialUsage model links lots to parts with qty_consumed, is_substitute, substitution_reason
 - ✅ **API Complete:** MaterialLotViewSet with split action, MaterialUsageViewSet (read-only)
-- 🔶 **Needs UI:** MaterialLot editor page, MaterialUsage viewer
+- ✅ **SHIPPED (audit 2026-09-21):** Material lot UI at `/production/material-lots`
 - 🔶 **Needs UI:** Forward/backward trace visualization
-- 🔶 **Needs Logic:** Material receipt with incoming inspection integration
+- ✅ **SHIPPED (audit 2026-09-21):** Receipt feeds incoming inspection — see `services/qms/receiving_inspection.py` and the receiving-plan editor
 - 🟡 **Nice to Have:** Recall simulation wizard (impact analysis, quarantine, notifications)
 - 🟡 **Nice to Have:** Barcode scan for material issue to part
 
@@ -850,8 +861,8 @@ of February; see the currency note above.
 
 **Required for:** IATF 16949, AS9100D
 
-- 🔴 **Needed:** Engineering Change Request (ECR) model and workflow
-- 🔴 **Needed:** Engineering Change Order (ECO) model with approval workflow
+- ✅ **SHIPPED (audit 2026-09-21):** Change request model and workflow — `ProcessChangeRequest` (`models/change_control.py`), UI at `/quality/change-control`
+- ✅ **SHIPPED (audit 2026-09-21):** Change order with approval — `ProcessChangeOrder`, plus `ProcessChangeNotice`, on the shared `ApprovalRequest` machinery
 - 🔴 **Needed:** Impact analysis (affected parts, orders, documents)
 - 🔴 **Needed:** Effectivity tracking (by date, serial number, or lot)
 - 🔴 **Needed:** Link changes to document revisions
@@ -917,7 +928,7 @@ of February; see the currency note above.
 
 **UI Work Needed for MES Standard:**
 - 🔶 **Editor Pages (7):** WorkCenter, Shift, ScheduleSlot, DowntimeEvent, MaterialLot, TimeEntry, BOM
-- 🔶 **Complex UI:** Visual schedule board with drag-drop (not just CRUD)
+- ✅ **SHIPPED (audit 2026-09-21):** Visual schedule board — the Gantt at `/production/schedule`, with drag-to-move backed by `services/scheduling/manual_move.py`
 - 🔶 **Dashboard:** OEE calculation display (data exists, needs aggregation + UI)
 - 🔶 **Reports (8):** Production summary, work order status, overdue WOs, operator productivity, OEE by equipment, labor efficiency, lot traceability, equipment utilization
 - 🔶 **Enhancements:** WIP aging display, lead time tracking, due date "at risk" warnings, Big screen API wiring
@@ -925,7 +936,7 @@ of February; see the currency note above.
 ### Missing Additive Fields (MES Standard)
 - ✅ **Completed:** WorkOrder.priority (integer field with WorkOrderPriority choices)
 - ✅ **Completed:** Equipments.status (EquipmentStatus choices: in_service, out_of_service, in_calibration, in_maintenance, retired)
-- 🔴 **Needed:** Steps.work_center (FK to WorkCenter)
+- ✅ **SHIPPED (audit 2026-09-21):** `work_center` FK — present on five models across `mes_lite.py` / `mes_standard.py`, consumed by `services/mes/work_centers.py`, staging, RCCP and the scheduler
 - 🔴 **Needed:** Steps.setup_duration (DurationField for setup vs run time)
 
 ### Needed for MES-Lite Offering
@@ -1132,7 +1143,7 @@ of February; see the currency note above.
 
 ## Summary Statistics
 
-### ✅ Completed Features: ~280 items
+### ✅ Completed Features: ~280 items (as counted in February 2026)
 
 Major categories:
 
@@ -1144,7 +1155,7 @@ Major categories:
 - **PDF generation infrastructure** - Typst adapter registry, Celery, email delivery, DMS integration
 - AI digital coworker with 5 core tools
 - Document management with AI embeddings and classification-based security
-- Permission-based RBAC with 7 user groups
+- Permission-based RBAC with 12 role presets (audit 2026-09-21: `GROUP_PRESETS`; the "7 groups" below predates shift_lead, engineering, purchasing, auditor and system_admin)
 - DocChunk security inheritance from Documents
 - Classification-based filtering (public, internal, confidential, restricted, secret)
 - Audit trail and compliance foundation
@@ -1155,12 +1166,16 @@ Major categories:
 1. **Training & Competency Management** (See Section 12)
    - ✅ Models complete: TrainingType, TrainingRecord, TrainingRequirement
    - ✅ UI complete: TrainingRecordsPage, TrainingTypesPage, TrainingDashboardPage
-   - 🔶 Needs: Due date alerting (Celery beat task)
+   - ✅ **Alerting shipped (audit 2026-09-21):** `notify_expiring_training()`,
+     with *Training expiring soon* / *Training expired* seeded as notification
+     rules
 
 2. **Calibration Tracking** (See Section 2)
    - ✅ Model complete: CalibrationRecord
    - ✅ UI complete: CalibrationRecordsPage, CalibrationDashboardPage
-   - 🔶 Needs: Due date alerting (Celery beat task)
+   - 🔶 **Partial (audit 2026-09-21):** `services/qms/gauge_nag.py` implements
+     the point-of-use nag, but nothing schedules it — this is the one ISO 9001
+     alerting gap that is still real
 
 ### 🔶 In Progress
 
