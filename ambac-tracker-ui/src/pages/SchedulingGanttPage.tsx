@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeftRight, ChevronRight, Combine, HelpCircle, Inbox, Pin, PinOff, Plus, RotateCw, Search, Settings, Split, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, ChevronRight, Combine, HelpCircle, Inbox, Pin, PinOff, Plus, RotateCw, Search, Settings, Split, Undo2, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
 import {
   GanttProvider,
   GanttSidebar,
@@ -41,6 +41,8 @@ import {
   useDispatchSchedule,
   usePinTask,
   useMoveTask,
+  useUndoScheduleEdit,
+  useScheduleViolations,
   useMoveBatch,
   usePinBatch,
   useBatchMembership,
@@ -294,6 +296,16 @@ export function SchedulingGanttPage() {
   const dispatch = useDispatchSchedule();
   const pin = usePinTask();
   const move = useMoveTask();
+  const undoEdit = useUndoScheduleEdit();
+  // Overlaps a manual move created. Rippling follows the ROUTE and leaves machine
+  // contention to CP-SAT, so the board has to show what that left behind — otherwise a
+  // planner double-books a machine invisibly and the next solve silently undoes a
+  // decision they thought they'd made.
+  const violations = useScheduleViolations();
+  const overlappingIds = useMemo(
+    () => new Set(violations.data?.task_ids ?? []),
+    [violations.data],
+  );
   const moveBatch = useMoveBatch();
   const pinBatch = usePinBatch();
   const batchMembership = useBatchMembership();
@@ -530,9 +542,13 @@ export function SchedulingGanttPage() {
     onSelect: handleSelect,
     cardClassName: selectedIds.has(f.id)
       ? "ring-2 ring-inset ring-sky-500 ring-offset-1"
-      : f.is_late
-        ? "ring-2 ring-inset ring-red-500 text-red-600 dark:text-red-400"
-        : undefined,
+      // Double-booked before late: an overlap is something the planner just did and can
+      // still take back, where lateness is an outcome of the whole plan.
+      : overlappingIds.has(f.id)
+        ? "ring-2 ring-inset ring-amber-500 ring-offset-1"
+        : f.is_late
+          ? "ring-2 ring-inset ring-red-500 text-red-600 dark:text-red-400"
+          : undefined,
   });
 
   // Collapsed-lane bars: a merged WO batch drags as a whole (re-anchor all its
@@ -929,11 +945,22 @@ export function SchedulingGanttPage() {
     // mutateAsync + rethrow: the bar rolls itself back when this rejects. Swallowing
     // the error left it parked at a time the server had refused.
     try {
-      await move.mutateAsync({ id, start_time: start.toISOString() });
+      const res = await move.mutateAsync({ id, start_time: start.toISOString() });
       // One toast per drag: the reassign mutation reports the resource change
       // (including its eligibility warning), so the move only speaks when it's
       // the whole story.
-      if (!reassigned) toast.success("Task moved & pinned");
+      //
+      // The rippled count matters more than the move itself. A drag can now shift a
+      // dozen downstream operations, and a planner who isn't told that has to spot it
+      // by eye — or worse, doesn't, and believes they moved one bar.
+      const rippled = res?.rippled_count ?? 0;
+      if (!reassigned) {
+        toast.success(
+          rippled > 0
+            ? `Task moved & pinned — ${rippled} downstream operation${rippled === 1 ? "" : "s"} shifted`
+            : "Task moved & pinned",
+        );
+      }
     } catch (e: any) {
       const why = e?.response?.data?.detail ?? "the new time wasn't allowed";
       // Say the outcome is PARTIAL. The resource change stuck and is visible on the
@@ -1262,6 +1289,21 @@ export function SchedulingGanttPage() {
               onClick={() => setSettingsOpen(true)}
             >
               <Settings className="h-4 w-4" />
+            </Button>
+          )}
+          {/* Undo sits with the edit actions, not the solve actions: it reverses what a
+              planner did by hand, not what the solver decided. Shown whenever they can
+              touch the board — a cascade with no way back is the thing that makes
+              direct manipulation frightening. */}
+          {canTouch && (
+            <Button
+              variant="outline"
+              onClick={() => undoEdit.mutate()}
+              disabled={undoEdit.isPending}
+              title="Undo the last manual move, including everything it pushed"
+            >
+              <Undo2 className="mr-1 h-4 w-4" />
+              Undo
             </Button>
           )}
           {canSolve && (

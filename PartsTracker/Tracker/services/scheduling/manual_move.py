@@ -97,10 +97,90 @@ def _unit_sibling_tasks(task):
     return {t.step_id: t for t in qs.select_related('step')}
 
 
-def _validate_move(task, new_start: datetime, schedule) -> datetime:
-    """Run the three cheap local checks (horizon, release, route precedence against
-    this unit's already-scheduled neighbours) for a proposed move of `task` to
-    `new_start`. Returns the resulting end time. Raises `MoveRejected(reason)`."""
+def _route_successors(wo):
+    """`step_id -> [successor step_ids]` along the unit's nominal route."""
+    from collections import defaultdict
+    nodes, edges = _process_graph(wo.process_id)
+    _, prec = resolve_route(None, nodes, edges)
+    succ = defaultdict(list)
+    for f, t in prec:
+        succ[f].append(t)
+    return succ
+
+
+def ripple_forward(task, schedule) -> list:
+    """Push this unit's UNPINNED downstream operations so precedence still holds
+    after `task` moved later. Returns the tasks that moved (unsaved).
+
+    This is what makes a forward move possible at all. The local guard used to REFUSE
+    a move that would finish after a successor starts, which is every forward move on
+    a job with downstream work already scheduled — i.e. the planner's most ordinary
+    action was the one the board said no to. Shoving a step right and having the rest
+    follow is the expected behaviour of every APS Gantt.
+
+    The rule it establishes: **a pin is the only thing that stops a ripple.** That
+    matches what a pin already means everywhere else here — a planner decided this, and
+    the solver pays to break it. A pinned successor therefore rejects the move and says
+    which one, so the planner can unpin it deliberately rather than being told "no".
+
+    Scope is deliberately the ROUTE, not the resource. A rippled task can land on top of
+    another job on the same machine; that is a global resource problem and CP-SAT owns
+    it. Re-implementing no-overlap here would duplicate the solver badly and drift from
+    it — the same reasoning the module header gives for not validating everything
+    locally. The overlap is surfaced instead (see `violations.py`) so the planner can
+    see what they made, and the next solve resolves it.
+
+    Rippled tasks are NOT pinned: they moved as a consequence, not as a decision.
+    Pinning them would freeze a knock-on effect and stop the solver improving it.
+    """
+    unit = task.part or task.core
+    wo = getattr(unit, 'work_order', None) if unit else None
+    if not (wo and wo.process_id and task.step_id):
+        return []
+
+    succ = _route_successors(wo)
+    siblings = _unit_sibling_tasks(task)
+
+    moved, seen, queue = [], {task.step_id}, [task]
+    while queue:
+        cur = queue.pop(0)
+        for sid in succ.get(cur.step_id, ()):
+            if sid in seen:
+                continue            # cycle guard; a well-formed route is acyclic
+            nb = siblings.get(sid)
+            if nb is None or nb.start_time is None or nb.end_time is None:
+                continue
+            if nb.start_time >= cur.end_time:
+                continue            # already clear of its predecessor
+            if nb.is_pinned:
+                raise MoveRejected(
+                    f"'{nb.step.name}' is pinned at "
+                    f"{timezone.localtime(nb.start_time):%b %d %H:%M} and would have to "
+                    f"move. Unpin it, or move it first."
+                )
+            duration = nb.end_time - nb.start_time
+            nb.start_time = cur.end_time
+            nb.end_time = nb.start_time + duration
+            if nb.end_time > schedule.horizon_end:
+                raise MoveRejected(
+                    f"That would push '{nb.step.name}' past the schedule horizon."
+                )
+            seen.add(sid)
+            moved.append(nb)
+            queue.append(nb)
+    return moved
+
+
+def _validate_move(task, new_start: datetime, schedule, *, check_successors=True) -> datetime:
+    """Run the cheap local checks (horizon, release, route precedence against this
+    unit's already-scheduled neighbours) for a proposed move of `task` to `new_start`.
+    Returns the resulting end time. Raises `MoveRejected(reason)`.
+
+    `check_successors=False` when the caller is going to RIPPLE them instead — see
+    `ripple_forward`. The predecessor check always stands: nothing may start before the
+    operation it depends on has finished, and no amount of rippling downstream changes
+    that.
+    """
     duration = task.end_time - task.start_time
     new_end = new_start + duration
 
@@ -133,31 +213,48 @@ def _validate_move(task, new_start: datetime, schedule) -> datetime:
                     f"That would start before its predecessor step "
                     f"'{nb.step.name}' finishes."
                 )
-        for sid in succs:
-            nb = siblings.get(sid)
-            if nb and nb.start_time and new_end > nb.start_time:
-                raise MoveRejected(
-                    f"That would finish after its successor step "
-                    f"'{nb.step.name}' starts."
-                )
+        if check_successors:
+            for sid in succs:
+                nb = siblings.get(sid)
+                if nb and nb.start_time and new_end > nb.start_time:
+                    raise MoveRejected(
+                        f"That would finish after its successor step "
+                        f"'{nb.step.name}' starts."
+                    )
     return new_end
 
 
-def move_task(task, new_start: datetime):
-    """Validate a drag-drop of `task` to `new_start`; on success pin it there,
-    mark the schedule stale, and return the saved task. The task keeps its
-    processing duration (a move shifts it, it does not resize). Raises
-    `MoveRejected(reason)` on a local-constraint violation."""
+def move_task(task, new_start: datetime, *, ripple: bool = True, user=None):
+    """Validate a drag-drop of `task` to `new_start`; on success pin it there, push any
+    unpinned downstream operations that would now overlap it, mark the schedule stale,
+    and return `(task, rippled_tasks)`. The task keeps its processing duration (a move
+    shifts it, it does not resize). Raises `MoveRejected(reason)`.
+
+    `ripple=False` restores the older behaviour — refuse rather than move successors —
+    for a caller that wants the move judged in isolation.
+    """
+    from .edits import record_edit
+
     schedule = task.schedule
-    new_end = _validate_move(task, new_start, schedule)
-    # Passed the local checks — pin at the new time; the next Solve judges the rest.
+    new_end = _validate_move(task, new_start, schedule, check_successors=not ripple)
+
     task.start_time = new_start
     task.end_time = new_end
-    task.is_pinned = True
-    task.save(update_fields=['start_time', 'end_time', 'is_pinned'])
-    schedule.is_stale = True
-    schedule.save(update_fields=['is_stale'])
-    return task
+    rippled = ripple_forward(task, schedule) if ripple else []
+
+    with transaction.atomic():
+        # Snapshot BEFORE writing. The in-memory objects are already mutated, but their
+        # rows are not, so a fresh read is the prior state. One undo then restores the
+        # whole cascade — without it a drag that moved a dozen bars is irreversible by
+        # hand, which is the property rippling takes away.
+        record_edit(schedule, [task, *rippled], user=user, kind='move')
+        task.is_pinned = True
+        task.save(update_fields=['start_time', 'end_time', 'is_pinned'])
+        for nb in rippled:
+            nb.save(update_fields=['start_time', 'end_time'])
+        schedule.is_stale = True
+        schedule.save(update_fields=['is_stale'])
+    return task, rippled
 
 
 def move_batch(tasks, new_start: datetime):

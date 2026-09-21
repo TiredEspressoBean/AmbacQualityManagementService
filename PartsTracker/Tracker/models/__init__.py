@@ -224,6 +224,7 @@ from .scheduling import (
     Fixture,
     OptimizationConfig,
     ScheduleResult,
+    ScheduleEdit,
     ScheduledTask,
     ContinuousMachine,
 )

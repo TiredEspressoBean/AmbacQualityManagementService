@@ -73,10 +73,13 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         # action, so the PATCH gate is enforced inside the action body.
         'plan_work_order': ['add_workorder'],
         'explode_work_order': ['add_workorder'],
+        # Undo writes task positions, so it is the same authority as making the edit
+        # it reverses. `violations` is a read and needs no action gate.
+        'undo': ['change_scheduledtask'],
     }
     crud_exempt_actions = {
         'run_dispatch', 'commit', 'discard', 'config', 'plan_work_order',
-        'explode_work_order',
+        'explode_work_order', 'undo', 'violations',
     }
 
     def _get_config(self):
@@ -248,6 +251,52 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         task = run_solve_task.delay(str(self.tenant.id), self._time_limit(), draft=True)
         mark_started(self._get_config(), task.id, 'draft')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=['post'])
+    def undo(self, request):
+        """Reverse the most recent manual edit to the active schedule.
+
+        Direct manipulation used to be self-reversing — drag a bar back and it was where
+        it started. Rippling ends that: one drag can move a dozen downstream operations,
+        and nobody restores twelve positions by hand. So the cascade and its undo ship
+        together. The schedule stays stale afterwards: reversing a manual edit does not
+        re-derive the plan any more than making one did.
+        """
+        from Tracker.services.scheduling.edits import NothingToUndo, undo_last
+
+        sched = self.get_queryset().filter(is_active=True).order_by('-created_at').first()
+        if sched is None:
+            return Response({'detail': 'No active schedule.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        try:
+            result = undo_last(sched, user=request.user)
+        except NothingToUndo as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        return Response(result)
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=['get'])
+    def violations(self, request):
+        """Machine double-bookings in the active schedule.
+
+        A manual move ripples along the ROUTE and deliberately leaves resource contention
+        to CP-SAT — re-implementing no-overlap locally would duplicate the solver and
+        drift from it. That division obliges us to show the overlap: a planner who pushed
+        a job right and silently double-booked a machine has made a mess they cannot
+        otherwise see until the next solve quietly undoes something they thought they had
+        decided.
+        """
+        from Tracker.services.scheduling.violations import find_machine_overlaps
+
+        sched = self.get_queryset().filter(is_active=True).order_by('-created_at').first()
+        if sched is None:
+            return Response({'overlaps': [], 'task_ids': []})
+        overlaps = find_machine_overlaps(sched)
+        ids = sorted({i for v in overlaps for i in v['tasks']})
+        return Response({'overlaps': overlaps, 'task_ids': ids})
 
     @extend_schema(
         request=None,
@@ -648,22 +697,47 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         request=MoveRequestSerializer,
-        responses={200: ScheduledTaskSerializer, 422: OpenApiTypes.OBJECT},
+        # The task, plus what moved with it. Declared rather than left as the bare
+        # serializer: the response really does carry extra fields now, and the generated
+        # zod client rejects a response the schema doesn't describe — a browser-only
+        # failure invisible to tsc and to the backend tests.
+        # Just the outcome. It used to echo the whole task, but nothing reads that —
+        # the client refetches the schedule on settle — and spreading a serializer plus
+        # extra keys makes a contract nobody can state accurately.
+        responses={200: inline_serializer(name='MoveResult', fields={
+            'id': serializers.CharField(),
+            'rippled_count': serializers.IntegerField(),
+            'rippled_task_ids': serializers.ListField(child=serializers.CharField()),
+        }), 422: OpenApiTypes.OBJECT},
     )
     @action(detail=True, methods=['post'])
     def move(self, request, pk=None):
         """Drag-to-reschedule (Layer 1). Validates the drop against the cheap local
-        constraints (horizon, release, route precedence); on success pins the task at
-        the new time and marks the schedule stale so the next Solve reflows the rest.
+        constraints (horizon, release, predecessor precedence); on success pins the task
+        at the new time, PUSHES any unpinned downstream operations that would now
+        overlap it, and marks the schedule stale so the next Solve reflows the rest.
+
+        Rippling is what makes a forward move possible at all: the successor check used
+        to refuse any move that finished after a successor started, which is every
+        forward move on a job with downstream work scheduled. A pinned successor still
+        refuses, naming itself, because a pin is a planner's decision.
+
         Returns 422 with a reason when the drop violates a local constraint."""
         task = self.get_object()
         body = MoveRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         try:
-            move_task(task, body.validated_data['start_time'])
+            task, rippled = move_task(
+                task, body.validated_data['start_time'], user=request.user)
         except MoveRejected as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
-        return Response(ScheduledTaskSerializer(task).data)
+        return Response({
+            'id': str(task.id),
+            # How much moved with it, so the UI can say so rather than leaving the
+            # planner to notice a dozen bars shifted.
+            'rippled_count': len(rippled),
+            'rippled_task_ids': [str(t.id) for t in rippled],
+        })
 
     @extend_schema(
         request=MoveBatchRequestSerializer,

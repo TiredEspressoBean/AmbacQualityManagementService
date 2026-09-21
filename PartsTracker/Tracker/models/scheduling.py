@@ -684,3 +684,49 @@ class ContinuousMachine(SecureModel):
 
     def __str__(self):
         return f"{self.equipment} ({self.parts_per_hour}/hr)"
+
+
+class ScheduleEdit(SecureModel):
+    """One planner edit to a schedule, with enough prior state to undo it.
+
+    Direct manipulation used to be self-reversing: a drag moved one bar, and dragging it
+    back put it where it was. Rippling ends that — one drag can move a dozen downstream
+    operations, and nobody can reconstruct twelve positions by hand. An edit that cannot
+    be undone is an edit a planner is right to be afraid of, so the cascade and its undo
+    arrive together.
+
+    Deliberately a small event table rather than fields on `ScheduledTask`: the thing
+    being recorded is the EDIT (one action, N tasks), and per-task "previous_start"
+    columns could not express that grouping — undoing would restore one bar and leave
+    the other eleven where the cascade put them.
+
+    `payload` is `[{task, start_time, end_time, is_pinned}]` as it was BEFORE the edit.
+    JSON rather than a child table because it is an opaque restore blob: nothing queries
+    inside it, and `ScheduledTask` rows are replaced wholesale by each solve, so a real
+    FK would either block solves or cascade the history away.
+    """
+
+    schedule = models.ForeignKey(
+        ScheduleResult, on_delete=models.CASCADE, related_name='edits')
+    kind = models.CharField(
+        max_length=32,
+        help_text="What the planner did — move, batch-move, reassign. Shown in the "
+                  "undo affordance so it reads as 'Undo move' rather than 'Undo'.")
+    payload = models.JSONField(default=list)
+    created_by = models.ForeignKey(
+        'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='schedule_edits')
+    undone_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Set when this edit is reversed. An undone edit stays on the record "
+                  "rather than being deleted — what someone tried is part of the "
+                  "history — and cannot be undone a second time.")
+
+    class Meta:
+        verbose_name = 'Schedule Edit'
+        verbose_name_plural = 'Schedule Edits'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['tenant', 'schedule', '-created_at'])]
+
+    def __str__(self):
+        return f"{self.kind} on {self.schedule_id} ({len(self.payload or [])} tasks)"

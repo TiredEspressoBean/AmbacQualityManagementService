@@ -1203,13 +1203,57 @@ export function usePinTask() {
 
 /** Drag-to-reschedule: pin a task at a new start (server keeps its duration).
  * The server 422s with a `detail` reason if the drop breaks a local constraint. */
+/** Undo the most recent manual edit to the active schedule.
+ *
+ *  A drag now ripples: one move can shift a dozen downstream operations, and nobody
+ *  restores twelve bar positions by hand. Undo is what makes a cascade safe to try. */
+export function useUndoScheduleEdit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.api_Schedules_undo_create(undefined as never) as Promise<{
+      kind: string; task_count: number;
+    }>,
+    onSuccess: (r) => {
+      invalidateSchedule(qc);
+      toast.success(`Undid ${r.kind} — ${r.task_count} task${r.task_count === 1 ? "" : "s"} restored`);
+    },
+    onError: (e: unknown) => {
+      const detail = (e as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail;
+      toast.error(detail ?? "Nothing to undo");
+    },
+    meta: { suppressGlobalError: true },
+  });
+}
+
+export type ScheduleOverlap = {
+  machine: string; machine_name: string;
+  tasks: [string, string]; step_names: [string, string];
+  overlap_start: string; overlap_end: string;
+  pinned: [boolean, boolean];
+};
+
+/** Machine double-bookings in the active schedule.
+ *
+ *  A ripple follows the ROUTE and leaves resource contention to CP-SAT, which is the
+ *  right division but means a manual move can silently double-book a machine. This is
+ *  how that becomes visible before the next solve quietly undoes a decision. */
+export function useScheduleViolations() {
+  return useQuery({
+    queryKey: ["planning", "schedule-violations"] as const,
+    queryFn: () => api.api_Schedules_violations_retrieve() as Promise<{
+      overlaps: ScheduleOverlap[]; task_ids: string[];
+    }>,
+  });
+}
+
 export function useMoveTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, start_time }: { id: string; start_time: string }) =>
       api.api_ScheduledTasks_move_create({ start_time }, {
         params: { id },
-      }),
+      }) as Promise<{ id: string; rippled_count: number; rippled_task_ids: string[] }>,
     // Refetch on both outcomes so a SUCCESSFUL move settles to the server's truth.
     // A rejected one is not undone here: the refetched data is deeply equal, and
     // React Query's structural sharing then returns the same object reference, so
