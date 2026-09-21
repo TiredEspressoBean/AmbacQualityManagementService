@@ -67,9 +67,15 @@ Document control is critical for quality certifications (ISO, AS9100, etc.).
 | State | Meaning |
 |-------|---------|
 | **Draft** | Being created, not yet submitted |
-| **Pending Approval** | Submitted, awaiting signatures |
-| **Released** | Approved and active |
+| **Under Review** | Submitted, approvers responding |
+| **Approved** | Approvals complete — decided, but not yet in force |
+| **Released** | In force; the revision people must work to |
 | **Obsolete** | Superseded, kept for history |
+
+!!! warning "Approved is not Released"
+    A document can be approved and still not be the one the floor works to.
+    Release is the separate act that puts it into force — which is what lets
+    you approve a revision ahead of the training or tooling it depends on.
 
 ---
 

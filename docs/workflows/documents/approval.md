@@ -235,13 +235,16 @@ If documents have expiration dates:
 
 ## Approval Notifications
 
-| Event | Recipients |
-|-------|------------|
-| Submitted for approval | Approvers |
-| Approval reminder | Pending approvers |
-| Approved by you | Other approvers |
-| Fully approved | Document owner |
-| Rejected | Document owner |
+Notifications are **rule-driven and configurable** — who gets told what is
+decided by this tenant's notification rules, not by the event itself. Any rule
+can be edited, disabled or deleted, so treat routing as something to check
+rather than something to rely on. See [Notification
+Rules](../../admin/setup/notification-rules.md).
+
+No document-approval routing is seeded by default. An approver who needs to
+be told will see the request in their **Inbox** and on the Documents dashboard
+regardless — see [Approvals](../approvals/overview.md) — but no message is
+sent unless a rule exists.
 
 ## Permissions
 

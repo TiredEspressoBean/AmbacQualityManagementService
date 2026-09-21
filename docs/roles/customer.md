@@ -77,18 +77,25 @@ Click an order to see:
 
 | Status | Meaning |
 |--------|---------|
-| **In Progress** | Work is underway |
-| **Complete** | All parts finished |
-| **On Hold** | Temporarily paused |
-| **Shipped** | Order has shipped |
+| **RFI** | Request for information; not yet a live order |
+| **Pending** | Accepted, not yet started |
+| **In progress** | Work is underway |
+| **On hold** | Temporarily paused |
+| **Completed** | All parts finished |
+| **Cancelled** | Order will not be fulfilled |
 
 ### Part Status
 
 | Status | Meaning |
 |--------|---------|
-| **In Process** | Part moving through production |
-| **Complete** | Part finished |
-| **Quality Hold** | Under quality review |
+| **In Progress** | Moving through production |
+| **Awaiting QA** | Waiting on an inspection |
+| **Completed** | Finished |
+| **Quarantined** | Held pending a quality decision |
+| **Shipped** | Dispatched |
+
+Parts carry more statuses than these — rework, scrap, outside processing and
+core states among them. These are the ones you will most often see.
 
 ## Accessing Documents
 
@@ -196,9 +203,9 @@ Contact your supplier's:
 
 ### Portal Access Issues
 
-Contact your supplier's:
-- IT support
-- Account manager
+Contact your usual contact at the supplier. Portal access, what you can see,
+and who your login belongs to are all configured on their side — there is no
+separate portal support line.
 
 ### Technical Problems
 

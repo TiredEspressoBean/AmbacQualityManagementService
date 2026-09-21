@@ -458,7 +458,7 @@ Monthly SPC summary for leadership:
 | [Dashboard Overview](dashboard.md) | Analysis Dashboard | `/analysis` |
 | [Defect Analysis](defects.md) | Defect Analysis | `/quality/defects` |
 | [CAPA Overview](../workflows/capa/overview.md) | CAPA List | `/quality/capas` |
-| [Dispositions](../workflows/quality/dispositions.md) | Dispositions | `/dispositions` |
+| [Dispositions](../workflows/quality/dispositions.md) | Dispositions | `/production/dispositions` |
 | [Quality Reports](../workflows/quality/quality-reports.md) | Quality Reports | `/editor/qualityReports` |
 | [Heat Maps](../3d-models/heatmap-viz.md) | Heat Map Viewer | `/heatmap` |
 | [Calibrations](../admin/setup/equipment.md) | Calibration Dashboard | `/quality/calibrations` |

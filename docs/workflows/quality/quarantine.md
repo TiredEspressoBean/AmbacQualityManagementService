@@ -168,12 +168,20 @@ This is common for:
 
 ## Quarantine Notifications
 
-| Event | Recipients |
-|-------|------------|
-| Part quarantined | Quality team |
-| Multiple parts quarantined (same issue) | QA Manager |
-| Quarantine aging > threshold | Supervisor |
-| Critical severity quarantine | Management |
+Notifications are **rule-driven and configurable** — who gets told what is
+decided by this tenant's notification rules, not by the event itself. Any rule
+can be edited, disabled or deleted, so treat routing as something to check
+rather than something to rely on. See [Notification
+Rules](../../admin/setup/notification-rules.md).
+
+No quarantine-specific routing is seeded by default. The related rule that
+does ship sends **NCRs to the QA Manager**, so a quarantine raised through a
+quality report is usually covered while one raised directly is not.
+
+!!! warning "Do not rely on a notification to hand work over"
+    Quarantined parts hold their lot. If a disposition needs deciding, check
+    the work order's exceptions or the Dispositions list rather than assuming
+    someone was paged.
 
 ## Quarantine Dashboard
 

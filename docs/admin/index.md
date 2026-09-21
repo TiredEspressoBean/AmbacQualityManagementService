@@ -165,7 +165,7 @@ For new implementations:
 
 - Review specific guides in this section
 - Check [FAQ](../troubleshooting/faq.md) for common questions
-- Contact support for implementation assistance
+- Ask whoever else administers this deployment — there is no vendor support line, see [Getting Help](../troubleshooting/help.md)
 
 ## Next Steps
 

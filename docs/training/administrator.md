@@ -701,12 +701,19 @@ By the end of this module, you will:
 
 ### 9.3 When to Escalate
 
-**Contact support for:**
+There is no vendor support line to escalate to — as the administrator, you
+are the escalation point for this deployment.
 
-- Platform issues
-- Integration failures
-- Performance problems
-- Security concerns
+What that means in practice:
+
+- **Platform, performance, and integration failures** land with whoever
+  maintains the deployment. Capture the error text, the time, and what was
+  running; these are rarely reproducible from a description alone.
+- **Security concerns** go to whoever owns the infrastructure, immediately,
+  and should be written down rather than investigated by reproducing them.
+- **Questions about intended behaviour** are usually faster to settle in these
+  docs than by debugging — a large share of "broken" reports are permissions
+  or assignment.
 
 ---
 

@@ -49,11 +49,18 @@ Released (previous) → Obsolete
 
 | Status | Meaning |
 |--------|---------|
-| **Draft** | Work in progress |
-| **Pending Approval** | Submitted for review |
-| **Approved/Released** | Official, usable |
-| **Obsolete** | Superseded, not for use |
-| **Archived** | Retained for records |
+| **Draft** | Work in progress, not yet submitted |
+| **Under Review** | Submitted; approvers are responding |
+| **Approved** | Approvals complete — the decision is made |
+| **Released** | In force; this is the revision people must work to |
+| **Obsolete** | Superseded or withdrawn, retained for history |
+
+!!! note "Approved and Released are separate"
+    Approval records the decision; release puts the document into force. The
+    gap is deliberate — a revision can be approved ahead of the date, training,
+    or tooling change it depends on, and only released when the floor is ready
+    for it. There is no *Archived* status: obsolete revisions are retained, not
+    archived.
 
 ## Creating Controlled Documents
 

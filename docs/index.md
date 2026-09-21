@@ -56,4 +56,4 @@ New users should complete role-specific training:
 
 - Check the [FAQ](troubleshooting/faq.md) for common questions
 - Review [Troubleshooting](troubleshooting/common-issues.md) for known issues
-- Contact support via [Getting Help](troubleshooting/help.md)
+- Read [Getting Help](troubleshooting/help.md) for how to work a problem and who to raise it with

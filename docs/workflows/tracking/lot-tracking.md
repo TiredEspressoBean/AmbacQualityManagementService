@@ -36,11 +36,15 @@ A **material lot** represents a batch of material received or produced:
 
 | Status | Meaning |
 |--------|---------|
-| **RECEIVED** | Lot received but not yet released |
-| **IN_USE** | Lot available for production use |
-| **CONSUMED** | Lot fully used |
-| **SCRAPPED** | Lot disposed of |
-| **QUARANTINE** | Lot under investigation |
+| **On Order** | Expected, not yet arrived |
+| **Received** | Arrived, not yet inspected or released |
+| **Awaiting Inspection** | Held for incoming inspection |
+| **Accepted** | Passed inspection |
+| **Rejected** | Failed inspection |
+| **In Use** | Released and available for production |
+| **Consumed** | Fully used |
+| **Scrapped** | Disposed of |
+| **Quarantine** | Under investigation |
 
 ### Material Usage
 

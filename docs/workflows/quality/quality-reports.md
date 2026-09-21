@@ -156,15 +156,15 @@ View on **Quality Dashboard** or **Analytics**.
 
 ## Notifications
 
-Quality reports trigger notifications:
+Notifications are **rule-driven and configurable** — who gets told what is
+decided by this tenant's notification rules, not by the event itself. Any rule
+can be edited, disabled or deleted, so treat routing as something to check
+rather than something to rely on. See [Notification
+Rules](../../admin/setup/notification-rules.md).
 
-| Event | Recipients |
-|-------|------------|
-| New Quality Report | Quality team |
-| Critical severity | QA Manager, Supervisor |
-| Assigned to you | Assigned user |
-| Awaiting your disposition | Approver |
-| Report closed | Creator, stakeholders |
+Two relevant rules ship by default: **every NCR opened** goes to the QA
+Manager group, and **step failures** go to QA Manager and QA Inspector.
+Severity-based routing, assignment alerts and closure notices are not seeded.
 
 ## Permissions
 

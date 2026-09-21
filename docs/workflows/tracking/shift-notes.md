@@ -3,7 +3,12 @@
 **Hand off to the floor** — notes operators see on their home screen and
 acknowledge.
 
-**Production** > **Shift Notes** (`/production/shift-notes`)
+`/production/shift-notes`
+
+!!! note "Not in the sidebar"
+    There is no **Shift Notes** entry in the navigation — reach the page by
+    URL, or bookmark it. Operators do not need it: the notes themselves appear
+    on the operator home screen, which is the surface this page feeds.
 
 ## What they're for
 

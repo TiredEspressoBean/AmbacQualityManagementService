@@ -140,13 +140,16 @@ For critical tasks, verification may be required:
 
 ## Task Notifications
 
-| Event | Recipients |
-|-------|------------|
-| Task assigned | Assignee |
-| Task approaching due | Assignee |
-| Task overdue | Assignee, CAPA owner |
-| Task completed | CAPA owner |
-| Task needs verification | Verifier |
+Notifications are **rule-driven and configurable** — who gets told what is
+decided by this tenant's notification rules, not by the event itself. Any rule
+can be edited, disabled or deleted, so treat routing as something to check
+rather than something to rely on. See [Notification
+Rules](../../admin/setup/notification-rules.md).
+
+Two CAPA rules ship by default: the **assignee** is notified when a CAPA is
+assigned or reassigned, and **QA Manager** when a CAPA becomes ready for
+effectiveness verification. Per-task routing is not seeded — if you need
+task-level alerts, write the rule.
 
 ## Task Due Dates
 

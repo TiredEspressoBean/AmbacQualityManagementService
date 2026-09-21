@@ -1,146 +1,96 @@
 # Getting Help
 
-How to get assistance with uqmes.
+!!! warning "There is no support desk"
+    uqmes has no vendor support line, no ticketing system, no service-level
+    agreement, and no account manager. Nothing in this system pages anyone.
 
-## Self-Service Resources
+    If something is broken, the resources below are what exist. Escalation
+    means telling whoever runs uqmes for your organization — in person, or
+    however you normally reach them.
 
-### Documentation
-You're here! Browse the documentation for:
-- Feature guides
-- Workflow tutorials
-- Administration help
-- Troubleshooting tips
+## Work the problem yourself first
 
-### FAQ
-Check the [FAQ](faq.md) for common questions.
+Most of what goes wrong is already written down, and usually under a heading
+that names the symptom rather than the cause.
 
-### Troubleshooting
-Review [Common Issues](common-issues.md) for known problems and solutions.
+| Resource | Use it for |
+|----------|------------|
+| **[Common Issues](common-issues.md)** | A concrete symptom — a part that won't move, an error message, a page that won't load |
+| **[FAQ](faq.md)** | "Is it supposed to work like this?" |
+| The rest of these docs | How a feature is meant to be used |
 
-## In-App Help
+Search is the fastest way in. If you are looking at an error, **search the
+exact words on screen** — the docs quote real messages, so the text you are
+staring at is often the best query.
 
-### Tooltips
-Hover over icons and fields for contextual help.
+### AI Chat
 
-### AI Assistant
-Navigate to **AI Chat** for intelligent assistance:
-- Ask questions about your data
-- Get guidance on features
-- Explore capabilities
+**AI Chat** in the sidebar can answer questions about your own data and about
+how features work. It is a way to explore the system, not a support channel —
+nobody is notified by it, and it cannot change anything or escalate on your
+behalf.
 
-## Contact Support
+## When you do need a person
 
-### Email Support
-Contact your support email for:
-- Bug reports
-- Feature questions
-- Account issues
+There is no support organization, so the person who can help is whoever
+administers this deployment. Who that is depends on your site — these docs
+cannot tell you.
 
-Include in your request:
-- Description of issue
-- Steps to reproduce
-- Screenshots if helpful
-- Error messages (exact text)
+Roughly, problems sort into:
 
-### Response Times
+| Symptom | Usually |
+|---------|---------|
+| You can't see or do something you expect to | A permissions or assignment question — see [Assigning Permissions](../admin/users/permissions.md) |
+| A record is wrong and you can't correct it | Usually deliberate: quality records are voided or superseded, not edited |
+| Login or SSO fails | A configuration question for whoever set up the identity provider |
+| Something is genuinely broken | Whoever maintains the system |
 
-| Priority | Description | Response |
-|----------|-------------|----------|
-| **Critical** | System down, data loss | Within 4 hours |
-| **High** | Major feature broken | Within 8 hours |
-| **Medium** | Feature issue | Within 24 hours |
-| **Low** | Questions, minor issues | Within 48 hours |
+!!! tip "Check permissions before reporting a bug"
+    "The button isn't there" is far more often a permission or assignment than
+    a fault. A newly granted permission also needs
+    `sync_tenant_permissions` on an existing tenant — see [Existing tenants and
+    new permissions](../admin/users/permissions.md#existing-tenants-and-new-permissions).
 
-## Administrator Help
+## Writing a report worth reading
 
-For internal support, contact your:
+Whoever you tell, these are what turn "it's broken" into something fixable:
 
-### System Administrator
-- User account issues
-- Permission changes
-- Configuration questions
+1. **The exact error text**, copied rather than paraphrased
+2. **What you were doing** — the page, the record, the button
+3. **The record's identifier** — the work order, part serial, or document number
+4. **What you expected instead**, which is often the part that reveals the
+   real disagreement
+5. **Whether it happens every time** or happened once
+6. **Your role**, since a great many "bugs" are permissions
 
-### Quality Manager
-- Process questions
-- Quality workflow guidance
-- CAPA assistance
+A screenshot covers most of the first three at once.
 
-### IT Department
-- SSO/login issues
-- Network problems
-- Integration support
+## Urgent situations
 
-## Training Resources
+Nothing here pages anyone, so "urgent" means *what you should do*, not who to
+call.
 
-### Onboarding
-- New user guides (Getting Started section)
-- Role-specific tutorials
-- Quick reference cards
+**Suspected data problem** — stop the work that is producing it. Do not try to
+correct records to tidy up; in a quality system the wrong record plus its
+correction is evidence, and a quietly fixed record is not. Note what happened
+and when, then raise it.
 
-### Webinars (if available)
-- Feature demonstrations
-- Best practices
-- Q&A sessions
+**Suspected security problem** — report it to whoever administers the system
+straight away, and write down what you saw. Do not investigate by reproducing
+it.
 
-### Custom Training
-Contact your account manager for:
-- On-site training
-- Virtual sessions
-- Custom documentation
+**Nonconforming product** — that is not a support issue. Contain it and raise
+it through the quality system: see [Flagging
+Issues](../workflows/tracking/flagging-issues.md) and
+[Dispositions](../workflows/quality/dispositions.md).
 
-## Feedback
+## Have ready
 
-### Feature Requests
-We value your input! Submit feature requests through:
-- Support email
-- Account manager
-- Feedback form (if available)
-
-### Bug Reports
-Help us improve by reporting issues:
-- Detailed description
-- Steps to reproduce
-- Expected vs actual behavior
-- Environment (browser, OS)
-
-## Emergency Procedures
-
-### System Outage
-1. Check status page (if available)
-2. Contact support via emergency channel
-3. Document impact
-4. Await communication
-
-### Data Issues
-1. Stop related operations
-2. Document what happened
-3. Contact support immediately
-4. Preserve any error information
-
-### Security Concerns
-1. Report immediately to IT
-2. Document suspicious activity
-3. Change passwords if instructed
-4. Follow incident procedures
-
-## Best Practices for Getting Help
-
-1. **Search first** - Check docs and FAQ
-2. **Be specific** - Exact error messages
-3. **Include context** - What were you doing
-4. **Provide screenshots** - Visual evidence helps
-5. **Note your role** - Helps understand permissions
-6. **Mention urgency** - If time-sensitive
-
-## System Information
-
-When contacting support, have ready:
-- Your username/email
-- Organization name
+- Your username and role
+- The work order, part, or document identifier
 - Browser and version
-- Operating system
-- Time issue occurred
-- Any error codes
+- When it happened
+- Any error text or codes
 
 ## Useful Links
 

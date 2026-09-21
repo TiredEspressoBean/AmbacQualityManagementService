@@ -127,12 +127,14 @@ Work on revisions before releasing:
 
 ## Revision Notifications
 
-| Event | Recipients |
-|-------|------------|
-| New revision created | Document owner |
-| Revision submitted for approval | Approvers |
-| Revision approved | Document owner, stakeholders |
-| Revision rejected | Document owner |
+Notifications are **rule-driven and configurable** — who gets told what is
+decided by this tenant's notification rules, not by the event itself. Any rule
+can be edited, disabled or deleted, so treat routing as something to check
+rather than something to rely on. See [Notification
+Rules](../../admin/setup/notification-rules.md).
+
+No revision routing is seeded by default. Revision activity is visible on
+the document itself and in the audit trail whether or not anyone is notified.
 
 ## External Revision References
 

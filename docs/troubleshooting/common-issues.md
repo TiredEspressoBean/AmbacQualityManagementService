@@ -146,7 +146,7 @@ cause is by far the most common and the least obvious:
 2. Clear browser cache
 3. Try different browser
 4. Use filters to reduce data
-5. Contact support if persistent
+5. If it persists, raise it with whoever maintains the deployment
 
 ### 3D model won't load
 **Causes**: File size, browser, format
@@ -160,11 +160,13 @@ cause is by far the most common and the least obvious:
 ### Export taking too long
 **Cause**: Large data volume
 
+Exports download straight to your browser — there is no background job and
+no emailed link, so the request stays open until the file is built.
+
 **Solutions**:
-1. Apply filters before export
-2. Reduce date range
-3. Export will continue in background
-4. Check email for download link
+1. Apply filters before exporting, and narrow the date range
+2. Leave the tab open; navigating away cancels the request
+3. If a wide export keeps timing out, export it in slices
 
 ## Integration Issues
 
@@ -212,7 +214,7 @@ cause is by far the most common and the least obvious:
 **Solutions**:
 1. Wait a moment and retry
 2. Refresh page
-3. Contact support with details
+3. Note the exact error text and the time, and raise it
 
 ### "Not found (404)"
 **Cause**: The URL doesn't match any page, or the record it names doesn't
@@ -254,6 +256,6 @@ If issue persists:
 1. Note exact error message
 2. Note steps to reproduce
 3. Take screenshot if helpful
-4. Contact support with details
+4. Note the exact error text and the time, and raise it
 
 See [Getting Help](help.md) for support contact.

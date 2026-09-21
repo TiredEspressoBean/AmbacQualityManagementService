@@ -21,7 +21,7 @@ Chrome, Firefox, Edge, and Safari (latest versions). Chrome is recommended for b
 Yes, the interface is responsive and works on tablets and phones. For complex tasks, desktop is recommended.
 
 ### How do I change my password?
-Go to **Profile** > **Change Password**. If using SSO, manage password through your identity provider.
+Open the user menu at the bottom of the sidebar, choose **Profile**, and use the **Change Password** card there. If you sign in with SSO, your password is managed by your identity provider, not here.
 
 ### Can I change my email address?
 Contact your administrator to change your email. It's used as your login identifier.
@@ -115,7 +115,7 @@ Check: same tenant selected, same filters applied, permission differences.
 ## Compliance
 
 ### Is my data backed up?
-Yes, automatic backups occur regularly. Contact support for retention policy details.
+Yes. Your administrator configures the schedule and how long backups are kept.
 
 ### How long are records kept?
 Per your organization's retention policy, typically 7+ years for quality records.
@@ -132,21 +132,25 @@ Navigate to relevant section, apply filters, click **Export**. Choose PDF or CSV
 Try: refresh, clear cache, different browser, check internet connection.
 
 ### I'm seeing an error message
-Note the exact message, what you were doing, and contact support.
+Note the exact message and what you were doing, then check [Common Issues](common-issues.md) — the docs quote real error text, so searching the words on screen often lands on the answer.
 
 ### Changes aren't saving
 Check internet connection, refresh page, ensure you clicked Save.
 
 ### Export isn't working
-Large exports take time. Check email for download link if it's big.
+Exports download directly in the browser rather than arriving by email. A
+large one holds the request open while it builds, so leave the tab open and
+narrow the filters or date range if it times out.
 
 ## Getting Help
 
-### How do I contact support?
-See [Getting Help](help.md) for support contact information.
+### Who do I contact when something is broken?
+There is no support desk. See [Getting Help](help.md) for what to try and who
+to raise it with.
 
 ### How do I report a bug?
-Contact support with: steps to reproduce, expected vs actual behavior, screenshots.
+Raise it with whoever maintains the deployment, with: steps to reproduce, expected vs actual behaviour, and the exact error text. See [Writing a report worth reading](help.md#writing-a-report-worth-reading).
 
 ### How do I request a feature?
-Contact your account manager or submit through support channel.
+Raise it with whoever maintains uqmes for your organization. There is no
+vendor intake process.

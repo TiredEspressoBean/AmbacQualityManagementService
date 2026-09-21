@@ -47,18 +47,40 @@ creating a separate event.
 
 ## Starter rules
 
-New tenants get a set of starter rules covering the common routing:
+!!! warning "Nothing here is guaranteed"
+    These are **seeded defaults, not behaviour**. Every one can be edited,
+    disabled, or deleted, and most deployments do change them. Delivery is
+    driven entirely by the rules that exist in *this* tenant right now — so
+    never assume a notification went out because a document says it should
+    have.
 
-| Rule | Routes |
-|------|--------|
-| First Piece Waiting / First Piece Decided | Production Manager |
-| Unapproved Part Receipt | Default recipients |
-| Shift notes | The shift-note audience |
-| Held work orders | Production |
-| Overdue work orders | Production |
-| CAPA assignments | The assignee |
-| Step failures | QA |
-| NCRs | QA Manager |
+    If it matters that somebody was told, check the rule.
+
+A tenant is seeded in two passes when it is created.
+
+**Hand-picked rules**, chosen because the routing is obvious:
+
+| Event | Routes to |
+|-------|-----------|
+| NCR opened | QA Manager |
+| Step failure | QA Manager and QA Inspector |
+| CAPA assigned or reassigned | The assignee |
+| CAPA ready for effectiveness verification | QA Manager |
+| Work order overdue | Production Manager |
+| Work order held too long | Production Manager |
+| Training expiring soon | QA Manager, Production Manager, and the operator |
+| Training expired | QA Manager, Production Manager, and the operator |
+| Shift note posted | The note's audience |
+
+**Everything else** is filled in from each event's own default recipient
+groups — this is where rules like *First Piece Waiting* and *Unapproved Part
+Receipt* come from. An event that declares no defaults gets **no rule at all**,
+and so notifies nobody until someone writes one.
+
+!!! note "Re-seeding restores a deleted starter rule"
+    Rules are matched by name, so a starter rule you delete comes back the
+    next time seeding runs. To retire one for good, disable it or rename it
+    rather than deleting it.
 
 !!! tip "Backfilling existing tenants"
     Tenants created before the starter set existed can be backfilled by an
