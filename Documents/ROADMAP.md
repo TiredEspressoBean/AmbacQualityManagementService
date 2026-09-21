@@ -967,11 +967,34 @@ of February; see the currency note above.
 - ✅ **API Complete:** BOM, BOMLine, AssemblyUsage for assembly genealogy
 
 **UI Work Needed for MES Standard:**
-- 🔶 **Editor Pages (7):** WorkCenter, Shift, ScheduleSlot, DowntimeEvent, MaterialLot, TimeEntry, BOM
+- 🔶 **Editor Pages — 3 of 7 shipped (audit 2026-09-21).** Built:
+  **WorkCenter** (`/admin/work-centers`), **MaterialLot** (Materials,
+  `/production/material-lots`), **TimeEntry** (Operator Hours,
+  `/production/labor-hours`). Outstanding: **Shift**, **DowntimeEvent**,
+  **BOM**. **ScheduleSlot** has no editor page and probably should not get
+  one — the Gantt edits slots directly
 - ✅ **SHIPPED (audit 2026-09-21):** Visual schedule board — the Gantt at `/production/schedule`, with drag-to-move backed by `services/scheduling/manual_move.py`
-- 🔶 **Dashboard:** OEE calculation display (data exists, needs aggregation + UI)
-- 🔶 **Reports (8):** Production summary, work order status, overdue WOs, operator productivity, OEE by equipment, labor efficiency, lot traceability, equipment utilization
-- 🔶 **Enhancements:** WIP aging display, lead time tracking, due date "at risk" warnings, Big screen API wiring
+- 🔶 **Dashboard:** OEE calculation display — still open, and the "data
+  exists" is optimistic. `EquipmentType.track_downtime` flags what should be
+  measured and downtime events are recorded, but there is no availability ×
+  performance × quality rollup anywhere. See
+  `EXECUTION_ACTUALS_AND_OEE.md`: actuals capture shipped, OEE did not
+- 🔶 **Reports — the list is out of date rather than unstarted (audit
+  2026-09-21).** Of the eight named here, operator productivity and labor
+  efficiency are served by `labor_hours.py`; production summary, WO status,
+  overdue WOs, lot traceability and equipment utilization have no adapter,
+  and OEE by equipment cannot exist until OEE does.
+
+  But seven MES reports shipped that this list never mentioned:
+  `dispatch_list`, `staging_list`, `requirements`, `pick_list`, `pick_sheet`,
+  `bom_report` and `work_order_traveler`. Re-derive what is actually wanted
+  from the 22 adapters in `Tracker/reports/adapters/` before building to this
+  list
+- 🔶 **Enhancements:** WIP aging, lead time tracking, at-risk due dates,
+  Big screen API wiring. Verified open — `BigScreenPage.tsx` imports no API
+  client at all, so its KPIs are still static. Note the scheduler now
+  computes lateness cause (`services/scheduling/late_cause.py`), which is
+  most of what an "at risk" warning needs
 
 ### Missing Additive Fields (MES Standard)
 - ✅ **Completed:** WorkOrder.priority (integer field with WorkOrderPriority choices)
@@ -981,16 +1004,19 @@ of February; see the currency note above.
 
 ### Needed for MES-Lite Offering
 - ✅ **Completed:** Shop floor dashboard / Big screen display - BigScreenPage (`/big-screen`) with KPIs, quality trend, radar chart, highlights (needs API wiring)
-- 🔴 **Needed:** WIP visualization (parts at each station/step)
+- 🔶 **Partial (audit 2026-09-21):** WIP visualization — the work order
+  control page shows a per-step **Step status** distribution, so WIP within
+  one work order is visible. What is missing is the cross-work-order view:
+  parts at each station across the shop
 - 🟡 **Nice to Have:** Barcode/QR scanning for part check-in/check-out
 - 🟡 **Nice to Have:** Cycle time tracking and analysis
 - 🟡 **Nice to Have:** Operator time tracking per operation - *TimeEntry model exists, needs UI*
 
 ### Advanced MES (Yacht Problems)
-- 🟢 **Yacht:** Shop floor scheduling and dispatching - *ScheduleSlot model exists, needs advanced UI*
-- 🟢 **Yacht:** Work center capacity tracking - *WorkCenter model exists, needs capacity view*
+- ✅ **SHIPPED (audit 2026-09-21):** Shop floor scheduling and dispatching — the Gantt plus `services/scheduling/dispatch.py` (per-lot, qualification-gated). This was filed as a Yacht item and is live
+- ✅ **SHIPPED (audit 2026-09-21):** Work center capacity tracking — Capacity Planning at `/production/capacity`, rough-cut load vs capacity by month, backed by `services/planning/rccp.py`
 - 🟢 **Yacht:** Resource allocation and optimization
-- 🟢 **Yacht:** Bottleneck identification and alerting
+- 🔶 **Partial (audit 2026-09-21):** Bottleneck identification — `services/scheduling/infeasibility.py` names the binding resource and `late_cause.py` attributes lateness; CTP names the binding resource when it refuses a date. No standing alerting
 - 🟢 **Yacht:** Integration with process DAGs for dynamic routing
 
 ---
