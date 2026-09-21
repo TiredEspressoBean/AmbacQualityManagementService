@@ -1511,7 +1511,11 @@ class ProcessStepSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProcessStep
-        fields = ["id", "step", "step_id", "order", "is_entry_point"]
+        # The junction's other two flags were never exposed, so the editor could not
+        # read or write an early-exit path or a disabled auto-advance — they were
+        # settable only through the admin.
+        fields = ["id", "step", "step_id", "order",
+                  "is_entry_point", "is_exit_point", "auto_advance"]
 
 
 class StepEdgeSerializer(SecureModelMixin):
@@ -1525,7 +1529,7 @@ class StepEdgeSerializer(SecureModelMixin):
             "id", "from_step", "to_step", "edge_type",
             "from_step_name", "to_step_name",
             "condition_measurement", "condition_operator", "condition_value",
-            "max_minutes",
+            "max_minutes", "tech_continuity",
         ]
 
 

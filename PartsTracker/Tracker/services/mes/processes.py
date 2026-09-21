@@ -243,20 +243,34 @@ def create_new_process_version(
             **field_updates,
         )
 
+        # Every ProcessStep field, not a subset. `is_exit_point` and `auto_advance`
+        # were omitted here, and both have defaults that read as "normal" — False and
+        # True — so versioning a process silently dropped its early-exit paths and
+        # re-enabled auto-advance on any step where it had been deliberately turned
+        # off. A clone that loses settings quietly is worse than one that fails.
         for ps in process.process_steps.all():
             ProcessStep.objects.create(
                 process=new_version,
                 step=ps.step,
                 order=ps.order,
                 is_entry_point=ps.is_entry_point,
+                is_exit_point=ps.is_exit_point,
+                auto_advance=ps.auto_advance,
             )
 
+        # Same omission on the edges: `tech_continuity` and `max_minutes` were added
+        # for scheduling after this clone was written and never added to it. Losing
+        # them is not cosmetic — tech_continuity=DIFFERENT is the independent-
+        # verification control, and max_minutes carries real process limits (cure
+        # windows, "coat within 4h of clean").
         for edge in process.step_edges.all():
             StepEdge.objects.create(
                 process=new_version,
                 from_step=edge.from_step,
                 to_step=edge.to_step,
                 edge_type=edge.edge_type,
+                tech_continuity=edge.tech_continuity,
+                max_minutes=edge.max_minutes,
                 condition_measurement=edge.condition_measurement,
                 condition_operator=edge.condition_operator,
                 condition_value=edge.condition_value,
@@ -302,6 +316,8 @@ def duplicate_process(
             step=current_step,
             order=ps.order,
             is_entry_point=ps.is_entry_point,
+            is_exit_point=ps.is_exit_point,
+            auto_advance=ps.auto_advance,
         )
 
     for edge in process.step_edges.all():
@@ -310,6 +326,8 @@ def duplicate_process(
             from_step=step_remap.get(edge.from_step_id, edge.from_step),
             to_step=step_remap.get(edge.to_step_id, edge.to_step),
             edge_type=edge.edge_type,
+            tech_continuity=edge.tech_continuity,
+            max_minutes=edge.max_minutes,
             condition_measurement=edge.condition_measurement,
             condition_operator=edge.condition_operator,
             condition_value=edge.condition_value,
@@ -338,19 +356,42 @@ def _walk_to_current_step(step):
 # Composite Process + Steps creation / update
 # ---------------------------------------------------------------------------
 
-def _build_edges(process: Processes, edges_data: list, temp_id_map: dict) -> None:
-    """Create StepEdge rows resolving any temp IDs from the id map."""
+def _build_edges(
+    process: Processes,
+    edges_data: list,
+    temp_id_map: dict,
+    preserved: dict | None = None,
+) -> None:
+    """Create StepEdge rows resolving any temp IDs from the id map.
+
+    `preserved` maps (from_step_id, to_step_id, edge_type) to the scheduling
+    attributes of the edge that occupied that slot before an update deleted it.
+    The process editor does not send `tech_continuity` at all, so without this a
+    save would silently reset every independent-verification requirement and
+    every process time limit to its default — the edges are torn down and rebuilt
+    wholesale on each save, so anything the payload omits is destroyed rather than
+    left alone. An explicit value in the payload still wins; the fallback only
+    covers what the client never knew about.
+    """
+    preserved = preserved or {}
     for edge in edges_data:
         from_step_id = edge.get("from_step")
         to_step_id = edge.get("to_step")
         real_from_id = temp_id_map.get(from_step_id, from_step_id)
         real_to_id = temp_id_map.get(to_step_id, to_step_id)
         if real_from_id and real_to_id:
+            edge_type = edge.get("edge_type", EdgeType.DEFAULT)
+            prior = preserved.get((str(real_from_id), str(real_to_id), edge_type), {})
             StepEdge.objects.create(
                 process=process,
                 from_step_id=real_from_id,
                 to_step_id=real_to_id,
-                edge_type=edge.get("edge_type", EdgeType.DEFAULT),
+                edge_type=edge_type,
+                tech_continuity=edge.get(
+                    "tech_continuity", prior.get("tech_continuity", "ANY")),
+                max_minutes=(
+                    edge["max_minutes"] if "max_minutes" in edge
+                    else prior.get("max_minutes")),
                 condition_measurement_id=edge.get("condition_measurement"),
                 condition_operator=edge.get("condition_operator", ""),
                 condition_value=edge.get("condition_value"),
@@ -378,6 +419,10 @@ def create_process_with_steps(data: dict) -> Processes:
         temp_id = node.pop("id", None)
         order = node.pop("order", None)
         is_entry_point = node.pop("is_entry_point", False)
+        # Junction flags, not Step fields — they must come out of `node` before it is
+        # splatted into Steps.objects.create, which would reject them.
+        is_exit_point = node.pop("is_exit_point", False)
+        auto_advance = node.pop("auto_advance", True)
 
         step = Steps.objects.create(part_type=process.part_type, **node)
 
@@ -390,6 +435,8 @@ def create_process_with_steps(data: dict) -> Processes:
             step=step,
             order=order or 1,
             is_entry_point=is_entry_point or (order == 1),
+            is_exit_point=is_exit_point,
+            auto_advance=auto_advance,
         )
 
     _build_edges(process, edges_data, temp_id_map)
@@ -449,6 +496,11 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
         temp_id = node.pop("_temp_id", None)
         order = node.pop("order", None)
         is_entry_point = node.pop("is_entry_point", False)
+        # Junction flags. `_UNSET` rather than a default, because these are absent from
+        # the editor payload today and defaulting would reset a deliberately-set exit
+        # point or a disabled auto-advance on every unrelated save.
+        is_exit_point = node.pop("is_exit_point", _UNSET)
+        auto_advance = node.pop("auto_advance", _UNSET)
         # Timing lives on a related one-to-one, not on Steps, so it must come out before
         # the diff below — `_changed` does `getattr(step, k)`, which would compare a
         # StepTiming instance against a dict, call it changed on every save, and then
@@ -514,6 +566,10 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                 ps = ProcessStep.objects.get(process=instance, step=step)
                 ps.order = order or ps.order
                 ps.is_entry_point = is_entry_point
+                if is_exit_point is not _UNSET:
+                    ps.is_exit_point = is_exit_point
+                if auto_advance is not _UNSET:
+                    ps.auto_advance = auto_advance
                 ps.save()
             else:
                 ProcessStep.objects.create(
@@ -521,6 +577,8 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                     step=step,
                     order=order or 1,
                     is_entry_point=is_entry_point,
+                    is_exit_point=(False if is_exit_point is _UNSET else is_exit_point),
+                    auto_advance=(True if auto_advance is _UNSET else auto_advance),
                 )
 
             # Timing lands on whatever row we ended up on — `step` is the NEW version
@@ -558,8 +616,20 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
         from Tracker.services.mes.steps import remove_step_from_process
         remove_step_from_process(instance, list(steps_to_unlink))
 
+    # Snapshot the scheduling attributes before tearing the edges down, so a save
+    # that omits them restores rather than resets. Keyed on the REMAPPED step ids,
+    # because a step that versioned above now has a new id on both sides.
+    preserved = {}
+    for e in instance.step_edges.all():
+        from_id = str(temp_id_map.get(e.from_step_id, e.from_step_id))
+        to_id = str(temp_id_map.get(e.to_step_id, e.to_step_id))
+        preserved[(from_id, to_id, e.edge_type)] = {
+            'tech_continuity': e.tech_continuity,
+            'max_minutes': e.max_minutes,
+        }
+
     instance.step_edges.all().delete()
-    _build_edges(instance, edges_data, temp_id_map)
+    _build_edges(instance, edges_data, temp_id_map, preserved=preserved)
     return instance
 
 

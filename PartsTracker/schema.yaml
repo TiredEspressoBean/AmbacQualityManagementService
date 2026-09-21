@@ -57996,6 +57996,13 @@ components:
         is_entry_point:
           type: boolean
           description: If True, this is the starting step for new parts
+        is_exit_point:
+          type: boolean
+          description: If True, this step can exit the process early (e.g., early
+            ship)
+        auto_advance:
+          type: boolean
+          description: If True, parts auto-advance when step requirements are met
       required:
       - id
       - order
@@ -58016,6 +58023,13 @@ components:
         is_entry_point:
           type: boolean
           description: If True, this is the starting step for new parts
+        is_exit_point:
+          type: boolean
+          description: If True, this step can exit the process early (e.g., early
+            ship)
+        auto_advance:
+          type: boolean
+          description: If True, parts auto-advance when step requirements are met
       required:
       - order
       - step_id
@@ -62715,6 +62729,15 @@ components:
             it as a soft upper bound: it schedules to meet it and FLAGS the op when
             capacity can''t, rather than blocking the whole solve. Null = no limit
             (the default).'
+        tech_continuity:
+          allOf:
+          - $ref: '#/components/schemas/TechContinuityEnum'
+          description: |-
+            Scheduling: whether from→to must be run by the same operator (SAME), a different one (DIFFERENT — e.g. independent verification), or ANY.
+
+            * `ANY` - Any operator
+            * `SAME` - Same operator
+            * `DIFFERENT` - Different operator
       required:
       - from_step
       - from_step_name
@@ -62759,6 +62782,15 @@ components:
             it as a soft upper bound: it schedules to meet it and FLAGS the op when
             capacity can''t, rather than blocking the whole solve. Null = no limit
             (the default).'
+        tech_continuity:
+          allOf:
+          - $ref: '#/components/schemas/TechContinuityEnum'
+          description: |-
+            Scheduling: whether from→to must be run by the same operator (SAME), a different one (DIFFERENT — e.g. independent verification), or ANY.
+
+            * `ANY` - Any operator
+            * `SAME` - Same operator
+            * `DIFFERENT` - Different operator
       required:
       - from_step
       - to_step
@@ -65638,6 +65670,16 @@ components:
         * `CONTAINMENT` - Containment
         * `CORRECTIVE` - Corrective Action
         * `PREVENTIVE` - Preventive Action
+    TechContinuityEnum:
+      enum:
+      - ANY
+      - SAME
+      - DIFFERENT
+      type: string
+      description: |-
+        * `ANY` - Any operator
+        * `SAME` - Same operator
+        * `DIFFERENT` - Different operator
     Tenant:
       type: object
       description: Serializer for Tenant model.

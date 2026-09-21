@@ -6206,6 +6206,14 @@ export type ProcessStep = {
    * If True, this is the starting step for new parts
    */
   boolean | undefined;
+  is_exit_point?: /**
+   * If True, this step can exit the process early (e.g., early ship)
+   */
+  boolean | undefined;
+  auto_advance?: /**
+   * If True, parts auto-advance when step requirements are met
+   */
+  boolean | undefined;
 };
 export type Step = {
   id: string;
@@ -6390,6 +6398,14 @@ export type StepEdge = {
      */
     (number | null)
     | undefined;
+  tech_continuity?: /**
+     * Scheduling: whether from→to must be run by the same operator (SAME), a different one (DIFFERENT — e.g. independent verification), or ANY.
+    
+    * `ANY` - Any operator
+    * `SAME` - Same operator
+    * `DIFFERENT` - Different operator
+     */
+  TechContinuityEnum | undefined;
 };
 export type EdgeTypeEnum =
   /**
@@ -6409,6 +6425,15 @@ export type ConditionOperatorEnum =
    * @enum gte, lte, eq
    */
   "gte" | "lte" | "eq";
+export type TechContinuityEnum =
+  /**
+   * * `ANY` - Any operator
+   * `SAME` - Same operator
+   * `DIFFERENT` - Different operator
+   *
+   * @enum ANY, SAME, DIFFERENT
+   */
+  "ANY" | "SAME" | "DIFFERENT";
 export type ProcessStatusEnum =
   /**
    * * `DRAFT` - Draft
@@ -14031,6 +14056,14 @@ export type StepEdgeRequest = {
      */
     (number | null)
     | undefined;
+  tech_continuity?: /**
+     * Scheduling: whether from→to must be run by the same operator (SAME), a different one (DIFFERENT — e.g. independent verification), or ANY.
+    
+    * `ANY` - Any operator
+    * `SAME` - Same operator
+    * `DIFFERENT` - Different operator
+     */
+  TechContinuityEnum | undefined;
 };
 export type StepExecutionCreateRequest = {
   part?:
@@ -19182,9 +19215,12 @@ const ProcessStep = z.object({
   step: Step,
   order: z.number().int().gte(-2147483648).lte(2147483647),
   is_entry_point: z.boolean().optional(),
+  is_exit_point: z.boolean().optional(),
+  auto_advance: z.boolean().optional(),
 });
 const EdgeTypeEnum = z.enum(["DEFAULT", "ALTERNATE", "ESCALATION"]);
 const ConditionOperatorEnum = z.enum(["gte", "lte", "eq"]);
+const TechContinuityEnum = z.enum(["ANY", "SAME", "DIFFERENT"]);
 const StepEdge = z.object({
   id: z.number().int(),
   from_step: z.string().uuid(),
@@ -19199,6 +19235,7 @@ const StepEdge = z.object({
     .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
     .nullish(),
   max_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
+  tech_continuity: TechContinuityEnum.optional(),
 });
 const Processes = z.object({
   id: z.string().uuid(),
@@ -24164,6 +24201,8 @@ const ProcessStepRequest = z.object({
   step_id: z.string().uuid(),
   order: z.number().int().gte(-2147483648).lte(2147483647),
   is_entry_point: z.boolean().optional(),
+  is_exit_point: z.boolean().optional(),
+  auto_advance: z.boolean().optional(),
 });
 const QualityReportEquipmentRequest = z.object({
   equipment: z.string().uuid(),
@@ -24195,6 +24234,7 @@ const StepEdgeRequest = z.object({
     .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
     .nullish(),
   max_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
+  tech_continuity: TechContinuityEnum.optional(),
 });
 const StepRequest = z.object({
   name: z.string().min(1).max(50),
@@ -24607,6 +24647,7 @@ export const schemas = {
   ProcessStep,
   EdgeTypeEnum,
   ConditionOperatorEnum,
+  TechContinuityEnum,
   StepEdge,
   Processes,
   PaginatedProcessesList,

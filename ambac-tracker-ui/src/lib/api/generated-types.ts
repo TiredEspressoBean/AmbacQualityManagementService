@@ -26173,6 +26173,10 @@ export interface components {
             order: number;
             /** @description If True, this is the starting step for new parts */
             is_entry_point?: boolean;
+            /** @description If True, this step can exit the process early (e.g., early ship) */
+            is_exit_point?: boolean;
+            /** @description If True, parts auto-advance when step requirements are met */
+            auto_advance?: boolean;
         };
         /** @description ProcessStep junction serializer - links step to process with order */
         ProcessStepRequest: {
@@ -26182,6 +26186,10 @@ export interface components {
             order: number;
             /** @description If True, this is the starting step for new parts */
             is_entry_point?: boolean;
+            /** @description If True, this step can exit the process early (e.g., early ship) */
+            is_exit_point?: boolean;
+            /** @description If True, parts auto-advance when step requirements are met */
+            auto_advance?: boolean;
         };
         /** @description ProcessStep with nested step data for SPC hierarchy. */
         ProcessStepSPC: {
@@ -28509,6 +28517,14 @@ export interface components {
             condition_value?: string | null;
             /** @description Scheduling: MAX elapsed minutes allowed between from_step finishing and to_step starting — a process time limit (e.g. 'coat within 4h of clean', passivation dwell, adhesive pot-life). The scheduler treats it as a soft upper bound: it schedules to meet it and FLAGS the op when capacity can't, rather than blocking the whole solve. Null = no limit (the default). */
             max_minutes?: number | null;
+            /**
+             * @description Scheduling: whether from→to must be run by the same operator (SAME), a different one (DIFFERENT — e.g. independent verification), or ANY.
+             *
+             *     * `ANY` - Any operator
+             *     * `SAME` - Same operator
+             *     * `DIFFERENT` - Different operator
+             */
+            tech_continuity?: components["schemas"]["TechContinuityEnum"];
         };
         /** @description StepEdge serializer - DAG edges between steps */
         StepEdgeRequest: {
@@ -28530,6 +28546,14 @@ export interface components {
             condition_value?: string | null;
             /** @description Scheduling: MAX elapsed minutes allowed between from_step finishing and to_step starting — a process time limit (e.g. 'coat within 4h of clean', passivation dwell, adhesive pot-life). The scheduler treats it as a soft upper bound: it schedules to meet it and FLAGS the op when capacity can't, rather than blocking the whole solve. Null = no limit (the default). */
             max_minutes?: number | null;
+            /**
+             * @description Scheduling: whether from→to must be run by the same operator (SAME), a different one (DIFFERENT — e.g. independent verification), or ANY.
+             *
+             *     * `ANY` - Any operator
+             *     * `SAME` - Same operator
+             *     * `DIFFERENT` - Different operator
+             */
+            tech_continuity?: components["schemas"]["TechContinuityEnum"];
         };
         /**
          * @description Serializer for step execution tracking (workflow engine).
@@ -30160,6 +30184,13 @@ export interface components {
          * @enum {string}
          */
         TaskTypeEnum: "CONTAINMENT" | "CORRECTIVE" | "PREVENTIVE";
+        /**
+         * @description * `ANY` - Any operator
+         *     * `SAME` - Same operator
+         *     * `DIFFERENT` - Different operator
+         * @enum {string}
+         */
+        TechContinuityEnum: "ANY" | "SAME" | "DIFFERENT";
         /** @description Serializer for Tenant model. */
         Tenant: {
             /** Format: uuid */

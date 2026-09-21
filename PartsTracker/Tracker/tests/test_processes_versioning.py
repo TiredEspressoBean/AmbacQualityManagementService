@@ -382,3 +382,101 @@ class RevisionSignalTestCase(TenantTestCase):
         self.assertEqual(kwargs['new_version'].pk, v2.pk)
         self.assertEqual(kwargs['user'], self.user_a)
         self.assertEqual(kwargs['change_description'], 'Rev B')
+
+
+class VersionCloneCarriesEveryFieldTestCase(TenantTestCase):
+    """A clone that copies a SUBSET of fields loses settings silently.
+
+    Both omitted `ProcessStep` flags default to the value that reads as "normal"
+    (is_exit_point False, auto_advance True), and both omitted `StepEdge` fields
+    default to "no constraint" — so the loss looked like a process that simply never
+    had those settings, on a path (versioning an approved process) that is supposed
+    to be the careful one.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.part_type = PartTypes.objects.create(name='Injector', ID_prefix='INJ-')
+        self.process, self.step_a = _make_simple_approved_process(
+            self.tenant_a, self.user_a, self.part_type,
+        )
+        self.step_b = Steps.objects.create(
+            name='Leak Test', part_type=self.part_type, pass_threshold=1.0,
+        )
+        ProcessStep.objects.create(
+            process=self.process, step=self.step_b, order=2,
+            is_entry_point=False,
+            # Deliberately non-default on both.
+            is_exit_point=True,
+            auto_advance=False,
+        )
+        StepEdge.objects.create(
+            process=self.process, from_step=self.step_a, to_step=self.step_b,
+            edge_type=EdgeType.DEFAULT,
+            # Independent verification, and a cure window.
+            tech_continuity='DIFFERENT',
+            max_minutes=240,
+        )
+
+    def test_junction_flags_survive_versioning(self):
+        v2 = create_new_process_version(
+            self.process, user=self.user_a, change_description='Rev',
+        )
+        ps = v2.process_steps.get(step=self.step_b)
+        self.assertTrue(ps.is_exit_point, "early-exit path lost on version")
+        self.assertFalse(ps.auto_advance, "auto-advance re-enabled on version")
+
+    def test_edge_scheduling_fields_survive_versioning(self):
+        v2 = create_new_process_version(
+            self.process, user=self.user_a, change_description='Rev',
+        )
+        edge = v2.step_edges.get(from_step=self.step_a, to_step=self.step_b)
+        self.assertEqual(edge.tech_continuity, 'DIFFERENT',
+                         "independent-verification requirement lost on version")
+        self.assertEqual(edge.max_minutes, 240,
+                         "process time limit lost on version")
+
+    def test_duplicate_process_carries_them_too(self):
+        """Same omission, same consequence, second code path."""
+        from Tracker.services.mes.processes import duplicate_process
+        copy = duplicate_process(self.process, user=self.user_a)
+        ps = copy.process_steps.get(step=self.step_b)
+        self.assertTrue(ps.is_exit_point)
+        self.assertFalse(ps.auto_advance)
+        edge = copy.step_edges.get(to_step=self.step_b)
+        self.assertEqual(edge.tech_continuity, 'DIFFERENT')
+        self.assertEqual(edge.max_minutes, 240)
+
+    def test_an_editor_save_that_omits_them_does_not_reset_them(self):
+        """The worse path: the composite update DELETES every edge and rebuilds from
+        the payload, and the editor never sends `tech_continuity` at all. Without a
+        preserve step, saving an unrelated change wipes the constraint."""
+        from Tracker.services.mes.processes import update_process_with_steps
+        # The editor only ever saves a DRAFT — an approved process is refused — so the
+        # realistic path is: version it, then save the draft.
+        draft = create_new_process_version(
+            self.process, user=self.user_a, change_description='Rev',
+        )
+        update_process_with_steps(
+            draft,
+            {
+                'nodes': [
+                    {'id': str(self.step_a.id), 'order': 1, 'is_entry_point': True},
+                    {'id': str(self.step_b.id), 'order': 2, 'is_entry_point': False},
+                ],
+                'edges': [
+                    {'from_step': str(self.step_a.id),
+                     'to_step': str(self.step_b.id),
+                     'edge_type': EdgeType.DEFAULT},
+                ],
+            },
+            # user=None so the step lookup uses `Steps.objects` rather than
+            # `for_user`, which needs a view_steps grant this fixture has no reason to
+            # set up. (Worth knowing: with a user lacking view_steps, that lookup finds
+            # nothing and the save creates DUPLICATE steps instead of updating — a
+            # separate latent bug, not this one.)
+            user=None,
+        )
+        edge = draft.step_edges.get(from_step=self.step_a, to_step=self.step_b)
+        self.assertEqual(edge.tech_continuity, 'DIFFERENT')
+        self.assertEqual(edge.max_minutes, 240)
