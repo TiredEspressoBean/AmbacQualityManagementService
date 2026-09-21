@@ -3212,6 +3212,26 @@ class Parts(SecureModel):
     work_order = models.ForeignKey(WorkOrder, on_delete=models.SET_NULL, null=True, blank=True, related_name='parts')
     """Optional reference to the internal Work Order this part is attached to."""
 
+    # String reference: Core lives in models/reman.py, which imports THIS module.
+    # PROTECT rather than SET_NULL. Nothing hits it today — hard delete is disabled
+    # repo-wide and a voided core keeps its row, so the reservation survives a delete
+    # either way. It is the right default for the day a retention policy makes row
+    # removal possible: SET_NULL would then free the customer's parts into stock as a
+    # silent side effect of a purge, which is the exact failure this field prevents.
+    reserved_for_core = models.ForeignKey(
+        'Tracker.Core',
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name='reserved_parts',
+        help_text="Set when this part was harvested from a core whose own unit goes "
+                  "back to the customer. The part is that customer's property, not "
+                  "stock: it may only be consumed by work on the core it came from.",
+    )
+    """Non-null means the part is spoken for. Written by
+    `services.reman.harvested_component.accept_component_to_inventory` from the core's
+    `allows_pooled_harvest`, and enforced by
+    `services.reman.reservation.assert_work_order_allowed`."""
+
     is_makeup = models.BooleanField(
         default=False,
         help_text="This part was created by make-up planning to replace scrapped units "

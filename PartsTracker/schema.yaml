@@ -52117,6 +52117,18 @@ components:
           readOnly: true
         archived:
           type: boolean
+        reserved_for_core:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: 'Set when this part was harvested from a core whose own unit
+            goes back to the customer. The part is that customer''s property, not
+            stock: it may only be consumed by work on the core it came from.'
+        reserved_for_core_number:
+          type: string
+          readOnly: true
+          nullable: true
         split_from_lot:
           type: boolean
           readOnly: true
@@ -52162,6 +52174,8 @@ components:
       - quality_info
       - rejoined_at
       - requires_sampling
+      - reserved_for_core
+      - reserved_for_core_number
       - split_from_lot
       - step_description
       - step_info

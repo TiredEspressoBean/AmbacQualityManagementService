@@ -7,6 +7,7 @@ and the complete reman workflow including life tracking transfer.
 
 from decimal import Decimal
 from datetime import date, timedelta
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.test import SimpleTestCase, TestCase
 from Tracker.tests.base import TenantTestCase
 from django.utils import timezone
@@ -1411,3 +1412,137 @@ class FulfilmentModeInheritanceTests(TenantTestCase):
         saved = ser.save()
         self.assertEqual(saved.version, before)
         self.assertEqual(saved.default_core_fulfilment_mode, 'EXCHANGE')
+
+
+class HarvestReservationTests(TenantTestCase):
+    """A repair-and-return core's components are the customer's property.
+
+    Accepting a harvested component into inventory turns it into an ordinary Parts
+    row. Without a marker it is indistinguishable from stock, and the first thing
+    that ever consumes it takes a part the customer is owed — a loss that cannot be
+    undone once the unit is reassembled without it.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, HarvestedComponent, PartTypes
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.component_type = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle', ID_prefix='NZ')
+
+        def _core(number, mode):
+            return Core.objects.create(
+                tenant=self.tenant_a, core_number=number, core_type=self.core_type,
+                fulfilment_mode=mode, received_date=date.today(),
+                received_by=self.user_a)
+
+        self.theirs = _core('CORE-RSV-1', 'REPAIR_RETURN')
+        self.ours = _core('CORE-RSV-2', 'EXCHANGE')
+
+        def _component(core):
+            return HarvestedComponent.objects.create(
+                tenant=self.tenant_a, core=core, component_type=self.component_type,
+                condition_grade='A', disassembled_by=self.user_a)
+
+        self.their_component = _component(self.theirs)
+        self.our_component = _component(self.ours)
+
+    def _accept(self, component):
+        from Tracker.services.reman.harvested_component import accept_component_to_inventory
+        return accept_component_to_inventory(component, self.user_a, transfer_life=False)
+
+    def test_a_repair_and_return_cores_parts_are_reserved_to_it(self):
+        part = self._accept(self.their_component)
+        self.assertEqual(part.reserved_for_core_id, self.theirs.id)
+
+    def test_an_exchange_cores_parts_go_to_stock_unreserved(self):
+        """The shop owns the unit, so the harvest is stock like any other. Reserving
+        it would strand usable inventory for no reason."""
+        part = self._accept(self.our_component)
+        self.assertIsNone(part.reserved_for_core_id)
+
+    def test_the_reservation_is_set_as_the_part_is_created(self):
+        """Not in a follow-up write: between the two there would be a window in which
+        the customer's part sits in stock looking free, which is the one transition
+        the reservation exists to cover."""
+        from Tracker.models import Parts
+        part = self._accept(self.their_component)
+        # Re-read rather than trusting the in-memory object.
+        self.assertEqual(
+            Parts.objects.get(pk=part.pk).reserved_for_core_id, self.theirs.id)
+
+    def test_a_reserved_part_is_refused_by_another_jobs_work_order(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.models import WorkOrder
+        from Tracker.services.reman.reservation import assert_work_order_allowed
+
+        part = self._accept(self.their_component)
+        other = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id='WO-OTHER', quantity=1)
+        with self.assertRaises(ValidationError) as ctx:
+            assert_work_order_allowed(part, other)
+        # The message has to name the core, or nobody can act on the refusal.
+        self.assertIn('CORE-RSV-1', str(ctx.exception))
+
+    def test_a_reserved_part_may_join_its_own_cores_work(self):
+        from Tracker.models import WorkOrder
+        from Tracker.services.reman.reservation import assert_work_order_allowed
+
+        part = self._accept(self.their_component)
+        wo = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id='WO-OWN', quantity=1)
+        self.theirs.work_order = wo
+        self.theirs.save(update_fields=['work_order'])
+        part.refresh_from_db()
+        assert_work_order_allowed(part, wo)  # must not raise
+
+    def test_detaching_a_reserved_part_is_always_allowed(self):
+        """Putting a part back on the shelf takes nothing from anyone, and refusing it
+        would strand a part that was attached by mistake."""
+        from Tracker.services.reman.reservation import assert_work_order_allowed
+        part = self._accept(self.their_component)
+        assert_work_order_allowed(part, None)  # must not raise
+
+    def test_an_unreserved_part_goes_anywhere(self):
+        from Tracker.models import WorkOrder
+        from Tracker.services.reman.reservation import assert_work_order_allowed
+        part = self._accept(self.our_component)
+        wo = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id='WO-FREE', quantity=1)
+        assert_work_order_allowed(part, wo)  # must not raise
+
+    def test_the_api_refuses_to_attach_a_reserved_part(self):
+        """The serializer is the boundary that matters: parts are otherwise created
+        fresh per work order, so this is the only path by which a harvested part can
+        reach somebody else's job."""
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        from Tracker.models import WorkOrder
+        from Tracker.serializers.mes_lite import PartsSerializer
+
+        part = self._accept(self.their_component)
+        other = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id='WO-API', quantity=1)
+        ser = PartsSerializer(part, data={'work_order': str(other.pk)}, partial=True)
+        with self.assertRaises((DRFValidationError, DjangoValidationError)):
+            ser.is_valid(raise_exception=True)
+
+    def test_releasing_puts_it_back_in_stock(self):
+        """The escape hatch for an arrangement that changed after receipt — a customer
+        scrapping their unit and taking an exchange instead."""
+        from Tracker.models import WorkOrder
+        from Tracker.services.reman.reservation import (
+            assert_work_order_allowed, release_reservation)
+
+        part = self._accept(self.their_component)
+        release_reservation(part)
+        part.refresh_from_db()
+        self.assertIsNone(part.reserved_for_core_id)
+        wo = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id='WO-REL', quantity=1)
+        assert_work_order_allowed(part, wo)  # must not raise
+
+    def test_voiding_a_core_does_not_release_its_parts(self):
+        """The realistic path: cores are soft-deleted, so `delete()` archives the row
+        and the reservation must survive it. A voided core whose parts quietly became
+        stock would lose the customer's property to a bookkeeping action."""
+        part = self._accept(self.their_component)
+        self.theirs.delete()  # soft delete — archives, does not remove
+        part.refresh_from_db()
+        self.assertEqual(part.reserved_for_core_id, self.theirs.id)
+

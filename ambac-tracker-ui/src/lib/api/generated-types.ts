@@ -22821,6 +22821,12 @@ export interface components {
             readonly process: string | null;
             readonly total_rework_count: number;
             archived?: boolean;
+            /**
+             * Format: uuid
+             * @description Set when this part was harvested from a core whose own unit goes back to the customer. The part is that customer's property, not stock: it may only be consumed by work on the core it came from.
+             */
+            readonly reserved_for_core: string | null;
+            readonly reserved_for_core_number: string | null;
             /** @description True iff this part has been pulled off its WorkOrder cohort and now advances independently. Set via the split_part_from_lot service; cleared by rejoin_part_to_lot when the part re-converges with its siblings. */
             readonly split_from_lot: boolean;
             readonly lot_split_reason: string | null;

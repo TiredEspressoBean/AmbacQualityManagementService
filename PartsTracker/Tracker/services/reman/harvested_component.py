@@ -47,6 +47,10 @@ def accept_component_to_inventory(
     transfers applicable life-tracking records from the parent Core to
     the new Part.
 
+    When the parent core does NOT allow pooled harvest — a repair-and-return unit,
+    which goes back to the customer it came from — the new part is reserved to that
+    core. Otherwise it enters stock unreserved, like any other inventory.
+
     Raises:
         ValueError: component is scrapped, or already accepted to inventory.
     """
@@ -67,6 +71,12 @@ def accept_component_to_inventory(
         ERP_id=erp_id,
         part_type=component.component_type,
         part_status=PartsStatus.PENDING,
+        # Reserved at CREATION rather than in a second write: between the two there
+        # would be a window in which the customer's part sits in stock looking free,
+        # and this is the one transition the reservation exists to cover.
+        reserved_for_core=(
+            None if component.core.allows_pooled_harvest else component.core
+        ),
     )
 
     component.component_part = part

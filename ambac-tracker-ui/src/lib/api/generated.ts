@@ -5658,6 +5658,11 @@ export type Parts = {
   total_rework_count: number;
   archived?: boolean | undefined;
   /**
+   * Set when this part was harvested from a core whose own unit goes back to the customer. The part is that customer's property, not stock: it may only be consumed by work on the core it came from.
+   */
+  reserved_for_core: string | null;
+  reserved_for_core_number: string | null;
+  /**
    * True iff this part has been pulled off its WorkOrder cohort and now advances independently. Set via the split_part_from_lot service; cleared by rejoin_part_to_lot when the part re-converges with its siblings.
    */
   split_from_lot: boolean;
@@ -18808,6 +18813,8 @@ const Parts = z.object({
   process: z.string().uuid().nullable(),
   total_rework_count: z.number().int(),
   archived: z.boolean().optional(),
+  reserved_for_core: z.string().uuid().nullable(),
+  reserved_for_core_number: z.string().nullable(),
   split_from_lot: z.boolean(),
   lot_split_reason: z.string().nullable(),
   lot_split_at: z.string().datetime({ offset: true }).nullable(),

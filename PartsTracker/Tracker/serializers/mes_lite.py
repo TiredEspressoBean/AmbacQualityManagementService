@@ -531,6 +531,8 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
     # Blank charfield-with-choices serializes as "" — but the generated FE zod enum only
     # allows the choice values, so "" is rejected at runtime. Emit null when unset instead.
     lot_split_reason = serializers.SerializerMethodField()
+    reserved_for_core_number = serializers.CharField(
+        source='reserved_for_core.core_number', read_only=True, allow_null=True)
 
     # Write fields
     step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all(), required=False, allow_null=True)
@@ -545,6 +547,11 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
                   'created_at', 'updated_at', 'has_error', 'part_type_name', 'process_name', 'order_name',
                   'step_name', 'step_description', 'work_order_erp_id', 'sampling_rule',
                   'sampling_ruleset', 'sampling_context', 'process', 'total_rework_count', 'archived',
+                  # Reservation: non-null means the part belongs to a specific core's
+                  # customer rather than to stock. Read-only here — it is written at
+                  # accept time and released through its own service, never as a side
+                  # effect of editing a part.
+                  'reserved_for_core', 'reserved_for_core_number',
                   # Lot-split genealogy (PART grain — distinct from WorkOrder.split_reason/at).
                   'split_from_lot', 'lot_split_reason', 'lot_split_at', 'rejoined_at')
         read_only_fields = (
@@ -554,7 +561,18 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             'total_rework_count', 'step',  # Step changes must go through increment action for validation
             # Lot-split state is driven by split_from_lot / rejoin_to_lot services, not direct writes.
             # (lot_split_reason is a SerializerMethodField below, inherently read-only.)
-            'split_from_lot', 'lot_split_at', 'rejoined_at')
+            'split_from_lot', 'lot_split_at', 'rejoined_at',
+            'reserved_for_core', 'reserved_for_core_number')
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # A part harvested from a repair-and-return core is the customer's property.
+        # This is the boundary where one could be attached to somebody else's job:
+        # parts are otherwise created fresh per work order, never drawn from stock.
+        if 'work_order' in attrs and self.instance is not None:
+            from Tracker.services.reman.reservation import assert_work_order_allowed
+            assert_work_order_allowed(self.instance, attrs['work_order'])
+        return attrs
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_lot_split_reason(self, obj):

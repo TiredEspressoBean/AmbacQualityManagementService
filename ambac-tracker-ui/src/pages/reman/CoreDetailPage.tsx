@@ -306,6 +306,21 @@ export function CoreDetailPage() {
                     </CardTitle>
                     <CardDescription>
                         Components extracted during disassembly
+                        {core.returns_to_customer && (
+                            // Every component accepted from this core is reserved to it
+                            // by construction, so this is derived from the core's own
+                            // mode rather than read per-part. Said here because the
+                            // parts list is where someone would otherwise assume these
+                            // are stock.
+                            <>
+                                {" — "}
+                                <span className="font-medium text-foreground">
+                                    reserved to this core
+                                </span>
+                                , and not available to other work. This unit goes back to
+                                its customer, so its parts are theirs.
+                            </>
+                        )}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
