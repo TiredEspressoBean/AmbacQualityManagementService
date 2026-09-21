@@ -92,6 +92,34 @@ scope, the quotation is revised and resubmitted for approval.
 This dimension is entirely absent from the current design and from the codebase. Whether
 it applies depends on the business model (§10.1).
 
+### 3.3 The two layers, and which one our process flow already is
+
+The pattern above is not one representation but **two, at different layers**, and every
+mature MRO system keeps both:
+
+| | **Entry scope** (commercial) | **Accumulated scope** (execution) |
+|---|---|---|
+| Answers | what was quoted and sold | what was actually done to this unit |
+| Shape | a named level | a union of codes |
+| Examples | engine shop visit sold as minimum-touch / performance-restoration / full overhaul; LORA repair levels; graded automotive rebuild levels | IFS repair codes; SAP PM catalog codes on a refurbishment notification; aviation non-routine cards raised against a task-card workscope |
+| Set by | the order, or the customer's programme | inspection findings, as they are discovered |
+| Changes | at quote time | during the job — which is precisely §3.2 |
+
+The gap between the two IS the over-and-above process. A shop visit starts as
+"performance restoration", findings extend it, and the unit ships having had a set of
+operations no tier name describes.
+
+So tiers are not a small-shop simplification of codes, and the earlier framing in this
+document that treated them as competing models was wrong. A tier is the **starting**
+scope; codes are how it grows. A shop with three rebuild levels and no findings never
+sees a code — but it is using the same mechanism with an empty accumulation, not a
+different one.
+
+**Which layer does our process flow already model?** The execution layer, and only
+partly. `Processes` + `ProcessStep` + `StepEdge` describe one authored graph that a part
+walks. There is no notion of a unit doing a *subset* of it, which is exactly what an
+accumulated scope is. §5 is where that lands.
+
 ## 4. The model
 
 **Decided (2026-09-09):** component grades do two jobs at two levels — they roll up to a
@@ -136,8 +164,8 @@ each code carrying operations + materials, plus finding→code mapping — where
 the routing you already have. It is more machinery for a shop that may genuinely only
 have three rebuild levels.
 
-**Decision: repair codes. The fork is false, and counting one shop's scopes was the
-wrong way to resolve it.**
+**Decision: repair codes, with the entry scope as a named preset over them (§3.3). The
+fork is false, and counting one shop's scopes was the wrong way to resolve it.**
 
 UQMES is deployed by shops we have not met. A model chosen to fit the number of rebuild
 scopes at the reference customer is a model that fits nobody else by construction — and
@@ -155,6 +183,13 @@ sensible authoring default, not by storing scope differently.
 
 §3.1's *human curation* step is adopted regardless: auto-generate the proposal, let a
 person include/exclude it.
+
+What §3.3 adds is that the **entry scope survives as a first-class thing** rather than
+as a convenience for small shops. A tenant configures named scopes ("Standard rebuild",
+"Full overhaul") as presets over the code set; a core starts with one, and findings
+extend it. The three-scope shop authors three presets and never opens the code table.
+The twelve-scope shop gets the same presets as starting points and lets findings do the
+rest. One mechanism, two entry costs.
 
 ### 4.2 Two fulfilment modes, and they are both in scope
 
@@ -220,6 +255,68 @@ What differs is what "resolved" means:
 works today, and duplicates shared steps across processes — the classic
 routing-maintenance trap. Fine as a deliberate stopgap, dangerous as an accident, so it
 is named here as the former.
+
+### 5.1 The operation subset, against the flow system we have
+
+With §4.1 decided, the shape is specific. **The rebuild process is authored as the
+SUPERSET route** — every operation the shop can perform on that core type, as one
+ordinary `Processes` graph. A resolved scope then selects the subset of its steps this
+unit visits.
+
+This is a filter over the authored DAG, not a second traversal of it, and that is what
+makes it cheap here:
+
+- **`StepEdge` needs nothing.** No categorical conditions, no new edge type. The graph
+  is authored once and walked as authored; scope decides which of the walked steps this
+  unit actually performs. The objection at the top of §5 — that grades are categorical
+  and don't fit a threshold comparison — dissolves, because no edge is ever asked about
+  a grade.
+- **`resolve_route`'s DEFAULT-only walk stays correct**, for the reason already given:
+  grading precedes the rebuild WO, so the route is resolved before the work exists. It
+  now yields the superset route, filtered.
+- **Steps stay shared.** `ProcessStep` already lets one `Steps` row belong to many
+  processes and versions; a repair code referencing steps rides on that rather than
+  duplicating them — which is the exact trap the stopgap above walks into.
+- **The kit falls out unchanged.** `BOMLine.consumed_at_step` already ties material to
+  the step that consumes it, so "the kit for this scope" is the existing query run over
+  the subset (§6).
+- **Scheduling needs no solver change.** Fewer steps is fewer `ScheduledTask` rows; the
+  superset route was never scheduled as such.
+- **`StepExecution.status` already has `SKIPPED`.** An excluded step has somewhere
+  truthful to land, so the traveler and the audit trail show what was deliberately not
+  done rather than silently omitting it — which matters when the record has to prove
+  what a customer's unit did and did not receive.
+
+**What is genuinely new, stated plainly:**
+
+1. **A per-unit record of the included step set.** This is the "per-WO operation subset"
+   named above. It belongs on the rebuild WO (or the core), not on `Processes`, since it
+   varies per unit while the process does not.
+2. **Advancement has to respect it.** `try_advance_lot` and step advancement currently
+   walk to the next step in the route; they need to walk to the next *included* step and
+   mark the passed-over ones `SKIPPED`.
+3. **The code table itself** — code → steps (+ any material beyond what the steps' BOM
+   lines already carry), plus the finding→code mapping that generates the proposal, plus
+   the named entry-scope presets of §3.3.
+
+### 5.2 One rebuild WO per core
+
+The subset collides with lot cohesion, and the resolution is the industry's.
+
+Cohort advancement (`try_advance_lot`) assumes the parts at a `(WorkOrder, Step)` share a
+route and advance all-or-none. Two cores in one rebuild WO with different scopes do not
+share a route, so the cohort model has nothing coherent to gate on — and forcing a shared
+scope would mean rebuilding both to the union of their findings.
+
+So **rebuild work orders are one per core**, unlike teardown, which deliberately batches
+(`start_teardown_batch`). That is not a workaround: it is what a SAP refurbishment order
+and an aviation shop visit both are — a serialized job against one unit, carrying its
+as-received and as-delivered condition. Teardown batches because every core in the batch
+gets the same disassembly; rebuild cannot, because the whole point is that findings
+differ.
+
+Worth noting this also removes the `REPAIR_RETURN` serial-continuity worry at the WO
+grain: one core, one job, one unit shipped.
 
 ## 6. Kit resolution
 
@@ -336,19 +433,23 @@ for this loop.
 
 1. **`Core.fulfilment_mode`** (§4.2) — field, migration, set at receipt, shown on the
    core. Small, and first because nearly everything downstream branches on it.
-2. **Scope resolution + curation UI** on the core — proposal generated, human
-   include/exclude, no routing change (works under either §4 model).
+2. **Scope resolution + curation UI** on the core — entry-scope preset applied (§3.3),
+   proposal generated from findings, human include/exclude. Still no routing change: the
+   resolved scope is recorded and read by step 3, not yet enforced during execution.
 3. **Kit resolution service** — scope → route → BOM lines → netted against harvest,
    with cross-core reuse gated by mode. Returns data; writes nothing.
-4. **UI 1–3** on `CoreDisassemblyPage`, on the §5 one-process-per-scope stopgap.
+4. **UI 1–3** on the teardown surface, on the §5 one-process-per-scope stopgap. (The
+   design named `CoreDisassemblyPage`; teardown is to become a DWI surface rather than a
+   page of its own, so this lands wherever that work puts it.)
 5. **UI 4–5** — core return link, ready-to-rebuild queue.
 6. **`EXCHANGE` path closes here.** Everything above is a complete loop for stock
    rebuilds, and it is worth shipping and using before starting §7.
 7. **`REPAIR_RETURN` gate** — quote from the proposed scope, customer approval before
    work, decline path (§10.6), serial continuity through the rebuild.
-8. **Routing support for composed scope** — the repair-code table + per-WO operation-
-   subset assembly — and migrate off the §5 stopgap. (No longer gated on resolving
-   §4.1; that is decided.)
+8. **Routing support for composed scope** (§5.1) — superset process, repair-code table,
+   per-unit included-step set, advancement that skips excluded steps — and migrate off
+   the §5 stopgap. One rebuild WO per core (§5.2) is settled here if not earlier. No
+   longer gated on resolving §4.1; that is decided.
 9. **Staging reuse-vs-new** (shared with the bought-parts-staging item).
 10. **Fallout forecast** into the RCCP material lane.
 
