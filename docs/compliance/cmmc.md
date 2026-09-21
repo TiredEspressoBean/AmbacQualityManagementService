@@ -127,20 +127,24 @@ only if the IdP is in scope and configured.
 | IA.L2-3.5.10 | Cryptographically protected passwords | ✅ | Django's password hashers; passwords are never stored or transmitted in clear |
 | IA.L2-3.5.11 | Obscure authentication feedback | ✅ | Django's default — failures do not reveal whether the account exists |
 
-!!! warning "Check the session lifetime for your deployment"
-    The shipped default is `SESSION_COOKIE_AGE` of 14 days with
-    `SESSION_EXPIRE_AT_BROWSER_CLOSE` off. It is a plain constant in
-    `settings.py` rather than an environment variable, so a deployment that
-    has not changed it is running the default.
+!!! warning "Set the session lifetime for your deployment"
+    The default is 14 days with no expiry on browser close. That suits a
+    personal machine and is a real exposure on a shared shop-floor tablet,
+    where the next operator inherits the session — and in a quality system
+    every record they create is attributed to whoever logged in, which makes
+    it an attribution problem as much as an access one.
 
-    Two weeks is convenient on a personal machine and a real exposure on a
-    shared shop-floor tablet, where the next operator inherits the session —
-    and in a quality system every record they create is attributed to
-    whoever logged in, which makes it an attribution problem as much as an
-    access one.
+    Three environment variables control this:
 
-    For a CUI environment, shorten it, and treat shared devices as an
-    explicit decision rather than an accident.
+    | Variable | Default | For shared devices |
+    |----------|---------|--------------------|
+    | `SESSION_COOKIE_AGE` | `1209600` (14 days) | `28800` for one shift, or shorter |
+    | `SESSION_EXPIRE_AT_BROWSER_CLOSE` | `False` | `true` |
+    | `ACCOUNT_EMAIL_VERIFICATION` | `optional` | `mandatory` where delivery matters |
+
+    Sessions roll on each request (`SESSION_SAVE_EVERY_REQUEST`), so the age
+    is an idle timeout rather than a hard cap — a tablet in continuous use
+    will not log itself out mid-shift.
 
 ### Configuration Management (CM)
 

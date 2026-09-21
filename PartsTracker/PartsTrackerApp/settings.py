@@ -314,7 +314,10 @@ SOCIALACCOUNT_ADAPTER = 'Tracker.adapters.TenantSocialAccountAdapter'
 # Allauth behavior settings (using non-deprecated format)
 ACCOUNT_LOGIN_METHODS = {'email'}  # Login with email only
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']  # Required signup fields
-ACCOUNT_EMAIL_VERIFICATION = 'optional'  # or 'mandatory' for stricter security
+# 'optional' lets a user sign in without confirming their address, so a working
+# login is not evidence the address is reachable. Set 'mandatory' where that
+# matters -- notification delivery, or a CUI environment.
+ACCOUNT_EMAIL_VERIFICATION = os.environ.get('ACCOUNT_EMAIL_VERIFICATION', 'optional')
 SOCIALACCOUNT_AUTO_SIGNUP = True  # Auto-create user on first SSO login
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # Allow linking by email
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # Auto-link existing users by email
@@ -710,10 +713,17 @@ CACHES = {
     }
 }
 
-# Session settings - persist sessions for 2 weeks
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 2 weeks in seconds
+# Session lifetime. The 14-day default suits a personal machine; a shared
+# shop-floor tablet wants far less, because the next operator inherits the
+# session and every record they create is attributed to whoever logged in --
+# an attribution problem in a quality system, not just an access one.
+# Deployments handling CUI should shorten this (see docs/compliance/cmmc.md).
+SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', 60 * 60 * 24 * 14))
 SESSION_SAVE_EVERY_REQUEST = True  # Refresh session on each request
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Don't expire when browser closes
+# Rolling expiry above means this governs only the browser-close case.
+SESSION_EXPIRE_AT_BROWSER_CLOSE = os.environ.get(
+    'SESSION_EXPIRE_AT_BROWSER_CLOSE', 'False'
+).lower() in ('true', '1', 'yes')
 
 # Optional: Redis-backed sessions
 # SESSION_ENGINE = "django.contrib.sessions.backends.cache"
