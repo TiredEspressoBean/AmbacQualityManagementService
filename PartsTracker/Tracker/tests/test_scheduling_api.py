@@ -105,7 +105,13 @@ class SchedulingAPITests(TenantTestCase):
         turn_end = self._parse(rows['Turn']['end_time'])
         r = self._move(rows['Mill']['id'], turn_end + timedelta(hours=2))
         self.assertEqual(r.status_code, 200, r.content)
-        self.assertTrue(r.data['is_pinned'])
+        # The move response carries the OUTCOME — what moved and what rippled with it —
+        # not the task; the client refetches the schedule on settle. Assert the pin
+        # where it actually lives.
+        self.assertEqual(r.data['rippled_count'], 0)
+        after = {x['step_name']: x for x in self._rows(
+            self.client.get('/api/ScheduledTasks/').data)}
+        self.assertTrue(after['Mill']['is_pinned'])
         self.assertTrue(self.client.get('/api/Schedules/current/').data['is_stale'])
 
     def test_move_rejected_before_predecessor(self):

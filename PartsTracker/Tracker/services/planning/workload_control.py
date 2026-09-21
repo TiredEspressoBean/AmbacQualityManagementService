@@ -177,7 +177,9 @@ def work_content(ref, work_order, cache: dict) -> dict:
         for sid in route_ids:
             counts[sid] = counts.get(sid, 0) + 1
 
-    labor, by_wc = _route_hours(ref, counts)
+    # `_route_hours` also breaks out certification-limited labour; workload control
+    # gates on total load per resource, so the pool split is not consulted here.
+    labor, _pools, by_wc = _route_hours(ref, counts)
     out = dict(by_wc)
     if labor > 0:
         out[LABOR] = labor
@@ -217,7 +219,7 @@ def recommend_release(tenant, horizon_days: int | None = None) -> dict:
     # current commitment rather than an estimate.
     committed: dict = {k: 0.0 for k in capacity}
     for wo in sched_data.get_active_workorders(tenant):
-        labor, by_wc = _route_hours(ref, _route_counts(wo))
+        labor, _pools, by_wc = _route_hours(ref, _route_counts(wo))
         committed[LABOR] = committed.get(LABOR, 0.0) + labor
         for wc_id, hrs in by_wc.items():
             committed[wc_id] = committed.get(wc_id, 0.0) + hrs
