@@ -30,7 +30,7 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 | Awareness & Training (AT) | 3 | 0 | 3 |
 | Audit & Accountability (AU) | 9 | 6 | 3 |
 | Configuration Management (CM) | 9 | 6 | 3 |
-| Identification & Authentication (IA) | 11 | 7 | 4 |
+| Identification & Authentication (IA) | 11 | 4 | 7 |
 | Incident Response (IR) | 3 | 1 | 2 |
 | Maintenance (MA) | 6 | 0 | 6 |
 | Media Protection (MP) | 9 | 5 | 4 |
@@ -68,16 +68,20 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 
 ### Access Control (AC)
 
-| Practice | Capability | Evidence |
-|----------|------------|----------|
-| AC.L2-3.1.1 | User authentication required | TenantMiddleware, IsAuthenticated |
-| AC.L2-3.1.2 | Function-level authorization | 9 role groups, DjangoModelPermissions |
-| AC.L2-3.1.3 | CUI flow control | Document classification (5 levels) |
-| AC.L2-3.1.4 | Separation of duties | Distinct roles, self_verified detection |
-| AC.L2-3.1.5 | Least privilege | Minimal Customer role permissions |
-| AC.L2-3.1.7 | Privilege escalation prevention | Permission checks on all actions |
-| AC.L2-3.1.12 | Remote access monitoring | IP address logging, audit trail |
-| AC.L2-3.1.22 | Public posting control | Classification prevents disclosure |
+These are the practices the application contributes to. AC has 22 practices
+in total; the rest are organisational or network controls that no application
+can satisfy on its own — see [Shared Responsibility](#shared-responsibility-model).
+
+| Practice | Capability | Status | Evidence |
+|----------|------------|--------|----------|
+| AC.L2-3.1.1 | User authentication required | ✅ | `TenantMiddleware` + `IsAuthenticated` on every endpoint |
+| AC.L2-3.1.2 | Function-level authorization | ✅ | 12 role presets (`GROUP_PRESETS`) over Django model permissions, plus per-action gates |
+| AC.L2-3.1.3 | CUI flow control | ✅ | Five classification levels — Public, Internal, Confidential, Restricted, Secret — filtered in `SecureManager.for_user()` |
+| AC.L2-3.1.4 | Separation of duties | ✅ | Distinct roles, plus `self_verified` flags that record when a CAPA or RCA was verified by its own conductor |
+| AC.L2-3.1.5 | Least privilege | ✅ | Presets grant the minimum per role; the Customer role is read-only and scoped to its own company |
+| AC.L2-3.1.7 | Privilege escalation prevention | ✅ | Permission checks on every action; a user cannot grant themselves a permission |
+| AC.L2-3.1.12 | Remote access monitoring | ⚠️ | IP is captured at signing and on invitations, not on every session. There is no session-level remote-access monitor |
+| AC.L2-3.1.22 | Public posting control | ✅ | Classification gates what a Customer-role user can retrieve |
 
 ### Audit & Accountability (AU)
 
@@ -102,6 +106,35 @@ does not satisfy. A control matrix is only useful if the gaps are in it.
     application log — which means the system can be losing audit records
     while appearing healthy. Availability over alerting is a defensible
     engineering choice; it is not a defensible answer to 3.3.4.
+
+### Identification & Authentication (IA)
+
+Eleven practices. Several are deliberately delegated to the identity provider
+rather than implemented here — which is a valid answer for an assessment, but
+only if the IdP is in scope and configured.
+
+| Practice | Capability | Status | Evidence |
+|----------|------------|--------|----------|
+| IA.L2-3.5.1 | Identify users and devices | ✅ | Unique account per person; no shared logins by design |
+| IA.L2-3.5.2 | Authenticate before access | ✅ | Session or SSO; every endpoint requires an authenticated user |
+| IA.L2-3.5.3 | Multifactor authentication | ⚠️ | **Not in the application.** MFA is inherited from Microsoft Entra when SSO is enabled. A password-only deployment does not satisfy this |
+| IA.L2-3.5.4 | Replay-resistant authentication | ⚠️ | Satisfied via the IdP's OIDC flow when SSO is used; local password login is session-cookie based |
+| IA.L2-3.5.5 | Prevent identifier reuse | ❌ | Not enforced. Accounts are deactivated rather than deleted, which preserves history but does not prevent an address being reused |
+| IA.L2-3.5.6 | Disable identifiers after inactivity | ⚠️ | `is_active` and bulk activate/deactivate exist; nothing disables an account automatically on inactivity |
+| IA.L2-3.5.7 | Password complexity | ⚠️ | Django validators: similarity to user attributes, minimum length, common-password list, all-numeric rejection. No character-class rule |
+| IA.L2-3.5.8 | Prohibit password reuse | ❌ | No password history is kept |
+| IA.L2-3.5.9 | Temporary password on first use | ⚠️ | Invitations carry a signup link rather than a temporary password, so the practice does not map cleanly; there is no forced first-login change |
+| IA.L2-3.5.10 | Cryptographically protected passwords | ✅ | Django's password hashers; passwords are never stored or transmitted in clear |
+| IA.L2-3.5.11 | Obscure authentication feedback | ✅ | Django's default — failures do not reveal whether the account exists |
+
+!!! warning "Sessions last two weeks and survive browser close"
+    `SESSION_COOKIE_AGE` is 14 days with `SESSION_EXPIRE_AT_BROWSER_CLOSE`
+    off. That is convenient on a personal machine and a real exposure on a
+    shared shop-floor tablet, where the next operator inherits the session —
+    and every record they create is attributed to whoever logged in.
+
+    For a CUI environment, shorten it, and treat shared devices as an
+    explicit decision rather than an accident.
 
 ### Configuration Management (CM)
 
