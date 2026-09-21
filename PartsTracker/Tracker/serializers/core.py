@@ -324,12 +324,23 @@ class CompanySerializer(SecureModelMixin):
         model = Companies
         fields = ('id', 'name', 'description', 'hubspot_api_id',
                   'default_outside_process_turnaround_days',
+                  'default_core_fulfilment_mode',
                   'user_count', 'created_at', 'updated_at', 'archived', 'version')
         read_only_fields = ('created_at', 'updated_at', 'version')
 
     # Fields whose edits are soft-delete / metadata only and should NOT
     # trigger a new version.
-    _NON_VERSIONING_FIELDS = frozenset({'archived', 'default_outside_process_turnaround_days'})
+    #
+    # `default_core_fulfilment_mode` joins the turnaround default for the same reason:
+    # it records a commercial arrangement that changes when a contract is renegotiated,
+    # not a controlled fact about the company. Forking a supplier-qualification version
+    # every time an exchange programme is agreed would bury real qualification history
+    # under sales terms.
+    _NON_VERSIONING_FIELDS = frozenset({
+        'archived',
+        'default_outside_process_turnaround_days',
+        'default_core_fulfilment_mode',
+    })
 
     @extend_schema_field(serializers.IntegerField())
     def get_user_count(self, obj):

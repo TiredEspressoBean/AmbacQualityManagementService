@@ -468,6 +468,12 @@ SPECTACULAR_SETTINGS = {
         "CoreStatusEnum": "Tracker.models.reman.Core.CORE_STATUS_CHOICES",
         "ConditionGradeEnum": "Tracker.models.reman.Core.CONDITION_GRADE_CHOICES",  # Shared by Core and HarvestedComponent
         "SourceTypeEnum": "Tracker.models.reman.Core.SOURCE_TYPE_CHOICES",
+        # One choice set, two fields: `Core.fulfilment_mode` (how THIS unit is fulfilled)
+        # and `Companies.default_core_fulfilment_mode` (the customer's standing
+        # arrangement). Shared deliberately so the two can never offer different options
+        # — which makes spectacular see one choice set under two field names and refuse
+        # to pick a component name. Naming it once is the fix it asks for.
+        "FulfilmentModeEnum": "Tracker.models.core.FULFILMENT_MODE_CHOICES",
         # Traveler serializer status (non-model inline choices)
         "TravelerStepStatusEnum": ["COMPLETED", "IN_PROGRESS", "PENDING", "SKIPPED"],
         # Integration enums (resolve collision between IntegrationConfig.provider and TenantLLMProvider.provider)

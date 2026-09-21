@@ -36,7 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
-import { useRetrieveCustomers } from "@/hooks/useRetrieveCustomers";
+import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useBulkCreateCores, type BulkCoreRow } from "@/hooks/useBulkCreateCores";
 
 type Row = {
@@ -50,6 +50,8 @@ type Row = {
     condition_notes: string;
     core_credit_value: string;
     received_date: string;
+    /** "" = follow the customer's standing arrangement. A chosen value overrides it. */
+    fulfilment_mode: "" | "EXCHANGE" | "REPAIR_RETURN";
 };
 
 type RowErrors = Partial<Record<keyof Row, string>>;
@@ -82,12 +84,15 @@ function emptyRow(): Row {
         condition_notes: "",
         core_credit_value: "",
         received_date: new Date().toISOString().slice(0, 10),
+        fulfilment_mode: "",
     };
 }
 
 function validateRow(row: Row): RowErrors {
     const errs: RowErrors = {};
-    if (!row.core_number.trim()) errs.core_number = "Required";
+    // Not required: a blank is auto-numbered CORE-YYYY-#### server-side. Demanding it
+    // meant typing forty unique numbers by hand, which is where duplicates come from.
+    
     if (!row.core_type) errs.core_type = "Required";
     if (!row.received_date) errs.received_date = "Required";
     if (!row.condition_grade) errs.condition_grade = "Required";
@@ -99,12 +104,13 @@ function validateRow(row: Row): RowErrors {
 
 function toApiRow(row: Row): BulkCoreRow {
     const out: BulkCoreRow = {
-        core_number: row.core_number.trim(),
         core_type: row.core_type,
         received_date: row.received_date,
         source_type: row.source_type,
         condition_grade: row.condition_grade,
     };
+    if (row.core_number.trim()) out.core_number = row.core_number.trim();
+    if (row.fulfilment_mode) out.fulfilment_mode = row.fulfilment_mode;
     if (row.serial_number.trim()) out.serial_number = row.serial_number.trim();
     if (row.source_reference.trim()) out.source_reference = row.source_reference.trim();
     if (row.condition_notes.trim()) out.condition_notes = row.condition_notes.trim();
@@ -134,6 +140,10 @@ const HEADER_ALIASES: Record<keyof Row, string[]> = {
     condition_notes: ["condition_notes", "notes"],
     core_credit_value: ["core_credit_value", "credit", "creditvalue", "credit_value"],
     received_date: ["received_date", "receiveddate", "received", "date", "receive_date"],
+    // A pasted sheet can carry it. Spelt both ways because both are in the wild, and a
+    // receiving sheet exported from someone else's system will use whichever it uses.
+    fulfilment_mode: ["fulfilment_mode", "fulfilment", "fulfillment_mode", "fulfillment",
+                      "mode", "exchange"],
 };
 
 function normalizeHeader(s: string): string {
@@ -194,13 +204,20 @@ export function CoreReceiveBatchPage() {
         () => (partTypesData?.results ?? []) as Array<{ id: string; name: string }>,
         [partTypesData],
     );
-    const { data: customersData } = useRetrieveCustomers({});
+    // COMPANIES, not users. `Core.customer` is an FK to Companies, and this mapped
+    // Users into it — so every pasted row naming a customer answered
+    // `400 Invalid pk "72" - object does not exist`. The single-core form had the same
+    // defect; on a batch it would reject forty rows at once.
+    const { data: companiesData } = useRetrieveCompanies({ limit: 200 });
     const customers = useMemo(
-        () => (Array.isArray(customersData) ? customersData : []).map((u) => ({
-            id: String(u.id),
-            name: [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username,
+        () => (companiesData?.results ?? []).map((c) => ({
+            id: String(c.id),
+            name: c.name,
+            // The customer's standing arrangement, so a pasted batch inherits it per
+            // row rather than taking one mode for the whole paste.
+            arrangement: c.default_core_fulfilment_mode ?? null,
         })),
-        [customersData],
+        [companiesData],
     );
 
     const rowErrors = useMemo(() => rows.map(validateRow), [rows]);
@@ -309,6 +326,16 @@ export function CoreReceiveBatchPage() {
                     const id = customerByName.get(v.toLowerCase());
                     if (id) base.customer = id;
                     else if (v) { base.customer = v; unresolved++; }
+                } else if (key === "fulfilment_mode") {
+                    // Accept the enum or plain English, since a pasted sheet will say
+                    // "exchange" or "return" long before it says REPAIR_RETURN. Anything
+                    // unrecognised stays blank, which means "inherit" rather than a
+                    // wrong guess about where somebody's unit is going.
+                    const raw = v.trim().toLowerCase();
+                    base.fulfilment_mode =
+                        /^(repair_return|repair|return|repair & return)$/.test(raw) ? "REPAIR_RETURN"
+                        : /^(exchange|stock|swap)$/.test(raw) ? "EXCHANGE"
+                        : "";
                 } else {
                     base[key] = v;
                 }
@@ -437,12 +464,13 @@ export function CoreReceiveBatchPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-10">#</TableHead>
-                                    <TableHead>Core Number *</TableHead>
+                                    <TableHead>Core Number</TableHead>
                                     <TableHead>Core Type *</TableHead>
                                     <TableHead>Serial</TableHead>
                                     <TableHead>Customer</TableHead>
                                     <TableHead>Source</TableHead>
                                     <TableHead>Source Ref</TableHead>
+                                    <TableHead>Fulfilment</TableHead>
                                     <TableHead>Grade *</TableHead>
                                     <TableHead>Credit ($)</TableHead>
                                     <TableHead>Received *</TableHead>
@@ -585,6 +613,46 @@ export function CoreReceiveBatchPage() {
                                                     onChange={(e) => updateCell(idx, "source_reference", e.target.value)}
                                                     className="h-8 w-28"
                                                 />
+                                            </TableCell>
+                                            <TableCell>
+                                                {(() => {
+                                                    // Blank follows the customer's standing
+                                                    // arrangement, per ROW — a paste routinely
+                                                    // mixes them, and one mode for forty cores
+                                                    // is how a repair-and-return unit gets
+                                                    // pooled into stock.
+                                                    const arrangement = customers.find(
+                                                        (c) => c.id === row.customer,
+                                                    )?.arrangement ?? null;
+                                                    const effective = row.fulfilment_mode || arrangement || "EXCHANGE";
+                                                    const inherited = !row.fulfilment_mode;
+                                                    return (
+                                                        <Select
+                                                            value={effective}
+                                                            onValueChange={(v) => updateCell(idx, "fulfilment_mode", v)}
+                                                        >
+                                                            <SelectTrigger
+                                                                className={cn("h-8 w-40",
+                                                                    inherited && "text-muted-foreground")}
+                                                                title={inherited
+                                                                    ? (arrangement
+                                                                        ? "From this customer's standing arrangement"
+                                                                        : "No arrangement on record — defaulting to stock")
+                                                                    : "Overridden for this row"}
+                                                            >
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="EXCHANGE">
+                                                                    Unit from stock
+                                                                </SelectItem>
+                                                                <SelectItem value="REPAIR_RETURN">
+                                                                    Goes back to them
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    );
+                                                })()}
                                             </TableCell>
                                             <TableCell>
                                                 <Select

@@ -1504,6 +1504,15 @@ class ClassificationLevel(models.TextChoices):
     SECRET = "SECRET", "Secret"  # critical impact
 
 
+# Defined here rather than on `Core` (models/reman.py) because BOTH need it and reman
+# imports core, not the other way round. One definition, so the customer's standing
+# arrangement and the core's actual mode can never offer different options.
+FULFILMENT_MODE_CHOICES = [
+    ('EXCHANGE', 'Exchange — customer gets a unit from stock'),
+    ('REPAIR_RETURN', 'Repair & return — this unit goes back to them'),
+]
+
+
 class Companies(SecureModel):
     """
     Represents a company or customer entity associated with deals, parts, and HubSpot CRM integration.
@@ -1534,6 +1543,25 @@ class Companies(SecureModel):
         ),
     )
     """Supplier-level default outside-process turnaround (calendar days); see Steps.outside_process_lead_days."""
+
+    default_core_fulfilment_mode = models.CharField(
+        max_length=20, choices=FULFILMENT_MODE_CHOICES, null=True, blank=True,
+        help_text=(
+            "This customer's standing arrangement for cores they send in: do they get "
+            "their own unit back, or one from stock? An exchange programme is a "
+            "contract, not a per-unit decision, so receiving inherits it rather than "
+            "asking a clerk to guess. Blank means nobody has recorded an arrangement — "
+            "distinct from 'exchange', because the receipt screen can then say so and "
+            "prompt for it instead of implying a decision that was never made."
+        ),
+    )
+    """Default for `Core.fulfilment_mode` at receipt.
+
+    Nullable ON PURPOSE. The cost of being wrong here is asymmetric: treating a
+    repair-and-return unit as an exchange means its components go into the harvest pool
+    and the customer's own unit can no longer be reassembled, while the reverse just
+    adds ceremony. So "unknown" has to be representable, and visibly so, rather than
+    silently collapsing into the cheaper-looking option."""
 
     class Meta:
         verbose_name_plural = 'Companies'

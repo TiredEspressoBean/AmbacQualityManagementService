@@ -68,3 +68,28 @@ def issue_core_credit(core: Core) -> Core:
     core.core_credit_issued_at = timezone.now()
     core.save()
     return core
+
+
+def resolve_fulfilment_mode(customer, requested: str | None = None) -> tuple[str, str]:
+    """The mode a core being received should take, and where it came from.
+
+    Returns `(mode, provenance)` where provenance is one of 'requested', 'customer' or
+    'default' — so the receipt screen can say *why* it is proposing what it proposes.
+    A clerk confirming "Exchange, from Acme's standing arrangement" is doing something
+    different from a clerk filling in a blank, and only one of those is reliable.
+
+    Precedence: an explicit request wins (someone deliberately overrode it), then the
+    customer's standing arrangement, then EXCHANGE.
+
+    EXCHANGE last because the error is asymmetric. Treating a repair-and-return unit as
+    an exchange puts its components in the harvest pool, and the customer's own unit can
+    then never be reassembled; the reverse merely adds a quoting step nobody needed. So
+    the fallback is the mode with no obligations, and 'default' provenance is what lets
+    the UI admit it is a fallback rather than an answer.
+    """
+    if requested:
+        return requested, 'requested'
+    arrangement = getattr(customer, 'default_core_fulfilment_mode', None) if customer else None
+    if arrangement:
+        return arrangement, 'customer'
+    return 'EXCHANGE', 'default'

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -26,7 +26,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
-import { useRetrieveCustomers } from "@/hooks/useRetrieveCustomers";
+import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { ArrowLeft, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { matchKey } from "@/lib/query-filters";
@@ -40,6 +40,7 @@ const formSchema = z.object({
     source_type: z.enum(["CUSTOMER_RETURN", "PURCHASED", "WARRANTY", "TRADE_IN"]),
     source_reference: z.string().optional(),
     condition_grade: z.enum(["A", "B", "C", "SCRAP"]),
+    fulfilment_mode: z.enum(["EXCHANGE", "REPAIR_RETURN"]),
     condition_notes: z.string().optional(),
     core_credit_value: z.string().optional(),
 });
@@ -55,10 +56,13 @@ export function CoreReceiveFormPage() {
     const { data: partTypesData } = useRetrievePartTypes({ limit: 100 });
     const partTypes = partTypesData?.results ?? [];
 
-    // Fetch customers for dropdown
-    // NOTE: api_Customers_list does not support limit or search; all customers returned
-    const { data: customersData } = useRetrieveCustomers({});
-    const customers = Array.isArray(customersData) ? customersData : [];
+    // COMPANIES, not users. `Core.customer` is an FK to Companies, but this dropdown
+    // was populated from /api/Customers/ — which returns Users, with integer ids — so
+    // picking anyone produced `400 Invalid pk "72" - object does not exist` and the form
+    // only worked with "No customer" selected. A core could not record who sent it.
+    const { data: companiesData } = useRetrieveCompanies({ limit: 200 });
+    const customers = companiesData?.results ?? [];
+
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -71,10 +75,33 @@ export function CoreReceiveFormPage() {
             source_type: "CUSTOMER_RETURN",
             source_reference: "",
             condition_grade: "B",
+            fulfilment_mode: "EXCHANGE",
             condition_notes: "",
             core_credit_value: "",
         },
     });
+
+    const selectedCustomerId = form.watch("customer");
+    const touchedMode = useRef(false);
+    // Narrowed explicitly, because the field is `blank=True` as well as nullable: the
+    // API can send "" and `??` would let it through as if it were a real arrangement.
+    // Blank and null both mean nobody has recorded one.
+    const raw = customers.find(
+        (c: { id: string }) => c.id === selectedCustomerId,
+    )?.default_core_fulfilment_mode;
+    const arrangement: "EXCHANGE" | "REPAIR_RETURN" | null =
+        raw === "EXCHANGE" || raw === "REPAIR_RETURN" ? raw : null;
+
+    // Follow the customer's arrangement until someone overrides it by hand. Once they
+    // have, stop moving it under them — a clerk who deliberately chose repair-and-return
+    // should not have it silently reset by re-picking the customer.
+    useEffect(() => {
+        if (touchedMode.current) return;
+        form.setValue("fulfilment_mode", arrangement ?? "EXCHANGE");
+    }, [arrangement, form]);
+
+    const modeProvenance: "requested" | "customer" | "default" =
+        touchedMode.current ? "requested" : arrangement ? "customer" : "default";
 
     const createMutation = useMutation({
         mutationFn: (data: FormData) => {
@@ -250,6 +277,53 @@ export function CoreReceiveFormPage() {
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="fulfilment_mode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Fulfilment *</FormLabel>
+                                            <Select
+                                                onValueChange={(v) => {
+                                                    // Mark as a deliberate override so the
+                                                    // customer's arrangement stops driving it.
+                                                    touchedMode.current = true;
+                                                    field.onChange(v);
+                                                }}
+                                                value={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {/* The CONSEQUENCE, not the enum. A clerk
+                                                        shouldn't need to know what
+                                                        REPAIR_RETURN implies about harvest
+                                                        pooling to answer correctly. */}
+                                                    <SelectItem value="EXCHANGE">
+                                                        They get a unit from stock
+                                                    </SelectItem>
+                                                    <SelectItem value="REPAIR_RETURN">
+                                                        This unit goes back to them
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>
+                                                {modeProvenance === "customer"
+                                                    ? "From this customer's standing arrangement."
+                                                    : modeProvenance === "requested"
+                                                        ? "Overridden for this core."
+                                                        : "No arrangement on record for this customer — "
+                                                          + "defaulting to stock. Set one on the company "
+                                                          + "to stop guessing per core."}
+                                            </FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}

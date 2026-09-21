@@ -1298,3 +1298,116 @@ class ComponentDispositionPresetTests(SimpleTestCase):
             perms = set(GROUP_PRESETS[role]['permissions'])
             self.assertIn('accept_component', perms, role)
             self.assertIn('reject_component', perms, role)
+
+
+class CoreFulfilmentModeTests(TenantTestCase):
+    """How a core is fulfilled decides three separate things.
+
+    `source_type` records where a core came FROM; nothing recorded where it was GOING.
+    A customer return is either their own unit to repair and send back, or a core
+    surrendered against an exchange — and the two differ on unit identity, on whether a
+    wider scope needs the customer's authorisation, and on whether components harvested
+    from other cores may be built in.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, PartTypes
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.core = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-FM-1', core_type=self.core_type,
+            received_date=date.today(), received_by=self.user_a)
+
+    def test_exchange_is_the_default(self):
+        """The mode with no extra obligations. A shop that never configures this should
+        not silently acquire a customer-authorisation requirement it does not have."""
+        self.assertEqual(self.core.fulfilment_mode, 'EXCHANGE')
+        self.assertFalse(self.core.returns_to_customer)
+
+    def test_an_exchange_rebuild_may_use_the_harvest_pool(self):
+        """The customer gets *a* unit, so harvested stock is stock like any other."""
+        self.assertTrue(self.core.allows_pooled_harvest)
+
+    def test_a_returned_unit_keeps_its_own_parts(self):
+        self.core.fulfilment_mode = 'REPAIR_RETURN'
+        self.core.save(update_fields=['fulfilment_mode'])
+
+        self.assertTrue(self.core.returns_to_customer)
+        self.assertFalse(self.core.allows_pooled_harvest)
+
+    def test_only_a_returned_unit_needs_scope_authorised(self):
+        """On an exchange the shop owns the unit and the cost, so scope is an internal
+        decision. On repair-and-return a wider scope is a bigger bill for someone who
+        has not agreed to it — the over-and-above process."""
+        self.assertFalse(self.core.scope_needs_customer_approval)
+
+        self.core.fulfilment_mode = 'REPAIR_RETURN'
+        self.core.save(update_fields=['fulfilment_mode'])
+        self.assertTrue(self.core.scope_needs_customer_approval)
+
+    def test_the_mode_is_independent_of_where_the_core_came_from(self):
+        """The distinction the field exists to draw: a CUSTOMER_RETURN can be either."""
+        self.core.source_type = 'CUSTOMER_RETURN'
+        for mode, expected in (('EXCHANGE', False), ('REPAIR_RETURN', True)):
+            self.core.fulfilment_mode = mode
+            self.core.save(update_fields=['source_type', 'fulfilment_mode'])
+            self.assertEqual(self.core.returns_to_customer, expected, mode)
+
+
+class FulfilmentModeInheritanceTests(TenantTestCase):
+    """A core inherits its customer's standing arrangement.
+
+    An exchange programme is a contract with a customer, not a decision about one unit,
+    so a receiving clerk should be confirming rather than guessing — the cost of
+    guessing wrong is asymmetric, and only in one direction is it recoverable.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Companies
+        self.acme = Companies.objects.create(
+            tenant=self.tenant_a, name='Acme', description='',
+            default_core_fulfilment_mode='REPAIR_RETURN')
+        self.nobody = Companies.objects.create(
+            tenant=self.tenant_a, name='Unarranged', description='')
+
+    def test_the_customers_arrangement_is_inherited(self):
+        from Tracker.services.reman.core import resolve_fulfilment_mode
+        self.assertEqual(resolve_fulfilment_mode(self.acme),
+                         ('REPAIR_RETURN', 'customer'))
+
+    def test_an_explicit_choice_overrides_the_arrangement(self):
+        """Someone deliberately overriding a contract default must win — that is the
+        exception the arrangement cannot know about."""
+        from Tracker.services.reman.core import resolve_fulfilment_mode
+        self.assertEqual(resolve_fulfilment_mode(self.acme, 'EXCHANGE'),
+                         ('EXCHANGE', 'requested'))
+
+    def test_no_arrangement_falls_back_and_says_so(self):
+        """`default` provenance is the point: it lets the screen admit this is a
+        fallback rather than presenting it as the customer's known arrangement."""
+        from Tracker.services.reman.core import resolve_fulfilment_mode
+        self.assertEqual(resolve_fulfilment_mode(self.nobody),
+                         ('EXCHANGE', 'default'))
+        self.assertEqual(resolve_fulfilment_mode(None), ('EXCHANGE', 'default'))
+
+    def test_blank_is_distinct_from_exchange_on_the_company(self):
+        """Nullable on purpose: 'nobody has recorded an arrangement' must not collapse
+        into 'they are on exchange', or the screen cannot prompt for what is missing."""
+        self.assertIsNone(self.nobody.default_core_fulfilment_mode)
+        self.assertEqual(self.acme.default_core_fulfilment_mode, 'REPAIR_RETURN')
+
+    def test_recording_an_arrangement_does_not_fork_a_company_version(self):
+        """It is a commercial term that changes when a contract is renegotiated, not a
+        controlled fact. Versioning the company each time would bury real supplier
+        qualification history under sales terms."""
+        from Tracker.serializers.core import CompanySerializer
+        before = self.acme.version
+        ser = CompanySerializer(self.acme,
+                                data={'default_core_fulfilment_mode': 'EXCHANGE'},
+                                partial=True)
+        ser.is_valid(raise_exception=True)
+        saved = ser.save()
+        self.assertEqual(saved.version, before)
+        self.assertEqual(saved.default_core_fulfilment_mode, 'EXCHANGE')

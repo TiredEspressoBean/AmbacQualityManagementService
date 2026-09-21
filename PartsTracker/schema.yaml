@@ -41735,6 +41735,17 @@ components:
             is a step's outside-process vendor and the step doesn't specify its own
             lead time. Used by the scheduler to reserve elapsed vendor time for outside-process
             operations.
+        default_core_fulfilment_mode:
+          nullable: true
+          description: |-
+            This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+          oneOf:
+          - $ref: '#/components/schemas/FulfilmentModeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
         user_count:
           type: integer
           readOnly: true
@@ -41790,6 +41801,17 @@ components:
             is a step's outside-process vendor and the step doesn't specify its own
             lead time. Used by the scheduler to reserve elapsed vendor time for outside-process
             operations.
+        default_core_fulfilment_mode:
+          nullable: true
+          description: |-
+            This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+          oneOf:
+          - $ref: '#/components/schemas/FulfilmentModeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
         archived:
           type: boolean
       required:
@@ -41929,7 +41951,14 @@ components:
           readOnly: true
         core_number:
           type: string
-          description: Unique identifier for this core unit (unique per tenant)
+          description: 'Our handle for this unit (unique per tenant). Auto-generated
+            as CORE-YYYY-#### when left blank — every other business identifier here
+            is (orders, shipments, approvals, quality reports, dispositions, qualifications),
+            and cores arrive in batches where hand-typing forty unique numbers is
+            both slow and the obvious place for a duplicate to creep in. Still writable,
+            for a shop with its own tagging scheme. The CUSTOMER''s references live
+            elsewhere: `source_reference` for an RMA or PO, `serial_number` for the
+            OEM serial.'
           maxLength: 100
         serial_number:
           type: string
@@ -41967,6 +41996,17 @@ components:
           type: string
           description: RMA number, PO number, or other reference
           maxLength: 100
+        fulfilment_mode:
+          allOf:
+          - $ref: '#/components/schemas/FulfilmentModeEnum'
+          description: |-
+            Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+        returns_to_customer:
+          type: boolean
+          readOnly: true
         condition_grade:
           allOf:
           - $ref: '#/components/schemas/ConditionGradeEnum'
@@ -42037,7 +42077,6 @@ components:
       required:
       - condition_grade
       - core_credit_issued_at
-      - core_number
       - core_type
       - core_type_name
       - created_at
@@ -42051,6 +42090,7 @@ components:
       - received_by
       - received_by_name
       - received_date
+      - returns_to_customer
       - updated_at
       - usable_component_count
     CoreBulkCreateError:
@@ -42101,7 +42141,14 @@ components:
           readOnly: true
         core_number:
           type: string
-          description: Unique identifier for this core unit (unique per tenant)
+          description: 'Our handle for this unit (unique per tenant). Auto-generated
+            as CORE-YYYY-#### when left blank — every other business identifier here
+            is (orders, shipments, approvals, quality reports, dispositions, qualifications),
+            and cores arrive in batches where hand-typing forty unique numbers is
+            both slow and the obvious place for a duplicate to creep in. Still writable,
+            for a shop with its own tagging scheme. The CUSTOMER''s references live
+            elsewhere: `source_reference` for an RMA or PO, `serial_number` for the
+            OEM serial.'
           maxLength: 100
         core_type:
           type: string
@@ -42110,6 +42157,14 @@ components:
         core_type_name:
           type: string
           readOnly: true
+        fulfilment_mode:
+          allOf:
+          - $ref: '#/components/schemas/FulfilmentModeEnum'
+          description: |-
+            Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
         customer_name:
           type: string
           readOnly: true
@@ -42148,7 +42203,6 @@ components:
           readOnly: true
       required:
       - condition_grade
-      - core_number
       - core_type
       - core_type_name
       - customer_name
@@ -42162,8 +42216,14 @@ components:
       properties:
         core_number:
           type: string
-          minLength: 1
-          description: Unique identifier for this core unit (unique per tenant)
+          description: 'Our handle for this unit (unique per tenant). Auto-generated
+            as CORE-YYYY-#### when left blank — every other business identifier here
+            is (orders, shipments, approvals, quality reports, dispositions, qualifications),
+            and cores arrive in batches where hand-typing forty unique numbers is
+            both slow and the obvious place for a duplicate to creep in. Still writable,
+            for a shop with its own tagging scheme. The CUSTOMER''s references live
+            elsewhere: `source_reference` for an RMA or PO, `serial_number` for the
+            OEM serial.'
           maxLength: 100
         serial_number:
           type: string
@@ -42187,6 +42247,14 @@ components:
           type: string
           description: RMA number, PO number, or other reference
           maxLength: 100
+        fulfilment_mode:
+          allOf:
+          - $ref: '#/components/schemas/FulfilmentModeEnum'
+          description: |-
+            Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
         condition_grade:
           allOf:
           - $ref: '#/components/schemas/ConditionGradeEnum'
@@ -42219,7 +42287,6 @@ components:
           type: boolean
       required:
       - condition_grade
-      - core_number
       - core_type
       - received_date
     CoreScrapRequest:
@@ -45336,6 +45403,14 @@ components:
         * `PER_SHIFT` - Per Shift
         * `PER_EQUIPMENT` - Per Equipment
         * `PER_OPERATOR` - Per Operator
+    FulfilmentModeEnum:
+      enum:
+      - EXCHANGE
+      - REPAIR_RETURN
+      type: string
+      description: |-
+        * `EXCHANGE` - Exchange — customer gets a unit from stock
+        * `REPAIR_RETURN` - Repair & return — this unit goes back to them
     GateMetricEnum:
       enum:
       - CONSECUTIVE_FAILS
@@ -52829,6 +52904,17 @@ components:
             is a step's outside-process vendor and the step doesn't specify its own
             lead time. Used by the scheduler to reserve elapsed vendor time for outside-process
             operations.
+        default_core_fulfilment_mode:
+          nullable: true
+          description: |-
+            This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+          oneOf:
+          - $ref: '#/components/schemas/FulfilmentModeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
         archived:
           type: boolean
     PatchedCoreRequest:
@@ -52837,8 +52923,14 @@ components:
       properties:
         core_number:
           type: string
-          minLength: 1
-          description: Unique identifier for this core unit (unique per tenant)
+          description: 'Our handle for this unit (unique per tenant). Auto-generated
+            as CORE-YYYY-#### when left blank — every other business identifier here
+            is (orders, shipments, approvals, quality reports, dispositions, qualifications),
+            and cores arrive in batches where hand-typing forty unique numbers is
+            both slow and the obvious place for a duplicate to creep in. Still writable,
+            for a shop with its own tagging scheme. The CUSTOMER''s references live
+            elsewhere: `source_reference` for an RMA or PO, `serial_number` for the
+            OEM serial.'
           maxLength: 100
         serial_number:
           type: string
@@ -52862,6 +52954,14 @@ components:
           type: string
           description: RMA number, PO number, or other reference
           maxLength: 100
+        fulfilment_mode:
+          allOf:
+          - $ref: '#/components/schemas/FulfilmentModeEnum'
+          description: |-
+            Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
         condition_grade:
           allOf:
           - $ref: '#/components/schemas/ConditionGradeEnum'

@@ -17430,6 +17430,13 @@ export interface components {
             hubspot_api_id?: string | null;
             /** @description Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations. */
             default_outside_process_turnaround_days?: number | null;
+            /**
+             * @description This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+             *
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            default_core_fulfilment_mode?: (components["schemas"]["FulfilmentModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly user_count: number;
             /** Format: date-time */
             readonly created_at: string;
@@ -17453,6 +17460,13 @@ export interface components {
             hubspot_api_id?: string | null;
             /** @description Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations. */
             default_outside_process_turnaround_days?: number | null;
+            /**
+             * @description This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+             *
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            default_core_fulfilment_mode?: (components["schemas"]["FulfilmentModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             archived?: boolean;
         };
         /**
@@ -17527,8 +17541,8 @@ export interface components {
         Core: {
             /** Format: uuid */
             readonly id: string;
-            /** @description Unique identifier for this core unit (unique per tenant) */
-            core_number: string;
+            /** @description Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial. */
+            core_number?: string;
             /** @description Original equipment serial number if available */
             serial_number?: string;
             /**
@@ -17550,6 +17564,14 @@ export interface components {
             source_type?: components["schemas"]["SourceTypeEnum"];
             /** @description RMA number, PO number, or other reference */
             source_reference?: string;
+            /**
+             * @description Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+             *
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            fulfilment_mode?: components["schemas"]["FulfilmentModeEnum"];
+            readonly returns_to_customer: boolean;
             /**
              * @description Overall condition grade assigned at receipt
              *
@@ -17612,14 +17634,21 @@ export interface components {
         CoreList: {
             /** Format: uuid */
             readonly id: string;
-            /** @description Unique identifier for this core unit (unique per tenant) */
-            core_number: string;
+            /** @description Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial. */
+            core_number?: string;
             /**
              * Format: uuid
              * @description Type of unit (e.g., Fuel Injector, Turbocharger)
              */
             core_type: string;
             readonly core_type_name: string;
+            /**
+             * @description Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+             *
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            fulfilment_mode?: components["schemas"]["FulfilmentModeEnum"];
             readonly customer_name: string | null;
             status?: components["schemas"]["CoreStatusEnum"];
             /**
@@ -17646,8 +17675,8 @@ export interface components {
         };
         /** @description Remanufacturing core serializer */
         CoreRequest: {
-            /** @description Unique identifier for this core unit (unique per tenant) */
-            core_number: string;
+            /** @description Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial. */
+            core_number?: string;
             /** @description Original equipment serial number if available */
             serial_number?: string;
             /**
@@ -17665,6 +17694,13 @@ export interface components {
             source_type?: components["schemas"]["SourceTypeEnum"];
             /** @description RMA number, PO number, or other reference */
             source_reference?: string;
+            /**
+             * @description Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+             *
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            fulfilment_mode?: components["schemas"]["FulfilmentModeEnum"];
             /**
              * @description Overall condition grade assigned at receipt
              *
@@ -19216,6 +19252,12 @@ export interface components {
          * @enum {string}
          */
         FpiScopeEnum: "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT" | "PER_OPERATOR";
+        /**
+         * @description * `EXCHANGE` - Exchange — customer gets a unit from stock
+         *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+         * @enum {string}
+         */
+        FulfilmentModeEnum: "EXCHANGE" | "REPAIR_RETURN";
         /**
          * @description * `CONSECUTIVE_FAILS` - Consecutive failures
          *     * `FAIL_RATE_PCT` - Failure rate (%)
@@ -23186,11 +23228,18 @@ export interface components {
             hubspot_api_id?: string | null;
             /** @description Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations. */
             default_outside_process_turnaround_days?: number | null;
+            /**
+             * @description This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+             *
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            default_core_fulfilment_mode?: (components["schemas"]["FulfilmentModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             archived?: boolean;
         };
         /** @description Remanufacturing core serializer */
         PatchedCoreRequest: {
-            /** @description Unique identifier for this core unit (unique per tenant) */
+            /** @description Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial. */
             core_number?: string;
             /** @description Original equipment serial number if available */
             serial_number?: string;
@@ -23209,6 +23258,13 @@ export interface components {
             source_type?: components["schemas"]["SourceTypeEnum"];
             /** @description RMA number, PO number, or other reference */
             source_reference?: string;
+            /**
+             * @description Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+             *
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            fulfilment_mode?: components["schemas"]["FulfilmentModeEnum"];
             /**
              * @description Overall condition grade assigned at receipt
              *

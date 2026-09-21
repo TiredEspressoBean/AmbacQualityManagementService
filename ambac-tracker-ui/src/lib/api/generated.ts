@@ -1535,14 +1535,105 @@ export type TimeEntryTypeEnum =
   | "SHIFT"
   | "BREAK"
   | "LUNCH";
-export type Core = {
+export type Company = {
   id: string;
   /**
-   * Unique identifier for this core unit (unique per tenant)
+   * @maxLength 50
+   */
+  name: string;
+  description: string;
+  hubspot_api_id?:
+    | /**
+     * @maxLength 50
+     */
+    (string | null)
+    | undefined;
+  default_outside_process_turnaround_days?:
+    | /**
+     * Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  default_core_fulfilment_mode?:
+    | /**
+     * This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+    
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+    (FulfilmentModeEnum | BlankEnum | NullEnum | null)
+    | undefined;
+  user_count: number;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+  version: number;
+};
+export type FulfilmentModeEnum =
+  /**
+   * * `EXCHANGE` - Exchange — customer gets a unit from stock
+   * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+   *
+   * @enum EXCHANGE, REPAIR_RETURN
+   */
+  "EXCHANGE" | "REPAIR_RETURN";
+export type BlankEnum =
+  /**
+   * @enum
+   */
+  unknown;
+export type NullEnum =
+  /**
+   * @enum
+   */
+  unknown;
+export type CompanyRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 50
+   */
+  name: string;
+  /**
+   * @minLength 1
+   */
+  description: string;
+  hubspot_api_id?:
+    | /**
+     * @maxLength 50
+     */
+    (string | null)
+    | undefined;
+  default_outside_process_turnaround_days?:
+    | /**
+     * Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  default_core_fulfilment_mode?:
+    | /**
+     * This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+    
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+    (FulfilmentModeEnum | BlankEnum | NullEnum | null)
+    | undefined;
+  archived?: boolean | undefined;
+};
+export type Core = {
+  id: string;
+  core_number?: /**
+   * Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial.
    *
    * @maxLength 100
    */
-  core_number: string;
+  string | undefined;
   serial_number?: /**
    * Original equipment serial number if available
    *
@@ -1571,6 +1662,14 @@ export type Core = {
    * @maxLength 100
    */
   string | undefined;
+  fulfilment_mode?: /**
+     * Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+    
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  FulfilmentModeEnum | undefined;
+  returns_to_customer: boolean;
   /**
      * Overall condition grade assigned at receipt
     
@@ -1631,17 +1730,24 @@ export type CoreStatusEnum =
   "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "SCRAPPED";
 export type CoreList = {
   id: string;
-  /**
-   * Unique identifier for this core unit (unique per tenant)
+  core_number?: /**
+   * Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial.
    *
    * @maxLength 100
    */
-  core_number: string;
+  string | undefined;
   /**
    * Type of unit (e.g., Fuel Injector, Turbocharger)
    */
   core_type: string;
   core_type_name: string;
+  fulfilment_mode?: /**
+     * Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+    
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  FulfilmentModeEnum | undefined;
   customer_name: string | null;
   status?: CoreStatusEnum | undefined;
   /**
@@ -1671,13 +1777,12 @@ export type CoreList = {
   usable_component_count: number;
 };
 export type CoreRequest = {
-  /**
-   * Unique identifier for this core unit (unique per tenant)
+  core_number?: /**
+   * Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial.
    *
-   * @minLength 1
    * @maxLength 100
    */
-  core_number: string;
+  string | undefined;
   serial_number?: /**
    * Original equipment serial number if available
    *
@@ -1702,6 +1807,13 @@ export type CoreRequest = {
    * @maxLength 100
    */
   string | undefined;
+  fulfilment_mode?: /**
+     * Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+    
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  FulfilmentModeEnum | undefined;
   /**
      * Overall condition grade assigned at receipt
     
@@ -2196,11 +2308,6 @@ export type ClassificationEnum =
    * @enum PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED, SECRET
    */
   "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED" | "SECRET";
-export type NullEnum =
-  /**
-   * @enum
-   */
-  unknown;
 export type DocumentsStatusEnum =
   /**
    * * `DRAFT` - Draft
@@ -2615,11 +2722,6 @@ export type FPIRecordResultEnum =
    * @enum PASS, FAIL, CONDITIONAL
    */
   "PASS" | "FAIL" | "CONDITIONAL";
-export type BlankEnum =
-  /**
-   * @enum
-   */
-  unknown;
 export type FPIGetOrCreateExisting = {
   created: boolean;
   fpi: FPIRecord;
@@ -4393,34 +4495,6 @@ export type PaginatedCompanyList = {
     (string | null)
     | undefined;
   results: Array<Company>;
-};
-export type Company = {
-  id: string;
-  /**
-   * @maxLength 50
-   */
-  name: string;
-  description: string;
-  hubspot_api_id?:
-    | /**
-     * @maxLength 50
-     */
-    (string | null)
-    | undefined;
-  default_outside_process_turnaround_days?:
-    | /**
-     * Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations.
-     *
-     * @minimum 0
-     * @maximum 2147483647
-     */
-    (number | null)
-    | undefined;
-  user_count: number;
-  created_at: string;
-  updated_at: string;
-  archived?: boolean | undefined;
-  version: number;
 };
 export type PaginatedCoreListList = {
   /**
@@ -10277,11 +10351,44 @@ export type PatchedCapaTasksRequest = Partial<{
   completion_notes: string | null;
   archived: boolean;
 }>;
+export type PatchedCompanyRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 50
+   */
+  name: string;
+  /**
+   * @minLength 1
+   */
+  description: string;
+  /**
+   * @maxLength 50
+   */
+  hubspot_api_id: string | null;
+  /**
+   * Default subcontract turnaround (calendar days) when this company is a step's outside-process vendor and the step doesn't specify its own lead time. Used by the scheduler to reserve elapsed vendor time for outside-process operations.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  default_outside_process_turnaround_days: number | null;
+  /**
+     * This customer's standing arrangement for cores they send in: do they get their own unit back, or one from stock? An exchange programme is a contract, not a per-unit decision, so receiving inherits it rather than asking a clerk to guess. Blank means nobody has recorded an arrangement — distinct from 'exchange', because the receipt screen can then say so and prompt for it instead of implying a decision that was never made.
+    
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  default_core_fulfilment_mode:
+    | FulfilmentModeEnum
+    | BlankEnum
+    | NullEnum
+    | null;
+  archived: boolean;
+}>;
 export type PatchedCoreRequest = Partial<{
   /**
-   * Unique identifier for this core unit (unique per tenant)
+   * Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial.
    *
-   * @minLength 1
    * @maxLength 100
    */
   core_number: string;
@@ -10307,6 +10414,13 @@ export type PatchedCoreRequest = Partial<{
    * @maxLength 100
    */
   source_reference: string;
+  /**
+     * Whether this exact unit goes back to the customer, or they receive one from stock. Not the same question as source_type, which records where the core came from. Drives three things: whether the rebuilt unit must keep this core's identity, whether a scope change needs the customer's authorisation before work proceeds, and whether components harvested from OTHER cores may be built into it.
+    
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  fulfilment_mode: FulfilmentModeEnum;
   /**
      * Overall condition grade assigned at receipt
     
@@ -16327,6 +16441,9 @@ const PatchedChatSessionRequest = z
     is_archived: z.boolean(),
   })
   .partial();
+const FulfilmentModeEnum = z.enum(["EXCHANGE", "REPAIR_RETURN"]);
+const BlankEnum = z.literal("");
+const NullEnum = z.null();
 const Company = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -16337,6 +16454,9 @@ const Company = z.object({
     .int()
     .gte(0)
     .lte(2147483647)
+    .nullish(),
+  default_core_fulfilment_mode: z
+    .union([FulfilmentModeEnum, BlankEnum, NullEnum])
     .nullish(),
   user_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
@@ -16360,6 +16480,9 @@ const CompanyRequest = z.object({
     .gte(0)
     .lte(2147483647)
     .nullish(),
+  default_core_fulfilment_mode: z
+    .union([FulfilmentModeEnum, BlankEnum, NullEnum])
+    .nullish(),
   archived: z.boolean().optional(),
 });
 const PatchedCompanyRequest = z
@@ -16372,6 +16495,9 @@ const PatchedCompanyRequest = z
       .int()
       .gte(0)
       .lte(2147483647)
+      .nullable(),
+    default_core_fulfilment_mode: z
+      .union([FulfilmentModeEnum, BlankEnum, NullEnum])
       .nullable(),
     archived: z.boolean(),
   })
@@ -16438,9 +16564,10 @@ const SourceTypeEnum = z.enum([
 ]);
 const CoreList = z.object({
   id: z.string().uuid(),
-  core_number: z.string().max(100),
+  core_number: z.string().max(100).optional(),
   core_type: z.string().uuid(),
   core_type_name: z.string(),
+  fulfilment_mode: FulfilmentModeEnum.optional(),
   customer_name: z.string().nullable(),
   status: CoreStatusEnum.optional(),
   condition_grade: ConditionGradeEnum,
@@ -16461,13 +16588,14 @@ const PaginatedCoreListList = z.object({
   results: z.array(CoreList),
 });
 const CoreRequest = z.object({
-  core_number: z.string().min(1).max(100),
+  core_number: z.string().max(100).optional(),
   serial_number: z.string().max(100).optional(),
   core_type: z.string().uuid(),
   received_date: z.string(),
   customer: z.string().uuid().nullish(),
   source_type: SourceTypeEnum.optional(),
   source_reference: z.string().max(100).optional(),
+  fulfilment_mode: FulfilmentModeEnum.optional(),
   condition_grade: ConditionGradeEnum,
   condition_notes: z.string().optional(),
   status: CoreStatusEnum.optional(),
@@ -16481,7 +16609,7 @@ const CoreRequest = z.object({
 });
 const Core = z.object({
   id: z.string().uuid(),
-  core_number: z.string().max(100),
+  core_number: z.string().max(100).optional(),
   serial_number: z.string().max(100).optional(),
   core_type: z.string().uuid(),
   core_type_name: z.string(),
@@ -16492,6 +16620,8 @@ const Core = z.object({
   customer_name: z.string().nullable(),
   source_type: SourceTypeEnum.optional(),
   source_reference: z.string().max(100).optional(),
+  fulfilment_mode: FulfilmentModeEnum.optional(),
+  returns_to_customer: z.boolean(),
   condition_grade: ConditionGradeEnum,
   condition_notes: z.string().optional(),
   status: CoreStatusEnum.optional(),
@@ -16514,13 +16644,14 @@ const Core = z.object({
 });
 const PatchedCoreRequest = z
   .object({
-    core_number: z.string().min(1).max(100),
+    core_number: z.string().max(100),
     serial_number: z.string().max(100),
     core_type: z.string().uuid(),
     received_date: z.string(),
     customer: z.string().uuid().nullable(),
     source_type: SourceTypeEnum,
     source_reference: z.string().max(100),
+    fulfilment_mode: FulfilmentModeEnum,
     condition_grade: ConditionGradeEnum,
     condition_notes: z.string(),
     status: CoreStatusEnum,
@@ -16736,7 +16867,6 @@ const ClassificationEnum = z.enum([
   "RESTRICTED",
   "SECRET",
 ]);
-const NullEnum = z.null();
 const DocumentsStatusEnum = z.enum([
   "DRAFT",
   "UNDER_REVIEW",
@@ -17120,7 +17250,6 @@ const FPIRecordStatusEnum = z.enum([
   "WAIVED",
 ]);
 const FPIRecordResultEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
-const BlankEnum = z.literal("");
 const FPIRecord = z.object({
   id: z.string().uuid(),
   work_order: z.string().uuid(),
@@ -24178,6 +24307,9 @@ export const schemas = {
   PaginatedChatSessionList,
   ChatSessionRequest,
   PatchedChatSessionRequest,
+  FulfilmentModeEnum,
+  BlankEnum,
+  NullEnum,
   Company,
   PaginatedCompanyList,
   CompanyRequest,
@@ -24216,7 +24348,6 @@ export const schemas = {
   DocumentTypeRequest,
   PatchedDocumentTypeRequest,
   ClassificationEnum,
-  NullEnum,
   DocumentsStatusEnum,
   Documents,
   PaginatedDocumentsList,
@@ -24256,7 +24387,6 @@ export const schemas = {
   FPIRecordEquipmentInfo,
   FPIRecordStatusEnum,
   FPIRecordResultEnum,
-  BlankEnum,
   FPIRecord,
   PaginatedFPIRecordList,
   FPIRecordRequest,

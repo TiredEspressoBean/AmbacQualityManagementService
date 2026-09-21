@@ -15,7 +15,7 @@ These models enable tracking of:
 
 from django.db import models
 
-from .core import SecureModel, User, Companies
+from .core import FULFILMENT_MODE_CHOICES, SecureModel, User, Companies
 
 
 class Core(SecureModel):
@@ -56,7 +56,16 @@ class Core(SecureModel):
     # Identification
     core_number = models.CharField(
         max_length=100,
-        help_text="Unique identifier for this core unit (unique per tenant)"
+        blank=True,
+        help_text="Our handle for this unit (unique per tenant). Auto-generated as "
+                  "CORE-YYYY-#### when left blank — every other business identifier "
+                  "here is (orders, shipments, approvals, quality reports, "
+                  "dispositions, qualifications), and cores arrive in batches where "
+                  "hand-typing forty unique numbers is both slow and the obvious place "
+                  "for a duplicate to creep in. Still writable, for a shop with its own "
+                  "tagging scheme. The CUSTOMER's references live elsewhere: "
+                  "`source_reference` for an RMA or PO, `serial_number` for the OEM "
+                  "serial.",
     )
     serial_number = models.CharField(
         max_length=100,
@@ -99,6 +108,29 @@ class Core(SecureModel):
         blank=True,
         help_text="RMA number, PO number, or other reference"
     )
+
+    # Where the unit is GOING, which `source_type` above does not answer — that records
+    # where the core came FROM. A customer return can be either: their own unit to repair
+    # and send back, or a core surrendered against an exchange.
+    #
+    # Choices imported from models/core.py, where `Companies` carries the customer's
+    # standing arrangement. One definition, so the arrangement and the core's actual
+    # mode can never offer different options.
+    fulfilment_mode = models.CharField(
+        max_length=20,
+        choices=FULFILMENT_MODE_CHOICES,
+        default='EXCHANGE',
+        help_text="Whether this exact unit goes back to the customer, or they receive "
+                  "one from stock. Not the same question as source_type, which records "
+                  "where the core came from. Drives three things: whether the rebuilt "
+                  "unit must keep this core's identity, whether a scope change needs "
+                  "the customer's authorisation before work proceeds, and whether "
+                  "components harvested from OTHER cores may be built into it.",
+    )
+    """How this core is fulfilled. Defaults to EXCHANGE because that is the mode with no
+    extra obligations — no quoting gate, no serial continuity, free use of the harvest
+    pool — so a shop that never configures it gets the simpler behaviour rather than
+    silently acquiring a customer-authorisation requirement it does not have."""
 
     # Condition assessment
     condition_grade = models.CharField(
@@ -184,6 +216,28 @@ class Core(SecureModel):
             ('scrap_core', 'Can scrap a core'),
         ]
 
+    def save(self, *args, **kwargs):
+        # Auto-fill only; the sequence helper takes a row lock so two clerks receiving
+        # at once cannot collide (see utils.sequences.generate_next_sequence). Mirrors
+        # Orders.save — this is field auto-fill, not business logic in save().
+        if not self.core_number:
+            self.core_number = self.generate_core_number(self.tenant)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def generate_core_number(cls, tenant=None):
+        """Next `CORE-YYYY-####` for this tenant, race-safe."""
+        from django.utils import timezone as _tz
+        from Tracker.utils.sequences import generate_next_sequence
+
+        return generate_next_sequence(
+            queryset=cls.objects,
+            number_field='core_number',
+            prefix=f"CORE-{_tz.now().year}-",
+            padding=4,
+            tenant=tenant,
+        )
+
     def __str__(self):
         return f"Core {self.core_number} ({self.core_type.name})"
 
@@ -206,6 +260,48 @@ class Core(SecureModel):
         """Thin wrapper — delegates to `services.reman.core.issue_core_credit`."""
         from Tracker.services.reman.core import issue_core_credit
         return issue_core_credit(self)
+
+    # ===== FULFILMENT =====
+
+    @property
+    def returns_to_customer(self) -> bool:
+        """This exact unit goes back to the customer it came from.
+
+        Expressed once, here, rather than re-derived as `mode == 'REPAIR_RETURN'` at
+        each call site: three separate rules key off it (identity, authorisation,
+        harvest pooling) and a fourth comparison written slightly differently is how
+        they drift apart.
+        """
+        return self.fulfilment_mode == 'REPAIR_RETURN'
+
+    @property
+    def allows_pooled_harvest(self) -> bool:
+        """Whether components harvested from OTHER cores may be built into this one.
+
+        False under repair-and-return: the customer's unit keeps its own parts. True for
+        an exchange rebuild, where the harvest is stock like any other and the customer
+        receives *a* unit rather than theirs.
+
+        What "its own parts" means exactly — every component, or only the serial-bearing
+        one — is a customer-commitment question with real cost at the bench, and is
+        deliberately not decided here. This answers the coarse question the kit resolver
+        needs; a finer rule can narrow it later without moving the concept.
+        """
+        return not self.returns_to_customer
+
+    @property
+    def scope_needs_customer_approval(self) -> bool:
+        """Whether findings that widen the rebuild have to be authorised before work.
+
+        Only when the unit is theirs. On an exchange rebuild the shop owns the unit and
+        the cost, so scope is an internal planning decision; on repair-and-return a
+        wider scope is a bigger bill for someone who has not agreed to it yet — the
+        "over-and-above" process every MRO shop runs.
+
+        Nothing consumes this yet: the quoting gate is the repair-and-return half of the
+        loop and is not built. It lives here so the rule has one home when it is.
+        """
+        return self.returns_to_customer
 
     # ===== WORKFLOW ENGINE METHODS (mirror of Parts) =====
 

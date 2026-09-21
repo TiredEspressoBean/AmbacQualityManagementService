@@ -3,7 +3,10 @@ import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 export type BulkCoreRow = {
-    core_number: string;
+    /** Optional: a blank is auto-numbered CORE-YYYY-#### server-side, which is the
+     *  point on a batch — nobody should hand-type forty unique numbers. Send it only
+     *  when the shop has its own tagging scheme. */
+    core_number?: string;
     core_type: string;
     received_date: string;
     source_type: string;
@@ -13,6 +16,10 @@ export type BulkCoreRow = {
     source_reference?: string;
     condition_notes?: string;
     core_credit_value?: string | null;
+    /** Whether each unit goes back to its customer or they get one from stock.
+     *  Per ROW, not per paste: a batch routinely mixes arrangements, and one mode for
+     *  forty cores is how a repair-and-return unit gets pooled. */
+    fulfilment_mode?: "EXCHANGE" | "REPAIR_RETURN";
 };
 
 type BulkCreateCoresVars = {

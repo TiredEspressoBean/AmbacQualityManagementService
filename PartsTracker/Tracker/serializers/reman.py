@@ -21,6 +21,10 @@ class CoreSerializer(SecureModelMixin):
     """Remanufacturing core serializer"""
     core_type_name = serializers.CharField(source='core_type.name', read_only=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
+    # Derived from fulfilment_mode. Exposed so the UI states the consequence ("this unit
+    # goes back to them") rather than re-deriving it from the enum and risking a
+    # different answer than the backend's.
+    returns_to_customer = serializers.BooleanField(read_only=True)
     received_by_name = serializers.SerializerMethodField()
     disassembled_by_name = serializers.SerializerMethodField()
     harvested_component_count = serializers.IntegerField(read_only=True)
@@ -33,6 +37,7 @@ class CoreSerializer(SecureModelMixin):
             'core_type', 'core_type_name',
             'received_date', 'received_by', 'received_by_name',
             'customer', 'customer_name', 'source_type', 'source_reference',
+            'fulfilment_mode', 'returns_to_customer',
             'condition_grade', 'condition_notes',
             'status', 'disassembly_started_at', 'disassembly_completed_at',
             'disassembled_by', 'disassembled_by_name',
@@ -44,7 +49,8 @@ class CoreSerializer(SecureModelMixin):
         read_only_fields = (
             'created_at', 'updated_at',             'received_by', 'disassembled_by',
             'disassembly_started_at', 'disassembly_completed_at',
-            'core_credit_issued_at', 'harvested_component_count', 'usable_component_count'
+            'core_credit_issued_at', 'harvested_component_count', 'usable_component_count',
+            'returns_to_customer',
         )
 
     @extend_schema_field(serializers.CharField(allow_null=True))
@@ -72,6 +78,10 @@ class CoreListSerializer(SecureModelMixin):
         model = Core
         fields = (
             'id', 'core_number', 'core_type', 'core_type_name',
+            # On the LIST too: this is where somebody scans a shelf of cores, and
+            # "which of these go back to a customer" is precisely the question you
+            # want answered before anyone starts pulling one apart.
+            'fulfilment_mode',
             'customer_name', 'status', 'condition_grade', 'received_date',
             'source_type', 'core_credit_value', 'core_credit_issued',
             'harvested_component_count', 'usable_component_count',
