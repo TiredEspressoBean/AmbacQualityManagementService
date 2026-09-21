@@ -30,8 +30,16 @@
 > `Steps.setup_duration`, WIP visualisation, commercial LLM endpoint
 > configuration, and multi-file upload for the AI assistant.
 >
-> One should be struck rather than tracked: **"Public document replication to
-> Azure"**. Azure was abandoned on cost.
+> **Azure is struck throughout.** "Public document replication to Azure" is
+> removed; the commercial-LLM item it served now carries the unresolved
+> policy question instead. Striking it also exposed a *completed* item that
+> is not: **FIPS compliance** was marked done "via Azure infrastructure", so
+> it rested wholly on the abandoned platform.
+>
+> That is the one confirmed case of a ✅ being wrong, and it was found by
+> accident rather than by audit — the 345 completed items remain unchecked,
+> and this is the direction that matters, since a false ✅ can reach a
+> customer's SSP.
 
 
 **Last Updated:** February 18, 2026
@@ -327,17 +335,18 @@ of February; see the currency note above.
 
 - 🔴 **Needed:** Commercial LLM endpoint configuration
     - Alternative LLM deployment for commercial/production customers
-    - Options: Azure OpenAI, Databricks, LangGraph Cloud, or managed Ollama cluster
+    - Options: Databricks, LangGraph Cloud, or a managed Ollama cluster
     - Separate from local development Ollama instance
     - Per-tenant API key management
     - Cost tracking and usage monitoring per customer
-- 🔴 **Needed:** Public document replication to Azure
-    - Sync Documents and DocChunks with classification='public' to Azure Flexible PostgreSQL
-    - One-way replication: local → Azure for public documents only
-    - Signal-based sync on document save (if classification='public')
-    - Nightly reconciliation job comparing hash of all public docs (local vs Azure)
-    - Commercial deployment LLM only accesses Azure public doc database
-    - Keeps sensitive/internal documents isolated on local instance
+    - **Blocked on a policy question, not on wiring (audit 2026-09-21).**
+      The locked policy below is *no cloud LLM services*. The item that
+      reconciled the two — replicating only `classification='public'`
+      documents to a separate database the cloud model could reach — was
+      struck with Azure, so the isolation mechanism went with the platform.
+      Any commercial endpoint needs that answered again: what does the model
+      see, and what enforces it. Azure OpenAI is no longer an option either
+      way.
 
 ### Performance & Deployment
 
@@ -610,12 +619,17 @@ of February; see the currency note above.
 ### Compliance Support
 
 - ✅ **Completed:** User authentication and authorization (Django auth)
-- ✅ **Completed:** Role-based access control (7 groups with declarative permission system)
+- ✅ **Completed:** Role-based access control (audit 2026-09-21: 12 presets in `GROUP_PRESETS`, not the 7 stated here)
 - ✅ **Completed:** Document version control and classification
 - ✅ **Completed:** Parts traceability (serial numbers, order relationships)
 - ✅ **Completed:** Quality inspection workflows and sampling
 - ✅ **Completed:** Audit logging for all changes
-- ✅ **Completed:** FIPS compliance (via Azure infrastructure: Disk Encryption, TLS, PostgreSQL TDE)
+- 🔴 **Not complete (audit 2026-09-21):** FIPS compliance — this was marked
+  done "via Azure infrastructure: Disk Encryption, TLS, PostgreSQL TDE", and
+  Azure was abandoned on cost. The claim rested entirely on that platform, so
+  nothing supports it now. Whatever hosts the system has to supply the
+  equivalent, and it has to be stated rather than inherited. Do not carry
+  this into a customer's SSP as satisfied.
 
 ### Compliance Reporting
 
@@ -1117,7 +1131,7 @@ of February; see the currency note above.
 
 ### Secrets Management
 
-- 🟡 **Nice to Have:** Azure Key Vault integration for production secrets
+- 🟡 **Nice to Have:** A managed secret store for production secrets (audit 2026-09-21: was "Azure Key Vault"; Azure is no longer a target)
 - 🟡 **Nice to Have:** Pre-commit hooks for secret detection (git-secrets)
 
 ### Code Cleanup
