@@ -433,10 +433,19 @@ reman-specific special cases into one general mechanism:
 Net: one selection step over a candidate list, instead of a BUY branch, a MAKE branch, a
 reman skip, a reservation prohibition and a pooling property.
 
-What it costs: an authoring surface wider than a checkbox. Mitigated by defaulting the
-policy per part type (and seeding it from `fulfilment_mode`), so an engineer sets it only
-where it differs — and by keeping `allow_harvested` as the migration source for the
-default set.
+What it costs, and why less than it looks: an authoring surface wider than a checkbox —
+but not a NEW surface. There is no customer dimension on `PartTypes`, `Processes` or
+`BOM` (checked: `BOM` is keyed `(tenant, part_type, revision, bom_type)`), so a customer
+with particular requirements is already served by copying the part type, process and BOM
+under their name. Permitted sources are then extra columns on a BOM that customer was
+getting anyway. Default the policy per part type, seed it from `fulfilment_mode`, migrate
+`allow_harvested` into the default set, and an engineer touches it only where it differs.
+
+Two things follow from that convention being a NAMING one rather than a modelled
+relation: nothing links a customer-specific part type back to the customer, so the
+resolver must take the part type as an input rather than deriving it from
+`core.customer`; and a customer-specific BOM requires a customer-specific PART TYPE —
+copying only the process leaves the BOM shared, and the source policy unreachable.
 
 ### 6.3 Two prerequisites, both small and both blocking
 
@@ -539,10 +548,18 @@ for this loop.
    customer may well refuse in their own unit. What was one unanswerable question is now
    two checkboxes on a policy, and the commitment can differ per customer or per line.
 
-   Its hard half remains: **`Parts` carry no serial number.** Identity is `ERP_id`,
-   machine-generated as `{WO}-{prefix}{seq}`. `Core.serial_number` exists and there is no
-   mechanism to carry it onto anything rebuilt, so serial continuity under
-   `REPAIR_RETURN` currently has nothing to ride on.
+   ~~Its hard half — `Parts` carry no serial number.~~ **Withdrawn; the question does
+   not arise.** Under `REPAIR_RETURN` the core never becomes a `Parts` row: it stays the
+   routing subject through the rebuild, because `StepExecution.core`, `Core.step` and
+   `advance_core_step` already let a core walk any process (§5.1). `Core.serial_number`
+   is never lost because nothing ever hands off. Under `EXCHANGE` the rebuilt unit is a
+   new `Parts` row with its own `ERP_id` and the core's serial is irrelevant by
+   definition — the customer is not getting their unit back. Serial continuity needs no
+   new field and no carry mechanism; it falls out of the §5.2 split.
+
+   (For the record, `Parts` are individually identified — `create_parts_batch` mints
+   `{WO}-{prefix}{seq:04d}` per unit. Worth knowing before leaning on it: `ERP_id` has no
+   unique constraint at the database level, so it is unique by generation discipline.)
 6. **Does a rejected quote have a path back?** Under `REPAIR_RETURN`, if the customer
    declines the over-and-above work, the unit has to go somewhere: returned unrepaired,
    repaired to a reduced scope, or scrapped with consent. That is a terminal state the
