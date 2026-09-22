@@ -207,6 +207,11 @@ sensible authoring default, not by storing scope differently.
 §3.1's *human curation* step is adopted regardless: auto-generate the proposal, let a
 person include/exclude it.
 
+**§6.4 later sharpens what a code IS**: a repair code is a slot resolution that emits
+operations rather than demand. The code table and the kit are one model, so read this
+section's decision as settling the *scope vocabulary*, and §6 as settling the thing that
+produces it.
+
 What §3.3 adds is that the **entry scope survives as a first-class thing** rather than
 as a convenience for small shops. A tenant configures named scopes ("Standard rebuild",
 "Full overhaul") as presets over the code set; a core starts with one, and findings
@@ -310,6 +315,10 @@ the unit; advancement walks to the next *included* step and marks the passed-ove
 new state, and advancement has to consult it.
 
 (a) is the right stopgap and (b) the right destination, which happens to match the build
+order already — and §6.4 says where (b)'s included-step set comes from: it is the union of
+the operations the unit's slot resolutions emitted, not a separately-authored list.
+
+(a) is the right stopgap and (b) the right destination, which happens to match the build
 order already: (a) needs nothing beyond authoring, so it can carry steps 2–7 while real
 cores establish how many codes there actually are. Neither needs `split_from_lot` —
 worth saying because that flag is for a part taking a DETOUR (quarantine, rework, scrap)
@@ -357,117 +366,184 @@ Defer it. It does not gate steps 2–6, the engine supports both, and the answer
 obvious once a shop has run cores through and knows whether rebuild batches usefully
 share anything.
 
-## 6. Kit resolution
+## 6. Slot resolution — the kit and the scope are one decision
 
 A new service — `services/reman/rebuild.py` — resolving, for a core whose grading is
-complete:
+complete, what goes into it and what has to be done to it. It returns data and writes
+nothing, so the same resolver answers "what would this core need?" for a core not yet
+torn down (§8).
 
-1. **Scope** — the entry scope plus the codes the findings raised (§3.3, §4.1).
-2. **Route** for that scope, via the existing `resolve_route`.
-3. **BOM lines on that route** — `BOMLine.consumed_at_step` already ties a line to the
-   step that consumes it, so "the kit for this scope" is a query that exists today and
-   nothing currently asks.
-4. **Sourcing** — for each line, which of the permitted sources can actually cover it
-   (§6.1), and what is short.
+### 6.1 The shape: assignment, not netting
 
-Step 3 fixes something already broken: `reports/adapters/pick_list.py` explodes the
-**whole released BOM** regardless of route. On any branched process that over-picks —
-every branch's parts on every job. Route-aware kit resolution is needed for reman and is
-a correctness fix for the general case.
+Classical kitting nets quantities against requirements because raw material is fungible —
+3 kg of aluminium is 3 kg of aluminium. Reman is not that. A harvested nozzle carries its
+own grade, its own accumulated life, its own provenance and possibly its own owner. Two
+nozzles of the same part number are not interchangeable to the customer, to quality, or
+to cost.
 
-The service returns data and writes nothing, so the same resolver can answer "what would
-this core need?" for a core not yet torn down (§8).
+So the operation is **assignment of identified individuals to identified slots**, and
+every shape decision below follows from that one.
 
-### 6.1 A component has a provenance, and the line has a policy
+### 6.2 Slots, not quantities
 
-The earlier draft of this section assumed one alternative to buying: a component
-harvested from *this* core. That is one source of three, and the three are not
-interchangeable to a customer or an auditor:
+A BOM line "4 × nozzle" on a four-cylinder unit is not one requirement of quantity four.
+It is **four slots** — Cyl 1, 2, 3, 4 — because position carries real information here:
+whether the original goes back where it came from, positional wear patterns, and
+yield-by-position, which is a question MRO shops actually ask.
 
-| source | where it lives today | notes |
+`BOMLine` already carries the vocabulary: `reference_designator` is the position name and
+`find_number` the drawing balloon. `DisassemblyBOMLine.positions` is the teardown twin,
+already shipped. What is new is exploding a line into per-unit slots.
+
+**Position must be optional from the start.** High-volume exchange does not care which of
+four identical nozzles goes in which bore; an unpositioned line is the same structure with
+N anonymous slots. Retrofitting optionality later is the expensive direction.
+
+### 6.3 A slot states criteria; a candidate carries attributes
+
+| slot declares | candidate carries |
+|---|---|
+| part type | identity |
+| permitted provenance set | provenance |
+| minimum condition grade | condition grade |
+| "must be the original from this unit" | life remaining |
+| | cost, availability, claim status |
+
+Permitted sources and minimum grade are the same kind of thing — **acceptance criteria on
+a slot** — which is why they are one feature and not two. The three provenances are: new
+purchased; used purchased (bought from a core specialist who does the teardowns — aviation
+regulates this as USM, and diesel and hydraulics buy it routinely); and recovered
+in-house, from this core or from the pool.
+
+All three already have somewhere to live. `MaterialLot` carries `material_type`,
+`supplier`, `supplier_lot_number`, `erp_po_number` and `certificate_of_conformance`, so a
+purchased recovered component is an ordinary BUY line with the existing
+supplier-qualification and part-approval gates on it. In-house recovery lands in `Parts`
+via `accept_component_to_inventory`.
+
+The candidate list is a **read-model**, not a table: a union over `MaterialLot`, `Parts`
+and `HarvestedComponent` projected into a common shape. It needs no schema.
+
+### 6.4 A resolution can emit operations — which collapses §4 and §5.1 into this
+
+The options for any slot are:
+
+- **reuse as-is** — this instance is serviceable
+- **reuse after repair** — emits operations, maybe consumables
+- **replace from recovered stock**
+- **replace new**
+
+In MRO the second is the normal case: you do not replace the housing, you machine it.
+"Recondition the nozzle" and "replace the nozzle" are two resolutions of the *same slot* —
+one emits operations, the other emits demand.
+
+**So scope and kit are not sequential steps. They are one decision per slot with two
+outputs.** A repair code (§4.1) *is* a slot resolution that emits operations; the per-unit
+included-step set (§5.1(b)) is the union of the operations its slot resolutions emitted.
+Three parts of this document — the code table, the included-step set, and the kit — are
+one model. Treating them as three is what made the kit look like a query in earlier
+revisions of this section.
+
+### 6.5 The binding has a lifecycle, and it is one row
+
+Between "the resolver proposes nozzle X" and "the operator installed nozzle X" there is
+quoting, customer approval, picking and the bench. Nothing else may take nozzle X in that
+window. So a binding is a claim with states:
+
+**proposed → reserved → issued → installed**, with **released** and **removed** as the
+reverses — a component installed and then found bad returns its slot to unresolved.
+
+Four things otherwise built separately become the same row at different times:
+
+| question | when | state |
 |---|---|---|
-| **New purchased** | `MaterialLot(material=…)` or `MaterialLot(material_type=<PartTypes>)` | the ordinary BUY line |
-| **Used purchased** | the same — `MaterialLot` already carries `supplier`, `supplier_lot_number`, `erp_po_number`, `certificate_of_conformance` | bought from a core specialist who does the teardowns; aviation regulates this as USM (Used Serviceable Material) and it is a real commercial channel in diesel and hydraulics too |
-| **Recovered in-house** | `Parts`, created by `accept_component_to_inventory`, back-linked via `HarvestedComponent.component_part` | from *this* core, or from the pool |
+| what would this cost? | before teardown | proposed |
+| what does this need? | after grading | reserved |
+| what do I install where? | at the bench | issued |
+| what went in, and from where? | after | installed |
 
-All three already have homes in the schema. What is missing is that the BOM line says
-only `allow_harvested` — one boolean spanning "used purchased" and "recovered in-house"
-and saying nothing about *whose* core the recovered one came from.
+The as-built record is not a separate artifact — it is the final state of the slot table,
+and it is the only place "where did this component come from" can be answered once the
+unit has shipped.
 
-That distinction is not bookkeeping. Under `REPAIR_RETURN` a customer may accept a
-component recovered from their own unit and refuse one a third party pulled out of
-somebody else's engine, and there is no way to express the difference today. So the line
-carries a **permitted source set** rather than a boolean, and the resolver picks among
-the permitted sources by availability, recording which it used.
+Two consequences worth stating: **the over-and-above quote is a projection of unresolved
+slots** (§3.2), so it needs no separate model; and **curation is per-slot override with a
+reason** (§3.1), which is what makes the proposal reviewable rather than a wall of
+defaults.
 
-`AssemblyUsage` is where the answer lands: it already models
-(assembly, component, bom_line, installed_at, installed_by, step) — the as-built record
-of which component instance went into which unit. Once a unit ships that row is the only
-place "where did this part come from" can be answered. Nothing creates one today (§6.3).
+### 6.6 Translating onto what exists
 
-### 6.2 What this makes SIMPLER
+**Already fits.** `BOMLine.reference_designator` / `find_number` (slot vocabulary);
+`DisassemblyBOMLine.positions` (teardown twin); per-unit rows as house style (DWI decision
+R1). Most of all, **`MaterialUsage` is nearly the binding row already** — it points at
+`lot`, `harvested_component` *and* `part`, plus `work_order`, `step`, `qty_consumed`,
+`is_substitute` and `substitution_reason`. The override-with-a-reason field exists.
 
-Provenance looks like more machinery and is mostly less, because it turns four
-reman-specific special cases into one general mechanism:
+**One thing wearing two names.** `MaterialUsage` and `AssemblyUsage` are the *issued* and
+*installed* states of the same claim — both say "this identified thing went into that
+unit", one as a draw and one as an install. `AssemblyUsage` adds `bom_line`, the parent
+link and removal tracking; `MaterialUsage` adds the candidate FKs and the reason. A later
+increment decides whether one grows into the binding row and the other becomes a
+projection, or a new table takes over and both become projections.
 
-- **The `is_reman` carve-out disappears.** `consume_for_step` branches on
-  `work_order.cores.exists()` and then `continue`s past any `allow_harvested` line —
-  and `services/scheduling/data.py` duplicates the same branch for the material gate. If
-  a line declares its permitted sources, there is nothing reman-specific left: an
-  ordinary job is a job whose lines permit only new-purchased. **Two carve-outs and a
-  duplicated `is_reman` detection delete.**
-- **`Core.allows_pooled_harvest` stops being a rule and becomes a default.** Today it is
-  a bespoke property that a kit resolver would have to remember to consult. Under source
-  policy it is one entry in the permitted set — "recovered in-house, any core" — so the
-  general mechanism enforces it and the property survives only as the thing that seeds
-  the default.
-- **The reservation rule collapses into the same filter.** `Parts.reserved_for_core` +
-  `assert_work_order_allowed` is a negative rule bolted on the side: it forbids a wrong
-  use. As a source filter it is positive and needs no separate enforcement — a reserved
-  part is simply a candidate whose provenance is "recovered from core X", admissible
-  only on a line that permits that. Same behaviour, one place.
-- **`fulfilment_mode` stops branching the code.** Repair-and-return and exchange differ
-  in which sources are permitted, not in what the resolver does. The mode picks a default
-  policy; it does not fork the kit path.
+**Genuinely new:** the slot rows, the acceptance-criteria columns, the binding state. That
+is all.
 
-Net: one selection step over a candidate list, instead of a BUY branch, a MAKE branch, a
-reman skip, a reservation prohibition and a pooling property.
+**Conflicts, and they are the real work:**
 
-What it costs, and why less than it looks: an authoring surface wider than a checkbox —
-but not a NEW surface. There is no customer dimension on `PartTypes`, `Processes` or
-`BOM` (checked: `BOM` is keyed `(tenant, part_type, revision, bom_type)`), so a customer
-with particular requirements is already served by copying the part type, process and BOM
-under their name. Permitted sources are then extra columns on a BOM that customer was
-getting anyway. Default the policy per part type, seed it from `fulfilment_mode`, migrate
-`allow_harvested` into the default set, and an engineer touches it only where it differs.
+- **The pick layer is quantity-shaped end to end.** `staging_list`, `consolidated_pick`
+  and `record_pick` deal in `material` / `material_type` + qty + `picked_lots` JSON.
+  `MaterialStagingLine` cannot name a specific instance, so a reman kit is inexpressible —
+  and nothing reserves a `Parts` or `HarvestedComponent` for a job at all, so two rebuilds
+  resolving at the same moment both see the same nozzle as free. Either that layer grows
+  instance-awareness or reman forks a parallel pick path, which is how a shop ends up with
+  two kitting systems.
+- **Grade is lost on accept.** `Parts` has no grade or condition field. It is recoverable
+  via `part.harvested_from.condition_grade` — a join, not an attribute, and only for that
+  provenance.
+- **`MaterialLot` has no grade at all**, so a used component bought from a core specialist
+  cannot be graded on receipt. Purchased-used is currently a second-class source that
+  cannot be compared against harvested stock. See §10.7.
+- **Accepted components sit in `PENDING`** where `_available_supply` counts only
+  `IN_STOCK` (§6.7).
 
-**The naming convention is correct and should stay one.** A customer FK on `PartTypes`,
-`Processes` or `BOM` would be wrong four ways: the relation already exists through demand
-(`Orders.customer` → `OrderLine.part_type`), so a second one would drift from it; the
-part type IS the specification, and a customer-tagged variant means the part type no
-longer determines the build, which breaks the as-built record; it becomes a lie the first
-time that spec is sold to a second customer; and `PartTypes` is a versioned engineering
-record, so a customer FK would fork an engineering version on a commercial event — the
-mistake `Companies.default_core_fulfilment_mode` avoids by being non-versioning.
+Slot-aware explosion also fixes something already broken:
+`reports/adapters/pick_list.py` explodes the **whole released BOM** regardless of route,
+so on any branched process it over-picks every branch's parts on every job. Route- and
+slot-aware resolution is needed for reman and is a correctness fix for the general case.
 
-One consequence for the resolver's signature: it takes `part_type` as an argument rather
-than deriving it from `core.customer`. One for authoring: a customer-specific BOM needs a
-customer-specific PART TYPE, since copying only the process leaves the BOM — and with it
-the source policy — shared.
+### 6.7 Two prerequisites, both small and both blocking
 
-### 6.3 Two prerequisites, both small and both blocking
-
-Neither source path works end-to-end today:
-
-- **Accepted components are invisible as supply.** `accept_component_to_inventory`
-  creates the `Parts` row with `part_status=PENDING`, while `_available_supply`
-  (`bom_explosion.py`) counts only `IN_STOCK`. So the exchange model's premise — teardown
-  feeds stock, rebuild consumes it — does not connect at either end. Whether acceptance
-  should land in `IN_STOCK` directly or pass an inspection state first is a real
-  question; that it currently lands somewhere nothing counts is not.
-- **Nothing creates an `AssemblyUsage`.** `services/mes/assembly_usage.py` contains
+- **Accepted components are invisible as supply.** `accept_component_to_inventory` creates
+  the `Parts` row with `part_status=PENDING`, while `_available_supply` counts only
+  `IN_STOCK`. The exchange premise — teardown feeds stock, rebuild consumes it — connects
+  at neither end. Whether acceptance should land in `IN_STOCK` directly or pass an
+  inspection state first is a real question; that it currently lands where nothing counts
+  it is not.
+- **Nothing creates an `AssemblyUsage`.** `services/mes/assembly_usage.py` holds
   `remove_assembly_usage` and nothing else; the only way a row exists is a raw REST POST.
-  The install half was never written, so there is no as-built record to put provenance in.
+  The install half was never written.
+
+### 6.8 The first increment
+
+**Slots and resolutions, read-only.** Explode the route's BOM lines into positioned slots,
+build the candidate read-model, propose a resolution per slot with its reason, return it.
+It writes nothing, so it cannot break consumption or scheduling, and it is what every
+later piece reads: the quote, the kit list, the pick, the as-built.
+
+Binding states come second, and that is where the `MaterialUsage` / `AssemblyUsage`
+question gets decided.
+
+### 6.9 What I expect to be wrong
+
+- **Row volume.** A slot row per component per unit is 30 × 100/day for a busy exchange
+  shop. Consistent with the per-unit-rows philosophy and almost certainly fine, but it is
+  the assumption that is expensive to reverse, so it deserves a sanity check before
+  committing.
+- **Slot identity across a BOM revision.** Slots are per-unit and `BOM` is versioned. If
+  the BOM revises mid-rebuild, does the unit keep the slot set it started with, or
+  re-explode? Same class of question as a process change mid-Op, and it should get the
+  same answer for the same reasons.
 
 ## 7. UI changes
 
@@ -574,6 +650,18 @@ for this loop.
    core lifecycle (`RECEIVED` / `IN_DISASSEMBLY` / `DISASSEMBLED` / `SCRAPPED`) has no
    room for today.
 
+7. **Can a purchased used component be graded?** `MaterialLot` has no condition or
+   grade field, so a component bought from a core specialist arrives ungraded while an
+   in-house harvested one carries A/B/C. Until that is settled, purchased-used is a
+   second-class source the resolver cannot rank against harvested stock (§6.6). The
+   options are a grade on the lot, a grade on the receiving-inspection record, or a
+   decision that used-purchased is always treated as one nominal grade. This blocks the
+   candidate read-model, not the slot model.
+
+8. **Slot identity across a BOM revision.** Slots are per-unit, `BOM` is versioned. Does
+   an in-flight unit keep the slot set it was exploded with, or re-explode on revision?
+   Same class as a process change mid-Op, and it should get the same answer.
+
 ## 11. Build order
 
 1. **`Core.fulfilment_mode`** (§4.2) — field, migration, set at receipt, shown on the
@@ -581,16 +669,19 @@ for this loop.
 2. **Scope resolution + curation UI** on the core — entry-scope preset applied (§3.3),
    proposal generated from findings, human include/exclude. Still no routing change: the
    resolved scope is recorded and read by step 3, not yet enforced during execution.
-3. **Kit resolution service** — scope → route → BOM lines → netted against harvest,
-   with cross-core reuse gated by mode. Returns data; writes nothing.
+3. **Slot resolution service** (§6.8) — route → BOM lines → positioned slots →
+   candidate read-model → a proposed resolution per slot with its reason. Returns data;
+   writes nothing, so it cannot disturb consumption or scheduling. This is the piece the
+   quote, the kit list, the pick and the as-built all read.
 4. **UI 1–3** on the teardown surface, on the §5 one-process-per-scope stopgap. (The
    design named `CoreDisassemblyPage`; teardown is to become a DWI surface rather than a
    page of its own, so this lands wherever that work puts it.)
 5. **UI 4–5** — core return link, ready-to-rebuild queue.
 6. **`EXCHANGE` path closes here.** Everything above is a complete loop for stock
    rebuilds, and it is worth shipping and using before starting §7.
-7. **`REPAIR_RETURN` gate** — quote from the proposed scope, customer approval before
-   work, decline path (§10.6), serial continuity through the rebuild.
+7. **`REPAIR_RETURN` gate** — quote projected from the unresolved slots (§6.5), customer
+   approval before work, decline path (§10.6). Serial continuity is NOT on this list: the
+   core stays the routing subject through the rebuild, so it needs nothing (§10.5).
 8. **Routing support for composed scope** (§5.1) — superset process, repair-code table,
    and the move from bypass edges (a) to a per-unit included-step set (b) with a
    scope-aware advancement walk. WO grain (§5.2) is a deferred choice, not a
