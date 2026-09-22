@@ -126,7 +126,13 @@ def resolve_scope(core, slots, preset=None) -> ResolvedScope:
     operations = []
     seen_steps = set()
     for code, because in raised.values():
-        for step in code.steps.all():
+        # `archived=False` here too — this was missed in the first sweep. A retired
+        # operation still hanging off a live code would have gone on the job.
+        # NB: deliberately NOT filtered on `is_current_version`. The M2M points at a
+        # specific Step row, and if that row has been superseded, showing the
+        # superseded operation is better than silently dropping it — the
+        # version-drift question is recorded as design open question 8.
+        for step in code.steps.filter(archived=False):
             # A step reached by two codes is ONE operation. Attributing it to the
             # first code that raised it would hide the second reason, so the reasons
             # merge onto the operation instead.

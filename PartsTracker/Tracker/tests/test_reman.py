@@ -1675,3 +1675,17 @@ class RebuildScopeResolutionTests(TenantTestCase):
         scope = resolve_scope(self.core, self._slots())
         self.assertEqual(scope.operations, [])
         self.assertTrue(scope.warnings)
+
+    def test_a_retired_operation_drops_off_the_code(self):
+        """`.objects` scopes by TENANT and does not exclude soft-deleted rows, so every
+        query in these services has to say `archived=False` itself. This one was missed
+        in the first sweep: a retired step still hanging off a live code kept going on
+        the job."""
+        from Tracker.services.reman.scope import resolve_scope
+        self._harvest('A')
+        self.assertIn('Cleaning',
+                      [o.step_name for o in resolve_scope(self.core, self._slots()).operations])
+
+        self.clean.delete()   # soft delete — archives, does not remove
+        self.assertNotIn('Cleaning',
+                         [o.step_name for o in resolve_scope(self.core, self._slots()).operations])

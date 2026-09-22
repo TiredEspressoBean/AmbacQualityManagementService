@@ -26,10 +26,13 @@ def eligible_disassembly_processes_for(core_type):
     """
     return (
         Processes.objects
-        .filter(
+        .filter(  # tenant-safe: .objects auto-scopes to the request tenant
             part_type=core_type,
             is_disassembly=True,
             status=ProcessStatus.APPROVED,
+            # `.objects` scopes by tenant but does NOT exclude soft-deleted rows, so
+            # without this a voided teardown process stayed in the operator's picker.
+            archived=False,
         )
         .order_by('name')
     )
