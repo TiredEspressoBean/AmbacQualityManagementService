@@ -19484,6 +19484,400 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/RebuildScopePresets/:
+    get:
+      operationId: api_RebuildScopePresets_list
+      description: Named rebuild levels — the entry scope before any finding.
+      parameters:
+      - in: query
+        name: core_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: is_default
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRebuildScopePresetList'
+          description: ''
+    post:
+      operationId: api_RebuildScopePresets_create
+      description: Named rebuild levels — the entry scope before any finding.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RebuildScopePresetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RebuildScopePresetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RebuildScopePresetRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildScopePreset'
+          description: ''
+  /api/RebuildScopePresets/{id}/:
+    get:
+      operationId: api_RebuildScopePresets_retrieve
+      description: Named rebuild levels — the entry scope before any finding.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Scope Preset.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildScopePreset'
+          description: ''
+    put:
+      operationId: api_RebuildScopePresets_update
+      description: Named rebuild levels — the entry scope before any finding.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Scope Preset.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RebuildScopePresetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RebuildScopePresetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RebuildScopePresetRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildScopePreset'
+          description: ''
+    patch:
+      operationId: api_RebuildScopePresets_partial_update
+      description: Named rebuild levels — the entry scope before any finding.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Scope Preset.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRebuildScopePresetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRebuildScopePresetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRebuildScopePresetRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildScopePreset'
+          description: ''
+    delete:
+      operationId: api_RebuildScopePresets_destroy
+      description: Named rebuild levels — the entry scope before any finding.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Scope Preset.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/RepairCodes/:
+    get:
+      operationId: api_RepairCodes_list
+      description: Repair codes — what operations a finding adds to a rebuild.
+      parameters:
+      - in: query
+        name: component_type
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: trigger
+        schema:
+          type: string
+          enum:
+          - ALWAYS
+          - PRESET
+          - RECONDITION
+          - REPLACE_BUY
+          - REPLACE_POOL
+          - REUSE
+        description: |-
+          Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+
+          * `RECONDITION` - When the recovered component needs work before it goes back
+          * `REPLACE_POOL` - When the slot is filled from recovered stock
+          * `REPLACE_BUY` - When the slot is filled by a purchase
+          * `REUSE` - When the recovered component goes back as-is
+          * `ALWAYS` - Always — part of the base scope, whatever the finding
+          * `PRESET` - Only when a rebuild level includes it
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRepairCodeList'
+          description: ''
+    post:
+      operationId: api_RepairCodes_create
+      description: Repair codes — what operations a finding adds to a rebuild.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepairCodeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RepairCodeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RepairCodeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepairCode'
+          description: ''
+  /api/RepairCodes/{id}/:
+    get:
+      operationId: api_RepairCodes_retrieve
+      description: Repair codes — what operations a finding adds to a rebuild.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Repair Code.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepairCode'
+          description: ''
+    put:
+      operationId: api_RepairCodes_update
+      description: Repair codes — what operations a finding adds to a rebuild.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Repair Code.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepairCodeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RepairCodeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RepairCodeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepairCode'
+          description: ''
+    patch:
+      operationId: api_RepairCodes_partial_update
+      description: Repair codes — what operations a finding adds to a rebuild.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Repair Code.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRepairCodeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRepairCodeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRepairCodeRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepairCode'
+          description: ''
+    delete:
+      operationId: api_RepairCodes_destroy
+      description: Repair codes — what operations a finding adds to a rebuild.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Repair Code.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/Sampling-rule-sets/:
     get:
       operationId: api_Sampling_rule_sets_list
@@ -50511,6 +50905,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReadyToShipGroup'
+    PaginatedRebuildScopePresetList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RebuildScopePreset'
+    PaginatedRepairCodeList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RepairCode'
     PaginatedSPCBaselineListList:
       type: object
       required:
@@ -55087,6 +55527,76 @@ components:
           allOf:
           - $ref: '#/components/schemas/FishboneNestedRequest'
           writeOnly: true
+        archived:
+          type: boolean
+    PatchedRebuildScopePresetRequest:
+      type: object
+      description: A named rebuild level — the entry scope, before any finding.
+      properties:
+        core_type:
+          type: string
+          format: uuid
+          description: The core type this preset applies to.
+        name:
+          type: string
+          minLength: 1
+          description: What the shop sells this as, e.g. 'Standard rebuild'.
+          maxLength: 100
+        is_default:
+          type: boolean
+          description: Proposed automatically when a rebuild is planned for this core
+            type. At most one per core type.
+        codes:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: The codes this level includes before any finding is applied.
+        notes:
+          type: string
+        archived:
+          type: boolean
+    PatchedRepairCodeRequest:
+      type: object
+      description: A slot resolution that emits operations — see the design's §6.4.
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Short identifier the shop uses, e.g. NZL-RECON.
+          maxLength: 30
+        name:
+          type: string
+          minLength: 1
+          description: What this code does, in the words the bench would use.
+          maxLength: 200
+        component_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The component this code applies to. Blank means it applies
+            whatever the component — for whole-unit work like final test.
+        trigger:
+          allOf:
+          - $ref: '#/components/schemas/TriggerEnum'
+          description: |-
+            Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+
+            * `RECONDITION` - When the recovered component needs work before it goes back
+            * `REPLACE_POOL` - When the slot is filled from recovered stock
+            * `REPLACE_BUY` - When the slot is filled by a purchase
+            * `REUSE` - When the recovered component goes back as-is
+            * `ALWAYS` - Always — part of the base scope, whatever the finding
+            * `PRESET` - Only when a rebuild level includes it
+        steps:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Operations this code adds to the rebuild. The unit's scope
+            is the union of the operations its raised codes carry.
+        notes:
+          type: string
         archived:
           type: boolean
     PatchedSPCBaselineRequest:
@@ -59865,6 +60375,94 @@ components:
       - operations
       - slots
       - warnings
+    RebuildScopePreset:
+      type: object
+      description: A named rebuild level — the entry scope, before any finding.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        core_type:
+          type: string
+          format: uuid
+          description: The core type this preset applies to.
+        core_type_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: What the shop sells this as, e.g. 'Standard rebuild'.
+          maxLength: 100
+        is_default:
+          type: boolean
+          description: Proposed automatically when a rebuild is planned for this core
+            type. At most one per core type.
+        codes:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: The codes this level includes before any finding is applied.
+        code_labels:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
+      required:
+      - code_labels
+      - core_type
+      - core_type_name
+      - created_at
+      - id
+      - name
+      - updated_at
+      - version
+    RebuildScopePresetRequest:
+      type: object
+      description: A named rebuild level — the entry scope, before any finding.
+      properties:
+        core_type:
+          type: string
+          format: uuid
+          description: The core type this preset applies to.
+        name:
+          type: string
+          minLength: 1
+          description: What the shop sells this as, e.g. 'Standard rebuild'.
+          maxLength: 100
+        is_default:
+          type: boolean
+          description: Proposed automatically when a rebuild is planned for this core
+            type. At most one per core type.
+        codes:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: The codes this level includes before any finding is applied.
+        notes:
+          type: string
+        archived:
+          type: boolean
+      required:
+      - core_type
+      - name
     RebuildSlot:
       type: object
       description: |-
@@ -60286,6 +60884,126 @@ components:
           type: string
       required:
       - status
+    RepairCode:
+      type: object
+      description: A slot resolution that emits operations — see the design's §6.4.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          description: Short identifier the shop uses, e.g. NZL-RECON.
+          maxLength: 30
+        name:
+          type: string
+          description: What this code does, in the words the bench would use.
+          maxLength: 200
+        component_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The component this code applies to. Blank means it applies
+            whatever the component — for whole-unit work like final test.
+        component_type_name:
+          type: string
+          readOnly: true
+          nullable: true
+        trigger:
+          allOf:
+          - $ref: '#/components/schemas/TriggerEnum'
+          description: |-
+            Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+
+            * `RECONDITION` - When the recovered component needs work before it goes back
+            * `REPLACE_POOL` - When the slot is filled from recovered stock
+            * `REPLACE_BUY` - When the slot is filled by a purchase
+            * `REUSE` - When the recovered component goes back as-is
+            * `ALWAYS` - Always — part of the base scope, whatever the finding
+            * `PRESET` - Only when a rebuild level includes it
+        steps:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Operations this code adds to the rebuild. The unit's scope
+            is the union of the operations its raised codes carry.
+        step_names:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
+      required:
+      - code
+      - component_type_name
+      - created_at
+      - id
+      - name
+      - step_names
+      - updated_at
+      - version
+    RepairCodeRequest:
+      type: object
+      description: A slot resolution that emits operations — see the design's §6.4.
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Short identifier the shop uses, e.g. NZL-RECON.
+          maxLength: 30
+        name:
+          type: string
+          minLength: 1
+          description: What this code does, in the words the bench would use.
+          maxLength: 200
+        component_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The component this code applies to. Blank means it applies
+            whatever the component — for whole-unit work like final test.
+        trigger:
+          allOf:
+          - $ref: '#/components/schemas/TriggerEnum'
+          description: |-
+            Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+
+            * `RECONDITION` - When the recovered component needs work before it goes back
+            * `REPLACE_POOL` - When the slot is filled from recovered stock
+            * `REPLACE_BUY` - When the slot is filled by a purchase
+            * `REUSE` - When the recovered component goes back as-is
+            * `ALWAYS` - Always — part of the base scope, whatever the finding
+            * `PRESET` - Only when a rebuild level includes it
+        steps:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Operations this code adds to the rebuild. The unit's scope
+            is the union of the operations its raised codes carry.
+        notes:
+          type: string
+        archived:
+          type: boolean
+      required:
+      - code
+      - name
     RepeatDefectsResponse:
       type: object
       properties:
@@ -68250,6 +68968,22 @@ components:
         * `IN_PROGRESS` - IN_PROGRESS
         * `PENDING` - PENDING
         * `SKIPPED` - SKIPPED
+    TriggerEnum:
+      enum:
+      - RECONDITION
+      - REPLACE_POOL
+      - REPLACE_BUY
+      - REUSE
+      - ALWAYS
+      - PRESET
+      type: string
+      description: |-
+        * `RECONDITION` - When the recovered component needs work before it goes back
+        * `REPLACE_POOL` - When the slot is filled from recovered stock
+        * `REPLACE_BUY` - When the slot is filled by a purchase
+        * `REUSE` - When the recovered component goes back as-is
+        * `ALWAYS` - Always — part of the base scope, whatever the finding
+        * `PRESET` - Only when a rebuild level includes it
     TriggerSyncResult:
       type: object
       properties:

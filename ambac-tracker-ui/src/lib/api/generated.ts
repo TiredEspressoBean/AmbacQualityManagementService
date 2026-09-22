@@ -6948,6 +6948,132 @@ export type ReadyToShipPart = {
   work_order: string | null;
   status: string;
 };
+export type PaginatedRebuildScopePresetList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<RebuildScopePreset>;
+};
+export type RebuildScopePreset = {
+  id: string;
+  /**
+   * The core type this preset applies to.
+   */
+  core_type: string;
+  core_type_name: string;
+  /**
+   * What the shop sells this as, e.g. 'Standard rebuild'.
+   *
+   * @maxLength 100
+   */
+  name: string;
+  is_default?: /**
+   * Proposed automatically when a rebuild is planned for this core type. At most one per core type.
+   */
+  boolean | undefined;
+  codes?: /**
+   * The codes this level includes before any finding is applied.
+   */
+  Array<string> | undefined;
+  code_labels: Array<string>;
+  notes?: string | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+  version: number;
+};
+export type PaginatedRepairCodeList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<RepairCode>;
+};
+export type RepairCode = {
+  id: string;
+  /**
+   * Short identifier the shop uses, e.g. NZL-RECON.
+   *
+   * @maxLength 30
+   */
+  code: string;
+  /**
+   * What this code does, in the words the bench would use.
+   *
+   * @maxLength 200
+   */
+  name: string;
+  component_type?:
+    | /**
+     * The component this code applies to. Blank means it applies whatever the component — for whole-unit work like final test.
+     */
+    (string | null)
+    | undefined;
+  component_type_name: string | null;
+  trigger?: /**
+     * Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+    
+    * `RECONDITION` - When the recovered component needs work before it goes back
+    * `REPLACE_POOL` - When the slot is filled from recovered stock
+    * `REPLACE_BUY` - When the slot is filled by a purchase
+    * `REUSE` - When the recovered component goes back as-is
+    * `ALWAYS` - Always — part of the base scope, whatever the finding
+    * `PRESET` - Only when a rebuild level includes it
+     */
+  TriggerEnum | undefined;
+  steps?: /**
+   * Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry.
+   */
+  Array<string> | undefined;
+  step_names: Array<string>;
+  notes?: string | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+  version: number;
+};
+export type TriggerEnum =
+  /**
+   * * `RECONDITION` - When the recovered component needs work before it goes back
+   * `REPLACE_POOL` - When the slot is filled from recovered stock
+   * `REPLACE_BUY` - When the slot is filled by a purchase
+   * `REUSE` - When the recovered component goes back as-is
+   * `ALWAYS` - Always — part of the base scope, whatever the finding
+   * `PRESET` - Only when a rebuild level includes it
+   *
+   * @enum RECONDITION, REPLACE_POOL, REPLACE_BUY, REUSE, ALWAYS, PRESET
+   */
+  | "RECONDITION"
+  | "REPLACE_POOL"
+  | "REPLACE_BUY"
+  | "REUSE"
+  | "ALWAYS"
+  | "PRESET";
 export type PaginatedSPCBaselineListList = {
   /**
    * @example 123
@@ -11568,6 +11694,43 @@ export type FishboneNestedRequest = Partial<{
   environment_causes: string | null;
   identified_root_cause: string | null;
 }>;
+export type PatchedRepairCodeRequest = Partial<{
+  /**
+   * Short identifier the shop uses, e.g. NZL-RECON.
+   *
+   * @minLength 1
+   * @maxLength 30
+   */
+  code: string;
+  /**
+   * What this code does, in the words the bench would use.
+   *
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  /**
+   * The component this code applies to. Blank means it applies whatever the component — for whole-unit work like final test.
+   */
+  component_type: string | null;
+  /**
+     * Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+    
+    * `RECONDITION` - When the recovered component needs work before it goes back
+    * `REPLACE_POOL` - When the slot is filled from recovered stock
+    * `REPLACE_BUY` - When the slot is filled by a purchase
+    * `REUSE` - When the recovered component goes back as-is
+    * `ALWAYS` - Always — part of the base scope, whatever the finding
+    * `PRESET` - Only when a rebuild level includes it
+     */
+  trigger: TriggerEnum;
+  /**
+   * Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry.
+   */
+  steps: Array<string>;
+  notes: string;
+  archived: boolean;
+}>;
 export type PatchedSPCBaselineRequest = Partial<{
   /**
    * The measurement definition this baseline applies to
@@ -13320,6 +13483,45 @@ export type QueueBlocker = {
 export type QueueWarning = {
   code: string;
   detail: string;
+};
+export type RepairCodeRequest = {
+  /**
+   * Short identifier the shop uses, e.g. NZL-RECON.
+   *
+   * @minLength 1
+   * @maxLength 30
+   */
+  code: string;
+  /**
+   * What this code does, in the words the bench would use.
+   *
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  component_type?:
+    | /**
+     * The component this code applies to. Blank means it applies whatever the component — for whole-unit work like final test.
+     */
+    (string | null)
+    | undefined;
+  trigger?: /**
+     * Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+    
+    * `RECONDITION` - When the recovered component needs work before it goes back
+    * `REPLACE_POOL` - When the slot is filled from recovered stock
+    * `REPLACE_BUY` - When the slot is filled by a purchase
+    * `REUSE` - When the recovered component goes back as-is
+    * `ALWAYS` - Always — part of the base scope, whatever the finding
+    * `PRESET` - Only when a rebuild level includes it
+     */
+  TriggerEnum | undefined;
+  steps?: /**
+   * Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry.
+   */
+  Array<string> | undefined;
+  notes?: string | undefined;
+  archived?: boolean | undefined;
 };
 export type RootCauseRequest = {
   rca_record: string;
@@ -19689,6 +19891,93 @@ const PatchedRcaRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
+const RebuildScopePreset = z.object({
+  id: z.string().uuid(),
+  core_type: z.string().uuid(),
+  core_type_name: z.string(),
+  name: z.string().max(100),
+  is_default: z.boolean().optional(),
+  codes: z.array(z.string().uuid()).optional(),
+  code_labels: z.array(z.string()),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedRebuildScopePresetList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(RebuildScopePreset),
+});
+const RebuildScopePresetRequest = z.object({
+  core_type: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  is_default: z.boolean().optional(),
+  codes: z.array(z.string().uuid()).optional(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedRebuildScopePresetRequest = z
+  .object({
+    core_type: z.string().uuid(),
+    name: z.string().min(1).max(100),
+    is_default: z.boolean(),
+    codes: z.array(z.string().uuid()),
+    notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
+const TriggerEnum = z.enum([
+  "RECONDITION",
+  "REPLACE_POOL",
+  "REPLACE_BUY",
+  "REUSE",
+  "ALWAYS",
+  "PRESET",
+]);
+const RepairCode = z.object({
+  id: z.string().uuid(),
+  code: z.string().max(30),
+  name: z.string().max(200),
+  component_type: z.string().uuid().nullish(),
+  component_type_name: z.string().nullable(),
+  trigger: TriggerEnum.optional(),
+  steps: z.array(z.string().uuid()).optional(),
+  step_names: z.array(z.string()),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedRepairCodeList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(RepairCode),
+});
+const RepairCodeRequest = z.object({
+  code: z.string().min(1).max(30),
+  name: z.string().min(1).max(200),
+  component_type: z.string().uuid().nullish(),
+  trigger: TriggerEnum.optional(),
+  steps: z.array(z.string().uuid()).optional(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedRepairCodeRequest = z
+  .object({
+    code: z.string().min(1).max(30),
+    name: z.string().min(1).max(200),
+    component_type: z.string().uuid().nullable(),
+    trigger: TriggerEnum,
+    steps: z.array(z.string().uuid()),
+    notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
 const GateMetricEnum = z.enum([
   "CONSECUTIVE_FAILS",
   "FAIL_RATE_PCT",
@@ -24753,6 +25042,15 @@ export const schemas = {
   FishboneNestedRequest,
   RcaRecordRequest,
   PatchedRcaRecordRequest,
+  RebuildScopePreset,
+  PaginatedRebuildScopePresetList,
+  RebuildScopePresetRequest,
+  PatchedRebuildScopePresetRequest,
+  TriggerEnum,
+  RepairCode,
+  PaginatedRepairCodeList,
+  RepairCodeRequest,
+  PatchedRepairCodeRequest,
   GateMetricEnum,
   GateWindowEnum,
   SamplingRuleSet,
@@ -41512,6 +41810,265 @@ the completion blockers.`,
     response: ListMetadataResponse,
   },
   {
+    method: "get",
+    path: "/api/RebuildScopePresets/",
+    alias: "api_RebuildScopePresets_list",
+    description: `Named rebuild levels — the entry scope before any finding.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "core_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "is_default",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedRebuildScopePresetList,
+  },
+  {
+    method: "post",
+    path: "/api/RebuildScopePresets/",
+    alias: "api_RebuildScopePresets_create",
+    description: `Named rebuild levels — the entry scope before any finding.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RebuildScopePresetRequest,
+      },
+    ],
+    response: RebuildScopePreset,
+  },
+  {
+    method: "get",
+    path: "/api/RebuildScopePresets/:id/",
+    alias: "api_RebuildScopePresets_retrieve",
+    description: `Named rebuild levels — the entry scope before any finding.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RebuildScopePreset,
+  },
+  {
+    method: "put",
+    path: "/api/RebuildScopePresets/:id/",
+    alias: "api_RebuildScopePresets_update",
+    description: `Named rebuild levels — the entry scope before any finding.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RebuildScopePresetRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RebuildScopePreset,
+  },
+  {
+    method: "patch",
+    path: "/api/RebuildScopePresets/:id/",
+    alias: "api_RebuildScopePresets_partial_update",
+    description: `Named rebuild levels — the entry scope before any finding.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedRebuildScopePresetRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RebuildScopePreset,
+  },
+  {
+    method: "delete",
+    path: "/api/RebuildScopePresets/:id/",
+    alias: "api_RebuildScopePresets_destroy",
+    description: `Named rebuild levels — the entry scope before any finding.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/RepairCodes/",
+    alias: "api_RepairCodes_list",
+    description: `Repair codes — what operations a finding adds to a rebuild.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "component_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "trigger",
+        type: "Query",
+        schema: z
+          .enum([
+            "ALWAYS",
+            "PRESET",
+            "RECONDITION",
+            "REPLACE_BUY",
+            "REPLACE_POOL",
+            "REUSE",
+          ])
+          .optional(),
+      },
+    ],
+    response: PaginatedRepairCodeList,
+  },
+  {
+    method: "post",
+    path: "/api/RepairCodes/",
+    alias: "api_RepairCodes_create",
+    description: `Repair codes — what operations a finding adds to a rebuild.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RepairCodeRequest,
+      },
+    ],
+    response: RepairCode,
+  },
+  {
+    method: "get",
+    path: "/api/RepairCodes/:id/",
+    alias: "api_RepairCodes_retrieve",
+    description: `Repair codes — what operations a finding adds to a rebuild.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RepairCode,
+  },
+  {
+    method: "put",
+    path: "/api/RepairCodes/:id/",
+    alias: "api_RepairCodes_update",
+    description: `Repair codes — what operations a finding adds to a rebuild.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RepairCodeRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RepairCode,
+  },
+  {
+    method: "patch",
+    path: "/api/RepairCodes/:id/",
+    alias: "api_RepairCodes_partial_update",
+    description: `Repair codes — what operations a finding adds to a rebuild.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedRepairCodeRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RepairCode,
+  },
+  {
+    method: "delete",
+    path: "/api/RepairCodes/:id/",
+    alias: "api_RepairCodes_destroy",
+    description: `Repair codes — what operations a finding adds to a rebuild.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
     method: "post",
     path: "/api/reports/download/",
     alias: "api_reports_download_create",
@@ -46213,7 +46770,10 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/SubstepResources/",
@@ -46510,10 +47070,7 @@ substep (the typical authoring-popover query).`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Substeps/",
@@ -50945,7 +51502,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrderSplitResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/WorkOrders/:id/step_history/",
@@ -51171,10 +51731,7 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/WorkOrders/import/",

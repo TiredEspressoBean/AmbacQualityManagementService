@@ -29,6 +29,7 @@ import {
     BadgeCheck,
     Recycle,
     Hammer,
+    Layers,
     Settings,
     ShieldCheck,
     Truck,
@@ -103,6 +104,10 @@ const remanPages = [
     { name: "Cores", url: "/reman/cores", icon: Package },
     { name: "Ready to Rebuild", url: "/reman/rebuild-queue", icon: Hammer },
     { name: "Components", url: "/reman/components", icon: Wrench },
+    // Engineering master data, but it lives in the reman group because reman is the
+    // only thing that consumes it and nobody would look for it under Processes.
+    { name: "Repair Codes", url: "/editor/repair-codes", icon: ClipboardList },
+    { name: "Rebuild Levels", url: "/editor/rebuild-levels", icon: Layers },
 ]
 
 // Quality - QMS (staff only, collapsible)

@@ -300,6 +300,41 @@ class RebuildScopePresetSerializer(SecureModelMixin):
     def get_code_labels(self, obj):
         return [c.code for c in obj.codes.all()]
 
+    def validate(self, attrs):
+        """Refuse a second default for a core type, with a message that names the
+        first one.
+
+        A partial unique index already enforces this — two concurrent writers must
+        not both win — but a constraint reached through the API surfaces as a 500,
+        and 'Request failed with status code 500' tells an engineer nothing about
+        what they did or how to undo it. The index stays as the backstop; this is
+        the part a person reads.
+        """
+        attrs = super().validate(attrs)
+        is_default = attrs.get(
+            'is_default', getattr(self.instance, 'is_default', False))
+        core_type = attrs.get(
+            'core_type', getattr(self.instance, 'core_type', None))
+        if not is_default or core_type is None:
+            return attrs
+
+        clash = RebuildScopePreset.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+            core_type=core_type, is_default=True,
+            is_current_version=True, archived=False,
+        )
+        if self.instance is not None:
+            clash = clash.exclude(pk=self.instance.pk)
+        existing = clash.first()
+        if existing is not None:
+            raise serializers.ValidationError({
+                'is_default': (
+                    f"'{existing.name}' is already proposed automatically for "
+                    f"{core_type.name}. Clear it there first — a core type can only "
+                    f"have one default rebuild level."
+                )
+            })
+        return attrs
+
     def update(self, instance, validated_data):
         from Tracker.services.core.versioning import apply_versioned_update
         return apply_versioned_update(instance, validated_data, self.context.get('request'))

@@ -7481,6 +7481,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/RebuildScopePresets/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Named rebuild levels — the entry scope before any finding. */
+        get: operations["api_RebuildScopePresets_list"];
+        put?: never;
+        /** @description Named rebuild levels — the entry scope before any finding. */
+        post: operations["api_RebuildScopePresets_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RebuildScopePresets/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Named rebuild levels — the entry scope before any finding. */
+        get: operations["api_RebuildScopePresets_retrieve"];
+        /** @description Named rebuild levels — the entry scope before any finding. */
+        put: operations["api_RebuildScopePresets_update"];
+        post?: never;
+        /** @description Named rebuild levels — the entry scope before any finding. */
+        delete: operations["api_RebuildScopePresets_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Named rebuild levels — the entry scope before any finding. */
+        patch: operations["api_RebuildScopePresets_partial_update"];
+        trace?: never;
+    };
+    "/api/RepairCodes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Repair codes — what operations a finding adds to a rebuild. */
+        get: operations["api_RepairCodes_list"];
+        put?: never;
+        /** @description Repair codes — what operations a finding adds to a rebuild. */
+        post: operations["api_RepairCodes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RepairCodes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Repair codes — what operations a finding adds to a rebuild. */
+        get: operations["api_RepairCodes_retrieve"];
+        /** @description Repair codes — what operations a finding adds to a rebuild. */
+        put: operations["api_RepairCodes_update"];
+        post?: never;
+        /** @description Repair codes — what operations a finding adds to a rebuild. */
+        delete: operations["api_RepairCodes_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Repair codes — what operations a finding adds to a rebuild. */
+        patch: operations["api_RepairCodes_partial_update"];
+        trace?: never;
+    };
     "/api/Sampling-rule-sets/": {
         parameters: {
             query?: never;
@@ -21906,6 +21982,36 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["ReadyToShipGroup"][];
         };
+        PaginatedRebuildScopePresetList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["RebuildScopePreset"][];
+        };
+        PaginatedRepairCodeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["RepairCode"][];
+        };
         PaginatedSPCBaselineListList: {
             /** @example 123 */
             count: number;
@@ -24506,6 +24612,49 @@ export interface components {
             fishbone_data?: components["schemas"]["FishboneNestedRequest"];
             archived?: boolean;
         };
+        /** @description A named rebuild level — the entry scope, before any finding. */
+        PatchedRebuildScopePresetRequest: {
+            /**
+             * Format: uuid
+             * @description The core type this preset applies to.
+             */
+            core_type?: string;
+            /** @description What the shop sells this as, e.g. 'Standard rebuild'. */
+            name?: string;
+            /** @description Proposed automatically when a rebuild is planned for this core type. At most one per core type. */
+            is_default?: boolean;
+            /** @description The codes this level includes before any finding is applied. */
+            codes?: string[];
+            notes?: string;
+            archived?: boolean;
+        };
+        /** @description A slot resolution that emits operations — see the design's §6.4. */
+        PatchedRepairCodeRequest: {
+            /** @description Short identifier the shop uses, e.g. NZL-RECON. */
+            code?: string;
+            /** @description What this code does, in the words the bench would use. */
+            name?: string;
+            /**
+             * Format: uuid
+             * @description The component this code applies to. Blank means it applies whatever the component — for whole-unit work like final test.
+             */
+            component_type?: string | null;
+            /**
+             * @description Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+             *
+             *     * `RECONDITION` - When the recovered component needs work before it goes back
+             *     * `REPLACE_POOL` - When the slot is filled from recovered stock
+             *     * `REPLACE_BUY` - When the slot is filled by a purchase
+             *     * `REUSE` - When the recovered component goes back as-is
+             *     * `ALWAYS` - Always — part of the base scope, whatever the finding
+             *     * `PRESET` - Only when a rebuild level includes it
+             */
+            trigger?: components["schemas"]["TriggerEnum"];
+            /** @description Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry. */
+            steps?: string[];
+            notes?: string;
+            archived?: boolean;
+        };
         /** @description Full SPC Baseline serializer with all fields and computed properties. */
         PatchedSPCBaselineRequest: {
             /**
@@ -27095,6 +27244,47 @@ export interface components {
             operations: components["schemas"]["ScopedOperation"][];
             warnings: string[];
         };
+        /** @description A named rebuild level — the entry scope, before any finding. */
+        RebuildScopePreset: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The core type this preset applies to.
+             */
+            core_type: string;
+            readonly core_type_name: string;
+            /** @description What the shop sells this as, e.g. 'Standard rebuild'. */
+            name: string;
+            /** @description Proposed automatically when a rebuild is planned for this core type. At most one per core type. */
+            is_default?: boolean;
+            /** @description The codes this level includes before any finding is applied. */
+            codes?: string[];
+            readonly code_labels: string[];
+            notes?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+            readonly version: number;
+        };
+        /** @description A named rebuild level — the entry scope, before any finding. */
+        RebuildScopePresetRequest: {
+            /**
+             * Format: uuid
+             * @description The core type this preset applies to.
+             */
+            core_type: string;
+            /** @description What the shop sells this as, e.g. 'Standard rebuild'. */
+            name: string;
+            /** @description Proposed automatically when a rebuild is planned for this core type. At most one per core type. */
+            is_default?: boolean;
+            /** @description The codes this level includes before any finding is applied. */
+            codes?: string[];
+            notes?: string;
+            archived?: boolean;
+        };
         /**
          * @description One position on the rebuild and what we propose to put in it.
          *
@@ -27279,6 +27469,69 @@ export interface components {
         };
         RemoveMemberResponse: {
             status: string;
+        };
+        /** @description A slot resolution that emits operations — see the design's §6.4. */
+        RepairCode: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Short identifier the shop uses, e.g. NZL-RECON. */
+            code: string;
+            /** @description What this code does, in the words the bench would use. */
+            name: string;
+            /**
+             * Format: uuid
+             * @description The component this code applies to. Blank means it applies whatever the component — for whole-unit work like final test.
+             */
+            component_type?: string | null;
+            readonly component_type_name: string | null;
+            /**
+             * @description Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+             *
+             *     * `RECONDITION` - When the recovered component needs work before it goes back
+             *     * `REPLACE_POOL` - When the slot is filled from recovered stock
+             *     * `REPLACE_BUY` - When the slot is filled by a purchase
+             *     * `REUSE` - When the recovered component goes back as-is
+             *     * `ALWAYS` - Always — part of the base scope, whatever the finding
+             *     * `PRESET` - Only when a rebuild level includes it
+             */
+            trigger?: components["schemas"]["TriggerEnum"];
+            /** @description Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry. */
+            steps?: string[];
+            readonly step_names: string[];
+            notes?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+            readonly version: number;
+        };
+        /** @description A slot resolution that emits operations — see the design's §6.4. */
+        RepairCodeRequest: {
+            /** @description Short identifier the shop uses, e.g. NZL-RECON. */
+            code: string;
+            /** @description What this code does, in the words the bench would use. */
+            name: string;
+            /**
+             * Format: uuid
+             * @description The component this code applies to. Blank means it applies whatever the component — for whole-unit work like final test.
+             */
+            component_type?: string | null;
+            /**
+             * @description Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+             *
+             *     * `RECONDITION` - When the recovered component needs work before it goes back
+             *     * `REPLACE_POOL` - When the slot is filled from recovered stock
+             *     * `REPLACE_BUY` - When the slot is filled by a purchase
+             *     * `REUSE` - When the recovered component goes back as-is
+             *     * `ALWAYS` - Always — part of the base scope, whatever the finding
+             *     * `PRESET` - Only when a rebuild level includes it
+             */
+            trigger?: components["schemas"]["TriggerEnum"];
+            /** @description Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry. */
+            steps?: string[];
+            notes?: string;
+            archived?: boolean;
         };
         RepeatDefectsResponse: {
             data: {
@@ -31387,6 +31640,16 @@ export interface components {
          * @enum {string}
          */
         TravelerStepStatusEnum: "COMPLETED" | "IN_PROGRESS" | "PENDING" | "SKIPPED";
+        /**
+         * @description * `RECONDITION` - When the recovered component needs work before it goes back
+         *     * `REPLACE_POOL` - When the slot is filled from recovered stock
+         *     * `REPLACE_BUY` - When the slot is filled by a purchase
+         *     * `REUSE` - When the recovered component goes back as-is
+         *     * `ALWAYS` - Always — part of the base scope, whatever the finding
+         *     * `PRESET` - Only when a rebuild level includes it
+         * @enum {string}
+         */
+        TriggerEnum: "RECONDITION" | "REPLACE_POOL" | "REPLACE_BUY" | "REUSE" | "ALWAYS" | "PRESET";
         TriggerSyncResult: {
             status: string;
         };
@@ -46061,6 +46324,324 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_RebuildScopePresets_list: {
+        parameters: {
+            query?: {
+                core_type?: string;
+                is_default?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRebuildScopePresetList"];
+                };
+            };
+        };
+    };
+    api_RebuildScopePresets_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RebuildScopePresetRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RebuildScopePresetRequest"];
+                "multipart/form-data": components["schemas"]["RebuildScopePresetRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildScopePreset"];
+                };
+            };
+        };
+    };
+    api_RebuildScopePresets_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Scope Preset. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildScopePreset"];
+                };
+            };
+        };
+    };
+    api_RebuildScopePresets_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Scope Preset. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RebuildScopePresetRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RebuildScopePresetRequest"];
+                "multipart/form-data": components["schemas"]["RebuildScopePresetRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildScopePreset"];
+                };
+            };
+        };
+    };
+    api_RebuildScopePresets_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Scope Preset. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_RebuildScopePresets_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Scope Preset. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRebuildScopePresetRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRebuildScopePresetRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRebuildScopePresetRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildScopePreset"];
+                };
+            };
+        };
+    };
+    api_RepairCodes_list: {
+        parameters: {
+            query?: {
+                component_type?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+                 *
+                 *     * `RECONDITION` - When the recovered component needs work before it goes back
+                 *     * `REPLACE_POOL` - When the slot is filled from recovered stock
+                 *     * `REPLACE_BUY` - When the slot is filled by a purchase
+                 *     * `REUSE` - When the recovered component goes back as-is
+                 *     * `ALWAYS` - Always — part of the base scope, whatever the finding
+                 *     * `PRESET` - Only when a rebuild level includes it
+                 */
+                trigger?: "ALWAYS" | "PRESET" | "RECONDITION" | "REPLACE_BUY" | "REPLACE_POOL" | "REUSE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRepairCodeList"];
+                };
+            };
+        };
+    };
+    api_RepairCodes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepairCodeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RepairCodeRequest"];
+                "multipart/form-data": components["schemas"]["RepairCodeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairCode"];
+                };
+            };
+        };
+    };
+    api_RepairCodes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Repair Code. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairCode"];
+                };
+            };
+        };
+    };
+    api_RepairCodes_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Repair Code. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepairCodeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RepairCodeRequest"];
+                "multipart/form-data": components["schemas"]["RepairCodeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairCode"];
+                };
+            };
+        };
+    };
+    api_RepairCodes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Repair Code. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_RepairCodes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Repair Code. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRepairCodeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRepairCodeRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRepairCodeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairCode"];
                 };
             };
         };
