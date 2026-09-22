@@ -441,11 +441,19 @@ under their name. Permitted sources are then extra columns on a BOM that custome
 getting anyway. Default the policy per part type, seed it from `fulfilment_mode`, migrate
 `allow_harvested` into the default set, and an engineer touches it only where it differs.
 
-Two things follow from that convention being a NAMING one rather than a modelled
-relation: nothing links a customer-specific part type back to the customer, so the
-resolver must take the part type as an input rather than deriving it from
-`core.customer`; and a customer-specific BOM requires a customer-specific PART TYPE —
-copying only the process leaves the BOM shared, and the source policy unreachable.
+**The naming convention is correct and should stay one.** A customer FK on `PartTypes`,
+`Processes` or `BOM` would be wrong four ways: the relation already exists through demand
+(`Orders.customer` → `OrderLine.part_type`), so a second one would drift from it; the
+part type IS the specification, and a customer-tagged variant means the part type no
+longer determines the build, which breaks the as-built record; it becomes a lie the first
+time that spec is sold to a second customer; and `PartTypes` is a versioned engineering
+record, so a customer FK would fork an engineering version on a commercial event — the
+mistake `Companies.default_core_fulfilment_mode` avoids by being non-versioning.
+
+One consequence for the resolver's signature: it takes `part_type` as an argument rather
+than deriving it from `core.customer`. One for authoring: a customer-specific BOM needs a
+customer-specific PART TYPE, since copying only the process leaves the BOM — and with it
+the source policy — shared.
 
 ### 6.3 Two prerequisites, both small and both blocking
 
