@@ -362,14 +362,13 @@ share anything.
 A new service — `services/reman/rebuild.py` — resolving, for a core whose grading is
 complete:
 
-1. **Scope** — tier, or set of repair codes (§4).
+1. **Scope** — the entry scope plus the codes the findings raised (§3.3, §4.1).
 2. **Route** for that scope, via the existing `resolve_route`.
 3. **BOM lines on that route** — `BOMLine.consumed_at_step` already ties a line to the
    step that consumes it, so "the kit for this scope" is a query that exists today and
    nothing currently asks.
-4. **Netting** — for each line, is there a reusable `HarvestedComponent` of that
-   `component_type` from *this* core? If yes, peg its `component_part`; if no, the line
-   becomes ordinary demand against stock.
+4. **Sourcing** — for each line, which of the permitted sources can actually cover it
+   (§6.1), and what is short.
 
 Step 3 fixes something already broken: `reports/adapters/pick_list.py` explodes the
 **whole released BOM** regardless of route. On any branched process that over-picks —
@@ -378,6 +377,80 @@ a correctness fix for the general case.
 
 The service returns data and writes nothing, so the same resolver can answer "what would
 this core need?" for a core not yet torn down (§8).
+
+### 6.1 A component has a provenance, and the line has a policy
+
+The earlier draft of this section assumed one alternative to buying: a component
+harvested from *this* core. That is one source of three, and the three are not
+interchangeable to a customer or an auditor:
+
+| source | where it lives today | notes |
+|---|---|---|
+| **New purchased** | `MaterialLot(material=…)` or `MaterialLot(material_type=<PartTypes>)` | the ordinary BUY line |
+| **Used purchased** | the same — `MaterialLot` already carries `supplier`, `supplier_lot_number`, `erp_po_number`, `certificate_of_conformance` | bought from a core specialist who does the teardowns; aviation regulates this as USM (Used Serviceable Material) and it is a real commercial channel in diesel and hydraulics too |
+| **Recovered in-house** | `Parts`, created by `accept_component_to_inventory`, back-linked via `HarvestedComponent.component_part` | from *this* core, or from the pool |
+
+All three already have homes in the schema. What is missing is that the BOM line says
+only `allow_harvested` — one boolean spanning "used purchased" and "recovered in-house"
+and saying nothing about *whose* core the recovered one came from.
+
+That distinction is not bookkeeping. Under `REPAIR_RETURN` a customer may accept a
+component recovered from their own unit and refuse one a third party pulled out of
+somebody else's engine, and there is no way to express the difference today. So the line
+carries a **permitted source set** rather than a boolean, and the resolver picks among
+the permitted sources by availability, recording which it used.
+
+`AssemblyUsage` is where the answer lands: it already models
+(assembly, component, bom_line, installed_at, installed_by, step) — the as-built record
+of which component instance went into which unit. Once a unit ships that row is the only
+place "where did this part come from" can be answered. Nothing creates one today (§6.3).
+
+### 6.2 What this makes SIMPLER
+
+Provenance looks like more machinery and is mostly less, because it turns four
+reman-specific special cases into one general mechanism:
+
+- **The `is_reman` carve-out disappears.** `consume_for_step` branches on
+  `work_order.cores.exists()` and then `continue`s past any `allow_harvested` line —
+  and `services/scheduling/data.py` duplicates the same branch for the material gate. If
+  a line declares its permitted sources, there is nothing reman-specific left: an
+  ordinary job is a job whose lines permit only new-purchased. **Two carve-outs and a
+  duplicated `is_reman` detection delete.**
+- **`Core.allows_pooled_harvest` stops being a rule and becomes a default.** Today it is
+  a bespoke property that a kit resolver would have to remember to consult. Under source
+  policy it is one entry in the permitted set — "recovered in-house, any core" — so the
+  general mechanism enforces it and the property survives only as the thing that seeds
+  the default.
+- **The reservation rule collapses into the same filter.** `Parts.reserved_for_core` +
+  `assert_work_order_allowed` is a negative rule bolted on the side: it forbids a wrong
+  use. As a source filter it is positive and needs no separate enforcement — a reserved
+  part is simply a candidate whose provenance is "recovered from core X", admissible
+  only on a line that permits that. Same behaviour, one place.
+- **`fulfilment_mode` stops branching the code.** Repair-and-return and exchange differ
+  in which sources are permitted, not in what the resolver does. The mode picks a default
+  policy; it does not fork the kit path.
+
+Net: one selection step over a candidate list, instead of a BUY branch, a MAKE branch, a
+reman skip, a reservation prohibition and a pooling property.
+
+What it costs: an authoring surface wider than a checkbox. Mitigated by defaulting the
+policy per part type (and seeding it from `fulfilment_mode`), so an engineer sets it only
+where it differs — and by keeping `allow_harvested` as the migration source for the
+default set.
+
+### 6.3 Two prerequisites, both small and both blocking
+
+Neither source path works end-to-end today:
+
+- **Accepted components are invisible as supply.** `accept_component_to_inventory`
+  creates the `Parts` row with `part_status=PENDING`, while `_available_supply`
+  (`bom_explosion.py`) counts only `IN_STOCK`. So the exchange model's premise — teardown
+  feeds stock, rebuild consumes it — does not connect at either end. Whether acceptance
+  should land in `IN_STOCK` directly or pass an inspection state first is a real
+  question; that it currently lands somewhere nothing counts is not.
+- **Nothing creates an `AssemblyUsage`.** `services/mes/assembly_usage.py` contains
+  `remove_assembly_usage` and nothing else; the only way a row exists is a raw REST POST.
+  The install half was never written, so there is no as-built record to put provenance in.
 
 ## 7. UI changes
 
@@ -442,11 +515,11 @@ for this loop.
 
 ## 10. Open questions
 
-1. **How is `fulfilment_mode` set?** (§4.2) Chosen at core receipt, defaulted per
-   customer, or implied by the order it arrived against? Defaulting per customer is
-   likely right — an exchange programme is usually a commercial arrangement, not a
-   per-unit decision — but that means the default lives on the customer/company record
-   and needs an override at receipt for the exception case.
+1. ~~**How is `fulfilment_mode` set?**~~ **Answered, and shipped.** Chosen at receipt,
+   defaulting from `Companies.default_core_fulfilment_mode` — the standing arrangement —
+   with an explicit override for the exception case. `resolve_fulfilment_mode` returns
+   the provenance of its answer alongside it, so the screen can distinguish the
+   customer's recorded arrangement from a fallback.
 2. ~~**The rollup rule**~~ **Moot.** It existed only under tier-branch, which §4.1 no
    longer selects: findings map to codes directly and no rollup is needed. The principle
    behind it stands and applies to the code proposal instead — the system suggests, the
@@ -455,13 +528,21 @@ for this loop.
    was the wrong question: this is a product other shops deploy, so no single tenant's
    count can decide the model. §4.1 now resolves to repair codes on the grounds that
    tiers are a special case of them, and a per-tenant preset covers the small shop.
-4. **Tier vocabulary.** A/B/C are *component condition* grades. Reusing those letters for
-   a core-level tier will be confusing at the bench; tiers want their own names.
-5. **What exactly is "the same unit"** under `REPAIR_RETURN`? Cross-core reuse is barred
-   (§4.2), but that bar is really about the *serial-bearing* part — the housing or body
-   the customer's identity attaches to. Whether every internal component must also be
-   the original, where serviceable, is a customer-commitment question rather than a
-   technical one, and it has real cost consequences at the bench.
+4. ~~**Tier vocabulary.**~~ **Moot.** Tiers are no longer a modelled kind (§4.1) — they
+   are entry-scope presets a tenant names itself, so the naming is theirs and cannot
+   collide with the A/B/C condition grades unless they choose it.
+5. **What exactly is "the same unit"** under `REPAIR_RETURN`? Still a
+   customer-commitment question with real cost at the bench — but §6.1 makes it
+   *expressible* rather than binary. The answer is now a permitted source set: the
+   customer's own recovered components always; new purchased presumably; used purchased
+   from a core specialist, and in-house recovered from OTHER cores, are the two a
+   customer may well refuse in their own unit. What was one unanswerable question is now
+   two checkboxes on a policy, and the commitment can differ per customer or per line.
+
+   Its hard half remains: **`Parts` carry no serial number.** Identity is `ERP_id`,
+   machine-generated as `{WO}-{prefix}{seq}`. `Core.serial_number` exists and there is no
+   mechanism to carry it onto anything rebuilt, so serial continuity under
+   `REPAIR_RETURN` currently has nothing to ride on.
 6. **Does a rejected quote have a path back?** Under `REPAIR_RETURN`, if the customer
    declines the over-and-above work, the unit has to go somewhere: returned unrepaired,
    repaired to a reduced scope, or scrapped with consent. That is a terminal state the
