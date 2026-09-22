@@ -21,7 +21,14 @@ from Tracker.models import (
 from ..base import BaseSeeder
 
 
-# Component definitions for injector disassembly (reverse BOM)
+# Component definitions for injector disassembly (reverse BOM).
+#
+# Names and prefixes MATCH the assembly BOM in seed/demo/showcase.py. Both seeders
+# resolve PartTypes by name, so agreeing here means teardown yields the very rows the
+# rebuild consumes — and disagreeing (as this did) leaves every `allow_harvested` line
+# on the assembly BOM unsatisfiable, with the rebuild proposing you buy a unit's own
+# parts back. The Injector Body has no assembly line on purpose: it is the housing the
+# rebuild goes INTO, not a component that goes in.
 DEMO_DISASSEMBLY_BOM = [
     {
         'component_name': 'Injector Body',
@@ -32,16 +39,16 @@ DEMO_DISASSEMBLY_BOM = [
         'notes': 'Main housing - check for cracks and corrosion',
     },
     {
-        'component_name': 'Nozzle',
-        'component_prefix': 'NOZL',
+        'component_name': 'Injector Nozzle Assembly',
+        'component_prefix': 'NZL',
         'expected_qty': 1,
         'expected_fallout_rate': Decimal('0.15'),  # 15%
         'line_number': 2,
         'notes': 'Critical wear item - verify spray pattern capability',
     },
     {
-        'component_name': 'Solenoid Valve',
-        'component_prefix': 'SOLV',
+        'component_name': 'Control Valve Assembly',
+        'component_prefix': 'VLV',
         'expected_qty': 1,
         'expected_fallout_rate': Decimal('0.08'),  # 8%
         'line_number': 3,

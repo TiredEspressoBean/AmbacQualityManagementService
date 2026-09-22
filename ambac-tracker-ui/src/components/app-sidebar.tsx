@@ -28,6 +28,7 @@ import {
     PackageSearch,
     BadgeCheck,
     Recycle,
+    Hammer,
     Settings,
     ShieldCheck,
     Truck,
@@ -100,6 +101,7 @@ const inventoryPages = [
 const remanPages = [
     { name: "Dashboard", url: "/reman", icon: Recycle },
     { name: "Cores", url: "/reman/cores", icon: Package },
+    { name: "Ready to Rebuild", url: "/reman/rebuild-queue", icon: Hammer },
     { name: "Components", url: "/reman/components", icon: Wrench },
 ]
 

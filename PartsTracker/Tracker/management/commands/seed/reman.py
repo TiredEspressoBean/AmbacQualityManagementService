@@ -40,15 +40,22 @@ class RemanSeeder(BaseSeeder):
             'large': {'cores': 100},
         }
 
-        # Component definitions for Common Rail Injector disassembly
+        # Component definitions for Common Rail Injector disassembly.
+        #
+        # The two that the assembly BOM in seed/demo/showcase.py consumes are named to
+        # MATCH it, because both seeders resolve PartTypes by name: agreeing means what
+        # teardown yields is what rebuild puts back. They disagreed, which left every
+        # `allow_harvested` line unsatisfiable and made a rebuild propose buying a
+        # unit's own parts back. The rest are recovered parts with no assembly line —
+        # legitimate, since a reverse BOM can be finer than the forward one.
         self.component_definitions = [
             # (component_name, ID_prefix, expected_qty, fallout_rate)
-            ('Injector Body', 'BODY', 1, Decimal('0.05')),     # 5% fallout
-            ('Plunger Assembly', 'PLGR', 1, Decimal('0.10')),  # 10% fallout
-            ('Nozzle', 'NOZL', 1, Decimal('0.15')),            # 15% fallout
-            ('Spring Set', 'SPRG', 1, Decimal('0.03')),        # 3% fallout
-            ('Solenoid Valve', 'SOLV', 1, Decimal('0.08')),    # 8% fallout
-            ('Control Valve', 'CTLV', 1, Decimal('0.12')),     # 12% fallout
+            ('Injector Body', 'BODY', 1, Decimal('0.05')),                 # 5% fallout
+            ('Plunger Assembly', 'PLGR', 1, Decimal('0.10')),              # 10% fallout
+            ('Injector Nozzle Assembly', 'NZL', 1, Decimal('0.15')),       # 15% fallout
+            ('Spring Set', 'SPRG', 1, Decimal('0.03')),                    # 3% fallout
+            ('Solenoid Valve', 'SOLV', 1, Decimal('0.08')),                # 8% fallout
+            ('Control Valve Assembly', 'VLV', 1, Decimal('0.12')),         # 12% fallout
         ]
 
     @property

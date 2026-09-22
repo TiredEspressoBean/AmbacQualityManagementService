@@ -1532,6 +1532,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/{id}/rebuild_plan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Propose what goes back into this core, slot by slot.
+         *
+         *     Read-only and side-effect free, so it can be asked of a core nobody has
+         *     committed to rebuilding — which is also what lets the same call answer
+         *     "what would this cost?" before teardown.
+         */
+        get: operations["api_Cores_rebuild_plan_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/{id}/scrap/": {
         parameters: {
             query?: never;
@@ -17670,6 +17693,8 @@ export interface components {
             core_credit_value?: string | null;
             /** @description Whether core credit has been issued to customer */
             core_credit_issued?: boolean;
+            /** Format: date-time */
+            disassembly_completed_at?: string | null;
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
         };
@@ -27051,6 +27076,43 @@ export interface components {
             machines: components["schemas"]["ReassignMachineOption"][];
             operators: components["schemas"]["ReassignOperatorOption"][];
         };
+        /** @description Something that could fill a slot, whatever supply world it lives in. */
+        RebuildCandidate: {
+            kind: string;
+            id: string;
+            label: string;
+            grade: string | null;
+            detail: string;
+        };
+        /** @description A proposal. Nothing here is committed — see services/reman/rebuild.py. */
+        RebuildPlan: {
+            core_id: string;
+            core_number: string;
+            fulfilment_mode: string;
+            bom_revision: string | null;
+            slots: components["schemas"]["RebuildSlot"][];
+            warnings: string[];
+        };
+        /**
+         * @description One position on the rebuild and what we propose to put in it.
+         *
+         *     `finding` and `reason` are separate on purpose: the first is what teardown found,
+         *     the second is why that leads to this resolution. A planner confirming "grade B,
+         *     from this unit — serviceable as found" is doing something different from one
+         *     confirming a blank default, and the over-and-above quote has to show a customer
+         *     why a line costs money.
+         */
+        RebuildSlot: {
+            position: string;
+            component_type_id: string;
+            component_type_name: string;
+            bom_line_id: string | null;
+            finding: string;
+            resolution: string;
+            reason: string;
+            needs_decision: boolean;
+            candidates: components["schemas"]["RebuildCandidate"][];
+        };
         /** @description Book in an ON_ORDER lot that has physically arrived. */
         ReceiveExpectedLotRequest: {
             /** @description The supplier's actual lot/batch number. */
@@ -36007,6 +36069,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Core"];
+                };
+            };
+        };
+    };
+    api_Cores_rebuild_plan_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildPlan"];
                 };
             };
         };

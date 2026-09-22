@@ -1773,6 +1773,7 @@ export type CoreList = {
    * Whether core credit has been issued to customer
    */
   boolean | undefined;
+  disassembly_completed_at?: (string | null) | undefined;
   harvested_component_count: number;
   usable_component_count: number;
 };
@@ -13218,6 +13219,32 @@ export type ReassignOperatorOption = {
   id: string;
   name: string;
 };
+export type RebuildPlan = {
+  core_id: string;
+  core_number: string;
+  fulfilment_mode: string;
+  bom_revision: string | null;
+  slots: Array<RebuildSlot>;
+  warnings: Array<string>;
+};
+export type RebuildSlot = {
+  position: string;
+  component_type_id: string;
+  component_type_name: string;
+  bom_line_id: string | null;
+  finding: string;
+  resolution: string;
+  reason: string;
+  needs_decision: boolean;
+  candidates: Array<RebuildCandidate>;
+};
+export type RebuildCandidate = {
+  kind: string;
+  id: string;
+  label: string;
+  grade: string | null;
+  detail: string;
+};
 export type ReceivingMeasurementInputRequest = {
   definition: string;
   value_numeric?: (number | null) | undefined;
@@ -16616,6 +16643,7 @@ const CoreList = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
     .nullish(),
   core_credit_issued: z.boolean().optional(),
+  disassembly_completed_at: z.string().datetime({ offset: true }).nullish(),
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
 });
@@ -16731,6 +16759,32 @@ const PaginatedHarvestedComponentList = z.object({
   next: z.string().url().nullish(),
   previous: z.string().url().nullish(),
   results: z.array(HarvestedComponent),
+});
+const RebuildCandidate = z.object({
+  kind: z.string(),
+  id: z.string(),
+  label: z.string(),
+  grade: z.string().nullable(),
+  detail: z.string(),
+});
+const RebuildSlot = z.object({
+  position: z.string(),
+  component_type_id: z.string(),
+  component_type_name: z.string(),
+  bom_line_id: z.string().nullable(),
+  finding: z.string(),
+  resolution: z.string(),
+  reason: z.string(),
+  needs_decision: z.boolean(),
+  candidates: z.array(RebuildCandidate),
+});
+const RebuildPlan = z.object({
+  core_id: z.string(),
+  core_number: z.string(),
+  fulfilment_mode: z.string(),
+  bom_revision: z.string().nullable(),
+  slots: z.array(RebuildSlot),
+  warnings: z.array(z.string()),
 });
 const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
 const CoreBulkCreateInputRequest = z.object({
@@ -24377,6 +24431,9 @@ export const schemas = {
   PatchedCoreRequest,
   HarvestedComponent,
   PaginatedHarvestedComponentList,
+  RebuildCandidate,
+  RebuildSlot,
+  RebuildPlan,
   CoreScrapRequest,
   CoreBulkCreateInputRequest,
   CoreBulkCreateResponse,
@@ -28806,6 +28863,25 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
     response: Core,
   },
   {
+    method: "get",
+    path: "/api/Cores/:id/rebuild_plan/",
+    alias: "api_Cores_rebuild_plan_retrieve",
+    description: `Propose what goes back into this core, slot by slot.
+
+Read-only and side-effect free, so it can be asked of a core nobody has
+committed to rebuilding — which is also what lets the same call answer
+&quot;what would this cost?&quot; before teardown.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RebuildPlan,
+  },
+  {
     method: "post",
     path: "/api/Cores/:id/scrap/",
     alias: "api_Cores_scrap_create",
@@ -30233,7 +30309,10 @@ Returns documents where review_date &lt;&#x3D; today.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/Documents/metadata/",
@@ -30241,10 +30320,7 @@ Returns documents where review_date &lt;&#x3D; today.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Documents/my-uploads/",
@@ -35104,7 +35180,10 @@ COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
     description: `Mark every unread in-app notification as read.`,
     requestFormat: "json",
     response: z.object({ marked: z.number().int() }),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/notifications/feed/unread-count/",
@@ -35112,10 +35191,7 @@ COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
     description: `Number of unread in-app notifications for the current user.`,
     requestFormat: "json",
     response: z.object({ unread: z.number().int() }),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/notifications/rules/customer/",
@@ -40452,7 +40528,10 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Processes/metadata/",
@@ -40460,10 +40539,7 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/QualityReports/",
@@ -46415,7 +46491,10 @@ substep (the typical authoring-popover query).`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Substeps/",
@@ -46474,10 +46553,7 @@ process&#x27;s version of the parent Step.`,
       },
     ],
     response: PaginatedSubstepList,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Substeps/",
@@ -51076,7 +51152,10 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/WorkOrders/import/",
@@ -51097,10 +51176,7 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkOrders/metadata/",

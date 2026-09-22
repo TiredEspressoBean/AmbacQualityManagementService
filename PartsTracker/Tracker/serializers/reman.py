@@ -84,6 +84,10 @@ class CoreListSerializer(SecureModelMixin):
             'fulfilment_mode',
             'customer_name', 'status', 'condition_grade', 'received_date',
             'source_type', 'core_credit_value', 'core_credit_issued',
+            # The rebuild queue sorts and ages on this: how long a torn-down core has
+            # been sitting is the question that surface exists to answer, and showing
+            # `received_date` next to a teardown-ordered list just reads as broken.
+            'disassembly_completed_at',
             'harvested_component_count', 'usable_component_count',
         )
 
@@ -196,3 +200,42 @@ class DisassemblyBOMLineSerializer(SecureModelMixin):
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
         )
+
+
+class RebuildCandidateSerializer(serializers.Serializer):
+    """Something that could fill a slot, whatever supply world it lives in."""
+    kind = serializers.CharField()
+    id = serializers.CharField()
+    label = serializers.CharField()
+    grade = serializers.CharField(allow_null=True)
+    detail = serializers.CharField(allow_blank=True)
+
+
+class RebuildSlotSerializer(serializers.Serializer):
+    """One position on the rebuild and what we propose to put in it.
+
+    `finding` and `reason` are separate on purpose: the first is what teardown found,
+    the second is why that leads to this resolution. A planner confirming "grade B,
+    from this unit — serviceable as found" is doing something different from one
+    confirming a blank default, and the over-and-above quote has to show a customer
+    why a line costs money.
+    """
+    position = serializers.CharField(allow_blank=True)
+    component_type_id = serializers.CharField()
+    component_type_name = serializers.CharField()
+    bom_line_id = serializers.CharField(allow_null=True)
+    finding = serializers.CharField()
+    resolution = serializers.CharField()
+    reason = serializers.CharField()
+    needs_decision = serializers.BooleanField()
+    candidates = RebuildCandidateSerializer(many=True)
+
+
+class RebuildPlanSerializer(serializers.Serializer):
+    """A proposal. Nothing here is committed — see services/reman/rebuild.py."""
+    core_id = serializers.CharField()
+    core_number = serializers.CharField()
+    fulfilment_mode = serializers.CharField()
+    bom_revision = serializers.CharField(allow_null=True)
+    slots = RebuildSlotSerializer(many=True)
+    warnings = serializers.ListField(child=serializers.CharField())

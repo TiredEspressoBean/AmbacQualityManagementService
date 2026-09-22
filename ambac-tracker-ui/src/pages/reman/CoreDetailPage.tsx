@@ -14,7 +14,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { ArrowLeft, Play, CheckCircle, Trash2, DollarSign, Package } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle, Trash2, DollarSign, Package, Wrench } from "lucide-react";
 
 // Status badge variants
 function getStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -115,6 +115,17 @@ export function CoreDetailPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    {/* The rebuild plan is the next thing that happens to a torn-down
+                        core, so it is the primary action once teardown is finished. */}
+                    {core.status === 'DISASSEMBLED' && (
+                        <Button
+                            variant="default"
+                            onClick={() => navigate({ to: `/reman/cores/${id}/rebuild` })}
+                        >
+                            <Wrench className="mr-2 h-4 w-4" />
+                            Plan rebuild
+                        </Button>
+                    )}
                     {core.status === 'RECEIVED' && (
                         <>
                             <Button

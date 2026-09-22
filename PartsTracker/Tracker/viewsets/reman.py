@@ -17,7 +17,7 @@ from Tracker.models import Core, HarvestedComponent, DisassemblyBOMLine
 from Tracker.serializers.reman import (
     CoreSerializer, CoreListSerializer, CoreScrapSerializer,
     HarvestedComponentSerializer, HarvestedComponentScrapSerializer, HarvestedComponentAcceptSerializer,
-    DisassemblyBOMLineSerializer,
+    DisassemblyBOMLineSerializer, RebuildPlanSerializer,
 )
 from .base import TenantScopedMixin
 from .mixins import DataExportMixin
@@ -42,7 +42,12 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['core_number', 'serial_number', 'source_reference']
     filterset_fields = ['status', 'condition_grade', 'source_type', 'customer', 'core_type']
-    ordering_fields = ['received_date', 'core_number', 'status']
+    # `disassembly_completed_at` is what the rebuild queue ages on. An ordering field
+    # that is not listed here is SILENTLY IGNORED by DRF and the queryset falls back to
+    # `ordering` below — so the queue said "oldest first" and showed newest first.
+    ordering_fields = [
+        'received_date', 'core_number', 'status', 'disassembly_completed_at',
+    ]
     ordering = ['-received_date']
 
     def get_serializer_class(self):
@@ -115,6 +120,27 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
         core = self.get_object()
         components = core.harvested_components.all()
         return Response(HarvestedComponentSerializer(components, many=True, context={'request': request}).data)
+
+    @extend_schema(responses={200: RebuildPlanSerializer})
+    @action(detail=True, methods=['get'], url_path='rebuild_plan')
+    def rebuild_plan(self, request, pk=None):
+        """Propose what goes back into this core, slot by slot.
+
+        Read-only and side-effect free, so it can be asked of a core nobody has
+        committed to rebuilding — which is also what lets the same call answer
+        "what would this cost?" before teardown.
+        """
+        from dataclasses import asdict
+        from Tracker.services.reman.rebuild import resolve_rebuild_plan
+
+        core = self.get_object()
+        plan = resolve_rebuild_plan(core)
+        data = asdict(plan)
+        # `needs_decision` is a property, so asdict() drops it — and it is the field
+        # the screen collapses on.
+        for slot, src in zip(data['slots'], plan.slots):
+            slot['needs_decision'] = src.needs_decision
+        return Response(RebuildPlanSerializer(data).data)
 
     @extend_schema(
         request=inline_serializer(name="CoreBulkCreateInput", fields={

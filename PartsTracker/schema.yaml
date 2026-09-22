@@ -5150,6 +5150,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Core'
           description: ''
+  /api/Cores/{id}/rebuild_plan/:
+    get:
+      operationId: api_Cores_rebuild_plan_retrieve
+      description: |-
+        Propose what goes back into this core, slot by slot.
+
+        Read-only and side-effect free, so it can be asked of a core nobody has
+        committed to rebuilding — which is also what lets the same call answer
+        "what would this cost?" before teardown.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildPlan'
+          description: ''
   /api/Cores/{id}/scrap/:
     post:
       operationId: api_Cores_scrap_create
@@ -42195,6 +42224,10 @@ components:
         core_credit_issued:
           type: boolean
           description: Whether core credit has been issued to customer
+        disassembly_completed_at:
+          type: string
+          format: date-time
+          nullable: true
         harvested_component_count:
           type: integer
           readOnly: true
@@ -59773,6 +59806,98 @@ components:
       required:
       - machines
       - operators
+    RebuildCandidate:
+      type: object
+      description: Something that could fill a slot, whatever supply world it lives
+        in.
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        label:
+          type: string
+        grade:
+          type: string
+          nullable: true
+        detail:
+          type: string
+      required:
+      - detail
+      - grade
+      - id
+      - kind
+      - label
+    RebuildPlan:
+      type: object
+      description: A proposal. Nothing here is committed — see services/reman/rebuild.py.
+      properties:
+        core_id:
+          type: string
+        core_number:
+          type: string
+        fulfilment_mode:
+          type: string
+        bom_revision:
+          type: string
+          nullable: true
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RebuildSlot'
+        warnings:
+          type: array
+          items:
+            type: string
+      required:
+      - bom_revision
+      - core_id
+      - core_number
+      - fulfilment_mode
+      - slots
+      - warnings
+    RebuildSlot:
+      type: object
+      description: |-
+        One position on the rebuild and what we propose to put in it.
+
+        `finding` and `reason` are separate on purpose: the first is what teardown found,
+        the second is why that leads to this resolution. A planner confirming "grade B,
+        from this unit — serviceable as found" is doing something different from one
+        confirming a blank default, and the over-and-above quote has to show a customer
+        why a line costs money.
+      properties:
+        position:
+          type: string
+        component_type_id:
+          type: string
+        component_type_name:
+          type: string
+        bom_line_id:
+          type: string
+          nullable: true
+        finding:
+          type: string
+        resolution:
+          type: string
+        reason:
+          type: string
+        needs_decision:
+          type: boolean
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/RebuildCandidate'
+      required:
+      - bom_line_id
+      - candidates
+      - component_type_id
+      - component_type_name
+      - finding
+      - needs_decision
+      - position
+      - reason
+      - resolution
     ReceiveExpectedLotRequest:
       type: object
       description: Book in an ON_ORDER lot that has physically arrived.

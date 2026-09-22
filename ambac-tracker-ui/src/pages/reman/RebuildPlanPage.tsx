@@ -1,0 +1,238 @@
+import { useMemo, useState } from "react";
+import { Link, useParams } from "@tanstack/react-router";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+    Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+import { useRebuildPlan } from "@/hooks/useRebuildPlan";
+import { useRetrieveCore } from "@/hooks/useRetrieveCore";
+
+// Resolution vocabulary, in one place. The first is the unremarkable outcome — the
+// part came out serviceable and goes back — and everything else costs money or time.
+const RESOLUTION_LABEL: Record<string, string> = {
+    REUSE: "Reuse as-is",
+    RECONDITION: "Recondition",
+    REPLACE_POOL: "Replace — recovered stock",
+    REPLACE_BUY: "Replace — buy",
+};
+
+function resolutionVariant(resolution: string): "default" | "secondary" | "outline" | "destructive" {
+    switch (resolution) {
+        case "REUSE":
+            return "secondary";
+        case "RECONDITION":
+            return "outline";
+        case "REPLACE_BUY":
+            return "destructive";
+        default:
+            return "default";
+    }
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+    HARVESTED_THIS_CORE: "from this unit",
+    HARVESTED_POOL: "recovered stock",
+    PURCHASED: "purchase",
+};
+
+export function RebuildPlanPage() {
+    const { id } = useParams({ from: "/reman/cores/$id/rebuild" });
+    const { data: core } = useRetrieveCore(id);
+    const { data: plan, isLoading, isError, error } = useRebuildPlan(id, { enabled: !!id });
+
+    // The screen opens on the decisions. Twenty-eight slots resolved "reuse as-is"
+    // are not what anyone came here to read.
+    const [showSettled, setShowSettled] = useState(false);
+
+    const slots = useMemo(() => plan?.slots ?? [], [plan]);
+    const needing = useMemo(() => slots.filter((s) => s.needs_decision), [slots]);
+    const settled = useMemo(() => slots.filter((s) => !s.needs_decision), [slots]);
+    const visible = showSettled ? slots : needing;
+
+    if (isLoading) {
+        return (
+            <div className="max-w-5xl mx-auto py-10">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-8 w-64 rounded bg-muted" />
+                    <div className="h-64 rounded bg-muted" />
+                </div>
+            </div>
+        );
+    }
+
+    if (isError || !plan) {
+        return (
+            <div className="max-w-5xl mx-auto py-10 space-y-4">
+                <Button variant="ghost" size="sm" asChild>
+                    <Link to="/reman/cores/$id" params={{ id }}>
+                        <ArrowLeft className="mr-1 h-4 w-4" />
+                        Back to core
+                    </Link>
+                </Button>
+                <p className="text-destructive">
+                    Could not build a rebuild plan: {(error as Error)?.message ?? "unknown error"}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <TooltipProvider>
+            <div className="max-w-5xl mx-auto py-10 space-y-6">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link to="/reman/cores/$id" params={{ id }}>
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl font-bold flex items-center gap-2">
+                                Rebuild plan — {plan.core_number}
+                                {plan.fulfilment_mode === "REPAIR_RETURN" && (
+                                    <Badge variant="outline">Returns to customer</Badge>
+                                )}
+                            </h1>
+                            <p className="text-muted-foreground">
+                                {core?.core_type_name ?? "Core"}
+                                {plan.bom_revision ? ` · assembly BOM rev ${plan.bom_revision}` : ""}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* A proposal is not a commitment, and the screen should not imply it is. */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Proposed, not committed</CardTitle>
+                        <CardDescription>
+                            Nothing here is reserved or ordered. This is what the system would
+                            put back into this unit, and why — read it before anyone commits
+                            capacity or money to it.
+                        </CardDescription>
+                    </CardHeader>
+                    {plan.warnings.length > 0 && (
+                        <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                                {plan.warnings.map((w, i) => (
+                                    <li key={i} className="flex gap-2 text-sm text-muted-foreground">
+                                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                                        <span>{w}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    )}
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex flex-wrap items-baseline gap-3">
+                            <span>Slots</span>
+                            <span className="text-sm font-normal text-muted-foreground tabular-nums">
+                                {needing.length} need a decision · {settled.length} settled
+                            </span>
+                        </CardTitle>
+                        <CardDescription>
+                            One row per position on the unit. A slot is filled by a specific
+                            component, not a quantity — a grade B nozzle from this unit is not
+                            interchangeable with any other.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {slots.length === 0 ? (
+                            <p className="py-8 text-center text-muted-foreground">
+                                No slots — there is no released assembly BOM for this core type.
+                            </p>
+                        ) : (
+                            <>
+                                <div className="w-full overflow-x-auto rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Position</TableHead>
+                                                <TableHead>Needs</TableHead>
+                                                <TableHead>Found at teardown</TableHead>
+                                                <TableHead>Proposed</TableHead>
+                                                <TableHead>Why</TableHead>
+                                                <TableHead>Options</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {visible.map((slot, i) => (
+                                                <TableRow key={`${slot.component_type_id}-${slot.position}-${i}`}>
+                                                    <TableCell className="font-mono text-sm">
+                                                        {slot.position || "—"}
+                                                    </TableCell>
+                                                    <TableCell>{slot.component_type_name}</TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground">
+                                                        {slot.finding}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={resolutionVariant(slot.resolution)}>
+                                                            {RESOLUTION_LABEL[slot.resolution] ?? slot.resolution}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground">
+                                                        {slot.reason}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {slot.candidates.length === 0 ? (
+                                                            <span className="text-sm text-muted-foreground">
+                                                                none
+                                                            </span>
+                                                        ) : (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <span className="cursor-default text-sm underline decoration-dotted underline-offset-4">
+                                                                        {slot.candidates.length} available
+                                                                    </span>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="max-w-sm">
+                                                                    <ul className="space-y-1 text-xs">
+                                                                        {slot.candidates.map((c) => (
+                                                                            <li key={c.id}>
+                                                                                <span className="font-mono">{c.label}</span>
+                                                                                {" — "}
+                                                                                {SOURCE_LABEL[c.kind] ?? c.kind}
+                                                                                {c.grade ? `, grade ${c.grade}` : ""}
+                                                                                {c.detail ? ` (${c.detail})` : ""}
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                                {settled.length > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowSettled((v) => !v)}
+                                    >
+                                        {showSettled
+                                            ? `Hide ${settled.length} settled`
+                                            : `Show ${settled.length} settled`}
+                                    </Button>
+                                )}
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </TooltipProvider>
+    );
+}
