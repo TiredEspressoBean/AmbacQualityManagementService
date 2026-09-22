@@ -82,7 +82,7 @@ class RebuildPlan:
     warnings: list = field(default_factory=list)
 
 
-def _positions_for(core_type, component_type, quantity: int) -> list:
+def _positions_for(core_type, component_type, quantity: int, bom_line=None) -> list:
     """Position labels for a component on this core type.
 
     Prefers the teardown BOM's `positions`, which is the neat part: the positions a
@@ -100,6 +100,13 @@ def _positions_for(core_type, component_type, quantity: int) -> list:
     ).first()
     if line and line.positions and len(line.positions) >= quantity:
         return list(line.positions[:quantity])
+
+    # A single `reference_designator` names ONE slot, so it only stands in when the
+    # line is quantity 1. Spreading one designator across N slots would label four
+    # bores with the same name, which is worse than leaving them unlabelled.
+    if quantity == 1 and bom_line is not None and bom_line.reference_designator:
+        return [bom_line.reference_designator]
+
     return [''] * quantity
 
 
@@ -293,7 +300,7 @@ def resolve_rebuild_plan(core) -> RebuildPlan:
         if line.component_type_id is None:
             continue  # a raw-material line has no instance identity to assign
         qty = int(line.quantity or 1)
-        positions = _positions_for(core.core_type, line.component_type, qty)
+        positions = _positions_for(core.core_type, line.component_type, qty, bom_line=line)
         for i in range(qty):
             slots.append(_resolve_slot(
                 core, line.component_type, positions[i], line, own, loose, warnings,
