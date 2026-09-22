@@ -683,3 +683,145 @@ class DisassemblyBOMLine(SecureModel):
     def expected_usable_qty(self):
         """Expected usable quantity after fallout."""
         return self.expected_qty * (1 - float(self.expected_fallout_rate))
+
+
+# Which slot resolution a repair code answers. Mirrors the resolutions in
+# `services/reman/rebuild.py` — defined here because the model stores them, and
+# imported there rather than duplicated.
+REPAIR_CODE_TRIGGER_CHOICES = [
+    ('RECONDITION', 'When the recovered component needs work before it goes back'),
+    ('REPLACE_POOL', 'When the slot is filled from recovered stock'),
+    ('REPLACE_BUY', 'When the slot is filled by a purchase'),
+    ('REUSE', 'When the recovered component goes back as-is'),
+    ('ALWAYS', 'Always — part of the base scope, whatever the finding'),
+    # Raised only by a preset that names it. This is what distinguishes one sold
+    # rebuild level from another: "Full overhaul" includes codes "Standard rebuild"
+    # does not, and no finding raises them on its own.
+    ('PRESET', 'Only when a rebuild level includes it'),
+]
+
+
+class RepairCode(SecureModel):
+    """Operations a finding adds to a rebuild.
+
+    A repair code is a SLOT RESOLUTION THAT EMITS OPERATIONS, which is the whole
+    idea: "recondition the nozzle" and "replace the nozzle" resolve the same slot,
+    but one is work and the other is a part. Scope and kit are therefore one
+    decision rather than two passes — see `Documents/REMAN_REBUILD_LOOP_DESIGN.md`
+    §6.4.
+
+    Codes compose. A core with a worn nozzle and a scored valve gets the union of
+    both codes' operations, which is why this is a table of codes rather than a set
+    of authored end-to-end routes: N findings would otherwise need 2^N routes.
+    """
+
+    _is_versioned = True  # engineering judgment — what work a finding implies
+
+    code = models.CharField(
+        max_length=30,
+        help_text="Short identifier the shop uses, e.g. NZL-RECON.",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="What this code does, in the words the bench would use.",
+    )
+    component_type = models.ForeignKey(
+        'Tracker.PartTypes',
+        null=True, blank=True,
+        on_delete=models.CASCADE,
+        related_name='repair_codes',
+        help_text="The component this code applies to. Blank means it applies "
+                  "whatever the component — for whole-unit work like final test.",
+    )
+    trigger = models.CharField(
+        max_length=20,
+        choices=REPAIR_CODE_TRIGGER_CHOICES,
+        default='RECONDITION',
+        help_text="Which finding raises this code. ALWAYS means it is part of the "
+                  "base scope and is not raised by a finding at all.",
+    )
+    steps = models.ManyToManyField(
+        'Tracker.Steps',
+        blank=True,
+        related_name='repair_codes',
+        help_text="Operations this code adds to the rebuild. The unit's scope is "
+                  "the union of the operations its raised codes carry.",
+    )
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Repair Code'
+        verbose_name_plural = 'Repair Codes'
+        ordering = ['code']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'code'],
+                condition=models.Q(is_current_version=True),
+                name='repaircode_tenant_code_uniq',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.code} — {self.name}"
+
+
+class RebuildScopePreset(SecureModel):
+    """A named starting scope for rebuilding a core type.
+
+    The ENTRY scope in the two-layer model (§3.3): what was quoted and sold, before
+    anything was found. An engine shop sells "performance restoration"; findings
+    then extend it. A shop with three rebuild levels authors three presets and never
+    opens the code table; a shop with a dozen uses the same mechanism and lets
+    findings do the rest.
+
+    Deliberately a set of CODES rather than a set of steps, so a tier is a
+    pre-composed selection of the same primitive rather than a second kind of thing.
+    """
+
+    _is_versioned = True  # engineering judgment — what a named rebuild level includes
+
+    core_type = models.ForeignKey(
+        'Tracker.PartTypes',
+        on_delete=models.CASCADE,
+        related_name='rebuild_scope_presets',
+        help_text="The core type this preset applies to.",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="What the shop sells this as, e.g. 'Standard rebuild'.",
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Proposed automatically when a rebuild is planned for this core "
+                  "type. At most one per core type.",
+    )
+    codes = models.ManyToManyField(
+        RepairCode,
+        blank=True,
+        related_name='presets',
+        help_text="The codes this level includes before any finding is applied.",
+    )
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Rebuild Scope Preset'
+        verbose_name_plural = 'Rebuild Scope Presets'
+        ordering = ['core_type', 'name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'core_type', 'name'],
+                condition=models.Q(is_current_version=True),
+                name='rebuildscopepreset_tenant_coretype_name_uniq',
+            ),
+            # One default per core type. Partial index rather than validation, so two
+            # concurrent writers cannot both win — the same reason the versioning
+            # constraints above are DB-level.
+            models.UniqueConstraint(
+                fields=['tenant', 'core_type'],
+                condition=models.Q(is_default=True, is_current_version=True),
+                name='rebuildscopepreset_one_default_per_coretype',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.core_type.name}: {self.name}"

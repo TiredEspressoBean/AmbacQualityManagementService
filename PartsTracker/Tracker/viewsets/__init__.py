@@ -197,6 +197,8 @@ from .reman import (
     CoreViewSet,
     HarvestedComponentViewSet,
     DisassemblyBOMLineViewSet,
+    RepairCodeViewSet,
+    RebuildScopePresetViewSet,
 )
 
 # Scheduling (CP-SAT solver + operator dispatch) ViewSets
@@ -421,6 +423,8 @@ __all__ = [
     'CoreViewSet',
     'HarvestedComponentViewSet',
     'DisassemblyBOMLineViewSet',
+    'RepairCodeViewSet',
+    'RebuildScopePresetViewSet',
 
     # Scheduling (CP-SAT solver + dispatch)
     'ScheduleViewSet',
@@ -583,6 +587,8 @@ def register_viewsets(router):
     router.register(r'Cores', CoreViewSet, basename='Cores')
     router.register(r'HarvestedComponents', HarvestedComponentViewSet, basename='HarvestedComponents')
     router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
+    router.register(r'RepairCodes', RepairCodeViewSet, basename='RepairCodes')
+    router.register(r'RebuildScopePresets', RebuildScopePresetViewSet, basename='RebuildScopePresets')
     router.register(r'Schedules', ScheduleViewSet, basename='Schedules')
     router.register(r'ScheduledTasks', ScheduledTaskViewSet, basename='ScheduledTasks')
     router.register(r'Fixtures', FixtureViewSet, basename='Fixtures')

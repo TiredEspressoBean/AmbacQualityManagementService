@@ -13,11 +13,14 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
-from Tracker.models import Core, HarvestedComponent, DisassemblyBOMLine
+from Tracker.models import (
+    Core, HarvestedComponent, DisassemblyBOMLine, RepairCode, RebuildScopePreset,
+)
 from Tracker.serializers.reman import (
     CoreSerializer, CoreListSerializer, CoreScrapSerializer,
     HarvestedComponentSerializer, HarvestedComponentScrapSerializer, HarvestedComponentAcceptSerializer,
     DisassemblyBOMLineSerializer, RebuildPlanSerializer,
+    RepairCodeSerializer, RebuildScopePresetSerializer,
 )
 from .base import TenantScopedMixin
 from .mixins import DataExportMixin
@@ -367,3 +370,25 @@ class DisassemblyBOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     filterset_fields = ['core_type', 'component_type']
     ordering_fields = ['line_number', 'expected_qty']
     ordering = ['core_type', 'line_number']
+
+
+class RepairCodeViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """Repair codes — what operations a finding adds to a rebuild."""
+    queryset = RepairCode.unscoped.select_related('component_type').prefetch_related('steps')
+    serializer_class = RepairCodeSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['component_type', 'trigger']
+    search_fields = ['code', 'name']
+    ordering_fields = ['code', 'trigger']
+    ordering = ['code']
+
+
+class RebuildScopePresetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """Named rebuild levels — the entry scope before any finding."""
+    queryset = RebuildScopePreset.unscoped.select_related('core_type').prefetch_related('codes')
+    serializer_class = RebuildScopePresetSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['core_type', 'is_default']
+    search_fields = ['name']
+    ordering_fields = ['name']
+    ordering = ['core_type', 'name']

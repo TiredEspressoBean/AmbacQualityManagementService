@@ -27090,7 +27090,9 @@ export interface components {
             core_number: string;
             fulfilment_mode: string;
             bom_revision: string | null;
+            entry_scope: string | null;
             slots: components["schemas"]["RebuildSlot"][];
+            operations: components["schemas"]["ScopedOperation"][];
             warnings: string[];
         };
         /**
@@ -28237,6 +28239,20 @@ export interface components {
          * @enum {string}
          */
         ScopeTypeEnum: "PART_TYPE" | "COMMODITY" | "SPECIAL_PROCESS";
+        /**
+         * @description One operation the rebuild needs, and what put it there.
+         *
+         *     `because` is the point: a planner who cannot see why an operation is on the job
+         *     cannot challenge it, and the over-and-above quote has to show a customer which
+         *     finding drove which cost.
+         */
+        ScopedOperation: {
+            step_id: string;
+            step_name: string;
+            code: string;
+            code_name: string;
+            because: string[];
+        };
         SendInvitationInputRequest: {
             user_id: number;
         };

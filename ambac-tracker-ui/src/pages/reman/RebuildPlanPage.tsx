@@ -104,6 +104,7 @@ export function RebuildPlanPage() {
                             <p className="text-muted-foreground">
                                 {core?.core_type_name ?? "Core"}
                                 {plan.bom_revision ? ` · assembly BOM rev ${plan.bom_revision}` : ""}
+                                {plan.entry_scope ? ` · ${plan.entry_scope}` : ""}
                             </p>
                         </div>
                     </div>
@@ -131,6 +132,61 @@ export function RebuildPlanPage() {
                             </ul>
                         </CardContent>
                     )}
+                </Card>
+
+                {/* Operations before slots: what we will DO to the unit is the bigger
+                    commitment, and a slot resolution is what put each one here. */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex flex-wrap items-baseline gap-3">
+                            <span>Operations</span>
+                            <span className="text-sm font-normal text-muted-foreground tabular-nums">
+                                {plan.operations.length}
+                            </span>
+                        </CardTitle>
+                        <CardDescription>
+                            The work this rebuild needs. Each one is here because the entry
+                            scope includes it or a finding raised it — nothing is on the job
+                            without a reason you can challenge.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {plan.operations.length === 0 ? (
+                            <p className="py-6 text-center text-muted-foreground">
+                                No operations resolved — no rebuild level or repair codes are
+                                configured for this core type.
+                            </p>
+                        ) : (
+                            <div className="w-full overflow-x-auto rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Operation</TableHead>
+                                            <TableHead>Code</TableHead>
+                                            <TableHead>Because</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {plan.operations.map((op) => (
+                                            <TableRow key={op.step_id}>
+                                                <TableCell className="font-medium">
+                                                    {op.step_name}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="secondary" title={op.code_name}>
+                                                        {op.code}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">
+                                                    {op.because.join("; ")}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
 
                 <Card>

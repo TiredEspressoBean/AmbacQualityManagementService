@@ -189,6 +189,8 @@ from .reman import (
     Core,
     HarvestedComponent,
     DisassemblyBOMLine,
+    RepairCode,
+    RebuildScopePreset,
 )
 
 # Digital Work Instructions (substep layer below Steps)
@@ -506,6 +508,8 @@ __all__ = [
     'Core',
     'HarvestedComponent',
     'DisassemblyBOMLine',
+    'RepairCode',
+    'RebuildScopePreset',
 
     # Integrations
     'ExternalAPIOrderIdentifier',

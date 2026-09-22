@@ -10,6 +10,7 @@ from drf_spectacular.utils import extend_schema_field
 
 from Tracker.models import (
     Core, HarvestedComponent, DisassemblyBOMLine,
+    RepairCode, RebuildScopePreset,
     PartTypes, Companies, User, WorkOrder,
 )
 from .core import SecureModelMixin
@@ -231,11 +232,74 @@ class RebuildSlotSerializer(serializers.Serializer):
     candidates = RebuildCandidateSerializer(many=True)
 
 
+class ScopedOperationSerializer(serializers.Serializer):
+    """One operation the rebuild needs, and what put it there.
+
+    `because` is the point: a planner who cannot see why an operation is on the job
+    cannot challenge it, and the over-and-above quote has to show a customer which
+    finding drove which cost.
+    """
+    step_id = serializers.CharField()
+    step_name = serializers.CharField()
+    code = serializers.CharField()
+    code_name = serializers.CharField()
+    because = serializers.ListField(child=serializers.CharField())
+
+
 class RebuildPlanSerializer(serializers.Serializer):
     """A proposal. Nothing here is committed — see services/reman/rebuild.py."""
     core_id = serializers.CharField()
     core_number = serializers.CharField()
     fulfilment_mode = serializers.CharField()
     bom_revision = serializers.CharField(allow_null=True)
+    entry_scope = serializers.CharField(allow_null=True)
     slots = RebuildSlotSerializer(many=True)
+    operations = ScopedOperationSerializer(many=True)
     warnings = serializers.ListField(child=serializers.CharField())
+
+
+class RepairCodeSerializer(SecureModelMixin):
+    """A slot resolution that emits operations — see the design's §6.4."""
+    component_type_name = serializers.CharField(
+        source='component_type.name', read_only=True, allow_null=True)
+    step_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RepairCode
+        fields = (
+            'id', 'code', 'name', 'component_type', 'component_type_name',
+            'trigger', 'steps', 'step_names', 'notes',
+            'created_at', 'updated_at', 'archived', 'version',
+        )
+        read_only_fields = ('created_at', 'updated_at', 'version')
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_step_names(self, obj):
+        return [s.name for s in obj.steps.all()]
+
+    def update(self, instance, validated_data):
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(instance, validated_data, self.context.get('request'))
+
+
+class RebuildScopePresetSerializer(SecureModelMixin):
+    """A named rebuild level — the entry scope, before any finding."""
+    core_type_name = serializers.CharField(source='core_type.name', read_only=True)
+    code_labels = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RebuildScopePreset
+        fields = (
+            'id', 'core_type', 'core_type_name', 'name', 'is_default',
+            'codes', 'code_labels', 'notes',
+            'created_at', 'updated_at', 'archived', 'version',
+        )
+        read_only_fields = ('created_at', 'updated_at', 'version')
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_code_labels(self, obj):
+        return [c.code for c in obj.codes.all()]
+
+    def update(self, instance, validated_data):
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(instance, validated_data, self.context.get('request'))

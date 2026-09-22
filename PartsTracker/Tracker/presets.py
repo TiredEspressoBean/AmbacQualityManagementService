@@ -80,6 +80,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_materialstagingline',
     'view_harvestedcomponent',
     'view_core',
+    'view_repaircode', 'view_rebuildscopepreset',
     # Equipment & Calibration
     'view_equipments', 'view_equipmenttype',
     'view_calibrationrecord',
@@ -329,6 +330,10 @@ AUTHORING_PERMISSIONS = [
     'add_bom', 'change_bom', 'delete_bom',
     'add_bomline', 'change_bomline', 'delete_bomline',
     'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline',
+    # Rebuild scope: what work a finding implies, and what a named rebuild level
+    # includes. Engineering judgment like the BOM it sits beside, not operational.
+    'add_repaircode', 'change_repaircode', 'delete_repaircode',
+    'add_rebuildscopepreset', 'change_rebuildscopepreset', 'delete_rebuildscopepreset',
     # Controlled documents — deletion + categories (add/change of documents is broad)
     'delete_documents', 'delete_threedmodel',
     'add_documenttype', 'change_documenttype', 'delete_documenttype',

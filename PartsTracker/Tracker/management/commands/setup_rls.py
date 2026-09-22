@@ -221,6 +221,8 @@ class Command(BaseCommand):
         'Tracker_continuousmachine',
         'Tracker_scheduleedit',
         'Tracker_orderline',
+        'Tracker_repaircode',
+        'Tracker_rebuildscopepreset',
     ]
 
     def add_arguments(self, parser):

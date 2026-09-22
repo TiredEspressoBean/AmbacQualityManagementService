@@ -59841,10 +59841,17 @@ components:
         bom_revision:
           type: string
           nullable: true
+        entry_scope:
+          type: string
+          nullable: true
         slots:
           type: array
           items:
             $ref: '#/components/schemas/RebuildSlot'
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScopedOperation'
         warnings:
           type: array
           items:
@@ -59853,7 +59860,9 @@ components:
       - bom_revision
       - core_id
       - core_number
+      - entry_scope
       - fulfilment_mode
+      - operations
       - slots
       - warnings
     RebuildSlot:
@@ -62159,6 +62168,33 @@ components:
         * `PART_TYPE` - Part Type
         * `COMMODITY` - Commodity
         * `SPECIAL_PROCESS` - Special Process
+    ScopedOperation:
+      type: object
+      description: |-
+        One operation the rebuild needs, and what put it there.
+
+        `because` is the point: a planner who cannot see why an operation is on the job
+        cannot challenge it, and the over-and-above quote has to show a customer which
+        finding drove which cost.
+      properties:
+        step_id:
+          type: string
+        step_name:
+          type: string
+        code:
+          type: string
+        code_name:
+          type: string
+        because:
+          type: array
+          items:
+            type: string
+      required:
+      - because
+      - code
+      - code_name
+      - step_id
+      - step_name
     SendInvitationInputRequest:
       type: object
       properties:

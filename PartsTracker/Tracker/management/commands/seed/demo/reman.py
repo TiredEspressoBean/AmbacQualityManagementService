@@ -322,11 +322,75 @@ class DemoRemanSeeder(BaseSeeder):
         # Create harvested components from disassembled cores
         result['components'] = self._create_harvested_components(result['cores'], users)
 
+        # Repair codes + the rebuild level that groups them
+        result['repair_codes'] = self._create_repair_codes(part_types)
+
         self.log(f"  Created {len(result['bom_lines'])} disassembly BOM lines")
         self.log(f"  Created {len(result['cores'])} cores")
         self.log(f"  Created {len(result['components'])} harvested components")
 
         return result
+
+    def _create_repair_codes(self, part_types):
+        """Repair codes and a default rebuild level for the injector.
+
+        Without these the rebuild planner has no scope to resolve and falls back to
+        the whole BOM. The set is deliberately small but shows the two layers: base
+        operations every unit gets, a level that adds one, and a finding-raised code
+        that only fires when a component comes out reconditionable.
+        """
+        from Tracker.models import PartTypes, RepairCode, RebuildScopePreset, Steps
+
+        injector = next(
+            (pt for pt in part_types if pt.name == 'Common Rail Injector'), None)
+        if injector is None:
+            self.log("  No Common Rail Injector part type — skipping repair codes")
+            return []
+
+        def _steps(*names):
+            found = list(Steps.objects.filter(
+                tenant=self.tenant, part_type=injector, name__in=names,
+                is_current_version=True,
+            ))
+            missing = set(names) - {s.name for s in found}
+            if missing:
+                self.log(f"  Repair-code steps not found, skipped: {sorted(missing)}")
+            return found
+
+        nozzle = PartTypes.objects.filter(
+            tenant=self.tenant, name='Injector Nozzle Assembly').first()
+
+        specs = [
+            # (code, name, component_type, trigger, step names)
+            ('BASE-REBUILD', 'Base rebuild operations', None, 'ALWAYS',
+             ('Cleaning', 'Assembly', 'Final Test', 'Packaging')),
+            ('FLOW-VERIFY', 'Flow-test the finished unit', None, 'PRESET',
+             ('Flow Testing',)),
+            ('NZL-RECON', 'Recondition injector nozzle', nozzle, 'RECONDITION',
+             ('Nozzle Inspection', 'Nitride Coating')),
+        ]
+
+        codes = {}
+        for code, name, ctype, trigger, step_names in specs:
+            obj, _ = RepairCode.objects.update_or_create(
+                tenant=self.tenant, code=code,
+                defaults={'name': name, 'component_type': ctype, 'trigger': trigger},
+            )
+            obj.steps.set(_steps(*step_names))
+            codes[code] = obj
+
+        preset, _ = RebuildScopePreset.objects.update_or_create(
+            tenant=self.tenant, core_type=injector, name='Standard rebuild',
+            defaults={
+                'is_default': True,
+                'notes': 'What the shop sells as a standard injector rebuild. '
+                         'Findings extend it.',
+            },
+        )
+        preset.codes.set([codes['FLOW-VERIFY']])
+
+        self.log(f"  Created {len(codes)} repair codes and 1 rebuild level")
+        return list(codes.values())
 
     def _ensure_component_part_types(self):
         """Ensure component part types exist for harvesting."""

@@ -1546,3 +1546,132 @@ class HarvestReservationTests(TenantTestCase):
         part.refresh_from_db()
         self.assertEqual(part.reserved_for_core_id, self.theirs.id)
 
+
+
+class RebuildScopeResolutionTests(TenantTestCase):
+    """Scope is derived FROM the resolved slots, not beside them.
+
+    A repair code is a slot resolution that emits operations — "recondition the
+    nozzle" and "replace the nozzle" answer the same slot, one with work and one
+    with a part. Resolving scope and kit separately is how they drift apart, so
+    these tests drive scope through the slot resolutions rather than directly.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import (
+            Core, HarvestedComponent, PartTypes, Processes, ProcessStep,
+            RebuildScopePreset, RepairCode, Steps,
+        )
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.nozzle = PartTypes.objects.create(tenant=self.tenant_a, name='Nozzle')
+
+        def _step(name):
+            return Steps.objects.create(
+                tenant=self.tenant_a, part_type=self.core_type, name=name)
+
+        self.clean = _step('Cleaning')
+        self.assemble = _step('Assembly')
+        self.hone = _step('Hone Nozzle')
+        self.flow = _step('Flow Test')
+
+        self.base = RepairCode.objects.create(
+            tenant=self.tenant_a, code='BASE', name='Base rebuild', trigger='ALWAYS')
+        self.base.steps.set([self.clean, self.assemble])
+
+        self.recon = RepairCode.objects.create(
+            tenant=self.tenant_a, code='NZL-RECON', name='Recondition nozzle',
+            component_type=self.nozzle, trigger='RECONDITION')
+        self.recon.steps.set([self.hone])
+
+        self.premium = RepairCode.objects.create(
+            tenant=self.tenant_a, code='FLOW', name='Flow test', trigger='PRESET')
+        self.premium.steps.set([self.flow])
+
+        self.core = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-SCOPE-1', core_type=self.core_type,
+            status='DISASSEMBLED', received_date=date.today(), received_by=self.user_a)
+        self._HarvestedComponent = HarvestedComponent
+        self._RebuildScopePreset = RebuildScopePreset
+
+    def _harvest(self, grade):
+        return self._HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=self.core, component_type=self.nozzle,
+            condition_grade=grade, disassembled_by=self.user_a)
+
+    def _slots(self):
+        """Slots as the rebuild resolver would produce them, without a BOM fixture."""
+        from Tracker.services.reman.rebuild import (
+            RECONDITION, REUSE, Slot,
+        )
+        hc = self.core.harvested_components.filter(is_scrapped=False).first()
+        grade = hc.condition_grade if hc else None
+        resolution = REUSE if grade in ('A', 'B') else RECONDITION
+        return [Slot(
+            position='', component_type_id=str(self.nozzle.id),
+            component_type_name='Nozzle', bom_line_id=None,
+            finding=f"Grade {grade}, from this unit", resolution=resolution,
+            reason='', candidates=[],
+        )]
+
+    def test_always_codes_are_scope_whatever_the_finding(self):
+        from Tracker.services.reman.scope import resolve_scope
+        self._harvest('A')
+        scope = resolve_scope(self.core, self._slots())
+        self.assertIn(self.clean.name, [o.step_name for o in scope.operations])
+        self.assertIn(self.assemble.name, [o.step_name for o in scope.operations])
+
+    def test_a_finding_raises_its_code_and_says_why(self):
+        """The `because` is the point: an operation nobody can trace back to a finding
+        is one nobody can challenge, and the over-and-above quote has to show it."""
+        from Tracker.services.reman.scope import resolve_scope
+        self._harvest('C')
+        scope = resolve_scope(self.core, self._slots())
+        hone = next(o for o in scope.operations if o.step_name == 'Hone Nozzle')
+        self.assertEqual(hone.code, 'NZL-RECON')
+        self.assertTrue(any('Grade C' in b for b in hone.because))
+
+    def test_a_serviceable_component_raises_no_recondition_work(self):
+        from Tracker.services.reman.scope import resolve_scope
+        self._harvest('B')
+        scope = resolve_scope(self.core, self._slots())
+        self.assertNotIn('Hone Nozzle', [o.step_name for o in scope.operations])
+
+    def test_a_preset_only_code_needs_the_preset(self):
+        """PRESET is what distinguishes one sold rebuild level from another: no
+        finding raises it, so without the level it is simply not on the job."""
+        from Tracker.services.reman.scope import resolve_scope
+        self._harvest('A')
+        self.assertNotIn('Flow Test',
+                         [o.step_name for o in resolve_scope(self.core, self._slots()).operations])
+
+        preset = self._RebuildScopePreset.objects.create(
+            tenant=self.tenant_a, core_type=self.core_type,
+            name='Full overhaul', is_default=True)
+        preset.codes.set([self.premium])
+        scope = resolve_scope(self.core, self._slots())
+        self.assertIn('Flow Test', [o.step_name for o in scope.operations])
+        self.assertEqual(scope.entry_scope, 'Full overhaul')
+
+    def test_a_step_two_codes_raise_is_one_operation_with_both_reasons(self):
+        """Attributing a shared step to whichever code reached it first would hide the
+        other reason — and the hidden one might be the one a customer is paying for."""
+        from Tracker.services.reman.scope import resolve_scope
+        self.recon.steps.set([self.hone, self.clean])   # Cleaning now on both codes
+        self._harvest('C')
+        scope = resolve_scope(self.core, self._slots())
+        cleaning = [o for o in scope.operations if o.step_name == 'Cleaning']
+        self.assertEqual(len(cleaning), 1, "a shared step must not duplicate")
+        self.assertGreaterEqual(len(cleaning[0].because), 2)
+
+    def test_no_configuration_degrades_to_a_warning_not_an_error(self):
+        """A shop that has authored nothing should get an honest empty scope, not a
+        crash and not a silent empty list that reads as 'no work needed'."""
+        from Tracker.services.reman.scope import resolve_scope
+        from Tracker.models import RepairCode
+        RepairCode.objects.all().delete()
+        self._harvest('A')
+        scope = resolve_scope(self.core, self._slots())
+        self.assertEqual(scope.operations, [])
+        self.assertTrue(scope.warnings)

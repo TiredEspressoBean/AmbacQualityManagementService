@@ -13224,7 +13224,9 @@ export type RebuildPlan = {
   core_number: string;
   fulfilment_mode: string;
   bom_revision: string | null;
+  entry_scope: string | null;
   slots: Array<RebuildSlot>;
+  operations: Array<ScopedOperation>;
   warnings: Array<string>;
 };
 export type RebuildSlot = {
@@ -13244,6 +13246,13 @@ export type RebuildCandidate = {
   label: string;
   grade: string | null;
   detail: string;
+};
+export type ScopedOperation = {
+  step_id: string;
+  step_name: string;
+  code: string;
+  code_name: string;
+  because: Array<string>;
 };
 export type ReceivingMeasurementInputRequest = {
   definition: string;
@@ -16778,12 +16787,21 @@ const RebuildSlot = z.object({
   needs_decision: z.boolean(),
   candidates: z.array(RebuildCandidate),
 });
+const ScopedOperation = z.object({
+  step_id: z.string(),
+  step_name: z.string(),
+  code: z.string(),
+  code_name: z.string(),
+  because: z.array(z.string()),
+});
 const RebuildPlan = z.object({
   core_id: z.string(),
   core_number: z.string(),
   fulfilment_mode: z.string(),
   bom_revision: z.string().nullable(),
+  entry_scope: z.string().nullable(),
   slots: z.array(RebuildSlot),
+  operations: z.array(ScopedOperation),
   warnings: z.array(z.string()),
 });
 const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
@@ -24433,6 +24451,7 @@ export const schemas = {
   PaginatedHarvestedComponentList,
   RebuildCandidate,
   RebuildSlot,
+  ScopedOperation,
   RebuildPlan,
   CoreScrapRequest,
   CoreBulkCreateInputRequest,
