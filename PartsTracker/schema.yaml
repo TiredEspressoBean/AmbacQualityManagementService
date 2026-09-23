@@ -11208,6 +11208,677 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/LifeLimitDefinitions/:
+    get:
+      operationId: api_LifeLimitDefinitions_list
+      description: |-
+        Life limit definition management.
+
+        Tenants define their own life tracking rules here:
+        - Flight Cycles (hard_limit=20000)
+        - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+        - Shot Count (soft_limit=400000, hard_limit=500000)
+      parameters:
+      - in: query
+        name: is_calendar_based
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLifeLimitDefinitionList'
+          description: ''
+    post:
+      operationId: api_LifeLimitDefinitions_create
+      description: |-
+        Life limit definition management.
+
+        Tenants define their own life tracking rules here:
+        - Flight Cycles (hard_limit=20000)
+        - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+        - Shot Count (soft_limit=400000, hard_limit=500000)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeLimitDefinitionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeLimitDefinitionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeLimitDefinitionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeLimitDefinition'
+          description: ''
+  /api/LifeLimitDefinitions/{id}/:
+    get:
+      operationId: api_LifeLimitDefinitions_retrieve
+      description: |-
+        Life limit definition management.
+
+        Tenants define their own life tracking rules here:
+        - Flight Cycles (hard_limit=20000)
+        - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+        - Shot Count (soft_limit=400000, hard_limit=500000)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Limit Definition.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeLimitDefinition'
+          description: ''
+    put:
+      operationId: api_LifeLimitDefinitions_update
+      description: |-
+        Life limit definition management.
+
+        Tenants define their own life tracking rules here:
+        - Flight Cycles (hard_limit=20000)
+        - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+        - Shot Count (soft_limit=400000, hard_limit=500000)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Limit Definition.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeLimitDefinitionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeLimitDefinitionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeLimitDefinitionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeLimitDefinition'
+          description: ''
+    patch:
+      operationId: api_LifeLimitDefinitions_partial_update
+      description: |-
+        Life limit definition management.
+
+        Tenants define their own life tracking rules here:
+        - Flight Cycles (hard_limit=20000)
+        - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+        - Shot Count (soft_limit=400000, hard_limit=500000)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Limit Definition.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLifeLimitDefinitionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLifeLimitDefinitionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLifeLimitDefinitionRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeLimitDefinition'
+          description: ''
+    delete:
+      operationId: api_LifeLimitDefinitions_destroy
+      description: |-
+        Life limit definition management.
+
+        Tenants define their own life tracking rules here:
+        - Flight Cycles (hard_limit=20000)
+        - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+        - Shot Count (soft_limit=400000, hard_limit=500000)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Limit Definition.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/LifeLimitDefinitions/{id}/revisions/:
+    post:
+      operationId: api_LifeLimitDefinitions_revisions_create
+      description: Create a new revision of a LifeLimitDefinition. Returns the new
+        version with incremented version number. PartTypeLifeLimit children are copied
+        to the new version.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Limit Definition.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - change_description
+              properties:
+                change_description:
+                  type: string
+                  description: Human narrative of what changed and why (AS9100D §8.3).
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeLimitDefinition'
+          description: ''
+  /api/LifeLimitDefinitions/select_options/:
+    get:
+      operationId: api_LifeLimitDefinitions_select_options_retrieve
+      description: Lightweight list for dropdowns
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeLimitDefinition'
+          description: ''
+  /api/LifeTracking/:
+    get:
+      operationId: api_LifeTracking_list
+      description: |-
+        Life tracking record management.
+
+        Tracks accumulated life for parts, cores, equipment, etc.
+        Supports increment, reset (overhaul), and per-instance limit overrides.
+      parameters:
+      - in: query
+        name: cached_status
+        schema:
+          type: string
+      - in: query
+        name: content_type
+        schema:
+          type: integer
+      - in: query
+        name: definition
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: object_id
+        schema:
+          type: string
+          format: uuid
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: source
+        schema:
+          type: string
+          enum:
+          - CALCULATED
+          - CUSTOMER
+          - ESTIMATED
+          - LOGBOOK
+          - OEM
+          - RESET
+          - TRANSFERRED
+        description: |-
+          Where did this life data come from?
+
+          * `OEM` - OEM Records
+          * `CUSTOMER` - Customer Provided
+          * `LOGBOOK` - Logbook Entry
+          * `CALCULATED` - Calculated
+          * `ESTIMATED` - Estimated
+          * `TRANSFERRED` - Transferred from Core
+          * `RESET` - Reset After Rebuild
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLifeTrackingListList'
+          description: ''
+    post:
+      operationId: api_LifeTracking_create
+      description: |-
+        Life tracking record management.
+
+        Tracks accumulated life for parts, cores, equipment, etc.
+        Supports increment, reset (overhaul), and per-instance limit overrides.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+  /api/LifeTracking/{id}/:
+    get:
+      operationId: api_LifeTracking_retrieve
+      description: |-
+        Life tracking record management.
+
+        Tracks accumulated life for parts, cores, equipment, etc.
+        Supports increment, reset (overhaul), and per-instance limit overrides.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+    put:
+      operationId: api_LifeTracking_update
+      description: |-
+        Life tracking record management.
+
+        Tracks accumulated life for parts, cores, equipment, etc.
+        Supports increment, reset (overhaul), and per-instance limit overrides.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+    patch:
+      operationId: api_LifeTracking_partial_update
+      description: |-
+        Life tracking record management.
+
+        Tracks accumulated life for parts, cores, equipment, etc.
+        Supports increment, reset (overhaul), and per-instance limit overrides.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLifeTrackingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLifeTrackingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLifeTrackingRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+    delete:
+      operationId: api_LifeTracking_destroy
+      description: |-
+        Life tracking record management.
+
+        Tracks accumulated life for parts, cores, equipment, etc.
+        Supports increment, reset (overhaul), and per-instance limit overrides.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/LifeTracking/{id}/apply_override/:
+    post:
+      operationId: api_LifeTracking_apply_override_create
+      description: Apply per-instance limit override (engineering approval)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingOverrideRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingOverrideRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingOverrideRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+  /api/LifeTracking/{id}/increment/:
+    post:
+      operationId: api_LifeTracking_increment_create
+      description: Increment accumulated value (after operation/cycle)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingIncrementRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingIncrementRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingIncrementRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+  /api/LifeTracking/{id}/reset/:
+    post:
+      operationId: api_LifeTracking_reset_create
+      description: Reset accumulated value to zero (after rebuild/overhaul)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeTrackingResetRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+  /api/LifeTracking/expired/:
+    get:
+      operationId: api_LifeTracking_expired_retrieve
+      description: Get all tracking records that have exceeded limits
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+  /api/LifeTracking/for_object/:
+    get:
+      operationId: api_LifeTracking_for_object_retrieve
+      description: |-
+        Get all life tracking records for a specific object.
+
+        Query params:
+        - content_type: e.g., "tracker.parts" or content_type ID
+        - object_id: UUID of the object
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
+  /api/LifeTracking/warnings/:
+    get:
+      operationId: api_LifeTracking_warnings_retrieve
+      description: Get all tracking records at warning level
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeTracking'
+          description: ''
   /api/MaterialLots/:
     get:
       operationId: api_MaterialLots_list
@@ -15241,6 +15912,218 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartApprovalStatus'
           description: ''
+  /api/PartTypeLifeLimits/:
+    get:
+      operationId: api_PartTypeLifeLimits_list
+      description: |-
+        Links life limit definitions to part types.
+
+        Defines which life limits apply to which part types,
+        and whether tracking is required when creating parts.
+      parameters:
+      - in: query
+        name: definition
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: is_required
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPartTypeLifeLimitList'
+          description: ''
+    post:
+      operationId: api_PartTypeLifeLimits_create
+      description: |-
+        Links life limit definitions to part types.
+
+        Defines which life limits apply to which part types,
+        and whether tracking is required when creating parts.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartTypeLifeLimitRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartTypeLifeLimitRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartTypeLifeLimitRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartTypeLifeLimit'
+          description: ''
+  /api/PartTypeLifeLimits/{id}/:
+    get:
+      operationId: api_PartTypeLifeLimits_retrieve
+      description: |-
+        Links life limit definitions to part types.
+
+        Defines which life limits apply to which part types,
+        and whether tracking is required when creating parts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Type Life Limit.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartTypeLifeLimit'
+          description: ''
+    put:
+      operationId: api_PartTypeLifeLimits_update
+      description: |-
+        Links life limit definitions to part types.
+
+        Defines which life limits apply to which part types,
+        and whether tracking is required when creating parts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Type Life Limit.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartTypeLifeLimitRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartTypeLifeLimitRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartTypeLifeLimitRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartTypeLifeLimit'
+          description: ''
+    patch:
+      operationId: api_PartTypeLifeLimits_partial_update
+      description: |-
+        Links life limit definitions to part types.
+
+        Defines which life limits apply to which part types,
+        and whether tracking is required when creating parts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Type Life Limit.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPartTypeLifeLimitRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPartTypeLifeLimitRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPartTypeLifeLimitRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartTypeLifeLimit'
+          description: ''
+    delete:
+      operationId: api_PartTypeLifeLimits_destroy
+      description: |-
+        Links life limit definitions to part types.
+
+        Defines which life limits apply to which part types,
+        and whether tracking is required when creating parts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Type Life Limit.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/PartTypes/:
     get:
       operationId: api_PartTypes_list
@@ -47907,6 +48790,407 @@ components:
       description: |-
         * `ONCE` - One-off (dated)
         * `WEEKLY` - Weekly (recurring)
+    LifeLimitDefinition:
+      type: object
+      description: Life limit definition serializer
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          description: Display name (e.g., 'Flight Cycles', 'Shelf Life')
+          maxLength: 100
+        unit:
+          type: string
+          description: Unit being tracked (e.g., 'cycles', 'hours', 'days')
+          maxLength: 50
+        unit_label:
+          type: string
+          description: Display label (e.g., 'Cycles', 'Flight Hours', 'Days')
+          maxLength: 50
+        is_calendar_based:
+          type: boolean
+          description: 'If true, value is calculated from reference_date. Valid units
+            for calendar-based: days, months, years'
+        soft_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Warning/overhaul threshold
+        hard_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Absolute limit - block/retire when reached
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - unit
+      - unit_label
+      - updated_at
+      - version
+    LifeLimitDefinitionRequest:
+      type: object
+      description: Life limit definition serializer
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Display name (e.g., 'Flight Cycles', 'Shelf Life')
+          maxLength: 100
+        unit:
+          type: string
+          minLength: 1
+          description: Unit being tracked (e.g., 'cycles', 'hours', 'days')
+          maxLength: 50
+        unit_label:
+          type: string
+          minLength: 1
+          description: Display label (e.g., 'Cycles', 'Flight Hours', 'Days')
+          maxLength: 50
+        is_calendar_based:
+          type: boolean
+          description: 'If true, value is calculated from reference_date. Valid units
+            for calendar-based: days, months, years'
+        soft_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Warning/overhaul threshold
+        hard_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Absolute limit - block/retire when reached
+        archived:
+          type: boolean
+      required:
+      - name
+      - unit
+      - unit_label
+    LifeTracking:
+      type: object
+      description: Life tracking record serializer
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        content_type:
+          type: integer
+        content_type_model:
+          type: string
+          readOnly: true
+        object_id:
+          type: string
+          format: uuid
+        definition:
+          type: string
+          format: uuid
+        definition_name:
+          type: string
+          readOnly: true
+        definition_unit:
+          type: string
+          readOnly: true
+        accumulated:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Current accumulated value
+        reference_date:
+          type: string
+          format: date
+          nullable: true
+          description: 'For calendar-based: manufacture/install/overhaul date'
+        source:
+          allOf:
+          - $ref: '#/components/schemas/LifeTrackingSourceEnum'
+          description: |-
+            Where did this life data come from?
+
+            * `OEM` - OEM Records
+            * `CUSTOMER` - Customer Provided
+            * `LOGBOOK` - Logbook Entry
+            * `CALCULATED` - Calculated
+            * `ESTIMATED` - Estimated
+            * `TRANSFERRED` - Transferred from Core
+            * `RESET` - Reset After Rebuild
+        current_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        remaining:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        remaining_to_soft_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        percent_used:
+          type: number
+          format: double
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        is_blocked:
+          type: boolean
+          readOnly: true
+        effective_hard_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        effective_soft_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        hard_limit_override:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Override hard limit for this specific instance
+        soft_limit_override:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Override soft limit for this specific instance
+        override_reason:
+          type: string
+          description: Reason for limit override
+          maxLength: 200
+        override_approved_by:
+          type: integer
+          nullable: true
+        reset_history:
+          description: History of resets/overhauls
+        cached_status:
+          type: string
+          readOnly: true
+          description: Cached status, updated on save
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - cached_status
+      - content_type
+      - content_type_model
+      - created_at
+      - current_value
+      - definition
+      - definition_name
+      - definition_unit
+      - effective_hard_limit
+      - effective_soft_limit
+      - id
+      - is_blocked
+      - object_id
+      - percent_used
+      - remaining
+      - remaining_to_soft_limit
+      - status
+      - updated_at
+    LifeTrackingIncrementRequest:
+      type: object
+      description: Serializer for incrementing life tracking
+      properties:
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - value
+    LifeTrackingList:
+      type: object
+      description: Lightweight serializer for lists
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        object_id:
+          type: string
+          format: uuid
+        definition:
+          type: string
+          format: uuid
+        definition_name:
+          type: string
+          readOnly: true
+        definition_unit:
+          type: string
+          readOnly: true
+        accumulated:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Current accumulated value
+        current_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        percent_used:
+          type: number
+          format: double
+          readOnly: true
+        cached_status:
+          type: string
+          description: Cached status, updated on save
+          maxLength: 10
+      required:
+      - current_value
+      - definition
+      - definition_name
+      - definition_unit
+      - id
+      - object_id
+      - percent_used
+      - status
+    LifeTrackingOverrideRequest:
+      type: object
+      description: Serializer for applying per-instance limit overrides
+      properties:
+        hard_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        soft_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    LifeTrackingRequest:
+      type: object
+      description: Life tracking record serializer
+      properties:
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+        definition:
+          type: string
+          format: uuid
+        accumulated:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Current accumulated value
+        reference_date:
+          type: string
+          format: date
+          nullable: true
+          description: 'For calendar-based: manufacture/install/overhaul date'
+        source:
+          allOf:
+          - $ref: '#/components/schemas/LifeTrackingSourceEnum'
+          description: |-
+            Where did this life data come from?
+
+            * `OEM` - OEM Records
+            * `CUSTOMER` - Customer Provided
+            * `LOGBOOK` - Logbook Entry
+            * `CALCULATED` - Calculated
+            * `ESTIMATED` - Estimated
+            * `TRANSFERRED` - Transferred from Core
+            * `RESET` - Reset After Rebuild
+        hard_limit_override:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Override hard limit for this specific instance
+        soft_limit_override:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Override soft limit for this specific instance
+        override_reason:
+          type: string
+          description: Reason for limit override
+          maxLength: 200
+        override_approved_by:
+          type: integer
+          nullable: true
+        reset_history:
+          description: History of resets/overhauls
+        archived:
+          type: boolean
+      required:
+      - content_type
+      - definition
+      - object_id
+    LifeTrackingResetRequest:
+      type: object
+      description: Serializer for resetting life tracking (after overhaul)
+      properties:
+        reason:
+          type: string
+          default: ''
+    LifeTrackingSourceEnum:
+      enum:
+      - OEM
+      - CUSTOMER
+      - LOGBOOK
+      - CALCULATED
+      - ESTIMATED
+      - TRANSFERRED
+      - RESET
+      type: string
+      description: |-
+        * `OEM` - OEM Records
+        * `CUSTOMER` - Customer Provided
+        * `LOGBOOK` - Logbook Entry
+        * `CALCULATED` - Calculated
+        * `ESTIMATED` - Estimated
+        * `TRANSFERRED` - Transferred from Core
+        * `RESET` - Reset After Rebuild
     ListMetadataResponse:
       type: object
       properties:
@@ -50882,6 +52166,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LaborCalendarBlock'
+    PaginatedLifeLimitDefinitionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LifeLimitDefinition'
+    PaginatedLifeTrackingListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LifeTrackingList'
     PaginatedMaterialList:
       type: object
       required:
@@ -51112,6 +52442,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PartApproval'
+    PaginatedPartTypeLifeLimitList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartTypeLifeLimit'
     PaginatedPartTypesList:
       type: object
       required:
@@ -52765,6 +54118,70 @@ components:
       - process_name
       - traveler
       - work_order_id
+    PartTypeLifeLimit:
+      type: object
+      description: Part type life limit junction serializer
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        part_type:
+          type: string
+          format: uuid
+        part_type_name:
+          type: string
+          readOnly: true
+          nullable: true
+        definition:
+          type: string
+          format: uuid
+        definition_name:
+          type: string
+          readOnly: true
+        definition_unit:
+          type: string
+          readOnly: true
+        is_required:
+          type: boolean
+          description: If true, parts of this type must have this tracking
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - definition
+      - definition_name
+      - definition_unit
+      - id
+      - part_type
+      - part_type_name
+      - updated_at
+    PartTypeLifeLimitRequest:
+      type: object
+      description: Part type life limit junction serializer
+      properties:
+        part_type:
+          type: string
+          format: uuid
+        definition:
+          type: string
+          format: uuid
+        is_required:
+          type: boolean
+          description: If true, parts of this type must have this tracking
+        archived:
+          type: boolean
+      required:
+      - definition
+      - part_type
     PartTypeQualitySummary:
       type: object
       properties:
@@ -54835,6 +56252,101 @@ components:
           maxLength: 200
         is_active:
           type: boolean
+    PatchedLifeLimitDefinitionRequest:
+      type: object
+      description: Life limit definition serializer
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Display name (e.g., 'Flight Cycles', 'Shelf Life')
+          maxLength: 100
+        unit:
+          type: string
+          minLength: 1
+          description: Unit being tracked (e.g., 'cycles', 'hours', 'days')
+          maxLength: 50
+        unit_label:
+          type: string
+          minLength: 1
+          description: Display label (e.g., 'Cycles', 'Flight Hours', 'Days')
+          maxLength: 50
+        is_calendar_based:
+          type: boolean
+          description: 'If true, value is calculated from reference_date. Valid units
+            for calendar-based: days, months, years'
+        soft_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Warning/overhaul threshold
+        hard_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Absolute limit - block/retire when reached
+        archived:
+          type: boolean
+    PatchedLifeTrackingRequest:
+      type: object
+      description: Life tracking record serializer
+      properties:
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+        definition:
+          type: string
+          format: uuid
+        accumulated:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Current accumulated value
+        reference_date:
+          type: string
+          format: date
+          nullable: true
+          description: 'For calendar-based: manufacture/install/overhaul date'
+        source:
+          allOf:
+          - $ref: '#/components/schemas/LifeTrackingSourceEnum'
+          description: |-
+            Where did this life data come from?
+
+            * `OEM` - OEM Records
+            * `CUSTOMER` - Customer Provided
+            * `LOGBOOK` - Logbook Entry
+            * `CALCULATED` - Calculated
+            * `ESTIMATED` - Estimated
+            * `TRANSFERRED` - Transferred from Core
+            * `RESET` - Reset After Rebuild
+        hard_limit_override:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Override hard limit for this specific instance
+        soft_limit_override:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Override soft limit for this specific instance
+        override_reason:
+          type: string
+          description: Reason for limit override
+          maxLength: 200
+        override_approved_by:
+          type: integer
+          nullable: true
+        reset_history:
+          description: History of resets/overhauls
+        archived:
+          type: boolean
     PatchedMaterialLotRequest:
       type: object
       description: |-
@@ -55415,6 +56927,21 @@ components:
           nullable: true
         notes:
           type: string
+        archived:
+          type: boolean
+    PatchedPartTypeLifeLimitRequest:
+      type: object
+      description: Part type life limit junction serializer
+      properties:
+        part_type:
+          type: string
+          format: uuid
+        definition:
+          type: string
+          format: uuid
+        is_required:
+          type: boolean
+          description: If true, parts of this type must have this tracking
         archived:
           type: boolean
     PatchedPartTypesRequest:

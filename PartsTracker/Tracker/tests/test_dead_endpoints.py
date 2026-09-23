@@ -55,6 +55,16 @@ ALLOWED_UNREACHABLE = {
     ('FPIRecordViewSet', 'destroy'),               # quality evidence
     ('BatchExecutionViewSet', 'destroy'),          # execution history
     ('OutsideProcessShipmentViewSet', 'destroy'),  # shipment record
+    # Life tracking: all three are already in test_permission_coverage's
+    # SOFT_DELETE_MODELS — records are retired via archive, and hard delete raises
+    # anyway. They were invisible to this guard until 2026-09-23 because the viewsets
+    # were never routed; registering them is what exposed the DELETE. Listed per-route
+    # rather than derived from SOFT_DELETE_MODELS, deliberately: that is the blindness
+    # this guard exists to close. No frontend calls these — if a life-tracking UI grows
+    # a delete button, drop the entry and grant the perm instead.
+    ('LifeLimitDefinitionViewSet', 'destroy'),     # limit rule archived, not deleted
+    ('PartTypeLifeLimitViewSet', 'destroy'),       # link archived, not deleted
+    ('LifeTrackingViewSet', 'destroy'),            # accumulated-life evidence
 }
 
 

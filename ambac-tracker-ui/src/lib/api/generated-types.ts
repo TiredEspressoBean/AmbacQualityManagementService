@@ -3939,6 +3939,296 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/LifeLimitDefinitions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Life limit definition management.
+         *
+         *     Tenants define their own life tracking rules here:
+         *     - Flight Cycles (hard_limit=20000)
+         *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+         *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         */
+        get: operations["api_LifeLimitDefinitions_list"];
+        put?: never;
+        /**
+         * @description Life limit definition management.
+         *
+         *     Tenants define their own life tracking rules here:
+         *     - Flight Cycles (hard_limit=20000)
+         *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+         *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         */
+        post: operations["api_LifeLimitDefinitions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Life limit definition management.
+         *
+         *     Tenants define their own life tracking rules here:
+         *     - Flight Cycles (hard_limit=20000)
+         *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+         *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         */
+        get: operations["api_LifeLimitDefinitions_retrieve"];
+        /**
+         * @description Life limit definition management.
+         *
+         *     Tenants define their own life tracking rules here:
+         *     - Flight Cycles (hard_limit=20000)
+         *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+         *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         */
+        put: operations["api_LifeLimitDefinitions_update"];
+        post?: never;
+        /**
+         * @description Life limit definition management.
+         *
+         *     Tenants define their own life tracking rules here:
+         *     - Flight Cycles (hard_limit=20000)
+         *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+         *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         */
+        delete: operations["api_LifeLimitDefinitions_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Life limit definition management.
+         *
+         *     Tenants define their own life tracking rules here:
+         *     - Flight Cycles (hard_limit=20000)
+         *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
+         *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         */
+        patch: operations["api_LifeLimitDefinitions_partial_update"];
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/{id}/revisions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a new revision of a LifeLimitDefinition. Returns the new version with incremented version number. PartTypeLifeLimit children are copied to the new version. */
+        post: operations["api_LifeLimitDefinitions_revisions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/select_options/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Lightweight list for dropdowns */
+        get: operations["api_LifeLimitDefinitions_select_options_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeTracking/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Life tracking record management.
+         *
+         *     Tracks accumulated life for parts, cores, equipment, etc.
+         *     Supports increment, reset (overhaul), and per-instance limit overrides.
+         */
+        get: operations["api_LifeTracking_list"];
+        put?: never;
+        /**
+         * @description Life tracking record management.
+         *
+         *     Tracks accumulated life for parts, cores, equipment, etc.
+         *     Supports increment, reset (overhaul), and per-instance limit overrides.
+         */
+        post: operations["api_LifeTracking_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeTracking/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Life tracking record management.
+         *
+         *     Tracks accumulated life for parts, cores, equipment, etc.
+         *     Supports increment, reset (overhaul), and per-instance limit overrides.
+         */
+        get: operations["api_LifeTracking_retrieve"];
+        /**
+         * @description Life tracking record management.
+         *
+         *     Tracks accumulated life for parts, cores, equipment, etc.
+         *     Supports increment, reset (overhaul), and per-instance limit overrides.
+         */
+        put: operations["api_LifeTracking_update"];
+        post?: never;
+        /**
+         * @description Life tracking record management.
+         *
+         *     Tracks accumulated life for parts, cores, equipment, etc.
+         *     Supports increment, reset (overhaul), and per-instance limit overrides.
+         */
+        delete: operations["api_LifeTracking_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Life tracking record management.
+         *
+         *     Tracks accumulated life for parts, cores, equipment, etc.
+         *     Supports increment, reset (overhaul), and per-instance limit overrides.
+         */
+        patch: operations["api_LifeTracking_partial_update"];
+        trace?: never;
+    };
+    "/api/LifeTracking/{id}/apply_override/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Apply per-instance limit override (engineering approval) */
+        post: operations["api_LifeTracking_apply_override_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeTracking/{id}/increment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Increment accumulated value (after operation/cycle) */
+        post: operations["api_LifeTracking_increment_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeTracking/{id}/reset/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reset accumulated value to zero (after rebuild/overhaul) */
+        post: operations["api_LifeTracking_reset_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeTracking/expired/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get all tracking records that have exceeded limits */
+        get: operations["api_LifeTracking_expired_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeTracking/for_object/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get all life tracking records for a specific object.
+         *
+         *     Query params:
+         *     - content_type: e.g., "tracker.parts" or content_type ID
+         *     - object_id: UUID of the object
+         */
+        get: operations["api_LifeTracking_for_object_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeTracking/warnings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get all tracking records at warning level */
+        get: operations["api_LifeTracking_warnings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/": {
         parameters: {
             query?: never;
@@ -5596,6 +5886,74 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Links life limit definitions to part types.
+         *
+         *     Defines which life limits apply to which part types,
+         *     and whether tracking is required when creating parts.
+         */
+        get: operations["api_PartTypeLifeLimits_list"];
+        put?: never;
+        /**
+         * @description Links life limit definitions to part types.
+         *
+         *     Defines which life limits apply to which part types,
+         *     and whether tracking is required when creating parts.
+         */
+        post: operations["api_PartTypeLifeLimits_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Links life limit definitions to part types.
+         *
+         *     Defines which life limits apply to which part types,
+         *     and whether tracking is required when creating parts.
+         */
+        get: operations["api_PartTypeLifeLimits_retrieve"];
+        /**
+         * @description Links life limit definitions to part types.
+         *
+         *     Defines which life limits apply to which part types,
+         *     and whether tracking is required when creating parts.
+         */
+        put: operations["api_PartTypeLifeLimits_update"];
+        post?: never;
+        /**
+         * @description Links life limit definitions to part types.
+         *
+         *     Defines which life limits apply to which part types,
+         *     and whether tracking is required when creating parts.
+         */
+        delete: operations["api_PartTypeLifeLimits_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Links life limit definitions to part types.
+         *
+         *     Defines which life limits apply to which part types,
+         *     and whether tracking is required when creating parts.
+         */
+        patch: operations["api_PartTypeLifeLimits_partial_update"];
         trace?: never;
     };
     "/api/PartTypes/": {
@@ -20231,6 +20589,226 @@ export interface components {
          * @enum {string}
          */
         LaborRecurrenceEnum: "ONCE" | "WEEKLY";
+        /** @description Life limit definition serializer */
+        LifeLimitDefinition: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Display name (e.g., 'Flight Cycles', 'Shelf Life') */
+            name: string;
+            /** @description Unit being tracked (e.g., 'cycles', 'hours', 'days') */
+            unit: string;
+            /** @description Display label (e.g., 'Cycles', 'Flight Hours', 'Days') */
+            unit_label: string;
+            /** @description If true, value is calculated from reference_date. Valid units for calendar-based: days, months, years */
+            is_calendar_based?: boolean;
+            /**
+             * Format: decimal
+             * @description Warning/overhaul threshold
+             */
+            soft_limit?: string | null;
+            /**
+             * Format: decimal
+             * @description Absolute limit - block/retire when reached
+             */
+            hard_limit?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+            readonly version: number;
+        };
+        /** @description Life limit definition serializer */
+        LifeLimitDefinitionRequest: {
+            /** @description Display name (e.g., 'Flight Cycles', 'Shelf Life') */
+            name: string;
+            /** @description Unit being tracked (e.g., 'cycles', 'hours', 'days') */
+            unit: string;
+            /** @description Display label (e.g., 'Cycles', 'Flight Hours', 'Days') */
+            unit_label: string;
+            /** @description If true, value is calculated from reference_date. Valid units for calendar-based: days, months, years */
+            is_calendar_based?: boolean;
+            /**
+             * Format: decimal
+             * @description Warning/overhaul threshold
+             */
+            soft_limit?: string | null;
+            /**
+             * Format: decimal
+             * @description Absolute limit - block/retire when reached
+             */
+            hard_limit?: string | null;
+            archived?: boolean;
+        };
+        /** @description Life tracking record serializer */
+        LifeTracking: {
+            /** Format: uuid */
+            readonly id: string;
+            content_type: number;
+            readonly content_type_model: string;
+            /** Format: uuid */
+            object_id: string;
+            /** Format: uuid */
+            definition: string;
+            readonly definition_name: string;
+            readonly definition_unit: string;
+            /**
+             * Format: decimal
+             * @description Current accumulated value
+             */
+            accumulated?: string;
+            /**
+             * Format: date
+             * @description For calendar-based: manufacture/install/overhaul date
+             */
+            reference_date?: string | null;
+            /**
+             * @description Where did this life data come from?
+             *
+             *     * `OEM` - OEM Records
+             *     * `CUSTOMER` - Customer Provided
+             *     * `LOGBOOK` - Logbook Entry
+             *     * `CALCULATED` - Calculated
+             *     * `ESTIMATED` - Estimated
+             *     * `TRANSFERRED` - Transferred from Core
+             *     * `RESET` - Reset After Rebuild
+             */
+            source?: components["schemas"]["LifeTrackingSourceEnum"];
+            /** Format: decimal */
+            readonly current_value: string;
+            /** Format: decimal */
+            readonly remaining: string;
+            /** Format: decimal */
+            readonly remaining_to_soft_limit: string;
+            /** Format: double */
+            readonly percent_used: number;
+            readonly status: string;
+            readonly is_blocked: boolean;
+            /** Format: decimal */
+            readonly effective_hard_limit: string;
+            /** Format: decimal */
+            readonly effective_soft_limit: string;
+            /**
+             * Format: decimal
+             * @description Override hard limit for this specific instance
+             */
+            hard_limit_override?: string | null;
+            /**
+             * Format: decimal
+             * @description Override soft limit for this specific instance
+             */
+            soft_limit_override?: string | null;
+            /** @description Reason for limit override */
+            override_reason?: string;
+            override_approved_by?: number | null;
+            /** @description History of resets/overhauls */
+            reset_history?: unknown;
+            /** @description Cached status, updated on save */
+            readonly cached_status: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /** @description Serializer for incrementing life tracking */
+        LifeTrackingIncrementRequest: {
+            /** Format: decimal */
+            value: string;
+        };
+        /** @description Lightweight serializer for lists */
+        LifeTrackingList: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            object_id: string;
+            /** Format: uuid */
+            definition: string;
+            readonly definition_name: string;
+            readonly definition_unit: string;
+            /**
+             * Format: decimal
+             * @description Current accumulated value
+             */
+            accumulated?: string;
+            /** Format: decimal */
+            readonly current_value: string;
+            readonly status: string;
+            /** Format: double */
+            readonly percent_used: number;
+            /** @description Cached status, updated on save */
+            cached_status?: string;
+        };
+        /** @description Serializer for applying per-instance limit overrides */
+        LifeTrackingOverrideRequest: {
+            /** Format: decimal */
+            hard_limit?: string | null;
+            /** Format: decimal */
+            soft_limit?: string | null;
+            reason: string;
+        };
+        /** @description Life tracking record serializer */
+        LifeTrackingRequest: {
+            content_type: number;
+            /** Format: uuid */
+            object_id: string;
+            /** Format: uuid */
+            definition: string;
+            /**
+             * Format: decimal
+             * @description Current accumulated value
+             */
+            accumulated?: string;
+            /**
+             * Format: date
+             * @description For calendar-based: manufacture/install/overhaul date
+             */
+            reference_date?: string | null;
+            /**
+             * @description Where did this life data come from?
+             *
+             *     * `OEM` - OEM Records
+             *     * `CUSTOMER` - Customer Provided
+             *     * `LOGBOOK` - Logbook Entry
+             *     * `CALCULATED` - Calculated
+             *     * `ESTIMATED` - Estimated
+             *     * `TRANSFERRED` - Transferred from Core
+             *     * `RESET` - Reset After Rebuild
+             */
+            source?: components["schemas"]["LifeTrackingSourceEnum"];
+            /**
+             * Format: decimal
+             * @description Override hard limit for this specific instance
+             */
+            hard_limit_override?: string | null;
+            /**
+             * Format: decimal
+             * @description Override soft limit for this specific instance
+             */
+            soft_limit_override?: string | null;
+            /** @description Reason for limit override */
+            override_reason?: string;
+            override_approved_by?: number | null;
+            /** @description History of resets/overhauls */
+            reset_history?: unknown;
+            archived?: boolean;
+        };
+        /** @description Serializer for resetting life tracking (after overhaul) */
+        LifeTrackingResetRequest: {
+            /** @default  */
+            reason: string;
+        };
+        /**
+         * @description * `OEM` - OEM Records
+         *     * `CUSTOMER` - Customer Provided
+         *     * `LOGBOOK` - Logbook Entry
+         *     * `CALCULATED` - Calculated
+         *     * `ESTIMATED` - Estimated
+         *     * `TRANSFERRED` - Transferred from Core
+         *     * `RESET` - Reset After Rebuild
+         * @enum {string}
+         */
+        LifeTrackingSourceEnum: "OEM" | "CUSTOMER" | "LOGBOOK" | "CALCULATED" | "ESTIMATED" | "TRANSFERRED" | "RESET";
         ListMetadataResponse: {
             search_fields: string[];
             search_fields_display: string[];
@@ -21782,6 +22360,36 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["LaborCalendarBlock"][];
         };
+        PaginatedLifeLimitDefinitionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["LifeLimitDefinition"][];
+        };
+        PaginatedLifeTrackingListList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["LifeTrackingList"][];
+        };
         PaginatedMaterialList: {
             /** @example 123 */
             count: number;
@@ -21931,6 +22539,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["PartApproval"][];
+        };
+        PaginatedPartTypeLifeLimitList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["PartTypeLifeLimit"][];
         };
         PaginatedPartTypesList: {
             /** @example 123 */
@@ -22954,6 +23577,35 @@ export interface components {
             current_step_name: string | null;
             part_status: string;
             traveler: components["schemas"]["TravelerStepEntry"][];
+        };
+        /** @description Part type life limit junction serializer */
+        PartTypeLifeLimit: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            part_type: string;
+            readonly part_type_name: string | null;
+            /** Format: uuid */
+            definition: string;
+            readonly definition_name: string;
+            readonly definition_unit: string;
+            /** @description If true, parts of this type must have this tracking */
+            is_required?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /** @description Part type life limit junction serializer */
+        PartTypeLifeLimitRequest: {
+            /** Format: uuid */
+            part_type: string;
+            /** Format: uuid */
+            definition: string;
+            /** @description If true, parts of this type must have this tracking */
+            is_required?: boolean;
+            archived?: boolean;
         };
         PartTypeQualitySummary: {
             parts_total: number;
@@ -24061,6 +24713,74 @@ export interface components {
             reason?: string;
             is_active?: boolean;
         };
+        /** @description Life limit definition serializer */
+        PatchedLifeLimitDefinitionRequest: {
+            /** @description Display name (e.g., 'Flight Cycles', 'Shelf Life') */
+            name?: string;
+            /** @description Unit being tracked (e.g., 'cycles', 'hours', 'days') */
+            unit?: string;
+            /** @description Display label (e.g., 'Cycles', 'Flight Hours', 'Days') */
+            unit_label?: string;
+            /** @description If true, value is calculated from reference_date. Valid units for calendar-based: days, months, years */
+            is_calendar_based?: boolean;
+            /**
+             * Format: decimal
+             * @description Warning/overhaul threshold
+             */
+            soft_limit?: string | null;
+            /**
+             * Format: decimal
+             * @description Absolute limit - block/retire when reached
+             */
+            hard_limit?: string | null;
+            archived?: boolean;
+        };
+        /** @description Life tracking record serializer */
+        PatchedLifeTrackingRequest: {
+            content_type?: number;
+            /** Format: uuid */
+            object_id?: string;
+            /** Format: uuid */
+            definition?: string;
+            /**
+             * Format: decimal
+             * @description Current accumulated value
+             */
+            accumulated?: string;
+            /**
+             * Format: date
+             * @description For calendar-based: manufacture/install/overhaul date
+             */
+            reference_date?: string | null;
+            /**
+             * @description Where did this life data come from?
+             *
+             *     * `OEM` - OEM Records
+             *     * `CUSTOMER` - Customer Provided
+             *     * `LOGBOOK` - Logbook Entry
+             *     * `CALCULATED` - Calculated
+             *     * `ESTIMATED` - Estimated
+             *     * `TRANSFERRED` - Transferred from Core
+             *     * `RESET` - Reset After Rebuild
+             */
+            source?: components["schemas"]["LifeTrackingSourceEnum"];
+            /**
+             * Format: decimal
+             * @description Override hard limit for this specific instance
+             */
+            hard_limit_override?: string | null;
+            /**
+             * Format: decimal
+             * @description Override soft limit for this specific instance
+             */
+            soft_limit_override?: string | null;
+            /** @description Reason for limit override */
+            override_reason?: string;
+            override_approved_by?: number | null;
+            /** @description History of resets/overhauls */
+            reset_history?: unknown;
+            archived?: boolean;
+        };
         /**
          * @description Material lot serializer.
          *
@@ -24390,6 +25110,16 @@ export interface components {
             /** Format: date */
             expiry_date?: string | null;
             notes?: string;
+            archived?: boolean;
+        };
+        /** @description Part type life limit junction serializer */
+        PatchedPartTypeLifeLimitRequest: {
+            /** Format: uuid */
+            part_type?: string;
+            /** Format: uuid */
+            definition?: string;
+            /** @description If true, parts of this type must have this tracking */
+            is_required?: boolean;
             archived?: boolean;
         };
         /**
@@ -41100,6 +41830,514 @@ export interface operations {
             };
         };
     };
+    api_LifeLimitDefinitions_list: {
+        parameters: {
+            query?: {
+                is_calendar_based?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedLifeLimitDefinitionList"];
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeLimitDefinitionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeLimitDefinitionRequest"];
+                "multipart/form-data": components["schemas"]["LifeLimitDefinitionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeLimitDefinition"];
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Limit Definition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeLimitDefinition"];
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Limit Definition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeLimitDefinitionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeLimitDefinitionRequest"];
+                "multipart/form-data": components["schemas"]["LifeLimitDefinitionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeLimitDefinition"];
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Limit Definition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_LifeLimitDefinitions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Limit Definition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLifeLimitDefinitionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedLifeLimitDefinitionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedLifeLimitDefinitionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeLimitDefinition"];
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_revisions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Limit Definition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Human narrative of what changed and why (AS9100D §8.3). */
+                    change_description: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeLimitDefinition"];
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_select_options_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeLimitDefinition"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_list: {
+        parameters: {
+            query?: {
+                cached_status?: string;
+                content_type?: number;
+                definition?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                object_id?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description Where did this life data come from?
+                 *
+                 *     * `OEM` - OEM Records
+                 *     * `CUSTOMER` - Customer Provided
+                 *     * `LOGBOOK` - Logbook Entry
+                 *     * `CALCULATED` - Calculated
+                 *     * `ESTIMATED` - Estimated
+                 *     * `TRANSFERRED` - Transferred from Core
+                 *     * `RESET` - Reset After Rebuild
+                 */
+                source?: "CALCULATED" | "CUSTOMER" | "ESTIMATED" | "LOGBOOK" | "OEM" | "RESET" | "TRANSFERRED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedLifeTrackingListList"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeTrackingRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeTrackingRequest"];
+                "multipart/form-data": components["schemas"]["LifeTrackingRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeTrackingRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeTrackingRequest"];
+                "multipart/form-data": components["schemas"]["LifeTrackingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_LifeTracking_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLifeTrackingRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedLifeTrackingRequest"];
+                "multipart/form-data": components["schemas"]["PatchedLifeTrackingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_apply_override_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeTrackingOverrideRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeTrackingOverrideRequest"];
+                "multipart/form-data": components["schemas"]["LifeTrackingOverrideRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_increment_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeTrackingIncrementRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeTrackingIncrementRequest"];
+                "multipart/form-data": components["schemas"]["LifeTrackingIncrementRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_reset_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["LifeTrackingResetRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeTrackingResetRequest"];
+                "multipart/form-data": components["schemas"]["LifeTrackingResetRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_expired_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_for_object_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_warnings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
     api_MaterialLots_list: {
         parameters: {
             query?: {
@@ -44060,6 +45298,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartApprovalStatus"];
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_list: {
+        parameters: {
+            query?: {
+                definition?: string;
+                is_required?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPartTypeLifeLimitList"];
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartTypeLifeLimitRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartTypeLifeLimitRequest"];
+                "multipart/form-data": components["schemas"]["PartTypeLifeLimitRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartTypeLifeLimit"];
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Type Life Limit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartTypeLifeLimit"];
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Type Life Limit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartTypeLifeLimitRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartTypeLifeLimitRequest"];
+                "multipart/form-data": components["schemas"]["PartTypeLifeLimitRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartTypeLifeLimit"];
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Type Life Limit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_PartTypeLifeLimits_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Type Life Limit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPartTypeLifeLimitRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPartTypeLifeLimitRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPartTypeLifeLimitRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartTypeLifeLimit"];
                 };
             };
         };

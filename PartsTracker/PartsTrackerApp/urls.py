@@ -332,6 +332,14 @@ router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='Dis
 router.register(r'RepairCodes', RepairCodeViewSet, basename='RepairCodes')
 router.register(r'RebuildScopePresets', RebuildScopePresetViewSet, basename='RebuildScopePresets')
 router.register(r'RebuildSlotOverrides', RebuildSlotOverrideViewSet, basename='RebuildSlotOverrides')
+
+# ===== LIFE TRACKING VIEWSETS =====
+# The classes, serializers and services all existed; only the registration was
+# missing, so the whole feature had no API surface. The frontend's ModelEditorPage
+# already lists these three basenames, so its editors were pointing at 404s.
+router.register(r'LifeLimitDefinitions', LifeLimitDefinitionViewSet, basename='LifeLimitDefinitions')
+router.register(r'PartTypeLifeLimits', PartTypeLifeLimitViewSet, basename='PartTypeLifeLimits')
+router.register(r'LifeTracking', LifeTrackingViewSet, basename='LifeTracking')
 router.register(r'Schedules', ScheduleViewSet, basename='Schedules')
 router.register(r'ScheduledTasks', ScheduledTaskViewSet, basename='ScheduledTasks')
 router.register(r'Fixtures', FixtureViewSet, basename='Fixtures')

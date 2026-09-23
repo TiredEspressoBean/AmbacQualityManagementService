@@ -5,6 +5,7 @@ Serializers for life tracking models:
 - PartTypeLifeLimit: Links definitions to part types
 - LifeTracking: Actual tracking records for entities
 """
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 
@@ -101,6 +102,10 @@ class LifeTrackingSerializer(SecureModelMixin):
             'effective_hard_limit', 'effective_soft_limit',
         )
 
+    # Non-null: `LifeTracking.content_type` is a required FK, so this always returns a
+    # string. Annotated because an un-annotated SerializerMethodField silently becomes
+    # a required non-null string in the schema — right by luck here, but only by luck.
+    @extend_schema_field(serializers.CharField())
     def get_content_type_model(self, obj):
         return f"{obj.content_type.app_label}.{obj.content_type.model}"
 

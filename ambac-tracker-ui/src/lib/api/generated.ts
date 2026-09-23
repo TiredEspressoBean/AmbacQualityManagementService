@@ -3329,6 +3329,172 @@ export type LaborCalendarBlockRequest = Partial<{
   reason: string;
   is_active: boolean;
 }>;
+export type LifeTracking = {
+  id: string;
+  content_type: number;
+  content_type_model: string;
+  object_id: string;
+  definition: string;
+  definition_name: string;
+  definition_unit: string;
+  accumulated?: /**
+   * Current accumulated value
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  reference_date?:
+    | /**
+     * For calendar-based: manufacture/install/overhaul date
+     */
+    (string | null)
+    | undefined;
+  source?: /**
+     * Where did this life data come from?
+    
+    * `OEM` - OEM Records
+    * `CUSTOMER` - Customer Provided
+    * `LOGBOOK` - Logbook Entry
+    * `CALCULATED` - Calculated
+    * `ESTIMATED` - Estimated
+    * `TRANSFERRED` - Transferred from Core
+    * `RESET` - Reset After Rebuild
+     */
+  LifeTrackingSourceEnum | undefined;
+  /**
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  current_value: string;
+  /**
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  remaining: string;
+  /**
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  remaining_to_soft_limit: string;
+  percent_used: number;
+  status: string;
+  is_blocked: boolean;
+  /**
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  effective_hard_limit: string;
+  /**
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  effective_soft_limit: string;
+  hard_limit_override?:
+    | /**
+     * Override hard limit for this specific instance
+     *
+     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
+  soft_limit_override?:
+    | /**
+     * Override soft limit for this specific instance
+     *
+     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
+  override_reason?: /**
+   * Reason for limit override
+   *
+   * @maxLength 200
+   */
+  string | undefined;
+  override_approved_by?: (number | null) | undefined;
+  reset_history?: /**
+   * History of resets/overhauls
+   */
+  unknown | undefined;
+  /**
+   * Cached status, updated on save
+   */
+  cached_status: string;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type LifeTrackingSourceEnum =
+  /**
+   * * `OEM` - OEM Records
+   * `CUSTOMER` - Customer Provided
+   * `LOGBOOK` - Logbook Entry
+   * `CALCULATED` - Calculated
+   * `ESTIMATED` - Estimated
+   * `TRANSFERRED` - Transferred from Core
+   * `RESET` - Reset After Rebuild
+   *
+   * @enum OEM, CUSTOMER, LOGBOOK, CALCULATED, ESTIMATED, TRANSFERRED, RESET
+   */
+  | "OEM"
+  | "CUSTOMER"
+  | "LOGBOOK"
+  | "CALCULATED"
+  | "ESTIMATED"
+  | "TRANSFERRED"
+  | "RESET";
+export type LifeTrackingRequest = {
+  content_type: number;
+  object_id: string;
+  definition: string;
+  accumulated?: /**
+   * Current accumulated value
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  reference_date?:
+    | /**
+     * For calendar-based: manufacture/install/overhaul date
+     */
+    (string | null)
+    | undefined;
+  source?: /**
+     * Where did this life data come from?
+    
+    * `OEM` - OEM Records
+    * `CUSTOMER` - Customer Provided
+    * `LOGBOOK` - Logbook Entry
+    * `CALCULATED` - Calculated
+    * `ESTIMATED` - Estimated
+    * `TRANSFERRED` - Transferred from Core
+    * `RESET` - Reset After Rebuild
+     */
+  LifeTrackingSourceEnum | undefined;
+  hard_limit_override?:
+    | /**
+     * Override hard limit for this specific instance
+     *
+     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
+  soft_limit_override?:
+    | /**
+     * Override soft limit for this specific instance
+     *
+     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
+  override_reason?: /**
+   * Reason for limit override
+   *
+   * @maxLength 200
+   */
+  string | undefined;
+  override_approved_by?: (number | null) | undefined;
+  reset_history?: /**
+   * History of resets/overhauls
+   */
+  unknown | undefined;
+  archived?: boolean | undefined;
+};
 export type MaterialLot = {
   id: string;
   /**
@@ -5216,6 +5382,114 @@ export type PaginatedLaborCalendarBlockList = {
     | undefined;
   results: Array<LaborCalendarBlock>;
 };
+export type PaginatedLifeLimitDefinitionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<LifeLimitDefinition>;
+};
+export type LifeLimitDefinition = {
+  id: string;
+  /**
+   * Display name (e.g., 'Flight Cycles', 'Shelf Life')
+   *
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * Unit being tracked (e.g., 'cycles', 'hours', 'days')
+   *
+   * @maxLength 50
+   */
+  unit: string;
+  /**
+   * Display label (e.g., 'Cycles', 'Flight Hours', 'Days')
+   *
+   * @maxLength 50
+   */
+  unit_label: string;
+  is_calendar_based?: /**
+   * If true, value is calculated from reference_date. Valid units for calendar-based: days, months, years
+   */
+  boolean | undefined;
+  soft_limit?:
+    | /**
+     * Warning/overhaul threshold
+     *
+     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
+  hard_limit?:
+    | /**
+     * Absolute limit - block/retire when reached
+     *
+     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+  version: number;
+};
+export type PaginatedLifeTrackingListList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<LifeTrackingList>;
+};
+export type LifeTrackingList = {
+  id: string;
+  object_id: string;
+  definition: string;
+  definition_name: string;
+  definition_unit: string;
+  accumulated?: /**
+   * Current accumulated value
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  string | undefined;
+  /**
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  current_value: string;
+  status: string;
+  percent_used: number;
+  cached_status?: /**
+   * Cached status, updated on save
+   *
+   * @maxLength 10
+   */
+  string | undefined;
+};
 export type PaginatedMaterialList = {
   /**
    * @example 123
@@ -5538,6 +5812,40 @@ export type QualificationStatusEnum =
   | "SUSPENDED"
   | "EXPIRED"
   | "DISQUALIFIED";
+export type PaginatedPartTypeLifeLimitList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<PartTypeLifeLimit>;
+};
+export type PartTypeLifeLimit = {
+  id: string;
+  part_type: string;
+  part_type_name: string | null;
+  definition: string;
+  definition_name: string;
+  definition_unit: string;
+  is_required?: /**
+   * If true, parts of this type must have this tracking
+   */
+  boolean | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
 export type PaginatedPartTypesList = {
   /**
    * @example 123
@@ -11106,6 +11414,57 @@ export type PatchedLaborCalendarBlockRequest = Partial<{
    */
   reason: string;
   is_active: boolean;
+}>;
+export type PatchedLifeTrackingRequest = Partial<{
+  content_type: number;
+  object_id: string;
+  definition: string;
+  /**
+   * Current accumulated value
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  accumulated: string;
+  /**
+   * For calendar-based: manufacture/install/overhaul date
+   */
+  reference_date: string | null;
+  /**
+     * Where did this life data come from?
+    
+    * `OEM` - OEM Records
+    * `CUSTOMER` - Customer Provided
+    * `LOGBOOK` - Logbook Entry
+    * `CALCULATED` - Calculated
+    * `ESTIMATED` - Estimated
+    * `TRANSFERRED` - Transferred from Core
+    * `RESET` - Reset After Rebuild
+     */
+  source: LifeTrackingSourceEnum;
+  /**
+   * Override hard limit for this specific instance
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  hard_limit_override: string | null;
+  /**
+   * Override soft limit for this specific instance
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  soft_limit_override: string | null;
+  /**
+   * Reason for limit override
+   *
+   * @maxLength 200
+   */
+  override_reason: string;
+  override_approved_by: number | null;
+  /**
+   * History of resets/overhauls
+   */
+  reset_history: unknown;
+  archived: boolean;
 }>;
 export type PatchedMaterialLotRequest = Partial<{
   /**
@@ -18281,6 +18640,193 @@ const PatchedLaborCalendarBlockRequest = z
     is_active: z.boolean(),
   })
   .partial();
+const LifeLimitDefinition = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  unit: z.string().max(50),
+  unit_label: z.string().max(50),
+  is_calendar_based: z.boolean().optional(),
+  soft_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  hard_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedLifeLimitDefinitionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(LifeLimitDefinition),
+});
+const LifeLimitDefinitionRequest = z.object({
+  name: z.string().min(1).max(100),
+  unit: z.string().min(1).max(50),
+  unit_label: z.string().min(1).max(50),
+  is_calendar_based: z.boolean().optional(),
+  soft_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  hard_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  archived: z.boolean().optional(),
+});
+const PatchedLifeLimitDefinitionRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    unit: z.string().min(1).max(50),
+    unit_label: z.string().min(1).max(50),
+    is_calendar_based: z.boolean(),
+    soft_limit: z
+      .string()
+      .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+      .nullable(),
+    hard_limit: z
+      .string()
+      .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+      .nullable(),
+    archived: z.boolean(),
+  })
+  .partial();
+const LifeTrackingList = z.object({
+  id: z.string().uuid(),
+  object_id: z.string().uuid(),
+  definition: z.string().uuid(),
+  definition_name: z.string(),
+  definition_unit: z.string(),
+  accumulated: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .optional(),
+  current_value: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  status: z.string(),
+  percent_used: z.number(),
+  cached_status: z.string().max(10).optional(),
+});
+const PaginatedLifeTrackingListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(LifeTrackingList),
+});
+const LifeTrackingSourceEnum = z.enum([
+  "OEM",
+  "CUSTOMER",
+  "LOGBOOK",
+  "CALCULATED",
+  "ESTIMATED",
+  "TRANSFERRED",
+  "RESET",
+]);
+const LifeTrackingRequest = z.object({
+  content_type: z.number().int(),
+  object_id: z.string().uuid(),
+  definition: z.string().uuid(),
+  accumulated: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .optional(),
+  reference_date: z.string().nullish(),
+  source: LifeTrackingSourceEnum.optional(),
+  hard_limit_override: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  soft_limit_override: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  override_reason: z.string().max(200).optional(),
+  override_approved_by: z.number().int().nullish(),
+  reset_history: z.unknown().optional(),
+  archived: z.boolean().optional(),
+});
+const LifeTracking = z.object({
+  id: z.string().uuid(),
+  content_type: z.number().int(),
+  content_type_model: z.string(),
+  object_id: z.string().uuid(),
+  definition: z.string().uuid(),
+  definition_name: z.string(),
+  definition_unit: z.string(),
+  accumulated: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .optional(),
+  reference_date: z.string().nullish(),
+  source: LifeTrackingSourceEnum.optional(),
+  current_value: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  remaining: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  remaining_to_soft_limit: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  percent_used: z.number(),
+  status: z.string(),
+  is_blocked: z.boolean(),
+  effective_hard_limit: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  effective_soft_limit: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  hard_limit_override: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  soft_limit_override: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  override_reason: z.string().max(200).optional(),
+  override_approved_by: z.number().int().nullish(),
+  reset_history: z.unknown().optional(),
+  cached_status: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PatchedLifeTrackingRequest = z
+  .object({
+    content_type: z.number().int(),
+    object_id: z.string().uuid(),
+    definition: z.string().uuid(),
+    accumulated: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+    reference_date: z.string().nullable(),
+    source: LifeTrackingSourceEnum,
+    hard_limit_override: z
+      .string()
+      .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+      .nullable(),
+    soft_limit_override: z
+      .string()
+      .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+      .nullable(),
+    override_reason: z.string().max(200),
+    override_approved_by: z.number().int().nullable(),
+    reset_history: z.unknown(),
+    archived: z.boolean(),
+  })
+  .partial();
+const LifeTrackingOverrideRequest = z.object({
+  hard_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  soft_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullish(),
+  reason: z.string().min(1),
+});
+const LifeTrackingIncrementRequest = z.object({
+  value: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+});
+const LifeTrackingResetRequest = z
+  .object({ reason: z.string().default("") })
+  .partial();
 const MaterialLotStatusEnum = z.enum([
   "ON_ORDER",
   "RECEIVED",
@@ -19267,6 +19813,38 @@ const PartApprovalStatus = z.object({
   days_to_expiry: z.number().int().nullable(),
   record_id: z.string().nullable(),
 });
+const PartTypeLifeLimit = z.object({
+  id: z.string().uuid(),
+  part_type: z.string().uuid(),
+  part_type_name: z.string().nullable(),
+  definition: z.string().uuid(),
+  definition_name: z.string(),
+  definition_unit: z.string(),
+  is_required: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedPartTypeLifeLimitList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PartTypeLifeLimit),
+});
+const PartTypeLifeLimitRequest = z.object({
+  part_type: z.string().uuid(),
+  definition: z.string().uuid(),
+  is_required: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedPartTypeLifeLimitRequest = z
+  .object({
+    part_type: z.string().uuid(),
+    definition: z.string().uuid(),
+    is_required: z.boolean(),
+    archived: z.boolean(),
+  })
+  .partial();
 const PartTypes = z.object({
   id: z.string().uuid(),
   tenant: z.string().uuid().nullish(),
@@ -25221,6 +25799,19 @@ export const schemas = {
   PaginatedLaborCalendarBlockList,
   LaborCalendarBlockRequest,
   PatchedLaborCalendarBlockRequest,
+  LifeLimitDefinition,
+  PaginatedLifeLimitDefinitionList,
+  LifeLimitDefinitionRequest,
+  PatchedLifeLimitDefinitionRequest,
+  LifeTrackingList,
+  PaginatedLifeTrackingListList,
+  LifeTrackingSourceEnum,
+  LifeTrackingRequest,
+  LifeTracking,
+  PatchedLifeTrackingRequest,
+  LifeTrackingOverrideRequest,
+  LifeTrackingIncrementRequest,
+  LifeTrackingResetRequest,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,
@@ -25320,6 +25911,10 @@ export const schemas = {
   PartApprovalGrantRequestRequest,
   PartApprovalSuspendRequestRequest,
   PartApprovalStatus,
+  PartTypeLifeLimit,
+  PaginatedPartTypeLifeLimitList,
+  PartTypeLifeLimitRequest,
+  PatchedPartTypeLifeLimitRequest,
   PartTypes,
   PaginatedPartTypesList,
   PartTypesRequest,
@@ -34592,6 +35187,437 @@ keep running (only PlantCalendarException stops machines).`,
   },
   {
     method: "get",
+    path: "/api/LifeLimitDefinitions/",
+    alias: "api_LifeLimitDefinitions_list",
+    description: `Life limit definition management.
+
+Tenants define their own life tracking rules here:
+- Flight Cycles (hard_limit&#x3D;20000)
+- Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_calendar_based",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedLifeLimitDefinitionList,
+  },
+  {
+    method: "post",
+    path: "/api/LifeLimitDefinitions/",
+    alias: "api_LifeLimitDefinitions_create",
+    description: `Life limit definition management.
+
+Tenants define their own life tracking rules here:
+- Flight Cycles (hard_limit&#x3D;20000)
+- Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LifeLimitDefinitionRequest,
+      },
+    ],
+    response: LifeLimitDefinition,
+  },
+  {
+    method: "get",
+    path: "/api/LifeLimitDefinitions/:id/",
+    alias: "api_LifeLimitDefinitions_retrieve",
+    description: `Life limit definition management.
+
+Tenants define their own life tracking rules here:
+- Flight Cycles (hard_limit&#x3D;20000)
+- Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeLimitDefinition,
+  },
+  {
+    method: "put",
+    path: "/api/LifeLimitDefinitions/:id/",
+    alias: "api_LifeLimitDefinitions_update",
+    description: `Life limit definition management.
+
+Tenants define their own life tracking rules here:
+- Flight Cycles (hard_limit&#x3D;20000)
+- Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LifeLimitDefinitionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeLimitDefinition,
+  },
+  {
+    method: "patch",
+    path: "/api/LifeLimitDefinitions/:id/",
+    alias: "api_LifeLimitDefinitions_partial_update",
+    description: `Life limit definition management.
+
+Tenants define their own life tracking rules here:
+- Flight Cycles (hard_limit&#x3D;20000)
+- Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedLifeLimitDefinitionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeLimitDefinition,
+  },
+  {
+    method: "delete",
+    path: "/api/LifeLimitDefinitions/:id/",
+    alias: "api_LifeLimitDefinitions_destroy",
+    description: `Life limit definition management.
+
+Tenants define their own life tracking rules here:
+- Flight Cycles (hard_limit&#x3D;20000)
+- Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/LifeLimitDefinitions/:id/revisions/",
+    alias: "api_LifeLimitDefinitions_revisions_create",
+    description: `Create a new revision of a LifeLimitDefinition. Returns the new version with incremented version number. PartTypeLifeLimit children are copied to the new version.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ change_description: z.string() }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeLimitDefinition,
+  },
+  {
+    method: "get",
+    path: "/api/LifeLimitDefinitions/select_options/",
+    alias: "api_LifeLimitDefinitions_select_options_retrieve",
+    description: `Lightweight list for dropdowns`,
+    requestFormat: "json",
+    response: LifeLimitDefinition,
+  },
+  {
+    method: "get",
+    path: "/api/LifeTracking/",
+    alias: "api_LifeTracking_list",
+    description: `Life tracking record management.
+
+Tracks accumulated life for parts, cores, equipment, etc.
+Supports increment, reset (overhaul), and per-instance limit overrides.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "cached_status",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "definition",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "source",
+        type: "Query",
+        schema: z
+          .enum([
+            "CALCULATED",
+            "CUSTOMER",
+            "ESTIMATED",
+            "LOGBOOK",
+            "OEM",
+            "RESET",
+            "TRANSFERRED",
+          ])
+          .optional(),
+      },
+    ],
+    response: PaginatedLifeTrackingListList,
+  },
+  {
+    method: "post",
+    path: "/api/LifeTracking/",
+    alias: "api_LifeTracking_create",
+    description: `Life tracking record management.
+
+Tracks accumulated life for parts, cores, equipment, etc.
+Supports increment, reset (overhaul), and per-instance limit overrides.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LifeTrackingRequest,
+      },
+    ],
+    response: LifeTracking,
+  },
+  {
+    method: "get",
+    path: "/api/LifeTracking/:id/",
+    alias: "api_LifeTracking_retrieve",
+    description: `Life tracking record management.
+
+Tracks accumulated life for parts, cores, equipment, etc.
+Supports increment, reset (overhaul), and per-instance limit overrides.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeTracking,
+  },
+  {
+    method: "put",
+    path: "/api/LifeTracking/:id/",
+    alias: "api_LifeTracking_update",
+    description: `Life tracking record management.
+
+Tracks accumulated life for parts, cores, equipment, etc.
+Supports increment, reset (overhaul), and per-instance limit overrides.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LifeTrackingRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeTracking,
+  },
+  {
+    method: "patch",
+    path: "/api/LifeTracking/:id/",
+    alias: "api_LifeTracking_partial_update",
+    description: `Life tracking record management.
+
+Tracks accumulated life for parts, cores, equipment, etc.
+Supports increment, reset (overhaul), and per-instance limit overrides.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedLifeTrackingRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeTracking,
+  },
+  {
+    method: "delete",
+    path: "/api/LifeTracking/:id/",
+    alias: "api_LifeTracking_destroy",
+    description: `Life tracking record management.
+
+Tracks accumulated life for parts, cores, equipment, etc.
+Supports increment, reset (overhaul), and per-instance limit overrides.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/LifeTracking/:id/apply_override/",
+    alias: "api_LifeTracking_apply_override_create",
+    description: `Apply per-instance limit override (engineering approval)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LifeTrackingOverrideRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeTracking,
+  },
+  {
+    method: "post",
+    path: "/api/LifeTracking/:id/increment/",
+    alias: "api_LifeTracking_increment_create",
+    description: `Increment accumulated value (after operation/cycle)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({
+          value: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+        }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeTracking,
+  },
+  {
+    method: "post",
+    path: "/api/LifeTracking/:id/reset/",
+    alias: "api_LifeTracking_reset_create",
+    description: `Reset accumulated value to zero (after rebuild/overhaul)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().default("") }).partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeTracking,
+  },
+  {
+    method: "get",
+    path: "/api/LifeTracking/expired/",
+    alias: "api_LifeTracking_expired_retrieve",
+    description: `Get all tracking records that have exceeded limits`,
+    requestFormat: "json",
+    response: LifeTracking,
+  },
+  {
+    method: "get",
+    path: "/api/LifeTracking/for_object/",
+    alias: "api_LifeTracking_for_object_retrieve",
+    description: `Get all life tracking records for a specific object.
+
+Query params:
+- content_type: e.g., &quot;tracker.parts&quot; or content_type ID
+- object_id: UUID of the object`,
+    requestFormat: "json",
+    response: LifeTracking,
+  },
+  {
+    method: "get",
+    path: "/api/LifeTracking/warnings/",
+    alias: "api_LifeTracking_warnings_retrieve",
+    description: `Get all tracking records at warning level`,
+    requestFormat: "json",
+    response: LifeTracking,
+  },
+  {
+    method: "get",
     path: "/api/MaterialLots/",
     alias: "api_MaterialLots_list",
     description: `Material lot tracking with split capability`,
@@ -35563,7 +36589,10 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/Milestones/",
@@ -35919,10 +36948,7 @@ customer FK validation handled at the serializer layer.`,
       },
     ],
     response: ExternalContact,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/notifications/external-contacts/:id/",
@@ -39140,6 +40166,149 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
+    path: "/api/PartTypeLifeLimits/",
+    alias: "api_PartTypeLifeLimits_list",
+    description: `Links life limit definitions to part types.
+
+Defines which life limits apply to which part types,
+and whether tracking is required when creating parts.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "definition",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "is_required",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedPartTypeLifeLimitList,
+  },
+  {
+    method: "post",
+    path: "/api/PartTypeLifeLimits/",
+    alias: "api_PartTypeLifeLimits_create",
+    description: `Links life limit definitions to part types.
+
+Defines which life limits apply to which part types,
+and whether tracking is required when creating parts.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartTypeLifeLimitRequest,
+      },
+    ],
+    response: PartTypeLifeLimit,
+  },
+  {
+    method: "get",
+    path: "/api/PartTypeLifeLimits/:id/",
+    alias: "api_PartTypeLifeLimits_retrieve",
+    description: `Links life limit definitions to part types.
+
+Defines which life limits apply to which part types,
+and whether tracking is required when creating parts.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartTypeLifeLimit,
+  },
+  {
+    method: "put",
+    path: "/api/PartTypeLifeLimits/:id/",
+    alias: "api_PartTypeLifeLimits_update",
+    description: `Links life limit definitions to part types.
+
+Defines which life limits apply to which part types,
+and whether tracking is required when creating parts.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartTypeLifeLimitRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartTypeLifeLimit,
+  },
+  {
+    method: "patch",
+    path: "/api/PartTypeLifeLimits/:id/",
+    alias: "api_PartTypeLifeLimits_partial_update",
+    description: `Links life limit definitions to part types.
+
+Defines which life limits apply to which part types,
+and whether tracking is required when creating parts.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedPartTypeLifeLimitRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartTypeLifeLimit,
+  },
+  {
+    method: "delete",
+    path: "/api/PartTypeLifeLimits/:id/",
+    alias: "api_PartTypeLifeLimits_destroy",
+    description: `Links life limit definitions to part types.
+
+Defines which life limits apply to which part types,
+and whether tracking is required when creating parts.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
     path: "/api/PartTypes/",
     alias: "api_PartTypes_list",
     description: `Part Types CRUD with CSV import/export support.
@@ -40316,7 +41485,10 @@ Enforces separation of duties (approver !&#x3D; PCO author).`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/process-change-requests/",
@@ -41187,10 +42359,7 @@ Usage:
       },
     ],
     response: Processes,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "put",
     path: "/api/Processes/:id/",
@@ -46216,7 +47385,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: PaginatedStepExecutionListList,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/wip_summary/",
@@ -47171,10 +48343,7 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
       },
     ],
     response: SubstepCompletion,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/SubstepCompletions/:id/",
@@ -51313,7 +52482,10 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: PaginatedUserWorkCenterMembershipList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/UserWorkCenterMemberships/",
@@ -51930,10 +53102,7 @@ already shipped/completed (can&#x27;t undo delivered work).`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/WorkOrders/:id/clear_hold/",
