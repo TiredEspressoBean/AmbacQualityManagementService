@@ -17743,6 +17743,8 @@ export interface components {
              */
             fulfilment_mode?: components["schemas"]["FulfilmentModeEnum"];
             readonly returns_to_customer: boolean;
+            readonly work_order_erp_id: string | null;
+            readonly work_order_status: string | null;
             /**
              * @description Overall condition grade assigned at receipt
              *

@@ -271,6 +271,45 @@ export function CoreDetailPage() {
                 {/* Disassembly Status */}
                 <Card>
                     <CardHeader>
+                        <CardTitle>Work Order</CardTitle>
+                        <CardDescription>
+                            The job this unit is on. A core's story used to end at
+                            "disassembled" — the round trip from unit to work order and
+                            back is the traceability claim an audit tests.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {core.work_order ? (
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Link
+                                    to="/workorder/$workOrderId/control"
+                                    params={{ workOrderId: String(core.work_order) }}
+                                    className="font-mono font-medium underline decoration-dotted underline-offset-4"
+                                >
+                                    {core.work_order_erp_id ?? "View work order"}
+                                </Link>
+                                {core.work_order_status && (
+                                    <Badge variant="secondary">{core.work_order_status}</Badge>
+                                )}
+                                {core.status === 'IN_REBUILD' && (
+                                    <Button size="sm" variant="outline" asChild>
+                                        <Link to="/reman/cores/$id/rebuild" params={{ id: id! }}>
+                                            <Wrench className="mr-1 h-4 w-4" />
+                                            Rebuild plan
+                                        </Link>
+                                    </Button>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground">
+                                Not on a work order. Cores join one when teardown starts.
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
                         <CardTitle>Disassembly Status</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">

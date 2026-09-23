@@ -26,6 +26,13 @@ class CoreSerializer(SecureModelMixin):
     # goes back to them") rather than re-deriving it from the enum and risking a
     # different answer than the backend's.
     returns_to_customer = serializers.BooleanField(read_only=True)
+    # The core's story currently ends at "disassembled". Core <-> WO has to be
+    # navigable BOTH ways, because that round trip is the traceability claim an audit
+    # actually tests — "show me what happened to the unit I sent you".
+    work_order_erp_id = serializers.CharField(
+        source='work_order.ERP_id', read_only=True, allow_null=True)
+    work_order_status = serializers.CharField(
+        source='work_order.workorder_status', read_only=True, allow_null=True)
     received_by_name = serializers.SerializerMethodField()
     disassembled_by_name = serializers.SerializerMethodField()
     harvested_component_count = serializers.IntegerField(read_only=True)
@@ -39,6 +46,7 @@ class CoreSerializer(SecureModelMixin):
             'received_date', 'received_by', 'received_by_name',
             'customer', 'customer_name', 'source_type', 'source_reference',
             'fulfilment_mode', 'returns_to_customer',
+            'work_order_erp_id', 'work_order_status',
             'condition_grade', 'condition_notes',
             'status', 'disassembly_started_at', 'disassembly_completed_at',
             'disassembled_by', 'disassembled_by_name',
@@ -51,7 +59,7 @@ class CoreSerializer(SecureModelMixin):
             'created_at', 'updated_at',             'received_by', 'disassembled_by',
             'disassembly_started_at', 'disassembly_completed_at',
             'core_credit_issued_at', 'harvested_component_count', 'usable_component_count',
-            'returns_to_customer',
+            'returns_to_customer', 'work_order_erp_id', 'work_order_status',
         )
 
     @extend_schema_field(serializers.CharField(allow_null=True))

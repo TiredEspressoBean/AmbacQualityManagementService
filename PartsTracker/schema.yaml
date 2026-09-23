@@ -42705,6 +42705,14 @@ components:
         returns_to_customer:
           type: boolean
           readOnly: true
+        work_order_erp_id:
+          type: string
+          readOnly: true
+          nullable: true
+        work_order_status:
+          type: string
+          readOnly: true
+          nullable: true
         condition_grade:
           allOf:
           - $ref: '#/components/schemas/ConditionGradeEnum'
@@ -42791,6 +42799,8 @@ components:
       - returns_to_customer
       - updated_at
       - usable_component_count
+      - work_order_erp_id
+      - work_order_status
     CoreBulkCreateError:
       type: object
       properties:

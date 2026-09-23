@@ -1670,6 +1670,8 @@ export type Core = {
      */
   FulfilmentModeEnum | undefined;
   returns_to_customer: boolean;
+  work_order_erp_id: string | null;
+  work_order_status: string | null;
   /**
      * Overall condition grade assigned at receipt
     
@@ -17067,6 +17069,8 @@ const Core = z.object({
   source_reference: z.string().max(100).optional(),
   fulfilment_mode: FulfilmentModeEnum.optional(),
   returns_to_customer: z.boolean(),
+  work_order_erp_id: z.string().nullable(),
+  work_order_status: z.string().nullable(),
   condition_grade: ConditionGradeEnum,
   condition_notes: z.string().optional(),
   status: CoreStatusEnum.optional(),
