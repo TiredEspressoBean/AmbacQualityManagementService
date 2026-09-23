@@ -340,7 +340,23 @@ export function useOperatorHours(start: string, end: string) {
 /** Sourcing & production requirements — what open demand needs bought (source) or built
  *  (produce), plus tooling not on hand, with lead-time-driven order-by dates. */
 export type RecoverableSource = {
-  core_type: string; cores: number; per_core: number; quantity: number;
+  core_type: string; core_type_id: string; cores: number; per_core: number;
+  quantity: number;
+};
+/** One core type's share of a teardown proposal. */
+export type RecoverCorePlan = {
+  core_type: string; cores_to_tear_down: number; per_core: number;
+  cores_available: number; lead_time_days: number | null;
+};
+/** The forecast turned into a schedulable action: tear down N cores of which type,
+ *  starting by when, covering this much of the shortfall and leaving that much to buy.
+ *  It PROPOSES — accepting it raises the teardown work order through the normal path,
+ *  because tearing a unit down commits physical cores and has no cheap undo. */
+export type RecoverRow = {
+  component: string; qty_short: number;
+  covered_by_teardown: number; still_to_buy: number;
+  need_by: string | null; start_by: string | null;
+  cores: RecoverCorePlan[];
 };
 export type SourceRow = {
   material: string; qty_short: number; need_by: string; lead_time_days: number | null;
@@ -364,6 +380,7 @@ export const requirementsOptions = () =>
     queryFn: () =>
       api.api_Schedules_requirements_retrieve() as Promise<{
         source: SourceRow[]; produce: ProduceRow[]; tooling: ToolingRow[];
+        recover?: RecoverRow[];
       }>,
   });
 

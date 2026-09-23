@@ -290,6 +290,15 @@ def sourcing_requirements(tenant) -> dict:
             supply = recoverable_supply(pt, tenant=tenant)
             if supply.quantity > 0:
                 recoverable[('PART_TYPE', pt.id)] = supply
+    # Core types keyed by string id, so the recover lane can reach each one's authored
+    # teardown duration without a query per row.
+    from Tracker.services.reman.recovery import teardown_lead_days
+    core_types: dict = {}
+    if recoverable:
+        from Tracker.models import PartTypes as _PT
+        ct_ids = {src['core_type_id'] for sup in recoverable.values() for src in sup.sources}
+        for ct in _PT.objects.filter(tenant=tenant, id__in=list(ct_ids), archived=False):
+            core_types[str(ct.id)] = ct
 
     source = []
     for k, qty in demand.items():
@@ -317,8 +326,76 @@ def sourcing_requirements(tenant) -> dict:
             # forecast cannot judge whether to trust it, and an untrusted number is
             # just noise on the sheet.
             'recoverable_sources': recoverable[k].sources if k in recoverable else [],
+            # Internal join key for the recover lane below; popped before returning.
+            '_id': k[1] if k[0] == 'PART_TYPE' else None,
         })
     source.sort(key=lambda r: (r['order_by'] or r['need_by']))
+
+    # --- recover: turn the forecast into a schedulable action ------------------
+    # The `recoverable` column says the bank COULD yield 8. This says what to do about
+    # it: tear down N cores of which type, starting by when, covering this much of the
+    # shortfall and leaving that much to buy. That is the difference between a capacity
+    # statement and a plan.
+    #
+    # It PROPOSES; it does not raise the work order. Creating a teardown WO commits
+    # physical cores out of the bank on the strength of a forecast, and unlike a MAKE
+    # child WO there is no cheap undo — the unit is in pieces. So the lane is a
+    # proposal a planner accepts through the normal work-order path. Nothing here
+    # prevents auto-raising later; raising it now would prevent NOT auto-raising.
+    recover = []
+    for row in source:
+        k = ('PART_TYPE', row.get('_id'))
+        supply = recoverable.get(k)
+        if supply is None:
+            continue
+        short = float(row['qty_short'])
+        covered = min(short, float(supply.quantity))
+        if covered <= 0:
+            continue
+
+        # Allocate the shortfall across the core types that yield it, greedily. A core
+        # is a physical unit: you tear down whole ones, so the count rounds UP.
+        remaining = short
+        plan = []
+        lead_known = True
+        worst_lead = 0
+        for src in supply.sources:
+            if remaining <= 0:
+                break
+            per_core = float(src['per_core'])
+            if per_core <= 0:
+                continue
+            want = min(int(-(-remaining // per_core)), int(src['cores']))
+            if want <= 0:
+                continue
+            lead = teardown_lead_days(core_types.get(src['core_type_id']), tenant=tenant)                 if src['core_type_id'] in core_types else None
+            if lead is None:
+                lead_known = False
+            else:
+                worst_lead = max(worst_lead, lead)
+            plan.append({
+                'core_type': src['core_type'],
+                'cores_to_tear_down': want,
+                'per_core': per_core,
+                'cores_available': int(src['cores']),
+                'lead_time_days': lead,
+            })
+            remaining -= want * per_core
+
+        nb = row['need_by']
+        recover.append({
+            'component': row['material'],
+            'qty_short': row['qty_short'],
+            'covered_by_teardown': covered,
+            'still_to_buy': max(0.0, short - covered),
+            'need_by': nb,
+            # Omitted when any contributing core type has no authored teardown
+            # duration. A made-up lead time is worse than none — it reads as authored
+            # fact on the sheet and a planner schedules against it.
+            'start_by': order_by(nb, worst_lead) if (lead_known and nb) else None,
+            'cores': plan,
+        })
+    recover.sort(key=lambda r: (r['start_by'] or r['need_by']))
 
     # --- produce: open pegged child work orders (MAKE) -----------------------
     produce = []
@@ -349,4 +426,7 @@ def sourcing_requirements(tenant) -> dict:
             'order_by': order_by(h_date, lead),
         })
 
-    return {'source': source, 'produce': produce, 'tooling': tooling}
+    for row in source:
+        row.pop('_id', None)
+    return {'source': source, 'produce': produce, 'tooling': tooling,
+            'recover': recover}

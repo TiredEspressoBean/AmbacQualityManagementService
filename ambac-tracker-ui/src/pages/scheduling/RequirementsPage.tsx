@@ -46,6 +46,7 @@ export function RequirementsPage() {
   const source = data?.source ?? [];
   const produce = data?.produce ?? [];
   const tooling = data?.tooling ?? [];
+  const recover = data?.recover ?? [];
 
   const exportCsv = () =>
     downloadCsv(
@@ -57,6 +58,10 @@ export function RequirementsPage() {
            (r.recoverable ?? 0) > 0
              ? `recoverable ${r.recoverable} from ${r.recoverable_cores} cores`
              : ""].filter(Boolean).join("; ")]),
+        ...recover.map((r) => ["Recover", r.component,
+          r.cores.map((c) => `${c.cores_to_tear_down} x ${c.core_type}`).join(" + "),
+          r.covered_by_teardown, r.need_by ?? "", r.start_by ?? "",
+          `still to buy ${r.still_to_buy}`]),
         ...produce.map((r) => ["Produce", r.component, r.work_order, r.qty, r.need_by ?? "", "", r.status]),
         ...tooling.map((r) => ["Tooling", r.fixture, r.kind, "", "", r.order_by ?? "", ""]),
       ]
@@ -148,6 +153,66 @@ export function RequirementsPage() {
               </td>
               <td className="p-3 text-muted-foreground">
                 {r.incoming_date ? `due ${fmt(r.incoming_date)}` : "none"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Section>
+
+      {/* The forecast turned into an action. Placed between Source and Produce because
+          that is the order the decision is made in: the buy list says a line is short,
+          this says how much of it the core bank could cover instead. */}
+      <Section
+        title="Recover (tear down)"
+        subtitle="Teardown proposed to cover a shortfall. Accept one by raising the teardown work order — nothing here commits a core on its own."
+        empty={recover.length === 0}
+        count={recover.length}
+      >
+        <thead>
+          <tr className="border-b bg-muted/40 text-left text-muted-foreground">
+            <th className="p-3 font-medium">Component</th>
+            <th className="p-3 text-right font-medium">Short</th>
+            <th className="p-3 font-medium">Tear down</th>
+            <th className="p-3 text-right font-medium">Covers</th>
+            <th className="p-3 text-right font-medium">Still to buy</th>
+            <th className="p-3 font-medium">Start by</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recover.map((r, i) => (
+            <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+              <td className="p-3 font-medium">{r.component}</td>
+              <td className="p-3 text-right tabular-nums">{r.qty_short}</td>
+              <td className="p-3">
+                {r.cores.map((c, j) => (
+                  <div key={j}>
+                    {c.cores_to_tear_down} × {c.core_type}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({c.cores_available} in bank, {c.per_core} each)
+                    </span>
+                  </div>
+                ))}
+              </td>
+              <td className="p-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                {r.covered_by_teardown}
+              </td>
+              <td className="p-3 text-right tabular-nums">{r.still_to_buy}</td>
+              <td className={cn("p-3", isLate(r.start_by) && "font-medium text-destructive")}>
+                {r.start_by ? (
+                  <>
+                    {fmt(r.start_by)}
+                    {isLate(r.start_by) && (
+                      <Badge variant="destructive" className="ml-2">start now</Badge>
+                    )}
+                  </>
+                ) : (
+                  // No authored teardown duration. Saying "—" is the honest answer; a
+                  // computed-looking date the shop never authored would be scheduled
+                  // against as if it were fact.
+                  <span className="text-muted-foreground" title="No teardown duration authored for this core type.">
+                    —
+                  </span>
+                )}
               </td>
             </tr>
           ))}

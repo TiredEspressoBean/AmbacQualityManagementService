@@ -430,6 +430,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "recoverable_sources": inline_serializer(
                     name="RecoverableSource", many=True, fields={
                         "core_type": serializers.CharField(),
+                        "core_type_id": serializers.CharField(),
                         "cores": serializers.IntegerField(),
                         "per_core": serializers.FloatField(),
                         "quantity": serializers.FloatField(),
@@ -441,6 +442,27 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "qty": serializers.IntegerField(),
                 "need_by": serializers.DateField(allow_null=True),
                 "status": serializers.CharField(),
+            }),
+            # The forecast turned into a schedulable action: tear down N cores of
+            # which type, starting by when. It PROPOSES — creating the teardown work
+            # order commits physical cores out of the bank on a forecast, and unlike a
+            # MAKE child WO there is no cheap undo once the unit is in pieces.
+            "recover": inline_serializer(name="RecoverRequirement", many=True, fields={
+                "component": serializers.CharField(),
+                "qty_short": serializers.IntegerField(),
+                "covered_by_teardown": serializers.FloatField(),
+                "still_to_buy": serializers.FloatField(),
+                "need_by": serializers.DateField(allow_null=True),
+                # Null when any contributing core type has no authored teardown
+                # duration. A made-up lead time reads as authored fact on the sheet.
+                "start_by": serializers.DateField(allow_null=True),
+                "cores": inline_serializer(name="RecoverCorePlan", many=True, fields={
+                    "core_type": serializers.CharField(),
+                    "cores_to_tear_down": serializers.IntegerField(),
+                    "per_core": serializers.FloatField(),
+                    "cores_available": serializers.IntegerField(),
+                    "lead_time_days": serializers.IntegerField(allow_null=True),
+                }),
             }),
             "tooling": inline_serializer(name="ToolingRequirement", many=True, fields={
                 "fixture": serializers.CharField(),

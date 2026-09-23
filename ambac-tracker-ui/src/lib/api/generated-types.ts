@@ -27698,8 +27698,30 @@ export interface components {
         RecordUnitsRequestRequest: {
             units: components["schemas"]["ReceivingSampleUnitRequest"][];
         };
+        RecoverCorePlan: {
+            core_type: string;
+            cores_to_tear_down: number;
+            /** Format: double */
+            per_core: number;
+            cores_available: number;
+            lead_time_days: number | null;
+        };
+        RecoverRequirement: {
+            component: string;
+            qty_short: number;
+            /** Format: double */
+            covered_by_teardown: number;
+            /** Format: double */
+            still_to_buy: number;
+            /** Format: date */
+            need_by: string | null;
+            /** Format: date */
+            start_by: string | null;
+            cores: components["schemas"]["RecoverCorePlan"][];
+        };
         RecoverableSource: {
             core_type: string;
+            core_type_id: string;
             cores: number;
             /** Format: double */
             per_core: number;
@@ -29056,6 +29078,7 @@ export interface components {
         SourcingRequirements: {
             source: components["schemas"]["SourceRequirement"][];
             produce: components["schemas"]["ProduceRequirement"][];
+            recover: components["schemas"]["RecoverRequirement"][];
             tooling: components["schemas"]["ToolingRequirement"][];
         };
         /**

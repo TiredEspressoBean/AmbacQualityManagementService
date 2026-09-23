@@ -204,16 +204,11 @@ class MaterialGateSeesBoughtPartsTests(_BuyPartTypeFixture):
         self.assertFalse([k for k in short if k[0] == wo.id])
 
 
-class SourcingShowsTheRecoverableLaneTests(_BuyPartTypeFixture):
-    """Material planning counts stock and purchase orders and has no idea teardown is
-    about to PRODUCE the component it is calling short — so a planner buys parts the
-    shop was going to harvest.
+class _RecoverableFixture(_BuyPartTypeFixture):
+    """A recoverable housing, a core type that yields it, and two cores in the bank.
 
-    The lane REPORTS; it does not net. Recoverable supply is a forecast (teardown has
-    not happened); on-hand and on-order are facts. Subtracting it from `qty_short`
-    would let a planner skip an order on stock that does not exist yet, and the error
-    is asymmetric: over-counting future supply stops a line, under-counting only buys
-    a part you could have harvested.
+    Separate from the assertions so the later classes inherit the SETUP only —
+    subclassing a TestCase that carries tests re-runs every one of them.
     """
 
     def setUp(self):
@@ -239,6 +234,19 @@ class SourcingShowsTheRecoverableLaneTests(_BuyPartTypeFixture):
                 if r['material'] == "Housing"]
         self.assertEqual(len(rows), 1)
         return rows[0]
+
+
+class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
+    """Material planning counts stock and purchase orders and has no idea teardown is
+    about to PRODUCE the component it is calling short — so a planner buys parts the
+    shop was going to harvest.
+
+    The lane REPORTS; it does not net. Recoverable supply is a forecast (teardown has
+    not happened); on-hand and on-order are facts. Subtracting it from `qty_short`
+    would let a planner skip an order on stock that does not exist yet, and the error
+    is asymmetric: over-counting future supply stops a line, under-counting only buys
+    a part you could have harvested.
+    """
 
     def test_the_bank_shows_up_beside_the_shortfall(self):
         self._work_order(qty=5, start=date.today() + timedelta(days=60))
@@ -292,3 +300,128 @@ class SourcingShowsTheRecoverableLaneTests(_BuyPartTypeFixture):
         Core.objects.filter(tenant=self.tenant).update(fulfilment_mode="REPAIR_RETURN")
         self._work_order(qty=5, start=date.today() + timedelta(days=60))
         self.assertEqual(self._housing_row()['recoverable'], 0.0)
+
+
+class RecoverLaneProposesTeardownTests(_RecoverableFixture):
+    """The `recoverable` column says the bank COULD yield 2. This lane says what to do
+    about it: tear down N cores of which type, starting by when, covering this much of
+    the shortfall and leaving that much to buy.
+
+    It PROPOSES and does not raise the work order. Creating a teardown WO commits
+    physical cores out of the bank on the strength of a forecast, and unlike a MAKE
+    child WO there is no cheap undo — the unit is in pieces.
+    """
+
+    def _recover_row(self):
+        rows = [r for r in sourcing_requirements(self.tenant)['recover']
+                if r['component'] == "Housing"]
+        self.assertEqual(len(rows), 1)
+        return rows[0]
+
+    def test_it_says_how_many_cores_to_tear_down(self):
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        row = self._recover_row()
+        plan = row['cores'][0]
+        self.assertEqual(plan['core_type'], "Core Injector")
+        # 5 short at 1 usable housing per core would want 5 cores; only 2 are in the
+        # bank, so the proposal is capped at what actually exists.
+        self.assertEqual(plan['cores_to_tear_down'], 2)
+        self.assertEqual(plan['cores_available'], 2)
+
+    def test_it_splits_the_shortfall_into_teardown_and_buy(self):
+        """The planner's actual decision. Teardown covers part of it; the rest is a
+        purchase, and the sheet has to say which is which or it is not actionable."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        row = self._recover_row()
+        self.assertEqual(row['covered_by_teardown'], 2.0)
+        self.assertEqual(row['still_to_buy'], 3.0)
+        self.assertEqual(row['qty_short'], 5)
+
+    def test_no_authored_teardown_duration_means_no_start_by_date(self):
+        """A made-up lead time is worse than none: it reads as authored fact on the
+        sheet and a planner schedules against it. This fixture authors no disassembly
+        process, so the date must be absent rather than guessed."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        row = self._recover_row()
+        self.assertIsNone(row['start_by'])
+        self.assertIsNone(row['cores'][0]['lead_time_days'])
+
+    def test_a_component_the_bank_cannot_yield_raises_no_proposal(self):
+        self.housing.can_recover = False
+        self.housing.save(update_fields=["can_recover"])
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self.assertEqual(
+            [r for r in sourcing_requirements(self.tenant)['recover']
+             if r['component'] == "Housing"], [])
+
+    def test_a_covered_component_raises_no_proposal(self):
+        """No shortfall, no source row, so nothing to propose tearing down for. The
+        lane follows demand, not the contents of the bank."""
+        self._lot(10)                                  # fully covered
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self.assertEqual(sourcing_requirements(self.tenant)['recover'], [])
+
+    def test_the_internal_join_key_does_not_leak_to_the_client(self):
+        """The source rows carry a private key so the recover lane can join back to
+        them. It is not part of the published contract."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        for row in sourcing_requirements(self.tenant)['source']:
+            self.assertNotIn('_id', row)
+
+
+class TeardownLeadTimeTests(_RecoverableFixture):
+    """Teardown lead time is summed from the disassembly process's authored step
+    durations — the same numbers scheduling plans against, so the planning sheet and
+    the board cannot disagree about how long a teardown takes."""
+
+    def setUp(self):
+        super().setUp()
+        from datetime import timedelta as _td
+        from Tracker.models import ProcessStep, Steps
+
+        self.dis_proc = Processes.objects.create(
+            tenant=self.tenant, name="Teardown", part_type=self.core_type,
+            status="APPROVED", is_current_version=True, is_disassembly=True)
+        for i, hours in enumerate((10, 14), start=1):
+            step = Steps.objects.create(
+                tenant=self.tenant, name=f"Teardown {i}", part_type=self.core_type,
+                expected_duration=_td(hours=hours))
+            # ProcessStep carries no tenant of its own — it is scoped by its process.
+            ProcessStep.objects.create(process=self.dis_proc, step=step, order=i)
+
+    def test_lead_time_is_the_sum_of_authored_step_durations(self):
+        from Tracker.services.reman.recovery import teardown_lead_days
+        # 10h + 14h = 24h = 1 day.
+        self.assertEqual(teardown_lead_days(self.core_type, tenant=self.tenant), 1)
+
+    def test_a_part_day_still_occupies_a_whole_day(self):
+        """Rounding down would quietly promise the components a day earlier than the
+        shop can produce them."""
+        from datetime import timedelta as _td
+        from Tracker.services.reman.recovery import teardown_lead_days
+        from Tracker.models import Steps
+        Steps.objects.filter(tenant=self.tenant, name="Teardown 2").update(
+            expected_duration=_td(hours=1))
+        self.assertEqual(teardown_lead_days(self.core_type, tenant=self.tenant), 1)
+
+    def test_the_proposal_carries_a_start_by_date(self):
+        need = date.today() + timedelta(days=60)
+        self._work_order(qty=5, start=need)
+        row = [r for r in sourcing_requirements(self.tenant)['recover']
+               if r['component'] == "Housing"][0]
+        self.assertEqual(row['cores'][0]['lead_time_days'], 1)
+        self.assertEqual(row['start_by'], need - timedelta(days=1))
+
+    def test_an_unauthored_process_yields_no_lead_time(self):
+        from Tracker.services.reman.recovery import teardown_lead_days
+        other = PartTypes.objects.create(tenant=self.tenant, name="Untorn")
+        self.assertIsNone(teardown_lead_days(other, tenant=self.tenant))
+
+    def test_a_process_with_no_durations_yields_no_lead_time(self):
+        """Authored steps with blank durations are not a zero-day teardown — they are
+        an unanswered question, and the sheet says so by omitting the date."""
+        from Tracker.services.reman.recovery import teardown_lead_days
+        from Tracker.models import Steps
+        Steps.objects.filter(tenant=self.tenant, part_type=self.core_type).update(
+            expected_duration=None)
+        self.assertIsNone(teardown_lead_days(self.core_type, tenant=self.tenant))

@@ -13650,6 +13650,22 @@ export type PickedLotRequest = {
 export type RecordUnitsRequestRequest = {
   units: Array<ReceivingSampleUnitRequest>;
 };
+export type RecoverRequirement = {
+  component: string;
+  qty_short: number;
+  covered_by_teardown: number;
+  still_to_buy: number;
+  need_by: string | null;
+  start_by: string | null;
+  cores: Array<RecoverCorePlan>;
+};
+export type RecoverCorePlan = {
+  core_type: string;
+  cores_to_tear_down: number;
+  per_core: number;
+  cores_available: number;
+  lead_time_days: number | null;
+};
 export type ReleaseQueue = {
   release_mode: string;
   count: number;
@@ -14445,6 +14461,7 @@ export type SourceRequirement = {
 };
 export type RecoverableSource = {
   core_type: string;
+  core_type_id: string;
   cores: number;
   per_core: number;
   quantity: number;
@@ -14452,6 +14469,7 @@ export type RecoverableSource = {
 export type SourcingRequirements = {
   source: Array<SourceRequirement>;
   produce: Array<ProduceRequirement>;
+  recover: Array<RecoverRequirement>;
   tooling: Array<ToolingRequirement>;
 };
 export type ProduceRequirement = {
@@ -20887,6 +20905,7 @@ const PlanWorkOrderInputRequest = z.object({
 });
 const RecoverableSource = z.object({
   core_type: z.string(),
+  core_type_id: z.string(),
   cores: z.number().int(),
   per_core: z.number(),
   quantity: z.number(),
@@ -20911,6 +20930,22 @@ const ProduceRequirement = z.object({
   need_by: z.string().nullable(),
   status: z.string(),
 });
+const RecoverCorePlan = z.object({
+  core_type: z.string(),
+  cores_to_tear_down: z.number().int(),
+  per_core: z.number(),
+  cores_available: z.number().int(),
+  lead_time_days: z.number().int().nullable(),
+});
+const RecoverRequirement = z.object({
+  component: z.string(),
+  qty_short: z.number().int(),
+  covered_by_teardown: z.number(),
+  still_to_buy: z.number(),
+  need_by: z.string().nullable(),
+  start_by: z.string().nullable(),
+  cores: z.array(RecoverCorePlan),
+});
 const ToolingRequirement = z.object({
   fixture: z.string(),
   kind: z.string(),
@@ -20921,6 +20956,7 @@ const ToolingRequirement = z.object({
 const SourcingRequirements = z.object({
   source: z.array(SourceRequirement),
   produce: z.array(ProduceRequirement),
+  recover: z.array(RecoverRequirement),
   tooling: z.array(ToolingRequirement),
 });
 const UnscheduledWorkOrder = z.object({
@@ -25459,6 +25495,8 @@ export const schemas = {
   RecoverableSource,
   SourceRequirement,
   ProduceRequirement,
+  RecoverCorePlan,
+  RecoverRequirement,
   ToolingRequirement,
   SourcingRequirements,
   UnscheduledWorkOrder,

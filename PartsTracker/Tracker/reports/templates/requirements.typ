@@ -78,6 +78,28 @@
   ]
 ]
 
+// ── RECOVER (tear down) ────────────────────────────────────────────────────────
+// Between Source and Produce because that is the order the decision is made in: the
+// buy list says a line is short, this says how much the core bank could cover instead.
+// A PROPOSAL — nothing here commits a core.
+#let rec-cols = (1.8fr, 0.6fr, 2.2fr, 0.7fr, 0.8fr, 1fr)
+#section-header("Recover — teardown proposed to cover a shortfall", data.recover.len())
+#hrow(rec-cols, (hcell[Component], hcell(a: right)[Short], hcell[Tear down], hcell(a: right)[Covers], hcell(a: right)[Buy], hcell[Start by]))
+#if data.recover.len() == 0 [ #drow(0, (1fr,), (text(fill: muted, style: "italic")[Nothing to recover.],)) ] else [
+  #for (idx, r) in data.recover.enumerate() [
+    #drow(idx, rec-cols, (
+      align(horizon)[#text(font: sans-font)[#r.component]],
+      align(horizon + right)[#text(font: mono-font)[#r.qty_short]],
+      align(horizon)[#for c in r.cores [
+        #text(font: sans-font)[#c.cores_to_tear_down × #c.core_type]
+        #text(size: 7pt, fill: muted)[ (#c.cores_available in bank)]       ]],
+      align(horizon + right)[#text(font: mono-font)[#r.covered_by_teardown]],
+      align(horizon + right)[#text(font: mono-font)[#r.still_to_buy]],
+      align(horizon)[#if r.start_by == none [#text(fill: muted)[—]] else [#date-cell(r.start_by)]],
+    ))
+  ]
+]
+
 // ── PRODUCE (build) ────────────────────────────────────────────────────────────
 #let prod-cols = (1.5fr, 1.8fr, 0.6fr, 1fr, 1.1fr)
 #section-header("Produce — in-house components to build", data.produce.len())

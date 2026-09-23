@@ -21,6 +21,7 @@ someone else's job.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 from decimal import Decimal
 
 
@@ -102,6 +103,9 @@ def recoverable_supply(component_type, tenant=None) -> RecoverableSupply:
         cores_counted += len(available)
         sources.append({
             'core_type': line.core_type.name,
+            # Carried so a planner-facing lane can reach the core type's own teardown
+            # lead time without re-deriving which types yielded the number.
+            'core_type_id': str(line.core_type_id),
             'cores': len(available),
             'per_core': float(per_core),
             'quantity': float(qty),
@@ -113,3 +117,43 @@ def recoverable_supply(component_type, tenant=None) -> RecoverableSupply:
         core_count=cores_counted,
         sources=sources,
     )
+
+
+def teardown_lead_days(core_type, tenant=None) -> int | None:
+    """Working days from starting a teardown to having the components in hand.
+
+    Summed from the disassembly process's authored step durations — the same numbers
+    scheduling already plans against, so the planning sheet and the board cannot
+    disagree about how long a teardown takes.
+
+    Returns None when the process is unauthored or carries no durations, and the
+    caller then omits a start-by date rather than inventing one. A made-up lead time
+    is worse than none: it reads as authored fact on the sheet and a planner schedules
+    against it.
+    """
+    from Tracker.models import Processes, ProcessStep
+
+    proc = Processes.objects.filter(  # tenant-safe: .objects auto-scopes; `tenant` narrows further when passed
+        part_type=core_type, is_disassembly=True, is_current_version=True,
+        archived=False,
+    )
+    if tenant is not None:
+        proc = proc.filter(tenant=tenant)
+    proc = proc.first()
+    if proc is None:
+        return None
+
+    total = timedelta()
+    found = False
+    for ps in (ProcessStep.objects.filter(process=proc)  # tenant-safe: scoped by `process` FK
+               .select_related('step')):
+        d = getattr(ps.step, 'expected_duration', None)
+        if d:
+            total += d
+            found = True
+    if not found:
+        return None
+    # Round UP to a whole day. Half a day of teardown still occupies a day on a
+    # planner's calendar, and rounding down would quietly promise the components a day
+    # earlier than the shop can produce them.
+    return max(1, -(-int(total.total_seconds()) // 86400))

@@ -29,6 +29,27 @@ class SourceRow(BaseModel):
     recoverable_cores: int = 0
 
 
+class RecoverCorePlan(BaseModel):
+    core_type: str
+    cores_to_tear_down: int
+    per_core: float
+    cores_available: int
+    lead_time_days: Optional[int] = None
+
+
+class RecoverRow(BaseModel):
+    """The forecast turned into a schedulable action. A PROPOSAL — accepting it raises
+    the teardown work order through the normal path."""
+    component: str
+    qty_short: int
+    covered_by_teardown: float
+    still_to_buy: float
+    need_by: Optional[datetime.date] = None
+    #: Absent when no contributing core type has an authored teardown duration.
+    start_by: Optional[datetime.date] = None
+    cores: list[RecoverCorePlan] = Field(default_factory=list)
+
+
 class ProduceRow(BaseModel):
     work_order: str
     component: str
@@ -49,6 +70,7 @@ class RequirementsContext(BaseModel):
     generated_date: datetime.date
     tenant_name: str
     source: list[SourceRow] = Field(default_factory=list)
+    recover: list[RecoverRow] = Field(default_factory=list)
     produce: list[ProduceRow] = Field(default_factory=list)
     tooling: list[ToolingRow] = Field(default_factory=list)
 
@@ -80,6 +102,7 @@ class RequirementsAdapter(ReportAdapter):
             generated_date=datetime.date.today(),
             tenant_name=tenant.name,
             source=[SourceRow(**r) for r in req["source"]],
+            recover=[RecoverRow(**r) for r in req.get("recover", [])],
             produce=[ProduceRow(**r) for r in req["produce"]],
             tooling=[ToolingRow(**r) for r in req["tooling"]],
         )

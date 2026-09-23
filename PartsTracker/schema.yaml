@@ -61462,10 +61462,66 @@ components:
             $ref: '#/components/schemas/ReceivingSampleUnitRequest'
       required:
       - units
+    RecoverCorePlan:
+      type: object
+      properties:
+        core_type:
+          type: string
+        cores_to_tear_down:
+          type: integer
+        per_core:
+          type: number
+          format: double
+        cores_available:
+          type: integer
+        lead_time_days:
+          type: integer
+          nullable: true
+      required:
+      - core_type
+      - cores_available
+      - cores_to_tear_down
+      - lead_time_days
+      - per_core
+    RecoverRequirement:
+      type: object
+      properties:
+        component:
+          type: string
+        qty_short:
+          type: integer
+        covered_by_teardown:
+          type: number
+          format: double
+        still_to_buy:
+          type: number
+          format: double
+        need_by:
+          type: string
+          format: date
+          nullable: true
+        start_by:
+          type: string
+          format: date
+          nullable: true
+        cores:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoverCorePlan'
+      required:
+      - component
+      - cores
+      - covered_by_teardown
+      - need_by
+      - qty_short
+      - start_by
+      - still_to_buy
     RecoverableSource:
       type: object
       properties:
         core_type:
+          type: string
+        core_type_id:
           type: string
         cores:
           type: integer
@@ -61477,6 +61533,7 @@ components:
           format: double
       required:
       - core_type
+      - core_type_id
       - cores
       - per_core
       - quantity
@@ -64179,12 +64236,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProduceRequirement'
+        recover:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoverRequirement'
         tooling:
           type: array
           items:
             $ref: '#/components/schemas/ToolingRequirement'
       required:
       - produce
+      - recover
       - source
       - tooling
     SplitReasonEnum:

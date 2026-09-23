@@ -882,8 +882,31 @@ items and the whole loop look bigger than it is.
     caller never passed, so a report generated from a task cannot be the thing that
     discovers it.
 
-    Raising teardown as planned supply — the active half, where MRP schedules teardown
-    to meet component demand — is still not built.
+    **The active half is now shipped, as a PROPOSAL.** A `recover` lane sits between
+    Source and Produce — the order the decision is actually made in: the buy list says
+    a line is short, the recover lane says how much of it the core bank could cover
+    instead. Per component it gives the teardown count by core type (capped at what is
+    physically in the bank), how much that covers, how much is still a purchase, and a
+    start-by date.
+
+    It proposes; it does not raise the work order. Creating a teardown WO commits
+    physical cores out of the bank on the strength of a forecast, and unlike a MAKE
+    child WO there is no cheap undo — the unit is in pieces. So a planner accepts a
+    line through the normal work-order path. Note which way this cuts: **nothing here
+    prevents auto-raising later, whereas auto-raising now would prevent NOT
+    auto-raising.** That asymmetry is the whole reason for the choice, not caution.
+
+    Teardown lead time is summed from the disassembly process's authored step
+    durations — the same numbers scheduling plans against, so the sheet and the board
+    cannot disagree about how long a teardown takes. When a core type has no authored
+    duration the start-by date is OMITTED rather than defaulted: a made-up lead time
+    reads as authored fact on the sheet and a planner schedules against it. Steps with
+    blank durations are an unanswered question, not a zero-day teardown.
+
+    What is still not built is the part that needs volume to mean anything: nothing
+    reconciles the authored `expected_fallout_rate` against actual recorded yield, and
+    the lane is noise below real throughput. Both were already flagged above and
+    neither is a code gap.
 
 **Scope boundary for planning.** UQMES plans from what it can SEE AND CONTROL: cores in
 the building, work on the board, yield it recorded itself. It does not predict what has
