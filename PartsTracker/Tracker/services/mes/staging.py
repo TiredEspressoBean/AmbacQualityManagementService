@@ -48,6 +48,9 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     tasks = (ScheduledTask.objects.filter(
                 schedule=schedule, start_time__lt=until, end_time__gt=now)
              .select_related('part__part_type', 'part__work_order',
+                             # A rebuild's subject is a core, so its type and work order
+                             # are read on the same pass rather than one query per task.
+                             'core__core_type', 'core__work_order',
                              'step__work_center', 'machine')
              .order_by('start_time'))
     if work_center_id:
@@ -57,11 +60,26 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     # collapse to (work order, step) and count the units that land there.
     jobs: dict = {}
     for t in tasks:
-        if t.part_id is None or t.step is None or t.step.work_center_id is None:
-            continue                      # cores and unstationed steps aren't staged
+        if t.step is None or t.step.work_center_id is None:
+            continue                      # unstationed steps aren't staged
         if t.step.is_outside_process:
             continue                      # goes to a vendor, not to a bench
-        wo = t.part.work_order
+
+        # A rebuild's subject is a CORE, not a part. This used to skip them outright —
+        # "cores aren't staged" — which meant a bench rebuilding a customer's unit got
+        # no kit list at all, for the one job where getting the kit wrong is least
+        # recoverable.
+        subject_core = t.core if t.core_id else None
+        if t.part_id is not None:
+            wo = t.part.work_order
+            part_type_id = t.part.part_type_id
+            part_type_name = t.part.part_type.name if t.part.part_type else None
+        elif subject_core is not None:
+            wo = subject_core.work_order
+            part_type_id = subject_core.core_type_id
+            part_type_name = subject_core.core_type.name if subject_core.core_type else None
+        else:
+            continue
         if wo is None:
             continue
         key = (wo.id, t.step_id)
@@ -69,13 +87,16 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         if job is None:
             job = jobs[key] = {
                 'work_order_id': str(wo.id), 'erp_id': wo.ERP_id,
-                'part_type': t.part.part_type.name if t.part.part_type else None,
+                'part_type': part_type_name,
                 'step_id': str(t.step_id), 'step_name': t.step.name,
                 'work_center_id': str(t.step.work_center_id),
                 'work_center': t.step.work_center.name,
                 'starts_at': t.start_time, 'units': 0,
                 'machine': t.machine.name if t.machine else None,
-                '_part_type_id': t.part.part_type_id,
+                '_part_type_id': part_type_id,
+                # A rebuild supplies some of its own kit from what came out of it, so
+                # the pick list has to say which lines NOT to pull.
+                '_is_reman': subject_core is not None,
             }
         job['units'] += 1
         job['starts_at'] = min(job['starts_at'], t.start_time)
@@ -114,8 +135,10 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     unmapped: dict = {}
     for job in sorted(jobs.values(), key=lambda j: j['starts_at']):
         pt_id = job.pop('_part_type_id')
+        is_reman = job.pop('_is_reman', False)
         job['materials'] = _materials_for(pt_id, job['step_id'], job['units'],
-                                          onhand, bom_cache, tenant)
+                                          onhand, bom_cache, tenant,
+                                          is_reman=is_reman)
         job['fixtures'] = sorted(fixtures.get(job['step_id'], ()))
         job['short_count'] = sum(1 for m in job['materials'] if m['short'] > 0)
         stations[(job['work_center_id'], job['work_center'])].append(job)
@@ -169,14 +192,14 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
 
 
 def _materials_for(part_type_id, step_id, units: int, onhand: dict,
-                   bom_cache: dict, tenant) -> list:
+                   bom_cache: dict, tenant, is_reman: bool = False) -> list:
     """BOM lines consumed at this step, scaled to the units landing here.
 
     Scaled to the UNITS AT THIS STATION, not the work order's quantity — a lot that
     arrives in two batches shouldn't have its whole order's material staged for the
     first one.
     """
-    from Tracker.services.mes.bom import buy_line_item
+    from Tracker.services.mes.bom import buy_line_item, line_allows_recovery
     from Tracker.services.mes.consumption import _released_bom_lines, plan_draw
 
     out = []
@@ -192,8 +215,29 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
         if item is None:
             continue
         needed = Decimal(str(line.quantity)) * units
+
+        # A reman job supplies recoverable components from its own teardown, and
+        # `consume_for_step` skips those lines. Listing them as picks would have the
+        # picker pulling a new part that is then never issued — the pick list and the
+        # issue disagreeing about the same line. Shown, flagged, and not counted short.
+        from_teardown = is_reman and line_allows_recovery(line)
+        if from_teardown:
+            out.append({
+                'kind': item.kind,
+                'material_id': str(item.id),
+                'material': item.name,
+                'needed': float(needed),
+                'on_hand': float(onhand.get(item.key, Decimal('0'))),
+                'short': 0.0,
+                'optional': bool(line.is_optional),
+                'from_teardown': True,
+                'lots': [],
+            })
+            continue
+
         have = onhand.get(item.key, Decimal('0'))
         out.append({
+            'from_teardown': False,
             # Confirming a pick has to name the subject, not just show it. `kind` rides
             # along so the client can echo back which of the two FKs to write —
             # a Material and a PartTypes can share a uuid space.

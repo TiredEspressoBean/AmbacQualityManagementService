@@ -811,10 +811,21 @@ items and the whole loop look bigger than it is.
    worth doing once a shop has enough codes that authoring a route per scope stops
    scaling. WO grain (§5.2) is a deferred choice, not a prerequisite.
 
-10. **Staging reuse-vs-new** (UI 7) — `MaterialStagingLine.material` is a hard
-    `Material` FK, so a harvested `Parts` cannot be staged. Same root cause as the
-    parked bought-parts-staging item; fixing it once covers both, which is why it is
-    worth doing as its own step rather than folded into step 6.
+10. **Staging reuse-vs-new** (UI 7) — **partly shipped, and the gap was bigger than
+    the FK.** The diagnosis here was that `MaterialStagingLine.material` is a hard
+    `Material` FK so a harvested `Parts` cannot be staged. True, but secondary:
+    `staging_list` SKIPPED core-subject tasks outright — "cores and unstationed steps
+    aren't staged" — so a bench rebuilding a customer's unit got no kit list at all,
+    for the one job where getting the kit wrong is least recoverable.
+
+    Shipped: core-subject tasks now produce staging jobs, and a line a rebuild will
+    satisfy from its own teardown is FLAGGED rather than listed as a pick. Without
+    that the pick list and `consume_for_step` disagreed about the same line — the
+    picker pulls a part that is then never issued.
+
+    Still open, and the original diagnosis: `record_pick` records `picked_lots`, which
+    is lot-shaped, so confirming "this specific harvested nozzle" is still
+    inexpressible. That remains shared with the parked bought-parts-staging item.
 
 11. **RECOVER as a supply lane** — **shipped (reporting half).** The material lane counted
     purchased stock and on-hand, and has no idea teardown is about to PRODUCE the

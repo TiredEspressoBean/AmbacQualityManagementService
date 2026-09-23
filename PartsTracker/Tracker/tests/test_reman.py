@@ -2150,3 +2150,70 @@ class ScopeAwareAdvancementTests(TenantTestCase):
                 break
         self.core.refresh_from_db()
         self.assertEqual(self.core.status, 'REBUILT')
+
+
+class RemanStagingTests(TenantTestCase):
+    """A rebuild's kit list.
+
+    Staging used to skip core-subject tasks outright — "cores aren't staged" — so a
+    bench rebuilding a customer's unit got no kit list at all, for the one job where
+    getting the kit wrong is least recoverable.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import (
+            BOM, BOMLine, Core, Material, PartTypes, Steps, WorkCenter,
+        )
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.rotable = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle', can_recover=True, can_buy=True)
+        self.consumable = Material.objects.create(tenant=self.tenant_a, name='Seal')
+
+        self.wc = WorkCenter.objects.create(tenant=self.tenant_a, name='Bench')
+        self.step = Steps.objects.create(
+            tenant=self.tenant_a, part_type=self.core_type, name='Assemble',
+            work_center=self.wc)
+
+        bom = BOM.objects.create(
+            tenant=self.tenant_a, part_type=self.core_type, revision='A',
+            bom_type='ASSEMBLY', status='RELEASED')
+        BOMLine.objects.create(
+            tenant=self.tenant_a, bom=bom, component_type=self.rotable, quantity=1,
+            source='BUY', consumed_at_step=self.step)
+        BOMLine.objects.create(
+            tenant=self.tenant_a, bom=bom, material=self.consumable, quantity=1,
+            source='BUY', consumed_at_step=self.step)
+
+        self.core = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-STAGE-1', core_type=self.core_type,
+            fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
+            received_date=date.today(), received_by=self.user_a)
+
+    def _rows(self, is_reman):
+        from Tracker.services.mes.staging import _materials_for
+        return _materials_for(
+            self.core_type.id, self.step.id, units=1, onhand={},
+            bom_cache={}, tenant=self.tenant_a, is_reman=is_reman)
+
+    def test_a_recoverable_component_is_not_picked_on_a_reman_job(self):
+        """`consume_for_step` skips recoverable lines on a reman WO. Listing them as
+        picks would have the picker pulling a part that is then never issued — the pick
+        list and the issue disagreeing about the same line."""
+        rows = {r['material']: r for r in self._rows(is_reman=True)}
+        self.assertTrue(rows['Nozzle']['from_teardown'])
+        self.assertEqual(rows['Nozzle']['short'], 0.0)
+        self.assertEqual(rows['Nozzle']['lots'], [])
+
+    def test_consumables_are_still_picked_on_a_reman_job(self):
+        """You cannot harvest a seal. The recoverability classification lives on the
+        item master, and Material has none."""
+        rows = {r['material']: r for r in self._rows(is_reman=True)}
+        self.assertFalse(rows['Seal']['from_teardown'])
+        self.assertGreater(rows['Seal']['short'], 0.0)
+
+    def test_an_ordinary_job_picks_everything(self):
+        rows = {r['material']: r for r in self._rows(is_reman=False)}
+        self.assertFalse(rows['Nozzle']['from_teardown'])
+        self.assertGreater(rows['Nozzle']['short'], 0.0)

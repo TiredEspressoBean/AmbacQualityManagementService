@@ -492,6 +492,9 @@ export type StagingMaterial = {
    *  Absent on older responses, which were Material-only. */
   kind?: "MATERIAL" | "PART_TYPE";
   material: string; needed: number; on_hand: number; short: number;
+  /** True when a rebuild supplies this line from the unit's own teardown, so the
+   *  picker must not pull a new one — `consume_for_step` skips it. */
+  from_teardown?: boolean;
   optional: boolean;
   /** What was actually recorded as pulled. Null = nobody has confirmed this line yet,
    *  so consumption will fall back to FEFO and assert the plan rather than the fact. */

@@ -93,7 +93,13 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
         <strong>{m.needed}</strong>
       </td>
       <td className="w-72 py-1 pl-2 text-right">
-        {confirmed ? (
+        {/* A rebuild supplies this line from what came out of the unit, and
+            `consume_for_step` skips it — so the picker must NOT pull a new one.
+            Shown rather than hidden: the bench still needs to know the line exists
+            and where it is coming from. */}
+        {m.from_teardown ? (
+          <span className="text-muted-foreground">from this unit&apos;s teardown</span>
+        ) : confirmed ? (
           <span className="text-muted-foreground">
             took{" "}
             <span className="tabular-nums">{m.picked_qty}</span>
