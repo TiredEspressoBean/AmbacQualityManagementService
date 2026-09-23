@@ -61462,6 +61462,24 @@ components:
             $ref: '#/components/schemas/ReceivingSampleUnitRequest'
       required:
       - units
+    RecoverableSource:
+      type: object
+      properties:
+        core_type:
+          type: string
+        cores:
+          type: integer
+        per_core:
+          type: number
+          format: double
+        quantity:
+          type: number
+          format: double
+      required:
+      - core_type
+      - cores
+      - per_core
+      - quantity
     RegenerateDemoQueued:
       type: object
       properties:
@@ -64117,6 +64135,15 @@ components:
           type: string
           format: date
           nullable: true
+        recoverable:
+          type: number
+          format: double
+        recoverable_cores:
+          type: integer
+        recoverable_sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoverableSource'
       required:
       - buy_kind
       - incoming_date
@@ -64125,6 +64152,9 @@ components:
       - need_by
       - order_by
       - qty_short
+      - recoverable
+      - recoverable_cores
+      - recoverable_sources
       - safety_stock
     SourceTypeEnum:
       enum:

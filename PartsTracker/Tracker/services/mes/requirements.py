@@ -24,7 +24,7 @@ _TERMINAL_LOT_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED')
 _NOT_INCOMING_LOT_STATUSES = _ON_HAND_LOT_STATUSES + _TERMINAL_LOT_STATUSES
 
 
-def _recoverable_for(line) -> float:
+def _recoverable_for(line, tenant=None) -> float:
     """What the core bank could yield of this line's component, or 0.
 
     A raw-material line always returns 0 — you cannot harvest sealant — and so does
@@ -34,7 +34,7 @@ def _recoverable_for(line) -> float:
 
     if line.component_type_id is None:
         return 0.0
-    return float(recoverable_supply(line.component_type).quantity)
+    return float(recoverable_supply(line.component_type, tenant=tenant).quantity)
 
 
 def work_order_material_requirements(work_order) -> dict:
@@ -122,7 +122,7 @@ def work_order_material_requirements(work_order) -> dict:
             # it is a forecast sitting beside facts. Netting it would let a planner
             # skip an order on stock that does not exist yet, and that error stops a
             # line while the reverse only buys a part you could have harvested.
-            recoverable = _recoverable_for(line)
+            recoverable = _recoverable_for(line, tenant=work_order.tenant)
             row.update({
                 'component': buy.name, 'kind': 'BUY',
                 'buy_kind': buy.kind,
@@ -147,7 +147,7 @@ def work_order_material_requirements(work_order) -> dict:
             row.update({
                 'component': comp.name, 'kind': 'MAKE',
                 'on_hand': on_hand, 'incoming': pegged,  # 'incoming' = qty on live child WOs
-                'recoverable': _recoverable_for(line),
+                'recoverable': _recoverable_for(line, tenant=work_order.tenant),
                 'short_qty': short,
                 'status': 'ok' if short <= 0 else ('building' if pegged > 0 else 'short'),
                 # Made in-house, not purchased — no buy lead time / order-by.
@@ -268,6 +268,29 @@ def sourcing_requirements(tenant) -> dict:
             if k not in need_by or nb < need_by[k]:
                 need_by[k] = nb
 
+    # --- recoverable: what teardown could yield, as its own lane ---------------
+    # Material planning counts stock and purchase orders and has no idea teardown is
+    # about to PRODUCE the component it is calling short — so a planner buys parts the
+    # shop was going to harvest. Only PART_TYPE keys can be recovered (you cannot
+    # harvest sealant) and only those the item master marks `can_recover`.
+    #
+    # REPORTED, NEVER NETTED. Recoverable supply is a forecast — teardown has not
+    # happened — while on-hand and on-order are facts. Subtracting it from `qty_short`
+    # would let a planner skip an order on stock that does not exist yet, and the error
+    # is asymmetric: over-counting future supply stops a line, under-counting only buys
+    # a part you could have harvested. So `qty_short` stays the buy figure and this
+    # rides alongside it.
+    recoverable: dict = {}
+    pt_ids = [k[1] for k in demand if k[0] == 'PART_TYPE']
+    if pt_ids:
+        from Tracker.models import PartTypes
+        from Tracker.services.reman.recovery import recoverable_supply
+        for pt in PartTypes.objects.filter(tenant=tenant, id__in=pt_ids,
+                                           can_recover=True, archived=False):
+            supply = recoverable_supply(pt, tenant=tenant)
+            if supply.quantity > 0:
+                recoverable[('PART_TYPE', pt.id)] = supply
+
     source = []
     for k, qty in demand.items():
         buy = buy_obj[k]
@@ -287,6 +310,13 @@ def sourcing_requirements(tenant) -> dict:
             'lead_time_days': lead,
             'order_by': order_by(nb, lead),
             'incoming_date': incoming_date.get(k),
+            # Alongside `qty_short`, not subtracted from it — see the lane note above.
+            'recoverable': float(recoverable[k].quantity) if k in recoverable else 0.0,
+            'recoverable_cores': recoverable[k].core_count if k in recoverable else 0,
+            # Which cores the number came from. A planner who cannot see the basis of a
+            # forecast cannot judge whether to trust it, and an untrusted number is
+            # just noise on the sheet.
+            'recoverable_sources': recoverable[k].sources if k in recoverable else [],
         })
     source.sort(key=lambda r: (r['order_by'] or r['need_by']))
 

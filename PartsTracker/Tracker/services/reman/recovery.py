@@ -44,13 +44,25 @@ def _bank_statuses():
     return ('RECEIVED', 'IN_DISASSEMBLY')
 
 
-def recoverable_supply(component_type) -> RecoverableSupply:
+def recoverable_supply(component_type, tenant=None) -> RecoverableSupply:
     """How many of `component_type` the core bank could yield.
 
     Returns zero for anything the item master says cannot be recovered — an expendable
     never comes out of a core reusable, whatever the bank holds.
+
+    `tenant` is optional and explicit because the shop-wide planning callers
+    (`sourcing_requirements`, and the PDF adapter behind it) take a tenant as an
+    ARGUMENT rather than reading the request ContextVar, and this has to match them or
+    the function's scope silently depends on something its caller never passed.
+    `.objects` without a context raises `TenantContextRequired` rather than returning
+    an empty bank, so the failure is loud — but a report run from a task would be the
+    thing that raises it, and passing the tenant the caller already holds removes the
+    ambient dependency entirely.
     """
     from Tracker.models import Core, DisassemblyBOMLine
+
+    def _scope(qs):
+        return qs.filter(tenant=tenant) if tenant is not None else qs
 
     if not getattr(component_type, 'can_recover', False):
         return RecoverableSupply(
@@ -61,9 +73,9 @@ def recoverable_supply(component_type) -> RecoverableSupply:
     # Which core types yield this component, and how much of it survives teardown.
     yields = {
         line.core_type_id: line
-        for line in DisassemblyBOMLine.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+        for line in _scope(DisassemblyBOMLine.objects.filter(  # tenant-safe: .objects auto-scopes; `tenant` narrows further when passed
             component_type=component_type, is_current_version=True, archived=False,
-        ).select_related('core_type')
+        )).select_related('core_type')
     }
     if not yields:
         return RecoverableSupply(
@@ -76,9 +88,9 @@ def recoverable_supply(component_type) -> RecoverableSupply:
     sources = []
     for core_type_id, line in yields.items():
         bank = list(
-            Core.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+            _scope(Core.objects.filter(  # tenant-safe: .objects auto-scopes; `tenant` narrows further when passed
                 core_type_id=core_type_id, status__in=_bank_statuses(), archived=False,
-            ).only('id', 'fulfilment_mode')
+            )).only('id', 'fulfilment_mode')
         )
         # Exchange only: a repair-and-return core's components go back into it.
         available = [c for c in bank if c.allows_pooled_harvest]

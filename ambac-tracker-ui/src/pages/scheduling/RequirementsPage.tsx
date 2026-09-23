@@ -53,7 +53,10 @@ export function RequirementsPage() {
       ["Lane", "Item", "Kind / Component", "Qty", "Need by", "Order by", "Notes"],
       [
         ...source.map((r) => ["Source", r.material, "Buy", r.qty_short, r.need_by ?? "", r.order_by ?? "",
-          r.incoming_date ? `incoming ${r.incoming_date}` : ""]),
+          [r.incoming_date ? `incoming ${r.incoming_date}` : "",
+           (r.recoverable ?? 0) > 0
+             ? `recoverable ${r.recoverable} from ${r.recoverable_cores} cores`
+             : ""].filter(Boolean).join("; ")]),
         ...produce.map((r) => ["Produce", r.component, r.work_order, r.qty, r.need_by ?? "", "", r.status]),
         ...tooling.map((r) => ["Tooling", r.fixture, r.kind, "", "", r.order_by ?? "", ""]),
       ]
@@ -103,6 +106,12 @@ export function RequirementsPage() {
           <tr className="border-b bg-muted/40 text-left text-muted-foreground">
             <th className="p-3 font-medium">Material</th>
             <th className="p-3 text-right font-medium">Short</th>
+            <th
+              className="p-3 text-right font-medium"
+              title="What the core bank could yield. A forecast — teardown hasn't happened — so it is shown beside the shortfall, never subtracted from it."
+            >
+              Recoverable
+            </th>
             <th className="p-3 font-medium">Lead time</th>
             <th className="p-3 font-medium">Need by</th>
             <th className="p-3 font-medium">Order by</th>
@@ -114,6 +123,23 @@ export function RequirementsPage() {
             <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
               <td className="p-3 font-medium">{r.material}</td>
               <td className="p-3 text-right tabular-nums">{r.qty_short}</td>
+              <td className="p-3 text-right tabular-nums">
+                {(r.recoverable ?? 0) > 0 ? (
+                  <span
+                    className="text-emerald-700 dark:text-emerald-400"
+                    title={(r.recoverable_sources ?? [])
+                      .map((s) => `${s.cores} × ${s.core_type} @ ${s.per_core} each`)
+                      .join(" · ")}
+                  >
+                    {r.recoverable}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({r.recoverable_cores} cores)
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </td>
               <td className="p-3">{r.lead_time_days == null ? "—" : `${r.lead_time_days}d`}</td>
               <td className="p-3">{fmt(r.need_by)}</td>
               <td className={cn("p-3", isLate(r.order_by) && "font-medium text-destructive")}>

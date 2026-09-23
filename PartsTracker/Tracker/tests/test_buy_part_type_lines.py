@@ -202,3 +202,93 @@ class MaterialGateSeesBoughtPartsTests(_BuyPartTypeFixture):
         _release, short, detail = get_material_gates(self.tenant, horizon)
         self.assertFalse([k for k in detail if k[0] == wo.id])
         self.assertFalse([k for k in short if k[0] == wo.id])
+
+
+class SourcingShowsTheRecoverableLaneTests(_BuyPartTypeFixture):
+    """Material planning counts stock and purchase orders and has no idea teardown is
+    about to PRODUCE the component it is calling short — so a planner buys parts the
+    shop was going to harvest.
+
+    The lane REPORTS; it does not net. Recoverable supply is a forecast (teardown has
+    not happened); on-hand and on-order are facts. Subtracting it from `qty_short`
+    would let a planner skip an order on stock that does not exist yet, and the error
+    is asymmetric: over-counting future supply stops a line, under-counting only buys
+    a part you could have harvested.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, DisassemblyBOMLine
+
+        self.housing.can_recover = True
+        self.housing.save(update_fields=["can_recover"])
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant, name="Core Injector")
+        DisassemblyBOMLine.objects.create(
+            tenant=self.tenant, core_type=self.core_type, component_type=self.housing,
+            expected_qty=2, expected_fallout_rate=Decimal("0.50"))
+        # 2 cores x (2 expected - 50% fallout) = 2 housings the bank could yield.
+        for n in ("RC-1", "RC-2"):
+            Core.objects.create(
+                tenant=self.tenant, core_number=n, core_type=self.core_type,
+                fulfilment_mode="EXCHANGE", status="RECEIVED",
+                received_date=date.today(), received_by=self.user)
+
+    def _housing_row(self):
+        rows = [r for r in sourcing_requirements(self.tenant)['source']
+                if r['material'] == "Housing"]
+        self.assertEqual(len(rows), 1)
+        return rows[0]
+
+    def test_the_bank_shows_up_beside_the_shortfall(self):
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        row = self._housing_row()
+        self.assertEqual(row['recoverable'], 2.0)
+        self.assertEqual(row['recoverable_cores'], 2)
+
+    def test_it_is_never_subtracted_from_what_to_buy(self):
+        """The whole point of the lane. If `qty_short` dropped to 3, a planner would
+        order 3 and the line would stop when teardown yielded less than forecast."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self.assertEqual(self._housing_row()['qty_short'], 5)
+
+    def test_it_names_which_cores_the_forecast_came_from(self):
+        """A planner who cannot see the basis of a forecast cannot judge whether to
+        trust it, and an untrusted number is just noise on the sheet."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        sources = self._housing_row()['recoverable_sources']
+        self.assertEqual(len(sources), 1)
+        self.assertEqual(sources[0]['core_type'], "Core Injector")
+        self.assertEqual(sources[0]['cores'], 2)
+
+    def test_an_expendable_reports_no_recoverable_supply(self):
+        """`can_recover` is the item master's answer. A seal never comes out of a core
+        reusable, whatever the bank holds."""
+        self.housing.can_recover = False
+        self.housing.save(update_fields=["can_recover"])
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        row = self._housing_row()
+        self.assertEqual(row['recoverable'], 0.0)
+        self.assertEqual(row['recoverable_sources'], [])
+
+    def test_a_raw_material_line_carries_the_lane_but_empty(self):
+        """You cannot harvest sealant. The key is MATERIAL, not PART_TYPE, so the lane
+        is never even looked up — but the field must still be present, or the row
+        shape differs between kinds and the client has to special-case it."""
+        mat = Material.objects.create(
+            tenant=self.tenant, name="Sealant", purchase_lead_time_days=7)
+        BOMLine.objects.create(
+            tenant=self.tenant, bom=self.bom, material=mat, quantity=Decimal(1),
+            source="BUY", line_number=9)
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        rows = [r for r in sourcing_requirements(self.tenant)['source']
+                if r['material'] == "Sealant"]
+        self.assertEqual(rows[0]['recoverable'], 0.0)
+
+    def test_a_customers_own_unit_is_not_available_supply(self):
+        """A repair-and-return core is committed to its owner — it cannot be counted
+        as supply for somebody else's work order."""
+        from Tracker.models import Core
+        Core.objects.filter(tenant=self.tenant).update(fulfilment_mode="REPAIR_RETURN")
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self.assertEqual(self._housing_row()['recoverable'], 0.0)

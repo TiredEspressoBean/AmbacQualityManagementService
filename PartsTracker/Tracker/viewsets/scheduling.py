@@ -421,6 +421,19 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "lead_time_days": serializers.IntegerField(allow_null=True),
                 "order_by": serializers.DateField(allow_null=True),
                 "incoming_date": serializers.DateField(allow_null=True),
+                # What the core bank could yield of this component. A FORECAST —
+                # teardown has not happened — so it rides BESIDE `qty_short` and is
+                # never netted against it. Over-counting future supply stops a line;
+                # under-counting only buys a part you could have harvested.
+                "recoverable": serializers.FloatField(),
+                "recoverable_cores": serializers.IntegerField(),
+                "recoverable_sources": inline_serializer(
+                    name="RecoverableSource", many=True, fields={
+                        "core_type": serializers.CharField(),
+                        "cores": serializers.IntegerField(),
+                        "per_core": serializers.FloatField(),
+                        "quantity": serializers.FloatField(),
+                    }),
             }),
             "produce": inline_serializer(name="ProduceRequirement", many=True, fields={
                 "work_order": serializers.CharField(),

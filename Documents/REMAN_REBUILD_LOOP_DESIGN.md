@@ -863,8 +863,27 @@ items and the whole loop look bigger than it is.
     As shipped it REPORTS, it does not net: `recoverable` is its own column beside
     on-hand and incoming, never folded into `short_qty`. Teardown has not happened, so
     it is a forecast sitting beside facts, and netting it would let a planner skip an
-    order on stock that does not exist yet. Raising teardown as planned supply — the
-    active half, where MRP schedules teardown to meet component demand — is not built.
+    order on stock that does not exist yet.
+
+    The reporting half now reaches BOTH planning surfaces, not just the per-work-order
+    one. `sourcing_requirements` — the shop-wide buy list, and the one purchasing
+    actually works from — carried no recoverable column at all, so the sheet said "buy
+    12 nozzles" with no hint the bank could yield 8. It now carries `recoverable`,
+    `recoverable_cores` and `recoverable_sources` on every source row, on screen, in
+    the CSV, and in the PDF. Sources are named because a planner who cannot see which
+    cores a forecast came from cannot judge whether to trust it, and an untrusted
+    number is just noise on the sheet.
+
+    One implementation note worth keeping: `recoverable_supply` now takes an EXPLICIT
+    tenant, matching the shop-wide callers, which take a tenant as an argument rather
+    than reading the request ContextVar. `.objects` without a context raises
+    `TenantContextRequired` rather than returning an empty bank, so this is not
+    guarding against a silent wrong answer — it is removing an ambient dependency the
+    caller never passed, so a report generated from a task cannot be the thing that
+    discovers it.
+
+    Raising teardown as planned supply — the active half, where MRP schedules teardown
+    to meet component demand — is still not built.
 
 **Scope boundary for planning.** UQMES plans from what it can SEE AND CONTROL: cores in
 the building, work on the board, yield it recorded itself. It does not predict what has

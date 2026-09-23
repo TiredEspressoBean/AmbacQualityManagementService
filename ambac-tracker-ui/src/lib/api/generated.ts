@@ -14430,11 +14430,6 @@ export type ShiftNoteRequest = {
   effective_from?: (string | null) | undefined;
   effective_until?: (string | null) | undefined;
 };
-export type SourcingRequirements = {
-  source: Array<SourceRequirement>;
-  produce: Array<ProduceRequirement>;
-  tooling: Array<ToolingRequirement>;
-};
 export type SourceRequirement = {
   material: string;
   buy_kind: string;
@@ -14444,6 +14439,20 @@ export type SourceRequirement = {
   lead_time_days: number | null;
   order_by: string | null;
   incoming_date: string | null;
+  recoverable: number;
+  recoverable_cores: number;
+  recoverable_sources: Array<RecoverableSource>;
+};
+export type RecoverableSource = {
+  core_type: string;
+  cores: number;
+  per_core: number;
+  quantity: number;
+};
+export type SourcingRequirements = {
+  source: Array<SourceRequirement>;
+  produce: Array<ProduceRequirement>;
+  tooling: Array<ToolingRequirement>;
 };
 export type ProduceRequirement = {
   work_order: string;
@@ -20876,6 +20885,12 @@ const PlanWorkOrderInputRequest = z.object({
   expected_start: z.string().nullish(),
   expected_completion: z.string().nullish(),
 });
+const RecoverableSource = z.object({
+  core_type: z.string(),
+  cores: z.number().int(),
+  per_core: z.number(),
+  quantity: z.number(),
+});
 const SourceRequirement = z.object({
   material: z.string(),
   buy_kind: z.string(),
@@ -20885,6 +20900,9 @@ const SourceRequirement = z.object({
   lead_time_days: z.number().int().nullable(),
   order_by: z.string().nullable(),
   incoming_date: z.string().nullable(),
+  recoverable: z.number(),
+  recoverable_cores: z.number().int(),
+  recoverable_sources: z.array(RecoverableSource),
 });
 const ProduceRequirement = z.object({
   work_order: z.string(),
@@ -25438,6 +25456,7 @@ export const schemas = {
   OperatorHoursRow,
   OperatorHoursReport,
   PlanWorkOrderInputRequest,
+  RecoverableSource,
   SourceRequirement,
   ProduceRequirement,
   ToolingRequirement,

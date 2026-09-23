@@ -23,6 +23,10 @@ class SourceRow(BaseModel):
     lead_time_days: Optional[int] = None
     order_by: Optional[datetime.date] = None
     incoming_date: Optional[datetime.date] = None
+    #: What the core bank could yield of this component. A FORECAST, printed beside
+    #: `qty_short` rather than subtracted from it — teardown has not happened yet.
+    recoverable: float = 0.0
+    recoverable_cores: int = 0
 
 
 class ProduceRow(BaseModel):

@@ -339,9 +339,17 @@ export function useOperatorHours(start: string, end: string) {
 
 /** Sourcing & production requirements — what open demand needs bought (source) or built
  *  (produce), plus tooling not on hand, with lead-time-driven order-by dates. */
+export type RecoverableSource = {
+  core_type: string; cores: number; per_core: number; quantity: number;
+};
 export type SourceRow = {
   material: string; qty_short: number; need_by: string; lead_time_days: number | null;
   order_by: string | null; incoming_date: string | null;
+  /** What the core bank could yield of this component. A FORECAST — teardown hasn't
+   *  happened — so it sits beside `qty_short` and is never subtracted from it. */
+  recoverable?: number;
+  recoverable_cores?: number;
+  recoverable_sources?: RecoverableSource[];
 };
 export type ProduceRow = {
   work_order: string; component: string; qty: number; need_by: string; status: string;

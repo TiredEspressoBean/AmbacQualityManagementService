@@ -27698,6 +27698,14 @@ export interface components {
         RecordUnitsRequestRequest: {
             units: components["schemas"]["ReceivingSampleUnitRequest"][];
         };
+        RecoverableSource: {
+            core_type: string;
+            cores: number;
+            /** Format: double */
+            per_core: number;
+            /** Format: double */
+            quantity: number;
+        };
         RegenerateDemoQueued: {
             task_id: string;
             status: string;
@@ -29032,6 +29040,10 @@ export interface components {
             order_by: string | null;
             /** Format: date */
             incoming_date: string | null;
+            /** Format: double */
+            recoverable: number;
+            recoverable_cores: number;
+            recoverable_sources: components["schemas"]["RecoverableSource"][];
         };
         /**
          * @description * `CUSTOMER_RETURN` - Customer Return

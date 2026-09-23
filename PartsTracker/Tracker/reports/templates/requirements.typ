@@ -55,14 +55,21 @@
 #v(10pt)
 
 // ── SOURCE (buy) ──────────────────────────────────────────────────────────────
-#let src-cols = (2.4fr, 0.7fr, 0.8fr, 1fr, 1fr, 1.1fr)
+#let src-cols = (2.2fr, 0.7fr, 0.9fr, 0.8fr, 1fr, 1fr, 1.1fr)
 #section-header("Source — purchased materials to buy", data.source.len())
-#hrow(src-cols, (hcell[Material], hcell(a: right)[Short], hcell[Lead], hcell[Need by], hcell[Order by], hcell[Incoming]))
+// "Recoverable" is what the core bank could yield — a forecast, shown BESIDE the short
+// figure and never subtracted from it. Buying to the short column is always safe; the
+// recoverable column is what a planner may choose to wait on.
+#hrow(src-cols, (hcell[Material], hcell(a: right)[Short], hcell(a: right)[Recoverable], hcell[Lead], hcell[Need by], hcell[Order by], hcell[Incoming]))
 #if data.source.len() == 0 [ #drow(0, (1fr,), (text(fill: muted, style: "italic")[Nothing to buy.],)) ] else [
   #for (idx, r) in data.source.enumerate() [
     #drow(idx, src-cols, (
       align(horizon)[#text(font: sans-font)[#r.material]],
       align(horizon + right)[#text(font: mono-font)[#r.qty_short]],
+      align(horizon + right)[#if r.recoverable <= 0 [#text(fill: muted)[—]] else [
+        #text(font: mono-font)[#r.recoverable]
+        #text(size: 7pt, fill: muted)[ (#r.recoverable_cores cores)]
+      ]],
       align(horizon)[#if r.lead_time_days == none [#text(fill: muted)[—]] else [#r.lead_time_days d]],
       align(horizon)[#plain-date(r.need_by)],
       align(horizon)[#date-cell(r.order_by)],
