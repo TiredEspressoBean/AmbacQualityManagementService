@@ -328,11 +328,33 @@ class DemoRemanSeeder(BaseSeeder):
         # Make teardown startable at all
         self._flag_disassembly_process(part_types)
 
+        # Classify the item master: what can actually come back out of a core
+        self._classify_recoverability()
+
         self.log(f"  Created {len(result['bom_lines'])} disassembly BOM lines")
         self.log(f"  Created {len(result['cores'])} cores")
         self.log(f"  Created {len(result['components'])} harvested components")
 
         return result
+
+    def _classify_recoverability(self):
+        """Mark which component types can be recovered from a torn-down core.
+
+        The MRO rotable/expendable split: assemblies come back out and go back in;
+        seals, springs and coils are fitted once. Without this every component defaults
+        to NOT recoverable, which is the safe direction but means the RECOVER lane sees
+        nothing.
+        """
+        from Tracker.models import PartTypes
+
+        recoverable = [
+            'Injector Body', 'Injector Nozzle Assembly', 'Control Valve Assembly',
+            'Solenoid Valve', 'Plunger Assembly',
+        ]
+        n = PartTypes.objects.filter(
+            tenant=self.tenant, name__in=recoverable, is_current_version=True,
+        ).update(can_recover=True)
+        self.log(f"  Marked {n} component types recoverable")
 
     def _flag_disassembly_process(self, part_types):
         """Mark the reman process teardown-eligible and make it the core type's default.

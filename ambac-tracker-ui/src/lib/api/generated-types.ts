@@ -16743,8 +16743,8 @@ export interface components {
             /** @description Reference designator(s) - e.g., 'R1, R2, R3' for electronics */
             reference_designator?: string;
             is_optional?: boolean;
-            /** @description For reman: whether harvested components can satisfy this line */
-            allow_harvested?: boolean;
+            /** @description Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item. */
+            allow_harvested?: boolean | null;
             notes?: string;
             line_number?: number;
             /** Format: date-time */
@@ -16793,8 +16793,8 @@ export interface components {
             /** @description Reference designator(s) - e.g., 'R1, R2, R3' for electronics */
             reference_designator?: string;
             is_optional?: boolean;
-            /** @description For reman: whether harvested components can satisfy this line */
-            allow_harvested?: boolean;
+            /** @description Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item. */
+            allow_harvested?: boolean | null;
             notes?: string;
             line_number?: number;
             archived?: boolean;
@@ -23308,8 +23308,8 @@ export interface components {
             /** @description Reference designator(s) - e.g., 'R1, R2, R3' for electronics */
             reference_designator?: string;
             is_optional?: boolean;
-            /** @description For reman: whether harvested components can satisfy this line */
-            allow_harvested?: boolean;
+            /** @description Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item. */
+            allow_harvested?: boolean | null;
             notes?: string;
             line_number?: number;
             archived?: boolean;

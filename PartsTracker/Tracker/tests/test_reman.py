@@ -1791,3 +1791,74 @@ class CoreReleaseTests(TenantTestCase):
         core, accepted = release_core_to_inventory(self.ours, self.user_a)
         self.assertEqual(core.status, 'HARVESTED')
         self.assertEqual(accepted, [])
+
+
+class RecoverabilityResolutionTests(TenantTestCase):
+    """Recoverability is a property of the ITEM, not of a BOM line's use of it.
+
+    A seal kit is expendable in every BOM for everyone; asking per line is how the same
+    part ends up flagged reusable in one place and not another. The chain mirrors the
+    outside-process turnaround and the fulfilment mode: per-use override → item master
+    → no.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import BOM, BOMLine, Material, PartTypes
+
+        self.parent = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.rotable = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle Assembly', can_recover=True)
+        self.expendable = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Seal Kit', can_recover=False)
+        self.material = Material.objects.create(tenant=self.tenant_a, name='Sealant')
+
+        self.bom = BOM.objects.create(
+            tenant=self.tenant_a, part_type=self.parent, revision='A',
+            bom_type='ASSEMBLY', status='RELEASED')
+        self._BOMLine = BOMLine
+
+    def _line(self, **kw):
+        return self._BOMLine.objects.create(tenant=self.tenant_a, bom=self.bom, quantity=1, **kw)
+
+    def test_a_rotable_component_is_recoverable_by_default(self):
+        from Tracker.services.mes.bom import line_allows_recovery
+        self.assertTrue(line_allows_recovery(self._line(component_type=self.rotable)))
+
+    def test_an_expendable_component_is_not(self):
+        from Tracker.services.mes.bom import line_allows_recovery
+        self.assertFalse(line_allows_recovery(self._line(component_type=self.expendable)))
+
+    def test_raw_material_is_never_recoverable_whatever_the_override(self):
+        """The bug this replaces: `allow_harvested` defaulted True on EVERY line
+        including material ones, and `consume_for_step` skips harvest-eligible lines on
+        a reman WO — so a reman job silently never issued its springs or seals."""
+        from Tracker.services.mes.bom import line_allows_recovery
+        line = self._line(material=self.material, allow_harvested=True)
+        self.assertFalse(line_allows_recovery(line))
+
+    def test_an_override_beats_the_item_master_in_both_directions(self):
+        """The exception the override exists for: a safety-critical position or a
+        customer contract that forbids reuse even of a normally recoverable item."""
+        from Tracker.services.mes.bom import line_allows_recovery
+        self.assertFalse(
+            line_allows_recovery(self._line(component_type=self.rotable, allow_harvested=False)))
+        self.assertTrue(
+            line_allows_recovery(self._line(component_type=self.expendable, allow_harvested=True)))
+
+    def test_the_values_row_variant_agrees_with_the_orm_one(self):
+        """The scheduling gate reads `.values()` rows in bulk. Two readings of one rule
+        is how they drift, so they are tested against each other."""
+        from Tracker.services.mes.bom import line_allows_recovery, values_row_allows_recovery
+        for line in (self._line(component_type=self.rotable),
+                     self._line(component_type=self.expendable),
+                     self._line(material=self.material)):
+            row = {
+                'component_type_id': line.component_type_id,
+                'allow_harvested': line.allow_harvested,
+                'component_type__can_recover': (
+                    line.component_type.can_recover if line.component_type_id else None),
+            }
+            self.assertEqual(
+                values_row_allows_recovery(row), line_allows_recovery(line),
+                f"disagreement on {line}")

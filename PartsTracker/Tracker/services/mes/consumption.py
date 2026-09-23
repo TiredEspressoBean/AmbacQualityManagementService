@@ -246,7 +246,7 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
     # the same carve-out the material gate makes, so the two can't disagree.
     is_reman = bool(work_order and work_order.cores.exists())
 
-    from Tracker.services.mes.bom import buy_line_item
+    from Tracker.services.mes.bom import buy_line_item, line_allows_recovery
 
     cache = bom_cache if bom_cache is not None else {}
     tenant = part.tenant
@@ -255,7 +255,11 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
             continue
         if line.source != 'BUY' or line.is_optional:
             continue
-        if is_reman and line.allow_harvested:
+        # Resolved from the item master, not the line's flag — a raw-material line can
+        # never be recovered, whatever the override says. This used to read
+        # `line.allow_harvested`, which defaulted True on EVERY line including material
+        # ones, so a reman job silently never issued its springs or seals.
+        if is_reman and line_allows_recovery(line):
             continue
         # Both BUY kinds draw here now. A line is either a raw material or a purchased
         # part, and `MaterialLot` has always been able to hold stock of either — it was

@@ -143,6 +143,22 @@ class PartTypes(SecureModel):
     )
     """Whether this part is made in-house."""
 
+    can_recover = models.BooleanField(
+        default=False,
+        help_text="Whether a used one of these can be recovered from a torn-down core "
+                  "and put back into service. The MRO classification — rotable and "
+                  "repairable items can; expendables (seals, gaskets, lockwire, most "
+                  "springs) are fitted once and discarded.",
+    )
+    """Completes the sourcing triad with `can_make` / `can_buy`: where an item can come
+    from. Recoverability is a property of the ITEM, not of a BOM line's use of it — a
+    seal kit is expendable in every BOM, for everyone, and asking per-line invites the
+    same part being flagged reusable in one place and not another.
+
+    Default False because the error is asymmetric: treating an expendable as recoverable
+    makes a planner expect supply that will never arrive, while the reverse just buys a
+    part that could have been harvested."""
+
     can_buy = models.BooleanField(
         default=False,
         help_text="This part can be purchased from a supplier. May be True alongside "

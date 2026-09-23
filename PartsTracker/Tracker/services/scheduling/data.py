@@ -780,7 +780,7 @@ def get_material_gates(tenant, horizon: HorizonData):
     from collections import defaultdict
     from datetime import datetime as _dt, time as _time
     from Tracker.models import BOM, BOMLine, MaterialLot, WorkOrder, WorkOrderStatus
-    from Tracker.services.mes.bom import buy_item_from_values
+    from Tracker.services.mes.bom import buy_item_from_values, values_row_allows_recovery
 
     # Keyed (kind, id): a BUY line points at a raw Material or a buyable PartType, and
     # their stock hangs off different columns of the same lot table.
@@ -823,7 +823,8 @@ def get_material_gates(tenant, horizon: HorizonData):
                 list(BOMLine.objects.filter(bom=bom).values(
                     'material_id', 'material__name', 'material__purchase_lead_time_days',
                     'component_type_id', 'component_type__name',
-                    'component_type__can_buy', 'component_type__purchase_lead_time_days',
+                    'component_type__can_buy', 'component_type__can_recover',
+                    'component_type__purchase_lead_time_days',
                     'quantity', 'source', 'consumed_at_step_id', 'allow_harvested',
                     'is_optional'))
                 if bom else [])
@@ -844,7 +845,10 @@ def get_material_gates(tenant, horizon: HorizonData):
         for line in _bom_lines(pt_id):
             if line['source'] != 'BUY' or line['is_optional']:
                 continue
-            if is_reman and line['allow_harvested']:
+            # Resolved from the item master (override -> can_recover -> no), not the
+            # raw flag: a raw-material line can never be recovered, and the flag used to
+            # default True on every line including those.
+            if is_reman and values_row_allows_recovery(line):
                 continue  # a harvested component from teardown covers this line
             item = buy_item_from_values(line)
             if item is None:

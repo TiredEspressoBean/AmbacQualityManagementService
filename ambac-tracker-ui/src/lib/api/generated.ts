@@ -630,10 +630,12 @@ export type BOMLine = {
    */
   string | undefined;
   is_optional?: boolean | undefined;
-  allow_harvested?: /**
-   * For reman: whether harvested components can satisfy this line
-   */
-  boolean | undefined;
+  allow_harvested?:
+    | /**
+     * Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item.
+     */
+    (boolean | null)
+    | undefined;
   notes?: string | undefined;
   line_number?: /**
    * @minimum 0
@@ -701,10 +703,12 @@ export type BOMLineRequest = {
    */
   string | undefined;
   is_optional?: boolean | undefined;
-  allow_harvested?: /**
-   * For reman: whether harvested components can satisfy this line
-   */
-  boolean | undefined;
+  allow_harvested?:
+    | /**
+     * Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item.
+     */
+    (boolean | null)
+    | undefined;
   notes?: string | undefined;
   line_number?: /**
    * @minimum 0
@@ -10469,9 +10473,9 @@ export type PatchedBOMLineRequest = Partial<{
   reference_designator: string;
   is_optional: boolean;
   /**
-   * For reman: whether harvested components can satisfy this line
+   * Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item.
    */
-  allow_harvested: boolean;
+  allow_harvested: boolean | null;
   notes: string;
   /**
    * @minimum 0
@@ -16286,7 +16290,7 @@ const BOMLine = z.object({
   find_number: z.string().max(20).optional(),
   reference_designator: z.string().max(100).optional(),
   is_optional: z.boolean().optional(),
-  allow_harvested: z.boolean().optional(),
+  allow_harvested: z.boolean().nullish(),
   notes: z.string().optional(),
   line_number: z.number().int().gte(0).lte(2147483647).optional(),
   created_at: z.string().datetime({ offset: true }),
@@ -16310,7 +16314,7 @@ const BOMLineRequest = z.object({
   find_number: z.string().max(20).optional(),
   reference_designator: z.string().max(100).optional(),
   is_optional: z.boolean().optional(),
-  allow_harvested: z.boolean().optional(),
+  allow_harvested: z.boolean().nullish(),
   notes: z.string().optional(),
   line_number: z.number().int().gte(0).lte(2147483647).optional(),
   archived: z.boolean().optional(),
@@ -16327,7 +16331,7 @@ const PatchedBOMLineRequest = z
     find_number: z.string().max(20),
     reference_designator: z.string().max(100),
     is_optional: z.boolean(),
-    allow_harvested: z.boolean(),
+    allow_harvested: z.boolean().nullable(),
     notes: z.string(),
     line_number: z.number().int().gte(0).lte(2147483647),
     archived: z.boolean(),

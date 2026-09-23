@@ -194,3 +194,38 @@ def create_new_bom_version(
             )
 
     return new_version
+
+
+def line_allows_recovery(line) -> bool:
+    """Whether a recovered component may satisfy this BOM line.
+
+    Resolution order, mirroring the outside-process turnaround chain and the fulfilment
+    mode: **per-use override → item master → no**.
+
+    Recoverability is a property of the ITEM (`PartTypes.can_recover` — the MRO rotable
+    / repairable / expendable classification), not of a line's use of it. A seal kit is
+    expendable in every BOM for everyone; asking per line is how the same part ends up
+    flagged reusable in one place and not another.
+
+    A RAW-MATERIAL line can never be recovered, whatever the override says. That is the
+    bug this replaces: `allow_harvested` used to default True on every line including
+    material ones, and `consume_for_step` skips harvest-eligible lines on a reman work
+    order — so springs and seals were silently never issued against a reman job.
+    """
+    if getattr(line, 'component_type_id', None) is None:
+        return False
+    override = getattr(line, 'allow_harvested', None)
+    if override is not None:
+        return override
+    return bool(getattr(line.component_type, 'can_recover', False))
+
+
+def values_row_allows_recovery(row) -> bool:
+    """`line_allows_recovery` for a `.values()` dict, for the scheduling gate's
+    bulk read — same rule, no ORM objects."""
+    if not row.get('component_type_id'):
+        return False
+    override = row.get('allow_harvested')
+    if override is not None:
+        return override
+    return bool(row.get('component_type__can_recover'))

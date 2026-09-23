@@ -40671,7 +40671,11 @@ components:
           type: boolean
         allow_harvested:
           type: boolean
-          description: 'For reman: whether harvested components can satisfy this line'
+          nullable: true
+          description: 'Per-use OVERRIDE of the component type''s `can_recover`. Leave
+            blank to follow the item master, which is the right answer almost always.
+            Set False for the exception: a safety-critical position or a customer
+            contract that forbids reuse even of a normally recoverable item.'
         notes:
           type: string
         line_number:
@@ -40757,7 +40761,11 @@ components:
           type: boolean
         allow_harvested:
           type: boolean
-          description: 'For reman: whether harvested components can satisfy this line'
+          nullable: true
+          description: 'Per-use OVERRIDE of the component type''s `can_recover`. Leave
+            blank to follow the item master, which is the right answer almost always.
+            Set False for the exception: a safety-critical position or a customer
+            contract that forbids reuse even of a normally recoverable item.'
         notes:
           type: string
         line_number:
@@ -53478,7 +53486,11 @@ components:
           type: boolean
         allow_harvested:
           type: boolean
-          description: 'For reman: whether harvested components can satisfy this line'
+          nullable: true
+          description: 'Per-use OVERRIDE of the component type''s `can_recover`. Leave
+            blank to follow the item master, which is the right answer almost always.
+            Set False for the exception: a safety-critical position or a customer
+            contract that forbids reuse even of a normally recoverable item.'
         notes:
           type: string
         line_number:

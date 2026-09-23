@@ -2135,8 +2135,11 @@ class BOMLine(SecureModel):
     # Options
     is_optional = models.BooleanField(default=False)
     allow_harvested = models.BooleanField(
-        default=True,
-        help_text="For reman: whether harvested components can satisfy this line"
+        null=True, blank=True,
+        help_text="Per-use OVERRIDE of the component type's `can_recover`. Leave blank "
+                  "to follow the item master, which is the right answer almost always. "
+                  "Set False for the exception: a safety-critical position or a customer "
+                  "contract that forbids reuse even of a normally recoverable item.",
     )
 
     # Substitutes (comma-separated PartType IDs or linked via separate model)
