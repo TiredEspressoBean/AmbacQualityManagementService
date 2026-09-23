@@ -42,6 +42,13 @@ const statusLabels: Record<string, string> = {
     'IN_DISASSEMBLY': 'In Disassembly',
     'DISASSEMBLED': 'Disassembled',
     'SCRAPPED': 'Scrapped',
+    'IN_REBUILD': 'In Rebuild',
+    'REBUILT': 'Rebuilt — ready to return',
+    'RETURNED': 'Returned to customer',
+    'AWAITING_AUTHORISATION': 'Awaiting customer authorisation',
+    'DECLINED': 'Scope declined',
+    'RETURNED_UNREPAIRED': 'Returned unrepaired',
+    'HARVESTED': 'Harvested to inventory',
 };
 
 const conditionLabels: Record<string, string> = {
@@ -279,6 +286,17 @@ export function CoreDetailPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {(core.status === 'RETURNED' || core.status === 'RETURNED_UNREPAIRED') && (
+                            <p className="mb-3 text-sm">
+                                <span className="text-muted-foreground">Returned </span>
+                                {core.returned_at
+                                    ? format(new Date(core.returned_at), "PPP")
+                                    : "—"}
+                                {core.return_reference && (
+                                    <span className="font-mono"> · {core.return_reference}</span>
+                                )}
+                            </p>
+                        )}
                         {core.work_order ? (
                             <div className="flex flex-wrap items-center gap-3">
                                 <Link

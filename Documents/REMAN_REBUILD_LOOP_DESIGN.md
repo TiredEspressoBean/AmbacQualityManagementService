@@ -750,8 +750,8 @@ items and the whole loop look bigger than it is.
    requirements and how many distinct scopes a shop really has become answerable from
    evidence rather than guessed up front.
 
-6. **Rebuild execution** — the half that actually does the work, and the half nobody
-   had named. A core released into rebuild sits at its first in-scope operation and
+6. **Rebuild execution** — **shipped.** The half that actually does the work, and the
+   half nobody had named. A core released into rebuild sits at its first in-scope operation and
    then nothing moves it: `advance_core_step` walks DEFAULT edges and knows nothing
    about scope, so it would carry the unit into operations its findings never called
    for. Two ways out, and the first works today:
@@ -768,7 +768,7 @@ items and the whole loop look bigger than it is.
    the customer's property and never become stock. The fix is the nullable-pair +
    CheckConstraint shape already used for `StepExecution.part`/`core`.
 
-7. **`REPAIR_RETURN` gate** (UI 8) — and it is now a SMALL step, because most of what
+7. **`REPAIR_RETURN` gate** (UI 8) — **shipped**, and it was a small step because most of what
    the industry puts here is out of bounds (§3.2). No quote, no approval workflow, no
    purchase order. What is left:
 
@@ -787,8 +787,8 @@ items and the whole loop look bigger than it is.
    Serial continuity is NOT on this list — the core stays the routing subject through
    the rebuild, so it needs nothing (§10.5).
 
-8. **Return to customer** — the end of every repair-and-return job, and currently
-   missing entirely. A rebuilt unit has nowhere to go: the only shipment model in the
+8. **Return to customer** — **shipped.** The end of every repair-and-return job, and
+   it had been missing entirely. A rebuilt unit has nowhere to go: the only shipment model in the
    system is `OutsideProcessShipment`, which is subcontract dispatch, and `Core` has
    no shipped state. Needed: a terminal status and a dispatch record — when it left,
    who released it, and the reference someone else can trace.
@@ -796,6 +796,14 @@ items and the whole loop look bigger than it is.
    NOT carrier integration, rates or labels (§3.2): UQMES records that the unit left
    and when. Serves the decline path too, since a unit returned unrepaired leaves the
    same way.
+
+   As built, three things landed differently from the plan above. The as-built record
+   went into `AssemblyUsage` widened with a nullable parent/child pair plus two
+   CheckConstraints, rather than a reman-specific table. `complete_rebuild` does NOT
+   assert every slot was filled — the record is what WENT IN, and checking it against
+   the proposal would make the proposal authoritative over the bench. And one dispatch
+   service serves both endings, with the distinction in the terminal status rather
+   than in two code paths.
 
 9. **Routing support for composed scope** (§5.1, UI 6) — superset process, and the
    move from bypass edges (a) to a per-unit included-step set (b) with a scope-aware

@@ -42854,6 +42854,20 @@ components:
           type: string
           readOnly: true
           nullable: true
+        returned_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        returned_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        return_reference:
+          type: string
+          description: Consignment note, tracking number or whatever the shop can
+            trace it by in the system that actually shipped it.
+          maxLength: 100
         condition_grade:
           allOf:
           - $ref: '#/components/schemas/ConditionGradeEnum'
@@ -42937,6 +42951,8 @@ components:
       - received_by
       - received_by_name
       - received_date
+      - returned_at
+      - returned_by
       - returns_to_customer
       - updated_at
       - usable_component_count
@@ -43168,6 +43184,11 @@ components:
 
             * `EXCHANGE` - Exchange — customer gets a unit from stock
             * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+        return_reference:
+          type: string
+          description: Consignment note, tracking number or whatever the shop can
+            trace it by in the system that actually shipped it.
+          maxLength: 100
         condition_grade:
           allOf:
           - $ref: '#/components/schemas/ConditionGradeEnum'
@@ -54011,6 +54032,11 @@ components:
 
             * `EXCHANGE` - Exchange — customer gets a unit from stock
             * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+        return_reference:
+          type: string
+          description: Consignment note, tracking number or whatever the shop can
+            trace it by in the system that actually shipped it.
+          maxLength: 100
         condition_grade:
           allOf:
           - $ref: '#/components/schemas/ConditionGradeEnum'

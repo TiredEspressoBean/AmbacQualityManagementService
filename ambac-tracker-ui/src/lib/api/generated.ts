@@ -1676,6 +1676,14 @@ export type Core = {
   returns_to_customer: boolean;
   work_order_erp_id: string | null;
   work_order_status: string | null;
+  returned_at: string | null;
+  returned_by: number | null;
+  return_reference?: /**
+   * Consignment note, tracking number or whatever the shop can trace it by in the system that actually shipped it.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
   /**
      * Overall condition grade assigned at receipt
     
@@ -1848,6 +1856,12 @@ export type CoreRequest = {
     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
      */
   FulfilmentModeEnum | undefined;
+  return_reference?: /**
+   * Consignment note, tracking number or whatever the shop can trace it by in the system that actually shipped it.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
   /**
      * Overall condition grade assigned at receipt
     
@@ -10685,6 +10699,12 @@ export type PatchedCoreRequest = Partial<{
      */
   fulfilment_mode: FulfilmentModeEnum;
   /**
+   * Consignment note, tracking number or whatever the shop can trace it by in the system that actually shipped it.
+   *
+   * @maxLength 100
+   */
+  return_reference: string;
+  /**
      * Overall condition grade assigned at receipt
     
     * `A` - Grade A - Excellent
@@ -17066,6 +17086,7 @@ const CoreRequest = z.object({
   source_type: SourceTypeEnum.optional(),
   source_reference: z.string().max(100).optional(),
   fulfilment_mode: FulfilmentModeEnum.optional(),
+  return_reference: z.string().max(100).optional(),
   condition_grade: ConditionGradeEnum,
   condition_notes: z.string().optional(),
   status: CoreStatusEnum.optional(),
@@ -17094,6 +17115,9 @@ const Core = z.object({
   returns_to_customer: z.boolean(),
   work_order_erp_id: z.string().nullable(),
   work_order_status: z.string().nullable(),
+  returned_at: z.string().datetime({ offset: true }).nullable(),
+  returned_by: z.number().int().nullable(),
+  return_reference: z.string().max(100).optional(),
   condition_grade: ConditionGradeEnum,
   condition_notes: z.string().optional(),
   status: CoreStatusEnum.optional(),
@@ -17124,6 +17148,7 @@ const PatchedCoreRequest = z
     source_type: SourceTypeEnum,
     source_reference: z.string().max(100),
     fulfilment_mode: FulfilmentModeEnum,
+    return_reference: z.string().max(100),
     condition_grade: ConditionGradeEnum,
     condition_notes: z.string(),
     status: CoreStatusEnum,

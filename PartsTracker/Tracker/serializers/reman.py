@@ -47,6 +47,7 @@ class CoreSerializer(SecureModelMixin):
             'customer', 'customer_name', 'source_type', 'source_reference',
             'fulfilment_mode', 'returns_to_customer',
             'work_order_erp_id', 'work_order_status',
+            'returned_at', 'returned_by', 'return_reference',
             'condition_grade', 'condition_notes',
             'status', 'disassembly_started_at', 'disassembly_completed_at',
             'disassembled_by', 'disassembled_by_name',
@@ -60,6 +61,7 @@ class CoreSerializer(SecureModelMixin):
             'disassembly_started_at', 'disassembly_completed_at',
             'core_credit_issued_at', 'harvested_component_count', 'usable_component_count',
             'returns_to_customer', 'work_order_erp_id', 'work_order_status',
+            'returned_at', 'returned_by',
         )
 
     @extend_schema_field(serializers.CharField(allow_null=True))

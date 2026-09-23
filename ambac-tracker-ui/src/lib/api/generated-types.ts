@@ -17796,6 +17796,11 @@ export interface components {
             readonly returns_to_customer: boolean;
             readonly work_order_erp_id: string | null;
             readonly work_order_status: string | null;
+            /** Format: date-time */
+            readonly returned_at: string | null;
+            readonly returned_by: number | null;
+            /** @description Consignment note, tracking number or whatever the shop can trace it by in the system that actually shipped it. */
+            return_reference?: string;
             /**
              * @description Overall condition grade assigned at receipt
              *
@@ -17950,6 +17955,8 @@ export interface components {
              *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
              */
             fulfilment_mode?: components["schemas"]["FulfilmentModeEnum"];
+            /** @description Consignment note, tracking number or whatever the shop can trace it by in the system that actually shipped it. */
+            return_reference?: string;
             /**
              * @description Overall condition grade assigned at receipt
              *
@@ -23585,6 +23592,8 @@ export interface components {
              *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
              */
             fulfilment_mode?: components["schemas"]["FulfilmentModeEnum"];
+            /** @description Consignment note, tracking number or whatever the shop can trace it by in the system that actually shipped it. */
+            return_reference?: string;
             /**
              * @description Overall condition grade assigned at receipt
              *
