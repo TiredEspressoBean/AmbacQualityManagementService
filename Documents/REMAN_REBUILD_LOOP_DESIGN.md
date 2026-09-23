@@ -92,6 +92,18 @@ scope, the quotation is revised and resubmitted for approval.
 This dimension is entirely absent from the current design and from the codebase. Whether
 it applies depends on the business model (§10.1).
 
+**UQMES authorises SCOPE, not money.** This system is not an ERP and does not hold or
+carry financial decisions — there is no costing model in it, and there will not be one
+(the only money-adjacent fields in the schema are a scheduling shop rate, a work-centre
+cost-centre label, and the core credit). So the artifact this loop produces is an
+**authorisation to proceed**: these operations, these parts, approve or decline. What it
+costs is the ERP's question, and the scope goes out to it rather than being priced here.
+
+That is why this document says "scope authorisation" where the industry says "quote".
+The word matters: calling it a quote invites someone to add a price field, and then a
+rate table, and then UQMES is quietly a costing system with none of the controls one
+needs.
+
 ### 3.3 The two layers, and which one our process flow already is
 
 The pattern above is not one representation but **two, at different layers**, and every
@@ -99,11 +111,11 @@ mature MRO system keeps both:
 
 | | **Entry scope** (commercial) | **Accumulated scope** (execution) |
 |---|---|---|
-| Answers | what was quoted and sold | what was actually done to this unit |
+| Answers | what was sold | what was actually done to this unit |
 | Shape | a named level | a union of codes |
 | Examples | engine shop visit sold as minimum-touch / performance-restoration / full overhaul; LORA repair levels; graded automotive rebuild levels | IFS repair codes; SAP PM catalog codes on a refurbishment notification; aviation non-routine cards raised against a task-card workscope |
 | Set by | the order, or the customer's programme | inspection findings, as they are discovered |
-| Changes | at quote time | during the job — which is precisely §3.2 |
+| Changes | when the job is sold | during the job — which is precisely §3.2 |
 
 The gap between the two IS the over-and-above process. A shop visit starts as
 "performance restoration", findings extend it, and the unit ships having had a set of
@@ -136,7 +148,8 @@ So a repair code is a mapping from *(characteristic, out of spec)* or *(componen
 grade)* to a set of operations. The left-hand side exists and is populated by work the
 shop already does. That deletes most of what §5.1 listed as new, and it gives the
 proposal real provenance: this code is here because THIS reading on THIS component was
-out of tolerance — which is exactly what an over-and-above quote has to show a customer
+out of tolerance — which is exactly what an over-and-above authorisation has to show a
+customer
 (§3.2).
 
 One wrinkle to settle when building: the two result models are parallel, both with
@@ -229,10 +242,10 @@ may be reused.
 | | **Repair & return** (their unit) | **Exchange / stock** |
 |---|---|---|
 | Unit identity | serial preserved end to end | pooled; customer gets *a* unit |
-| Scope approval | quote → **customer** authorization before work | internal planning only |
+| Scope approval | scope authorisation → **customer** decision before work | internal planning only |
 | Over-and-above (§3.2) | applies | does not apply |
 | Cross-core reuse (§10.4) | **no** — the unit keeps its own parts | yes — harvest pools freely |
-| Loop terminates at | an approved quote, then a WO | a WO |
+| Loop terminates at | an approved scope, then the rebuild | a WO |
 
 **This needs a field on `Core`.** `SOURCE_TYPE_CHOICES` (`CUSTOMER_RETURN` / `PURCHASED`
 / `WARRANTY` / `TRADE_IN`) records where a core *came from*, which is not the same
@@ -447,7 +460,8 @@ revisions of this section.
 ### 6.5 The binding has a lifecycle, and it is one row
 
 Between "the resolver proposes nozzle X" and "the operator installed nozzle X" there is
-quoting, customer approval, picking and the bench. Nothing else may take nozzle X in that
+authorisation, customer approval, picking and the bench. Nothing else may take nozzle X
+in that
 window. So a binding is a claim with states:
 
 **proposed → reserved → issued → installed**, with **released** and **removed** as the
@@ -466,7 +480,7 @@ The as-built record is not a separate artifact — it is the final state of the 
 and it is the only place "where did this component come from" can be answered once the
 unit has shipped.
 
-Two consequences worth stating: **the over-and-above quote is a projection of unresolved
+Two consequences worth stating: **the over-and-above authorisation is a projection of unresolved
 slots** (§3.2), so it needs no separate model; and **curation is per-slot override with a
 reason** (§3.1), which is what makes the proposal reviewable rather than a wall of
 defaults.
@@ -529,7 +543,7 @@ slot-aware resolution is needed for reman and is a correctness fix for the gener
 **Slots and resolutions, read-only.** Explode the route's BOM lines into positioned slots,
 build the candidate read-model, propose a resolution per slot with its reason, return it.
 It writes nothing, so it cannot break consumption or scheduling, and it is what every
-later piece reads: the quote, the kit list, the pick, the as-built.
+later piece reads: the authorisation, the kit list, the pick, the as-built.
 
 Curation comes second, and it needs **overrides, not persisted slots**: a row per
 DEVIATION from the computed proposal, not a row per slot. Thirty rows a unit that
@@ -650,13 +664,27 @@ for this loop.
    (For the record, `Parts` are individually identified — `create_parts_batch` mints
    `{WO}-{prefix}{seq:04d}` per unit. Worth knowing before leaning on it: `ERP_id` has no
    unique constraint at the database level, so it is unique by generation discipline.)
-6. **Does a rejected quote have a path back?** Under `REPAIR_RETURN`, if the customer
+6. **Does a declined scope have a path back?** Under `REPAIR_RETURN`, if the customer
    declines the over-and-above work, the unit has to go somewhere: returned unrepaired,
    repaired to a reduced scope, or scrapped with consent. That is a terminal state the
    core lifecycle (`RECEIVED` / `IN_DISASSEMBLY` / `DISASSEMBLED` / `SCRAPPED`) has no
    room for today.
 
-7. **Can a purchased used component be graded?** `MaterialLot` has no condition or
+7. ~~**Does the authorisation carry a price?**~~ **Answered: no.** UQMES is not an ERP
+   and does not hold or carry financial decisions (§3.2). The artifact is a scope
+   authorisation — these operations, these parts, approve or decline — and pricing is the
+   ERP's, reached through `integrations/`. This is the answer that sizes step 6: without
+   it the gate would have needed a costing model (rates, material cost, margin) larger
+   than the entire rebuild loop has been.
+
+   What remains under it is smaller and still open: **how the customer's decision gets
+   back.** `Order.customer` is a User FK and `for_user` already scopes by
+   `Order.customer` / `Order.viewers`, so a portal answer is possible; the existing
+   `ApprovalRequest` machinery is another; and out-of-band — a planner records what the
+   customer said — is the common reality and the cheapest. Pick one before building the
+   surface, not during.
+
+8. **Can a purchased used component be graded?** `MaterialLot` has no condition or
    grade field, so a component bought from a core specialist arrives ungraded while an
    in-house harvested one carries A/B/C. Until that is settled, purchased-used is a
    second-class source the resolver cannot rank against harvested stock (§6.6). The
@@ -664,7 +692,7 @@ for this loop.
    decision that used-purchased is always treated as one nominal grade. This blocks the
    candidate read-model, not the slot model.
 
-8. **Slot identity across a BOM revision.** Slots are per-unit, `BOM` is versioned. Does
+9. **Slot identity across a BOM revision.** Slots are per-unit, `BOM` is versioned. Does
    an in-flight unit keep the slot set it was exploded with, or re-explode on revision?
    Same class as a process change mid-Op, and it should get the same answer.
 
@@ -705,14 +733,17 @@ items and the whole loop look bigger than it is.
    an `AssemblyUsage`.
 
 5. **`EXCHANGE` path closes here.** Steps 1–4 are a complete loop for stock rebuilds.
-   Ship it and run cores through it before starting step 6 — both the §7 quoting
+   Ship it and run cores through it before starting step 6 — both the §7 authorisation
    requirements and how many distinct scopes a shop really has become answerable from
    evidence rather than guessed up front.
 
-6. **`REPAIR_RETURN` gate** (UI 8) — quote projected from the unresolved slots (§6.5),
-   customer approval before work, decline path (§10.6). Serial continuity is NOT on
-   this list: the core stays the routing subject through the rebuild, so it needs
-   nothing (§10.5).
+6. **`REPAIR_RETURN` gate** (UI 8) — scope authorisation projected from the unresolved
+   slots (§6.5), customer decision before work, decline path (§10.6). It carries NO
+   price: UQMES authorises scope and the ERP owns cost (§3.2), which is what keeps this
+   step small. Serial continuity is NOT on this list either — the core stays the routing
+   subject through the rebuild, so it needs nothing (§10.5). A core awaiting a decision
+   does need somewhere to wait: `Core` has no state for it, and the WO cannot hold
+   because it may carry other cores.
 
 7. **Routing support for composed scope** (§5.1, UI 6) — superset process, and the
    move from bypass edges (a) to a per-unit included-step set (b) with a scope-aware
