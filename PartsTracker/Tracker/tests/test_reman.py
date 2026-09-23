@@ -2217,3 +2217,94 @@ class RemanStagingTests(TenantTestCase):
         rows = {r['material']: r for r in self._rows(is_reman=False)}
         self.assertFalse(rows['Nozzle']['from_teardown'])
         self.assertGreater(rows['Nozzle']['short'], 0.0)
+
+
+class RecoveredStockVisibilityTests(TenantTestCase):
+    """Recovered components are `Parts`, not `MaterialLot`s.
+
+    Acceptance from teardown mints a Parts row, and staging built on-hand from lots
+    alone — so a shelf full of recovered nozzles read as zero and the pick list called
+    the line short while the part sat in the rack.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import (
+            BOM, BOMLine, Core, HarvestedComponent, PartTypes, Steps, WorkCenter,
+        )
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.rotable = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle', can_recover=True, can_buy=True,
+            ID_prefix='NZ')
+        self.wc = WorkCenter.objects.create(tenant=self.tenant_a, name='Bench')
+        self.step = Steps.objects.create(
+            tenant=self.tenant_a, part_type=self.core_type, name='Assemble',
+            work_center=self.wc)
+        bom = BOM.objects.create(
+            tenant=self.tenant_a, part_type=self.core_type, revision='A',
+            bom_type='ASSEMBLY', status='RELEASED')
+        BOMLine.objects.create(
+            tenant=self.tenant_a, bom=bom, component_type=self.rotable, quantity=1,
+            source='BUY', consumed_at_step=self.step)
+
+        # A donor core, harvested and accepted — the normal way recovered stock appears.
+        donor = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-DONOR', core_type=self.core_type,
+            fulfilment_mode='EXCHANGE', status='DISASSEMBLED',
+            received_date=date.today(), received_by=self.user_a)
+        hc = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=donor, component_type=self.rotable,
+            condition_grade='A', disassembled_by=self.user_a)
+        from Tracker.services.reman.harvested_component import accept_component_to_inventory
+        self.recovered_part = accept_component_to_inventory(hc, self.user_a,
+                                                            transfer_life=False)
+
+    def test_recovered_stock_counts_as_on_hand(self):
+        from Tracker.services.mes.staging import _materials_for
+        rows = _materials_for(
+            self.core_type.id, self.step.id, units=1,
+            onhand={('PART_TYPE', self.rotable.id): 1},
+            bom_cache={}, tenant=self.tenant_a,
+            recovered={('PART_TYPE', self.rotable.id): 1})
+        row = rows[0]
+        self.assertEqual(row['on_hand'], 1.0)
+        self.assertEqual(row['short'], 0.0)
+        self.assertEqual(row['recovered_on_hand'], 1.0)
+
+    def test_the_accepted_component_is_what_makes_the_stock(self):
+        """Guards the join the counting depends on: recovered stock is a Parts row
+        with `harvested_from` set, which is how it is told apart from purchased."""
+        from Tracker.models import PartsStatus
+        self.assertEqual(self.recovered_part.part_status, PartsStatus.IN_STOCK)
+        self.assertEqual(self.recovered_part.harvested_from.core.core_number,
+                         'CORE-DONOR')
+
+    def test_purchased_and_recovered_are_told_apart(self):
+        """Which to pull is a shop decision — a customer contract may forbid recovered
+        stock in their unit — so the sheet reports both rather than choosing."""
+        from Tracker.services.mes.staging import _materials_for
+        rows = _materials_for(
+            self.core_type.id, self.step.id, units=3,
+            onhand={('PART_TYPE', self.rotable.id): 3},
+            bom_cache={}, tenant=self.tenant_a,
+            recovered={('PART_TYPE', self.rotable.id): 1})
+        row = rows[0]
+        self.assertEqual(row['on_hand'], 3.0)       # all of it
+        self.assertEqual(row['recovered_on_hand'], 1.0)  # of which recovered
+
+    def test_a_part_reserved_to_a_core_is_not_free_stock(self):
+        """`reserved_for_core` means it belongs to a customer's unit. It is on the
+        shelf and it is not available."""
+        from Tracker.models import Core, Parts, PartsStatus
+        owner = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-OWNER', core_type=self.core_type,
+            fulfilment_mode='REPAIR_RETURN', status='DISASSEMBLED',
+            received_date=date.today(), received_by=self.user_a)
+        self.recovered_part.reserved_for_core = owner
+        self.recovered_part.save(update_fields=['reserved_for_core'])
+        free = Parts.objects.filter(
+            part_type=self.rotable, part_status=PartsStatus.IN_STOCK,
+            archived=False, reserved_for_core__isnull=True,
+        ).exclude(harvested_from__isnull=True).count()
+        self.assertEqual(free, 0)

@@ -823,9 +823,19 @@ items and the whole loop look bigger than it is.
     that the pick list and `consume_for_step` disagreed about the same line — the
     picker pulls a part that is then never issued.
 
+    Also shipped: **recovered stock is visible at all.** `onhand` was built from
+    `MaterialLot` alone, but acceptance from teardown mints a `Parts` row — so a shelf
+    of recovered nozzles read as ZERO and the sheet called the line short while the
+    part sat in the rack. Recovered Parts now count, and are reported SEPARATELY as
+    well as merged: which to pull is a shop decision (a customer contract may forbid
+    recovered stock in their unit), so the sheet says what is there rather than
+    choosing. Anything `reserved_for_core` is excluded — it is on the shelf and it is
+    not available.
+
     Still open, and the original diagnosis: `record_pick` records `picked_lots`, which
-    is lot-shaped, so confirming "this specific harvested nozzle" is still
-    inexpressible. That remains shared with the parked bought-parts-staging item.
+    is lot-shaped, so CONFIRMING "I took this specific recovered nozzle" is still
+    inexpressible — the sheet can now show recovered stock but the pick cannot name
+    the instance. That remains shared with the parked bought-parts-staging item.
 
 11. **RECOVER as a supply lane** — **shipped (reporting half).** The material lane counted
     purchased stock and on-hand, and has no idea teardown is about to PRODUCE the

@@ -75,6 +75,14 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
       qty: pickedQty, qty_required: m.needed, lots,
     }, { onSuccess: () => { setDeviating(false); setLotText(""); } });
 
+  // How much of the on-hand is RECOVERED rather than purchased — i.e. which rack to
+  // go to. Reported rather than preferred: a customer contract may forbid recovered
+  // stock in their unit, so the sheet says what is there and the shop chooses. Shown
+  // beside named lots too, since a line can be part purchased and part recovered.
+  const recoveredNote = (m.recovered_on_hand ?? 0) > 0 ? (
+    <span className="ml-1">· {m.recovered_on_hand} recovered</span>
+  ) : null;
+
   return (
     <tr className="border-t align-top first:border-t-0">
       <td className="py-1 pr-2">
@@ -116,9 +124,13 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
             {m.lots[0].storage_location && (
               <span className="ml-1">· {m.lots[0].storage_location}</span>
             )}
+            {recoveredNote}
           </span>
         ) : (
-          <span className="tabular-nums text-muted-foreground">{m.on_hand} on hand</span>
+          <span className="tabular-nums text-muted-foreground">
+            {m.on_hand} on hand
+            {recoveredNote}
+          </span>
         )}
 
         {!confirmed && m.lots.length > 0 && !deviating && (

@@ -33,7 +33,10 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     """
     from django.db.models import Sum
     from django.utils import timezone
-    from Tracker.models import MaterialLot, ScheduledTask, ScheduleResult
+    from django.db.models import Count
+    from Tracker.models import (
+        MaterialLot, Parts, PartsStatus, ScheduledTask, ScheduleResult,
+    )
     from Tracker.services.mes.consumption import _released_bom_lines
 
     now = timezone.now()
@@ -108,7 +111,22 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         return (('MATERIAL', row['material']) if row['material'] is not None
                 else ('PART_TYPE', row['material_type']))
 
-    onhand: dict = {}
+    # Recovered components live as IN_STOCK `Parts`, not `MaterialLot`s — acceptance
+    # from teardown mints a Parts row. `onhand` was built from lots alone, so a shelf
+    # full of recovered nozzles read as zero and the pick list called the line short
+    # while the part sat in the rack. Counted separately as well as merged, so the
+    # sheet can tell the picker WHICH rack to go to.
+    recovered: dict = {}
+    for row in (Parts.objects
+                .filter(tenant=tenant, part_status=PartsStatus.IN_STOCK,
+                        archived=False, reserved_for_core__isnull=True)
+                .exclude(harvested_from__isnull=True)
+                .values('part_type').annotate(q=Count('id'))):
+        if row['part_type'] is None:
+            continue
+        recovered[('PART_TYPE', row['part_type'])] = Decimal(str(row['q'] or 0))
+
+    onhand: dict = dict(recovered)
     for row in (MaterialLot.objects
                 .filter(tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
                 .values('material', 'material_type')
@@ -138,7 +156,7 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         is_reman = job.pop('_is_reman', False)
         job['materials'] = _materials_for(pt_id, job['step_id'], job['units'],
                                           onhand, bom_cache, tenant,
-                                          is_reman=is_reman)
+                                          is_reman=is_reman, recovered=recovered)
         job['fixtures'] = sorted(fixtures.get(job['step_id'], ()))
         job['short_count'] = sum(1 for m in job['materials'] if m['short'] > 0)
         stations[(job['work_center_id'], job['work_center'])].append(job)
@@ -192,7 +210,8 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
 
 
 def _materials_for(part_type_id, step_id, units: int, onhand: dict,
-                   bom_cache: dict, tenant, is_reman: bool = False) -> list:
+                   bom_cache: dict, tenant, is_reman: bool = False,
+                   recovered: dict | None = None) -> list:
     """BOM lines consumed at this step, scaled to the units landing here.
 
     Scaled to the UNITS AT THIS STATION, not the work order's quantity — a lot that
@@ -236,8 +255,14 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
             continue
 
         have = onhand.get(item.key, Decimal('0'))
+        from_stock = (recovered or {}).get(item.key, Decimal('0'))
         out.append({
             'from_teardown': False,
+            # How much of the on-hand is RECOVERED rather than purchased. Reported, not
+            # preferred: which to pull is a shop decision (a customer contract may
+            # forbid recovered stock in their unit), and the sheet's job is to say what
+            # is there — not to choose.
+            'recovered_on_hand': float(from_stock),
             # Confirming a pick has to name the subject, not just show it. `kind` rides
             # along so the client can echo back which of the two FKs to write —
             # a Material and a PartTypes can share a uuid space.

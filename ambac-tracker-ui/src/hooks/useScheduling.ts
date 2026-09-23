@@ -495,6 +495,9 @@ export type StagingMaterial = {
   /** True when a rebuild supplies this line from the unit's own teardown, so the
    *  picker must not pull a new one — `consume_for_step` skips it. */
   from_teardown?: boolean;
+  /** How much of `on_hand` is RECOVERED stock rather than purchased. Reported, not
+   *  preferred — which to pull is a shop decision. */
+  recovered_on_hand?: number;
   optional: boolean;
   /** What was actually recorded as pulled. Null = nobody has confirmed this line yet,
    *  so consumption will fall back to FEFO and assert the plan rather than the fact. */
