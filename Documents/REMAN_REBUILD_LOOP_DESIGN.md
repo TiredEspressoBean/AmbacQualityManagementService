@@ -816,7 +816,7 @@ items and the whole loop look bigger than it is.
     parked bought-parts-staging item; fixing it once covers both, which is why it is
     worth doing as its own step rather than folded into step 6.
 
-11. **RECOVER as a supply lane** in RCCP and explosion. Today the material lane counts
+11. **RECOVER as a supply lane** — **shipped (reporting half).** The material lane counted
     purchased stock and on-hand, and has no idea teardown is about to PRODUCE the
     component it is calling short — so a planner buys parts the shop was going to
     harvest.
@@ -838,6 +838,12 @@ items and the whole loop look bigger than it is.
     against actual yield** even though both numbers are already in the system —
     reconciliation surfaces the drift, it does not silently re-author an engineering
     spec.
+
+    As shipped it REPORTS, it does not net: `recoverable` is its own column beside
+    on-hand and incoming, never folded into `short_qty`. Teardown has not happened, so
+    it is a forecast sitting beside facts, and netting it would let a planner skip an
+    order on stock that does not exist yet. Raising teardown as planned supply — the
+    active half, where MRP schedules teardown to meet component demand — is not built.
 
 **Scope boundary for planning.** UQMES plans from what it can SEE AND CONTROL: cores in
 the building, work on the board, yield it recorded itself. It does not predict what has

@@ -24,6 +24,19 @@ _TERMINAL_LOT_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED')
 _NOT_INCOMING_LOT_STATUSES = _ON_HAND_LOT_STATUSES + _TERMINAL_LOT_STATUSES
 
 
+def _recoverable_for(line) -> float:
+    """What the core bank could yield of this line's component, or 0.
+
+    A raw-material line always returns 0 — you cannot harvest sealant — and so does
+    anything the item master says is expendable.
+    """
+    from Tracker.services.reman.recovery import recoverable_supply
+
+    if line.component_type_id is None:
+        return 0.0
+    return float(recoverable_supply(line.component_type).quantity)
+
+
 def work_order_material_requirements(work_order) -> dict:
     """Top-level material requirements for one work order — the "what this job needs"
     readout (picklist-*lite*: components, quantities, consumed-at-step, and a shortage
@@ -104,10 +117,17 @@ def work_order_material_requirements(work_order) -> dict:
             lead = buy.lead_time_days
             need_by = sched.get((work_order.id, line.consumed_at_step_id)) or wo_need
             order_by = (need_by - timedelta(days=lead)) if lead else need_by
+            # The RECOVER lane: what the core bank could yield of this component.
+            # REPORTED, never netted into `short_qty` — teardown has not happened, so
+            # it is a forecast sitting beside facts. Netting it would let a planner
+            # skip an order on stock that does not exist yet, and that error stops a
+            # line while the reverse only buys a part you could have harvested.
+            recoverable = _recoverable_for(line)
             row.update({
                 'component': buy.name, 'kind': 'BUY',
                 'buy_kind': buy.kind,
                 'on_hand': on_hand, 'incoming': incoming,
+                'recoverable': recoverable,
                 'safety_stock': safety,
                 'short_qty': short,
                 'status': 'short' if short > 0 else 'ok',
@@ -127,6 +147,7 @@ def work_order_material_requirements(work_order) -> dict:
             row.update({
                 'component': comp.name, 'kind': 'MAKE',
                 'on_hand': on_hand, 'incoming': pegged,  # 'incoming' = qty on live child WOs
+                'recoverable': _recoverable_for(line),
                 'short_qty': short,
                 'status': 'ok' if short <= 0 else ('building' if pegged > 0 else 'short'),
                 # Made in-house, not purchased — no buy lead time / order-by.
@@ -135,7 +156,8 @@ def work_order_material_requirements(work_order) -> dict:
         else:
             # Misconfigured line (source set but no matching component) — surface it plainly.
             row.update({'component': '(unset)', 'kind': line.source or '?',
-                        'on_hand': 0.0, 'incoming': 0.0, 'short_qty': required,
+                        'on_hand': 0.0, 'incoming': 0.0, 'recoverable': 0.0,
+                        'short_qty': required,
                         'status': 'short',
                         'lead_time_days': None, 'need_by': None, 'order_by': None})
         rows.append(row)

@@ -1972,3 +1972,74 @@ class RebuildLifecycleTests(TenantTestCase):
         self.core.save(update_fields=['status'])
         core = record_authorisation(self.core, approved=True, user=self.user_a)
         self.assertEqual(core.status, 'IN_REBUILD')
+
+
+class RecoverableSupplyTests(TenantTestCase):
+    """What the core bank could yield — reported, never netted.
+
+    Recoverable supply is a FORECAST: teardown has not happened. On-hand is a fact.
+    Folding one into the other would let a planner skip an order on stock that does
+    not exist yet, and the error is asymmetric — over-counting future supply stops a
+    line, under-counting only buys a part you could have harvested.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, DisassemblyBOMLine, PartTypes
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.rotable = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle', can_recover=True)
+        self.expendable = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Seal Kit', can_recover=False)
+
+        for ct in (self.rotable, self.expendable):
+            DisassemblyBOMLine.objects.create(
+                tenant=self.tenant_a, core_type=self.core_type, component_type=ct,
+                expected_qty=2, expected_fallout_rate=Decimal('0.50'))
+
+        self._Core = Core
+
+    def _core(self, number, status, mode='EXCHANGE'):
+        return self._Core.objects.create(
+            tenant=self.tenant_a, core_number=number, core_type=self.core_type,
+            fulfilment_mode=mode, status=status,
+            received_date=date.today(), received_by=self.user_a)
+
+    def test_the_bank_yields_expected_usable_quantity(self):
+        from Tracker.services.reman.recovery import recoverable_supply
+        self._core('BANK-1', 'RECEIVED')
+        self._core('BANK-2', 'IN_DISASSEMBLY')
+        # 2 cores x (2 expected - 50% fallout) = 2
+        self.assertEqual(recoverable_supply(self.rotable).quantity, Decimal('2.0'))
+
+    def test_an_expendable_yields_nothing_whatever_the_bank_holds(self):
+        from Tracker.services.reman.recovery import recoverable_supply
+        self._core('BANK-3', 'RECEIVED')
+        self.assertEqual(recoverable_supply(self.expendable).quantity, Decimal('0'))
+
+    def test_a_customers_own_unit_is_not_available_supply(self):
+        """A repair-and-return core is committed to its owner. You cannot tear down
+        someone's unit for another job."""
+        from Tracker.services.reman.recovery import recoverable_supply
+        self._core('BANK-4', 'RECEIVED', mode='REPAIR_RETURN')
+        self.assertEqual(recoverable_supply(self.rotable).quantity, Decimal('0'))
+
+    def test_an_already_torn_down_core_is_not_counted_twice(self):
+        """A DISASSEMBLED core has given its components up — they are harvested rows by
+        then, and counting the core as well would double them."""
+        from Tracker.services.reman.recovery import recoverable_supply
+        self._core('BANK-5', 'DISASSEMBLED')
+        self._core('BANK-6', 'HARVESTED')
+        self._core('BANK-7', 'SCRAPPED')
+        self.assertEqual(recoverable_supply(self.rotable).quantity, Decimal('0'))
+
+    def test_it_names_where_the_number_came_from(self):
+        """A planner who cannot see which cores a forecast came from cannot judge
+        whether to trust it."""
+        from Tracker.services.reman.recovery import recoverable_supply
+        self._core('BANK-8', 'RECEIVED')
+        rs = recoverable_supply(self.rotable)
+        self.assertEqual(rs.core_count, 1)
+        self.assertEqual(rs.sources[0]['core_type'], 'Injector')
+        self.assertEqual(rs.sources[0]['cores'], 1)

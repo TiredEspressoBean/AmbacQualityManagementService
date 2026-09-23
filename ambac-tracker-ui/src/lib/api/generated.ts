@@ -15881,6 +15881,7 @@ export type WorkOrderMaterialRequirementRow = {
   consumed_at_step: string | null;
   on_hand: number;
   incoming: number;
+  recoverable: number;
   short_qty: number;
   status: string;
   is_optional: boolean;
@@ -23148,6 +23149,7 @@ const WorkOrderMaterialRequirementRow = z.object({
   consumed_at_step: z.string().nullable(),
   on_hand: z.number(),
   incoming: z.number(),
+  recoverable: z.number(),
   short_qty: z.number(),
   status: z.string(),
   is_optional: z.boolean(),

@@ -69,6 +69,7 @@ export function WorkOrderMaterialsPanel({ workOrderId }: { workOrderId: string }
               <TableHead className="text-right">Need</TableHead>
               <TableHead className="text-right">On hand</TableHead>
               <TableHead className="text-right">Incoming</TableHead>
+              <TableHead className="text-right">Recoverable</TableHead>
               <TableHead className="text-right">Short</TableHead>
               <TableHead>Consumed at</TableHead>
               <TableHead>Order by</TableHead>
@@ -95,6 +96,13 @@ export function WorkOrderMaterialsPanel({ workOrderId }: { workOrderId: string }
                   <TableCell className="text-right tabular-nums">{num(r.on_hand)}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {r.incoming > 0 ? num(r.incoming) : "—"}
+                  </TableCell>
+                  {/* Its own column, deliberately NOT folded into Short: this is what
+                      the core bank COULD yield once torn down, a forecast sitting
+                      beside facts. Netting it would let a planner skip an order on
+                      stock that does not exist yet. */}
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {(r.recoverable ?? 0) > 0 ? num(r.recoverable ?? 0) : "—"}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {r.short_qty > 0 ? (

@@ -2529,6 +2529,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                 "consumed_at_step": serializers.CharField(allow_null=True),
                 "on_hand": serializers.FloatField(),
                 "incoming": serializers.FloatField(),       # promised receipts (BUY) / live child WOs (MAKE)
+                # What the core bank could yield once torn down. Its own number, NOT
+                # netted into short_qty: teardown has not happened, so this is a
+                # forecast sitting beside facts, and netting it would let a planner
+                # skip an order on stock that does not exist yet.
+                "recoverable": serializers.FloatField(),
                 "short_qty": serializers.FloatField(),
                 "status": serializers.CharField(),          # ok / short / building
                 "is_optional": serializers.BooleanField(),

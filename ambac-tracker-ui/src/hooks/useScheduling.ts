@@ -622,7 +622,11 @@ export function useUnscheduled(enabled = true) {
 export type MaterialRequirementRow = {
   component: string; kind: string; source: string; quantity: number;
   unit_of_measure: string; consumed_at_step: string | null;
-  on_hand: number; incoming: number; short_qty: number; status: string; is_optional: boolean;
+  on_hand: number; incoming: number;
+  /** What the core bank could yield once torn down. NOT netted into `short_qty` —
+   *  teardown has not happened, so it is a forecast beside facts. */
+  recoverable?: number;
+  short_qty: number; status: string; is_optional: boolean;
   lead_time_days: number | null; need_by: string | null; order_by: string | null;
 };
 export const workOrderMaterialRequirementsOptions = (id: string | null) =>

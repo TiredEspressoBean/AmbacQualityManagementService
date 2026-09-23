@@ -32658,6 +32658,8 @@ export interface components {
             /** Format: double */
             incoming: number;
             /** Format: double */
+            recoverable: number;
+            /** Format: double */
             short_qty: number;
             status: string;
             is_optional: boolean;

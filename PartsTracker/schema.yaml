@@ -71334,6 +71334,9 @@ components:
         incoming:
           type: number
           format: double
+        recoverable:
+          type: number
+          format: double
         short_qty:
           type: number
           format: double
@@ -71364,6 +71367,7 @@ components:
       - on_hand
       - order_by
       - quantity
+      - recoverable
       - safety_stock
       - short_qty
       - source
