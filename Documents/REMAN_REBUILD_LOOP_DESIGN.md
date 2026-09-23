@@ -92,17 +92,30 @@ scope, the quotation is revised and resubmitted for approval.
 This dimension is entirely absent from the current design and from the codebase. Whether
 it applies depends on the business model (§10.1).
 
-**UQMES authorises SCOPE, not money.** This system is not an ERP and does not hold or
-carry financial decisions — there is no costing model in it, and there will not be one
-(the only money-adjacent fields in the schema are a scheduling shop rate, a work-centre
-cost-centre label, and the core credit). So the artifact this loop produces is an
-**authorisation to proceed**: these operations, these parts, approve or decline. What it
-costs is the ERP's question, and the scope goes out to it rather than being priced here.
+**UQMES authorises SCOPE, not money — and the commercial conversation is out of
+bounds entirely.** This system is not an ERP and does not hold or carry financial
+decisions. Specifically out of scope, and not to be built here:
+
+- **quotes** as commercial documents,
+- **quote approval** workflow,
+- **purchase orders.**
+
+`Orders` in this system is DEMAND, not accounting. The only financial touchpoints are
+`Core`'s credit fields — information that may *inform* a real accounting system without
+being one — and the APS, which needs enough cost sense to weigh a constraint.
+
+So what this loop produces is the **scope**: these operations, these parts, on this
+unit, with the finding behind each. Turning that into a price, a quote and an approval
+is the ERP's job; UQMES exports the scope and records the answer that comes back.
 
 That is why this document says "scope authorisation" where the industry says "quote".
-The word matters: calling it a quote invites someone to add a price field, and then a
-rate table, and then UQMES is quietly a costing system with none of the controls one
-needs.
+The word matters: calling it a quote invites someone to add a price field, then a rate
+table, then an approval workflow — and UQMES is quietly a costing system with none of
+the controls one needs.
+
+**What remains in bounds is the production gate**: a unit must not have out-of-scope
+work done to it until someone says go. That is shop-floor control, not commerce. The
+authorisation ARRIVES from outside; the hold that waits for it belongs here.
 
 ### 3.3 The two layers, and which one our process flow already is
 
@@ -737,13 +750,20 @@ items and the whole loop look bigger than it is.
    requirements and how many distinct scopes a shop really has become answerable from
    evidence rather than guessed up front.
 
-6. **`REPAIR_RETURN` gate** (UI 8) — scope authorisation projected from the unresolved
-   slots (§6.5), customer decision before work, decline path (§10.6). It carries NO
-   price: UQMES authorises scope and the ERP owns cost (§3.2), which is what keeps this
-   step small. Serial continuity is NOT on this list either — the core stays the routing
-   subject through the rebuild, so it needs nothing (§10.5). A core awaiting a decision
-   does need somewhere to wait: `Core` has no state for it, and the WO cannot hold
-   because it may carry other cores.
+6. **`REPAIR_RETURN` gate** (UI 8) — and it is now a SMALL step, because most of what
+   the industry puts here is out of bounds (§3.2). No quote, no approval workflow, no
+   purchase order. What is left:
+
+   - the **scope export** — the unresolved slots and the findings behind them, in a
+     form the ERP can price;
+   - a **hold** on the unit while the answer is outstanding. `Core` has no state for
+     this, and the work order cannot hold because it may carry other cores;
+   - **recording the answer** — authorised or declined, who said so and when. The
+     conversation happened elsewhere; this is the production record of its outcome;
+   - the **decline path** (§10.6), which is the part with no home in the lifecycle.
+
+   Serial continuity is NOT on this list — the core stays the routing subject through
+   the rebuild, so it needs nothing (§10.5).
 
 7. **Routing support for composed scope** (§5.1, UI 6) — superset process, and the
    move from bypass edges (a) to a per-unit included-step set (b) with a scope-aware
