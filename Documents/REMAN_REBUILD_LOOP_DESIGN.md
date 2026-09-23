@@ -808,9 +808,35 @@ items and the whole loop look bigger than it is.
     parked bought-parts-staging item; fixing it once covers both, which is why it is
     worth doing as its own step rather than folded into step 6.
 
-11. **Fallout forecast** into the RCCP material lane — expected yield (§4's
-    `DisassemblyBOMLine.expected_fallout_rate`) becomes forward supply, so teardown
-    volume informs the material lane instead of only history.
+11. **RECOVER as a supply lane** in RCCP and explosion. Today the material lane counts
+    purchased stock and on-hand, and has no idea teardown is about to PRODUCE the
+    component it is calling short — so a planner buys parts the shop was going to
+    harvest.
+
+    The industry shape is not a forecast but a plan: teardown is raised like any other
+    supply. "We need 50 nozzles in week 6, yield is ~85%, so schedule 59 teardowns in
+    week 4." The core bank is the raw material and the constraint;
+    `expected_fallout_rate` is the yield. `bom_explosion` already raises child WOs for
+    MAKE lines, so raising a teardown WO for a RECOVER requirement is the same
+    machinery on the same data.
+
+    **Only exchange cores are available to it.** A repair-and-return core is committed
+    to its owner — `allows_pooled_harvest` already says so — so the bank RECOVER draws
+    on is the pooled part of it. You cannot tear down a customer's unit for someone
+    else's job.
+
+    Two limits worth stating: this is noise below real volume (a 15% fallout rate on
+    three cores a week predicts nothing), and **nothing reconciles the authored rate
+    against actual yield** even though both numbers are already in the system —
+    reconciliation surfaces the drift, it does not silently re-author an engineering
+    spec.
+
+**Scope boundary for planning.** UQMES plans from what it can SEE AND CONTROL: cores in
+the building, work on the board, yield it recorded itself. It does not predict what has
+not arrived. So the core bank is in scope and forecasting core ARRIVALS is not — that
+needs sales volume × return rate × lag, and sales volume is not ours. UQMES can supply
+the historical return rate as an input to someone else's forecast; it does not own the
+forecast. Same test as §3.2: does UQMES own the data?
 
 Steps 10 and 11 reach outside reman and stay separate deliberately: both pay off
 across the system rather than only in this loop.
