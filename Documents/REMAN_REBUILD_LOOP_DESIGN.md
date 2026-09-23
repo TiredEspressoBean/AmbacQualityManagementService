@@ -531,8 +531,14 @@ build the candidate read-model, propose a resolution per slot with its reason, r
 It writes nothing, so it cannot break consumption or scheduling, and it is what every
 later piece reads: the quote, the kit list, the pick, the as-built.
 
-Binding states come second, and that is where the `MaterialUsage` / `AssemblyUsage`
-question gets decided.
+Curation comes second, and it needs **overrides, not persisted slots**: a row per
+DEVIATION from the computed proposal, not a row per slot. Thirty rows a unit that
+mostly agree with the computation would be persisting a guess, and the proposal is
+cheap to recompute.
+
+Binding states come third, with the as-built record, and that is where the
+`MaterialUsage` / `AssemblyUsage` question gets decided — by which point there is a
+real issued component to attach it to rather than a proposal.
 
 ### 6.9 What I expect to be wrong
 
@@ -664,33 +670,63 @@ for this loop.
 
 ## 11. Build order
 
-1. **`Core.fulfilment_mode`** (§4.2) — field, migration, set at receipt, shown on the
-   core. Small, and first because nearly everything downstream branches on it.
-2. **Scope resolution + curation UI** on the core — entry-scope preset applied (§3.3),
-   proposal generated from findings, human include/exclude. Still no routing change: the
-   resolved scope is recorded and read by step 3, not yet enforced during execution.
-3. **Slot resolution service** (§6.8) — route → BOM lines → positioned slots →
-   candidate read-model → a proposed resolution per slot with its reason. Returns data;
-   writes nothing, so it cannot disturb consumption or scheduling. This is the piece the
-   quote, the kit list, the pick and the as-built all read.
-4. **UI 1–3** on the teardown surface, on the §5 one-process-per-scope stopgap. (The
-   design named `CoreDisassemblyPage`; teardown is to become a DWI surface rather than a
-   page of its own, so this lands wherever that work puts it.)
-5. **UI 4–5** — core return link, ready-to-rebuild queue.
-6. **`EXCHANGE` path closes here.** Everything above is a complete loop for stock
-   rebuilds, and it is worth shipping and using before starting §7.
-7. **`REPAIR_RETURN` gate** — quote projected from the unresolved slots (§6.5), customer
-   approval before work, decline path (§10.6). Serial continuity is NOT on this list: the
-   core stays the routing subject through the rebuild, so it needs nothing (§10.5).
-8. **Routing support for composed scope** (§5.1) — superset process, repair-code table,
-   and the move from bypass edges (a) to a per-unit included-step set (b) with a
-   scope-aware advancement walk. WO grain (§5.2) is a deferred choice, not a
-   prerequisite. No longer gated on resolving §4.1; that is decided.
-9. **Staging reuse-vs-new** (shared with the bought-parts-staging item).
-10. **Fallout forecast** into the RCCP material lane.
+Each step is a deliverable, not a layer: the UI a step needs is part of that step
+rather than a row of its own. An earlier revision numbered the five §7.1 surfaces
+separately from the services behind them, which made one feature read as three
+items and the whole loop look bigger than it is.
 
-The split at step 6 is the useful shape: `EXCHANGE` needs no quoting, no customer
-approval and no serial continuity, so it closes the loop with strictly less machinery.
-Ship it, run cores through it, and both §10.3 (how many distinct scopes there really
-are) and the §7 quoting requirements will be answerable from evidence rather than
-guessed at up front.
+1. **`Core.fulfilment_mode`** (§4.2) — **shipped.** Field, migration, set at receipt
+   from the customer's standing arrangement, shown on the core, list and receipt
+   surfaces.
+
+2. **The proposal: slot + scope resolution, read-only** (§6.8) — **shipped.** Route →
+   BOM lines → positioned slots → candidate read-model → a resolution per slot with
+   its reason, and the operations those resolutions raise (§6.4). Writes nothing, so
+   it cannot disturb consumption or scheduling. Carries UI 2 (kit preview, on
+   `/reman/cores/$id/rebuild`) and UI 5 (ready-to-rebuild queue), plus the authoring
+   surfaces for repair codes and rebuild levels.
+
+3. **Curation** (§3.1, UI 1) — the proposal becomes overridable. Store **overrides,
+   not slots**: a small table saying *for this core, this slot, the resolution is X
+   because Y*. The proposal stays computed and the deltas are what persist — storing
+   thirty rows a unit that mostly agree with the computation would be persisting a
+   guess. The as-built record is a different thing and arrives at step 4, when there
+   is something real to record.
+
+4. **Commit: create the rebuild work order** (UI 3, UI 4) — `plan_work_order` already
+   does the work; point it at the rebuild process, peg the core, allocate the
+   reusable harvested `Parts`. Needs two rebuild states on `Core` (it stops at
+   `DISASSEMBLED`) and the return link on `CoreDetailPage` — "rebuilt as WO-1234" —
+   because the core's story currently ends at disassembled and that round trip is the
+   traceability claim an audit actually tests.
+
+   Two prerequisites underneath it, both one-liners (§6.7): accepted components land
+   in `PENDING` where `_available_supply` counts only `IN_STOCK`, and nothing writes
+   an `AssemblyUsage`.
+
+5. **`EXCHANGE` path closes here.** Steps 1–4 are a complete loop for stock rebuilds.
+   Ship it and run cores through it before starting step 6 — both the §7 quoting
+   requirements and how many distinct scopes a shop really has become answerable from
+   evidence rather than guessed up front.
+
+6. **`REPAIR_RETURN` gate** (UI 8) — quote projected from the unresolved slots (§6.5),
+   customer approval before work, decline path (§10.6). Serial continuity is NOT on
+   this list: the core stays the routing subject through the rebuild, so it needs
+   nothing (§10.5).
+
+7. **Routing support for composed scope** (§5.1, UI 6) — superset process, and the
+   move from bypass edges (a) to a per-unit included-step set (b) with a scope-aware
+   advancement walk. WO grain (§5.2) is a deferred choice, not a prerequisite.
+
+8. **Staging reuse-vs-new** (UI 7) — `MaterialStagingLine.material` is a hard
+   `Material` FK, so a harvested `Parts` cannot be staged. Same root cause as the
+   parked bought-parts-staging item; fixing it once covers both, which is why it is
+   worth doing as its own step rather than folded into step 4.
+
+9. **Fallout forecast** into the RCCP material lane — expected yield (§4's
+   `DisassemblyBOMLine.expected_fallout_rate`) becomes forward supply, so teardown
+   volume informs the material lane instead of only history.
+
+Steps 8 and 9 reach outside reman and stay separate deliberately: both pay off across
+the system rather than only in this loop.
+
