@@ -335,7 +335,11 @@ class HarvestedComponentTests(RemanBaseTestCase):
         self.assertIsNotNone(component.component_part)
         self.assertEqual(component.component_part, part)
         self.assertEqual(part.part_type, self.nozzle_type)
-        self.assertEqual(part.part_status, PartsStatus.PENDING)
+        # IN_STOCK, not PENDING: accepting a component is what makes it available,
+        # and `_available_supply` counts only IN_STOCK — left PENDING it was
+        # invisible as supply. PENDING means "created, not yet started", which
+        # describes a unit to be built, not a part on a shelf.
+        self.assertEqual(part.part_status, PartsStatus.IN_STOCK)
         self.assertIn("HC-CORE-HC-001", part.ERP_id)
 
     def test_accept_to_inventory_custom_erp_id(self):
@@ -811,8 +815,12 @@ class RemanWorkflowIntegrationTests(RemanBaseTestCase):
         self.assertTrue(core.core_credit_issued)
 
         # 7. Verify parts are in inventory
-        self.assertEqual(nozzle_part.part_status, PartsStatus.PENDING)
-        self.assertEqual(solenoid_part.part_status, PartsStatus.PENDING)
+        # IN_STOCK, not PENDING: accepting a component is what makes it available,
+        # and `_available_supply` counts only IN_STOCK — left PENDING it was
+        # invisible as supply. PENDING means "created, not yet started", which
+        # describes a unit to be built, not a part on a shelf.
+        self.assertEqual(nozzle_part.part_status, PartsStatus.IN_STOCK)
+        self.assertEqual(solenoid_part.part_status, PartsStatus.IN_STOCK)
 
 
 class RemanWorkOrderIntegrationTests(RemanBaseTestCase):
@@ -907,7 +915,11 @@ class RemanWorkOrderIntegrationTests(RemanBaseTestCase):
 
         # Accept to inventory
         part = component.accept_to_inventory(user=self.qa_inspector)
-        self.assertEqual(part.part_status, PartsStatus.PENDING)
+        # IN_STOCK, not PENDING: accepting a component is what makes it available,
+        # and `_available_supply` counts only IN_STOCK — left PENDING it was
+        # invisible as supply. PENDING means "created, not yet started", which
+        # describes a unit to be built, not a part on a shelf.
+        self.assertEqual(part.part_status, PartsStatus.IN_STOCK)
 
         # Create production order and work order
         prod_order = Orders.objects.create(
@@ -1689,3 +1701,93 @@ class RebuildScopeResolutionTests(TenantTestCase):
         self.clean.delete()   # soft delete — archives, does not remove
         self.assertNotIn('Cleaning',
                          [o.step_name for o in resolve_scope(self.core, self._slots()).operations])
+
+
+class CoreReleaseTests(TenantTestCase):
+    """Teardown ends in one of two places, and which one is not a free choice.
+
+    A unit that goes back to its customer must be rebuilt; anything else is a source
+    of parts. The services refuse the wrong one rather than trusting the caller, so a
+    mis-click on the work-order surface cannot pool a customer's own components.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, HarvestedComponent, PartTypes
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.component_type = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle', ID_prefix='NZ')
+
+        def _core(number, mode):
+            return Core.objects.create(
+                tenant=self.tenant_a, core_number=number, core_type=self.core_type,
+                fulfilment_mode=mode, status='DISASSEMBLED',
+                received_date=date.today(), received_by=self.user_a)
+
+        self.theirs = _core('CORE-REL-1', 'REPAIR_RETURN')
+        self.ours = _core('CORE-REL-2', 'EXCHANGE')
+        for core in (self.theirs, self.ours):
+            HarvestedComponent.objects.create(
+                tenant=self.tenant_a, core=core, component_type=self.component_type,
+                condition_grade='A', disassembled_by=self.user_a)
+
+    def test_an_exchange_core_releases_its_components_to_stock(self):
+        from Tracker.models import PartsStatus
+        from Tracker.services.reman.release import release_core_to_inventory
+
+        core, accepted = release_core_to_inventory(self.ours, self.user_a)
+        self.assertEqual(core.status, 'HARVESTED')
+        self.assertEqual(len(accepted), 1)
+        # Stock, not PENDING — otherwise nothing counts it as supply and the exchange
+        # premise connects at neither end.
+        self.assertEqual(accepted[0].part_status, PartsStatus.IN_STOCK)
+
+    def test_a_customers_unit_cannot_be_released_to_stock(self):
+        """The expensive direction: pooling a repair-and-return core's components means
+        the customer's own unit can never be reassembled."""
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import release_core_to_inventory
+
+        with self.assertRaises(ValidationError) as ctx:
+            release_core_to_inventory(self.theirs, self.user_a)
+        self.assertIn('back to its customer', str(ctx.exception))
+
+    def test_an_exchange_core_cannot_be_released_into_rebuild(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import release_core_to_rebuild
+
+        with self.assertRaises(ValidationError) as ctx:
+            release_core_to_rebuild(self.ours, self.user_a)
+        self.assertIn('exchange unit', str(ctx.exception))
+
+    def test_releasing_into_rebuild_needs_a_resolved_scope(self):
+        """Releasing with no operations would put a unit on a work order with nothing
+        to do, which reads as 'rebuilt' having done none of the work."""
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import release_core_to_rebuild
+
+        with self.assertRaises(ValidationError) as ctx:
+            release_core_to_rebuild(self.theirs, self.user_a)
+        self.assertIn('No rebuild operations resolved', str(ctx.exception))
+
+    def test_only_a_disassembled_core_can_be_released(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import release_core_to_inventory
+
+        self.ours.status = 'IN_DISASSEMBLY'
+        self.ours.save(update_fields=['status'])
+        with self.assertRaises(ValidationError):
+            release_core_to_inventory(self.ours, self.user_a)
+
+    def test_releasing_to_inventory_twice_finishes_cleanly(self):
+        """A partial release must be resumable — components already accepted are
+        skipped rather than raising, so a second run completes the job."""
+        from Tracker.services.reman.release import release_core_to_inventory
+
+        release_core_to_inventory(self.ours, self.user_a)
+        self.ours.status = 'DISASSEMBLED'          # simulate a resumed release
+        self.ours.save(update_fields=['status'])
+        core, accepted = release_core_to_inventory(self.ours, self.user_a)
+        self.assertEqual(core.status, 'HARVESTED')
+        self.assertEqual(accepted, [])

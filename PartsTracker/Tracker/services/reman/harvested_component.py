@@ -70,7 +70,13 @@ def accept_component_to_inventory(
         tenant=component.tenant,
         ERP_id=erp_id,
         part_type=component.component_type,
-        part_status=PartsStatus.PENDING,
+        # IN_STOCK, not PENDING. `_available_supply` counts only IN_STOCK, so a
+        # recovered component left PENDING was invisible as supply and the exchange
+        # premise — teardown feeds stock, rebuild consumes it — connected at neither
+        # end. PENDING means "created, not yet started", which describes a unit to be
+        # built, not a part on a shelf. Acceptance is already gated on the
+        # `accept_component` permission (QA tier), so the accept IS the inspection.
+        part_status=PartsStatus.IN_STOCK,
         # Reserved at CREATION rather than in a second write: between the two there
         # would be a window in which the customer's part sits in stock looking free,
         # and this is the one transition the reservation exists to cover.

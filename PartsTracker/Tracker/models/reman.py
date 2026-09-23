@@ -46,10 +46,20 @@ class Core(SecureModel):
         ('TRADE_IN', 'Trade-In'),
     ]
 
+    # Teardown ends in one of exactly two places, and which one is not a separate
+    # decision — it follows from `fulfilment_mode`. A unit that goes back to its
+    # customer must be rebuilt; anything else is a source of parts. So there is no
+    # "what shall we do with it" field: `returns_to_customer` already answers it.
     CORE_STATUS_CHOICES = [
         ('RECEIVED', 'Received'),
         ('IN_DISASSEMBLY', 'In Disassembly'),
         ('DISASSEMBLED', 'Disassembled'),
+        # Repair-and-return path: rebuilt on the SAME work order the teardown ran on,
+        # so the unit keeps one traceable thread from arrival to shipment.
+        ('IN_REBUILD', 'In Rebuild'),
+        ('REBUILT', 'Rebuilt — ready to return'),
+        # Exchange path: the usable components became stock and the core is consumed.
+        ('HARVESTED', 'Harvested to inventory'),
         ('SCRAPPED', 'Scrapped'),
     ]
 

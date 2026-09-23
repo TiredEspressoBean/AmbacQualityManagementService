@@ -1723,11 +1723,20 @@ export type CoreStatusEnum =
    * * `RECEIVED` - Received
    * `IN_DISASSEMBLY` - In Disassembly
    * `DISASSEMBLED` - Disassembled
+   * `IN_REBUILD` - In Rebuild
+   * `REBUILT` - Rebuilt — ready to return
+   * `HARVESTED` - Harvested to inventory
    * `SCRAPPED` - Scrapped
    *
-   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, SCRAPPED
+   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, IN_REBUILD, REBUILT, HARVESTED, SCRAPPED
    */
-  "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "SCRAPPED";
+  | "RECEIVED"
+  | "IN_DISASSEMBLY"
+  | "DISASSEMBLED"
+  | "IN_REBUILD"
+  | "REBUILT"
+  | "HARVESTED"
+  | "SCRAPPED";
 export type CoreList = {
   id: string;
   core_number?: /**
@@ -1776,6 +1785,16 @@ export type CoreList = {
   disassembly_completed_at?: (string | null) | undefined;
   harvested_component_count: number;
   usable_component_count: number;
+};
+export type CoreReleaseInventory = {
+  core: Core;
+  accepted_count: number;
+  accepted_part_ids: Array<string>;
+};
+export type CoreReleaseRebuild = {
+  core: Core;
+  first_step: string | null;
+  operation_count: number;
 };
 export type CoreRequest = {
   core_number?: /**
@@ -15766,9 +15785,23 @@ export type WorkOrder = {
   split_reason: SplitReasonEnum | NullEnum | null;
   split_at: string | null;
   child_count: number;
+  cores: Array<WorkOrderCore>;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+};
+export type WorkOrderCore = {
+  id: string;
+  core_number: string;
+  serial_number: string;
+  status: string;
+  condition_grade: string;
+  customer_name: string | null;
+  fulfilment_mode: string;
+  returns_to_customer: boolean;
+  harvested_component_count: number;
+  usable_component_count: number;
+  step_name: string | null;
 };
 export type WorkOrderBulkAddPartsInputRequest = {
   part_type: string;
@@ -16961,6 +16994,9 @@ const CoreStatusEnum = z.enum([
   "RECEIVED",
   "IN_DISASSEMBLY",
   "DISASSEMBLED",
+  "IN_REBUILD",
+  "REBUILT",
+  "HARVESTED",
   "SCRAPPED",
 ]);
 const ConditionGradeEnum = z.enum(["A", "B", "C", "SCRAP"]);
@@ -17141,6 +17177,18 @@ const RebuildPlan = z.object({
   operations: z.array(ScopedOperation),
   warnings: z.array(z.string()),
 });
+const CoreReleaseInventory = z.object({
+  core: Core,
+  accepted_count: z.number().int(),
+  accepted_part_ids: z.array(z.string().uuid()),
+});
+const CoreReleaseInventoryError = z.object({ detail: z.string() });
+const CoreReleaseRebuild = z.object({
+  core: Core,
+  first_step: z.string().nullable(),
+  operation_count: z.number().int(),
+});
+const CoreReleaseRebuildError = z.object({ detail: z.string() });
 const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
 const CoreBulkCreateInputRequest = z.object({
   cores: z.array(z.object({}).partial().passthrough()),
@@ -22930,6 +22978,19 @@ const WorkOrderRequest = z.object({
   notes: z.string().nullish(),
   archived: z.boolean().optional(),
 });
+const WorkOrderCore = z.object({
+  id: z.string().uuid(),
+  core_number: z.string(),
+  serial_number: z.string(),
+  status: z.string(),
+  condition_grade: z.string(),
+  customer_name: z.string().nullable(),
+  fulfilment_mode: z.string(),
+  returns_to_customer: z.boolean(),
+  harvested_component_count: z.number().int(),
+  usable_component_count: z.number().int(),
+  step_name: z.string().nullable(),
+});
 const WorkOrder = z.object({
   id: z.string().uuid(),
   ERP_id: z.string().max(50),
@@ -22963,6 +23024,7 @@ const WorkOrder = z.object({
   split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
   split_at: z.string().datetime({ offset: true }).nullable(),
   child_count: z.number().int(),
+  cores: z.array(WorkOrderCore),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -24921,6 +24983,10 @@ export const schemas = {
   RebuildSlot,
   ScopedOperation,
   RebuildPlan,
+  CoreReleaseInventory,
+  CoreReleaseInventoryError,
+  CoreReleaseRebuild,
+  CoreReleaseRebuildError,
   CoreScrapRequest,
   CoreBulkCreateInputRequest,
   CoreBulkCreateResponse,
@@ -25508,6 +25574,7 @@ export const schemas = {
   WorkOrderList,
   PaginatedWorkOrderListList,
   WorkOrderRequest,
+  WorkOrderCore,
   WorkOrder,
   PatchedWorkOrderRequest,
   WorkOrderBulkAddPartsInputRequest,
@@ -29138,7 +29205,15 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["DISASSEMBLED", "IN_DISASSEMBLY", "RECEIVED", "SCRAPPED"])
+          .enum([
+            "DISASSEMBLED",
+            "HARVESTED",
+            "IN_DISASSEMBLY",
+            "IN_REBUILD",
+            "REBUILT",
+            "RECEIVED",
+            "SCRAPPED",
+          ])
           .optional(),
       },
     ],
@@ -29342,7 +29417,15 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["DISASSEMBLED", "IN_DISASSEMBLY", "RECEIVED", "SCRAPPED"])
+          .enum([
+            "DISASSEMBLED",
+            "HARVESTED",
+            "IN_DISASSEMBLY",
+            "IN_REBUILD",
+            "REBUILT",
+            "RECEIVED",
+            "SCRAPPED",
+          ])
           .optional(),
       },
     ],
@@ -29381,6 +29464,48 @@ committed to rebuilding — which is also what lets the same call answer
       },
     ],
     response: RebuildPlan,
+  },
+  {
+    method: "post",
+    path: "/api/Cores/:id/release_to_inventory/",
+    alias: "api_Cores_release_to_inventory_create",
+    description: `Accept this core&#x27;s usable components into stock. The core is then consumed — this is the exchange path, where the customer already has a unit from stock.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CoreReleaseInventory,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/Cores/:id/release_to_rebuild/",
+    alias: "api_Cores_release_to_rebuild_create",
+    description: `Release a repair-and-return core into rebuild on the same work order the teardown ran on.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CoreReleaseRebuild,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
   },
   {
     method: "post",
@@ -30721,7 +30846,10 @@ The new version will:
       },
     ],
     response: z.array(Documents),
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/Documents/due-for-review/",
@@ -30810,10 +30938,7 @@ Returns documents where review_date &lt;&#x3D; today.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Documents/metadata/",
@@ -35658,7 +35783,10 @@ COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
       },
     ],
     response: NotificationFeedItem,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/notifications/feed/:id/mark-read/",
@@ -35681,10 +35809,7 @@ COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
     description: `Mark every unread in-app notification as read.`,
     requestFormat: "json",
     response: z.object({ marked: z.number().int() }),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/notifications/feed/unread-count/",
@@ -40979,7 +41104,10 @@ Usage:
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/Processes/:id/revisions/",
@@ -41029,10 +41157,7 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Processes/metadata/",
@@ -46897,7 +47022,10 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
       },
     ],
     response: SubstepCompletion,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "delete",
     path: "/api/SubstepCompletions/:id/",
@@ -46951,10 +47079,7 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/SubstepGateCompletions/",
@@ -51649,7 +51774,10 @@ outran the expected yield.`,
       },
     ],
     response: WorkOrderMakeupStatus,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/WorkOrders/:id/material_requirements/",
@@ -51692,10 +51820,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkOrders/:id/qa_documents/",

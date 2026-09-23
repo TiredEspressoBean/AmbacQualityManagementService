@@ -12,15 +12,20 @@ import {
 import { useRetrieveCores } from "@/hooks/useRetrieveCores";
 
 /**
- * Cores torn down and waiting on a rebuild decision.
+ * Cores torn down and waiting to be released into rebuild.
  *
  * Exists so the loop is a queue somebody works rather than a URL you have to know.
- * DISASSEMBLED is the whole filter: a core is ready when teardown is finished, and
- * "grading complete" is implied by it — components are graded as they are captured.
+ *
+ * `IN_REBUILD` rather than `DISASSEMBLED`: teardown ends in one of two places, and only
+ * a unit that goes back to its customer is rebuilt. An earlier version filtered on
+ * DISASSEMBLED alone, which filled the queue with harvest cores nobody intended to
+ * rebuild and gave no way to clear them. Releasing happens on the teardown work order,
+ * where the operator actually is; this is the catch-up list of what has been released
+ * and not yet planned.
  */
 export function RebuildQueuePage() {
     const { data, isLoading, isError } = useRetrieveCores({
-        status: "DISASSEMBLED",
+        status: "IN_REBUILD",
         ordering: "disassembly_completed_at",
         limit: 100,
     });
@@ -32,8 +37,9 @@ export function RebuildQueuePage() {
             <div>
                 <h1 className="text-2xl font-bold">Ready to rebuild</h1>
                 <p className="text-muted-foreground">
-                    Cores that finished teardown and have no rebuild decision yet. Oldest
-                    first — a core sitting here is capital on a shelf.
+                    Units released into rebuild and not yet planned. Oldest first — a core
+                    sitting here is capital on a shelf. Cores are released on their
+                    teardown work order.
                 </p>
             </div>
 
@@ -61,7 +67,8 @@ export function RebuildQueuePage() {
                         </p>
                     ) : cores.length === 0 ? (
                         <p className="py-8 text-center text-muted-foreground">
-                            Nothing waiting — every torn-down core has been dealt with.
+                            Nothing waiting. Cores are released into rebuild from their
+                            teardown work order.
                         </p>
                     ) : (
                         <div className="w-full overflow-x-auto rounded-md border">

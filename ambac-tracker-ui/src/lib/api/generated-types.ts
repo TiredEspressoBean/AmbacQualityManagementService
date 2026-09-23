@@ -1555,6 +1555,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/{id}/release_to_inventory/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept this core's usable components into stock. The core is then consumed — this is the exchange path, where the customer already has a unit from stock. */
+        post: operations["api_Cores_release_to_inventory_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/{id}/release_to_rebuild/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Release a repair-and-return core into rebuild on the same work order the teardown ran on. */
+        post: operations["api_Cores_release_to_rebuild_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/{id}/scrap/": {
         parameters: {
             query?: never;
@@ -17812,6 +17846,22 @@ export interface components {
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
         };
+        CoreReleaseInventory: {
+            core: components["schemas"]["Core"];
+            accepted_count: number;
+            accepted_part_ids: string[];
+        };
+        CoreReleaseInventoryError: {
+            detail: string;
+        };
+        CoreReleaseRebuild: {
+            core: components["schemas"]["Core"];
+            first_step: string | null;
+            operation_count: number;
+        };
+        CoreReleaseRebuildError: {
+            detail: string;
+        };
         /** @description Remanufacturing core serializer */
         CoreRequest: {
             /** @description Our handle for this unit (unique per tenant). Auto-generated as CORE-YYYY-#### when left blank — every other business identifier here is (orders, shipments, approvals, quality reports, dispositions, qualifications), and cores arrive in batches where hand-typing forty unique numbers is both slow and the obvious place for a duplicate to creep in. Still writable, for a shop with its own tagging scheme. The CUSTOMER's references live elsewhere: `source_reference` for an RMA or PO, `serial_number` for the OEM serial. */
@@ -17883,10 +17933,13 @@ export interface components {
          * @description * `RECEIVED` - Received
          *     * `IN_DISASSEMBLY` - In Disassembly
          *     * `DISASSEMBLED` - Disassembled
+         *     * `IN_REBUILD` - In Rebuild
+         *     * `REBUILT` - Rebuilt — ready to return
+         *     * `HARVESTED` - Harvested to inventory
          *     * `SCRAPPED` - Scrapped
          * @enum {string}
          */
-        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "SCRAPPED";
+        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "HARVESTED" | "SCRAPPED";
         CreateBOMRevisionInputRequest: {
             change_description: string;
         };
@@ -32349,6 +32402,7 @@ export interface components {
             /** Format: date-time */
             readonly split_at: string | null;
             readonly child_count: number;
+            readonly cores: components["schemas"]["WorkOrderCore"][];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -32399,6 +32453,27 @@ export interface components {
             results: {
                 [key: string]: unknown;
             }[];
+        };
+        /**
+         * @description A core on a teardown work order, for the control surface.
+         *
+         *     A teardown WO's subjects are cores, not parts, so a control page that only renders
+         *     parts shows an empty job. This is the minimum a planner needs to work one: where
+         *     each core is, what came out of it, and which way it leaves.
+         */
+        WorkOrderCore: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly core_number: string;
+            readonly serial_number: string;
+            readonly status: string;
+            readonly condition_grade: string;
+            readonly customer_name: string | null;
+            readonly fulfilment_mode: string;
+            readonly returns_to_customer: boolean;
+            readonly harvested_component_count: number;
+            readonly usable_component_count: number;
+            readonly step_name: string | null;
         };
         WorkOrderCreateMakeupResponse: {
             created: number;
@@ -36280,9 +36355,12 @@ export interface operations {
                  * @description * `RECEIVED` - Received
                  *     * `IN_DISASSEMBLY` - In Disassembly
                  *     * `DISASSEMBLED` - Disassembled
+                 *     * `IN_REBUILD` - In Rebuild
+                 *     * `REBUILT` - Rebuilt — ready to return
+                 *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "DISASSEMBLED" | "IN_DISASSEMBLY" | "RECEIVED" | "SCRAPPED";
+                status?: "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "SCRAPPED";
             };
             header?: never;
             path?: never;
@@ -36479,9 +36557,12 @@ export interface operations {
                  * @description * `RECEIVED` - Received
                  *     * `IN_DISASSEMBLY` - In Disassembly
                  *     * `DISASSEMBLED` - Disassembled
+                 *     * `IN_REBUILD` - In Rebuild
+                 *     * `REBUILT` - Rebuilt — ready to return
+                 *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "DISASSEMBLED" | "IN_DISASSEMBLY" | "RECEIVED" | "SCRAPPED";
+                status?: "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "SCRAPPED";
             };
             header?: never;
             path: {
@@ -36542,6 +36623,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RebuildPlan"];
+                };
+            };
+        };
+    };
+    api_Cores_release_to_inventory_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreReleaseInventory"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreReleaseInventoryError"];
+                };
+            };
+        };
+    };
+    api_Cores_release_to_rebuild_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreReleaseRebuild"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreReleaseRebuildError"];
                 };
             };
         };

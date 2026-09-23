@@ -325,11 +325,45 @@ class DemoRemanSeeder(BaseSeeder):
         # Repair codes + the rebuild level that groups them
         result['repair_codes'] = self._create_repair_codes(part_types)
 
+        # Make teardown startable at all
+        self._flag_disassembly_process(part_types)
+
         self.log(f"  Created {len(result['bom_lines'])} disassembly BOM lines")
         self.log(f"  Created {len(result['cores'])} cores")
         self.log(f"  Created {len(result['components'])} harvested components")
 
         return result
+
+    def _flag_disassembly_process(self, part_types):
+        """Mark the reman process teardown-eligible and make it the core type's default.
+
+        Without `Processes.is_disassembly=True` somewhere, `start_teardown_batch`
+        cannot resolve a process and teardown cannot be started AT ALL on seeded data —
+        the whole reman loop was undemonstrable from a clean seed. The reman process is
+        the right one to flag: it carries the whole visit, teardown through rebuild,
+        which is how a repair-and-return unit keeps one thread from arrival to shipment.
+        """
+        from Tracker.models import PartTypes, Processes
+
+        injector = next(
+            (pt for pt in part_types if pt.name == 'Common Rail Injector'), None)
+        if injector is None:
+            return
+        process = Processes.objects.filter(
+            tenant=self.tenant, part_type=injector, status='APPROVED',
+            is_current_version=True, archived=False,
+        ).order_by('name').first()
+        if process is None:
+            self.log("  No approved injector process — teardown will not be startable")
+            return
+        if not process.is_disassembly:
+            process.is_disassembly = True
+            process.save(update_fields=['is_disassembly'])
+        current = PartTypes.objects.filter(pk=injector.pk).first()
+        if current and current.default_disassembly_process_id != process.id:
+            current.default_disassembly_process = process
+            current.save(update_fields=['default_disassembly_process'])
+        self.log(f"  Teardown process: {process.name}")
 
     def _create_repair_codes(self, part_types):
         """Repair codes and a default rebuild level for the injector.

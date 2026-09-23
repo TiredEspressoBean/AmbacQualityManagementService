@@ -4796,13 +4796,19 @@ paths:
           type: string
           enum:
           - DISASSEMBLED
+          - HARVESTED
           - IN_DISASSEMBLY
+          - IN_REBUILD
+          - REBUILT
           - RECEIVED
           - SCRAPPED
         description: |-
           * `RECEIVED` - Received
           * `IN_DISASSEMBLY` - In Disassembly
           * `DISASSEMBLED` - Disassembled
+          * `IN_REBUILD` - In Rebuild
+          * `REBUILT` - Rebuilt — ready to return
+          * `HARVESTED` - Harvested to inventory
           * `SCRAPPED` - Scrapped
       tags:
       - api
@@ -5106,13 +5112,19 @@ paths:
           type: string
           enum:
           - DISASSEMBLED
+          - HARVESTED
           - IN_DISASSEMBLY
+          - IN_REBUILD
+          - REBUILT
           - RECEIVED
           - SCRAPPED
         description: |-
           * `RECEIVED` - Received
           * `IN_DISASSEMBLY` - In Disassembly
           * `DISASSEMBLED` - Disassembled
+          * `IN_REBUILD` - In Rebuild
+          * `REBUILT` - Rebuilt — ready to return
+          * `HARVESTED` - Harvested to inventory
           * `SCRAPPED` - Scrapped
       tags:
       - api
@@ -5178,6 +5190,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RebuildPlan'
+          description: ''
+  /api/Cores/{id}/release_to_inventory/:
+    post:
+      operationId: api_Cores_release_to_inventory_create
+      description: Accept this core's usable components into stock. The core is then
+        consumed — this is the exchange path, where the customer already has a unit
+        from stock.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreReleaseInventory'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreReleaseInventoryError'
+          description: ''
+  /api/Cores/{id}/release_to_rebuild/:
+    post:
+      operationId: api_Cores_release_to_rebuild_create
+      description: Release a repair-and-return core into rebuild on the same work
+        order the teardown ran on.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreReleaseRebuild'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreReleaseRebuildError'
           description: ''
   /api/Cores/{id}/scrap/:
     post:
@@ -42837,6 +42912,50 @@ components:
       - id
       - received_date
       - usable_component_count
+    CoreReleaseInventory:
+      type: object
+      properties:
+        core:
+          $ref: '#/components/schemas/Core'
+        accepted_count:
+          type: integer
+        accepted_part_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - accepted_count
+      - accepted_part_ids
+      - core
+    CoreReleaseInventoryError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreReleaseRebuild:
+      type: object
+      properties:
+        core:
+          $ref: '#/components/schemas/Core'
+        first_step:
+          type: string
+          nullable: true
+        operation_count:
+          type: integer
+      required:
+      - core
+      - first_step
+      - operation_count
+    CoreReleaseRebuildError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     CoreRequest:
       type: object
       description: Remanufacturing core serializer
@@ -42958,12 +43077,18 @@ components:
       - RECEIVED
       - IN_DISASSEMBLY
       - DISASSEMBLED
+      - IN_REBUILD
+      - REBUILT
+      - HARVESTED
       - SCRAPPED
       type: string
       description: |-
         * `RECEIVED` - Received
         * `IN_DISASSEMBLY` - In Disassembly
         * `DISASSEMBLED` - Disassembled
+        * `IN_REBUILD` - In Rebuild
+        * `REBUILT` - Rebuilt — ready to return
+        * `HARVESTED` - Harvested to inventory
         * `SCRAPPED` - Scrapped
     CreateBOMRevisionInputRequest:
       type: object
@@ -70547,6 +70672,11 @@ components:
         child_count:
           type: integer
           readOnly: true
+        cores:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderCore'
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -70560,6 +70690,7 @@ components:
       required:
       - ERP_id
       - child_count
+      - cores
       - created_at
       - current_hold
       - id
@@ -70686,6 +70817,63 @@ components:
             additionalProperties: {}
       required:
       - results
+    WorkOrderCore:
+      type: object
+      description: |-
+        A core on a teardown work order, for the control surface.
+
+        A teardown WO's subjects are cores, not parts, so a control page that only renders
+        parts shows an empty job. This is the minimum a planner needs to work one: where
+        each core is, what came out of it, and which way it leaves.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        core_number:
+          type: string
+          readOnly: true
+        serial_number:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        condition_grade:
+          type: string
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+          nullable: true
+        fulfilment_mode:
+          type: string
+          readOnly: true
+        returns_to_customer:
+          type: boolean
+          readOnly: true
+        harvested_component_count:
+          type: integer
+          readOnly: true
+        usable_component_count:
+          type: integer
+          readOnly: true
+        step_name:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - condition_grade
+      - core_number
+      - customer_name
+      - fulfilment_mode
+      - harvested_component_count
+      - id
+      - returns_to_customer
+      - serial_number
+      - status
+      - step_name
+      - usable_component_count
     WorkOrderCreateMakeupResponse:
       type: object
       properties:

@@ -41,7 +41,11 @@ def complete_core_disassembly(core: Core, user) -> Core:
 
 
 def scrap_core(core: Core, reason: str = '') -> Core:
-    """Mark a Core as scrapped (not suitable for disassembly).
+    """Mark a Core as scrapped.
+
+    Works at any point, not only before teardown: a core is just as often found
+    unusable DURING disassembly — cracked housing, corrosion past limits — and that is
+    the third end state beside rebuild and harvest.
 
     Raises:
         ValueError: core is already scrapped.

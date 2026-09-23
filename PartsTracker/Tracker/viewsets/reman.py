@@ -54,6 +54,14 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     ]
     ordering = ['-received_date']
 
+    # Releasing is the terminal act of teardown, so it rides the perm that governs
+    # completing one rather than adding a third codename for the same authority.
+    action_permissions = {
+        'release_to_rebuild': ['complete_disassembly'],
+        'release_to_inventory': ['complete_disassembly'],
+    }
+    crud_exempt_actions = {'release_to_rebuild', 'release_to_inventory'}
+
     def get_serializer_class(self):
         if self.action == 'list':
             return CoreListSerializer
@@ -124,6 +132,71 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
         core = self.get_object()
         components = core.harvested_components.all()
         return Response(HarvestedComponentSerializer(components, many=True, context={'request': request}).data)
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(name="CoreReleaseRebuild", fields={
+                "core": CoreSerializer(),
+                "first_step": serializers.CharField(allow_null=True),
+                "operation_count": serializers.IntegerField(),
+            }),
+            400: inline_serializer(name="CoreReleaseRebuildError", fields={
+                "detail": serializers.CharField(),
+            }),
+        },
+        description="Release a repair-and-return core into rebuild on the same work "
+                    "order the teardown ran on.",
+    )
+    @action(detail=True, methods=['post'], url_path='release_to_rebuild')
+    def release_to_rebuild(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import release_core_to_rebuild
+
+        core = self.get_object()
+        try:
+            core, plan = release_core_to_rebuild(core, request.user)
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'core': CoreSerializer(core, context={'request': request}).data,
+            'first_step': core.step.name if core.step else None,
+            'operation_count': len(plan.operations),
+        })
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(name="CoreReleaseInventory", fields={
+                "core": CoreSerializer(),
+                "accepted_count": serializers.IntegerField(),
+                "accepted_part_ids": serializers.ListField(child=serializers.UUIDField()),
+            }),
+            400: inline_serializer(name="CoreReleaseInventoryError", fields={
+                "detail": serializers.CharField(),
+            }),
+        },
+        description="Accept this core's usable components into stock. The core is then "
+                    "consumed — this is the exchange path, where the customer already "
+                    "has a unit from stock.",
+    )
+    @action(detail=True, methods=['post'], url_path='release_to_inventory')
+    def release_to_inventory(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import release_core_to_inventory
+
+        core = self.get_object()
+        try:
+            core, accepted = release_core_to_inventory(core, request.user)
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'core': CoreSerializer(core, context={'request': request}).data,
+            'accepted_count': len(accepted),
+            'accepted_part_ids': [p.id for p in accepted],
+        })
 
     @extend_schema(responses={200: RebuildPlanSerializer})
     @action(detail=True, methods=['get'], url_path='rebuild_plan')

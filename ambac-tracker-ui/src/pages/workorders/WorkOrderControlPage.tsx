@@ -86,6 +86,7 @@ import {
 } from "./mockData";
 import { WO_PRIORITY_LABELS, HOLD_REASONS, STATUS_BAR_FILL, type HoldReason } from "./constants";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
+import { WorkOrderCoresCard } from "@/components/WorkOrderCoresCard";
 import { useRetrieveParts } from "@/hooks/parts";
 import { usePartTraveler } from "@/hooks/parts";
 import { useRetrieveProcessWithSteps } from "@/hooks/useRetrieveProcessWithSteps";
@@ -2215,6 +2216,11 @@ export function WorkOrderControlPage() {
                 footer keeps the Report entry point on a clear WO; open exceptions
                 are hoisted up into "Needs attention" instead. */}
             {workOrderId && <OutsideProcessPanel workOrderId={workOrderId} processId={processId} />}
+            {/* A teardown WO's subjects are cores, not parts — without this the page
+                renders an empty job. Placed above the exceptions footer because
+                releasing a core is the terminal act of the job, not an aside. */}
+            <WorkOrderCoresCard cores={realWo?.cores ?? []} />
+
             {!hasOpenExceptions && exceptionsCard}
 
             <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>

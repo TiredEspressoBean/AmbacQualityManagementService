@@ -505,6 +505,26 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
 
 # ===== PARTS SERIALIZERS =====
 
+class WorkOrderCoreSerializer(serializers.Serializer):
+    """A core on a teardown work order, for the control surface.
+
+    A teardown WO's subjects are cores, not parts, so a control page that only renders
+    parts shows an empty job. This is the minimum a planner needs to work one: where
+    each core is, what came out of it, and which way it leaves.
+    """
+    id = serializers.UUIDField(read_only=True)
+    core_number = serializers.CharField(read_only=True)
+    serial_number = serializers.CharField(read_only=True, allow_blank=True)
+    status = serializers.CharField(read_only=True)
+    condition_grade = serializers.CharField(read_only=True, allow_blank=True)
+    customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
+    fulfilment_mode = serializers.CharField(read_only=True)
+    returns_to_customer = serializers.BooleanField(read_only=True)
+    harvested_component_count = serializers.IntegerField(read_only=True)
+    usable_component_count = serializers.IntegerField(read_only=True)
+    step_name = serializers.CharField(source='step.name', read_only=True, allow_null=True)
+
+
 class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
     """Enhanced parts serializer using model methods"""
 
@@ -857,7 +877,17 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     parent_workorder_id = serializers.UUIDField(read_only=True, allow_null=True)
     child_count = serializers.SerializerMethodField()
 
+    # A teardown WO's subjects are cores, not parts, so a control page that renders
+    # only parts shows an empty job. Detail only — on a list this would be an N+1 per
+    # row, which is the whole reason WorkOrderListSerializer exists.
+    cores = serializers.SerializerMethodField()
+
     related_order = TenantScopedPrimaryKeyRelatedField(queryset=Orders.unscoped.all(), required=False, allow_null=True)
+
+    @extend_schema_field(WorkOrderCoreSerializer(many=True))
+    def get_cores(self, obj):
+        qs = obj.cores.filter(archived=False).select_related('customer', 'step')
+        return WorkOrderCoreSerializer(qs, many=True).data
 
     class Meta:
         model = WorkOrder
@@ -866,11 +896,11 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         'process', 'process_info', 'expected_start', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
         'notes', 'parts_summary', 'current_hold',
         'released_at', 'released_by', 'release_override_reason',
-        'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
+        'parent_workorder_id', 'split_reason', 'split_at', 'child_count', 'cores',
         'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',
-            'process_info', 'current_hold',
+            'process_info', 'current_hold', 'cores',
             # Release is an authorization act with its own gated endpoints — never a
             # plain PATCH, or the readiness check and the override record are bypassed.
             'released_at', 'released_by', 'release_override_reason',
