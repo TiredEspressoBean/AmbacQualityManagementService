@@ -331,6 +331,7 @@ router.register(r'HarvestedComponents', HarvestedComponentViewSet, basename='Har
 router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
 router.register(r'RepairCodes', RepairCodeViewSet, basename='RepairCodes')
 router.register(r'RebuildScopePresets', RebuildScopePresetViewSet, basename='RebuildScopePresets')
+router.register(r'RebuildSlotOverrides', RebuildSlotOverrideViewSet, basename='RebuildSlotOverrides')
 router.register(r'Schedules', ScheduleViewSet, basename='Schedules')
 router.register(r'ScheduledTasks', ScheduledTaskViewSet, basename='ScheduledTasks')
 router.register(r'Fixtures', FixtureViewSet, basename='Fixtures')

@@ -191,6 +191,7 @@ from .reman import (
     DisassemblyBOMLine,
     RepairCode,
     RebuildScopePreset,
+    RebuildSlotOverride,
 )
 
 # Digital Work Instructions (substep layer below Steps)
@@ -510,6 +511,7 @@ __all__ = [
     'DisassemblyBOMLine',
     'RepairCode',
     'RebuildScopePreset',
+    'RebuildSlotOverride',
 
     # Integrations
     'ExternalAPIOrderIdentifier',

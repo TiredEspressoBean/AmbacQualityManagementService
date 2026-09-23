@@ -223,6 +223,7 @@ class Command(BaseCommand):
         'Tracker_orderline',
         'Tracker_repaircode',
         'Tracker_rebuildscopepreset',
+        'Tracker_rebuildslotoverride',
     ]
 
     def add_arguments(self, parser):

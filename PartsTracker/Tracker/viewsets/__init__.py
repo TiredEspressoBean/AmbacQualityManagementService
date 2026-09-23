@@ -199,6 +199,7 @@ from .reman import (
     DisassemblyBOMLineViewSet,
     RepairCodeViewSet,
     RebuildScopePresetViewSet,
+    RebuildSlotOverrideViewSet,
 )
 
 # Scheduling (CP-SAT solver + operator dispatch) ViewSets
@@ -425,6 +426,7 @@ __all__ = [
     'DisassemblyBOMLineViewSet',
     'RepairCodeViewSet',
     'RebuildScopePresetViewSet',
+    'RebuildSlotOverrideViewSet',
 
     # Scheduling (CP-SAT solver + dispatch)
     'ScheduleViewSet',

@@ -10,7 +10,7 @@ from drf_spectacular.utils import extend_schema_field
 
 from Tracker.models import (
     Core, HarvestedComponent, DisassemblyBOMLine,
-    RepairCode, RebuildScopePreset,
+    RepairCode, RebuildScopePreset, RebuildSlotOverride,
     PartTypes, Companies, User, WorkOrder,
 )
 from .core import SecureModelMixin
@@ -222,6 +222,12 @@ class RebuildSlotSerializer(serializers.Serializer):
     why a line costs money.
     """
     position = serializers.CharField(allow_blank=True)
+    # Set when a person overrode the proposal; `proposed_resolution` keeps what the
+    # system would have done, since "the planner disagreed" only means something next
+    # to what they disagreed with.
+    is_overridden = serializers.BooleanField()
+    proposed_resolution = serializers.CharField(allow_blank=True)
+    override_id = serializers.CharField(allow_blank=True)
     component_type_id = serializers.CharField()
     component_type_name = serializers.CharField()
     bom_line_id = serializers.CharField(allow_null=True)
@@ -338,3 +344,24 @@ class RebuildScopePresetSerializer(SecureModelMixin):
     def update(self, instance, validated_data):
         from Tracker.services.core.versioning import apply_versioned_update
         return apply_versioned_update(instance, validated_data, self.context.get('request'))
+
+
+class RebuildSlotOverrideSerializer(SecureModelMixin):
+    """A planner's decision that differs from the proposed one.
+
+    `reason` is required at the model level and stays required here: an override with
+    no reason cannot be told from a misclick later, and this is the row that answers
+    why a unit was built the way it was.
+    """
+    core_number = serializers.CharField(source='core.core_number', read_only=True)
+    overridden_by_name = serializers.CharField(
+        source='overridden_by.get_full_name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = RebuildSlotOverride
+        fields = (
+            'id', 'core', 'core_number', 'bom_line', 'position',
+            'resolution', 'reason', 'overridden_by', 'overridden_by_name',
+            'created_at', 'updated_at', 'archived',
+        )
+        read_only_fields = ('created_at', 'updated_at', 'overridden_by')

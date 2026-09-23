@@ -21,7 +21,7 @@ core nobody has committed to rebuilding yet.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 # Grades that mean "fit to go back in as-is" versus "fit only after work". There is
 # no per-line acceptance criterion yet (the BOM carries `allow_harvested`, a boolean,
@@ -31,7 +31,9 @@ SERVICEABLE_GRADES = ('A', 'B')
 RECONDITIONABLE_GRADES = ('C',)
 
 # Resolutions a slot can take. The first two emit operations or nothing; the last two
-# emit demand.
+# emit demand. The vocabulary lives on the model (`SLOT_RESOLUTION_CHOICES`) because
+# `RebuildSlotOverride` stores it — these are names for the same values, not a second
+# copy of them.
 REUSE = 'REUSE'
 RECONDITION = 'RECONDITION'
 REPLACE_POOL = 'REPLACE_POOL'
@@ -59,6 +61,12 @@ class Slot:
     resolution: str
     reason: str
     candidates: list = field(default_factory=list)
+    # Set when a person overrode the proposal. `proposed_resolution` keeps what the
+    # system would have done, because "the planner disagreed" is only legible next to
+    # what they disagreed with.
+    is_overridden: bool = False
+    proposed_resolution: str = ''
+    override_id: str = ''
 
     @property
     def needs_decision(self) -> bool:
@@ -258,6 +266,40 @@ def _resolve_slot(core, component_type, position, bom_line, own, loose, warnings
     )
 
 
+def _apply_overrides(core, slots, slot_lines):
+    """Replace proposed resolutions with the planner's, where one was recorded.
+
+    Keyed on (bom_line, position) — the same pair that identifies a slot — so an
+    override survives re-running the proposal, which is the whole point: the plan is
+    recomputed on every request and a decision must not be.
+    """
+    from Tracker.models import RebuildSlotOverride
+
+    overrides = {
+        (str(o.bom_line_id), o.position or ''): o
+        for o in RebuildSlotOverride.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+            core=core, archived=False)
+    }
+    if not overrides:
+        return slots
+
+    out = []
+    for slot, line in zip(slots, slot_lines):
+        o = overrides.get((str(line.id), slot.position or ''))
+        if o is None:
+            out.append(slot)
+            continue
+        out.append(replace(
+            slot,
+            resolution=o.resolution,
+            reason=o.reason,
+            is_overridden=True,
+            proposed_resolution=slot.resolution,
+            override_id=str(o.id),
+        ))
+    return out
+
+
 def resolve_rebuild_plan(core) -> RebuildPlan:
     """Propose what goes back into `core`, slot by slot. Writes nothing.
 
@@ -307,6 +349,11 @@ def resolve_rebuild_plan(core) -> RebuildPlan:
                 torn_down=torn_down,
             ))
             slot_lines.append(line)
+
+    # Overrides land BEFORE scope is derived. A planner who changes a slot from
+    # replace-to-recondition is changing what work the unit needs, so scope has to be
+    # computed from the decided resolutions rather than the proposed ones.
+    slots = _apply_overrides(core, slots, slot_lines)
 
     # Scope is derived FROM the resolved slots, not beside them: a repair code is a
     # slot resolution that emits operations (§6.4), so resolving the two separately

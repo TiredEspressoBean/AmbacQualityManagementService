@@ -7519,6 +7519,44 @@ export interface paths {
         patch: operations["api_RebuildScopePresets_partial_update"];
         trace?: never;
     };
+    "/api/RebuildSlotOverrides/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Planner decisions that differ from the proposed rebuild plan. */
+        get: operations["api_RebuildSlotOverrides_list"];
+        put?: never;
+        /** @description Planner decisions that differ from the proposed rebuild plan. */
+        post: operations["api_RebuildSlotOverrides_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RebuildSlotOverrides/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Planner decisions that differ from the proposed rebuild plan. */
+        get: operations["api_RebuildSlotOverrides_retrieve"];
+        /** @description Planner decisions that differ from the proposed rebuild plan. */
+        put: operations["api_RebuildSlotOverrides_update"];
+        post?: never;
+        /** @description Planner decisions that differ from the proposed rebuild plan. */
+        delete: operations["api_RebuildSlotOverrides_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Planner decisions that differ from the proposed rebuild plan. */
+        patch: operations["api_RebuildSlotOverrides_partial_update"];
+        trace?: never;
+    };
     "/api/RepairCodes/": {
         parameters: {
             query?: never;
@@ -21997,6 +22035,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["RebuildScopePreset"][];
         };
+        PaginatedRebuildSlotOverrideList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["RebuildSlotOverride"][];
+        };
         PaginatedRepairCodeList: {
             /** @example 123 */
             count: number;
@@ -24626,6 +24679,39 @@ export interface components {
             /** @description The codes this level includes before any finding is applied. */
             codes?: string[];
             notes?: string;
+            archived?: boolean;
+        };
+        /**
+         * @description A planner's decision that differs from the proposed one.
+         *
+         *     `reason` is required at the model level and stays required here: an override with
+         *     no reason cannot be told from a misclick later, and this is the row that answers
+         *     why a unit was built the way it was.
+         */
+        PatchedRebuildSlotOverrideRequest: {
+            /**
+             * Format: uuid
+             * @description The core whose rebuild plan this overrides.
+             */
+            core?: string;
+            /**
+             * Format: uuid
+             * @description The assembly BOM line the slot came from.
+             */
+            bom_line?: string;
+            /** @description Which slot on that line — blank for an unpositioned one. Blank rather than null on purpose: a unique constraint over a nullable column stops preventing anything in Postgres. */
+            position?: string;
+            /**
+             * @description What the planner decided instead.
+             *
+             *     * `REUSE` - Reuse as-is — the recovered component is serviceable
+             *     * `RECONDITION` - Recondition — work it before it goes back
+             *     * `REPLACE_POOL` - Replace from recovered stock
+             *     * `REPLACE_BUY` - Replace with a purchase
+             */
+            resolution?: components["schemas"]["ResolutionEnum"];
+            /** @description Why the proposal was wrong. Required — an override without one cannot be told from a misclick later, and this is the row that answers why a unit was built the way it was. */
+            reason?: string;
             archived?: boolean;
         };
         /** @description A slot resolution that emits operations — see the design's §6.4. */
@@ -27296,6 +27382,9 @@ export interface components {
          */
         RebuildSlot: {
             position: string;
+            is_overridden: boolean;
+            proposed_resolution: string;
+            override_id: string;
             component_type_id: string;
             component_type_name: string;
             bom_line_id: string | null;
@@ -27304,6 +27393,81 @@ export interface components {
             reason: string;
             needs_decision: boolean;
             candidates: components["schemas"]["RebuildCandidate"][];
+        };
+        /**
+         * @description A planner's decision that differs from the proposed one.
+         *
+         *     `reason` is required at the model level and stays required here: an override with
+         *     no reason cannot be told from a misclick later, and this is the row that answers
+         *     why a unit was built the way it was.
+         */
+        RebuildSlotOverride: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The core whose rebuild plan this overrides.
+             */
+            core: string;
+            readonly core_number: string;
+            /**
+             * Format: uuid
+             * @description The assembly BOM line the slot came from.
+             */
+            bom_line: string;
+            /** @description Which slot on that line — blank for an unpositioned one. Blank rather than null on purpose: a unique constraint over a nullable column stops preventing anything in Postgres. */
+            position?: string;
+            /**
+             * @description What the planner decided instead.
+             *
+             *     * `REUSE` - Reuse as-is — the recovered component is serviceable
+             *     * `RECONDITION` - Recondition — work it before it goes back
+             *     * `REPLACE_POOL` - Replace from recovered stock
+             *     * `REPLACE_BUY` - Replace with a purchase
+             */
+            resolution: components["schemas"]["ResolutionEnum"];
+            /** @description Why the proposal was wrong. Required — an override without one cannot be told from a misclick later, and this is the row that answers why a unit was built the way it was. */
+            reason: string;
+            readonly overridden_by: number | null;
+            readonly overridden_by_name: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /**
+         * @description A planner's decision that differs from the proposed one.
+         *
+         *     `reason` is required at the model level and stays required here: an override with
+         *     no reason cannot be told from a misclick later, and this is the row that answers
+         *     why a unit was built the way it was.
+         */
+        RebuildSlotOverrideRequest: {
+            /**
+             * Format: uuid
+             * @description The core whose rebuild plan this overrides.
+             */
+            core: string;
+            /**
+             * Format: uuid
+             * @description The assembly BOM line the slot came from.
+             */
+            bom_line: string;
+            /** @description Which slot on that line — blank for an unpositioned one. Blank rather than null on purpose: a unique constraint over a nullable column stops preventing anything in Postgres. */
+            position?: string;
+            /**
+             * @description What the planner decided instead.
+             *
+             *     * `REUSE` - Reuse as-is — the recovered component is serviceable
+             *     * `RECONDITION` - Recondition — work it before it goes back
+             *     * `REPLACE_POOL` - Replace from recovered stock
+             *     * `REPLACE_BUY` - Replace with a purchase
+             */
+            resolution: components["schemas"]["ResolutionEnum"];
+            /** @description Why the proposal was wrong. Required — an override without one cannot be told from a misclick later, and this is the row that answers why a unit was built the way it was. */
+            reason: string;
+            archived?: boolean;
         };
         /** @description Book in an ON_ORDER lot that has physically arrived. */
         ReceiveExpectedLotRequest: {
@@ -27546,6 +27710,14 @@ export interface components {
         ResendInvitationInputRequest: {
             invitation_id: number;
         };
+        /**
+         * @description * `REUSE` - Reuse as-is — the recovered component is serviceable
+         *     * `RECONDITION` - Recondition — work it before it goes back
+         *     * `REPLACE_POOL` - Replace from recovered stock
+         *     * `REPLACE_BUY` - Replace with a purchase
+         * @enum {string}
+         */
+        ResolutionEnum: "REUSE" | "RECONDITION" | "REPLACE_POOL" | "REPLACE_BUY";
         ResolveDecisionInputRequest: {
             /** @description Branch to route along: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'. */
             decision: string;
@@ -46478,6 +46650,167 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RebuildScopePreset"];
+                };
+            };
+        };
+    };
+    api_RebuildSlotOverrides_list: {
+        parameters: {
+            query?: {
+                bom_line?: string;
+                core?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description What the planner decided instead.
+                 *
+                 *     * `REUSE` - Reuse as-is — the recovered component is serviceable
+                 *     * `RECONDITION` - Recondition — work it before it goes back
+                 *     * `REPLACE_POOL` - Replace from recovered stock
+                 *     * `REPLACE_BUY` - Replace with a purchase
+                 */
+                resolution?: "RECONDITION" | "REPLACE_BUY" | "REPLACE_POOL" | "REUSE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRebuildSlotOverrideList"];
+                };
+            };
+        };
+    };
+    api_RebuildSlotOverrides_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RebuildSlotOverrideRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RebuildSlotOverrideRequest"];
+                "multipart/form-data": components["schemas"]["RebuildSlotOverrideRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildSlotOverride"];
+                };
+            };
+        };
+    };
+    api_RebuildSlotOverrides_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Slot Override. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildSlotOverride"];
+                };
+            };
+        };
+    };
+    api_RebuildSlotOverrides_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Slot Override. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RebuildSlotOverrideRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RebuildSlotOverrideRequest"];
+                "multipart/form-data": components["schemas"]["RebuildSlotOverrideRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildSlotOverride"];
+                };
+            };
+        };
+    };
+    api_RebuildSlotOverrides_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Slot Override. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_RebuildSlotOverrides_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Slot Override. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRebuildSlotOverrideRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRebuildSlotOverrideRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRebuildSlotOverrideRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildSlotOverride"];
                 };
             };
         };

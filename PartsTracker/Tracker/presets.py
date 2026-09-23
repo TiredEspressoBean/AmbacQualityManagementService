@@ -80,7 +80,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_materialstagingline',
     'view_harvestedcomponent',
     'view_core',
-    'view_repaircode', 'view_rebuildscopepreset',
+    'view_repaircode', 'view_rebuildscopepreset', 'view_rebuildslotoverride',
     # Equipment & Calibration
     'view_equipments', 'view_equipmenttype',
     'view_calibrationrecord',
@@ -178,6 +178,9 @@ STAFF_OPERATIONAL_WRITE = [
     # `add_workorder`, because committing capacity and material is not the same act as
     # writing down the request.
     'add_orderline', 'change_orderline',
+    # Curating a rebuild plan is planning work, not engineering authoring — the codes
+    # are authored once, the override is a call made on one unit in front of you.
+    'add_rebuildslotoverride', 'change_rebuildslotoverride',
     'add_workorder', 'change_workorder',
     'add_parts', 'change_parts',
     'add_stepexecution', 'change_stepexecution',
@@ -452,7 +455,7 @@ MANAGER_DELETE_PERMISSIONS = [
     'delete_orders', 'delete_orderline', 'delete_workorder', 'delete_parts',
     'delete_stepexecution',
     'delete_substepcompletion', 'delete_substepgatecompletion', 'delete_substepresponse',
-    'delete_core', 'delete_harvestedcomponent',
+    'delete_core', 'delete_harvestedcomponent', 'delete_rebuildslotoverride',
     'delete_materiallot', 'delete_materialusage', 'delete_materialstaging',
     'delete_materialstagingline',
     'delete_assemblyusage',

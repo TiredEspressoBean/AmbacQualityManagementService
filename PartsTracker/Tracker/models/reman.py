@@ -825,3 +825,79 @@ class RebuildScopePreset(SecureModel):
 
     def __str__(self):
         return f"{self.core_type.name}: {self.name}"
+
+
+# How a rebuild slot gets filled. Lives here because `RebuildSlotOverride` stores it;
+# `services/reman/rebuild.py` imports these rather than keeping a second copy, which is
+# how the two would otherwise drift.
+SLOT_RESOLUTION_CHOICES = [
+    ('REUSE', 'Reuse as-is — the recovered component is serviceable'),
+    ('RECONDITION', 'Recondition — work it before it goes back'),
+    ('REPLACE_POOL', 'Replace from recovered stock'),
+    ('REPLACE_BUY', 'Replace with a purchase'),
+]
+
+
+class RebuildSlotOverride(SecureModel):
+    """A planner's decision that differs from the proposed one.
+
+    Stores the DEVIATION, not the slot. The proposal is derived from findings and is
+    cheap to recompute, so persisting every slot would mean storing thirty rows a unit
+    that mostly agree with the computation — a guess written down as though it were a
+    record. What is worth keeping is where a person disagreed, and why.
+
+    `reason` is required for that reason: an override with no reason is indistinguishable
+    from a misclick six months later, and this is the row an auditor reads when asking
+    why a unit was built the way it was.
+    """
+
+    core = models.ForeignKey(
+        Core,
+        on_delete=models.CASCADE,
+        related_name='slot_overrides',
+        help_text="The core whose rebuild plan this overrides.",
+    )
+    bom_line = models.ForeignKey(
+        'Tracker.BOMLine',
+        on_delete=models.CASCADE,
+        related_name='rebuild_slot_overrides',
+        help_text="The assembly BOM line the slot came from.",
+    )
+    position = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Which slot on that line — blank for an unpositioned one. Blank rather "
+                  "than null on purpose: a unique constraint over a nullable column stops "
+                  "preventing anything in Postgres.",
+    )
+    resolution = models.CharField(
+        max_length=20,
+        choices=SLOT_RESOLUTION_CHOICES,
+        help_text="What the planner decided instead.",
+    )
+    reason = models.TextField(
+        help_text="Why the proposal was wrong. Required — an override without one cannot "
+                  "be told from a misclick later, and this is the row that answers why a "
+                  "unit was built the way it was.",
+    )
+    overridden_by = models.ForeignKey(
+        User,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='rebuild_slot_overrides',
+    )
+
+    class Meta:
+        verbose_name = 'Rebuild Slot Override'
+        verbose_name_plural = 'Rebuild Slot Overrides'
+        ordering = ['core', 'bom_line', 'position']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'core', 'bom_line', 'position'],
+                name='rebuildslotoverride_one_per_slot',
+            ),
+        ]
+
+    def __str__(self):
+        where = self.position or 'unpositioned'
+        return f"{self.core.core_number} {where}: {self.resolution}"

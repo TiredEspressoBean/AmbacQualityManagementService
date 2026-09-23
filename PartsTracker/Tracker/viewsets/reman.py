@@ -15,12 +15,13 @@ from rest_framework.response import Response
 
 from Tracker.models import (
     Core, HarvestedComponent, DisassemblyBOMLine, RepairCode, RebuildScopePreset,
+    RebuildSlotOverride,
 )
 from Tracker.serializers.reman import (
     CoreSerializer, CoreListSerializer, CoreScrapSerializer,
     HarvestedComponentSerializer, HarvestedComponentScrapSerializer, HarvestedComponentAcceptSerializer,
     DisassemblyBOMLineSerializer, RebuildPlanSerializer,
-    RepairCodeSerializer, RebuildScopePresetSerializer,
+    RepairCodeSerializer, RebuildScopePresetSerializer, RebuildSlotOverrideSerializer,
 )
 from .base import TenantScopedMixin
 from .mixins import DataExportMixin
@@ -392,3 +393,22 @@ class RebuildScopePresetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     search_fields = ['name']
     ordering_fields = ['name']
     ordering = ['core_type', 'name']
+
+
+class RebuildSlotOverrideViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """Planner decisions that differ from the proposed rebuild plan."""
+    queryset = RebuildSlotOverride.unscoped.select_related(
+        'core', 'bom_line', 'overridden_by')
+    serializer_class = RebuildSlotOverrideSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['core', 'bom_line', 'resolution']
+    ordering_fields = ['created_at']
+    ordering = ['-created_at']
+
+    def perform_create(self, serializer):
+        # Attribution comes from the request, never the payload — an override is a
+        # person's decision and a client should not be able to sign it as someone else.
+        serializer.save(overridden_by=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(overridden_by=self.request.user)

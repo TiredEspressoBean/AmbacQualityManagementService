@@ -6995,6 +6995,71 @@ export type RebuildScopePreset = {
   archived?: boolean | undefined;
   version: number;
 };
+export type PaginatedRebuildSlotOverrideList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<RebuildSlotOverride>;
+};
+export type RebuildSlotOverride = {
+  id: string;
+  /**
+   * The core whose rebuild plan this overrides.
+   */
+  core: string;
+  core_number: string;
+  /**
+   * The assembly BOM line the slot came from.
+   */
+  bom_line: string;
+  position?: /**
+   * Which slot on that line — blank for an unpositioned one. Blank rather than null on purpose: a unique constraint over a nullable column stops preventing anything in Postgres.
+   *
+   * @maxLength 50
+   */
+  string | undefined;
+  /**
+     * What the planner decided instead.
+    
+    * `REUSE` - Reuse as-is — the recovered component is serviceable
+    * `RECONDITION` - Recondition — work it before it goes back
+    * `REPLACE_POOL` - Replace from recovered stock
+    * `REPLACE_BUY` - Replace with a purchase
+     */
+  resolution: ResolutionEnum;
+  /**
+   * Why the proposal was wrong. Required — an override without one cannot be told from a misclick later, and this is the row that answers why a unit was built the way it was.
+   */
+  reason: string;
+  overridden_by: number | null;
+  overridden_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type ResolutionEnum =
+  /**
+   * * `REUSE` - Reuse as-is — the recovered component is serviceable
+   * `RECONDITION` - Recondition — work it before it goes back
+   * `REPLACE_POOL` - Replace from recovered stock
+   * `REPLACE_BUY` - Replace with a purchase
+   *
+   * @enum REUSE, RECONDITION, REPLACE_POOL, REPLACE_BUY
+   */
+  "REUSE" | "RECONDITION" | "REPLACE_POOL" | "REPLACE_BUY";
 export type PaginatedRepairCodeList = {
   /**
    * @example 123
@@ -11694,6 +11759,38 @@ export type FishboneNestedRequest = Partial<{
   environment_causes: string | null;
   identified_root_cause: string | null;
 }>;
+export type PatchedRebuildSlotOverrideRequest = Partial<{
+  /**
+   * The core whose rebuild plan this overrides.
+   */
+  core: string;
+  /**
+   * The assembly BOM line the slot came from.
+   */
+  bom_line: string;
+  /**
+   * Which slot on that line — blank for an unpositioned one. Blank rather than null on purpose: a unique constraint over a nullable column stops preventing anything in Postgres.
+   *
+   * @maxLength 50
+   */
+  position: string;
+  /**
+     * What the planner decided instead.
+    
+    * `REUSE` - Reuse as-is — the recovered component is serviceable
+    * `RECONDITION` - Recondition — work it before it goes back
+    * `REPLACE_POOL` - Replace from recovered stock
+    * `REPLACE_BUY` - Replace with a purchase
+     */
+  resolution: ResolutionEnum;
+  /**
+   * Why the proposal was wrong. Required — an override without one cannot be told from a misclick later, and this is the row that answers why a unit was built the way it was.
+   *
+   * @minLength 1
+   */
+  reason: string;
+  archived: boolean;
+}>;
 export type PatchedRepairCodeRequest = Partial<{
   /**
    * Short identifier the shop uses, e.g. NZL-RECON.
@@ -13394,6 +13491,9 @@ export type RebuildPlan = {
 };
 export type RebuildSlot = {
   position: string;
+  is_overridden: boolean;
+  proposed_resolution: string;
+  override_id: string;
   component_type_id: string;
   component_type_name: string;
   bom_line_id: string | null;
@@ -13416,6 +13516,38 @@ export type ScopedOperation = {
   code: string;
   code_name: string;
   because: Array<string>;
+};
+export type RebuildSlotOverrideRequest = {
+  /**
+   * The core whose rebuild plan this overrides.
+   */
+  core: string;
+  /**
+   * The assembly BOM line the slot came from.
+   */
+  bom_line: string;
+  position?: /**
+   * Which slot on that line — blank for an unpositioned one. Blank rather than null on purpose: a unique constraint over a nullable column stops preventing anything in Postgres.
+   *
+   * @maxLength 50
+   */
+  string | undefined;
+  /**
+     * What the planner decided instead.
+    
+    * `REUSE` - Reuse as-is — the recovered component is serviceable
+    * `RECONDITION` - Recondition — work it before it goes back
+    * `REPLACE_POOL` - Replace from recovered stock
+    * `REPLACE_BUY` - Replace with a purchase
+     */
+  resolution: ResolutionEnum;
+  /**
+   * Why the proposal was wrong. Required — an override without one cannot be told from a misclick later, and this is the row that answers why a unit was built the way it was.
+   *
+   * @minLength 1
+   */
+  reason: string;
+  archived?: boolean | undefined;
 };
 export type ReceivingMeasurementInputRequest = {
   definition: string;
@@ -16980,6 +17112,9 @@ const RebuildCandidate = z.object({
 });
 const RebuildSlot = z.object({
   position: z.string(),
+  is_overridden: z.boolean(),
+  proposed_resolution: z.string(),
+  override_id: z.string(),
   component_type_id: z.string(),
   component_type_name: z.string(),
   bom_line_id: z.string().nullable(),
@@ -19926,6 +20061,50 @@ const PatchedRebuildScopePresetRequest = z
     is_default: z.boolean(),
     codes: z.array(z.string().uuid()),
     notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
+const ResolutionEnum = z.enum([
+  "REUSE",
+  "RECONDITION",
+  "REPLACE_POOL",
+  "REPLACE_BUY",
+]);
+const RebuildSlotOverride = z.object({
+  id: z.string().uuid(),
+  core: z.string().uuid(),
+  core_number: z.string(),
+  bom_line: z.string().uuid(),
+  position: z.string().max(50).optional(),
+  resolution: ResolutionEnum,
+  reason: z.string(),
+  overridden_by: z.number().int().nullable(),
+  overridden_by_name: z.string().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedRebuildSlotOverrideList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(RebuildSlotOverride),
+});
+const RebuildSlotOverrideRequest = z.object({
+  core: z.string().uuid(),
+  bom_line: z.string().uuid(),
+  position: z.string().max(50).optional(),
+  resolution: ResolutionEnum,
+  reason: z.string().min(1),
+  archived: z.boolean().optional(),
+});
+const PatchedRebuildSlotOverrideRequest = z
+  .object({
+    core: z.string().uuid(),
+    bom_line: z.string().uuid(),
+    position: z.string().max(50),
+    resolution: ResolutionEnum,
+    reason: z.string().min(1),
     archived: z.boolean(),
   })
   .partial();
@@ -25046,6 +25225,11 @@ export const schemas = {
   PaginatedRebuildScopePresetList,
   RebuildScopePresetRequest,
   PatchedRebuildScopePresetRequest,
+  ResolutionEnum,
+  RebuildSlotOverride,
+  PaginatedRebuildSlotOverrideList,
+  RebuildSlotOverrideRequest,
+  PatchedRebuildSlotOverrideRequest,
   TriggerEnum,
   RepairCode,
   PaginatedRepairCodeList,
@@ -41936,6 +42120,133 @@ the completion blockers.`,
   },
   {
     method: "get",
+    path: "/api/RebuildSlotOverrides/",
+    alias: "api_RebuildSlotOverrides_list",
+    description: `Planner decisions that differ from the proposed rebuild plan.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "bom_line",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "core",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "resolution",
+        type: "Query",
+        schema: z
+          .enum(["RECONDITION", "REPLACE_BUY", "REPLACE_POOL", "REUSE"])
+          .optional(),
+      },
+    ],
+    response: PaginatedRebuildSlotOverrideList,
+  },
+  {
+    method: "post",
+    path: "/api/RebuildSlotOverrides/",
+    alias: "api_RebuildSlotOverrides_create",
+    description: `Planner decisions that differ from the proposed rebuild plan.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RebuildSlotOverrideRequest,
+      },
+    ],
+    response: RebuildSlotOverride,
+  },
+  {
+    method: "get",
+    path: "/api/RebuildSlotOverrides/:id/",
+    alias: "api_RebuildSlotOverrides_retrieve",
+    description: `Planner decisions that differ from the proposed rebuild plan.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RebuildSlotOverride,
+  },
+  {
+    method: "put",
+    path: "/api/RebuildSlotOverrides/:id/",
+    alias: "api_RebuildSlotOverrides_update",
+    description: `Planner decisions that differ from the proposed rebuild plan.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RebuildSlotOverrideRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RebuildSlotOverride,
+  },
+  {
+    method: "patch",
+    path: "/api/RebuildSlotOverrides/:id/",
+    alias: "api_RebuildSlotOverrides_partial_update",
+    description: `Planner decisions that differ from the proposed rebuild plan.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedRebuildSlotOverrideRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RebuildSlotOverride,
+  },
+  {
+    method: "delete",
+    path: "/api/RebuildSlotOverrides/:id/",
+    alias: "api_RebuildSlotOverrides_destroy",
+    description: `Planner decisions that differ from the proposed rebuild plan.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
     path: "/api/RepairCodes/",
     alias: "api_RepairCodes_list",
     description: `Repair codes — what operations a finding adds to a rebuild.`,
@@ -46640,7 +46951,10 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/SubstepGateCompletions/",
@@ -46770,10 +47084,7 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/SubstepResources/",
@@ -51381,7 +51692,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/WorkOrders/:id/qa_documents/",
@@ -51502,10 +51816,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrderSplitResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkOrders/:id/step_history/",

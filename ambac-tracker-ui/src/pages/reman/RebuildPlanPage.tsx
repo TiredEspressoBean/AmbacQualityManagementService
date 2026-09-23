@@ -12,8 +12,27 @@ import {
     Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { Pencil, Undo2 } from "lucide-react";
+
 import { useRebuildPlan } from "@/hooks/useRebuildPlan";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
+import {
+    useCreateSlotOverride, useDeleteSlotOverride, useUpdateSlotOverride,
+} from "@/hooks/useRebuildSlotOverrides";
+import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
+import type { Schema } from "@/lib/api/types";
+
+type PlanSlot = Schema<"RebuildPlan">["slots"][number];
+type Resolution = Schema<"RebuildSlotOverrideRequest">["resolution"];
 
 // Resolution vocabulary, in one place. The first is the unremarkable outcome — the
 // part came out serviceable and goes back — and everything else costs money or time.
@@ -52,9 +71,78 @@ export function RebuildPlanPage() {
     // are not what anyone came here to read.
     const [showSettled, setShowSettled] = useState(false);
 
+    // Curation state. An overridden slot always shows, even when the planner chose
+    // REUSE — a decision someone made is exactly the row worth seeing.
+    const [editing, setEditing] = useState<PlanSlot | null>(null);
+    const [draftResolution, setDraftResolution] = useState<Resolution>("REUSE");
+    const [draftReason, setDraftReason] = useState("");
+
+    const createOverride = useCreateSlotOverride();
+    const updateOverride = useUpdateSlotOverride();
+    const deleteOverride = useDeleteSlotOverride();
+    const savingOverride = createOverride.isPending || updateOverride.isPending;
+
+    function openEditor(slot: PlanSlot) {
+        setEditing(slot);
+        setDraftResolution((slot.resolution as Resolution) ?? "REUSE");
+        setDraftReason(slot.is_overridden ? slot.reason : "");
+    }
+
+    function onOverrideError(err: unknown) {
+        const body = apiErrorBody(err);
+        toast.error(
+            apiErrorField(body, "reason") ??
+            apiErrorField(body, "detail") ??
+            apiErrorField(body, "non_field_errors") ??
+            (err as Error)?.message ??
+            "unknown error",
+        );
+    }
+
+    function saveOverride() {
+        if (!editing) return;
+        if (!draftReason.trim()) {
+            toast.error("Say why — an override with no reason cannot be told from a misclick later");
+            return;
+        }
+        const done = () => {
+            toast.success("Decision recorded");
+            setEditing(null);
+        };
+        if (editing.is_overridden && editing.override_id) {
+            updateOverride.mutate(
+                { id: editing.override_id, data: { resolution: draftResolution, reason: draftReason } },
+                { onSuccess: done, onError: onOverrideError },
+            );
+        } else {
+            createOverride.mutate(
+                {
+                    core: id,
+                    bom_line: editing.bom_line_id ?? "",
+                    position: editing.position ?? "",
+                    resolution: draftResolution,
+                    reason: draftReason,
+                },
+                { onSuccess: done, onError: onOverrideError },
+            );
+        }
+    }
+
+    function revert(slot: PlanSlot) {
+        if (!slot.override_id) return;
+        deleteOverride.mutate(slot.override_id, {
+            onSuccess: () => toast.success("Back to the proposed resolution"),
+            onError: onOverrideError,
+        });
+    }
+
     const slots = useMemo(() => plan?.slots ?? [], [plan]);
-    const needing = useMemo(() => slots.filter((s) => s.needs_decision), [slots]);
-    const settled = useMemo(() => slots.filter((s) => !s.needs_decision), [slots]);
+    // Overridden rows count as worth showing whatever they resolved to: someone made
+    // a call, and hiding it under "settled" would bury the most interesting rows.
+    const needing = useMemo(
+        () => slots.filter((s) => s.needs_decision || s.is_overridden), [slots]);
+    const settled = useMemo(
+        () => slots.filter((s) => !s.needs_decision && !s.is_overridden), [slots]);
     const visible = showSettled ? slots : needing;
 
     if (isLoading) {
@@ -219,6 +307,7 @@ export function RebuildPlanPage() {
                                                 <TableHead>Found at teardown</TableHead>
                                                 <TableHead>Proposed</TableHead>
                                                 <TableHead>Why</TableHead>
+                                                <TableHead>Decide</TableHead>
                                                 <TableHead>Options</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -233,12 +322,41 @@ export function RebuildPlanPage() {
                                                         {slot.finding}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Badge variant={resolutionVariant(slot.resolution)}>
-                                                            {RESOLUTION_LABEL[slot.resolution] ?? slot.resolution}
-                                                        </Badge>
+                                                        <div className="flex flex-col gap-1">
+                                                            <Badge variant={resolutionVariant(slot.resolution)}>
+                                                                {RESOLUTION_LABEL[slot.resolution] ?? slot.resolution}
+                                                            </Badge>
+                                                            {slot.is_overridden && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    overridden &mdash; proposed{" "}
+                                                                    {RESOLUTION_LABEL[slot.proposed_resolution] ??
+                                                                        slot.proposed_resolution}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground">
                                                         {slot.reason}
+                                                    </TableCell>
+                                                    <TableCell className="whitespace-nowrap">
+                                                        <Button
+                                                            size="icon" variant="ghost"
+                                                            onClick={() => openEditor(slot)}
+                                                            aria-label={`Change ${slot.component_type_name}`}
+                                                            disabled={!slot.bom_line_id}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        {slot.is_overridden && (
+                                                            <Button
+                                                                size="icon" variant="ghost"
+                                                                onClick={() => revert(slot)}
+                                                                disabled={deleteOverride.isPending}
+                                                                aria-label="Back to proposed"
+                                                            >
+                                                                <Undo2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell>
                                                         {slot.candidates.length === 0 ? (
@@ -289,6 +407,59 @@ export function RebuildPlanPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editing?.component_type_name}
+                            {editing?.position ? ` · ${editing.position}` : ""}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Teardown found: {editing?.finding}. The system proposed{" "}
+                            {RESOLUTION_LABEL[
+                                (editing?.is_overridden
+                                    ? editing?.proposed_resolution
+                                    : editing?.resolution) ?? ""
+                            ] ?? "—"}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label>Resolution</Label>
+                            <Select
+                                value={draftResolution}
+                                onValueChange={(v) => v && setDraftResolution(v as Resolution)}
+                            >
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(RESOLUTION_LABEL).map(([value, label]) => (
+                                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="override-reason">Why</Label>
+                            <Textarea
+                                id="override-reason" rows={3} value={draftReason}
+                                onChange={(e) => setDraftReason(e.target.value)}
+                                placeholder="What the proposal missed"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Required. This is the row that answers why the unit was built
+                                this way when somebody asks in six months.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+                        <Button onClick={saveOverride} disabled={savingOverride}>
+                            {savingOverride ? "Saving…" : "Record decision"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </TooltipProvider>
     );
 }

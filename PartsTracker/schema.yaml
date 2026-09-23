@@ -19673,6 +19673,206 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/RebuildSlotOverrides/:
+    get:
+      operationId: api_RebuildSlotOverrides_list
+      description: Planner decisions that differ from the proposed rebuild plan.
+      parameters:
+      - in: query
+        name: bom_line
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: core
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: resolution
+        schema:
+          type: string
+          enum:
+          - RECONDITION
+          - REPLACE_BUY
+          - REPLACE_POOL
+          - REUSE
+        description: |-
+          What the planner decided instead.
+
+          * `REUSE` - Reuse as-is — the recovered component is serviceable
+          * `RECONDITION` - Recondition — work it before it goes back
+          * `REPLACE_POOL` - Replace from recovered stock
+          * `REPLACE_BUY` - Replace with a purchase
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRebuildSlotOverrideList'
+          description: ''
+    post:
+      operationId: api_RebuildSlotOverrides_create
+      description: Planner decisions that differ from the proposed rebuild plan.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RebuildSlotOverrideRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RebuildSlotOverrideRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RebuildSlotOverrideRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildSlotOverride'
+          description: ''
+  /api/RebuildSlotOverrides/{id}/:
+    get:
+      operationId: api_RebuildSlotOverrides_retrieve
+      description: Planner decisions that differ from the proposed rebuild plan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Slot Override.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildSlotOverride'
+          description: ''
+    put:
+      operationId: api_RebuildSlotOverrides_update
+      description: Planner decisions that differ from the proposed rebuild plan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Slot Override.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RebuildSlotOverrideRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RebuildSlotOverrideRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RebuildSlotOverrideRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildSlotOverride'
+          description: ''
+    patch:
+      operationId: api_RebuildSlotOverrides_partial_update
+      description: Planner decisions that differ from the proposed rebuild plan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Slot Override.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRebuildSlotOverrideRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRebuildSlotOverrideRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRebuildSlotOverrideRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebuildSlotOverride'
+          description: ''
+    delete:
+      operationId: api_RebuildSlotOverrides_destroy
+      description: Planner decisions that differ from the proposed rebuild plan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Slot Override.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/RepairCodes/:
     get:
       operationId: api_RepairCodes_list
@@ -50928,6 +51128,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RebuildScopePreset'
+    PaginatedRebuildSlotOverrideList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RebuildSlotOverride'
     PaginatedRepairCodeList:
       type: object
       required:
@@ -55554,6 +55777,47 @@ components:
           description: The codes this level includes before any finding is applied.
         notes:
           type: string
+        archived:
+          type: boolean
+    PatchedRebuildSlotOverrideRequest:
+      type: object
+      description: |-
+        A planner's decision that differs from the proposed one.
+
+        `reason` is required at the model level and stays required here: an override with
+        no reason cannot be told from a misclick later, and this is the row that answers
+        why a unit was built the way it was.
+      properties:
+        core:
+          type: string
+          format: uuid
+          description: The core whose rebuild plan this overrides.
+        bom_line:
+          type: string
+          format: uuid
+          description: The assembly BOM line the slot came from.
+        position:
+          type: string
+          description: 'Which slot on that line — blank for an unpositioned one. Blank
+            rather than null on purpose: a unique constraint over a nullable column
+            stops preventing anything in Postgres.'
+          maxLength: 50
+        resolution:
+          allOf:
+          - $ref: '#/components/schemas/ResolutionEnum'
+          description: |-
+            What the planner decided instead.
+
+            * `REUSE` - Reuse as-is — the recovered component is serviceable
+            * `RECONDITION` - Recondition — work it before it goes back
+            * `REPLACE_POOL` - Replace from recovered stock
+            * `REPLACE_BUY` - Replace with a purchase
+        reason:
+          type: string
+          minLength: 1
+          description: Why the proposal was wrong. Required — an override without
+            one cannot be told from a misclick later, and this is the row that answers
+            why a unit was built the way it was.
         archived:
           type: boolean
     PatchedRepairCodeRequest:
@@ -60476,6 +60740,12 @@ components:
       properties:
         position:
           type: string
+        is_overridden:
+          type: boolean
+        proposed_resolution:
+          type: string
+        override_id:
+          type: string
         component_type_id:
           type: string
         component_type_name:
@@ -60501,8 +60771,131 @@ components:
       - component_type_id
       - component_type_name
       - finding
+      - is_overridden
       - needs_decision
+      - override_id
       - position
+      - proposed_resolution
+      - reason
+      - resolution
+    RebuildSlotOverride:
+      type: object
+      description: |-
+        A planner's decision that differs from the proposed one.
+
+        `reason` is required at the model level and stays required here: an override with
+        no reason cannot be told from a misclick later, and this is the row that answers
+        why a unit was built the way it was.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        core:
+          type: string
+          format: uuid
+          description: The core whose rebuild plan this overrides.
+        core_number:
+          type: string
+          readOnly: true
+        bom_line:
+          type: string
+          format: uuid
+          description: The assembly BOM line the slot came from.
+        position:
+          type: string
+          description: 'Which slot on that line — blank for an unpositioned one. Blank
+            rather than null on purpose: a unique constraint over a nullable column
+            stops preventing anything in Postgres.'
+          maxLength: 50
+        resolution:
+          allOf:
+          - $ref: '#/components/schemas/ResolutionEnum'
+          description: |-
+            What the planner decided instead.
+
+            * `REUSE` - Reuse as-is — the recovered component is serviceable
+            * `RECONDITION` - Recondition — work it before it goes back
+            * `REPLACE_POOL` - Replace from recovered stock
+            * `REPLACE_BUY` - Replace with a purchase
+        reason:
+          type: string
+          description: Why the proposal was wrong. Required — an override without
+            one cannot be told from a misclick later, and this is the row that answers
+            why a unit was built the way it was.
+        overridden_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        overridden_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - bom_line
+      - core
+      - core_number
+      - created_at
+      - id
+      - overridden_by
+      - overridden_by_name
+      - reason
+      - resolution
+      - updated_at
+    RebuildSlotOverrideRequest:
+      type: object
+      description: |-
+        A planner's decision that differs from the proposed one.
+
+        `reason` is required at the model level and stays required here: an override with
+        no reason cannot be told from a misclick later, and this is the row that answers
+        why a unit was built the way it was.
+      properties:
+        core:
+          type: string
+          format: uuid
+          description: The core whose rebuild plan this overrides.
+        bom_line:
+          type: string
+          format: uuid
+          description: The assembly BOM line the slot came from.
+        position:
+          type: string
+          description: 'Which slot on that line — blank for an unpositioned one. Blank
+            rather than null on purpose: a unique constraint over a nullable column
+            stops preventing anything in Postgres.'
+          maxLength: 50
+        resolution:
+          allOf:
+          - $ref: '#/components/schemas/ResolutionEnum'
+          description: |-
+            What the planner decided instead.
+
+            * `REUSE` - Reuse as-is — the recovered component is serviceable
+            * `RECONDITION` - Recondition — work it before it goes back
+            * `REPLACE_POOL` - Replace from recovered stock
+            * `REPLACE_BUY` - Replace with a purchase
+        reason:
+          type: string
+          minLength: 1
+          description: Why the proposal was wrong. Required — an override without
+            one cannot be told from a misclick later, and this is the row that answers
+            why a unit was built the way it was.
+        archived:
+          type: boolean
+      required:
+      - bom_line
+      - core
       - reason
       - resolution
     ReceiveExpectedLotRequest:
@@ -61033,6 +61426,18 @@ components:
           type: integer
       required:
       - invitation_id
+    ResolutionEnum:
+      enum:
+      - REUSE
+      - RECONDITION
+      - REPLACE_POOL
+      - REPLACE_BUY
+      type: string
+      description: |-
+        * `REUSE` - Reuse as-is — the recovered component is serviceable
+        * `RECONDITION` - Recondition — work it before it goes back
+        * `REPLACE_POOL` - Replace from recovered stock
+        * `REPLACE_BUY` - Replace with a purchase
     ResolveDecisionInputRequest:
       type: object
       properties:
