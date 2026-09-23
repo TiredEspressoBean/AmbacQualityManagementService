@@ -2043,3 +2043,110 @@ class RecoverableSupplyTests(TenantTestCase):
         self.assertEqual(rs.core_count, 1)
         self.assertEqual(rs.sources[0]['core_type'], 'Injector')
         self.assertEqual(rs.sources[0]['cores'], 1)
+
+
+class ScopeAwareAdvancementTests(TenantTestCase):
+    """A unit under rebuild visits only the operations its findings called for.
+
+    Without this it walks DEFAULT edges through the whole authored route, doing work
+    nobody asked for — and on a repair-and-return unit, billing a customer for it.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import (
+            Core, HarvestedComponent, PartTypes, Processes, ProcessStep,
+            RebuildScopePreset, RepairCode, StepEdge, Steps, WorkOrder,
+            WorkOrderStatus,
+        )
+        from Tracker.models.mes_lite import EdgeType
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.nozzle = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle', can_recover=True)
+        self.process = Processes.objects.create(
+            tenant=self.tenant_a, name='Reman', part_type=self.core_type,
+            status='APPROVED')
+
+        names = ['Clean', 'Hone', 'Plate', 'Assemble', 'Test']
+        self.steps = {}
+        for i, n in enumerate(names, start=1):
+            st = Steps.objects.create(
+                tenant=self.tenant_a, part_type=self.core_type, name=n)
+            ProcessStep.objects.create(process=self.process, step=st, order=i)
+            self.steps[n] = st
+        for a, b in zip(names, names[1:]):
+            StepEdge.objects.create(
+                process=self.process, from_step=self.steps[a], to_step=self.steps[b],
+                edge_type=EdgeType.DEFAULT)
+
+        # Scope: everything EXCEPT Hone and Plate, which only a worn nozzle raises.
+        base = RepairCode.objects.create(
+            tenant=self.tenant_a, code='BASE', name='Base', trigger='ALWAYS')
+        base.steps.set([self.steps['Clean'], self.steps['Assemble'], self.steps['Test']])
+        recon = RepairCode.objects.create(
+            tenant=self.tenant_a, code='NZL', name='Recondition nozzle',
+            component_type=self.nozzle, trigger='RECONDITION')
+        recon.steps.set([self.steps['Hone'], self.steps['Plate']])
+
+        self.wo = WorkOrder.objects.create(
+            tenant=self.tenant_a, ERP_id='WO-SCOPE', quantity=1,
+            workorder_status=WorkOrderStatus.IN_PROGRESS, process=self.process)
+        self.core = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-SCOPE-A', core_type=self.core_type,
+            fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
+            work_order=self.wo, step=self.steps['Clean'],
+            received_date=date.today(), received_by=self.user_a)
+        HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=self.core, component_type=self.nozzle,
+            condition_grade='A', disassembled_by=self.user_a)  # serviceable: no recon
+
+    def test_out_of_scope_operations_are_walked_past(self):
+        from Tracker.models import StepExecution
+        from Tracker.services.mes.cores import advance_core_step
+
+        advance_core_step(self.core, operator=self.user_a)
+        self.core.refresh_from_db()
+        # Hone and Plate belong to a code this unit's findings never raised.
+        self.assertEqual(self.core.step, self.steps['Assemble'])
+        skipped = set(
+            StepExecution.objects.filter(core=self.core, status='SKIPPED')
+            .values_list('step__name', flat=True))
+        self.assertEqual(skipped, {'Hone', 'Plate'})
+
+    def test_skipped_work_is_recorded_not_silently_absent(self):
+        """The traveler has to show what was deliberately NOT done — the difference
+        between 'we chose not to' and 'we forgot'."""
+        from Tracker.models import StepExecution
+        from Tracker.services.mes.cores import advance_core_step
+
+        advance_core_step(self.core, operator=self.user_a)
+        hone = StepExecution.objects.get(core=self.core, step=self.steps['Hone'])
+        self.assertEqual(hone.status, 'SKIPPED')
+        self.assertIsNotNone(hone.exited_at)
+
+    def test_a_teardown_core_walks_the_route_as_authored(self):
+        """Scope applies to rebuild only. Every core gets the same teardown, which is
+        why teardown can batch and rebuild cannot."""
+        from Tracker.models import StepExecution
+        from Tracker.services.mes.cores import advance_core_step
+
+        self.core.status = 'IN_DISASSEMBLY'
+        self.core.save(update_fields=['status'])
+        advance_core_step(self.core, operator=self.user_a)
+        self.core.refresh_from_db()
+        self.assertEqual(self.core.step, self.steps['Hone'])
+        self.assertFalse(
+            StepExecution.objects.filter(core=self.core, status='SKIPPED').exists())
+
+    def test_finishing_the_scope_completes_the_rebuild(self):
+        from Tracker.services.mes.cores import advance_core_step
+
+        for _ in range(6):
+            self.core.refresh_from_db()
+            if self.core.status != 'IN_REBUILD':
+                break
+            if advance_core_step(self.core, operator=self.user_a) == 'completed':
+                break
+        self.core.refresh_from_db()
+        self.assertEqual(self.core.status, 'REBUILT')
