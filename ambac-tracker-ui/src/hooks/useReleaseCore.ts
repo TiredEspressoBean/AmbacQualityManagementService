@@ -36,3 +36,47 @@ export function useReleaseCore() {
         },
     });
 }
+
+
+/**
+ * The rest of the repair-and-return lifecycle: pause for authorisation, record what
+ * the customer said, dispatch the unit back. Same invalidation as `useReleaseCore` —
+ * each changes the core's status, and the work-order surface is where that is read.
+ */
+export function useCoreLifecycleAction() {
+    const queryClient = useQueryClient();
+    return useMutation<
+        unknown,
+        unknown,
+        | { id: string; action: "request_authorisation" }
+        | { id: string; action: "record_authorisation"; approved: boolean; note?: string }
+        | { id: string; action: "return"; reference?: string }
+    >({
+        mutationFn: (v) => {
+            const headers = { "X-CSRFToken": getCookie("csrftoken") };
+            if (v.action === "request_authorisation") {
+                return api.api_Cores_request_authorisation_create(undefined, {
+                    params: { id: v.id }, headers,
+                });
+            }
+            if (v.action === "record_authorisation") {
+                return api.api_Cores_record_authorisation_create(
+                    { approved: v.approved, note: v.note ?? "" },
+                    { params: { id: v.id }, headers },
+                );
+            }
+            return api.api_Cores_return_to_customer_create(
+                { reference: v.reference ?? "" },
+                { params: { id: v.id }, headers },
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                predicate: (q) =>
+                    ["core", "cores", "workorder", "workorders", "rebuildplan"].includes(
+                        String(q.queryKey[0]).toLowerCase(),
+                    ),
+            });
+        },
+    });
+}

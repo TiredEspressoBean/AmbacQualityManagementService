@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Hammer, PackageCheck, Wrench } from "lucide-react";
+import { Hammer, PackageCheck, Truck, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
     Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { useReleaseCore } from "@/hooks/useReleaseCore";
+import { useCoreLifecycleAction, useReleaseCore } from "@/hooks/useReleaseCore";
 import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 import type { Schema } from "@/lib/api/types";
 
@@ -25,12 +25,18 @@ const STATUS_LABEL: Record<string, string> = {
     DISASSEMBLED: "Disassembled",
     IN_REBUILD: "In rebuild",
     REBUILT: "Rebuilt",
+    RETURNED: "Returned",
+    AWAITING_AUTHORISATION: "Awaiting authorisation",
+    DECLINED: "Scope declined",
+    RETURNED_UNREPAIRED: "Returned unrepaired",
     HARVESTED: "Harvested",
     SCRAPPED: "Scrapped",
 };
 
 function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-    if (status === "SCRAPPED") return "destructive";
+    if (status === "SCRAPPED" || status === "DECLINED") return "destructive";
+    if (status === "AWAITING_AUTHORISATION") return "outline";
+    if (status === "RETURNED" || status === "RETURNED_UNREPAIRED") return "secondary";
     if (status === "DISASSEMBLED") return "outline";
     if (status === "IN_REBUILD" || status === "REBUILT") return "default";
     return "secondary";
@@ -48,6 +54,7 @@ function statusVariant(status: string): "default" | "secondary" | "outline" | "d
 export function WorkOrderCoresCard({ cores }: { cores: WorkOrderCore[] }) {
     const [pending, setPending] = useState<string | null>(null);
     const release = useReleaseCore();
+    const lifecycle = useCoreLifecycleAction();
 
     if (!cores || cores.length === 0) return null;
 
@@ -83,6 +90,19 @@ export function WorkOrderCoresCard({ cores }: { cores: WorkOrderCore[] }) {
                 onSettled: () => setPending(null),
             },
         );
+    }
+
+    function act(
+        core: WorkOrderCore,
+        v: Parameters<typeof lifecycle.mutate>[0],
+        message: string,
+    ) {
+        setPending(String(core.id));
+        lifecycle.mutate(v, {
+            onSuccess: () => toast.success(`${core.core_number} — ${message}`),
+            onError,
+            onSettled: () => setPending(null),
+        });
     }
 
     const awaiting = cores.filter((c) => c.status === "DISASSEMBLED").length;
@@ -159,11 +179,53 @@ export function WorkOrderCoresCard({ cores }: { cores: WorkOrderCore[] }) {
                                             </TableCell>
                                             <TableCell className="whitespace-nowrap text-right">
                                                 {core.status === "IN_REBUILD" ? (
-                                                    <Button size="sm" variant="outline" asChild>
-                                                        <Link to="/reman/cores/$id/rebuild" params={{ id }}>
-                                                            <Wrench className="mr-1 h-4 w-4" />
-                                                            Plan
-                                                        </Link>
+                                                    <span className="inline-flex gap-1">
+                                                        <Button size="sm" variant="outline" asChild>
+                                                            <Link to="/reman/cores/$id/rebuild" params={{ id }}>
+                                                                <Wrench className="mr-1 h-4 w-4" />
+                                                                Plan
+                                                            </Link>
+                                                        </Button>
+                                                        <Button
+                                                            size="sm" variant="ghost" disabled={busy}
+                                                            onClick={() => act(core,
+                                                                { id, action: "request_authorisation" },
+                                                                "sent for customer authorisation")}
+                                                        >
+                                                            Authorise…
+                                                        </Button>
+                                                    </span>
+                                                ) : core.status === "AWAITING_AUTHORISATION" ? (
+                                                    // The conversation happened elsewhere; these
+                                                    // record what the customer said.
+                                                    <span className="inline-flex gap-1">
+                                                        <Button
+                                                            size="sm" disabled={busy}
+                                                            onClick={() => act(core,
+                                                                { id, action: "record_authorisation", approved: true },
+                                                                "scope approved — rebuild resumed")}
+                                                        >
+                                                            Approved
+                                                        </Button>
+                                                        <Button
+                                                            size="sm" variant="outline" disabled={busy}
+                                                            onClick={() => act(core,
+                                                                { id, action: "record_authorisation", approved: false },
+                                                                "scope declined")}
+                                                        >
+                                                            Declined
+                                                        </Button>
+                                                    </span>
+                                                ) : core.status === "REBUILT" || core.status === "DECLINED" ? (
+                                                    <Button
+                                                        size="sm" disabled={busy}
+                                                        onClick={() => act(core, { id, action: "return" },
+                                                            core.status === "REBUILT"
+                                                                ? "returned to customer"
+                                                                : "returned unrepaired")}
+                                                    >
+                                                        <Truck className="mr-1 h-4 w-4" />
+                                                        Return
                                                     </Button>
                                                 ) : ready && core.returns_to_customer ? (
                                                     <Tooltip>

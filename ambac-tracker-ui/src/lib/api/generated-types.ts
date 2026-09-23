@@ -1555,6 +1555,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/{id}/record_authorisation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record the customer's decision on over-and-above scope. The conversation happens outside UQMES; this is the production record. */
+        post: operations["api_Cores_record_authorisation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/{id}/release_to_inventory/": {
         parameters: {
             query?: never;
@@ -1583,6 +1600,40 @@ export interface paths {
         put?: never;
         /** @description Release a repair-and-return core into rebuild on the same work order the teardown ran on. */
         post: operations["api_Cores_release_to_rebuild_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/{id}/request_authorisation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Pause a rebuild for customer authorisation of work beyond the rebuild level that was sold. */
+        post: operations["api_Cores_request_authorisation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/{id}/return_to_customer/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Dispatch a unit back to its customer — repaired, or unrepaired after a declined scope. */
+        post: operations["api_Cores_return_to_customer_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16557,15 +16608,15 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The parent assembly this component was installed into
+             * @description The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
              */
-            assembly: string;
+            assembly?: string | null;
             readonly assembly_erp_id: string;
             /**
              * Format: uuid
-             * @description The component part installed
+             * @description The component part installed. Null when the thing installed is a harvested component that never became stock.
              */
-            component: string;
+            component?: string | null;
             readonly component_erp_id: string;
             /** Format: decimal */
             quantity?: string;
@@ -16592,14 +16643,14 @@ export interface components {
         AssemblyUsageRequest: {
             /**
              * Format: uuid
-             * @description The parent assembly this component was installed into
+             * @description The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
              */
-            assembly: string;
+            assembly?: string | null;
             /**
              * Format: uuid
-             * @description The component part installed
+             * @description The component part installed. Null when the thing installed is a harvested component that never became stock.
              */
-            component: string;
+            component?: string | null;
             /** Format: decimal */
             quantity?: string;
             /** Format: uuid */
@@ -17782,6 +17833,13 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        CoreAuthorisationError: {
+            detail: string;
+        };
+        CoreAuthorisationInputRequest: {
+            approved: boolean;
+            note?: string;
+        };
         CoreBulkCreateError: {
             detail?: string;
             errors?: {
@@ -17915,6 +17973,19 @@ export interface components {
             work_order?: string | null;
             archived?: boolean;
         };
+        CoreRequestAuthorisation: {
+            core: components["schemas"]["Core"];
+            over_and_above: string[];
+        };
+        CoreRequestAuthorisationError: {
+            detail: string;
+        };
+        CoreReturnError: {
+            detail: string;
+        };
+        CoreReturnInputRequest: {
+            reference?: string;
+        };
         /** @description Serializer for scrapping a core */
         CoreScrapRequest: {
             /** @default  */
@@ -17937,11 +18008,15 @@ export interface components {
          *     * `DISASSEMBLED` - Disassembled
          *     * `IN_REBUILD` - In Rebuild
          *     * `REBUILT` - Rebuilt — ready to return
+         *     * `RETURNED` - Returned to customer
+         *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+         *     * `DECLINED` - Scope declined — to be returned unrepaired
+         *     * `RETURNED_UNREPAIRED` - Returned unrepaired
          *     * `HARVESTED` - Harvested to inventory
          *     * `SCRAPPED` - Scrapped
          * @enum {string}
          */
-        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "HARVESTED" | "SCRAPPED";
+        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
         CreateBOMRevisionInputRequest: {
             change_description: string;
         };
@@ -23252,14 +23327,14 @@ export interface components {
         PatchedAssemblyUsageRequest: {
             /**
              * Format: uuid
-             * @description The parent assembly this component was installed into
+             * @description The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
              */
-            assembly?: string;
+            assembly?: string | null;
             /**
              * Format: uuid
-             * @description The component part installed
+             * @description The component part installed. Null when the thing installed is a harvested component that never became stock.
              */
-            component?: string;
+            component?: string | null;
             /** Format: decimal */
             quantity?: string;
             /** Format: uuid */
@@ -33819,7 +33894,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["AssemblyUsageRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["AssemblyUsageRequest"];
@@ -33869,7 +33944,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["AssemblyUsageRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["AssemblyUsageRequest"];
@@ -36359,10 +36434,14 @@ export interface operations {
                  *     * `DISASSEMBLED` - Disassembled
                  *     * `IN_REBUILD` - In Rebuild
                  *     * `REBUILT` - Rebuilt — ready to return
+                 *     * `RETURNED` - Returned to customer
+                 *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+                 *     * `DECLINED` - Scope declined — to be returned unrepaired
+                 *     * `RETURNED_UNREPAIRED` - Returned unrepaired
                  *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "SCRAPPED";
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
             };
             header?: never;
             path?: never;
@@ -36561,10 +36640,14 @@ export interface operations {
                  *     * `DISASSEMBLED` - Disassembled
                  *     * `IN_REBUILD` - In Rebuild
                  *     * `REBUILT` - Rebuilt — ready to return
+                 *     * `RETURNED` - Returned to customer
+                 *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+                 *     * `DECLINED` - Scope declined — to be returned unrepaired
+                 *     * `RETURNED_UNREPAIRED` - Returned unrepaired
                  *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "SCRAPPED";
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
             };
             header?: never;
             path: {
@@ -36629,6 +36712,42 @@ export interface operations {
             };
         };
     };
+    api_Cores_record_authorisation_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreAuthorisationInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreAuthorisationInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreAuthorisationInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Core"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreAuthorisationError"];
+                };
+            };
+        };
+    };
     api_Cores_release_to_inventory_create: {
         parameters: {
             query?: never;
@@ -36685,6 +36804,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoreReleaseRebuildError"];
+                };
+            };
+        };
+    };
+    api_Cores_request_authorisation_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreRequestAuthorisation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreRequestAuthorisationError"];
+                };
+            };
+        };
+    };
+    api_Cores_return_to_customer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CoreReturnInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreReturnInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreReturnInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Core"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreReturnError"];
                 };
             };
         };

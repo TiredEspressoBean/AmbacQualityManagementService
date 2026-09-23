@@ -1443,7 +1443,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/AssemblyUsageRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1502,7 +1501,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/AssemblyUsageRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -4795,12 +4793,16 @@ paths:
         schema:
           type: string
           enum:
+          - AWAITING_AUTHORISATION
+          - DECLINED
           - DISASSEMBLED
           - HARVESTED
           - IN_DISASSEMBLY
           - IN_REBUILD
           - REBUILT
           - RECEIVED
+          - RETURNED
+          - RETURNED_UNREPAIRED
           - SCRAPPED
         description: |-
           * `RECEIVED` - Received
@@ -4808,6 +4810,10 @@ paths:
           * `DISASSEMBLED` - Disassembled
           * `IN_REBUILD` - In Rebuild
           * `REBUILT` - Rebuilt — ready to return
+          * `RETURNED` - Returned to customer
+          * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+          * `DECLINED` - Scope declined — to be returned unrepaired
+          * `RETURNED_UNREPAIRED` - Returned unrepaired
           * `HARVESTED` - Harvested to inventory
           * `SCRAPPED` - Scrapped
       tags:
@@ -5111,12 +5117,16 @@ paths:
         schema:
           type: string
           enum:
+          - AWAITING_AUTHORISATION
+          - DECLINED
           - DISASSEMBLED
           - HARVESTED
           - IN_DISASSEMBLY
           - IN_REBUILD
           - REBUILT
           - RECEIVED
+          - RETURNED
+          - RETURNED_UNREPAIRED
           - SCRAPPED
         description: |-
           * `RECEIVED` - Received
@@ -5124,6 +5134,10 @@ paths:
           * `DISASSEMBLED` - Disassembled
           * `IN_REBUILD` - In Rebuild
           * `REBUILT` - Rebuilt — ready to return
+          * `RETURNED` - Returned to customer
+          * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+          * `DECLINED` - Scope declined — to be returned unrepaired
+          * `RETURNED_UNREPAIRED` - Returned unrepaired
           * `HARVESTED` - Harvested to inventory
           * `SCRAPPED` - Scrapped
       tags:
@@ -5191,6 +5205,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/RebuildPlan'
           description: ''
+  /api/Cores/{id}/record_authorisation/:
+    post:
+      operationId: api_Cores_record_authorisation_create
+      description: Record the customer's decision on over-and-above scope. The conversation
+        happens outside UQMES; this is the production record.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreAuthorisationInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreAuthorisationInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreAuthorisationInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Core'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreAuthorisationError'
+          description: ''
   /api/Cores/{id}/release_to_inventory/:
     post:
       operationId: api_Cores_release_to_inventory_create
@@ -5253,6 +5310,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CoreReleaseRebuildError'
+          description: ''
+  /api/Cores/{id}/request_authorisation/:
+    post:
+      operationId: api_Cores_request_authorisation_create
+      description: Pause a rebuild for customer authorisation of work beyond the rebuild
+        level that was sold.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreRequestAuthorisation'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreRequestAuthorisationError'
+          description: ''
+  /api/Cores/{id}/return_to_customer/:
+    post:
+      operationId: api_Cores_return_to_customer_create
+      description: Dispatch a unit back to its customer — repaired, or unrepaired
+        after a declined scope.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreReturnInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreReturnInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreReturnInputRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Core'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreReturnError'
           description: ''
   /api/Cores/{id}/scrap/:
     post:
@@ -40284,14 +40414,18 @@ components:
         assembly:
           type: string
           format: uuid
-          description: The parent assembly this component was installed into
+          nullable: true
+          description: The parent assembly this component was installed into. Null
+            for a core rebuild, where the parent is `assembly_core`.
         assembly_erp_id:
           type: string
           readOnly: true
         component:
           type: string
           format: uuid
-          description: The component part installed
+          nullable: true
+          description: The component part installed. Null when the thing installed
+            is a harvested component that never became stock.
         component_erp_id:
           type: string
           readOnly: true
@@ -40343,9 +40477,7 @@ components:
         archived:
           type: boolean
       required:
-      - assembly
       - assembly_erp_id
-      - component
       - component_erp_id
       - created_at
       - id
@@ -40364,11 +40496,15 @@ components:
         assembly:
           type: string
           format: uuid
-          description: The parent assembly this component was installed into
+          nullable: true
+          description: The parent assembly this component was installed into. Null
+            for a core rebuild, where the parent is `assembly_core`.
         component:
           type: string
           format: uuid
-          description: The component part installed
+          nullable: true
+          description: The component part installed. Null when the thing installed
+            is a harvested component that never became stock.
         quantity:
           type: string
           format: decimal
@@ -40383,9 +40519,6 @@ components:
           nullable: true
         archived:
           type: boolean
-      required:
-      - assembly
-      - component
     AttentionTypeEnum:
       enum:
       - full
@@ -42809,6 +42942,22 @@ components:
       - usable_component_count
       - work_order_erp_id
       - work_order_status
+    CoreAuthorisationError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreAuthorisationInputRequest:
+      type: object
+      properties:
+        approved:
+          type: boolean
+        note:
+          type: string
+      required:
+      - approved
     CoreBulkCreateError:
       type: object
       properties:
@@ -43053,6 +43202,37 @@ components:
       - condition_grade
       - core_type
       - received_date
+    CoreRequestAuthorisation:
+      type: object
+      properties:
+        core:
+          $ref: '#/components/schemas/Core'
+        over_and_above:
+          type: array
+          items:
+            type: string
+      required:
+      - core
+      - over_and_above
+    CoreRequestAuthorisationError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreReturnError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreReturnInputRequest:
+      type: object
+      properties:
+        reference:
+          type: string
     CoreScrapRequest:
       type: object
       description: Serializer for scrapping a core
@@ -43097,6 +43277,10 @@ components:
       - DISASSEMBLED
       - IN_REBUILD
       - REBUILT
+      - RETURNED
+      - AWAITING_AUTHORISATION
+      - DECLINED
+      - RETURNED_UNREPAIRED
       - HARVESTED
       - SCRAPPED
       type: string
@@ -43106,6 +43290,10 @@ components:
         * `DISASSEMBLED` - Disassembled
         * `IN_REBUILD` - In Rebuild
         * `REBUILT` - Rebuilt — ready to return
+        * `RETURNED` - Returned to customer
+        * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+        * `DECLINED` - Scope declined — to be returned unrepaired
+        * `RETURNED_UNREPAIRED` - Returned unrepaired
         * `HARVESTED` - Harvested to inventory
         * `SCRAPPED` - Scrapped
     CreateBOMRevisionInputRequest:
@@ -53407,11 +53595,15 @@ components:
         assembly:
           type: string
           format: uuid
-          description: The parent assembly this component was installed into
+          nullable: true
+          description: The parent assembly this component was installed into. Null
+            for a core rebuild, where the parent is `assembly_core`.
         component:
           type: string
           format: uuid
-          description: The component part installed
+          nullable: true
+          description: The component part installed. Null when the thing installed
+            is a harvested component that never became stock.
         quantity:
           type: string
           format: decimal

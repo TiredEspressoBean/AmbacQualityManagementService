@@ -2199,17 +2199,42 @@ class AssemblyUsage(SecureModel):
 
     Also supports removal tracking for remanufacturing/repair scenarios.
     """
+    # Two possible parents and two possible children, because a core rebuild is not a
+    # Parts-into-Parts assembly: a repair-and-return unit IS the Core, and the things
+    # going back into it are HarvestedComponents that never became stock — they are the
+    # customer's property. Same nullable-pair + CheckConstraint shape as
+    # StepExecution.part/core, per the mirror-not-abstract decision.
     assembly = models.ForeignKey(
         'Tracker.Parts',
+        null=True, blank=True,
         on_delete=models.PROTECT,
         related_name='component_usages',
-        help_text="The parent assembly this component was installed into"
+        help_text="The parent assembly this component was installed into. Null for a "
+                  "core rebuild, where the parent is `assembly_core`."
+    )
+    assembly_core = models.ForeignKey(
+        'Tracker.Core',
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name='component_usages',
+        help_text="The core this component was installed into, for a repair-and-return "
+                  "rebuild where the unit IS the core rather than a Parts row."
     )
     component = models.ForeignKey(
         'Tracker.Parts',
+        null=True, blank=True,
         on_delete=models.PROTECT,
         related_name='installed_in',
-        help_text="The component part installed"
+        help_text="The component part installed. Null when the thing installed is a "
+                  "harvested component that never became stock."
+    )
+    component_harvested = models.ForeignKey(
+        'Tracker.HarvestedComponent',
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name='installed_in',
+        help_text="The harvested component installed — the customer's own part going "
+                  "back into their own unit, which never became a Parts row."
     )
 
     quantity = models.DecimalField(max_digits=10, decimal_places=4, default=1)
@@ -2253,8 +2278,28 @@ class AssemblyUsage(SecureModel):
         verbose_name = 'Assembly Usage'
         verbose_name_plural = 'Assembly Usages'
         ordering = ['-installed_at']
+        constraints = [
+            # Exactly one parent and exactly one child. A core rebuild is not a
+            # Parts-into-Parts assembly: the unit IS the core, and what goes back into
+            # it are the customer's own harvested components, which never become stock.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(assembly__isnull=False, assembly_core__isnull=True)
+                    | models.Q(assembly__isnull=True, assembly_core__isnull=False)
+                ),
+                name='assemblyusage_one_parent',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(component__isnull=False, component_harvested__isnull=True)
+                    | models.Q(component__isnull=True, component_harvested__isnull=False)
+                ),
+                name='assemblyusage_one_component',
+            ),
+        ]
         indexes = [
             models.Index(fields=['assembly']),
+            models.Index(fields=['assembly_core']),
             models.Index(fields=['component']),
             models.Index(fields=['removed_at']),
         ]

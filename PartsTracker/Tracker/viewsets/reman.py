@@ -59,8 +59,17 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     action_permissions = {
         'release_to_rebuild': ['complete_disassembly'],
         'release_to_inventory': ['complete_disassembly'],
+        # Gate and dispatch are core-lifecycle changes, gated on change_core rather
+        # than inventing codenames for each transition.
+        'request_authorisation_action': ['change_core'],
+        'record_authorisation_action': ['change_core'],
+        'return_to_customer': ['change_core'],
     }
-    crud_exempt_actions = {'release_to_rebuild', 'release_to_inventory'}
+    crud_exempt_actions = {
+        'release_to_rebuild', 'release_to_inventory',
+        'request_authorisation_action', 'record_authorisation_action',
+        'return_to_customer',
+    }
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -197,6 +206,80 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
             'accepted_count': len(accepted),
             'accepted_part_ids': [p.id for p in accepted],
         })
+
+    @extend_schema(
+        request=inline_serializer(name="CoreAuthorisationInput", fields={
+            "approved": serializers.BooleanField(),
+            "note": serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={200: CoreSerializer, 400: inline_serializer(
+            name="CoreAuthorisationError", fields={"detail": serializers.CharField()})},
+        description="Record the customer's decision on over-and-above scope. The "
+                    "conversation happens outside UQMES; this is the production record.",
+    )
+    @action(detail=True, methods=['post'], url_path='record_authorisation')
+    def record_authorisation_action(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import record_authorisation
+
+        core = self.get_object()
+        try:
+            core = record_authorisation(
+                core, bool(request.data.get('approved')), request.user,
+                note=request.data.get('note', ''))
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreSerializer(core, context={'request': request}).data)
+
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(name="CoreRequestAuthorisation", fields={
+            "core": CoreSerializer(),
+            "over_and_above": serializers.ListField(child=serializers.CharField()),
+        }), 400: inline_serializer(
+            name="CoreRequestAuthorisationError",
+            fields={"detail": serializers.CharField()})},
+        description="Pause a rebuild for customer authorisation of work beyond the "
+                    "rebuild level that was sold.",
+    )
+    @action(detail=True, methods=['post'], url_path='request_authorisation')
+    def request_authorisation_action(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import request_authorisation
+
+        core = self.get_object()
+        try:
+            core, over = request_authorisation(core, request.user)
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'core': CoreSerializer(core, context={'request': request}).data,
+            'over_and_above': over,
+        })
+
+    @extend_schema(
+        request=inline_serializer(name="CoreReturnInput", fields={
+            "reference": serializers.CharField(required=False, allow_blank=True)}),
+        responses={200: CoreSerializer, 400: inline_serializer(
+            name="CoreReturnError", fields={"detail": serializers.CharField()})},
+        description="Dispatch a unit back to its customer — repaired, or unrepaired "
+                    "after a declined scope.",
+    )
+    @action(detail=True, methods=['post'], url_path='return_to_customer')
+    def return_to_customer(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import return_core_to_customer
+
+        core = self.get_object()
+        try:
+            core = return_core_to_customer(
+                core, request.user, reference=request.data.get('reference', ''))
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreSerializer(core, context={'request': request}).data)
 
     @extend_schema(responses={200: RebuildPlanSerializer})
     @action(detail=True, methods=['get'], url_path='rebuild_plan')

@@ -1862,3 +1862,113 @@ class RecoverabilityResolutionTests(TenantTestCase):
             self.assertEqual(
                 values_row_allows_recovery(row), line_allows_recovery(line),
                 f"disagreement on {line}")
+
+
+class RebuildLifecycleTests(TenantTestCase):
+    """The repair-and-return path end to end: rebuild, authorise, return.
+
+    Each transition refuses the states it does not belong to, because a lifecycle that
+    only works when called in the right order is one that will be called in the wrong
+    order.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, HarvestedComponent, PartTypes
+
+        self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        self.component_type = PartTypes.objects.create(
+            tenant=self.tenant_a, name='Nozzle', can_recover=True)
+        self.core = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-LIFE-1', core_type=self.core_type,
+            fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
+            received_date=date.today(), received_by=self.user_a)
+        self.hc = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=self.core, component_type=self.component_type,
+            condition_grade='B', disassembled_by=self.user_a)
+
+    def test_installing_the_units_own_component_is_recorded_as_built(self):
+        from Tracker.services.reman.rebuild_execution import install_component
+        usage = install_component(self.core, harvested=self.hc, user=self.user_a)
+        self.assertEqual(usage.assembly_core_id, self.core.id)
+        self.assertEqual(usage.component_harvested_id, self.hc.id)
+        # The Parts-shaped halves stay empty: a core rebuild is not Parts-into-Parts.
+        self.assertIsNone(usage.assembly_id)
+        self.assertIsNone(usage.component_id)
+
+    def test_another_cores_component_is_refused(self):
+        """Reinstalling one unit's part into another is what `reserved_for_core` exists
+        to prevent — a repair-and-return customer's components are their property."""
+        from django.core.exceptions import ValidationError
+        from Tracker.models import Core, HarvestedComponent
+        other = Core.objects.create(
+            tenant=self.tenant_a, core_number='CORE-LIFE-2', core_type=self.core_type,
+            fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
+            received_date=date.today(), received_by=self.user_a)
+        theirs = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=other, component_type=self.component_type,
+            condition_grade='A', disassembled_by=self.user_a)
+        from Tracker.services.reman.rebuild_execution import install_component
+        with self.assertRaises(ValidationError):
+            install_component(self.core, harvested=theirs, user=self.user_a)
+
+    def test_a_scrapped_component_cannot_go_back_in(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.harvested_component import scrap_component
+        from Tracker.services.reman.rebuild_execution import install_component
+        scrap_component(self.hc, self.user_a, reason='cracked')
+        with self.assertRaises(ValidationError):
+            install_component(self.core, harvested=self.hc, user=self.user_a)
+
+    def test_completing_a_rebuild_does_not_demand_every_slot_filled(self):
+        """The as-built record is what WENT IN. Asserting completeness against the
+        proposal would make the proposal authoritative over what the bench did."""
+        from Tracker.services.reman.rebuild_execution import complete_rebuild
+        core = complete_rebuild(self.core, self.user_a)
+        self.assertEqual(core.status, 'REBUILT')
+
+    def test_a_rebuilt_unit_returns_to_its_customer(self):
+        from Tracker.services.reman.rebuild_execution import complete_rebuild
+        from Tracker.services.reman.release import return_core_to_customer
+        complete_rebuild(self.core, self.user_a)
+        core = return_core_to_customer(self.core, self.user_a, reference='CN-99')
+        self.assertEqual(core.status, 'RETURNED')
+        self.assertEqual(core.return_reference, 'CN-99')
+        self.assertIsNotNone(core.returned_at)
+
+    def test_an_exchange_unit_has_no_owner_to_return_to(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import return_core_to_customer
+        self.core.fulfilment_mode = 'EXCHANGE'
+        self.core.status = 'REBUILT'
+        self.core.save(update_fields=['fulfilment_mode', 'status'])
+        with self.assertRaises(ValidationError):
+            return_core_to_customer(self.core, self.user_a)
+
+    def test_authorisation_is_only_asked_for_work_beyond_what_was_sold(self):
+        """The entry scope was already bought. A job whose findings raised nothing new
+        needs no gate, and being sent to one would stall it for nothing."""
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import request_authorisation
+        with self.assertRaises(ValidationError) as ctx:
+            request_authorisation(self.core, self.user_a)
+        self.assertIn('nothing to authorise', str(ctx.exception))
+
+    def test_a_declined_scope_still_has_to_go_back(self):
+        """Declined is not the end: the unit is still the customer's and still in the
+        building. It leaves by the same dispatch a rebuilt one does."""
+        from Tracker.services.reman.release import record_authorisation, return_core_to_customer
+        self.core.status = 'AWAITING_AUTHORISATION'
+        self.core.save(update_fields=['status'])
+        core = record_authorisation(self.core, approved=False, user=self.user_a,
+                                    note='Customer declined the nozzle work')
+        self.assertEqual(core.status, 'DECLINED')
+        core = return_core_to_customer(core, self.user_a, reference='CN-100')
+        self.assertEqual(core.status, 'RETURNED_UNREPAIRED')
+
+    def test_approval_resumes_the_rebuild(self):
+        from Tracker.services.reman.release import record_authorisation
+        self.core.status = 'AWAITING_AUTHORISATION'
+        self.core.save(update_fields=['status'])
+        core = record_authorisation(self.core, approved=True, user=self.user_a)
+        self.assertEqual(core.status, 'IN_REBUILD')

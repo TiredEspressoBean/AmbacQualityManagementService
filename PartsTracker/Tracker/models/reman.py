@@ -58,10 +58,30 @@ class Core(SecureModel):
         # so the unit keeps one traceable thread from arrival to shipment.
         ('IN_REBUILD', 'In Rebuild'),
         ('REBUILT', 'Rebuilt — ready to return'),
+        ('RETURNED', 'Returned to customer'),
+        # Work paused while the customer decides on scope beyond what was sold. The
+        # conversation happens elsewhere (§3.2); this is where the unit waits for it.
+        ('AWAITING_AUTHORISATION', 'Awaiting customer authorisation'),
+        ('DECLINED', 'Scope declined — to be returned unrepaired'),
+        ('RETURNED_UNREPAIRED', 'Returned unrepaired'),
         # Exchange path: the usable components became stock and the core is consumed.
         ('HARVESTED', 'Harvested to inventory'),
         ('SCRAPPED', 'Scrapped'),
     ]
+
+    # Dispatch back to the customer. Fields rather than a shipment model: UQMES records
+    # that the unit left and when, so someone can trace it. Booking freight, rating and
+    # labelling belong to whatever owns shipping (§3.2).
+    returned_at = models.DateTimeField(null=True, blank=True)
+    returned_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='returned_cores',
+    )
+    return_reference = models.CharField(
+        max_length=100, blank=True,
+        help_text="Consignment note, tracking number or whatever the shop can trace it "
+                  "by in the system that actually shipped it.",
+    )
 
     # Identification
     core_number = models.CharField(
@@ -155,7 +175,7 @@ class Core(SecureModel):
 
     # Status tracking
     status = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=CORE_STATUS_CHOICES,
         default='RECEIVED'
     )

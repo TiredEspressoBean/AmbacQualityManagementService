@@ -1731,16 +1731,24 @@ export type CoreStatusEnum =
    * `DISASSEMBLED` - Disassembled
    * `IN_REBUILD` - In Rebuild
    * `REBUILT` - Rebuilt — ready to return
+   * `RETURNED` - Returned to customer
+   * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+   * `DECLINED` - Scope declined — to be returned unrepaired
+   * `RETURNED_UNREPAIRED` - Returned unrepaired
    * `HARVESTED` - Harvested to inventory
    * `SCRAPPED` - Scrapped
    *
-   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, IN_REBUILD, REBUILT, HARVESTED, SCRAPPED
+   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, IN_REBUILD, REBUILT, RETURNED, AWAITING_AUTHORISATION, DECLINED, RETURNED_UNREPAIRED, HARVESTED, SCRAPPED
    */
   | "RECEIVED"
   | "IN_DISASSEMBLY"
   | "DISASSEMBLED"
   | "IN_REBUILD"
   | "REBUILT"
+  | "RETURNED"
+  | "AWAITING_AUTHORISATION"
+  | "DECLINED"
+  | "RETURNED_UNREPAIRED"
   | "HARVESTED"
   | "SCRAPPED";
 export type CoreList = {
@@ -1868,6 +1876,10 @@ export type CoreRequest = {
   boolean | undefined;
   work_order?: (string | null) | undefined;
   archived?: boolean | undefined;
+};
+export type CoreRequestAuthorisation = {
+  core: Core;
+  over_and_above: Array<string>;
 };
 export type CurrentTenantResponse = {
   tenant: TenantInfo;
@@ -4256,15 +4268,19 @@ export type PaginatedAssemblyUsageList = {
 };
 export type AssemblyUsage = {
   id: string;
-  /**
-   * The parent assembly this component was installed into
-   */
-  assembly: string;
+  assembly?:
+    | /**
+     * The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
+     */
+    (string | null)
+    | undefined;
   assembly_erp_id: string;
-  /**
-   * The component part installed
-   */
-  component: string;
+  component?:
+    | /**
+     * The component part installed. Null when the thing installed is a harvested component that never became stock.
+     */
+    (string | null)
+    | undefined;
   component_erp_id: string;
   quantity?: /**
    * @pattern ^-?\d{0,6}(?:\.\d{0,4})?$
@@ -16223,9 +16239,9 @@ const ApprovalTemplateActivateResponse = z.object({ status: z.string() });
 const ApprovalTemplateDeactivateResponse = z.object({ status: z.string() });
 const AssemblyUsage = z.object({
   id: z.string().uuid(),
-  assembly: z.string().uuid(),
+  assembly: z.string().uuid().nullish(),
   assembly_erp_id: z.string(),
-  component: z.string().uuid(),
+  component: z.string().uuid().nullish(),
   component_erp_id: z.string(),
   quantity: z
     .string()
@@ -16250,21 +16266,20 @@ const PaginatedAssemblyUsageList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(AssemblyUsage),
 });
-const AssemblyUsageRequest = z.object({
-  assembly: z.string().uuid(),
-  component: z.string().uuid(),
-  quantity: z
-    .string()
-    .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
-    .optional(),
-  bom_line: z.string().uuid().nullish(),
-  step: z.string().uuid().nullish(),
-  archived: z.boolean().optional(),
-});
+const AssemblyUsageRequest = z
+  .object({
+    assembly: z.string().uuid().nullable(),
+    component: z.string().uuid().nullable(),
+    quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
+    bom_line: z.string().uuid().nullable(),
+    step: z.string().uuid().nullable(),
+    archived: z.boolean(),
+  })
+  .partial();
 const PatchedAssemblyUsageRequest = z
   .object({
-    assembly: z.string().uuid(),
-    component: z.string().uuid(),
+    assembly: z.string().uuid().nullable(),
+    component: z.string().uuid().nullable(),
     quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
     bom_line: z.string().uuid().nullable(),
     step: z.string().uuid().nullable(),
@@ -17002,6 +17017,10 @@ const CoreStatusEnum = z.enum([
   "DISASSEMBLED",
   "IN_REBUILD",
   "REBUILT",
+  "RETURNED",
+  "AWAITING_AUTHORISATION",
+  "DECLINED",
+  "RETURNED_UNREPAIRED",
   "HARVESTED",
   "SCRAPPED",
 ]);
@@ -17185,6 +17204,11 @@ const RebuildPlan = z.object({
   operations: z.array(ScopedOperation),
   warnings: z.array(z.string()),
 });
+const CoreAuthorisationInputRequest = z.object({
+  approved: z.boolean(),
+  note: z.string().optional(),
+});
+const CoreAuthorisationError = z.object({ detail: z.string() });
 const CoreReleaseInventory = z.object({
   core: Core,
   accepted_count: z.number().int(),
@@ -17197,6 +17221,13 @@ const CoreReleaseRebuild = z.object({
   operation_count: z.number().int(),
 });
 const CoreReleaseRebuildError = z.object({ detail: z.string() });
+const CoreRequestAuthorisation = z.object({
+  core: Core,
+  over_and_above: z.array(z.string()),
+});
+const CoreRequestAuthorisationError = z.object({ detail: z.string() });
+const CoreReturnInputRequest = z.object({ reference: z.string() }).partial();
+const CoreReturnError = z.object({ detail: z.string() });
 const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
 const CoreBulkCreateInputRequest = z.object({
   cores: z.array(z.object({}).partial().passthrough()),
@@ -24991,10 +25022,16 @@ export const schemas = {
   RebuildSlot,
   ScopedOperation,
   RebuildPlan,
+  CoreAuthorisationInputRequest,
+  CoreAuthorisationError,
   CoreReleaseInventory,
   CoreReleaseInventoryError,
   CoreReleaseRebuild,
   CoreReleaseRebuildError,
+  CoreRequestAuthorisation,
+  CoreRequestAuthorisationError,
+  CoreReturnInputRequest,
+  CoreReturnError,
   CoreScrapRequest,
   CoreBulkCreateInputRequest,
   CoreBulkCreateResponse,
@@ -29214,12 +29251,16 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         type: "Query",
         schema: z
           .enum([
+            "AWAITING_AUTHORISATION",
+            "DECLINED",
             "DISASSEMBLED",
             "HARVESTED",
             "IN_DISASSEMBLY",
             "IN_REBUILD",
             "REBUILT",
             "RECEIVED",
+            "RETURNED",
+            "RETURNED_UNREPAIRED",
             "SCRAPPED",
           ])
           .optional(),
@@ -29426,12 +29467,16 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         type: "Query",
         schema: z
           .enum([
+            "AWAITING_AUTHORISATION",
+            "DECLINED",
             "DISASSEMBLED",
             "HARVESTED",
             "IN_DISASSEMBLY",
             "IN_REBUILD",
             "REBUILT",
             "RECEIVED",
+            "RETURNED",
+            "RETURNED_UNREPAIRED",
             "SCRAPPED",
           ])
           .optional(),
@@ -29475,6 +29520,32 @@ committed to rebuilding — which is also what lets the same call answer
   },
   {
     method: "post",
+    path: "/api/Cores/:id/record_authorisation/",
+    alias: "api_Cores_record_authorisation_create",
+    description: `Record the customer&#x27;s decision on over-and-above scope. The conversation happens outside UQMES; this is the production record.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreAuthorisationInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Core,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/Cores/:id/release_to_inventory/",
     alias: "api_Cores_release_to_inventory_create",
     description: `Accept this core&#x27;s usable components into stock. The core is then consumed — this is the exchange path, where the customer already has a unit from stock.`,
@@ -29508,6 +29579,53 @@ committed to rebuilding — which is also what lets the same call answer
       },
     ],
     response: CoreReleaseRebuild,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/Cores/:id/request_authorisation/",
+    alias: "api_Cores_request_authorisation_create",
+    description: `Pause a rebuild for customer authorisation of work beyond the rebuild level that was sold.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CoreRequestAuthorisation,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/Cores/:id/return_to_customer/",
+    alias: "api_Cores_return_to_customer_create",
+    description: `Dispatch a unit back to its customer — repaired, or unrepaired after a declined scope.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reference: z.string() }).partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Core,
     errors: [
       {
         status: 400,
@@ -30745,7 +30863,10 @@ Optional body:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "post",
     path: "/api/Documents/:id/revise/",
@@ -30854,10 +30975,7 @@ The new version will:
       },
     ],
     response: z.array(Documents),
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Documents/due-for-review/",
@@ -35717,7 +35835,10 @@ customer FK validation handled at the serializer layer.`,
       },
     ],
     response: ExternalContact,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "delete",
     path: "/api/notifications/external-contacts/:id/",
@@ -35791,10 +35912,7 @@ COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
       },
     ],
     response: NotificationFeedItem,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/notifications/feed/:id/mark-read/",
@@ -40985,7 +41103,10 @@ Usage:
       },
     ],
     response: Processes,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "put",
     path: "/api/Processes/:id/",
@@ -41112,10 +41233,7 @@ Usage:
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Processes/:id/revisions/",
@@ -46969,7 +47087,10 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
       },
     ],
     response: SubstepCompletion,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/SubstepCompletions/:id/",
@@ -47030,10 +47151,7 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
       },
     ],
     response: SubstepCompletion,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/SubstepCompletions/:id/",
@@ -51728,7 +51846,10 @@ already shipped/completed (can&#x27;t undo delivered work).`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/WorkOrders/:id/clear_hold/",
@@ -51782,10 +51903,7 @@ outran the expected yield.`,
       },
     ],
     response: WorkOrderMakeupStatus,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkOrders/:id/material_requirements/",
