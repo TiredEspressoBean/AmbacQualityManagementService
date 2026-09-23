@@ -750,34 +750,68 @@ items and the whole loop look bigger than it is.
    requirements and how many distinct scopes a shop really has become answerable from
    evidence rather than guessed up front.
 
-6. **`REPAIR_RETURN` gate** (UI 8) — and it is now a SMALL step, because most of what
+6. **Rebuild execution** — the half that actually does the work, and the half nobody
+   had named. A core released into rebuild sits at its first in-scope operation and
+   then nothing moves it: `advance_core_step` walks DEFAULT edges and knows nothing
+   about scope, so it would carry the unit into operations its findings never called
+   for. Two ways out, and the first works today:
+
+   - the §5 stopgap — author the route so it matches the scope, one process per
+     common scope;
+   - scope-aware advancement — the unit walks to the next INCLUDED step and the
+     passed-over ones land as `SKIPPED` (§5.1(b)).
+
+   This is also where the **as-built record** belongs: what actually went into the
+   unit, slot by slot. `AssemblyUsage` cannot hold it as modelled — both `assembly`
+   and `component` are non-null FKs to `Parts`, while a repair-and-return rebuild has
+   a Core as parent and `HarvestedComponent`s as children, since those components are
+   the customer's property and never become stock. The fix is the nullable-pair +
+   CheckConstraint shape already used for `StepExecution.part`/`core`.
+
+7. **`REPAIR_RETURN` gate** (UI 8) — and it is now a SMALL step, because most of what
    the industry puts here is out of bounds (§3.2). No quote, no approval workflow, no
    purchase order. What is left:
 
    - the **scope export** — the unresolved slots and the findings behind them, in a
-     form the ERP can price;
+     form something else can price;
    - a **hold** on the unit while the answer is outstanding. `Core` has no state for
      this, and the work order cannot hold because it may carry other cores;
-   - **recording the answer** — authorised or declined, who said so and when. The
-     conversation happened elsewhere; this is the production record of its outcome;
-   - the **decline path** (§10.6), which is the part with no home in the lifecycle.
+   - **recording the answer**, out of band: a planner enters what the customer said.
+     The conversation happens elsewhere; this is the production record of its outcome;
+   - the **decline path** — one terminal status. "Reduced scope" is not a terminal
+     state but a loop back through curation, and "scrapped with consent" is the
+     existing `SCRAPPED` plus a reason. What the remaining harvest does — returned,
+     scrapped, or held — needs no decision here: the services already support all
+     three, and which one applies is contract, not MES.
 
    Serial continuity is NOT on this list — the core stays the routing subject through
    the rebuild, so it needs nothing (§10.5).
 
-7. **Routing support for composed scope** (§5.1, UI 6) — superset process, and the
+8. **Return to customer** — the end of every repair-and-return job, and currently
+   missing entirely. A rebuilt unit has nowhere to go: the only shipment model in the
+   system is `OutsideProcessShipment`, which is subcontract dispatch, and `Core` has
+   no shipped state. Needed: a terminal status and a dispatch record — when it left,
+   who released it, and the reference someone else can trace.
+
+   NOT carrier integration, rates or labels (§3.2): UQMES records that the unit left
+   and when. Serves the decline path too, since a unit returned unrepaired leaves the
+   same way.
+
+9. **Routing support for composed scope** (§5.1, UI 6) — superset process, and the
    move from bypass edges (a) to a per-unit included-step set (b) with a scope-aware
-   advancement walk. WO grain (§5.2) is a deferred choice, not a prerequisite.
+   advancement walk. Deferrable while the stopgap in step 6 carries execution, and
+   worth doing once a shop has enough codes that authoring a route per scope stops
+   scaling. WO grain (§5.2) is a deferred choice, not a prerequisite.
 
-8. **Staging reuse-vs-new** (UI 7) — `MaterialStagingLine.material` is a hard
-   `Material` FK, so a harvested `Parts` cannot be staged. Same root cause as the
-   parked bought-parts-staging item; fixing it once covers both, which is why it is
-   worth doing as its own step rather than folded into step 4.
+10. **Staging reuse-vs-new** (UI 7) — `MaterialStagingLine.material` is a hard
+    `Material` FK, so a harvested `Parts` cannot be staged. Same root cause as the
+    parked bought-parts-staging item; fixing it once covers both, which is why it is
+    worth doing as its own step rather than folded into step 6.
 
-9. **Fallout forecast** into the RCCP material lane — expected yield (§4's
-   `DisassemblyBOMLine.expected_fallout_rate`) becomes forward supply, so teardown
-   volume informs the material lane instead of only history.
+11. **Fallout forecast** into the RCCP material lane — expected yield (§4's
+    `DisassemblyBOMLine.expected_fallout_rate`) becomes forward supply, so teardown
+    volume informs the material lane instead of only history.
 
-Steps 8 and 9 reach outside reman and stay separate deliberately: both pay off across
-the system rather than only in this loop.
+Steps 10 and 11 reach outside reman and stay separate deliberately: both pay off
+across the system rather than only in this loop.
 
