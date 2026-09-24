@@ -233,3 +233,78 @@ class BOMExplosionTests(TenantContextMixin, TestCase):
         result = explode_work_order_tx(parent, user=self.user, create=False)
         self.assertEqual(result.as_summary()['created'][0]['work_order_id'], None)
         self.assertFalse(WorkOrder.objects.filter(pegged_to_workorder=parent).exists())
+
+
+
+class RecoveredStockIsNotCoverForANewBuildTests(TenantContextMixin, TestCase):
+    """Recovered stock does not go into new builds (decided 2026-09-24).
+
+    Explosion nets a MAKE line against finished parts on the shelf. Counting a
+    recovered part there is the dangerous direction: explosion skips raising the work
+    order that makes the component, and the new build is left waiting on a part it may
+    not use.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Core, HarvestedComponent
+        from Tracker.services.reman.harvested_component import accept_component_to_inventory
+
+        self.tenant = Tenant.objects.create(name="BXR", slug="bomx-rec", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        self.user = User.objects.create_user(
+            username="planner-r", email="pr@c.test", password="x", tenant=self.tenant)
+
+        self.asm = PartTypes.objects.create(tenant=self.tenant, name="Injector")
+        self.comp = PartTypes.objects.create(tenant=self.tenant, name="Nozzle")
+        self.asm_proc = self._process(self.asm, "Assemble")
+        self._process(self.comp, "MakeNozzle")
+        bom = BOM.objects.create(
+            tenant=self.tenant, part_type=self.asm, revision="A",
+            bom_type="ASSEMBLY", status="RELEASED", is_current_version=True)
+        BOMLine.objects.create(
+            tenant=self.tenant, bom=bom, component_type=self.comp,
+            quantity=Decimal(1), source="MAKE", line_number=1)
+
+        # The only nozzle on the shelf is a recovered one.
+        donor = Core.objects.create(
+            tenant=self.tenant, core_number="DONOR-X", core_type=self.asm,
+            fulfilment_mode="EXCHANGE", status="DISASSEMBLED",
+            received_date=date.today(), received_by=self.user)
+        hc = HarvestedComponent.objects.create(
+            tenant=self.tenant, core=donor, component_type=self.comp,
+            condition_grade="A", disassembled_by=self.user)
+        accept_component_to_inventory(hc, self.user, transfer_life=False)
+
+    def _process(self, part_type, name):
+        proc = Processes.objects.create(
+            tenant=self.tenant, name=name, part_type=part_type,
+            status="APPROVED", is_current_version=True, is_disassembly=False)
+        step = Steps.objects.create(tenant=self.tenant, part_type=part_type, name=f"{name}-Op")
+        ProcessStep.objects.create(process=proc, step=step, order=1)
+        return proc
+
+    def _wo(self, erp):
+        return WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id=erp, quantity=1, process=self.asm_proc,
+            workorder_status="PENDING")
+
+    def test_a_new_build_still_raises_the_component_work_order(self):
+        from Tracker.services.mes.bom_explosion import explode_work_order
+        result = explode_work_order(self._wo("WO-NEW"), self.user, create=False)
+        self.assertEqual([c['component'] for c in result.created], ["Nozzle"])
+        self.assertEqual(result.netted, [])
+
+    def test_a_reman_rebuild_counts_the_recovered_part_as_cover(self):
+        """The same shelf, a reman parent: here the recovered nozzle is legitimate
+        supply, so nothing needs making."""
+        from Tracker.models import Core
+        from Tracker.services.mes.bom_explosion import explode_work_order
+        wo = self._wo("WO-RB")
+        Core.objects.create(
+            tenant=self.tenant, core_number="RB-X", core_type=self.asm,
+            fulfilment_mode="REPAIR_RETURN", status="IN_REBUILD", work_order=wo,
+            received_date=date.today(), received_by=self.user)
+        result = explode_work_order(wo, self.user, create=False)
+        self.assertEqual(result.created, [])
+        self.assertEqual([n['component'] for n in result.netted], ["Nozzle"])

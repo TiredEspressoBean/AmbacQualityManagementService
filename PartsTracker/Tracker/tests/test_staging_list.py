@@ -224,3 +224,111 @@ class MarkStagedTests(StagingListTests):
         station = staging_list(self.tenant)['stations'][0]
         self.assertEqual(station['staged_count'], 1)
         self.assertEqual(len(station['jobs']), 2)
+
+
+class RecoveredPoolOnThePickSheetTests(TenantContextMixin, TestCase):
+    """Through `staging_list` itself — real jobs, the real query — rather than feeding
+    `_materials_for` hand-made totals, so the per-job reman flag and the database
+    filter are both exercised.
+
+    Recovered stock does not go into new builds (decided 2026-09-24). It is reported
+    only on a reman job's line that allows recovery, as the pool to fall back on when
+    the unit's own part comes out scrapped.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from datetime import date
+        from Tracker.models import Core, HarvestedComponent
+        from Tracker.services.reman.harvested_component import accept_component_to_inventory
+
+        self.tenant = Tenant.objects.create(name="SR", slug="staging-rec", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        self.user = get_user_model().objects.create_user(
+            username="sr-op", email="sr@c.test", password="x", tenant=self.tenant)
+        wc = WorkCenter.objects.create(tenant=self.tenant, name="Build Bay", code="BB")
+        self.machine = Equipments.objects.create(
+            tenant=self.tenant, name="BB-1", is_schedulable=True)
+        wc.equipment.add(self.machine)
+
+        self.pt = PartTypes.objects.create(tenant=self.tenant, name="Injector")
+        self.nozzle = PartTypes.objects.create(
+            tenant=self.tenant, name="Nozzle", can_recover=True, can_buy=True)
+        self.process = Processes.objects.create(
+            tenant=self.tenant, name="Build", part_type=self.pt)
+        self.step = Steps.objects.create(
+            tenant=self.tenant, part_type=self.pt, name="Assemble", step_type="TASK",
+            work_center=wc)
+        ProcessStep.objects.create(process=self.process, step=self.step, order=1)
+        bom = BOM.objects.create(tenant=self.tenant, part_type=self.pt,
+                                 bom_type='ASSEMBLY', status='RELEASED', version=1)
+        BOMLine.objects.create(tenant=self.tenant, bom=bom, component_type=self.nozzle,
+                               quantity=1, source='BUY', consumed_at_step=self.step)
+
+        self.now = timezone.now()
+        self.schedule = ScheduleResult.objects.create(
+            tenant=self.tenant, horizon_start=self.now,
+            horizon_end=self.now + timedelta(days=30), is_active=True)
+
+        # Two recovered nozzles on the shelf; one is reserved to a customer's unit.
+        def recovered(core_number):
+            donor = Core.objects.create(
+                tenant=self.tenant, core_number=core_number, core_type=self.pt,
+                fulfilment_mode="EXCHANGE", status="DISASSEMBLED",
+                received_date=date.today(), received_by=self.user)
+            hc = HarvestedComponent.objects.create(
+                tenant=self.tenant, core=donor, component_type=self.nozzle,
+                condition_grade="A", disassembled_by=self.user)
+            return accept_component_to_inventory(hc, self.user, transfer_life=False)
+
+        recovered("DONOR-1")
+        reserved = recovered("DONOR-2")
+        self.owner = Core.objects.create(
+            tenant=self.tenant, core_number="OWNER-1", core_type=self.pt,
+            fulfilment_mode="REPAIR_RETURN", status="DISASSEMBLED",
+            received_date=date.today(), received_by=self.user)
+        Parts.objects.filter(pk=reserved.pk).update(reserved_for_core=self.owner)
+
+    def _wo(self, erp):
+        return WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id=erp, quantity=1, process=self.process,
+            workorder_status=WorkOrderStatus.IN_PROGRESS)
+
+    def _task(self, **subject):
+        start = self.now + timedelta(hours=1)
+        ScheduledTask.objects.create(
+            tenant=self.tenant, schedule=self.schedule, step=self.step,
+            machine=self.machine, start_time=start,
+            end_time=start + timedelta(hours=1), **subject)
+
+    def _nozzle_row(self, erp):
+        for station in staging_list(self.tenant)['stations']:
+            for job in station['jobs']:
+                if job['erp_id'] == erp:
+                    return [m for m in job['materials'] if m['material'] == "Nozzle"][0]
+        self.fail(f"{erp} not on the pick sheet")
+
+    def test_a_new_build_is_shown_short_despite_recovered_stock(self):
+        wo = self._wo("WO-NEW")
+        p = Parts.objects.create(tenant=self.tenant, ERP_id="WO-NEW-P0",
+                                 part_type=self.pt, work_order=wo, step=self.step)
+        self._task(part=p)
+        row = self._nozzle_row("WO-NEW")
+        self.assertFalse(row['from_teardown'])
+        self.assertEqual(row['recovered_on_hand'], 0.0)
+        self.assertEqual(row['short'], 1.0)
+
+    def test_a_reman_job_sees_the_free_pool_only(self):
+        """One recovered nozzle is free, one is reserved to another customer's unit:
+        the pool is 1, not 2."""
+        from datetime import date
+        from Tracker.models import Core
+        wo = self._wo("WO-RB")
+        core = Core.objects.create(
+            tenant=self.tenant, core_number="RB-1", core_type=self.pt,
+            fulfilment_mode="REPAIR_RETURN", status="IN_REBUILD", work_order=wo,
+            step=self.step, received_date=date.today(), received_by=self.user)
+        self._task(core=core)
+        row = self._nozzle_row("WO-RB")
+        self.assertTrue(row['from_teardown'])
+        self.assertEqual(row['recovered_on_hand'], 1.0)

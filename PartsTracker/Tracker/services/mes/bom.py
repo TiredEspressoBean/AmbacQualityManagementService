@@ -229,3 +229,53 @@ def values_row_allows_recovery(row) -> bool:
     if override is not None:
         return override
     return bool(row.get('component_type__can_recover'))
+
+
+def usable_stock_parts(component_type_id, *, tenant, for_reman: bool):
+    """In-stock `Parts` of a component type that a job may actually build with.
+
+    The one place coverage counts finished parts, so the pick sheet, the requirements
+    view and BOM explosion cannot disagree about what is on the shelf. Three things
+    are on the shelf and NOT available:
+
+    - **Archived rows.** `.objects` scopes by tenant only; it does not hide them.
+    - **Parts reserved to a core.** `reserved_for_core` means the part belongs to a
+      customer's unit — it is sitting there and it is spoken for.
+    - **Recovered parts, for a new build.** Recovered stock is supply for reman
+      rebuilds only (decided 2026-09-24): a used serviceable part in a unit sold as
+      new is a suspect-unapproved-parts problem under AS9100. Counting it as cover
+      for a new build would also stop BOM explosion raising the work order that
+      makes the component, leaving the build waiting on a part it may not use.
+    """
+    qs = _available_parts(tenant).filter(part_type_id=component_type_id)
+    if not for_reman:
+        qs = qs.filter(harvested_from__isnull=True)
+    return qs
+
+
+def recovered_stock_by_type(tenant) -> dict:
+    """Available recovered parts per component type, as `{part_type_id: count}`.
+
+    The pick sheet's view of the recovered pool, built on the same base as
+    `usable_stock_parts` so the sheet and the requirements view cannot disagree about
+    what is free: archived and core-reserved parts are excluded here too. Whether a
+    given row may draw on it is the caller's call — only a reman job, on a line that
+    allows recovery.
+    """
+    from django.db.models import Count
+    out = {}
+    for row in (_available_parts(tenant).exclude(harvested_from__isnull=True)
+                .values('part_type').annotate(q=Count('id'))):
+        if row['part_type'] is not None:
+            out[row['part_type']] = row['q']
+    return out
+
+
+def _available_parts(tenant):
+    """In-stock parts that are not archived and not spoken for by a core — the base
+    every finished-part coverage count starts from."""
+    from Tracker.models import Parts, PartsStatus
+    return Parts.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, part_status=PartsStatus.IN_STOCK, archived=False,
+        reserved_for_core__isnull=True,
+    )

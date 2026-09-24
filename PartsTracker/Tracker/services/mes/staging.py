@@ -33,9 +33,8 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     """
     from django.db.models import Sum
     from django.utils import timezone
-    from django.db.models import Count
     from Tracker.models import (
-        MaterialLot, Parts, PartsStatus, ScheduledTask, ScheduleResult,
+        MaterialLot, ScheduledTask, ScheduleResult,
     )
     from Tracker.services.mes.consumption import _released_bom_lines
 
@@ -112,21 +111,18 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
                 else ('PART_TYPE', row['material_type']))
 
     # Recovered components live as IN_STOCK `Parts`, not `MaterialLot`s — acceptance
-    # from teardown mints a Parts row. `onhand` was built from lots alone, so a shelf
-    # full of recovered nozzles read as zero and the pick list called the line short
-    # while the part sat in the rack. Counted separately as well as merged, so the
-    # sheet can tell the picker WHICH rack to go to.
-    recovered: dict = {}
-    for row in (Parts.objects
-                .filter(tenant=tenant, part_status=PartsStatus.IN_STOCK,
-                        archived=False, reserved_for_core__isnull=True)
-                .exclude(harvested_from__isnull=True)
-                .values('part_type').annotate(q=Count('id'))):
-        if row['part_type'] is None:
-            continue
-        recovered[('PART_TYPE', row['part_type'])] = Decimal(str(row['q'] or 0))
+    # from teardown mints a Parts row. Kept OUT of `onhand` and reported only on the
+    # rows it may supply: a reman job, on a line that allows recovery. Recovered stock
+    # does not go into new builds (decided 2026-09-24) — a used serviceable part in a
+    # unit sold as new is a suspect-unapproved-parts problem under AS9100 — and
+    # consumption has no path to issue a Parts row into a new build anyway, so
+    # counting it there had the sheet say "not short" for a part that could never be
+    # issued.
+    from Tracker.services.mes.bom import recovered_stock_by_type
+    recovered: dict = {('PART_TYPE', pt): Decimal(q)
+                       for pt, q in recovered_stock_by_type(tenant).items()}
 
-    onhand: dict = dict(recovered)
+    onhand: dict = {}                      # purchased lots only; see `recovered` above
     for row in (MaterialLot.objects
                 .filter(tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
                 .values('material', 'material_type')
@@ -250,19 +246,23 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
                 'short': 0.0,
                 'optional': bool(line.is_optional),
                 'from_teardown': True,
+                # The recovered pool: the fallback when this unit's own part comes out
+                # scrapped. These are the ONLY rows recovered stock may supply — a reman
+                # job, on a line that allows recovery.
+                'recovered_on_hand': float((recovered or {}).get(item.key, Decimal('0'))),
                 'lots': [],
             })
             continue
 
+        # Never recovered stock here. Reaching this branch means either a new build
+        # (recovered stock does not go into new builds) or a reman line that does NOT
+        # allow recovery — a contract or line override forbidding harvested parts. In
+        # both, counting the pool as cover would have the sheet send a picker for a
+        # part the unit may not take. On-hand here is purchased lots only.
         have = onhand.get(item.key, Decimal('0'))
-        from_stock = (recovered or {}).get(item.key, Decimal('0'))
         out.append({
             'from_teardown': False,
-            # How much of the on-hand is RECOVERED rather than purchased. Reported, not
-            # preferred: which to pull is a shop decision (a customer contract may
-            # forbid recovered stock in their unit), and the sheet's job is to say what
-            # is there — not to choose.
-            'recovered_on_hand': float(from_stock),
+            'recovered_on_hand': 0.0,    # kept for a uniform row shape
             # Confirming a pick has to name the subject, not just show it. `kind` rides
             # along so the client can echo back which of the two FKs to write —
             # a Material and a PartTypes can share a uuid space.

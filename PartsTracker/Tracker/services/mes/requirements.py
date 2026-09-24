@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from Tracker.services.mes.bom import buy_line_item
+from Tracker.services.mes.bom import buy_line_item, line_allows_recovery
 
 # On-hand = usable stock. Incoming = inbound, not-yet-usable receipts. The two must be
 # disjoint or accepted stock double-counts (it's both "on hand" and "promised"): incoming
@@ -49,8 +49,9 @@ def work_order_material_requirements(work_order) -> dict:
     from decimal import Decimal
     from django.db.models import Sum
     from Tracker.models import (
-        BOM, BOMLine, MaterialLot, Parts, PartsStatus, WorkOrder,
+        BOM, BOMLine, MaterialLot, WorkOrder,
     )
+    from Tracker.services.mes.bom import usable_stock_parts
     from Tracker.services.scheduling.data import get_schedule_horizon
 
     pt_id = work_order.process.part_type_id if work_order.process_id else None
@@ -72,6 +73,9 @@ def work_order_material_requirements(work_order) -> dict:
     wo_need = sched.get((work_order.id, None)) or work_order.expected_start or h_date
 
     live_wo = ('PENDING', 'IN_PROGRESS', 'ON_HOLD', 'WAITING_FOR_OPERATOR')
+    # Recovered stock is supply for reman rebuilds only — see `usable_stock_parts`.
+    # A work order is reman when it carries cores, the same test scheduling uses.
+    is_reman = work_order.cores.exists()
     rows = []
     # tenant-safe: `bom` is a tenant-scoped row; its lines belong to the same tenant.
     for line in (BOMLine.objects.filter(bom=bom)
@@ -122,7 +126,10 @@ def work_order_material_requirements(work_order) -> dict:
             # it is a forecast sitting beside facts. Netting it would let a planner
             # skip an order on stock that does not exist yet, and that error stops a
             # line while the reverse only buys a part you could have harvested.
-            recoverable = _recoverable_for(line, tenant=work_order.tenant)
+            # Zero on a new build: the bank's yield cannot go into it, so reporting
+            # it there would invite a planner to wait on supply the job may not use.
+            recoverable = (_recoverable_for(line, tenant=work_order.tenant)
+                           if is_reman and line_allows_recovery(line) else 0.0)
             row.update({
                 'component': buy.name, 'kind': 'BUY',
                 'buy_kind': buy.kind,
@@ -138,8 +145,8 @@ def work_order_material_requirements(work_order) -> dict:
             })
         elif line.source == 'MAKE' and line.component_type_id:
             comp = line.component_type
-            on_hand = float(Parts.objects.filter(
-                tenant=tenant, part_type_id=comp.id, part_status=PartsStatus.IN_STOCK).count())
+            on_hand = float(usable_stock_parts(
+                comp.id, tenant=tenant, for_reman=is_reman).count())
             pegged = float(WorkOrder.objects.filter(
                 tenant=tenant, pegged_to_workorder=work_order, pegged_to_bom_line=line,
                 workorder_status__in=live_wo).aggregate(s=Sum('quantity'))['s'] or 0)
@@ -147,7 +154,8 @@ def work_order_material_requirements(work_order) -> dict:
             row.update({
                 'component': comp.name, 'kind': 'MAKE',
                 'on_hand': on_hand, 'incoming': pegged,  # 'incoming' = qty on live child WOs
-                'recoverable': _recoverable_for(line, tenant=work_order.tenant),
+                'recoverable': (_recoverable_for(line, tenant=work_order.tenant)
+                                if is_reman and line_allows_recovery(line) else 0.0),
                 'short_qty': short,
                 'status': 'ok' if short <= 0 else ('building' if pegged > 0 else 'short'),
                 # Made in-house, not purchased — no buy lead time / order-by.
@@ -241,19 +249,25 @@ def sourcing_requirements(tenant) -> dict:
             bom = (BOM.objects.filter(part_type_id=pt_id, bom_type='ASSEMBLY',
                    status='RELEASED').order_by('-version').first())
             bom_cache[pt_id] = list(
-                BOMLine.objects.filter(bom=bom)
+                BOMLine.objects.filter(bom=bom)  # tenant-safe: `bom` is tenant-scoped; its lines share its tenant
                 .select_related('material', 'component_type')
                 if bom else [])
         return bom_cache[pt_id]
 
     demand: dict = {}       # (kind, id) -> qty needed
+    # The share of `demand` coming from reman rebuilds. Recovered stock may only go
+    # into those, so it is the ceiling on what teardown can be proposed to cover —
+    # a new build's shortfall is always a purchase.
+    reman_demand: dict = {}
     need_by: dict = {}      # (kind, id) -> earliest need-by date
     buy_obj: dict = {}      # (kind, id) -> BuyItem
     for wo in (WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
-               .exclude(workorder_status__in=excluded).select_related('process')):
+               .exclude(workorder_status__in=excluded).select_related('process')
+               .prefetch_related('cores')):
         pt_id = wo.process.part_type_id
         if pt_id is None:
             continue
+        is_reman = bool(wo.cores.all())
         wo_need = sched.get((wo.id, None)) or wo.expected_start or h_date
         for line in _lines(pt_id):
             if line.is_optional:
@@ -262,7 +276,12 @@ def sourcing_requirements(tenant) -> dict:
             if buy is None:
                 continue
             k = buy.key
-            demand[k] = demand.get(k, 0.0) + float(line.quantity) * wo.quantity
+            qty = float(line.quantity) * wo.quantity
+            demand[k] = demand.get(k, 0.0) + qty
+            # Reman AND the line allows recovery: a line override can forbid harvested
+            # parts (a customer contract, say), and that demand is a purchase too.
+            if is_reman and line_allows_recovery(line):
+                reman_demand[k] = reman_demand.get(k, 0.0) + qty
             buy_obj[k] = buy
             nb = sched.get((wo.id, line.consumed_at_step_id)) or wo.expected_start or wo_need
             if k not in need_by or nb < need_by[k]:
@@ -281,7 +300,8 @@ def sourcing_requirements(tenant) -> dict:
     # a part you could have harvested. So `qty_short` stays the buy figure and this
     # rides alongside it.
     recoverable: dict = {}
-    pt_ids = [k[1] for k in demand if k[0] == 'PART_TYPE']
+    # Only components some reman job needs: recovered stock cannot cover anything else.
+    pt_ids = [k[1] for k in demand if k[0] == 'PART_TYPE' and reman_demand.get(k)]
     if pt_ids:
         from Tracker.models import PartTypes
         from Tracker.services.reman.recovery import recoverable_supply
@@ -349,13 +369,17 @@ def sourcing_requirements(tenant) -> dict:
         if supply is None:
             continue
         short = float(row['qty_short'])
-        covered = min(short, float(supply.quantity))
+        # Teardown can only cover the reman share of the shortfall; whatever new builds
+        # need is bought regardless of what the bank holds.
+        target = min(short, reman_demand.get(k, 0.0))
+        covered = min(target, float(supply.quantity))
         if covered <= 0:
             continue
 
-        # Allocate the shortfall across the core types that yield it, greedily. A core
-        # is a physical unit: you tear down whole ones, so the count rounds UP.
-        remaining = short
+        # Allocate the coverable shortfall across the core types that yield it,
+        # greedily. A core is a physical unit: you tear down whole ones, so the count
+        # rounds UP.
+        remaining = target
         plan = []
         lead_known = True
         worst_lead = 0

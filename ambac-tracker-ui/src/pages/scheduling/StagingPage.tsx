@@ -75,12 +75,14 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
       qty: pickedQty, qty_required: m.needed, lots,
     }, { onSuccess: () => { setDeviating(false); setLotText(""); } });
 
-  // How much of the on-hand is RECOVERED rather than purchased — i.e. which rack to
-  // go to. Reported rather than preferred: a customer contract may forbid recovered
-  // stock in their unit, so the sheet says what is there and the shop chooses. Shown
-  // beside named lots too, since a line can be part purchased and part recovered.
-  const recoveredNote = (m.recovered_on_hand ?? 0) > 0 ? (
-    <span className="ml-1">· {m.recovered_on_hand} recovered</span>
+  // The recovered pool, shown only on rows it may supply: a reman job, on a line that
+  // allows recovery — i.e. "from this unit's teardown" rows. It is the fallback when
+  // the unit's own part comes out scrapped. Recovered stock never goes into a new
+  // build, and the backend reports 0 on every other row.
+  const poolNote = (m.recovered_on_hand ?? 0) > 0 ? (
+    <span className="ml-1">
+      · {m.recovered_on_hand} recovered in pool if scrapped
+    </span>
   ) : null;
 
   return (
@@ -106,7 +108,10 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
             Shown rather than hidden: the bench still needs to know the line exists
             and where it is coming from. */}
         {m.from_teardown ? (
-          <span className="text-muted-foreground">from this unit&apos;s teardown</span>
+          <span className="text-muted-foreground">
+            from this unit&apos;s teardown
+            {poolNote}
+          </span>
         ) : confirmed ? (
           <span className="text-muted-foreground">
             took{" "}
@@ -124,12 +129,10 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
             {m.lots[0].storage_location && (
               <span className="ml-1">· {m.lots[0].storage_location}</span>
             )}
-            {recoveredNote}
           </span>
         ) : (
           <span className="tabular-nums text-muted-foreground">
             {m.on_hand} on hand
-            {recoveredNote}
           </span>
         )}
 

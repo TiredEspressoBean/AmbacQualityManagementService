@@ -111,9 +111,17 @@ def _available_supply(component_type, parent_wo, line) -> Decimal:
     to this (parent, line). The pegged term makes re-explosion idempotent. (MAKE
     components are in-house PartTypes — their inventory is Parts, not MaterialLots, which
     now only track purchased Materials.)"""
-    from Tracker.models import Parts, PartsStatus, WorkOrder
-    on_hand = Parts.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
-        part_type=component_type, part_status=PartsStatus.IN_STOCK).count()
+    from Tracker.models import WorkOrder
+    from Tracker.services.mes.bom import usable_stock_parts
+
+    # Not every IN_STOCK part is cover: archived, reserved-to-a-core and — for a new
+    # build — recovered parts are on the shelf but unusable here. Over-counting cover
+    # is the dangerous direction: explosion would skip raising the work order that
+    # makes the component.
+    on_hand = usable_stock_parts(
+        component_type.id, tenant=parent_wo.tenant,
+        for_reman=parent_wo.cores.exists(),
+    ).count()
     pegged = (
         WorkOrder.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
             pegged_to_workorder=parent_wo, pegged_to_bom_line=line,

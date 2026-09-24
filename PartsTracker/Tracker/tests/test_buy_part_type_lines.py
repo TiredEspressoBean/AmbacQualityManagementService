@@ -235,6 +235,21 @@ class _RecoverableFixture(_BuyPartTypeFixture):
         self.assertEqual(len(rows), 1)
         return rows[0]
 
+    def _reman_work_order(self, qty=5, start=None):
+        """Demand from a reman rebuild — the only demand recovered stock may cover.
+
+        The unit being rebuilt is IN_REBUILD, which is outside the bank statuses, so
+        it adds demand without adding supply.
+        """
+        from Tracker.models import Core
+        wo = self._work_order(qty=qty, start=start)
+        Core.objects.create(
+            tenant=self.tenant, core_number=f"RB-{qty}-{wo.pk.hex[:6]}",
+            core_type=self.core_type, fulfilment_mode="REPAIR_RETURN",
+            status="IN_REBUILD", work_order=wo,
+            received_date=date.today(), received_by=self.user)
+        return wo
+
 
 class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
     """Material planning counts stock and purchase orders and has no idea teardown is
@@ -249,7 +264,7 @@ class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
     """
 
     def test_the_bank_shows_up_beside_the_shortfall(self):
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         row = self._housing_row()
         self.assertEqual(row['recoverable'], 2.0)
         self.assertEqual(row['recoverable_cores'], 2)
@@ -257,13 +272,13 @@ class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
     def test_it_is_never_subtracted_from_what_to_buy(self):
         """The whole point of the lane. If `qty_short` dropped to 3, a planner would
         order 3 and the line would stop when teardown yielded less than forecast."""
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         self.assertEqual(self._housing_row()['qty_short'], 5)
 
     def test_it_names_which_cores_the_forecast_came_from(self):
         """A planner who cannot see the basis of a forecast cannot judge whether to
         trust it, and an untrusted number is just noise on the sheet."""
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         sources = self._housing_row()['recoverable_sources']
         self.assertEqual(len(sources), 1)
         self.assertEqual(sources[0]['core_type'], "Core Injector")
@@ -274,7 +289,7 @@ class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
         reusable, whatever the bank holds."""
         self.housing.can_recover = False
         self.housing.save(update_fields=["can_recover"])
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         row = self._housing_row()
         self.assertEqual(row['recoverable'], 0.0)
         self.assertEqual(row['recoverable_sources'], [])
@@ -288,7 +303,7 @@ class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
         BOMLine.objects.create(
             tenant=self.tenant, bom=self.bom, material=mat, quantity=Decimal(1),
             source="BUY", line_number=9)
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         rows = [r for r in sourcing_requirements(self.tenant)['source']
                 if r['material'] == "Sealant"]
         self.assertEqual(rows[0]['recoverable'], 0.0)
@@ -298,7 +313,7 @@ class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
         as supply for somebody else's work order."""
         from Tracker.models import Core
         Core.objects.filter(tenant=self.tenant).update(fulfilment_mode="REPAIR_RETURN")
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         self.assertEqual(self._housing_row()['recoverable'], 0.0)
 
 
@@ -319,7 +334,7 @@ class RecoverLaneProposesTeardownTests(_RecoverableFixture):
         return rows[0]
 
     def test_it_says_how_many_cores_to_tear_down(self):
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         row = self._recover_row()
         plan = row['cores'][0]
         self.assertEqual(plan['core_type'], "Core Injector")
@@ -331,7 +346,7 @@ class RecoverLaneProposesTeardownTests(_RecoverableFixture):
     def test_it_splits_the_shortfall_into_teardown_and_buy(self):
         """The planner's actual decision. Teardown covers part of it; the rest is a
         purchase, and the sheet has to say which is which or it is not actionable."""
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         row = self._recover_row()
         self.assertEqual(row['covered_by_teardown'], 2.0)
         self.assertEqual(row['still_to_buy'], 3.0)
@@ -341,7 +356,7 @@ class RecoverLaneProposesTeardownTests(_RecoverableFixture):
         """A made-up lead time is worse than none: it reads as authored fact on the
         sheet and a planner schedules against it. This fixture authors no disassembly
         process, so the date must be absent rather than guessed."""
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         row = self._recover_row()
         self.assertIsNone(row['start_by'])
         self.assertIsNone(row['cores'][0]['lead_time_days'])
@@ -349,7 +364,7 @@ class RecoverLaneProposesTeardownTests(_RecoverableFixture):
     def test_a_component_the_bank_cannot_yield_raises_no_proposal(self):
         self.housing.can_recover = False
         self.housing.save(update_fields=["can_recover"])
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         self.assertEqual(
             [r for r in sourcing_requirements(self.tenant)['recover']
              if r['component'] == "Housing"], [])
@@ -358,13 +373,13 @@ class RecoverLaneProposesTeardownTests(_RecoverableFixture):
         """No shortfall, no source row, so nothing to propose tearing down for. The
         lane follows demand, not the contents of the bank."""
         self._lot(10)                                  # fully covered
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         self.assertEqual(sourcing_requirements(self.tenant)['recover'], [])
 
     def test_the_internal_join_key_does_not_leak_to_the_client(self):
         """The source rows carry a private key so the recover lane can join back to
         them. It is not part of the published contract."""
-        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
         for row in sourcing_requirements(self.tenant)['source']:
             self.assertNotIn('_id', row)
 
@@ -406,7 +421,7 @@ class TeardownLeadTimeTests(_RecoverableFixture):
 
     def test_the_proposal_carries_a_start_by_date(self):
         need = date.today() + timedelta(days=60)
-        self._work_order(qty=5, start=need)
+        self._reman_work_order(qty=5, start=need)
         row = [r for r in sourcing_requirements(self.tenant)['recover']
                if r['component'] == "Housing"][0]
         self.assertEqual(row['cores'][0]['lead_time_days'], 1)
@@ -425,3 +440,125 @@ class TeardownLeadTimeTests(_RecoverableFixture):
         Steps.objects.filter(tenant=self.tenant, part_type=self.core_type).update(
             expected_duration=None)
         self.assertIsNone(teardown_lead_days(self.core_type, tenant=self.tenant))
+
+
+class RecoveredStockStaysOutOfNewBuildsTests(_RecoverableFixture):
+    """Recovered stock is supply for reman rebuilds only (decided 2026-09-24).
+
+    A used serviceable part in a unit sold as new is a suspect-unapproved-parts
+    problem under AS9100. So a new build's shortfall is always a purchase, whatever
+    the core bank holds, and nothing on a planning surface may suggest otherwise.
+    """
+
+    def test_a_new_build_is_offered_no_recoverable_supply(self):
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        row = self._housing_row()
+        self.assertEqual(row['qty_short'], 5)
+        self.assertEqual(row['recoverable'], 0.0)
+
+    def test_a_new_build_raises_no_teardown_proposal(self):
+        """Tearing down cores to cover a new build would produce parts it may not use."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=60))
+        self.assertEqual(sourcing_requirements(self.tenant)['recover'], [])
+
+    def test_mixed_demand_where_the_bank_is_the_limit(self):
+        """3 for a rebuild and 4 for a new build, bank of 2: the BANK binds here, so
+        this passes with or without the reman-share rule. Kept for the arithmetic;
+        the next test is the one that pins the rule."""
+        need = date.today() + timedelta(days=60)
+        self._reman_work_order(qty=3, start=need)
+        self._work_order(qty=4, start=need)
+        row = [r for r in sourcing_requirements(self.tenant)['recover']
+               if r['component'] == "Housing"][0]
+        self.assertEqual(row['qty_short'], 7)
+        self.assertEqual(row['covered_by_teardown'], 2.0)
+        self.assertEqual(row['still_to_buy'], 5.0)
+
+    def test_mixed_demand_where_the_reman_share_is_the_limit(self):
+        """1 for a rebuild and 4 for a new build, bank of 2. Teardown could yield 2,
+        but only 1 may go into a unit that can take it — so it covers exactly 1 and
+        the new build's 4 are bought. Ignoring the reman share would cover 2 and
+        understate the purchase by one."""
+        need = date.today() + timedelta(days=60)
+        self._reman_work_order(qty=1, start=need)
+        self._work_order(qty=4, start=need)
+        row = [r for r in sourcing_requirements(self.tenant)['recover']
+               if r['component'] == "Housing"][0]
+        self.assertEqual(row['qty_short'], 5)
+        self.assertEqual(row['covered_by_teardown'], 1.0)
+        self.assertEqual(row['still_to_buy'], 4.0)
+
+    def test_a_reman_line_forbidding_harvested_parts_raises_no_proposal(self):
+        """A line override can forbid harvested parts — a customer contract, say.
+        That demand is a purchase even on a reman job, so teardown is not proposed."""
+        BOMLine.objects.filter(pk=self.line.pk).update(allow_harvested=False)
+        self._reman_work_order(qty=5, start=date.today() + timedelta(days=60))
+        self.assertEqual(sourcing_requirements(self.tenant)['recover'], [])
+        self.assertEqual(self._housing_row()['recoverable'], 0.0)
+
+    def test_the_per_work_order_view_agrees(self):
+        """The same rule on the single-job readout, so the two surfaces cannot tell a
+        planner different things about the same order."""
+        need = date.today() + timedelta(days=60)
+        new_build = self._work_order(qty=4, start=need)
+        rebuild = self._reman_work_order(qty=3, start=need)
+
+        def housing(wo):
+            return [r for r in work_order_material_requirements(wo)['rows']
+                    if r['component'] == "Housing"][0]
+
+        self.assertEqual(housing(new_build)['recoverable'], 0.0)
+        self.assertEqual(housing(rebuild)['recoverable'], 2.0)
+
+
+class UsableStockPartsTests(_RecoverableFixture):
+    """The one place coverage counts finished parts. Three things sit on the shelf and
+    are not available: archived rows, parts reserved to a customer's core, and — for
+    a new build — recovered parts."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Parts, PartsStatus
+        self._Parts, self._IN_STOCK = Parts, PartsStatus.IN_STOCK
+
+    def _part(self, erp, **extra):
+        return self._Parts.objects.create(
+            tenant=self.tenant, ERP_id=erp, part_type=self.housing,
+            part_status=self._IN_STOCK, **extra)
+
+    def _count(self, for_reman):
+        from Tracker.services.mes.bom import usable_stock_parts
+        return usable_stock_parts(self.housing.id, tenant=self.tenant,
+                                  for_reman=for_reman).count()
+
+    def test_ordinary_stock_counts_for_either(self):
+        self._part("H-NEW-1")
+        self.assertEqual(self._count(for_reman=False), 1)
+        self.assertEqual(self._count(for_reman=True), 1)
+
+    def test_archived_stock_counts_for_neither(self):
+        self._part("H-ARCH-1", archived=True)
+        self.assertEqual(self._count(for_reman=False), 0)
+        self.assertEqual(self._count(for_reman=True), 0)
+
+    def test_a_part_reserved_to_a_core_counts_for_neither(self):
+        from Tracker.models import Core
+        owner = Core.objects.filter(tenant=self.tenant).first()
+        self._part("H-RES-1", reserved_for_core=owner)
+        self.assertEqual(self._count(for_reman=False), 0)
+        self.assertEqual(self._count(for_reman=True), 0)
+
+    def test_recovered_stock_counts_for_reman_only(self):
+        from Tracker.models import Core, HarvestedComponent
+        from Tracker.services.reman.harvested_component import accept_component_to_inventory
+        donor = Core.objects.create(
+            tenant=self.tenant, core_number="DONOR-1", core_type=self.core_type,
+            fulfilment_mode="EXCHANGE", status="DISASSEMBLED",
+            received_date=date.today(), received_by=self.user)
+        hc = HarvestedComponent.objects.create(
+            tenant=self.tenant, core=donor, component_type=self.housing,
+            condition_grade="A", disassembled_by=self.user)
+        accept_component_to_inventory(hc, self.user, transfer_life=False)
+        self.assertEqual(self._count(for_reman=False), 0)
+        self.assertEqual(self._count(for_reman=True), 1)
+

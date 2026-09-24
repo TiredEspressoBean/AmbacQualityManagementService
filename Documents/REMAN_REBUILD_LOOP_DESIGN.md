@@ -908,6 +908,26 @@ items and the whole loop look bigger than it is.
     the lane is noise below real throughput. Both were already flagged above and
     neither is a code gap.
 
+**Decided 2026-09-24 — recovered stock does not go into new builds.** Recovered
+components are supply for reman rebuilds only. A used serviceable part in a unit sold
+as new is a suspect-unapproved-parts problem under AS9100, so this is a product rule
+rather than a default. It applies wherever coverage is counted, through one helper
+(`services/mes/bom.py::usable_stock_parts`) so no two surfaces can disagree:
+
+- The pick sheet reports the recovered pool only on rows it may supply — a reman job,
+  on a line that allows recovery — as the fallback when the unit's own part comes out
+  scrapped. Every other row counts purchased lots only, including a reman line whose
+  override forbids harvested parts.
+- The buy list's RECOVER lane covers at most the reman share of a shortfall; a new
+  build's need is always a purchase. The per-work-order view reports no recoverable
+  supply on a new build.
+- BOM explosion no longer counts recovered, archived, or core-reserved parts as cover
+  for a MAKE line on a new build — over-counting there stopped it raising the work
+  order that makes the component.
+
+This also retires the "instance pick" gap for reman: which recovered part went into
+which unit is recorded at install by `install_component`, not at pick.
+
 **Scope boundary for planning.** UQMES plans from what it can SEE AND CONTROL: cores in
 the building, work on the board, yield it recorded itself. It does not predict what has
 not arrived. So the core bank is in scope and forecasting core ARRIVALS is not — that

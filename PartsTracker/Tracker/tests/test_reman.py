@@ -2260,17 +2260,42 @@ class RecoveredStockVisibilityTests(TenantTestCase):
         self.recovered_part = accept_component_to_inventory(hc, self.user_a,
                                                             transfer_life=False)
 
-    def test_recovered_stock_counts_as_on_hand(self):
+    def _row(self, *, is_reman, lots=0, recovered=1, units=1):
         from Tracker.services.mes.staging import _materials_for
-        rows = _materials_for(
-            self.core_type.id, self.step.id, units=1,
-            onhand={('PART_TYPE', self.rotable.id): 1},
-            bom_cache={}, tenant=self.tenant_a,
-            recovered={('PART_TYPE', self.rotable.id): 1})
-        row = rows[0]
-        self.assertEqual(row['on_hand'], 1.0)
-        self.assertEqual(row['short'], 0.0)
+        key = ('PART_TYPE', self.rotable.id)
+        return _materials_for(
+            self.core_type.id, self.step.id, units=units,
+            onhand={key: lots}, bom_cache={}, tenant=self.tenant_a,
+            is_reman=is_reman, recovered={key: recovered})[0]
+
+    def test_a_reman_job_sees_the_recovered_pool(self):
+        """The only rows recovered stock may supply: a reman job, on a line that
+        allows recovery. The pool is the fallback when the unit's own part comes out
+        scrapped."""
+        row = self._row(is_reman=True)
+        self.assertTrue(row['from_teardown'])
         self.assertEqual(row['recovered_on_hand'], 1.0)
+
+    def test_a_new_build_never_counts_recovered_stock(self):
+        """Recovered stock does not go into new builds (decided 2026-09-24). Counted
+        here, the sheet would say "not short" for a part that may not be issued —
+        and consumption has no path to issue a Parts row into a new build anyway."""
+        row = self._row(is_reman=False, lots=0, recovered=1)
+        self.assertEqual(row['on_hand'], 0.0)
+        self.assertEqual(row['short'], 1.0)
+        self.assertEqual(row['recovered_on_hand'], 0.0)
+
+    def test_a_reman_line_forbidding_harvested_parts_gets_none(self):
+        """A line override can forbid harvested parts — a customer contract, say.
+        That line is not supplied from teardown, and the pool must not be offered as
+        cover for it either: that would send a picker for a part the unit may not
+        take."""
+        from Tracker.models import BOMLine
+        BOMLine.objects.filter(component_type=self.rotable).update(allow_harvested=False)
+        row = self._row(is_reman=True, lots=0, recovered=1)
+        self.assertFalse(row['from_teardown'])
+        self.assertEqual(row['recovered_on_hand'], 0.0)
+        self.assertEqual(row['short'], 1.0)
 
     def test_the_accepted_component_is_what_makes_the_stock(self):
         """Guards the join the counting depends on: recovered stock is a Parts row
@@ -2280,18 +2305,13 @@ class RecoveredStockVisibilityTests(TenantTestCase):
         self.assertEqual(self.recovered_part.harvested_from.core.core_number,
                          'CORE-DONOR')
 
-    def test_purchased_and_recovered_are_told_apart(self):
-        """Which to pull is a shop decision — a customer contract may forbid recovered
-        stock in their unit — so the sheet reports both rather than choosing."""
-        from Tracker.services.mes.staging import _materials_for
-        rows = _materials_for(
-            self.core_type.id, self.step.id, units=3,
-            onhand={('PART_TYPE', self.rotable.id): 3},
-            bom_cache={}, tenant=self.tenant_a,
-            recovered={('PART_TYPE', self.rotable.id): 1})
-        row = rows[0]
-        self.assertEqual(row['on_hand'], 3.0)       # all of it
-        self.assertEqual(row['recovered_on_hand'], 1.0)  # of which recovered
+    def test_purchased_stock_on_a_new_build_is_lots_only(self):
+        """Purchased and recovered are kept apart: a new build's on-hand is its lots,
+        with the pool reported nowhere on its row."""
+        row = self._row(is_reman=False, lots=3, recovered=1, units=3)
+        self.assertEqual(row['on_hand'], 3.0)
+        self.assertEqual(row['short'], 0.0)
+        self.assertEqual(row['recovered_on_hand'], 0.0)
 
     def test_a_part_reserved_to_a_core_is_not_free_stock(self):
         """`reserved_for_core` means it belongs to a customer's unit. It is on the
@@ -2301,10 +2321,10 @@ class RecoveredStockVisibilityTests(TenantTestCase):
             tenant=self.tenant_a, core_number='CORE-OWNER', core_type=self.core_type,
             fulfilment_mode='REPAIR_RETURN', status='DISASSEMBLED',
             received_date=date.today(), received_by=self.user_a)
-        self.recovered_part.reserved_for_core = owner
-        self.recovered_part.save(update_fields=['reserved_for_core'])
-        free = Parts.objects.filter(
-            part_type=self.rotable, part_status=PartsStatus.IN_STOCK,
-            archived=False, reserved_for_core__isnull=True,
-        ).exclude(harvested_from__isnull=True).count()
-        self.assertEqual(free, 0)
+        # Calls the function the pick sheet actually uses. An earlier version of this
+        # test re-implemented the filter inline, so it would have passed even if the
+        # sheet's own query had dropped the reserved exclusion.
+        from Tracker.services.mes.bom import recovered_stock_by_type
+        self.assertEqual(recovered_stock_by_type(self.tenant_a).get(self.rotable.id), 1)
+        Parts.objects.filter(pk=self.recovered_part.pk).update(reserved_for_core=owner)
+        self.assertIsNone(recovered_stock_by_type(self.tenant_a).get(self.rotable.id))
