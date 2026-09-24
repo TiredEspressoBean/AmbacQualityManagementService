@@ -31,7 +31,7 @@ def find_machine_overlaps(schedule) -> list[dict]:
     rows = list(
         schedule.tasks
         .filter(machine__isnull=False, start_time__isnull=False, end_time__isnull=False)
-        .select_related('machine', 'step', 'part', 'core')
+        .select_related('machine', 'step', 'part')
         .order_by('machine_id', 'start_time')
     )
 

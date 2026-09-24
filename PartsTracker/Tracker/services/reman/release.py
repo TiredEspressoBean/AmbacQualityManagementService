@@ -15,6 +15,8 @@ already answers it, and a second field would be a place for the two to disagree.
 """
 from __future__ import annotations
 
+from Tracker.services.reman.core_part import move_core, sync_part_status
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -75,8 +77,9 @@ def release_core_to_rebuild(core, user=None):
         )
 
     core.status = 'IN_REBUILD'
-    core.step = step
-    core.save(update_fields=['status', 'step', 'updated_at'])
+    core.save(update_fields=['status', 'updated_at'])
+    # The unit enters rebuild at its first in-scope operation. Position is the part's.
+    move_core(core, step=step)
     return core, plan
 
 
@@ -114,6 +117,7 @@ def release_core_to_inventory(core, user=None):
     core.status = 'HARVESTED'
     core.disassembly_completed_at = core.disassembly_completed_at or timezone.now()
     core.save(update_fields=['status', 'disassembly_completed_at', 'updated_at'])
+    sync_part_status(core)
     return core, accepted
 
 
@@ -155,6 +159,7 @@ def request_authorisation(core, user=None):
 
     core.status = 'AWAITING_AUTHORISATION'
     core.save(update_fields=['status', 'updated_at'])
+    sync_part_status(core)
     return core, over_and_above
 
 
@@ -177,6 +182,7 @@ def record_authorisation(core, approved: bool, user=None, note: str = ''):
     if note:
         core.condition_notes = f"{core.condition_notes}\n{note}".strip()
     core.save(update_fields=['status', 'condition_notes', 'updated_at'])
+    sync_part_status(core)
     return core
 
 
@@ -207,4 +213,5 @@ def return_core_to_customer(core, user=None, reference: str = ''):
     core.return_reference = reference
     core.save(update_fields=[
         'status', 'returned_at', 'returned_by', 'return_reference', 'updated_at'])
+    sync_part_status(core)
     return core

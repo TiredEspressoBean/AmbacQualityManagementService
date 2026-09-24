@@ -23,6 +23,7 @@ from Tracker.models import (
 )
 from Tracker.services.mes.staging import set_staged, staging_list
 from Tracker.tests.base import TenantContextMixin
+from Tracker.services.reman.core_part import create_core
 
 
 class StagingListTests(TenantContextMixin, TestCase):
@@ -272,7 +273,7 @@ class RecoveredPoolOnThePickSheetTests(TenantContextMixin, TestCase):
 
         # Two recovered nozzles on the shelf; one is reserved to a customer's unit.
         def recovered(core_number):
-            donor = Core.objects.create(
+            donor = create_core(
                 tenant=self.tenant, core_number=core_number, core_type=self.pt,
                 fulfilment_mode="EXCHANGE", status="DISASSEMBLED",
                 received_date=date.today(), received_by=self.user)
@@ -283,7 +284,7 @@ class RecoveredPoolOnThePickSheetTests(TenantContextMixin, TestCase):
 
         recovered("DONOR-1")
         reserved = recovered("DONOR-2")
-        self.owner = Core.objects.create(
+        self.owner = create_core(
             tenant=self.tenant, core_number="OWNER-1", core_type=self.pt,
             fulfilment_mode="REPAIR_RETURN", status="DISASSEMBLED",
             received_date=date.today(), received_by=self.user)
@@ -322,11 +323,11 @@ class RecoveredPoolOnThePickSheetTests(TenantContextMixin, TestCase):
         from datetime import date
         from Tracker.models import Core
         wo = self._wo(erp)
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant, core_number=f"{erp}-C", core_type=self.pt,
             fulfilment_mode=mode, status="IN_REBUILD", work_order=wo,
             step=self.step, received_date=date.today(), received_by=self.user)
-        self._task(core=core)
+        self._task(part=core.part)
 
     def test_an_exchange_rebuild_sees_the_free_pool_only(self):
         """One recovered nozzle is free, one is reserved to another customer's unit:

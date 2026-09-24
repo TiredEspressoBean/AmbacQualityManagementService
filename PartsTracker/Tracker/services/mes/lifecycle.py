@@ -213,4 +213,8 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     execution.status = 'IN_PROGRESS'
     execution.training_authorization = snapshot
     execution.save()
+    # The first step started on a RECEIVED core begins its teardown. No-op otherwise.
+    if execution.part_id:
+        from Tracker.services.reman.core_steps import on_step_started
+        on_step_started(execution.part, operator)
     return execution

@@ -30,6 +30,7 @@ from Tracker.utils.tenant_context import (
     reset_current_tenant,
     set_current_tenant_id,
 )
+from Tracker.services.reman.core_part import create_core, move_core
 
 User = get_user_model()
 
@@ -231,7 +232,7 @@ class CoreBulkCreateTests(BulkActionsBaseTestCase):
         self.assertEqual(Core.objects.count(), 0)
 
     def test_all_or_nothing_on_duplicate_core_number(self):
-        Core.objects.create(
+        create_core(
             tenant=self.tenant, core_number="EXISTS",
             core_type=self.injector_type, received_date=date.today(),
             received_by=self.user, condition_grade='A',
@@ -276,7 +277,7 @@ class CoreStartTeardownBatchTests(BulkActionsBaseTestCase):
         return "/api/Cores/start_teardown_batch/"
 
     def _make_received_core(self, number, core_type=None):
-        return Core.objects.create(
+        return create_core(
             tenant=self.tenant,
             core_number=number,
             core_type=core_type or self.injector_type,
@@ -338,8 +339,7 @@ class CoreStartTeardownBatchTests(BulkActionsBaseTestCase):
 
     def test_rejects_cores_already_linked_to_wo(self):
         c1 = self._make_received_core("WO-LINKED-001")
-        c1.work_order = self.work_order
-        c1.save(update_fields=['work_order'])
+        move_core(c1, work_order=self.work_order)
 
         response = self.client.post(self.url(), {
             "core_ids": [str(c1.id)],
@@ -369,7 +369,7 @@ class CorePlanTeardownTests(BulkActionsBaseTestCase):
         return "/api/Cores/plan_teardown/"
 
     def _core(self, number):
-        return Core.objects.create(
+        return create_core(
             tenant=self.tenant, core_number=number, core_type=self.injector_type,
             received_date=date.today(), received_by=self.user, condition_grade='A')
 

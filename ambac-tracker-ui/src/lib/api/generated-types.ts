@@ -16983,7 +16983,7 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
+             * @description The parent this component was installed into — for a core rebuild, the core's part.
              */
             assembly?: string | null;
             readonly assembly_erp_id: string;
@@ -17018,7 +17018,7 @@ export interface components {
         AssemblyUsageRequest: {
             /**
              * Format: uuid
-             * @description The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
+             * @description The parent this component was installed into — for a core rebuild, the core's part.
              */
             assembly?: string | null;
             /**
@@ -18204,7 +18204,12 @@ export interface components {
             /** Format: date-time */
             readonly core_credit_issued_at: string | null;
             /** Format: uuid */
-            work_order?: string | null;
+            readonly work_order: string | null;
+            /**
+             * Format: uuid
+             * @description The part this core is. Its part_status is derived from `status`.
+             */
+            readonly part: string;
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
             /** Format: date-time */
@@ -18285,6 +18290,11 @@ export interface components {
             disassembly_completed_at?: string | null;
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
+            /**
+             * Format: uuid
+             * @description The part this core is. Its part_status is derived from `status`.
+             */
+            readonly part: string;
         };
         CorePlanTeardownInputRequest: {
             core_ids: string[];
@@ -18364,8 +18374,6 @@ export interface components {
             core_credit_value?: string | null;
             /** @description Whether core credit has been issued to customer */
             core_credit_issued?: boolean;
-            /** Format: uuid */
-            work_order?: string | null;
             archived?: boolean;
         };
         CoreRequestAuthorisation: {
@@ -24018,7 +24026,7 @@ export interface components {
         PatchedAssemblyUsageRequest: {
             /**
              * Format: uuid
-             * @description The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
+             * @description The parent this component was installed into — for a core rebuild, the core's part.
              */
             assembly?: string | null;
             /**
@@ -24297,8 +24305,6 @@ export interface components {
             core_credit_value?: string | null;
             /** @description Whether core credit has been issued to customer */
             core_credit_issued?: boolean;
-            /** Format: uuid */
-            work_order?: string | null;
             archived?: boolean;
         };
         /**
@@ -25944,7 +25950,7 @@ export interface components {
         PatchedStepExecutionRequest: {
             /**
              * Format: uuid
-             * @description The part being tracked through this step (mutually exclusive with `core`).
+             * @description The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
              */
             part?: string | null;
             /**
@@ -29534,11 +29540,6 @@ export interface components {
             /** Format: uuid */
             readonly part: string | null;
             readonly part_erp: string | null;
-            /**
-             * Format: uuid
-             * @description Reman core being torn down (mutually exclusive with `part`).
-             */
-            readonly core: string | null;
             readonly core_number: string | null;
             /** Format: uuid */
             readonly step: string;
@@ -30016,7 +30017,7 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The part being tracked through this step (mutually exclusive with `core`).
+             * @description The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
              */
             part?: string | null;
             /**
@@ -30086,7 +30087,7 @@ export interface components {
         StepExecutionCreateRequest: {
             /**
              * Format: uuid
-             * @description The part being tracked through this step (mutually exclusive with `core`).
+             * @description The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
              */
             part?: string | null;
             /**
@@ -30122,7 +30123,7 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The part being tracked through this step (mutually exclusive with `core`).
+             * @description The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
              */
             part?: string | null;
             readonly part_erp_id: string | null;
@@ -30249,7 +30250,7 @@ export interface components {
         StepExecutionRequest: {
             /**
              * Format: uuid
-             * @description The part being tracked through this step (mutually exclusive with `core`).
+             * @description The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
              */
             part?: string | null;
             /**
@@ -33369,6 +33370,8 @@ export interface components {
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
             readonly step_name: string | null;
+            /** Format: uuid */
+            readonly part: string;
         };
         WorkOrderCreateMakeupResponse: {
             created: number;

@@ -29,6 +29,9 @@ class CoreSerializer(SecureModelMixin):
     # The core's story currently ends at "disassembled". Core <-> WO has to be
     # navigable BOTH ways, because that round trip is the traceability claim an audit
     # actually tests — "show me what happened to the unit I sent you".
+    # A core is a part; where it sits — its work order — is the part's. Read-only here:
+    # a core is put on a work order by teardown planning, which moves its part.
+    work_order = serializers.UUIDField(source='work_order_id', read_only=True, allow_null=True)
     work_order_erp_id = serializers.CharField(
         source='work_order.ERP_id', read_only=True, allow_null=True)
     work_order_status = serializers.CharField(
@@ -52,7 +55,7 @@ class CoreSerializer(SecureModelMixin):
             'status', 'disassembly_started_at', 'disassembly_completed_at',
             'disassembled_by', 'disassembled_by_name',
             'core_credit_value', 'core_credit_issued', 'core_credit_issued_at',
-            'work_order',
+            'work_order', 'part',
             'harvested_component_count', 'usable_component_count',
             'created_at', 'updated_at', 'archived'
         )
@@ -62,7 +65,15 @@ class CoreSerializer(SecureModelMixin):
             'core_credit_issued_at', 'harvested_component_count', 'usable_component_count',
             'returns_to_customer', 'work_order_erp_id', 'work_order_status',
             'returned_at', 'returned_by',
+            # The part this core IS — what the operator runtime opens. Minted with the
+            # core, never set by a client.
+            'part',
         )
+
+    def create(self, validated_data):
+        """Receive through the one creation path, so no core exists without its part."""
+        from Tracker.services.reman.core_part import create_core
+        return create_core(tenant=validated_data.pop('tenant', None), **validated_data)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_received_by_name(self, obj):
@@ -100,7 +111,11 @@ class CoreListSerializer(SecureModelMixin):
             # `received_date` next to a teardown-ordered list just reads as broken.
             'disassembly_completed_at',
             'harvested_component_count', 'usable_component_count',
+            # The part this core IS, so a list row can open the unit in the operator
+            # runtime without a second fetch.
+            'part',
         )
+        read_only_fields = ('part',)
 
 
 class CoreScrapSerializer(serializers.Serializer):

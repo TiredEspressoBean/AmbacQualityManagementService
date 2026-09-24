@@ -50,14 +50,13 @@ def find_unstaffable_steps(tenant) -> list[dict]:
     # NOT block the whole solve (that would contradict OFF's meaning).
     labor_models = data.get_step_labor_models(tenant)
 
-    # (step_id, process_id) -> number of parts/cores whose remaining route hits it.
+    # (step_id, process_id) -> number of parts whose remaining route hits it. Reman
+    # cores are parts, so they are counted here too.
     pairs: dict = defaultdict(int)
     for wo in wos:
         by_step: dict = defaultdict(int)
         for p in wo.parts:
             by_step[p.current_step_id] += 1
-        for c in wo.cores:
-            by_step[c.current_step_id] += 1
         for start_step, n in by_step.items():
             route_ids, _ = resolve_route(start_step, wo.steps, wo.edges)
             for sid in route_ids:

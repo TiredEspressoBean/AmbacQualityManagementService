@@ -88,12 +88,9 @@ def _unit_sibling_tasks(task):
     from Tracker.models.scheduling import ScheduledTask
 
     qs = ScheduledTask.objects.filter(schedule_id=task.schedule_id).exclude(pk=task.pk)
-    if task.part_id:
-        qs = qs.filter(part_id=task.part_id)
-    elif task.core_id:
-        qs = qs.filter(core_id=task.core_id)
-    else:
+    if not task.part_id:
         return {}
+    qs = qs.filter(part_id=task.part_id)
     return {t.step_id: t for t in qs.select_related('step')}
 
 
@@ -133,7 +130,7 @@ def ripple_forward(task, schedule) -> list:
     Rippled tasks are NOT pinned: they moved as a consequence, not as a decision.
     Pinning them would freeze a knock-on effect and stop the solver improving it.
     """
-    unit = task.part or task.core
+    unit = task.part
     wo = getattr(unit, 'work_order', None) if unit else None
     if not (wo and wo.process_id and task.step_id):
         return []
@@ -190,7 +187,7 @@ def _validate_move(task, new_start: datetime, schedule, *, check_successors=True
     if new_end > schedule.horizon_end:
         raise MoveRejected("That would push the task past the schedule horizon.")
 
-    unit = task.part or task.core
+    unit = task.part
     wo = getattr(unit, 'work_order', None) if unit else None
 
     # 2) Earliest-release gate: nothing starts before its work order is released.

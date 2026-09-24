@@ -1,4 +1,4 @@
-import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link} from "@tanstack/react-router"
+import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link, redirect} from "@tanstack/react-router"
 import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
     ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, DispositionSearch,
@@ -1159,10 +1159,16 @@ export const coreRebuildRoute = createRoute({
     component: lazyRouteComponent(() => import("@/pages/reman/RebuildPlanPage"), "RebuildPlanPage"),
 });
 
+// Teardown is run in the DWI operator runtime now — directions and capture for the step
+// the unit is at — like any part's work (Documents/CORE_AS_PART_DESIGN.md). The old
+// standalone screen skipped the process steps entirely. Kept as a redirect so bookmarks
+// and old links land on the core's page, which opens the unit in the runtime.
 export const coreDisassemblyRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/reman/cores/$id/disassembly',
-    component: lazyRouteComponent(() => import("@/pages/reman/CoreDisassemblyPage"), "CoreDisassemblyPage"),
+    beforeLoad: ({ params }) => {
+        throw redirect({ to: '/reman/cores/$id', params: { id: params.id } });
+    },
 });
 
 // Receiving (purchased material) Routes

@@ -1719,7 +1719,11 @@ export type Core = {
    */
   boolean | undefined;
   core_credit_issued_at: string | null;
-  work_order?: (string | null) | undefined;
+  work_order: string | null;
+  /**
+   * The part this core is. Its part_status is derived from `status`.
+   */
+  part: string;
   harvested_component_count: number;
   usable_component_count: number;
   created_at: string;
@@ -1811,6 +1815,10 @@ export type CoreList = {
   disassembly_completed_at?: (string | null) | undefined;
   harvested_component_count: number;
   usable_component_count: number;
+  /**
+   * The part this core is. Its part_status is derived from `status`.
+   */
+  part: string;
 };
 export type CoreReleaseInventory = {
   core: Core;
@@ -1892,7 +1900,6 @@ export type CoreRequest = {
    * Whether core credit has been issued to customer
    */
   boolean | undefined;
-  work_order?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
 export type CoreRequestAuthorisation = {
@@ -4454,7 +4461,7 @@ export type AssemblyUsage = {
   id: string;
   assembly?:
     | /**
-     * The parent assembly this component was installed into. Null for a core rebuild, where the parent is `assembly_core`.
+     * The parent this component was installed into — for a core rebuild, the core's part.
      */
     (string | null)
     | undefined;
@@ -8019,10 +8026,6 @@ export type ScheduledTask = {
   schedule: string;
   part: string | null;
   part_erp: string | null;
-  /**
-   * Reman core being torn down (mutually exclusive with `part`).
-   */
-  core: string | null;
   core_number: string | null;
   step: string;
   step_name: string | null;
@@ -8249,7 +8252,7 @@ export type StepExecution = {
   id: string;
   part?:
     | /**
-     * The part being tracked through this step (mutually exclusive with `core`).
+     * The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
      */
     (string | null)
     | undefined;
@@ -8347,7 +8350,7 @@ export type StepExecutionList = {
   id: string;
   part?:
     | /**
-     * The part being tracked through this step (mutually exclusive with `core`).
+     * The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
      */
     (string | null)
     | undefined;
@@ -11040,7 +11043,6 @@ export type PatchedCoreRequest = Partial<{
    * Whether core credit has been issued to customer
    */
   core_credit_issued: boolean;
-  work_order: string | null;
   archived: boolean;
 }>;
 export type PatchedCustomerRuleRequest = Partial<{
@@ -12540,7 +12542,7 @@ export type PatchedShiftNoteRequest = Partial<{
 }>;
 export type PatchedStepExecutionRequest = Partial<{
   /**
-   * The part being tracked through this step (mutually exclusive with `core`).
+   * The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
    */
   part: string | null;
   /**
@@ -14898,7 +14900,7 @@ export type StepEdgeRequest = {
 export type StepExecutionCreateRequest = {
   part?:
     | /**
-     * The part being tracked through this step (mutually exclusive with `core`).
+     * The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
      */
     (string | null)
     | undefined;
@@ -14953,7 +14955,7 @@ export type StepExecutionCreateRequest = {
 export type StepExecutionRequest = {
   part?:
     | /**
-     * The part being tracked through this step (mutually exclusive with `core`).
+     * The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
      */
     (string | null)
     | undefined;
@@ -16243,6 +16245,7 @@ export type WorkOrderCore = {
   harvested_component_count: number;
   usable_component_count: number;
   step_name: string | null;
+  part: string;
 };
 export type WorkOrderBulkAddPartsInputRequest = {
   part_type: string;
@@ -17471,6 +17474,7 @@ const CoreList = z.object({
   disassembly_completed_at: z.string().datetime({ offset: true }).nullish(),
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
+  part: z.string().uuid(),
 });
 const PaginatedCoreListList = z.object({
   count: z.number().int(),
@@ -17496,7 +17500,6 @@ const CoreRequest = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
     .nullish(),
   core_credit_issued: z.boolean().optional(),
-  work_order: z.string().uuid().nullish(),
   archived: z.boolean().optional(),
 });
 const Core = z.object({
@@ -17532,7 +17535,8 @@ const Core = z.object({
     .nullish(),
   core_credit_issued: z.boolean().optional(),
   core_credit_issued_at: z.string().datetime({ offset: true }).nullable(),
-  work_order: z.string().uuid().nullish(),
+  work_order: z.string().uuid().nullable(),
+  part: z.string().uuid(),
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
@@ -17558,7 +17562,6 @@ const PatchedCoreRequest = z
       .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
       .nullable(),
     core_credit_issued: z.boolean(),
-    work_order: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -21205,7 +21208,6 @@ const ScheduledTask = z.object({
   schedule: z.string().uuid(),
   part: z.string().uuid().nullable(),
   part_erp: z.string().nullable(),
-  core: z.string().uuid().nullable(),
   core_number: z.string().nullable(),
   step: z.string().uuid(),
   step_name: z.string().nullable(),
@@ -23722,6 +23724,7 @@ const WorkOrderCore = z.object({
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
   step_name: z.string().nullable(),
+  part: z.string().uuid(),
 });
 const WorkOrder = z.object({
   id: z.string().uuid(),

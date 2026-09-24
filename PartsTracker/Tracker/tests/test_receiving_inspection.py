@@ -368,19 +368,12 @@ class ReceivingDwiExecutionTests(_ReceivingFixtureMixin, TenantTestCase):
         self.assertIsNone(ex.part_id)
         self.assertEqual(ex.status, "IN_PROGRESS")
 
-    def test_step_execution_allows_no_part_or_core(self):
-        # The relaxed constraint permits a subject-less-FK execution (lot rides the
-        # polymorphic fields). Both part+core set is still rejected.
-        from Tracker.models import StepExecution, Parts, Core
+    def test_step_execution_allows_no_part(self):
+        # A subject-less-FK execution is allowed: a lot rides the polymorphic subject
+        # fields. (The part-XOR-core half of this check went when cores became parts —
+        # a core's execution is on its part, so there is no second FK to exclude.)
+        from Tracker.models import StepExecution
         StepExecution.objects.create(tenant=self.tenant_a, step=self.recv_step)  # ok
-        part = Parts.objects.create(tenant=self.tenant_a, ERP_id="P-2")
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                core = Core.objects.create(
-                    tenant=self.tenant_a, core_number="C-1", core_type=self.part_type,
-                    received_by=self.user_a, received_date=datetime.date(2026, 1, 1))
-                StepExecution.objects.create(
-                    tenant=self.tenant_a, step=self.recv_step, part=part, core=core)
 
     def test_inline_capture_promotes_to_lot_quality_report(self):
         """A DWI MeasurementInput capture on a lot execution lands on the lot's

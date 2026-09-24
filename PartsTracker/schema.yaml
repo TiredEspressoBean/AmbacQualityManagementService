@@ -41329,8 +41329,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The parent assembly this component was installed into. Null
-            for a core rebuild, where the parent is `assembly_core`.
+          description: The parent this component was installed into — for a core rebuild,
+            the core's part.
         assembly_erp_id:
           type: string
           readOnly: true
@@ -41411,8 +41411,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The parent assembly this component was installed into. Null
-            for a core rebuild, where the parent is `assembly_core`.
+          description: The parent this component was installed into — for a core rebuild,
+            the core's part.
         component:
           type: string
           format: uuid
@@ -43832,7 +43832,13 @@ components:
         work_order:
           type: string
           format: uuid
+          readOnly: true
           nullable: true
+        part:
+          type: string
+          format: uuid
+          readOnly: true
+          description: The part this core is. Its part_status is derived from `status`.
         harvested_component_count:
           type: integer
           readOnly: true
@@ -43862,6 +43868,7 @@ components:
       - disassembly_started_at
       - harvested_component_count
       - id
+      - part
       - received_by
       - received_by_name
       - received_date
@@ -43870,6 +43877,7 @@ components:
       - returns_to_customer
       - updated_at
       - usable_component_count
+      - work_order
       - work_order_erp_id
       - work_order_status
     CoreAuthorisationError:
@@ -44000,6 +44008,11 @@ components:
         usable_component_count:
           type: integer
           readOnly: true
+        part:
+          type: string
+          format: uuid
+          readOnly: true
+          description: The part this core is. Its part_status is derived from `status`.
       required:
       - condition_grade
       - core_type
@@ -44007,6 +44020,7 @@ components:
       - customer_name
       - harvested_component_count
       - id
+      - part
       - received_date
       - usable_component_count
     CorePlanTeardownInputRequest:
@@ -44161,10 +44175,6 @@ components:
         core_credit_issued:
           type: boolean
           description: Whether core credit has been issued to customer
-        work_order:
-          type: string
-          format: uuid
-          nullable: true
         archived:
           type: boolean
       required:
@@ -55103,8 +55113,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The parent assembly this component was installed into. Null
-            for a core rebuild, where the parent is `assembly_core`.
+          description: The parent this component was installed into — for a core rebuild,
+            the core's part.
         component:
           type: string
           format: uuid
@@ -55547,10 +55557,6 @@ components:
         core_credit_issued:
           type: boolean
           description: Whether core credit has been issued to customer
-        work_order:
-          type: string
-          format: uuid
-          nullable: true
         archived:
           type: boolean
     PatchedCustomerRuleRequest:
@@ -58275,8 +58281,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The part being tracked through this step (mutually exclusive
-            with `core`).
+          description: The part being tracked through this step. A reman core is a
+            part too; its role is `part.core_role`.
         step:
           type: string
           format: uuid
@@ -65167,12 +65173,6 @@ components:
           type: string
           nullable: true
           readOnly: true
-        core:
-          type: string
-          format: uuid
-          readOnly: true
-          nullable: true
-          description: Reman core being torn down (mutually exclusive with `part`).
         core_number:
           type: string
           nullable: true
@@ -65306,7 +65306,6 @@ components:
       - actual_end
       - actual_start
       - assigned_operator
-      - core
       - core_number
       - cure_window_violation
       - due_date
@@ -66176,8 +66175,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The part being tracked through this step (mutually exclusive
-            with `core`).
+          description: The part being tracked through this step. A reman core is a
+            part too; its role is `part.core_role`.
         step:
           type: string
           format: uuid
@@ -66295,8 +66294,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The part being tracked through this step (mutually exclusive
-            with `core`).
+          description: The part being tracked through this step. A reman core is a
+            part too; its role is `part.core_role`.
         step:
           type: string
           format: uuid
@@ -66358,8 +66357,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The part being tracked through this step (mutually exclusive
-            with `core`).
+          description: The part being tracked through this step. A reman core is a
+            part too; its role is `part.core_role`.
         part_erp_id:
           type: string
           readOnly: true
@@ -66578,8 +66577,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The part being tracked through this step (mutually exclusive
-            with `core`).
+          description: The part being tracked through this step. A reman core is a
+            part too; its role is `part.core_role`.
         step:
           type: string
           format: uuid
@@ -72820,6 +72819,10 @@ components:
           type: string
           readOnly: true
           nullable: true
+        part:
+          type: string
+          format: uuid
+          readOnly: true
       required:
       - condition_grade
       - core_number
@@ -72827,6 +72830,7 @@ components:
       - fulfilment_mode
       - harvested_component_count
       - id
+      - part
       - returns_to_customer
       - serial_number
       - status

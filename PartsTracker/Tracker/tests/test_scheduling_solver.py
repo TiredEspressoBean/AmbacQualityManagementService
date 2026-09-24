@@ -37,6 +37,7 @@ from Tracker.services.scheduling import data as sched_data
 from Tracker.services.scheduling.data import HorizonData
 from Tracker.services.scheduling.solver import solve_schedule
 from Tracker.tests.base import TenantContextMixin
+from Tracker.services.reman.core_part import create_core
 
 
 class SolverTests(TenantContextMixin, TestCase):
@@ -800,7 +801,7 @@ class SolverTests(TenantContextMixin, TestCase):
             workorder_status=WorkOrderStatus.IN_PROGRESS, quantity=1, process=self.process)
         user = User.objects.create(
             username=f"op-{number}", tenant=self.tenant, user_type='INTERNAL', is_active=True)
-        return Core.objects.create(
+        return create_core(
             tenant=self.tenant, core_number=number, core_type=self.pt,
             received_date=date.today(), received_by=user, condition_grade='B',
             status=status, work_order=wo, step=step)
@@ -808,16 +809,14 @@ class SolverTests(TenantContextMixin, TestCase):
     def test_schedules_reman_core_teardown_route(self):
         core = self._core("CORE-1", self.step1)
         result = solve_schedule(self.tenant)
-        core_tasks = list(result.tasks.filter(core=core))
+        core_tasks = list(result.tasks.filter(part=core.part))
         self.assertEqual({t.step_id for t in core_tasks}, {self.step1.id, self.step2.id},
                          "a core schedules its remaining teardown route")
-        self.assertTrue(all(t.part_id is None for t in core_tasks),
-                        "core tasks carry no part")
 
     def test_disassembled_core_is_not_scheduled(self):
         core = self._core("CORE-DONE", self.step1, status='DISASSEMBLED')
         result = solve_schedule(self.tenant)
-        self.assertEqual(result.tasks.filter(core=core).count(), 0,
+        self.assertEqual(result.tasks.filter(part=core.part).count(), 0,
                          "a fully disassembled core has no teardown work left")
 
 

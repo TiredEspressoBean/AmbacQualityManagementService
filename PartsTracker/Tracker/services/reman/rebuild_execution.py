@@ -51,7 +51,8 @@ def install_component(core, *, harvested=None, part=None, user, bom_line=None, s
 
     return AssemblyUsage.objects.create(
         tenant=core.tenant,
-        assembly_core=core,
+        # The unit being rebuilt is the core's part.
+        assembly=core.part,
         component_harvested=harvested,
         component=part,
         bom_line=bom_line,
@@ -76,4 +77,6 @@ def complete_rebuild(core, user=None):
         )
     core.status = 'REBUILT'
     core.save(update_fields=['status', 'updated_at'])
+    from Tracker.services.reman.core_part import sync_part_status
+    sync_part_status(core)
     return core

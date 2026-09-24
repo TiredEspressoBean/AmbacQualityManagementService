@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from Tracker.models import Core, Processes, ProcessStatus, WorkOrder, WorkOrderStatus
 from Tracker.services.reman.core import start_core_disassembly
+from Tracker.services.reman.core_part import move_core
 
 logger = logging.getLogger(__name__)
 
@@ -106,8 +107,8 @@ def start_teardown_batch(
             notes=f"Teardown batch of {len(cores)} cores",
         )
         for core in cores:
-            core.work_order = wo
-            core.save(update_fields=['work_order', 'updated_at'])
+            # A core's position is its part's: put the UNIT on the work order.
+            move_core(core, work_order=wo)
             start_core_disassembly(core, user)
 
         logger.info(
@@ -166,7 +167,8 @@ def plan_teardown(cores: list[Core], user, *, start_by=None,
     is PENDING and dated to `start_by`, and the cores stay RECEIVED. The scheduler
     places it like any other job (a unit with no current step enters at the process's
     first step), and disassembly begins on its own when an operator starts that first
-    step (`begin_core_step_execution`). Starting now is still `start_teardown_batch`.
+    step (`services.reman.core_steps.on_step_started`). Starting now is still
+    `start_teardown_batch`.
 
     Linking the cores is the commitment: from here they count as teardown already on
     its way, so the proposal that suggested them stops suggesting them.
@@ -183,8 +185,8 @@ def plan_teardown(cores: list[Core], user, *, start_by=None,
                   + (f", start by {start_by}" if start_by else ""),
         )
         for core in cores:
-            core.work_order = wo
-            core.save(update_fields=['work_order', 'updated_at'])
+            # A core's position is its part's: put the UNIT on the work order.
+            move_core(core, work_order=wo)
 
         logger.info(
             "Planned teardown WO %s: %d cores (core_type=%s), start by %s",

@@ -286,7 +286,7 @@ def sourcing_requirements(tenant) -> dict:
     buy_obj: dict = {}      # (kind, id) -> BuyItem
     for wo in (WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
                .exclude(workorder_status__in=excluded).select_related('process')
-               .prefetch_related('cores')):
+               .prefetch_related('parts__core_role')):
         pt_id = wo.process.part_type_id
         if pt_id is None:
             continue

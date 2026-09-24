@@ -6,6 +6,7 @@ Creates the core→component→part pipeline fundamental to remanufacturing oper
 
 import random
 import uuid
+from Tracker.services.reman.core_part import create_core, sync_part_status
 from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
@@ -265,7 +266,8 @@ class RemanSeeder(BaseSeeder):
 
             received_by = random.choice(employees)
 
-            core = Core.objects.create(
+            # Through the one creation path, so the core has its part (a core is a part).
+            core = create_core(
                 tenant=self.tenant,
                 core_number=core_number,
                 serial_number=f"SN-{uuid.uuid4().hex[:8].upper()}",
@@ -307,6 +309,8 @@ class RemanSeeder(BaseSeeder):
                 Core.objects.filter(pk=core.pk).update(status='SCRAPPED')
 
             core.refresh_from_db()
+            # The stage moved by queryset update above, so re-derive the part status.
+            sync_part_status(core)
             cores.append(core)
             created_count += 1
 

@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
+import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
 import { useRetrieveHarvestedComponents } from "@/hooks/useRetrieveHarvestedComponents";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { ArrowLeft, Play, CheckCircle, Trash2, DollarSign, Package, Wrench } from "lucide-react";
+import { ArrowLeft, Trash2, DollarSign, Package, Wrench } from "lucide-react";
 
 // Status badge variants
 function getStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -133,15 +134,9 @@ export function CoreDetailPage() {
                             Plan rebuild
                         </Button>
                     )}
+                    <WorkThisUnit core={core} />
                     {core.status === 'RECEIVED' && (
                         <>
-                            <Button
-                                variant="default"
-                                onClick={() => navigate({ to: `/reman/cores/${id}/disassembly` })}
-                            >
-                                <Play className="mr-2 h-4 w-4" />
-                                Start Disassembly
-                            </Button>
                             <Button
                                 variant="destructive"
                                 onClick={() => navigate({ to: `/reman/cores/${id}/scrap` })}
@@ -150,15 +145,6 @@ export function CoreDetailPage() {
                                 Scrap
                             </Button>
                         </>
-                    )}
-                    {core.status === 'IN_DISASSEMBLY' && (
-                        <Button
-                            variant="default"
-                            onClick={() => navigate({ to: `/reman/cores/${id}/disassembly` })}
-                        >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Continue Disassembly
-                        </Button>
                     )}
                     {!core.core_credit_issued && core.core_credit_value && (
                         <Button variant="outline">

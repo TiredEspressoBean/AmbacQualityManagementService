@@ -186,7 +186,7 @@ def teardown_banks(tenant) -> dict:
     by_type: dict = {}
     for core in (Core.objects  # tenant-safe: explicit tenant filter
                  .filter(tenant=tenant, archived=False, status__in=_bank_statuses())
-                 .select_related('core_type')
+                 .select_related('core_type', 'part')
                  .order_by('received_date', 'created_at')):
         if not core.allows_pooled_harvest:
             continue

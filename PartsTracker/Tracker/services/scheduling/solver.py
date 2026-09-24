@@ -8,16 +8,16 @@ Layers built so far:
 - Lot-based route-aware tasks: a WO's parts at the SAME current step form one lot that
   moves through the remaining nominal route together (DEFAULT edges; rework/scrap
   excluded), scheduled as one machine occupancy per operation sized by the lot's piece
-  count (cycle × count). Parts stranded at different steps form separate lots; reman
-  teardown cores schedule individually. Written back per part (each shares the lot's
-  window) so tracking/pins stay part-grained. Merge-capable DAG precedence (see
-  `routing.resolve_route`); cores write back as ScheduledTask.core.
+  count (cycle × count). Parts stranded at different steps form separate lots. Written
+  back per part (each shares the lot's window) so tracking/pins stay part-grained.
+  Merge-capable DAG precedence (see `routing.resolve_route`). A reman core is a part
+  (Documents/CORE_AS_PART_DESIGN.md): teardown cores batch like any part, and a core
+  under rebuild schedules on its own (`PartData.individual`) since its scope is its own.
 - Lock-step batches: a WO's parts at one step schedule as one cohesive lot (one
   occupancy, one synchronized start). A part split off to rework (`split_from_lot`) is
   carved into its OWN lot so the cohort keeps progressing — the batch is NOT held for a
   straggler; the split part schedules its own rework path and re-converges later via
-  `rejoin_part_to_lot` (`Parts.rejoined_at`), else at finished goods. Cores schedule
-  individually (reman units).
+  `rejoin_part_to_lot` (`Parts.rejoined_at`), else at finished goods.
 - Machine choice: one of the step's eligible schedulable machines (optional intervals
   + exactly-one), honoring per-machine `cycle_time_override`; one task per machine.
 - Cost objective (integer cents): Σ (lot lateness × the WO's priority penalty) +
@@ -452,6 +452,10 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                 # stragglers (`split_from_lot`) keep their own lot as before. Unpinned →
                 # the cohort lot the solver places freely and batches.
                 def _group_key(p):
+                    if p.individual:
+                        # A core under rebuild: its scope is its own, so it never moves in
+                        # lock-step with another unit. (Teardown cores batch like parts.)
+                        return ('u', p.part_id)
                     if p.split_from_lot:
                         return ('q',)  # quality carve-out → its own lot
                     prev = prev_map.get((p.part_id, p.current_step_id))
@@ -469,15 +473,10 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     # the solver schedules only the remaining duration of the running lot.
                     ip_parts = [pdata[pid] for pid in pids if pdata[pid].in_progress]
                     lots.append({'label': f"b{wo.wo_id}:{step}:{gk[0]}", 'step': step,
-                                 'part_ids': tuple(pids), 'core_id': None, 'count': len(pids),
+                                 'part_ids': tuple(pids), 'count': len(pids),
                                  'in_progress': bool(ip_parts),
                                  'elapsed': max((p.elapsed_minutes for p in ip_parts), default=0.0)})
-                lots += [{'label': f"c{c.core_id}", 'step': c.current_step_id,
-                          'part_ids': (), 'core_id': c.core_id, 'count': 1,
-                          'in_progress': False, 'elapsed': 0.0}
-                         for c in wo.cores]
                 for lot in lots:
-                    is_core = lot['core_id'] is not None
                     count = lot['count']
                     # The lot's remaining NOMINAL route from its current step (DEFAULT
                     # edges; rework/scrap branches excluded), with merge-capable DAG
@@ -511,7 +510,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                 model.Add(start == max(0, ret - dur))
                             else:
                                 model.Add(end == start + dur)
-                            tasks.append({'part_ids': lot['part_ids'], 'core_id': lot['core_id'],
+                            tasks.append({'part_ids': lot['part_ids'],
                                           'step_id': step_id, 'start': start, 'end': end,
                                           'choices': [], 'pinned': ret is not None,
                                           'planner_pinned': False, 'named_assign': [],
@@ -552,7 +551,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                 choices.append((lit, fixed_m))
                             else:
                                 model.NewIntervalVar(start, remaining, end, f"ipi_{key}")
-                            tasks.append({'part_ids': lot['part_ids'], 'core_id': lot['core_id'],
+                            tasks.append({'part_ids': lot['part_ids'],
                                           'step_id': step_id, 'start': start, 'end': end,
                                           'choices': choices, 'pinned': True,
                                           'planner_pinned': False, 'named_assign': [],
@@ -652,16 +651,17 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                         model.Add(sum(assign_lits) + uncov == 1)
                                         named_uncovered.append(uncov)   # weighted coverage-first below
 
-                        # Time fences / warm-start from the previous active schedule. Cores
-                        # schedule fresh each solve. A lot inherits the pin/frozen state of
+                        # Time fences / warm-start from the previous active schedule. (Cores
+                        # used to schedule fresh each solve, outside this; they are parts
+                        # now and inherit pins and warm-start like any.) A lot inherits the pin/frozen state of
                         # its parts: if ANY part was planner-pinned it's held (planner
                         # weight), else if the earliest part sat in the frozen zone it's
                         # frozen-held — always a SOFT penalty so a re-solve after the world
                         # changed moves it the minimum instead of going INFEASIBLE.
                         pinned = False          # drives the solver soft-penalty (planner OR frozen)
                         planner_pinned = False  # the DB is_pinned flag — planner lock ONLY
-                        prevts = ([prev_map[(pid, step_id)] for pid in lot['part_ids']
-                                   if (pid, step_id) in prev_map] if not is_core else [])
+                        prevts = [prev_map[(pid, step_id)] for pid in lot['part_ids']
+                                  if (pid, step_id) in prev_map]
                         if prevts:
                             rep = min(prevts, key=lambda pt: pt.start_time)
                             any_pinned = any(pt.is_pinned for pt in prevts)
@@ -682,7 +682,6 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                 warm_hints.append((start, prev_start))           # slushy/liquid: warm-start hint
 
                         tasks.append({'part_ids': lot['part_ids'],
-                                      'core_id': lot['core_id'],
                                       'step_id': step_id,
                                       'start': start, 'end': end, 'choices': choices,
                                       'pinned': pinned, 'planner_pinned': planner_pinned,
@@ -1046,11 +1045,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     cure_window_violation=t.get('cure_violation', False),
                     in_progress=t.get('in_progress', False),
                 )
-                if t['core_id'] is not None:
-                    rows.append(ScheduledTask(core_id=t['core_id'], part_id=None, **common))
-                else:
-                    for part_id in t['part_ids']:
-                        rows.append(ScheduledTask(part_id=part_id, core_id=None, **common))
+                for part_id in t['part_ids']:
+                    rows.append(ScheduledTask(part_id=part_id, **common))
             # tenant-safe: every row is constructed with tenant=tenant via `common` above.
             ScheduledTask.objects.bulk_create(rows)
             # Attribute a binding-constraint reason to any late task (heuristic, E7).

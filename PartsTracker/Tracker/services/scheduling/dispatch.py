@@ -197,23 +197,18 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
             return not any(bs < e and s < be for bs, be in brk_min.get(o, []))
 
         tasks = list(
-            schedule.tasks.select_related(
-                'step', 'part__work_order', 'core__work_order').all()
+            schedule.tasks.select_related('step', 'part__work_order').all()
         )
 
         # Group the part-rows into LOT-operations. The Layer-1 solver ran a WO's parts at
         # one step as a single machine occupancy, writing one row per part sharing
-        # step/start/end/machine — so they need ONE operator, not one per piece. Cores are
-        # their own single-unit lots. Assigning per lot (not per part) is what makes
+        # step/start/end/machine — so they need ONE operator, not one per piece. (A core
+        # under rebuild is its own single-unit lot.) Assigning per lot (not per part) is what makes
         # coverage honest: a 15-part lot demands one operator, not fifteen.
         lot_map: dict = defaultdict(list)
         for t in tasks:
-            if t.part_id:
-                wo_id = t.part.work_order_id
-                key = ('p', t.step_id, t.start_time, t.end_time, t.machine_id, wo_id)
-            else:
-                wo_id = t.core.work_order_id if t.core_id else None
-                key = ('c', t.step_id, t.start_time, t.end_time, t.machine_id, t.core_id)
+            wo_id = t.part.work_order_id if t.part_id else None
+            key = ('p', t.step_id, t.start_time, t.end_time, t.machine_id, wo_id)
             lot_map[key].append(t)
 
         # Cache qualified operators per (step, process) — reused across lots.
@@ -257,8 +252,7 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
 
             start_min = max(0, min(H, int((rep.start_time - H0).total_seconds() // 60)))
             end_min = min(H, start_min + attended)
-            wo = (rep.part.work_order if rep.part_id
-                  else rep.core.work_order if rep.core_id else None)
+            wo = rep.part.work_order if rep.part_id else None
             process = wo.process if wo else None
             weight = _PRIORITY_WEIGHT.get(getattr(wo, 'priority', 3), 100)
             step_wc = getattr(rep.step, 'work_center_id', None)

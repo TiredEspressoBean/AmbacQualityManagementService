@@ -75,7 +75,7 @@ def _moved_task_count(live, draft) -> int:
     """Tasks the draft reschedules vs live — matched by unit+step, counting a change
     of start time or machine (and any task the draft adds)."""
     def key(t):
-        return (t.part_id, t.core_id, t.step_id)
+        return (t.part_id, t.step_id)
 
     live_map = {key(t): t for t in live.tasks.all()}
     moved = 0

@@ -9,6 +9,7 @@ from __future__ import annotations
 from django.utils import timezone
 
 from Tracker.models import Core
+from Tracker.services.reman.core_part import sync_part_status
 
 
 def start_core_disassembly(core: Core, user) -> Core:
@@ -22,6 +23,7 @@ def start_core_disassembly(core: Core, user) -> Core:
     core.status = 'IN_DISASSEMBLY'
     core.disassembly_started_at = timezone.now()
     core.save()
+    sync_part_status(core)
     return core
 
 
@@ -37,6 +39,7 @@ def complete_core_disassembly(core: Core, user) -> Core:
     core.disassembly_completed_at = timezone.now()
     core.disassembled_by = user
     core.save()
+    sync_part_status(core)
     return core
 
 
@@ -57,6 +60,7 @@ def scrap_core(core: Core, reason: str = '') -> Core:
     if reason:
         core.condition_notes = f"{core.condition_notes}\nScrapped: {reason}".strip()
     core.save()
+    sync_part_status(core)
     return core
 
 

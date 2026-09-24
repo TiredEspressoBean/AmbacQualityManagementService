@@ -678,12 +678,9 @@ class StepTransitionLog(SecureModel):
     """ForeignKey to the `Steps` instance representing the current step reached."""
 
     part = models.ForeignKey("Parts", on_delete=models.SET_NULL, null=True, blank=True,
-                             help_text="The part that transitioned to the step (mutually exclusive with `core`).")
+                             help_text="The part that transitioned to the step. A reman core is a part too.")
     """ForeignKey to the `Parts` instance being tracked."""
 
-    core = models.ForeignKey("Tracker.Core", on_delete=models.SET_NULL, null=True, blank=True,
-                             related_name='step_transition_logs',
-                             help_text="The core that transitioned to the step (mutually exclusive with `part`).")
     """ForeignKey to the `Core` instance being tracked."""
 
     operator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
@@ -709,15 +706,6 @@ class StepTransitionLog(SecureModel):
     class Meta:
         verbose_name_plural = 'Step Transition Log'
         verbose_name = 'Step Transition Log'
-        constraints = [
-            models.CheckConstraint(
-                check=(
-                    models.Q(part__isnull=False, core__isnull=True)
-                    | models.Q(part__isnull=True, core__isnull=False)
-                ),
-                name='step_transition_log_one_subject',
-            ),
-        ]
 
     @property
     def subject(self):

@@ -27,6 +27,7 @@ from Tracker.models import (
 from Tracker.services.mes.bom_explosion import explode_work_order_tx
 from Tracker.services.mes.work_order import plan_work_order
 from Tracker.tests.base import TenantContextMixin
+from Tracker.services.reman.core_part import create_core
 
 User = get_user_model()
 
@@ -267,7 +268,7 @@ class RecoveredStockIsNotCoverForANewBuildTests(TenantContextMixin, TestCase):
             quantity=Decimal(1), source="MAKE", line_number=1)
 
         # The only nozzle on the shelf is a recovered one.
-        donor = Core.objects.create(
+        donor = create_core(
             tenant=self.tenant, core_number="DONOR-X", core_type=self.asm,
             fulfilment_mode="EXCHANGE", status="DISASSEMBLED",
             received_date=date.today(), received_by=self.user)
@@ -298,7 +299,7 @@ class RecoveredStockIsNotCoverForANewBuildTests(TenantContextMixin, TestCase):
     def _rebuild(self, erp, mode):
         from Tracker.models import Core
         wo = self._wo(erp)
-        Core.objects.create(
+        create_core(
             tenant=self.tenant, core_number=f"{erp}-C", core_type=self.asm,
             fulfilment_mode=mode, status="IN_REBUILD", work_order=wo,
             received_date=date.today(), received_by=self.user)

@@ -113,49 +113,52 @@ def _cascade_work_order_completion(part: Parts) -> None:
     _cascade_work_order_completion_for_subject(part.work_order)
 
 
+# What "ended" means for an ORDINARY part — unchanged by the core-as-part work. A reman
+# core's part is judged by its reman stage instead (`core_part.ENDED_STAGES`).
+_ENDED_PART_STATUSES = frozenset({
+    PartsStatus.COMPLETED, PartsStatus.SCRAPPED, PartsStatus.CANCELLED,
+})
+
+
+def _part_has_ended(part) -> bool:
+    from Tracker.services.reman.core_part import ENDED_STAGES
+    from Tracker.services.reman.core_steps import core_of
+    core = core_of(part)
+    if core is not None:
+        return core.status in ENDED_STAGES
+    return part.part_status in _ENDED_PART_STATUSES
+
+
 def _cascade_work_order_completion_for_subject(wo) -> None:
     """
-    Subject-aware WorkOrder completion cascade.
+    WorkOrder completion cascade.
 
-    A WO is complete when every linked subject (Parts AND Cores) has reached a
-    terminal state. Scrapped subjects count as terminal (the operator did the
-    work even if yield was zero). If a WO has no Parts linked, the cores-only
-    branch decides completion; if it has no Cores linked, the parts-only
-    branch decides. Mixed WOs require both to be terminal.
+    A WO is complete when every part on it has ended. A reman core is a part too
+    (Documents/CORE_AS_PART_DESIGN.md), so there is one list to check, but "ended"
+    is read differently for a core: by its reman stage, not its part status — a core
+    rebuilt or declined has ended its order's work even while it waits to go back.
+    Ordinary parts are judged exactly as before. (This used to run a separate cores
+    branch that closed an order once its cores were DISASSEMBLED — closing a
+    repair-and-return order before the rebuild it was opened for.)
 
-    When every subject is in a "fully-scrapped" terminal state, the WO is
-    CANCELLED. Otherwise it is COMPLETED.
+    An order already COMPLETED or CANCELLED is left alone: running again — as it does
+    when a core goes on from REBUILT to RETURNED — must not move its completion date.
+
+    Scrapped units count as ended (the work was done even if yield was zero). When every
+    unit was scrapped the WO is CANCELLED; otherwise COMPLETED.
     """
     if not wo:
         return
-
-    part_terminal = [
-        PartsStatus.COMPLETED,
-        PartsStatus.SCRAPPED,
-        PartsStatus.CANCELLED,
-    ]
-    core_terminal = ['DISASSEMBLED', 'SCRAPPED']
-
-    parts_qs = wo.parts.all()
-    cores_qs = wo.cores.all()
-
-    parts_count = parts_qs.count()
-    cores_count = cores_qs.count()
-
-    if parts_count == 0 and cores_count == 0:
+    if wo.workorder_status in (WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED):
         return
 
-    if parts_count and parts_qs.exclude(part_status__in=part_terminal).exists():
+    parts = list(wo.parts.select_related('core_role'))
+    if not parts:
         return
-    if cores_count and cores_qs.exclude(status__in=core_terminal).exists():
+    if not all(_part_has_ended(p) for p in parts):
         return
 
-    parts_scrapped = (
-        parts_qs.filter(part_status=PartsStatus.SCRAPPED).count() if parts_count else 0
-    )
-    cores_scrapped = cores_qs.filter(status='SCRAPPED').count() if cores_count else 0
-
-    if (parts_scrapped == parts_count) and (cores_scrapped == cores_count):
+    if all(p.part_status == PartsStatus.SCRAPPED for p in parts):
         wo.workorder_status = WorkOrderStatus.CANCELLED
     else:
         wo.workorder_status = WorkOrderStatus.COMPLETED
@@ -241,6 +244,12 @@ def advance_part_step(
     if not part.step or not part.part_type:
         raise ValueError("Current step or part type is missing.")
 
+    # Reman hooks (services/reman/core_steps.py) — each a no-op for a part that plays no
+    # core role. A core finishing its first step having never been "started" still
+    # begins its teardown.
+    from Tracker.services.reman import core_steps as reman
+    reman.on_step_started(part, operator)
+
     # The transition log records the *performer* as `operator` (consistent
     # meaning) and the co-signing authorizer, if any, as `authorized_by`. When
     # nobody co-signed (decided_by is None, or the authorizer IS the operator),
@@ -274,6 +283,9 @@ def advance_part_step(
     _consume_step_material(part, part.step, operator)
 
     next_step = part.get_next_step(decision_result)
+    # A core under rebuild visits only the operations its findings called for, and the
+    # ones it passes are recorded SKIPPED rather than silently absent.
+    next_step = reman.skip_out_of_scope(part, next_step, operator)
 
     if next_step is None:
         # Preserve HELD statuses at the terminal boundary. A QUARANTINED or
@@ -281,7 +293,11 @@ def advance_part_step(
         # silently marked COMPLETED/SHIPPED; the terminal marking should
         # happen only after the hold is resolved (by an explicit
         # disposition — SCRAP for terminal, REWORK back into flow).
-        if part.part_status not in HELD_PART_STATUSES:
+        if reman.finish_route(part, operator):
+            # A core ended its teardown or rebuild; its part status was derived from
+            # the new stage and must not be overwritten by the step's terminal status.
+            pass
+        elif part.part_status not in HELD_PART_STATUSES:
             if part.step.is_terminal:
                 status_map = {
                     'completed': PartsStatus.COMPLETED,
@@ -394,6 +410,8 @@ def advance_part_step(
             "step", "part_status", "requires_sampling",
             "sampling_rule", "sampling_ruleset", "sampling_context",
         ])
+        for p in ready_parts:
+            reman.after_advance(p)
 
         # tenant-safe: each row's part / step FKs constrain it to the same tenant
         StepTransitionLog.objects.bulk_create(transition_logs)
@@ -446,6 +464,7 @@ def advance_part_step(
     part.save()
 
     StepTransitionLog.objects.create(part=part, step=next_step, operator=operator, authorized_by=authorizer)
+    reman.after_advance(part)
 
     if leaving_rework_step:
         _close_open_rework_disposition(part, operator)

@@ -22,12 +22,9 @@ def record_execution_actuals(step_execution) -> None:
     tenant_id = step_execution.tenant_id
     if not tenant_id or not step_execution.step_id:
         return
-    if step_execution.part_id:
-        unit = {'part_id': step_execution.part_id}
-    elif step_execution.core_id:
-        unit = {'core_id': step_execution.core_id}
-    else:
+    if not step_execution.part_id:
         return
+    unit = {'part_id': step_execution.part_id}
 
     # all_tenants + explicit tenant_id: fired from a signal, so the tenant
     # ContextVar isn't set. Only the live committed schedule carries actuals —

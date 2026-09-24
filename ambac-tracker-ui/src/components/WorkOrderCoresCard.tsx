@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Hammer, PackageCheck, Truck, Wrench } from "lucide-react";
+import { Hammer, PackageCheck, Play, Truck, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { useCoreLifecycleAction, useReleaseCore } from "@/hooks/useReleaseCore";
+import { useWorkUnit } from "@/hooks/useWorkUnit";
 import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 import type { Schema } from "@/lib/api/types";
 
@@ -51,10 +52,17 @@ function statusVariant(status: string): "default" | "secondary" | "outline" | "d
  * anything else is a source of parts. The buttons reflect that rather than offering
  * both and letting someone pick wrong.
  */
-export function WorkOrderCoresCard({ cores }: { cores: WorkOrderCore[] }) {
+export function WorkOrderCoresCard(
+    { cores, workOrderId }: { cores: WorkOrderCore[]; workOrderId?: string },
+) {
     const [pending, setPending] = useState<string | null>(null);
     const release = useReleaseCore();
     const lifecycle = useCoreLifecycleAction();
+    // Teardown and rebuild are worked in the DWI operator runtime, at the step the unit
+    // is at — a core is a part, so it opens like any part's work.
+    const { workUnit, pending: opening } = useWorkUnit();
+    const workable = (status?: string) =>
+        status === "RECEIVED" || status === "IN_DISASSEMBLY" || status === "IN_REBUILD";
 
     if (!cores || cores.length === 0) return null;
 
@@ -178,6 +186,15 @@ export function WorkOrderCoresCard({ cores }: { cores: WorkOrderCore[] }) {
                                                 )}
                                             </TableCell>
                                             <TableCell className="whitespace-nowrap text-right">
+                                                {workOrderId && core.part && workable(core.status) && (
+                                                    <Button
+                                                        size="sm" className="mr-1" disabled={opening}
+                                                        onClick={() => workUnit(String(core.part), workOrderId)}
+                                                    >
+                                                        <Play className="mr-1 h-4 w-4" />
+                                                        Work
+                                                    </Button>
+                                                )}
                                                 {core.status === "IN_REBUILD" ? (
                                                     <span className="inline-flex gap-1">
                                                         <Button size="sm" variant="outline" asChild>

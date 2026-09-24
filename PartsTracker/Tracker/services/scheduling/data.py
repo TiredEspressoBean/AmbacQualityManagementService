@@ -28,8 +28,16 @@ _UNSCHEDULABLE_PART_STATUSES = frozenset({
     'ON_HOLD', 'DISMANTLED',
 })
 
-# Reman cores past teardown (all components harvested, or scrapped) have no work left.
-_UNSCHEDULABLE_CORE_STATUSES = frozenset({'DISASSEMBLED', 'SCRAPPED'})
+
+
+def _under_rebuild(part) -> bool:
+    """A core part being rebuilt — scheduled on its own (see PartData.individual).
+    Reads the prefetched `core_role`; an ordinary part has none."""
+    from Tracker.models import Core
+    try:
+        return part.core_role.status in ('IN_REBUILD', 'AWAITING_AUTHORISATION')
+    except Core.DoesNotExist:
+        return False
 
 
 # --- DTOs -------------------------------------------------------------------
@@ -105,14 +113,10 @@ class PartData:
     split_from_lot: bool = False  # True = split off in rework, a lock-step straggler
     in_progress: bool = False     # current step has an OPEN StepExecution (work has started)
     elapsed_minutes: float = 0.0  # minutes since that in-progress op actually started
-
-
-@dataclass(frozen=True)
-class CoreData:
-    """A reman core being torn down — scheduled like a part, through the teardown
-    process, but written back as ScheduledTask.core (not .part)."""
-    core_id: UUID
-    current_step_id: UUID | None
+    # Schedule this unit on its own, never in a lot with others: a reman core under
+    # rebuild, whose scope — which operations it visits — is its own. A core is a part
+    # (Documents/CORE_AS_PART_DESIGN.md); this replaces the separate CoreData path.
+    individual: bool = False
 
 
 @dataclass(frozen=True)
@@ -143,8 +147,7 @@ class WorkOrderData:
     lockstep_batch: bool | None  # per-WO lot cohesion; None → inherit tenant default
     quantity: int
     process_id: UUID
-    parts: tuple  # tuple[PartData, ...]
-    cores: tuple  # tuple[CoreData, ...] — reman teardown units on this WO
+    parts: tuple  # tuple[PartData, ...] — reman cores included; a core is a part
     steps: tuple   # tuple[StepNode, ...] — the process routing nodes, ordered
     edges: tuple   # tuple[EdgeData, ...] — the routing DAG
 
@@ -460,7 +463,7 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
         WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
         .exclude(workorder_status__in=excluded)
         .select_related('pegged_to_bom_line')
-        .prefetch_related('parts', 'cores')
+        .prefetch_related('parts__core_role')
     )
     # Release gate. Under MANUAL the solver only plans work a planner authorized, so
     # the board shows authorized work and nothing else. Under AUTO (the default)
@@ -541,14 +544,10 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
                     max(0.0, (now - open_execs[(p.id, p.step_id)]).total_seconds() / 60.0)
                     if (p.id, p.step_id) in open_execs else 0.0
                 ),
+                individual=_under_rebuild(p),
             )
             for p in wo.parts.all()
             if p.part_status not in _UNSCHEDULABLE_PART_STATUSES
-        )
-        cores = tuple(
-            CoreData(core_id=c.id, current_step_id=c.step_id)
-            for c in wo.cores.all()
-            if c.status not in _UNSCHEDULABLE_CORE_STATUSES
         )
         consumes_step_id = (wo.pegged_to_bom_line.consumed_at_step_id
                             if wo.pegged_to_bom_line_id else None)
@@ -559,7 +558,7 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
             pegged_consumes_step_id=consumes_step_id,
             lockstep_batch=wo.lockstep_batch,
             quantity=wo.quantity,
-            process_id=wo.process_id, parts=parts, cores=cores, steps=steps, edges=edges,
+            process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
         ))
     return result
 
@@ -839,7 +838,7 @@ def get_material_gates(tenant, horizon: HorizonData):
     hstart_date = horizon.start.date()
     for wo in (WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
                .exclude(workorder_status__in=excluded)
-               .select_related('process').prefetch_related('cores')):
+               .select_related('process').prefetch_related('parts__core_role')):
         pt_id = wo.process.part_type_id
         if pt_id is None:
             continue

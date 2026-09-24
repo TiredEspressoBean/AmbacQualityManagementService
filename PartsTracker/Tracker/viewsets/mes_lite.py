@@ -2422,12 +2422,9 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         rows = []
         for wo in releasable_work_orders(self.tenant):
             r = evaluate_release(wo, ctx)
-            open_units = (
-                sum(1 for p in wo.parts.all()
-                    if p.part_status not in sched_data._UNSCHEDULABLE_PART_STATUSES)
-                + sum(1 for c in wo.cores.all()
-                      if c.status not in sched_data._UNSCHEDULABLE_CORE_STATUSES)
-            )
+            # A reman core is a part, so it is counted with the parts.
+            open_units = sum(1 for p in wo.parts.all()
+                             if p.part_status not in sched_data._UNSCHEDULABLE_PART_STATUSES)
             rows.append({
                 "id": str(wo.id), "erp_id": wo.ERP_id,
                 "part_type": (wo.process.part_type.name

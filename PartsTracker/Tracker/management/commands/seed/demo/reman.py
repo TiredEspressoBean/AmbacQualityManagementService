@@ -9,6 +9,7 @@ Creates:
 All data is deterministic - same result every time for demo consistency.
 """
 
+from Tracker.services.reman.core_part import create_core, sync_part_status
 from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
@@ -571,11 +572,9 @@ class DemoRemanSeeder(BaseSeeder):
         if core_data.get('core_credit_issued') and disassembly_completed_at:
             core_credit_issued_at = disassembly_completed_at + timedelta(days=1)
 
-        # Create the core with ALL fields explicitly set
-        core, _ = Core.objects.update_or_create(
-            tenant=self.tenant,
-            core_number=core_data['core_number'],
-            defaults={
+        # Create the core with ALL fields explicitly set. A core is a part: a new one goes
+        # through create_core so it has its part; an existing one is updated in place.
+        core_fields = {
                 'serial_number': core_data['serial_number'],
                 'core_type': core_type,
                 'received_date': received_date,
@@ -592,9 +591,16 @@ class DemoRemanSeeder(BaseSeeder):
                 'core_credit_value': core_data.get('core_credit_value'),
                 'core_credit_issued': core_data.get('core_credit_issued', False),
                 'core_credit_issued_at': core_credit_issued_at,
-                'work_order': None,
-            }
-        )
+        }
+        core = Core.objects.filter(tenant=self.tenant,
+                                   core_number=core_data['core_number']).first()
+        if core is None:
+            core = create_core(tenant=self.tenant, core_number=core_data['core_number'],
+                               **core_fields)
+        else:
+            Core.objects.filter(pk=core.pk).update(**core_fields)
+            core.refresh_from_db()
+        sync_part_status(core)
 
         # Backdate the created_at timestamp
         Core.objects.filter(pk=core.pk).update(created_at=received_datetime)

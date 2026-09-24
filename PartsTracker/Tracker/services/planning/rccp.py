@@ -268,7 +268,7 @@ def _route_counts(wo) -> dict:
     from Tracker.services.scheduling.routing import resolve_route
 
     counts: dict = {}
-    for unit in list(wo.parts) + list(wo.cores):
+    for unit in wo.parts:  # a reman core is a part, so it is counted here
         if unit.current_step_id is None:
             continue
         route_ids, _ = resolve_route(unit.current_step_id, wo.steps, wo.edges)

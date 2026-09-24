@@ -31,6 +31,7 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     `work_center_id` narrows to one station (a handler working a single cell);
     omitted, every station with upcoming work is returned.
     """
+    from Tracker.services.reman.core_steps import core_of
     from django.db.models import Sum
     from django.utils import timezone
     from Tracker.models import (
@@ -50,9 +51,9 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     tasks = (ScheduledTask.objects.filter(
                 schedule=schedule, start_time__lt=until, end_time__gt=now)
              .select_related('part__part_type', 'part__work_order',
-                             # A rebuild's subject is a core, so its type and work order
-                             # are read on the same pass rather than one query per task.
-                             'core__core_type', 'core__work_order',
+                             # A core's role, read on the same pass: it says whether the
+                             # job is a rebuild and whether it may take pooled parts.
+                             'part__core_role',
                              'step__work_center', 'machine')
              .order_by('start_time'))
     if work_center_id:
@@ -67,21 +68,15 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         if t.step.is_outside_process:
             continue                      # goes to a vendor, not to a bench
 
-        # A rebuild's subject is a CORE, not a part. This used to skip them outright —
-        # "cores aren't staged" — which meant a bench rebuilding a customer's unit got
-        # no kit list at all, for the one job where getting the kit wrong is least
-        # recoverable.
-        subject_core = t.core if t.core_id else None
-        if t.part_id is not None:
-            wo = t.part.work_order
-            part_type_id = t.part.part_type_id
-            part_type_name = t.part.part_type.name if t.part.part_type else None
-        elif subject_core is not None:
-            wo = subject_core.work_order
-            part_type_id = subject_core.core_type_id
-            part_type_name = subject_core.core_type.name if subject_core.core_type else None
-        else:
+        # Every task is for a part; a reman core is a part too, and its role says it is
+        # a rebuild — which lines come off the unit itself, and whether pooled parts
+        # may go in.
+        if t.part_id is None:
             continue
+        subject_core = core_of(t.part)
+        wo = t.part.work_order
+        part_type_id = t.part.part_type_id
+        part_type_name = t.part.part_type.name if t.part.part_type else None
         if wo is None:
             continue
         key = (wo.id, t.step_id)

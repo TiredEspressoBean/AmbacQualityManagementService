@@ -1641,13 +1641,8 @@ class StepExecution(SecureModel):
         'Parts', on_delete=models.CASCADE,
         null=True, blank=True,
         related_name='step_executions',
-        help_text="The part being tracked through this step (mutually exclusive with `core`)."
-    )
-    core = models.ForeignKey(
-        'Tracker.Core', on_delete=models.CASCADE,
-        null=True, blank=True,
-        related_name='step_executions',
-        help_text="The core being tracked through this teardown step (mutually exclusive with `part`)."
+        help_text="The part being tracked through this step. A reman core is a part too; "
+                  "its role is `part.core_role`."
     )
     step = models.ForeignKey(
         Steps, on_delete=models.PROTECT,
@@ -1780,20 +1775,12 @@ class StepExecution(SecureModel):
         ]
         indexes = [
             models.Index(fields=['part', 'step']),
-            models.Index(fields=['core', 'step']),
             models.Index(fields=['status', 'entered_at']),
             models.Index(fields=['assigned_to', 'status']),
         ]
-        constraints = [
-            # A part and a core are mutually exclusive. A third subject kind
-            # (e.g. a MaterialLot at a RECEIVING step) rides the polymorphic
-            # subject_content_type/subject_id fields, so "not both part+core"
-            # replaces the old exactly-one-of (the service guarantees a subject).
-            models.CheckConstraint(
-                check=~(models.Q(part__isnull=False) & models.Q(core__isnull=False)),
-                name='step_execution_one_subject',
-            ),
-        ]
+        # No subject constraint: the subject is a part, or rides the polymorphic
+        # subject_content_type/subject_id fields (e.g. a MaterialLot at a RECEIVING
+        # step). The old part-XOR-core check went when cores became parts.
 
     @property
     def subject_object(self):
@@ -1806,8 +1793,8 @@ class StepExecution(SecureModel):
 
     @property
     def subject(self):
-        """The Part, Core, or polymorphic subject (e.g. MaterialLot) this execution tracks."""
-        return self.part or self.core or self.subject_object
+        """The Part or polymorphic subject (e.g. MaterialLot) this execution tracks."""
+        return self.part or self.subject_object
 
     @property
     def subject_work_order(self):
@@ -1818,8 +1805,6 @@ class StepExecution(SecureModel):
         """
         if self.part_id:
             return self.part.work_order
-        if self.core_id:
-            return self.core.work_order
         return getattr(self.subject_object, 'work_order', None)
 
     def __str__(self):
@@ -2943,6 +2928,18 @@ class WorkOrder(SecureModel):
             models.Index(fields=['process', 'workorder_status'], name='workorder_process_status_idx'),
             models.Index(fields=['priority', 'workorder_status'], name='workorder_priority_status_idx'),
         ]
+
+    @property
+    def cores(self):
+        """The reman cores on this work order — cores whose PART is on it.
+
+        A core is a part, so it sits on a work order through its part. This replaces
+        the reverse relation the old `Core.work_order` foreign key provided, keeping
+        `wo.cores.filter(...)` / `.exists()` working. Not prefetchable — prefetch
+        `parts__core_role` instead where that matters.
+        """
+        from Tracker.models.reman import Core
+        return Core.objects.filter(part__work_order=self)  # tenant-safe: scoped by `part__work_order` FK
 
     def __str__(self):
         """Returns a string representation for admin and logs."""

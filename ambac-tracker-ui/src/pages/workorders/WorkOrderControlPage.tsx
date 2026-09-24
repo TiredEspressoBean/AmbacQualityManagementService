@@ -2219,7 +2219,7 @@ export function WorkOrderControlPage() {
             {/* A teardown WO's subjects are cores, not parts — without this the page
                 renders an empty job. Placed above the exceptions footer because
                 releasing a core is the terminal act of the job, not an aside. */}
-            <WorkOrderCoresCard cores={realWo?.cores ?? []} />
+            <WorkOrderCoresCard cores={realWo?.cores ?? []} workOrderId={realWo?.id ? String(realWo.id) : undefined} />
 
             {!hasOpenExceptions && exceptionsCard}
 

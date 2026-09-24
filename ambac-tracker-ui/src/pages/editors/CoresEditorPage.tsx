@@ -86,16 +86,19 @@ function CoreActionsCell({ core }: { core: CoreRow }) {
                         View Details
                     </Link>
                 </DropdownMenuItem>
-                {core.status === 'RECEIVED' && (
-                    <DropdownMenuItem onClick={() => navigate({ to: `/reman/cores/${core.id}/disassembly` })}>
-                        <Play className="mr-2 h-4 w-4" />
-                        Start Disassembly
-                    </DropdownMenuItem>
-                )}
-                {core.status === 'IN_DISASSEMBLY' && (
-                    <DropdownMenuItem onClick={() => navigate({ to: `/reman/cores/${core.id}/disassembly` })}>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Continue Disassembly
+                {/* Teardown and rebuild run in the DWI operator runtime. The core's page
+                    decides how to open it — start its teardown, or continue at the step
+                    its unit is at. */}
+                {(core.status === 'RECEIVED' || core.status === 'IN_DISASSEMBLY'
+                  || core.status === 'IN_REBUILD') && (
+                    <DropdownMenuItem asChild>
+                        <Link to="/reman/cores/$id" params={{ id: String(core.id) }}>
+                            {core.status === 'RECEIVED'
+                                ? <Play className="mr-2 h-4 w-4" />
+                                : <CheckCircle className="mr-2 h-4 w-4" />}
+                            {core.status === 'RECEIVED' ? 'Start teardown…'
+                              : core.status === 'IN_REBUILD' ? 'Continue rebuild…' : 'Continue teardown…'}
+                        </Link>
                     </DropdownMenuItem>
                 )}
                 {core.status === 'RECEIVED' && (

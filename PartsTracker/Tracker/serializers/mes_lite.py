@@ -523,6 +523,8 @@ class WorkOrderCoreSerializer(serializers.Serializer):
     harvested_component_count = serializers.IntegerField(read_only=True)
     usable_component_count = serializers.IntegerField(read_only=True)
     step_name = serializers.CharField(source='step.name', read_only=True, allow_null=True)
+    # The part this core IS — what the operator runtime opens to work the unit.
+    part = serializers.UUIDField(source='part_id', read_only=True)
 
 
 class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
@@ -886,7 +888,8 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
 
     @extend_schema_field(WorkOrderCoreSerializer(many=True))
     def get_cores(self, obj):
-        qs = obj.cores.filter(archived=False).select_related('customer', 'step')
+        # A core's step is its part's (a core is a part).
+        qs = obj.cores.filter(archived=False).select_related('customer', 'part__step')
         return WorkOrderCoreSerializer(qs, many=True).data
 
     class Meta:

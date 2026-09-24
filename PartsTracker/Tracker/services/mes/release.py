@@ -151,18 +151,18 @@ def evaluate_release(work_order: WorkOrder, ctx: _Context | None = None) -> Rele
         return ReleaseReadiness(str(work_order.id), work_order.ERP_id, not blockers,
                                 tuple(blockers), tuple(warnings))
 
+    # A reman core is a part, so the open parts ARE the open units (this used to add the
+    # cores again from a separate list).
     open_parts = [p for p in work_order.parts.all()
                   if p.part_status not in data._UNSCHEDULABLE_PART_STATUSES]
-    open_cores = [c for c in work_order.cores.all()
-                  if c.status not in data._UNSCHEDULABLE_CORE_STATUSES]
-    if not (open_parts or open_cores):
+    if not open_parts:
         _blk('no_open_units', "No units left to work — nothing to release.")
         return ReleaseReadiness(str(work_order.id), work_order.ERP_id, not blockers,
                                 tuple(blockers), tuple(warnings))
 
     steps, edges = _graph(ctx, work_order.process_id)
     route_ids: set = set()
-    for u in open_parts + open_cores:
+    for u in open_parts:
         ids, _ = resolve_route(u.step_id, steps, edges)
         route_ids.update(ids)
 
@@ -243,7 +243,7 @@ def bulk_release(tenant, work_order_ids, user, override_reason: str = "") -> lis
     """
     ctx = build_release_context(tenant)
     wos = list(WorkOrder.objects.filter(tenant=tenant, id__in=list(work_order_ids))
-               .prefetch_related('parts', 'cores'))
+               .prefetch_related('parts__core_role'))
     out = []
     for wo in wos:
         try:
@@ -263,7 +263,7 @@ def releasable_work_orders(tenant):
             .exclude(workorder_status__in=[WorkOrderStatus.COMPLETED,
                                            WorkOrderStatus.CANCELLED])
             .select_related('process', 'process__part_type')
-            .prefetch_related('parts', 'cores')
+            .prefetch_related('parts__core_role')
             .order_by('priority', 'expected_completion', 'ERP_id'))
 
 

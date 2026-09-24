@@ -166,10 +166,9 @@ def work_content(ref, work_order, cache: dict) -> dict:
         return {}
 
     counts: dict = {}
+    # A reman core is a part, so the open parts are the open units.
     units = [p for p in work_order.parts.all()
              if p.part_status not in sched_data._UNSCHEDULABLE_PART_STATUSES]
-    units += [c for c in work_order.cores.all()
-              if c.status not in sched_data._UNSCHEDULABLE_CORE_STATUSES]
     for unit in units:
         if unit.step_id is None:
             continue

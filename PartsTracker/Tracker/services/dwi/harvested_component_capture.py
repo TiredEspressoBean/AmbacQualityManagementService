@@ -64,7 +64,7 @@ def create_harvested_components_from_capture(
     """Persist HarvestedComponent rows from a capture submission.
 
     Args:
-        step_execution: Must be linked to a Core (`step_execution.core_id` set).
+        step_execution: On a core's part — a part that plays a core role.
         substep: The Substep that contained the capture node.
         rows: Operator-supplied rows (see HarvestedComponentRow.from_dict).
         user: Operator performing the capture.
@@ -79,12 +79,14 @@ def create_harvested_components_from_capture(
         ValueError: when step_execution is not Core-scoped, or a row has an
             invalid grade, or component_type_id is missing.
     """
-    if step_execution.core_id is None:
-        raise ValueError(
-            "HarvestedComponentCapture requires a Core-scoped StepExecution"
-        )
+    from Tracker.services.reman.core_steps import core_of
 
-    core: Core = step_execution.core
+    core: Core | None = core_of(step_execution.part) if step_execution.part_id else None
+    if core is None:
+        raise ValueError(
+            "HarvestedComponentCapture requires a step execution on a core — a part "
+            "playing a core role"
+        )
     tenant = core.tenant
 
     parsed_rows = [HarvestedComponentRow.from_dict(r) for r in rows]

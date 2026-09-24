@@ -25,6 +25,7 @@ import { Pencil, Undo2 } from "lucide-react";
 
 import { useRebuildPlan } from "@/hooks/useRebuildPlan";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
+import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
 import {
     useCreateSlotOverride, useDeleteSlotOverride, useUpdateSlotOverride,
 } from "@/hooks/useRebuildSlotOverrides";
@@ -196,6 +197,9 @@ export function RebuildPlanPage() {
                             </p>
                         </div>
                     </div>
+                    {/* The rebuild is run in the DWI operator runtime, at the step the
+                        unit is at; this page is the plan, not the bench. */}
+                    {core && <WorkThisUnit core={core} />}
                 </div>
 
                 {/* A proposal is not a commitment, and the screen should not imply it is. */}

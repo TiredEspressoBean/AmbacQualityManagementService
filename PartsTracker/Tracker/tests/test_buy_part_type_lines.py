@@ -30,6 +30,7 @@ from Tracker.services.mes.requirements import (
     sourcing_requirements, work_order_material_requirements,
 )
 from Tracker.tests.base import TenantContextMixin
+from Tracker.services.reman.core_part import create_core
 
 
 class _BuyPartTypeFixture(TenantContextMixin, TestCase):
@@ -240,7 +241,7 @@ class _RecoverableFixture(_BuyPartTypeFixture):
             tenant=self.tenant, core_type=self.core_type, component_type=self.housing,
             expected_qty=2, expected_fallout_rate=Decimal("0.50"))
         self.bank = [
-            Core.objects.create(
+            create_core(
                 tenant=self.tenant, core_number=n, core_type=self.core_type,
                 fulfilment_mode="EXCHANGE", status="RECEIVED",
                 received_date=date.today() - timedelta(days=age), received_by=self.user)
@@ -259,7 +260,7 @@ class _RecoverableFixture(_BuyPartTypeFixture):
             process=self.reman_proc,
             expected_start=start or (date.today() + timedelta(days=60)))
         for i in range(cores):
-            Core.objects.create(
+            create_core(
                 tenant=self.tenant, core_number=f"RB-{self._n}-{i}",
                 core_type=self.core_type, fulfilment_mode=mode, status=status,
                 work_order=wo, received_date=date.today(), received_by=self.user)
@@ -269,7 +270,7 @@ class _RecoverableFixture(_BuyPartTypeFixture):
         """A recovered housing, accepted to stock the normal way — off a donor core."""
         from Tracker.models import Core, HarvestedComponent
         from Tracker.services.reman.harvested_component import accept_component_to_inventory
-        donor = Core.objects.create(
+        donor = create_core(
             tenant=self.tenant, core_number="DONOR-1", core_type=self.core_type,
             fulfilment_mode="EXCHANGE", status="DISASSEMBLED",
             received_date=date.today(), received_by=self.user)
@@ -624,7 +625,9 @@ class PlanTeardownTests(_TeardownProcessFixture):
         wo = self._plan(self.bank, start_by=date.today() + timedelta(days=3))
         jobs = [j for j in get_active_workorders(self.tenant) if j.wo_id == wo.id]
         self.assertEqual(len(jobs), 1)
-        self.assertEqual(len(jobs[0].cores), 2)
+        # A core is a part, so the planned units are the work order's parts.
+        self.assertEqual({p.part_id for p in jobs[0].parts},
+                         {c.part_id for c in self.bank})
 
 
 class UsableStockPartsTests(_RecoverableFixture):

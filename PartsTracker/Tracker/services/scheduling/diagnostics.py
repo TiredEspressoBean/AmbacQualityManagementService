@@ -72,17 +72,14 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     horizon_end_date = (schedule.horizon_end if schedule else horizon.end).date()
 
     # Units the active schedule actually placed, per work order.
+    # (A reman core is a part, so it is counted here with the rest.)
     scheduled_parts: dict = defaultdict(set)
-    scheduled_cores: dict = defaultdict(set)
     if schedule is not None:
         # tenant-safe: `schedule` is a tenant-scoped row; its tasks belong to the same tenant.
         for t in (ScheduledTask.objects.filter(schedule=schedule)
-                  .values('part_id', 'part__work_order_id',
-                          'core_id', 'core__work_order_id')):
+                  .values('part_id', 'part__work_order_id')):
             if t['part_id']:
                 scheduled_parts[t['part__work_order_id']].add(t['part_id'])
-            elif t['core_id']:
-                scheduled_cores[t['core__work_order_id']].add(t['core_id'])
 
     # Everything still owed: finished/cancelled WOs are out, held ones stay in (being
     # held is the very thing we want to report).
@@ -90,7 +87,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
         WorkOrder.objects.filter(tenant=tenant)
         .exclude(workorder_status__in=[WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED])
         .select_related('process', 'process__part_type')
-        .prefetch_related('parts', 'cores')
+        .prefetch_related('parts__core_role')
         .order_by('priority', 'expected_completion', 'ERP_id')
     )
 
@@ -139,12 +136,10 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     for wo in wos:
         open_parts = [p for p in wo.parts.all()
                       if p.part_status not in data._UNSCHEDULABLE_PART_STATUSES]
-        open_cores = [c for c in wo.cores.all()
-                      if c.status not in data._UNSCHEDULABLE_CORE_STATUSES]
-        open_units = len(open_parts) + len(open_cores)
+        open_units = len(open_parts)
         total_open += open_units
 
-        covered = (len(scheduled_parts.get(wo.id, ())) + len(scheduled_cores.get(wo.id, ())))
+        covered = len(scheduled_parts.get(wo.id, ()))
         # An unreleased order under MANUAL is on borrowed time: its bars come from a
         # solve that predates the gate, and the next solve drops them. Report it even
         # while it still looks covered — "why did my work vanish?" asked in advance is
@@ -154,7 +149,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
             continue  # fully on the board — nothing to explain
 
         reason, detail, fix = _classify(
-            wo, open_parts, open_cores, open_units, covered, schedule, horizon_end_date,
+            wo, open_parts, open_units, covered, schedule, horizon_end_date,
             timings, unstaffable, short_by_wo, gated_by_wo, _graph, resolve_route,
             manual_release,
         )
@@ -198,7 +193,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     }
 
 
-def _classify(wo, open_parts, open_cores, open_units, covered, schedule, horizon_end_date,
+def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
               timings, unstaffable, short_by_wo, gated_by_wo, graph, resolve_route,
               manual_release):
     """The single most actionable reason this WO isn't (fully) on the board.
@@ -239,7 +234,7 @@ def _classify(wo, open_parts, open_cores, open_units, covered, schedule, horizon
     # would have to place.
     route_ids: set = set()
     unroutable = 0
-    for u in list(open_parts) + list(open_cores):
+    for u in open_parts:
         ids, _ = resolve_route(u.step_id, steps, edges)
         if ids:
             route_ids.update(ids)

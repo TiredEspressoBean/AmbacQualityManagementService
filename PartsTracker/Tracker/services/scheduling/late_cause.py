@@ -28,7 +28,7 @@ def attribute_late_causes(schedule) -> int:
     tasks = list(
         # tenant-safe: `schedule` is a tenant-scoped row; its tasks belong to the same tenant.
         ScheduledTask.objects.filter(schedule=schedule).select_related(
-            'part__work_order', 'core__work_order', 'step', 'machine')
+            'part__work_order', 'step', 'machine')
     )
     if not tasks:
         return 0
@@ -47,8 +47,7 @@ def attribute_late_causes(schedule) -> int:
             prev_end[mt[i].id] = mt[i - 1].end_time
 
     def _wo(t):
-        return (t.part.work_order if t.part_id
-                else t.core.work_order if t.core_id else None)
+        return t.part.work_order if t.part_id else None
 
     updated = []
     for t in tasks:

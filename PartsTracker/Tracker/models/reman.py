@@ -203,26 +203,34 @@ class Core(SecureModel):
     )
     core_credit_issued_at = models.DateTimeField(null=True, blank=True)
 
-    # Linked work order (optional - if disassembly is tracked as work order)
-    work_order = models.ForeignKey(
-        'Tracker.WorkOrder',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='cores'
+    # The unit itself. A core is a PART; "core" is the role it plays, and this row holds
+    # the role. Generic machinery — step execution, scheduling, DWI, quality records —
+    # runs on the part. See Documents/CORE_AS_PART_DESIGN.md.
+    part = models.OneToOneField(
+        'Tracker.Parts',
+        on_delete=models.PROTECT,
+        related_name='core_role',
+        help_text="The part this core is. Its part_status is derived from `status`.",
     )
 
-    # Routing position within the teardown Process (fine-grained, mirrors Parts.step).
-    # Core.status stays coarse (RECEIVED/IN_DISASSEMBLY/DISASSEMBLED/SCRAPPED);
-    # this field tracks which Op the Core is currently at within the Process graph.
-    step = models.ForeignKey(
-        'Tracker.Steps',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='active_cores',
-        help_text="Current Step in the teardown Process (null for cores not yet routed)."
-    )
+    # Where the unit is — its work order and its current step — belongs to the part, not
+    # the role. Read-through, so `core.work_order` / `core.step` keep working; to MOVE a
+    # core, move its part.
+    @property
+    def work_order(self):
+        return self.part.work_order if self.part_id else None
+
+    @property
+    def work_order_id(self):
+        return self.part.work_order_id if self.part_id else None
+
+    @property
+    def step(self):
+        return self.part.step if self.part_id else None
+
+    @property
+    def step_id(self):
+        return self.part.step_id if self.part_id else None
 
     class Meta:
         verbose_name = 'Core'
@@ -333,146 +341,15 @@ class Core(SecureModel):
         """
         return self.returns_to_customer
 
-    # ===== WORKFLOW ENGINE METHODS (mirror of Parts) =====
-
     @property
     def process(self):
-        """The teardown Process this Core is routing through (via linked WorkOrder)."""
+        """The process this core's unit is routing through — its part's work order's."""
         return self.work_order.process if self.work_order else None
 
-    def _check_cycle_limit(self, target_step):
-        """Mirror of Parts._check_cycle_limit — escalates on max_visits exceeded."""
-        from Tracker.models.mes_lite import EdgeType, StepEdge, StepExecution
-
-        if target_step is None or target_step.max_visits is None:
-            return target_step
-
-        current_visits = StepExecution.objects.filter(core=self, step=target_step).count()  # tenant-safe: scoped by `core` FK
-
-        if current_visits >= target_step.max_visits:
-            process = self.process
-            if process:
-                escalation_edge = StepEdge.objects.filter(
-                    process=process,
-                    from_step=target_step,
-                    edge_type=EdgeType.ESCALATION,
-                ).first()
-                if escalation_edge:
-                    return escalation_edge.to_step
-            return None
-
-        return target_step
-
-    def _get_edge(self, from_step, edge_type):
-        """Mirror of Parts._get_edge — looks up StepEdge in the Core's Process."""
-        from Tracker.models.mes_lite import StepEdge
-
-        process = self.process
-        if not process:
-            return None
-        edge = StepEdge.objects.filter(
-            process=process,
-            from_step=from_step,
-            edge_type=edge_type,
-        ).first()
-        return edge.to_step if edge else None
-
-    def get_next_step(self, decision_result=None):
-        """Determine the next teardown Step for this Core.
-
-        Mirrors `Parts.get_next_step` but without Parts-specific QualityReport
-        lookups: for QA_RESULT decision points, the operator/substep must supply
-        `decision_result` explicitly (Cores don't auto-resolve from QualityReport
-        history because QualityReport is Parts-scoped).
-
-        Returns:
-            Steps instance, or None if terminal/no next step.
-        """
-        from Tracker.models.mes_lite import (
-            DecisionDataMissing,
-            EdgeType,
-            ProcessStep,
-            StepEdge,
-        )
-
-        current = self.step
-        if not current:
-            return None
-
-        if current.is_terminal:
-            return None
-
-        if current.is_decision_point:
-            if current.decision_type == 'QA_RESULT':
-                if decision_result is None:
-                    raise DecisionDataMissing(
-                        f"decision_result required for qa_result decision at step '{current.name}'"
-                    )
-                if decision_result == 'PASS':
-                    return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))
-                return self._check_cycle_limit(self._get_edge(current, EdgeType.ALTERNATE))
-
-            elif current.decision_type == 'MEASUREMENT':
-                process = self.process
-                if process:
-                    edges = StepEdge.objects.filter(
-                        process=process,
-                        from_step=current,
-                    ).select_related('condition_measurement')
-
-                    for edge in edges:
-                        if edge.condition_measurement and edge.condition_value is not None:
-                            if decision_result is None:
-                                continue
-                            threshold = float(edge.condition_value)
-                            value = float(decision_result)
-                            if edge.condition_operator == 'gte':
-                                passed = value >= threshold
-                            elif edge.condition_operator == 'lte':
-                                passed = value <= threshold
-                            else:
-                                passed = value == threshold
-
-                            if passed and edge.edge_type == EdgeType.DEFAULT:
-                                return self._check_cycle_limit(edge.to_step)
-                            elif not passed and edge.edge_type == EdgeType.ALTERNATE:
-                                return self._check_cycle_limit(edge.to_step)
-
-                return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))
-
-            elif current.decision_type == 'MANUAL':
-                if decision_result in ('DEFAULT', 'PASS'):
-                    return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))
-                elif decision_result in ('ALTERNATE', 'FAIL'):
-                    return self._check_cycle_limit(self._get_edge(current, EdgeType.ALTERNATE))
-                else:
-                    raise ValueError(
-                        "Manual decision required: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'"
-                    )
-
-        # Non-decision point: default edge
-        default_next = self._get_edge(current, EdgeType.DEFAULT)
-        if default_next:
-            return self._check_cycle_limit(default_next)
-
-        # Fallback: ProcessStep order
-        process = self.process
-        if process:
-            current_ps = ProcessStep.objects.filter(process=process, step=current).first()
-            if current_ps:
-                next_ps = ProcessStep.objects.filter(
-                    process=process,
-                    order=current_ps.order + 1,
-                ).first()
-                if next_ps:
-                    return self._check_cycle_limit(next_ps.step)
-
-        return None
-
-    def advance_step(self, operator=None, decision_result=None):
-        """Thin delegate — see `services.mes.cores.advance_core_step`."""
-        from Tracker.services.mes.cores import advance_core_step
-        return advance_core_step(self, operator=operator, decision_result=decision_result)
+    # The workflow engine that used to follow here (`_check_cycle_limit`, `_get_edge`,
+    # `get_next_step`, `advance_step`) mirrored the one on Parts. A core is a part now,
+    # so it routes on `self.part` through `services.mes.parts.advance_part_step`, with
+    # the reman-specific pieces as hooks in `services/reman/core_steps.py`.
 
     @property
     def harvested_component_count(self):

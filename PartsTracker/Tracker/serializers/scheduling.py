@@ -103,7 +103,7 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScheduledTask
         fields = (
-            'id', 'schedule', 'part', 'part_erp', 'core', 'core_number',
+            'id', 'schedule', 'part', 'part_erp', 'core_number',
             'step', 'step_name', 'machine', 'machine_name',
             'assigned_operator', 'operator_name', 'requires_operator',
             'work_order', 'work_order_id', 'work_center', 'due_date', 'is_late',
@@ -121,9 +121,8 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def _work_order(obj):
-        """The task's owning work order (via its part or core), or None."""
-        return (obj.part.work_order if obj.part_id
-                else obj.core.work_order if obj.core_id else None)
+        """The task's owning work order (via its part — a reman core is a part), or None."""
+        return obj.part.work_order if obj.part_id else None
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_part_erp(self, obj):
@@ -131,7 +130,11 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_core_number(self, obj):
-        return obj.core.core_number if obj.core_id else None
+        # Kept for the Gantt, which labels a reman unit's bar by its core number: read
+        # through the part's core role now that a core is a part.
+        from Tracker.services.reman.core_steps import core_of
+        core = core_of(obj.part) if obj.part_id else None
+        return core.core_number if core else None
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_step_name(self, obj):

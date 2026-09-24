@@ -2199,26 +2199,18 @@ class AssemblyUsage(SecureModel):
 
     Also supports removal tracking for remanufacturing/repair scenarios.
     """
-    # Two possible parents and two possible children, because a core rebuild is not a
-    # Parts-into-Parts assembly: a repair-and-return unit IS the Core, and the things
-    # going back into it are HarvestedComponents that never became stock — they are the
-    # customer's property. Same nullable-pair + CheckConstraint shape as
-    # StepExecution.part/core, per the mirror-not-abstract decision.
+    # One parent, two possible children. The parent is always a part — a reman core is a
+    # part too (Documents/CORE_AS_PART_DESIGN.md; this reverses the earlier
+    # "mirror-not-abstract" decision, which kept a separate `assembly_core` parent).
+    # The child is a stock part, or a HarvestedComponent that never became stock — a
+    # repair-and-return unit's own parts going back in, which are the customer's.
     assembly = models.ForeignKey(
         'Tracker.Parts',
         null=True, blank=True,
         on_delete=models.PROTECT,
         related_name='component_usages',
-        help_text="The parent assembly this component was installed into. Null for a "
-                  "core rebuild, where the parent is `assembly_core`."
-    )
-    assembly_core = models.ForeignKey(
-        'Tracker.Core',
-        null=True, blank=True,
-        on_delete=models.PROTECT,
-        related_name='component_usages',
-        help_text="The core this component was installed into, for a repair-and-return "
-                  "rebuild where the unit IS the core rather than a Parts row."
+        help_text="The parent this component was installed into — for a core rebuild, the "
+                  "core's part."
     )
     component = models.ForeignKey(
         'Tracker.Parts',
@@ -2279,15 +2271,11 @@ class AssemblyUsage(SecureModel):
         verbose_name_plural = 'Assembly Usages'
         ordering = ['-installed_at']
         constraints = [
-            # Exactly one parent and exactly one child. A core rebuild is not a
-            # Parts-into-Parts assembly: the unit IS the core, and what goes back into
-            # it are the customer's own harvested components, which never become stock.
+            # A parent always, and exactly one child: a stock part, or a harvested
+            # component going back into the unit it came from.
             models.CheckConstraint(
-                condition=(
-                    models.Q(assembly__isnull=False, assembly_core__isnull=True)
-                    | models.Q(assembly__isnull=True, assembly_core__isnull=False)
-                ),
-                name='assemblyusage_one_parent',
+                condition=models.Q(assembly__isnull=False),
+                name='assemblyusage_has_parent',
             ),
             models.CheckConstraint(
                 condition=(
@@ -2299,7 +2287,6 @@ class AssemblyUsage(SecureModel):
         ]
         indexes = [
             models.Index(fields=['assembly']),
-            models.Index(fields=['assembly_core']),
             models.Index(fields=['component']),
             models.Index(fields=['removed_at']),
         ]

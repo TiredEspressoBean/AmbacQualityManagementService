@@ -41,7 +41,9 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
 
     Alternative: scrap -> status: scrapped (if core not suitable)
     """
-    queryset = Core.unscoped.select_related('core_type', 'customer', 'received_by', 'disassembled_by', 'work_order')
+    # The unit's position is its part's, so the work order and step are read through it.
+    queryset = Core.unscoped.select_related('core_type', 'customer', 'received_by', 'disassembled_by',
+                                            'part__work_order', 'part__step')
     serializer_class = CoreSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['core_number', 'serial_number', 'source_reference']

@@ -40,6 +40,7 @@ from Tracker.utils.tenant_context import (
     set_current_tenant_id,
     reset_current_tenant,
 )
+from Tracker.services.reman.core_part import create_core, move_core
 
 
 class RemanBaseTestCase(TestCase):
@@ -131,7 +132,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_create_core(self):
         """Test basic core creation."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-001",
             serial_number="SN123456",
@@ -152,7 +153,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_core_unique_per_tenant(self):
         """Test core_number is unique per tenant."""
-        Core.objects.create(
+        create_core(
             tenant=self.tenant,
             core_number="CORE-DUP",
             core_type=self.injector_core_type,
@@ -162,7 +163,7 @@ class CoreModelTests(RemanBaseTestCase):
         )
 
         with self.assertRaises(Exception):  # IntegrityError
-            Core.objects.create(
+            create_core(
                 tenant=self.tenant,
                 core_number="CORE-DUP",  # Duplicate
                 core_type=self.injector_core_type,
@@ -173,7 +174,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_start_disassembly(self):
         """Test starting disassembly workflow."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-002",
             core_type=self.injector_core_type,
@@ -189,7 +190,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_cannot_start_disassembly_twice(self):
         """Test that disassembly cannot be started on non-received core."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-003",
             core_type=self.injector_core_type,
@@ -205,7 +206,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_complete_disassembly(self):
         """Test completing disassembly workflow."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-004",
             core_type=self.injector_core_type,
@@ -222,7 +223,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_scrap_core(self):
         """Test scrapping a core."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-005",
             core_type=self.injector_core_type,
@@ -239,7 +240,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_issue_credit(self):
         """Test issuing core credit."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-006",
             core_type=self.injector_core_type,
@@ -256,7 +257,7 @@ class CoreModelTests(RemanBaseTestCase):
 
     def test_cannot_issue_credit_without_value(self):
         """Test that credit cannot be issued without value set."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-007",
             core_type=self.injector_core_type,
@@ -276,7 +277,7 @@ class HarvestedComponentTests(RemanBaseTestCase):
 
     def setUp(self):
         """Create a core for harvesting."""
-        self.core = Core.objects.create(
+        self.core = create_core(
             tenant=self.tenant,
             core_number="CORE-HC-001",
             core_type=self.injector_core_type,
@@ -495,7 +496,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
     def test_create_life_tracking_for_core(self):
         """Test creating life tracking for a core."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-001",
             core_type=self.injector_core_type,
@@ -518,7 +519,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
     def test_life_tracking_status_warning(self):
         """Test life tracking warning status."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-002",
             core_type=self.injector_core_type,
@@ -538,7 +539,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
     def test_life_tracking_status_expired(self):
         """Test life tracking expired status."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-003",
             core_type=self.injector_core_type,
@@ -558,7 +559,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
     def test_life_tracking_increment(self):
         """Test incrementing life tracking."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-004",
             core_type=self.injector_core_type,
@@ -579,7 +580,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
     def test_life_tracking_reset(self):
         """Test resetting life tracking after overhaul."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-005",
             core_type=self.injector_core_type,
@@ -604,7 +605,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
     def test_life_tracking_override(self):
         """Test per-instance limit override."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-006",
             core_type=self.injector_core_type,
@@ -633,7 +634,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
     def test_calendar_based_life_tracking(self):
         """Test calendar-based life tracking."""
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-007",
             core_type=self.injector_core_type,
@@ -658,7 +659,7 @@ class LifeTrackingTests(RemanBaseTestCase):
     def test_life_transfer_on_accept_to_inventory(self):
         """Test life tracking transfer when accepting component to inventory."""
         # Create core with life tracking
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-008",
             core_type=self.injector_core_type,
@@ -702,7 +703,7 @@ class LifeTrackingTests(RemanBaseTestCase):
     def test_life_not_transferred_for_non_applicable_type(self):
         """Test that life tracking is NOT transferred for non-applicable part types."""
         # Create core with life tracking
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-LT-009",
             core_type=self.injector_core_type,
@@ -746,7 +747,7 @@ class RemanWorkflowIntegrationTests(RemanBaseTestCase):
     def test_full_reman_workflow(self):
         """Test complete workflow: receive -> disassemble -> harvest -> accept/scrap."""
         # 1. Receive core
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-FULL-001",
             core_type=self.injector_core_type,
@@ -856,7 +857,7 @@ class RemanWorkOrderIntegrationTests(RemanBaseTestCase):
         )
 
         # Create core linked to work order
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-WO-001",
             core_type=self.injector_core_type,
@@ -895,7 +896,7 @@ class RemanWorkOrderIntegrationTests(RemanBaseTestCase):
         ProcessStep.objects.create(process=self.nozzle_process, step=step3, order=3)
 
         # Create core and harvest component
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-PROD-001",
             core_type=self.injector_core_type,
@@ -963,7 +964,7 @@ class RemanQualityIntegrationTests(RemanBaseTestCase):
     def test_component_quality_report(self):
         """Test that harvested components can have quality reports."""
         # Create core and harvest component
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-QA-001",
             core_type=self.injector_core_type,
@@ -1020,7 +1021,7 @@ class RemanQualityIntegrationTests(RemanBaseTestCase):
         )
 
         # Create core and harvest
-        core = Core.objects.create(
+        core = create_core(
             tenant=self.tenant,
             core_number="CORE-MEAS-001",
             core_type=self.injector_core_type,
@@ -1073,7 +1074,7 @@ class RemanMultiCoreIntegrationTests(RemanBaseTestCase):
         """Test receiving multiple cores from same source."""
         cores = []
         for i in range(5):
-            core = Core.objects.create(
+            core = create_core(
                 tenant=self.tenant,
                 core_number=f"BATCH-{i+1:03d}",
                 core_type=self.injector_core_type,
@@ -1097,7 +1098,7 @@ class RemanMultiCoreIntegrationTests(RemanBaseTestCase):
         """Test aggregating components across multiple cores."""
         # Create and disassemble multiple cores
         for i in range(3):
-            core = Core.objects.create(
+            core = create_core(
                 tenant=self.tenant,
                 core_number=f"AGG-{i+1:03d}",
                 core_type=self.injector_core_type,
@@ -1154,7 +1155,7 @@ class RemanMultiCoreIntegrationTests(RemanBaseTestCase):
         actual_solenoids_scrapped = 0
 
         for i in range(10):
-            core = Core.objects.create(
+            core = create_core(
                 tenant=self.tenant,
                 core_number=f"YIELD-{i+1:03d}",
                 core_type=self.injector_core_type,
@@ -1240,7 +1241,7 @@ class ComponentDispositionPermissionTests(TenantTestCase):
 
         self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
         self.comp_type = PartTypes.objects.create(tenant=self.tenant_a, name='Nozzle')
-        self.core = Core.objects.create(
+        self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-PERM-1', core_type=self.core_type,
             received_date=date.today(), received_by=self.user_a, status='IN_DISASSEMBLY')
         self.component = HarvestedComponent.objects.create(
@@ -1328,7 +1329,7 @@ class CoreFulfilmentModeTests(TenantTestCase):
         from Tracker.models import Core, PartTypes
 
         self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
-        self.core = Core.objects.create(
+        self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-FM-1', core_type=self.core_type,
             received_date=date.today(), received_by=self.user_a)
 
@@ -1444,7 +1445,7 @@ class HarvestReservationTests(TenantTestCase):
             tenant=self.tenant_a, name='Nozzle', ID_prefix='NZ')
 
         def _core(number, mode):
-            return Core.objects.create(
+            return create_core(
                 tenant=self.tenant_a, core_number=number, core_type=self.core_type,
                 fulfilment_mode=mode, received_date=date.today(),
                 received_by=self.user_a)
@@ -1502,8 +1503,7 @@ class HarvestReservationTests(TenantTestCase):
 
         part = self._accept(self.their_component)
         wo = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id='WO-OWN', quantity=1)
-        self.theirs.work_order = wo
-        self.theirs.save(update_fields=['work_order'])
+        move_core(self.theirs, work_order=wo)
         part.refresh_from_db()
         assert_work_order_allowed(part, wo)  # must not raise
 
@@ -1601,7 +1601,7 @@ class RebuildScopeResolutionTests(TenantTestCase):
             tenant=self.tenant_a, code='FLOW', name='Flow test', trigger='PRESET')
         self.premium.steps.set([self.flow])
 
-        self.core = Core.objects.create(
+        self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-SCOPE-1', core_type=self.core_type,
             status='DISASSEMBLED', received_date=date.today(), received_by=self.user_a)
         self._HarvestedComponent = HarvestedComponent
@@ -1720,7 +1720,7 @@ class CoreReleaseTests(TenantTestCase):
             tenant=self.tenant_a, name='Nozzle', ID_prefix='NZ')
 
         def _core(number, mode):
-            return Core.objects.create(
+            return create_core(
                 tenant=self.tenant_a, core_number=number, core_type=self.core_type,
                 fulfilment_mode=mode, status='DISASSEMBLED',
                 received_date=date.today(), received_by=self.user_a)
@@ -1879,7 +1879,7 @@ class RebuildLifecycleTests(TenantTestCase):
         self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
         self.component_type = PartTypes.objects.create(
             tenant=self.tenant_a, name='Nozzle', can_recover=True)
-        self.core = Core.objects.create(
+        self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-LIFE-1', core_type=self.core_type,
             fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
             received_date=date.today(), received_by=self.user_a)
@@ -1890,10 +1890,11 @@ class RebuildLifecycleTests(TenantTestCase):
     def test_installing_the_units_own_component_is_recorded_as_built(self):
         from Tracker.services.reman.rebuild_execution import install_component
         usage = install_component(self.core, harvested=self.hc, user=self.user_a)
-        self.assertEqual(usage.assembly_core_id, self.core.id)
+        # The unit being rebuilt is the core's part (a core is a part).
+        self.assertEqual(usage.assembly_id, self.core.part_id)
         self.assertEqual(usage.component_harvested_id, self.hc.id)
-        # The Parts-shaped halves stay empty: a core rebuild is not Parts-into-Parts.
-        self.assertIsNone(usage.assembly_id)
+        # The child is the unit's own harvested component, never a stock part — it is
+        # the customer's, and never became stock.
         self.assertIsNone(usage.component_id)
 
     def test_another_cores_component_is_refused(self):
@@ -1901,7 +1902,7 @@ class RebuildLifecycleTests(TenantTestCase):
         to prevent — a repair-and-return customer's components are their property."""
         from django.core.exceptions import ValidationError
         from Tracker.models import Core, HarvestedComponent
-        other = Core.objects.create(
+        other = create_core(
             tenant=self.tenant_a, core_number='CORE-LIFE-2', core_type=self.core_type,
             fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
             received_date=date.today(), received_by=self.user_a)
@@ -2001,7 +2002,7 @@ class RecoverableSupplyTests(TenantTestCase):
         self._Core = Core
 
     def _core(self, number, status, mode='EXCHANGE'):
-        return self._Core.objects.create(
+        return create_core(
             tenant=self.tenant_a, core_number=number, core_type=self.core_type,
             fulfilment_mode=mode, status=status,
             received_date=date.today(), received_by=self.user_a)
@@ -2092,7 +2093,7 @@ class ScopeAwareAdvancementTests(TenantTestCase):
         self.wo = WorkOrder.objects.create(
             tenant=self.tenant_a, ERP_id='WO-SCOPE', quantity=1,
             workorder_status=WorkOrderStatus.IN_PROGRESS, process=self.process)
-        self.core = Core.objects.create(
+        self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-SCOPE-A', core_type=self.core_type,
             fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
             work_order=self.wo, step=self.steps['Clean'],
@@ -2103,14 +2104,14 @@ class ScopeAwareAdvancementTests(TenantTestCase):
 
     def test_out_of_scope_operations_are_walked_past(self):
         from Tracker.models import StepExecution
-        from Tracker.services.mes.cores import advance_core_step
+        from Tracker.services.mes.parts import advance_part_step
 
-        advance_core_step(self.core, operator=self.user_a)
+        advance_part_step(self.core.part, operator=self.user_a)
         self.core.refresh_from_db()
         # Hone and Plate belong to a code this unit's findings never raised.
         self.assertEqual(self.core.step, self.steps['Assemble'])
         skipped = set(
-            StepExecution.objects.filter(core=self.core, status='SKIPPED')
+            StepExecution.objects.filter(part=self.core.part, status='SKIPPED')
             .values_list('step__name', flat=True))
         self.assertEqual(skipped, {'Hone', 'Plate'})
 
@@ -2118,10 +2119,10 @@ class ScopeAwareAdvancementTests(TenantTestCase):
         """The traveler has to show what was deliberately NOT done — the difference
         between 'we chose not to' and 'we forgot'."""
         from Tracker.models import StepExecution
-        from Tracker.services.mes.cores import advance_core_step
+        from Tracker.services.mes.parts import advance_part_step
 
-        advance_core_step(self.core, operator=self.user_a)
-        hone = StepExecution.objects.get(core=self.core, step=self.steps['Hone'])
+        advance_part_step(self.core.part, operator=self.user_a)
+        hone = StepExecution.objects.get(part=self.core.part, step=self.steps['Hone'])
         self.assertEqual(hone.status, 'SKIPPED')
         self.assertIsNotNone(hone.exited_at)
 
@@ -2129,24 +2130,24 @@ class ScopeAwareAdvancementTests(TenantTestCase):
         """Scope applies to rebuild only. Every core gets the same teardown, which is
         why teardown can batch and rebuild cannot."""
         from Tracker.models import StepExecution
-        from Tracker.services.mes.cores import advance_core_step
+        from Tracker.services.mes.parts import advance_part_step
 
         self.core.status = 'IN_DISASSEMBLY'
         self.core.save(update_fields=['status'])
-        advance_core_step(self.core, operator=self.user_a)
+        advance_part_step(self.core.part, operator=self.user_a)
         self.core.refresh_from_db()
         self.assertEqual(self.core.step, self.steps['Hone'])
         self.assertFalse(
-            StepExecution.objects.filter(core=self.core, status='SKIPPED').exists())
+            StepExecution.objects.filter(part=self.core.part, status='SKIPPED').exists())
 
     def test_finishing_the_scope_completes_the_rebuild(self):
-        from Tracker.services.mes.cores import advance_core_step
+        from Tracker.services.mes.parts import advance_part_step
 
         for _ in range(6):
             self.core.refresh_from_db()
             if self.core.status != 'IN_REBUILD':
                 break
-            if advance_core_step(self.core, operator=self.user_a) == 'completed':
+            if advance_part_step(self.core.part, operator=self.user_a) == 'completed':
                 break
         self.core.refresh_from_db()
         self.assertEqual(self.core.status, 'REBUILT')
@@ -2186,7 +2187,7 @@ class RemanStagingTests(TenantTestCase):
             tenant=self.tenant_a, bom=bom, material=self.consumable, quantity=1,
             source='BUY', consumed_at_step=self.step)
 
-        self.core = Core.objects.create(
+        self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-STAGE-1', core_type=self.core_type,
             fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
             received_date=date.today(), received_by=self.user_a)
@@ -2249,7 +2250,7 @@ class RecoveredStockVisibilityTests(TenantTestCase):
             source='BUY', consumed_at_step=self.step)
 
         # A donor core, harvested and accepted — the normal way recovered stock appears.
-        donor = Core.objects.create(
+        donor = create_core(
             tenant=self.tenant_a, core_number='CORE-DONOR', core_type=self.core_type,
             fulfilment_mode='EXCHANGE', status='DISASSEMBLED',
             received_date=date.today(), received_by=self.user_a)
@@ -2317,7 +2318,7 @@ class RecoveredStockVisibilityTests(TenantTestCase):
         """`reserved_for_core` means it belongs to a customer's unit. It is on the
         shelf and it is not available."""
         from Tracker.models import Core, Parts, PartsStatus
-        owner = Core.objects.create(
+        owner = create_core(
             tenant=self.tenant_a, core_number='CORE-OWNER', core_type=self.core_type,
             fulfilment_mode='REPAIR_RETURN', status='DISASSEMBLED',
             received_date=date.today(), received_by=self.user_a)
