@@ -159,6 +159,9 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     AWAITING_PICKUP: { icon: Truck, colorClass: COLORS.warning, label: "Awaiting Pickup" },
     CORE_BANKED: { icon: Warehouse, colorClass: COLORS.neutral, label: "Core Banked" },
     RMA_CLOSED: { icon: CheckCircle2, colorClass: COLORS.success, label: "RMA Closed" },
+    // Reman: taken apart, its components now parts of their own. Neutral, not success —
+    // it was not built.
+    DISMANTLED: { icon: Package, colorClass: COLORS.neutral, label: "Dismantled" },
 
     // ═══════════════════════════════════════════════════════════════
     // MATERIAL LOT STATUSES

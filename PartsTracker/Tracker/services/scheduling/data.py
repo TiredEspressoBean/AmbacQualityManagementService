@@ -24,6 +24,8 @@ from django.utils import timezone
 _UNSCHEDULABLE_PART_STATUSES = frozenset({
     'COMPLETED', 'SCRAPPED', 'CANCELLED', 'SHIPPED', 'IN_STOCK',
     'AWAITING_PICKUP', 'CORE_BANKED', 'RMA_CLOSED', 'QUARANTINED',
+    # Waiting on someone else's decision, or no longer a unit at all.
+    'ON_HOLD', 'DISMANTLED',
 })
 
 # Reman cores past teardown (all components harvested, or scrapped) have no work left.

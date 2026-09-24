@@ -671,6 +671,7 @@ TERMINAL_PART_STATUSES = frozenset([
     PartsStatus.AWAITING_PICKUP,
     PartsStatus.CORE_BANKED,
     PartsStatus.RMA_CLOSED,
+    PartsStatus.DISMANTLED,
 ])
 
 # Statuses that must survive a step transition intact. `advance_part_step`

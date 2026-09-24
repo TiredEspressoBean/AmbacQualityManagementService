@@ -766,6 +766,7 @@ export type PartsStatusEnum =
    * `QUARANTINED` - Quarantined
    * `REWORK_NEEDED` - Rework Needed
    * `REWORK_IN_PROGRESS` - Rework In Progress
+   * `ON_HOLD` - On Hold
    * `SCRAPPED` - Scrapped
    * `CANCELLED` - Cancelled
    * `SHIPPED` - Shipped
@@ -773,8 +774,9 @@ export type PartsStatusEnum =
    * `AWAITING_PICKUP` - Awaiting Pickup
    * `CORE_BANKED` - Core Banked
    * `RMA_CLOSED` - RMA Closed
+   * `DISMANTLED` - Dismantled
    *
-   * @enum PENDING, IN_PROGRESS, AT_OUTSIDE_PROCESS, AWAITING_QA, READY_FOR_NEXT_STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED
+   * @enum PENDING, IN_PROGRESS, AT_OUTSIDE_PROCESS, AWAITING_QA, READY_FOR_NEXT_STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, ON_HOLD, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED, DISMANTLED
    */
   | "PENDING"
   | "IN_PROGRESS"
@@ -785,13 +787,15 @@ export type PartsStatusEnum =
   | "QUARANTINED"
   | "REWORK_NEEDED"
   | "REWORK_IN_PROGRESS"
+  | "ON_HOLD"
   | "SCRAPPED"
   | "CANCELLED"
   | "SHIPPED"
   | "IN_STOCK"
   | "AWAITING_PICKUP"
   | "CORE_BANKED"
-  | "RMA_CLOSED";
+  | "RMA_CLOSED"
+  | "DISMANTLED";
 export type BulkReconcileResultRow = {
   row: number;
   outcome: BulkReconcileResultRowOutcomeEnum;
@@ -19577,6 +19581,7 @@ const PartsStatusEnum = z.enum([
   "QUARANTINED",
   "REWORK_NEEDED",
   "REWORK_IN_PROGRESS",
+  "ON_HOLD",
   "SCRAPPED",
   "CANCELLED",
   "SHIPPED",
@@ -19584,6 +19589,7 @@ const PartsStatusEnum = z.enum([
   "AWAITING_PICKUP",
   "CORE_BANKED",
   "RMA_CLOSED",
+  "DISMANTLED",
 ]);
 const BulkAddPartsInputRequest = z.object({
   part_type: z.string().uuid(),

@@ -94,8 +94,8 @@ An invariant test walks every stage.
 | RECEIVED, on no work order | `CORE_BANKED` | in the bank, not being worked |
 | RECEIVED, on a work order | `PENDING` | planned: the scheduler must place it |
 | IN_DISASSEMBLY | `IN_PROGRESS` | |
-| DISASSEMBLED | `CORE_BANKED` | waiting on a release decision, not being worked |
-| AWAITING_AUTHORISATION | `CORE_BANKED` | waiting on the customer — **deliberately unschedulable** (today it is scheduled) |
+| DISASSEMBLED | `ON_HOLD` (**new**) | waiting on a release decision, not being worked |
+| AWAITING_AUTHORISATION | `ON_HOLD` | waiting on the customer — **deliberately unschedulable** (today it is scheduled) |
 | IN_REBUILD | `IN_PROGRESS` | |
 | REBUILT | `COMPLETED` | |
 | DECLINED | `AWAITING_PICKUP` | going back unrepaired |
@@ -103,8 +103,13 @@ An invariant test walks every stage.
 | HARVESTED | `DISMANTLED` (**new**) | the unit no longer exists as one; its components are parts now |
 | SCRAPPED | `SCRAPPED` | |
 
-`DISMANTLED` is the one new part status. Nothing existing fits: `SCRAPPED` says the unit
-was rejected, `COMPLETED` says it was built.
+Two new part statuses. **`DISMANTLED`** — nothing existing fits: `SCRAPPED` says the unit
+was rejected, `COMPLETED` says it was built (and would count as output). **`ON_HOLD`** —
+added during implementation, correcting the first draft of this table, which parked a
+waiting unit in `CORE_BANKED`. `CORE_BANKED` is *terminal* (`TERMINAL_PART_STATUSES`, and
+counted as a completed part), so a disassembled repair-and-return unit would have let the
+work-order cascade close the order before its rebuild. Waiting must be neither terminal
+nor schedulable, and nothing existing was both.
 
 ## 5. Identity
 
@@ -167,9 +172,12 @@ Each file is checked in phase 2 and the result recorded in its commit.
 
 Each phase ships green on its own.
 
-1. **Link.** `Core.part` added; every core mints a part (data migration); receipt and
-   `bulk_create` write both. Nothing reads the link yet.
-2. **Generic machinery onto the part.** Step execution, transition log, scheduling and
+1. **Statuses.** `ON_HOLD`, `DISMANTLED`, and `part_status_for` with its invariant test.
+2. **The cutover** — linking and moving the machinery in ONE step. (The first draft had
+   "link first, nothing reads it yet"; that cannot hold, because the moment a core's part
+   exists the generic machinery sees it — the scheduler reads `wo.parts`, so a planned
+   teardown would be scheduled twice, and completion, sampling and part lists would
+   count it.) `Core.part` added and every core given a part; Step execution, transition log, scheduling and
    assembly usage run on `core.part`; the four FKs and XOR constraints go; the mirrored
    engine collapses; `part_status_for` + invariant test.
 3. **DWI for teardown and rebuild.** The runtime runs core parts; install capture node;

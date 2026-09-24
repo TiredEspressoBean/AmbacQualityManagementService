@@ -82,6 +82,12 @@ class PartsStatus(models.TextChoices):
     REWORK_NEEDED = "REWORK_NEEDED", "Rework Needed"  # Needs rework from QA or operator
     REWORK_IN_PROGRESS = "REWORK_IN_PROGRESS", "Rework In Progress"
 
+    # Waiting — not being worked, not failed, not finished. A unit parked on a decision
+    # someone else owns: a customer's authorisation, a release call after teardown.
+    # Deliberately NOT terminal (a terminal status would let the work-order cascade
+    # close the order around a unit still waiting) and NOT schedulable.
+    ON_HOLD = "ON_HOLD", "On Hold"
+
     # Terminal statuses
     SCRAPPED = "SCRAPPED", "Scrapped"  # Rejected permanently
     CANCELLED = "CANCELLED", "Cancelled"  # Removed before production finished
@@ -90,6 +96,9 @@ class PartsStatus(models.TextChoices):
     AWAITING_PICKUP = "AWAITING_PICKUP", "Awaiting Pickup"  # Ready for customer pickup
     CORE_BANKED = "CORE_BANKED", "Core Banked"  # Reman: stored as core
     RMA_CLOSED = "RMA_CLOSED", "RMA Closed"  # Return completed
+    # Reman: the unit was taken apart and its components became parts of their own.
+    # Terminal, but NOT output — it was not built, and must not count as produced.
+    DISMANTLED = "DISMANTLED", "Dismantled"
 
 
 # ===== MODELS =====

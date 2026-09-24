@@ -23907,6 +23907,7 @@ export interface components {
          *     * `QUARANTINED` - Quarantined
          *     * `REWORK_NEEDED` - Rework Needed
          *     * `REWORK_IN_PROGRESS` - Rework In Progress
+         *     * `ON_HOLD` - On Hold
          *     * `SCRAPPED` - Scrapped
          *     * `CANCELLED` - Cancelled
          *     * `SHIPPED` - Shipped
@@ -23914,9 +23915,10 @@ export interface components {
          *     * `AWAITING_PICKUP` - Awaiting Pickup
          *     * `CORE_BANKED` - Core Banked
          *     * `RMA_CLOSED` - RMA Closed
+         *     * `DISMANTLED` - Dismantled
          * @enum {string}
          */
-        PartsStatusEnum: "PENDING" | "IN_PROGRESS" | "AT_OUTSIDE_PROCESS" | "AWAITING_QA" | "READY_FOR_NEXT_STEP" | "COMPLETED" | "QUARANTINED" | "REWORK_NEEDED" | "REWORK_IN_PROGRESS" | "SCRAPPED" | "CANCELLED" | "SHIPPED" | "IN_STOCK" | "AWAITING_PICKUP" | "CORE_BANKED" | "RMA_CLOSED";
+        PartsStatusEnum: "PENDING" | "IN_PROGRESS" | "AT_OUTSIDE_PROCESS" | "AWAITING_QA" | "READY_FOR_NEXT_STEP" | "COMPLETED" | "QUARANTINED" | "REWORK_NEEDED" | "REWORK_IN_PROGRESS" | "ON_HOLD" | "SCRAPPED" | "CANCELLED" | "SHIPPED" | "IN_STOCK" | "AWAITING_PICKUP" | "CORE_BANKED" | "RMA_CLOSED" | "DISMANTLED";
         PasswordChangeRequest: {
             old_password: string;
             new_password1: string;

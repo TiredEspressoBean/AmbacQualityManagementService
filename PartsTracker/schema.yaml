@@ -54853,6 +54853,7 @@ components:
       - QUARANTINED
       - REWORK_NEEDED
       - REWORK_IN_PROGRESS
+      - ON_HOLD
       - SCRAPPED
       - CANCELLED
       - SHIPPED
@@ -54860,6 +54861,7 @@ components:
       - AWAITING_PICKUP
       - CORE_BANKED
       - RMA_CLOSED
+      - DISMANTLED
       type: string
       description: |-
         * `PENDING` - Pending
@@ -54871,6 +54873,7 @@ components:
         * `QUARANTINED` - Quarantined
         * `REWORK_NEEDED` - Rework Needed
         * `REWORK_IN_PROGRESS` - Rework In Progress
+        * `ON_HOLD` - On Hold
         * `SCRAPPED` - Scrapped
         * `CANCELLED` - Cancelled
         * `SHIPPED` - Shipped
@@ -54878,6 +54881,7 @@ components:
         * `AWAITING_PICKUP` - Awaiting Pickup
         * `CORE_BANKED` - Core Banked
         * `RMA_CLOSED` - RMA Closed
+        * `DISMANTLED` - Dismantled
     PasswordChangeRequest:
       type: object
       properties:
