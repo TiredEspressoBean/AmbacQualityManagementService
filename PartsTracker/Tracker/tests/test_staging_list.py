@@ -318,17 +318,29 @@ class RecoveredPoolOnThePickSheetTests(TenantContextMixin, TestCase):
         self.assertEqual(row['recovered_on_hand'], 0.0)
         self.assertEqual(row['short'], 1.0)
 
-    def test_a_reman_job_sees_the_free_pool_only(self):
-        """One recovered nozzle is free, one is reserved to another customer's unit:
-        the pool is 1, not 2."""
+    def _rebuild_job(self, erp, mode):
         from datetime import date
         from Tracker.models import Core
-        wo = self._wo("WO-RB")
+        wo = self._wo(erp)
         core = Core.objects.create(
-            tenant=self.tenant, core_number="RB-1", core_type=self.pt,
-            fulfilment_mode="REPAIR_RETURN", status="IN_REBUILD", work_order=wo,
+            tenant=self.tenant, core_number=f"{erp}-C", core_type=self.pt,
+            fulfilment_mode=mode, status="IN_REBUILD", work_order=wo,
             step=self.step, received_date=date.today(), received_by=self.user)
         self._task(core=core)
-        row = self._nozzle_row("WO-RB")
+
+    def test_an_exchange_rebuild_sees_the_free_pool_only(self):
+        """One recovered nozzle is free, one is reserved to another customer's unit:
+        the pool is 1, not 2."""
+        self._rebuild_job("WO-EX", "EXCHANGE")
+        row = self._nozzle_row("WO-EX")
         self.assertTrue(row['from_teardown'])
         self.assertEqual(row['recovered_on_hand'], 1.0)
+
+    def test_a_repair_return_rebuild_is_offered_no_pool(self):
+        """Its own nozzle goes back in, and if that one is scrapped the replacement is
+        a purchase: a repair-and-return unit is never offered recovered stock, so the
+        sheet must not suggest the pool as a fallback."""
+        self._rebuild_job("WO-RR", "REPAIR_RETURN")
+        row = self._nozzle_row("WO-RR")
+        self.assertTrue(row['from_teardown'])
+        self.assertEqual(row['recovered_on_hand'], 0.0)

@@ -137,13 +137,15 @@ def _pool_candidates(component_type, core):
     Deliberately excludes anything reserved to a different core — `reserved_for_core`
     is the existing rule and this is a read of it, not a second copy.
     """
-    from Tracker.models import Parts
+    from Tracker.services.mes.bom import usable_stock_parts
 
     if not core.allows_pooled_harvest:
         return []
+    # Through the shared base, which also requires IN_STOCK. This used to filter on
+    # reserved and archived only, so a recovered part already installed in another
+    # unit could still be offered as a candidate.
     qs = (
-        Parts.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
-            part_type=component_type, reserved_for_core__isnull=True, archived=False)
+        usable_stock_parts(component_type.id, tenant=core.tenant, for_reman=True)
         .exclude(harvested_from__isnull=True)
         .select_related('harvested_from')[:5]
     )
@@ -325,7 +327,10 @@ def resolve_rebuild_plan(core) -> RebuildPlan:
         )
 
     own, loose = _harvested_by_position(core)
-    torn_down = core.status == 'DISASSEMBLED'
+    # Opened: disassembled, or anywhere past it. This read `== 'DISASSEMBLED'`, so a
+    # unit already IN_REBUILD was told "has not finished teardown … every slot reads
+    # as a purchase" on the very page its rebuild is run from.
+    torn_down = core.status not in ('RECEIVED', 'IN_DISASSEMBLY')
     if not torn_down:
         warnings.append(
             "This core has not finished teardown, so nothing has been recovered from it "

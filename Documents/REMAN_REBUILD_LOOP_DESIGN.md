@@ -909,7 +909,10 @@ items and the whole loop look bigger than it is.
     neither is a code gap.
 
 **Decided 2026-09-24 — recovered stock does not go into new builds.** Recovered
-components are supply for reman rebuilds only. A used serviceable part in a unit sold
+components are supply for **exchange** rebuilds only. (The first note of this said
+"reman rebuilds", which is too broad: a repair-and-return unit keeps its own parts and
+is never offered the pool — `Core.allows_pooled_harvest` — so on every surface the
+test is "does this unit take pooled parts", not "is it reman".) A used serviceable part in a unit sold
 as new is a suspect-unapproved-parts problem under AS9100, so this is a product rule
 rather than a default. It applies wherever coverage is counted, through one helper
 (`services/mes/bom.py::usable_stock_parts`) so no two surfaces can disagree:
@@ -927,6 +930,35 @@ rather than a default. It applies wherever coverage is counted, through one help
 
 This also retires the "instance pick" gap for reman: which recovered part went into
 which unit is recorded at install by `install_component`, not at pick.
+
+**Planning reads reman demand per core (2026-09-24).** The buy list used to treat a
+reman work order as its process BOM times its quantity. The reman route is ONE process
+holding teardown and rebuild steps, so that read a full rebuild kit per core — for
+exchange cores being harvested, and for a repair-and-return unit's own nozzles, which
+consumption, the material gate and the pick sheet all already treated as supplied by
+the unit. (A first fix skipped disassembly work orders; that also dropped every
+rebuild's seals, because the rebuild runs on the same process. Reverted.) Demand now
+comes from `services/reman/demand.py`, by core stage:
+
+| Core | Demand |
+|---|---|
+| exchange, in teardown or disassembled | none — supply, or undecided |
+| in rebuild / awaiting authorisation; repair-and-return disassembled | the rebuild plan: REPLACE_BUY firm, REPLACE_POOL from stock, REUSE/RECONDITION none; raw material whole |
+| repair-and-return, not yet opened | expendables and raw material firm; recoverable parts a FORECAST from authored fallout (worst case when none is authored) |
+
+The forecast sits beside the buy figure (`forecast_short`), never inside it — purchasing
+may buy ahead, nothing makes them.
+
+The RECOVER lane was rebuilt on that. It proposes per CORE TYPE (one core yields several
+components; per-component rows asked for the same unit repeatedly), covers only pool
+demand — replacement slots on exchange rebuilds — and counts what is on the shelf and
+what committed teardowns will yield before proposing, so an accepted proposal
+disappears instead of reappearing. Accepting calls `plan_teardown`: a PENDING teardown
+work order dated to the start-by, cores linked but still RECEIVED. The scheduler already
+places a unit that has not started, and disassembly begins when an operator starts the
+first step. Starting now is still `start_teardown_batch`. Lead time is read from the
+process `plan_teardown` would use — the core type's default, or the only eligible one —
+and is absent, not guessed, when that is ambiguous.
 
 **Scope boundary for planning.** UQMES plans from what it can SEE AND CONTROL: cores in
 the building, work on the board, yield it recorded itself. It does not predict what has

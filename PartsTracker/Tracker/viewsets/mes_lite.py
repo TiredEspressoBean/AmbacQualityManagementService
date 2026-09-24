@@ -2524,7 +2524,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                 "buy_kind": serializers.CharField(allow_null=True),
                 "safety_stock": serializers.FloatField(),
                 "source": serializers.CharField(),
-                "quantity": serializers.FloatField(),      # required = line qty × WO qty
+                # Required: line qty × WO qty for a new build; for a reman order, read
+                # per core from its stage and rebuild plan (services/reman/demand.py).
+                "quantity": serializers.FloatField(),
+                # Expected replacements on units not yet opened. Never in short_qty.
+                "forecast": serializers.FloatField(),
                 "unit_of_measure": serializers.CharField(),
                 "consumed_at_step": serializers.CharField(allow_null=True),
                 "on_hand": serializers.FloatField(),

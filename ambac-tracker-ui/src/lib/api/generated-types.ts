@@ -1708,6 +1708,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/plan_teardown/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept a teardown proposal: create one PENDING teardown WorkOrder dated to `start_by` that links the given cores WITHOUT starting disassembly. The cores stay RECEIVED until an operator starts the first step. All-or-nothing; the same rules as start_teardown_batch. */
+        post: operations["api_Cores_plan_teardown_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/start_teardown_batch/": {
         parameters: {
             query?: never;
@@ -18269,6 +18286,19 @@ export interface components {
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
         };
+        CorePlanTeardownInputRequest: {
+            core_ids: string[];
+            /** Format: date */
+            start_by?: string | null;
+            /** Format: uuid */
+            process_id?: string;
+        };
+        CorePlanTeardownResponse: {
+            /** Format: uuid */
+            work_order_id: string;
+            work_order_erp_id: string;
+            planned_core_ids: string[];
+        };
         CoreReleaseInventory: {
             core: components["schemas"]["Core"];
             accepted_count: number;
@@ -28428,26 +28458,36 @@ export interface components {
         RecordUnitsRequestRequest: {
             units: components["schemas"]["ReceivingSampleUnitRequest"][];
         };
-        RecoverCorePlan: {
-            core_type: string;
-            cores_to_tear_down: number;
-            /** Format: double */
-            per_core: number;
-            cores_available: number;
-            lead_time_days: number | null;
+        RecoverCandidateCore: {
+            id: string;
+            core_number: string;
         };
-        RecoverRequirement: {
+        RecoverComponent: {
             component: string;
-            qty_short: number;
+            /** Format: double */
+            needed: number;
+            /** Format: double */
+            on_shelf: number;
+            /** Format: double */
+            in_flight: number;
             /** Format: double */
             covered_by_teardown: number;
             /** Format: double */
-            still_to_buy: number;
+            still_short: number;
+        };
+        RecoverRequirement: {
+            core_type: string;
+            core_type_id: string;
+            cores_to_tear_down: number;
+            cores_available: number;
+            cores_in_flight: number;
+            candidate_cores: components["schemas"]["RecoverCandidateCore"][];
+            lead_time_days: number | null;
             /** Format: date */
             need_by: string | null;
             /** Format: date */
             start_by: string | null;
-            cores: components["schemas"]["RecoverCorePlan"][];
+            components: components["schemas"]["RecoverComponent"][];
         };
         RecoverableSource: {
             core_type: string;
@@ -29783,6 +29823,8 @@ export interface components {
             material: string;
             buy_kind: string;
             qty_short: number;
+            /** Format: double */
+            forecast_short: number;
             /** Format: double */
             safety_stock: number;
             /** Format: date */
@@ -33416,6 +33458,8 @@ export interface components {
             source: string;
             /** Format: double */
             quantity: number;
+            /** Format: double */
+            forecast: number;
             unit_of_measure: string;
             consumed_at_step: string | null;
             /** Format: double */
@@ -37757,6 +37801,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_Cores_plan_teardown_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorePlanTeardownInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CorePlanTeardownInputRequest"];
+                "multipart/form-data": components["schemas"]["CorePlanTeardownInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorePlanTeardownResponse"];
                 };
             };
         };

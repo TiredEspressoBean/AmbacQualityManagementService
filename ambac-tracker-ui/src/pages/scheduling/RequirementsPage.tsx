@@ -8,7 +8,15 @@ import { ClipboardList, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReportButton } from "@/components/reports/ReportButton";
-import { useRequirements } from "@/hooks/useScheduling";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { usePlanTeardown } from "@/hooks/usePlanTeardown";
+import { useRequirements, type RecoverRow } from "@/hooks/useScheduling";
+import { useState } from "react";
+import { toast } from "sonner";
 import { downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +24,83 @@ const fmt = (d: string | null) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
 
 const todayISO = new Date().toISOString().slice(0, 10);
+
+/** Accept a teardown proposal: plan a teardown work order for the proposed cores,
+ *  dated to the start-by (editable). Nothing starts until an operator begins it. */
+function PlanTeardownButton({ row }: { row: RecoverRow }) {
+  const [open, setOpen] = useState(false);
+  const [startBy, setStartBy] = useState(row.start_by ?? "");
+  const plan = usePlanTeardown();
+  const n = row.candidate_cores.length;
+  const noun = `${row.core_type} core${n === 1 ? "" : "s"}`;
+
+  const submit = () =>
+    plan.mutate(
+      { core_ids: row.candidate_cores.map((c) => c.id), start_by: startBy || null },
+      {
+        onSuccess: (res) => {
+          toast.success(`Planned ${res.work_order_erp_id}: ${n} ${noun}`);
+          setOpen(false);
+        },
+        onError: (err: unknown) => {
+          const detail = (err as { response?: { data?: { detail?: string } } })
+            ?.response?.data?.detail;
+          toast.error(detail ?? "Could not plan the teardown.");
+        },
+      },
+    );
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setStartBy(row.start_by ?? "");
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" disabled={n === 0}>
+          Plan teardown
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Plan teardown of {n} {noun}</DialogTitle>
+          <DialogDescription>
+            Creates a planned teardown work order and commits these cores to it.
+            Disassembly starts when an operator begins the first step, not now.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div>
+            <div className="mb-1 text-muted-foreground">Cores, oldest received first</div>
+            <div className="font-mono text-xs">
+              {row.candidate_cores.map((c) => c.core_number).join(", ")}
+            </div>
+          </div>
+          <label className="block">
+            <span className="mb-1 block text-muted-foreground">Start by</span>
+            <Input type="date" value={startBy} onChange={(e) => setStartBy(e.target.value)} />
+            {!row.start_by && (
+              <span className="mt-1 block text-xs text-muted-foreground">
+                No teardown duration is authored for this core type, so there is no
+                suggested date. Leave it blank to let the scheduler place it.
+              </span>
+            )}
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={plan.isPending}>
+            {plan.isPending ? "Planning…" : "Plan teardown"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 const isLate = (orderBy: string | null) => !!orderBy && orderBy < todayISO;
 
 function Section({
@@ -58,16 +143,17 @@ export function RequirementsPage() {
            (r.recoverable ?? 0) > 0
              ? `recoverable ${r.recoverable} from ${r.recoverable_cores} cores`
              : ""].filter(Boolean).join("; ")]),
-        ...recover.map((r) => ["Recover", r.component,
-          r.cores.map((c) => `${c.cores_to_tear_down} x ${c.core_type}`).join(" + "),
-          r.covered_by_teardown, r.need_by ?? "", r.start_by ?? "",
-          `still to buy ${r.still_to_buy}`]),
+        ...recover.map((r) => ["Recover", r.core_type, `tear down ${r.cores_to_tear_down}`,
+          r.cores_to_tear_down, r.need_by ?? "", r.start_by ?? "",
+          r.components.map((c) => `${c.component} ${c.covered_by_teardown}/${c.needed}`).join("; ")]),
         ...produce.map((r) => ["Produce", r.component, r.work_order, r.qty, r.need_by ?? "", "", r.status]),
         ...tooling.map((r) => ["Tooling", r.fixture, r.kind, "", "", r.order_by ?? "", ""]),
       ]
     );
 
-  const anyRows = source.length + produce.length + tooling.length > 0;
+  // Recover counts: a sheet whose only content is a teardown proposal is still worth
+  // exporting.
+  const anyRows = source.length + recover.length + produce.length + tooling.length > 0;
 
   if (isLoading) {
     return (
@@ -127,7 +213,19 @@ export function RequirementsPage() {
           {source.map((r, i) => (
             <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
               <td className="p-3 font-medium">{r.material}</td>
-              <td className="p-3 text-right tabular-nums">{r.qty_short}</td>
+              <td className="p-3 text-right tabular-nums">
+                {r.qty_short}
+                {/* Beside the short figure, never inside it: purchasing may buy ahead
+                    on a forecast, and nothing here makes them. */}
+                {(r.forecast_short ?? 0) > 0 && (
+                  <div
+                    className="text-xs text-muted-foreground"
+                    title="Expected replacements on repair-and-return units not yet torn down."
+                  >
+                    +{r.forecast_short} forecast
+                  </div>
+                )}
+              </td>
               <td className="p-3 text-right tabular-nums">
                 {(r.recoverable ?? 0) > 0 ? (
                   <span
@@ -159,44 +257,53 @@ export function RequirementsPage() {
         </tbody>
       </Section>
 
-      {/* The forecast turned into an action. Placed between Source and Produce because
-          that is the order the decision is made in: the buy list says a line is short,
-          this says how much of it the core bank could cover instead. */}
+      {/* Between Source and Produce because that is the order the decision is made in.
+          One row per CORE TYPE — one core yields several components, so a per-component
+          list would ask for the same unit repeatedly. It covers replacement slots on
+          exchange rebuilds, after what is on the shelf and what committed teardowns
+          will yield; accepting a row plans the teardown and it drops off this list. */}
       <Section
         title="Recover (tear down)"
-        subtitle="Teardown proposed to cover a shortfall. Accept one by raising the teardown work order — nothing here commits a core on its own."
+        subtitle="Teardown proposed to refill recovered stock for exchange rebuilds. Planning one commits those cores; nothing here commits a core on its own."
         empty={recover.length === 0}
         count={recover.length}
       >
         <thead>
           <tr className="border-b bg-muted/40 text-left text-muted-foreground">
-            <th className="p-3 font-medium">Component</th>
-            <th className="p-3 text-right font-medium">Short</th>
-            <th className="p-3 font-medium">Tear down</th>
-            <th className="p-3 text-right font-medium">Covers</th>
-            <th className="p-3 text-right font-medium">Still to buy</th>
+            <th className="p-3 font-medium">Core type</th>
+            <th className="p-3 text-right font-medium">Tear down</th>
+            <th className="p-3 font-medium">Covers</th>
             <th className="p-3 font-medium">Start by</th>
+            <th className="p-3" />
           </tr>
         </thead>
         <tbody>
-          {recover.map((r, i) => (
-            <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-              <td className="p-3 font-medium">{r.component}</td>
-              <td className="p-3 text-right tabular-nums">{r.qty_short}</td>
+          {recover.map((r) => (
+            <tr key={r.core_type_id} className="border-b align-top last:border-0 hover:bg-muted/30">
               <td className="p-3">
-                {r.cores.map((c, j) => (
-                  <div key={j}>
-                    {c.cores_to_tear_down} × {c.core_type}
+                <div className="font-medium">{r.core_type}</div>
+                <div className="text-xs text-muted-foreground">
+                  {r.cores_available} in bank
+                  {r.cores_in_flight > 0 && ` · ${r.cores_in_flight} already committed`}
+                </div>
+              </td>
+              <td className="p-3 text-right tabular-nums">{r.cores_to_tear_down}</td>
+              <td className="p-3">
+                {r.components.map((c) => (
+                  <div key={c.component}>
+                    {c.component}{" "}
+                    <span className="tabular-nums text-emerald-700 dark:text-emerald-400">
+                      {c.covered_by_teardown}
+                    </span>
                     <span className="ml-1 text-xs text-muted-foreground">
-                      ({c.cores_available} in bank, {c.per_core} each)
+                      of {c.needed} needed
+                      {c.on_shelf > 0 && ` · ${c.on_shelf} on shelf`}
+                      {c.in_flight > 0 && ` · ${c.in_flight} on the way`}
+                      {c.still_short > 0 && ` · ${c.still_short} still short`}
                     </span>
                   </div>
                 ))}
               </td>
-              <td className="p-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
-                {r.covered_by_teardown}
-              </td>
-              <td className="p-3 text-right tabular-nums">{r.still_to_buy}</td>
               <td className={cn("p-3", isLate(r.start_by) && "font-medium text-destructive")}>
                 {r.start_by ? (
                   <>
@@ -206,13 +313,15 @@ export function RequirementsPage() {
                     )}
                   </>
                 ) : (
-                  // No authored teardown duration. Saying "—" is the honest answer; a
-                  // computed-looking date the shop never authored would be scheduled
-                  // against as if it were fact.
+                  // No authored teardown duration: "—" is the honest answer, since a
+                  // made-up date would be scheduled against as fact.
                   <span className="text-muted-foreground" title="No teardown duration authored for this core type.">
                     —
                   </span>
                 )}
+              </td>
+              <td className="p-3 text-right">
+                <PlanTeardownButton row={r} />
               </td>
             </tr>
           ))}

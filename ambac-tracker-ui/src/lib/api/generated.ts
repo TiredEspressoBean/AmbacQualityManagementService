@@ -14010,20 +14010,28 @@ export type RecordUnitsRequestRequest = {
   units: Array<ReceivingSampleUnitRequest>;
 };
 export type RecoverRequirement = {
-  component: string;
-  qty_short: number;
-  covered_by_teardown: number;
-  still_to_buy: number;
+  core_type: string;
+  core_type_id: string;
+  cores_to_tear_down: number;
+  cores_available: number;
+  cores_in_flight: number;
+  candidate_cores: Array<RecoverCandidateCore>;
+  lead_time_days: number | null;
   need_by: string | null;
   start_by: string | null;
-  cores: Array<RecoverCorePlan>;
+  components: Array<RecoverComponent>;
 };
-export type RecoverCorePlan = {
-  core_type: string;
-  cores_to_tear_down: number;
-  per_core: number;
-  cores_available: number;
-  lead_time_days: number | null;
+export type RecoverCandidateCore = {
+  id: string;
+  core_number: string;
+};
+export type RecoverComponent = {
+  component: string;
+  needed: number;
+  on_shelf: number;
+  in_flight: number;
+  covered_by_teardown: number;
+  still_short: number;
 };
 export type ReleaseQueue = {
   release_mode: string;
@@ -14809,6 +14817,7 @@ export type SourceRequirement = {
   material: string;
   buy_kind: string;
   qty_short: number;
+  forecast_short: number;
   safety_stock: number;
   need_by: string | null;
   lead_time_days: number | null;
@@ -16263,6 +16272,7 @@ export type WorkOrderMaterialRequirementRow = {
   safety_stock: number;
   source: string;
   quantity: number;
+  forecast: number;
   unit_of_measure: string;
   consumed_at_step: string | null;
   on_hand: number;
@@ -17654,6 +17664,16 @@ const CoreBulkCreateError = z
     errors: z.array(z.object({}).partial().passthrough()),
   })
   .partial();
+const CorePlanTeardownInputRequest = z.object({
+  core_ids: z.array(z.string().uuid()),
+  start_by: z.string().nullish(),
+  process_id: z.string().uuid().optional(),
+});
+const CorePlanTeardownResponse = z.object({
+  work_order_id: z.string().uuid(),
+  work_order_erp_id: z.string(),
+  planned_core_ids: z.array(z.string().uuid()),
+});
 const CoreStartTeardownBatchInputRequest = z.object({
   core_ids: z.array(z.string().uuid()),
   process_id: z.string().uuid().optional(),
@@ -21492,6 +21512,7 @@ const SourceRequirement = z.object({
   material: z.string(),
   buy_kind: z.string(),
   qty_short: z.number().int(),
+  forecast_short: z.number(),
   safety_stock: z.number(),
   need_by: z.string().nullable(),
   lead_time_days: z.number().int().nullable(),
@@ -21508,21 +21529,29 @@ const ProduceRequirement = z.object({
   need_by: z.string().nullable(),
   status: z.string(),
 });
-const RecoverCorePlan = z.object({
-  core_type: z.string(),
-  cores_to_tear_down: z.number().int(),
-  per_core: z.number(),
-  cores_available: z.number().int(),
-  lead_time_days: z.number().int().nullable(),
+const RecoverCandidateCore = z.object({
+  id: z.string(),
+  core_number: z.string(),
+});
+const RecoverComponent = z.object({
+  component: z.string(),
+  needed: z.number(),
+  on_shelf: z.number(),
+  in_flight: z.number(),
+  covered_by_teardown: z.number(),
+  still_short: z.number(),
 });
 const RecoverRequirement = z.object({
-  component: z.string(),
-  qty_short: z.number().int(),
-  covered_by_teardown: z.number(),
-  still_to_buy: z.number(),
+  core_type: z.string(),
+  core_type_id: z.string(),
+  cores_to_tear_down: z.number().int(),
+  cores_available: z.number().int(),
+  cores_in_flight: z.number().int(),
+  candidate_cores: z.array(RecoverCandidateCore),
+  lead_time_days: z.number().int().nullable(),
   need_by: z.string().nullable(),
   start_by: z.string().nullable(),
-  cores: z.array(RecoverCorePlan),
+  components: z.array(RecoverComponent),
 });
 const ToolingRequirement = z.object({
   fixture: z.string(),
@@ -23777,6 +23806,7 @@ const WorkOrderMaterialRequirementRow = z.object({
   safety_stock: z.number(),
   source: z.string(),
   quantity: z.number(),
+  forecast: z.number(),
   unit_of_measure: z.string(),
   consumed_at_step: z.string().nullable(),
   on_hand: z.number(),
@@ -25695,6 +25725,8 @@ export const schemas = {
   CoreBulkCreateInputRequest,
   CoreBulkCreateResponse,
   CoreBulkCreateError,
+  CorePlanTeardownInputRequest,
+  CorePlanTeardownResponse,
   CoreStartTeardownBatchInputRequest,
   CoreStartTeardownBatchResponse,
   UserDetail,
@@ -26090,7 +26122,8 @@ export const schemas = {
   RecoverableSource,
   SourceRequirement,
   ProduceRequirement,
-  RecoverCorePlan,
+  RecoverCandidateCore,
+  RecoverComponent,
   RecoverRequirement,
   ToolingRequirement,
   SourcingRequirements,
@@ -30400,6 +30433,21 @@ committed to rebuilding — which is also what lets the same call answer
   },
   {
     method: "post",
+    path: "/api/Cores/plan_teardown/",
+    alias: "api_Cores_plan_teardown_create",
+    description: `Accept a teardown proposal: create one PENDING teardown WorkOrder dated to &#x60;start_by&#x60; that links the given cores WITHOUT starting disassembly. The cores stay RECEIVED until an operator starts the first step. All-or-nothing; the same rules as start_teardown_batch.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CorePlanTeardownInputRequest,
+      },
+    ],
+    response: CorePlanTeardownResponse,
+  },
+  {
+    method: "post",
     path: "/api/Cores/start_teardown_batch/",
     alias: "api_Cores_start_teardown_batch_create",
     description: `Create one teardown WorkOrder that links the given cores and transitions each from RECEIVED to IN_DISASSEMBLY. All-or-nothing.`,
@@ -31510,7 +31558,10 @@ Sets status to OBSOLETE and records the obsolete_date.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "post",
     path: "/api/Documents/:id/release/",
@@ -31542,10 +31593,7 @@ Optional body:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Documents/:id/revise/",
@@ -36581,7 +36629,10 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/MeasurementDefinitions/metadata/",
@@ -36589,10 +36640,7 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Milestones/",
@@ -41463,7 +41511,10 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/process-change-orders/:id/mark-approved/",
@@ -41485,10 +41536,7 @@ Enforces separation of duties (approver !&#x3D; PCO author).`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/process-change-requests/",
@@ -47263,7 +47311,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: PaginatedStepExecutionList,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/wip_at_step/",
@@ -47385,10 +47436,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: PaginatedStepExecutionListList,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/wip_summary/",
@@ -52438,7 +52486,10 @@ Admins can check any user; regular users can only check themselves.`,
 Admins can check any user; regular users can only check themselves.`,
     requestFormat: "json",
     response: EffectivePermissionsResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/UserWorkCenterMemberships/",
@@ -52482,10 +52533,7 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: PaginatedUserWorkCenterMembershipList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/UserWorkCenterMemberships/",

@@ -416,6 +416,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 # qualification, so purchasing treats the two differently.
                 "buy_kind": serializers.CharField(),
                 "qty_short": serializers.IntegerField(),
+                # What ELSE would be short if expected replacements on unopened
+                # repair-and-return units came true. Beside `qty_short`, never in it:
+                # purchasing may buy ahead on it, nothing makes them.
+                "forecast_short": serializers.FloatField(),
                 "safety_stock": serializers.FloatField(),
                 "need_by": serializers.DateField(allow_null=True),
                 "lead_time_days": serializers.IntegerField(allow_null=True),
@@ -448,20 +452,30 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             # order commits physical cores out of the bank on a forecast, and unlike a
             # MAKE child WO there is no cheap undo once the unit is in pieces.
             "recover": inline_serializer(name="RecoverRequirement", many=True, fields={
-                "component": serializers.CharField(),
-                "qty_short": serializers.IntegerField(),
-                "covered_by_teardown": serializers.FloatField(),
-                "still_to_buy": serializers.FloatField(),
+                "core_type": serializers.CharField(),
+                "core_type_id": serializers.CharField(),
+                "cores_to_tear_down": serializers.IntegerField(),
+                # Exchange cores RECEIVED and on no work order — what may be committed.
+                "cores_available": serializers.IntegerField(),
+                # Already committed to a teardown; their yield is counted, not re-proposed.
+                "cores_in_flight": serializers.IntegerField(),
+                # What accepting commits, oldest received first. A default, not a decision.
+                "candidate_cores": inline_serializer(name="RecoverCandidateCore", many=True, fields={
+                    "id": serializers.CharField(),
+                    "core_number": serializers.CharField(),
+                }),
+                "lead_time_days": serializers.IntegerField(allow_null=True),
                 "need_by": serializers.DateField(allow_null=True),
-                # Null when any contributing core type has no authored teardown
-                # duration. A made-up lead time reads as authored fact on the sheet.
+                # Null when the core type has no authored teardown duration.
                 "start_by": serializers.DateField(allow_null=True),
-                "cores": inline_serializer(name="RecoverCorePlan", many=True, fields={
-                    "core_type": serializers.CharField(),
-                    "cores_to_tear_down": serializers.IntegerField(),
-                    "per_core": serializers.FloatField(),
-                    "cores_available": serializers.IntegerField(),
-                    "lead_time_days": serializers.IntegerField(allow_null=True),
+                "components": inline_serializer(name="RecoverComponent", many=True, fields={
+                    "component": serializers.CharField(),
+                    # Replacement slots on exchange rebuilds recovered stock may fill.
+                    "needed": serializers.FloatField(),
+                    "on_shelf": serializers.FloatField(),
+                    "in_flight": serializers.FloatField(),
+                    "covered_by_teardown": serializers.FloatField(),
+                    "still_short": serializers.FloatField(),
                 }),
             }),
             "tooling": inline_serializer(name="ToolingRequirement", many=True, fields={

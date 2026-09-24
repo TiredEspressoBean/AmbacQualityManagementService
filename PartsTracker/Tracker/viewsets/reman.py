@@ -421,6 +421,81 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        request=inline_serializer(name="CorePlanTeardownInput", fields={
+            "core_ids": serializers.ListField(child=serializers.UUIDField(), allow_empty=False),
+            # When the teardown should begin — the proposal's start-by date. Optional:
+            # without one the work order is planned undated and the scheduler places it.
+            "start_by": serializers.DateField(required=False, allow_null=True),
+            "process_id": serializers.UUIDField(required=False),
+        }),
+        responses={
+            201: inline_serializer(name="CorePlanTeardownResponse", fields={
+                "work_order_id": serializers.UUIDField(),
+                "work_order_erp_id": serializers.CharField(),
+                "planned_core_ids": serializers.ListField(child=serializers.UUIDField()),
+            }),
+        },
+        description=(
+            "Accept a teardown proposal: create one PENDING teardown WorkOrder dated to "
+            "`start_by` that links the given cores WITHOUT starting disassembly. The "
+            "cores stay RECEIVED until an operator starts the first step. All-or-nothing; "
+            "the same rules as start_teardown_batch."
+        ),
+    )
+    @action(detail=False, methods=['post'], url_path='plan_teardown')
+    def plan_teardown(self, request):
+        from datetime import date as _date
+        from Tracker.models import Processes
+        from Tracker.services.reman.teardown import plan_teardown as svc
+
+        core_ids = request.data.get('core_ids') or []
+        if not isinstance(core_ids, list) or not core_ids:
+            return Response(
+                {"detail": "core_ids must be a non-empty list"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        start_by = request.data.get('start_by')
+        if start_by:
+            try:
+                start_by = _date.fromisoformat(str(start_by))
+            except ValueError:
+                return Response({"detail": "start_by must be an ISO date (YYYY-MM-DD)"},
+                                status=status.HTTP_400_BAD_REQUEST)
+        else:
+            start_by = None
+
+        cores = list(Core.objects.filter(id__in=core_ids).select_related('core_type', 'tenant'))
+        if len(cores) != len(set(core_ids)):
+            return Response(
+                {"detail": "One or more core_ids not found in this tenant"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        process = None
+        process_id = request.data.get('process_id')
+        if process_id:
+            process = Processes.objects.filter(id=process_id).first()
+            if process is None:
+                return Response(
+                    {"detail": "process_id not found in this tenant"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        try:
+            wo = svc(cores, request.user, start_by=start_by, process=process)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "work_order_id": str(wo.id),
+                "work_order_erp_id": wo.ERP_id,
+                "planned_core_ids": [str(c.id) for c in cores],
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
 
 # ===== HARVESTED COMPONENT VIEWSETS =====
 

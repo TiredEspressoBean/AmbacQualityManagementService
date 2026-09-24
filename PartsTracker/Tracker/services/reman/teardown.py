@@ -96,6 +96,30 @@ def start_teardown_batch(
     Atomic: any validation failure or per-core transition error rolls back
     the whole batch including the WO creation.
     """
+    shared_core_type, target_process = _validate_batch(cores, process)
+    tenant = cores[0].tenant
+
+    with transaction.atomic():
+        wo = _create_teardown_work_order(
+            tenant, shared_core_type, target_process, len(cores),
+            status=WorkOrderStatus.IN_PROGRESS,
+            notes=f"Teardown batch of {len(cores)} cores",
+        )
+        for core in cores:
+            core.work_order = wo
+            core.save(update_fields=['work_order', 'updated_at'])
+            start_core_disassembly(core, user)
+
+        logger.info(
+            "Teardown batch WO %s created with %d cores (core_type=%s)",
+            wo.ERP_id, len(cores), shared_core_type.name,
+        )
+    return wo
+
+
+def _validate_batch(cores, process):
+    """The rules any teardown batch obeys, planned or started: one core type, every
+    core RECEIVED and on no work order. Returns (core_type, process)."""
     if not cores:
         raise ValueError("cores list is empty")
 
@@ -113,28 +137,57 @@ def start_teardown_batch(
             raise ValueError(
                 f"Core {core.core_number} is already linked to a work order",
             )
+    return shared_core_type, _resolve_teardown_process(shared_core_type, process)
 
-    target_process = _resolve_teardown_process(shared_core_type, process)
+
+def _create_teardown_work_order(tenant, core_type, process, quantity, *, status,
+                                notes, expected_start=None):
+    now = timezone.now()
+    # Microseconds as well as seconds: two batches accepted in the same second would
+    # otherwise mint the same ERP id.
+    erp_id = f"TEARDOWN-{now.strftime('%Y%m%d-%H%M%S-%f')}-{core_type.ID_prefix or 'CORE'}"
+    return WorkOrder.objects.create(
+        tenant=tenant,
+        ERP_id=erp_id,
+        workorder_status=status,
+        quantity=quantity,
+        process=process,
+        expected_start=expected_start,
+        notes=notes,
+    )
+
+
+def plan_teardown(cores: list[Core], user, *, start_by=None,
+                  process: Processes | None = None) -> WorkOrder:
+    """Commit cores to a teardown that starts later — what "accept" on a teardown
+    proposal does.
+
+    The same checks as `start_teardown_batch`, but nothing is started: the work order
+    is PENDING and dated to `start_by`, and the cores stay RECEIVED. The scheduler
+    places it like any other job (a unit with no current step enters at the process's
+    first step), and disassembly begins on its own when an operator starts that first
+    step (`begin_core_step_execution`). Starting now is still `start_teardown_batch`.
+
+    Linking the cores is the commitment: from here they count as teardown already on
+    its way, so the proposal that suggested them stops suggesting them.
+    """
+    shared_core_type, target_process = _validate_batch(cores, process)
     tenant = cores[0].tenant
 
     with transaction.atomic():
-        now = timezone.now()
-        erp_id = f"TEARDOWN-{now.strftime('%Y%m%d-%H%M%S')}-{shared_core_type.ID_prefix or 'CORE'}"
-        wo = WorkOrder.objects.create(
-            tenant=tenant,
-            ERP_id=erp_id,
-            workorder_status=WorkOrderStatus.IN_PROGRESS,
-            quantity=len(cores),
-            process=target_process,
-            notes=f"Teardown batch of {len(cores)} cores",
+        wo = _create_teardown_work_order(
+            tenant, shared_core_type, target_process, len(cores),
+            status=WorkOrderStatus.PENDING,
+            expected_start=start_by,
+            notes=f"Planned teardown of {len(cores)} cores"
+                  + (f", start by {start_by}" if start_by else ""),
         )
         for core in cores:
             core.work_order = wo
             core.save(update_fields=['work_order', 'updated_at'])
-            start_core_disassembly(core, user)
 
         logger.info(
-            "Teardown batch WO %s created with %d cores (core_type=%s)",
-            wo.ERP_id, len(cores), shared_core_type.name,
+            "Planned teardown WO %s: %d cores (core_type=%s), start by %s",
+            wo.ERP_id, len(cores), shared_core_type.name, start_by,
         )
     return wo

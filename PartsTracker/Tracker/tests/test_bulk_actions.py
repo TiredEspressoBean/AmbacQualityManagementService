@@ -6,7 +6,7 @@ Covers:
 - CoreViewSet.bulk_create (WS2)
 - CoreViewSet.start_teardown_batch (WS3)
 """
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -356,3 +356,55 @@ class CoreStartTeardownBatchTests(BulkActionsBaseTestCase):
         self.assertEqual(response.status_code, 201, response.content)
         wo = WorkOrder.objects.get(id=response.json()['work_order_id'])
         self.assertEqual(wo.process_id, self.disassembly_process.id)
+
+class CorePlanTeardownTests(BulkActionsBaseTestCase):
+    """POST /api/Cores/plan_teardown/ — accept a teardown proposal.
+
+    The same rules as start_teardown_batch, but nothing starts: the work order is
+    PENDING and dated, and the cores stay RECEIVED until an operator begins the first
+    step.
+    """
+
+    def url(self):
+        return "/api/Cores/plan_teardown/"
+
+    def _core(self, number):
+        return Core.objects.create(
+            tenant=self.tenant, core_number=number, core_type=self.injector_type,
+            received_date=date.today(), received_by=self.user, condition_grade='A')
+
+    def test_plans_a_dated_pending_teardown_without_starting_it(self):
+        cores = [self._core("PL-001"), self._core("PL-002")]
+        start = (date.today() + timedelta(days=14)).isoformat()
+        response = self.client.post(self.url(), {
+            "core_ids": [str(c.id) for c in cores], "start_by": start,
+        }, format="json")
+
+        self.assertEqual(response.status_code, 201, response.content)
+        wo = WorkOrder.objects.get(id=response.json()['work_order_id'])
+        self.assertEqual(wo.workorder_status, 'PENDING')
+        self.assertEqual(wo.expected_start.isoformat(), start)
+        for core in cores:
+            core.refresh_from_db()
+            self.assertEqual(core.work_order_id, wo.id)
+            self.assertEqual(core.status, 'RECEIVED')
+            self.assertIsNone(core.disassembly_started_at)
+
+    def test_start_by_is_optional(self):
+        response = self.client.post(self.url(), {"core_ids": [str(self._core("PL-003").id)]},
+                                    format="json")
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertIsNone(WorkOrder.objects.get(id=response.json()['work_order_id']).expected_start)
+
+    def test_rejects_a_malformed_date(self):
+        response = self.client.post(self.url(), {
+            "core_ids": [str(self._core("PL-004").id)], "start_by": "next tuesday",
+        }, format="json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_rejects_a_core_already_committed(self):
+        core = self._core("PL-005")
+        first = self.client.post(self.url(), {"core_ids": [str(core.id)]}, format="json")
+        self.assertEqual(first.status_code, 201, first.content)
+        again = self.client.post(self.url(), {"core_ids": [str(core.id)]}, format="json")
+        self.assertEqual(again.status_code, 400)

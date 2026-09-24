@@ -27,27 +27,37 @@ class SourceRow(BaseModel):
     #: `qty_short` rather than subtracted from it — teardown has not happened yet.
     recoverable: float = 0.0
     recoverable_cores: int = 0
+    #: Extra shortfall if expected replacements on unopened units came true.
+    forecast_short: float = 0.0
 
 
-class RecoverCorePlan(BaseModel):
-    core_type: str
-    cores_to_tear_down: int
-    per_core: float
-    cores_available: int
-    lead_time_days: Optional[int] = None
+class RecoverComponent(BaseModel):
+    component: str
+    needed: float
+    on_shelf: float
+    in_flight: float
+    covered_by_teardown: float
+    still_short: float
+
+
+class RecoverCandidateCore(BaseModel):
+    id: str
+    core_number: str
 
 
 class RecoverRow(BaseModel):
-    """The forecast turned into a schedulable action. A PROPOSAL — accepting it raises
-    the teardown work order through the normal path."""
-    component: str
-    qty_short: int
-    covered_by_teardown: float
-    still_to_buy: float
+    """Teardown proposed to refill the recovered pool, per core type. A PROPOSAL —
+    accepting it plans a teardown work order; nothing here commits a core."""
+    core_type: str
+    cores_to_tear_down: int
+    cores_available: int
+    cores_in_flight: int
+    candidate_cores: list[RecoverCandidateCore] = Field(default_factory=list)
+    lead_time_days: Optional[int] = None
     need_by: Optional[datetime.date] = None
-    #: Absent when no contributing core type has an authored teardown duration.
+    #: Absent when the core type has no authored teardown duration.
     start_by: Optional[datetime.date] = None
-    cores: list[RecoverCorePlan] = Field(default_factory=list)
+    components: list[RecoverComponent] = Field(default_factory=list)
 
 
 class ProduceRow(BaseModel):

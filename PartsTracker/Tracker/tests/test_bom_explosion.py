@@ -295,16 +295,28 @@ class RecoveredStockIsNotCoverForANewBuildTests(TenantContextMixin, TestCase):
         self.assertEqual([c['component'] for c in result.created], ["Nozzle"])
         self.assertEqual(result.netted, [])
 
-    def test_a_reman_rebuild_counts_the_recovered_part_as_cover(self):
-        """The same shelf, a reman parent: here the recovered nozzle is legitimate
-        supply, so nothing needs making."""
+    def _rebuild(self, erp, mode):
         from Tracker.models import Core
-        from Tracker.services.mes.bom_explosion import explode_work_order
-        wo = self._wo("WO-RB")
+        wo = self._wo(erp)
         Core.objects.create(
-            tenant=self.tenant, core_number="RB-X", core_type=self.asm,
-            fulfilment_mode="REPAIR_RETURN", status="IN_REBUILD", work_order=wo,
+            tenant=self.tenant, core_number=f"{erp}-C", core_type=self.asm,
+            fulfilment_mode=mode, status="IN_REBUILD", work_order=wo,
             received_date=date.today(), received_by=self.user)
-        result = explode_work_order(wo, self.user, create=False)
+        return wo
+
+    def test_an_exchange_rebuild_counts_the_recovered_part_as_cover(self):
+        """The same shelf, an exchange rebuild: pooled parts are allowed here, so the
+        recovered nozzle is legitimate supply and nothing needs making."""
+        from Tracker.services.mes.bom_explosion import explode_work_order
+        result = explode_work_order(self._rebuild("WO-EX", "EXCHANGE"), self.user,
+                                    create=False)
         self.assertEqual(result.created, [])
         self.assertEqual([n['component'] for n in result.netted], ["Nozzle"])
+
+    def test_a_repair_return_rebuild_does_not(self):
+        """A repair-and-return unit is never offered the pool, so the recovered nozzle
+        is not its cover either — the component still has to be made."""
+        from Tracker.services.mes.bom_explosion import explode_work_order
+        result = explode_work_order(self._rebuild("WO-RR", "REPAIR_RETURN"), self.user,
+                                    create=False)
+        self.assertEqual([c['component'] for c in result.created], ["Nozzle"])

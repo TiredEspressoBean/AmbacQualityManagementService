@@ -99,6 +99,10 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
                 # A rebuild supplies some of its own kit from what came out of it, so
                 # the pick list has to say which lines NOT to pull.
                 '_is_reman': subject_core is not None,
+                # Narrower than reman: only an exchange unit may take recovered stock;
+                # a repair-and-return unit keeps its own parts.
+                '_takes_pool': bool(subject_core is not None
+                                    and subject_core.allows_pooled_harvest),
             }
         job['units'] += 1
         job['starts_at'] = min(job['starts_at'], t.start_time)
@@ -112,7 +116,8 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
 
     # Recovered components live as IN_STOCK `Parts`, not `MaterialLot`s — acceptance
     # from teardown mints a Parts row. Kept OUT of `onhand` and reported only on the
-    # rows it may supply: a reman job, on a line that allows recovery. Recovered stock
+    # rows it may supply: an EXCHANGE rebuild, on a line that allows recovery — a
+    # repair-and-return unit keeps its own parts and is never offered the pool. Recovered stock
     # does not go into new builds (decided 2026-09-24) — a used serviceable part in a
     # unit sold as new is a suspect-unapproved-parts problem under AS9100 — and
     # consumption has no path to issue a Parts row into a new build anyway, so
@@ -150,9 +155,11 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     for job in sorted(jobs.values(), key=lambda j: j['starts_at']):
         pt_id = job.pop('_part_type_id')
         is_reman = job.pop('_is_reman', False)
+        takes_pool = job.pop('_takes_pool', False)
         job['materials'] = _materials_for(pt_id, job['step_id'], job['units'],
                                           onhand, bom_cache, tenant,
-                                          is_reman=is_reman, recovered=recovered)
+                                          is_reman=is_reman,
+                                          recovered=recovered if takes_pool else None)
         job['fixtures'] = sorted(fixtures.get(job['step_id'], ()))
         job['short_count'] = sum(1 for m in job['materials'] if m['short'] > 0)
         stations[(job['work_center_id'], job['work_center'])].append(job)

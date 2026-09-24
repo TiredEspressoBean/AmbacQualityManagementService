@@ -343,23 +343,40 @@ export type RecoverableSource = {
   core_type: string; core_type_id: string; cores: number; per_core: number;
   quantity: number;
 };
-/** One core type's share of a teardown proposal. */
-export type RecoverCorePlan = {
-  core_type: string; cores_to_tear_down: number; per_core: number;
-  cores_available: number; lead_time_days: number | null;
+/** One component a teardown proposal would cover. */
+export type RecoverComponent = {
+  component: string;
+  /** Replacement slots on exchange rebuilds that recovered stock may fill. */
+  needed: number;
+  on_shelf: number;
+  /** Yield already on its way from teardowns someone committed. */
+  in_flight: number;
+  covered_by_teardown: number;
+  still_short: number;
 };
-/** The forecast turned into a schedulable action: tear down N cores of which type,
- *  starting by when, covering this much of the shortfall and leaving that much to buy.
- *  It PROPOSES — accepting it raises the teardown work order through the normal path,
- *  because tearing a unit down commits physical cores and has no cheap undo. */
+/** Teardown proposed to refill recovered stock — one row per CORE TYPE, since one
+ *  core yields several components. It PROPOSES: accepting plans a teardown work order
+ *  (`usePlanTeardown`); nothing commits a core on its own. */
 export type RecoverRow = {
-  component: string; qty_short: number;
-  covered_by_teardown: number; still_to_buy: number;
-  need_by: string | null; start_by: string | null;
-  cores: RecoverCorePlan[];
+  core_type: string; core_type_id: string;
+  cores_to_tear_down: number;
+  /** Exchange cores received and on no work order — what may be committed. */
+  cores_available: number;
+  /** Already committed to a teardown; counted, not proposed again. */
+  cores_in_flight: number;
+  /** What accepting commits, oldest received first. */
+  candidate_cores: { id: string; core_number: string }[];
+  lead_time_days: number | null;
+  need_by: string | null;
+  /** Null when the core type has no authored teardown duration. */
+  start_by: string | null;
+  components: RecoverComponent[];
 };
 export type SourceRow = {
   material: string; qty_short: number; need_by: string; lead_time_days: number | null;
+  /** Extra shortfall if expected replacements on unopened repair-and-return units came
+   *  true. Beside `qty_short`, never in it: purchasing may buy ahead, nothing makes them. */
+  forecast_short?: number;
   order_by: string | null; incoming_date: string | null;
   /** What the core bank could yield of this component. A FORECAST — teardown hasn't
    *  happened — so it sits beside `qty_short` and is never subtracted from it. */
@@ -657,6 +674,8 @@ export type MaterialRequirementRow = {
   /** What the core bank could yield once torn down. NOT netted into `short_qty` —
    *  teardown has not happened, so it is a forecast beside facts. */
   recoverable?: number;
+  /** Expected replacements on a unit not yet opened. Never in `short_qty`. */
+  forecast?: number;
   short_qty: number; status: string; is_optional: boolean;
   lead_time_days: number | null; need_by: string | null; order_by: string | null;
 };

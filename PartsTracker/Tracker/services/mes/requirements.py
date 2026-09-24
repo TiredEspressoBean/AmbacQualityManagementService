@@ -12,9 +12,12 @@ order's expected start, else the horizon start.
 """
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 
-from Tracker.services.mes.bom import buy_line_item, line_allows_recovery
+from Tracker.services.mes.bom import buy_line_item
+from Tracker.services.reman.demand import (
+    LineDemand, takes_pooled_parts, work_order_line_demand,
+)
 
 # On-hand = usable stock. Incoming = inbound, not-yet-usable receipts. The two must be
 # disjoint or accepted stock double-counts (it's both "on hand" and "promised"): incoming
@@ -73,19 +76,32 @@ def work_order_material_requirements(work_order) -> dict:
     wo_need = sched.get((work_order.id, None)) or work_order.expected_start or h_date
 
     live_wo = ('PENDING', 'IN_PROGRESS', 'ON_HOLD', 'WAITING_FOR_OPERATOR')
-    # Recovered stock is supply for reman rebuilds only — see `usable_stock_parts`.
-    # A work order is reman when it carries cores, the same test scheduling uses.
-    is_reman = work_order.cores.exists()
+    # Recovered stock may only go into units that take pooled parts — exchange
+    # rebuilds. See `usable_stock_parts` and services/reman/demand.py.
+    takes_pool = takes_pooled_parts(work_order)
     rows = []
     # tenant-safe: `bom` is a tenant-scoped row; its lines belong to the same tenant.
-    for line in (BOMLine.objects.filter(bom=bom)
+    lines = list(BOMLine.objects.filter(bom=bom)
                  .select_related('component_type', 'material', 'consumed_at_step')
-                 .order_by('line_number')):
-        required = float(Decimal(str(line.quantity)) * Decimal(work_order.quantity))
+                 .order_by('line_number'))
+    # A reman work order's demand is read per core from where each core is — the
+    # same reading the buy list uses, so the two cannot disagree about one order.
+    reman = (work_order_line_demand(work_order, lines)
+             if work_order.cores.exists() else None)
+    for line in lines:
+        if reman is None:
+            required = float(Decimal(str(line.quantity)) * Decimal(work_order.quantity))
+            line_forecast, pool_ok = 0.0, False
+        else:
+            d = reman.get(line.id) or LineDemand()
+            required, line_forecast, pool_ok = d.firm, d.forecast, d.pool_eligible > 0
         step = line.consumed_at_step.name if line.consumed_at_step_id else None
         row = {
             'source': line.source,
             'quantity': required,
+            # Expected replacements on a unit not yet opened. Reported, never netted
+            # into `short_qty`.
+            'forecast': round(line_forecast, 2),
             'unit_of_measure': line.unit_of_measure or '',
             'consumed_at_step': step,
             'is_optional': line.is_optional,
@@ -129,7 +145,7 @@ def work_order_material_requirements(work_order) -> dict:
             # Zero on a new build: the bank's yield cannot go into it, so reporting
             # it there would invite a planner to wait on supply the job may not use.
             recoverable = (_recoverable_for(line, tenant=work_order.tenant)
-                           if is_reman and line_allows_recovery(line) else 0.0)
+                           if pool_ok else 0.0)
             row.update({
                 'component': buy.name, 'kind': 'BUY',
                 'buy_kind': buy.kind,
@@ -146,7 +162,7 @@ def work_order_material_requirements(work_order) -> dict:
         elif line.source == 'MAKE' and line.component_type_id:
             comp = line.component_type
             on_hand = float(usable_stock_parts(
-                comp.id, tenant=tenant, for_reman=is_reman).count())
+                comp.id, tenant=tenant, for_reman=takes_pool).count())
             pegged = float(WorkOrder.objects.filter(
                 tenant=tenant, pegged_to_workorder=work_order, pegged_to_bom_line=line,
                 workorder_status__in=live_wo).aggregate(s=Sum('quantity'))['s'] or 0)
@@ -155,7 +171,7 @@ def work_order_material_requirements(work_order) -> dict:
                 'component': comp.name, 'kind': 'MAKE',
                 'on_hand': on_hand, 'incoming': pegged,  # 'incoming' = qty on live child WOs
                 'recoverable': (_recoverable_for(line, tenant=work_order.tenant)
-                                if is_reman and line_allows_recovery(line) else 0.0),
+                                if pool_ok else 0.0),
                 'short_qty': short,
                 'status': 'ok' if short <= 0 else ('building' if pegged > 0 else 'short'),
                 # Made in-house, not purchased — no buy lead time / order-by.
@@ -254,11 +270,18 @@ def sourcing_requirements(tenant) -> dict:
                 if bom else [])
         return bom_cache[pt_id]
 
-    demand: dict = {}       # (kind, id) -> qty needed
-    # The share of `demand` coming from reman rebuilds. Recovered stock may only go
-    # into those, so it is the ceiling on what teardown can be proposed to cover —
-    # a new build's shortfall is always a purchase.
-    reman_demand: dict = {}
+    demand: dict = {}       # (kind, id) -> firm qty needed
+    # Expected replacements on repair-and-return units not yet opened. Kept apart from
+    # `demand` — nobody knows which parts a unit loses until it is torn down — and
+    # reported beside the buy figure, never inside it. See services/reman/demand.py.
+    forecast: dict = {}
+    # Replacements recovered stock may fill: slots on exchange rebuilds. The ONLY
+    # demand teardown can be proposed to cover — a repair-and-return unit keeps its
+    # own parts and is never offered the pool, and a new build never takes recovered
+    # stock at all.
+    pool_need: dict = {}
+    pool_need_by: dict = {}
+    pool_name: dict = {}
     need_by: dict = {}      # (kind, id) -> earliest need-by date
     buy_obj: dict = {}      # (kind, id) -> BuyItem
     for wo in (WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
@@ -267,41 +290,54 @@ def sourcing_requirements(tenant) -> dict:
         pt_id = wo.process.part_type_id
         if pt_id is None:
             continue
-        is_reman = bool(wo.cores.all())
         wo_need = sched.get((wo.id, None)) or wo.expected_start or h_date
-        for line in _lines(pt_id):
-            if line.is_optional:
-                continue
+        lines = [ln for ln in _lines(pt_id) if not ln.is_optional]
+        # A reman work order's demand is read per core from where each core is, not
+        # from its process BOM times its quantity: that asked for a full rebuild kit
+        # per core, for exchange cores only being harvested and for a unit's own
+        # nozzles that go back into it.
+        reman = work_order_line_demand(wo, lines) if wo.cores.all() else None
+        for line in lines:
+            if reman is None:
+                firm, fc, pool = float(line.quantity) * wo.quantity, 0.0, 0.0
+            else:
+                d = reman.get(line.id)
+                if d is None:
+                    continue
+                firm, fc, pool = d.firm, d.forecast, d.pool_eligible
+            nb = sched.get((wo.id, line.consumed_at_step_id)) or wo.expected_start or wo_need
+
+            # Pool demand is recorded BEFORE the buy filter: a recovered nozzle replaces
+            # a made one as well as a bought one. Gating it on BUY lines left the
+            # recover lane blind wherever the recoverable parts are made in-house.
+            if pool and line.component_type_id:
+                pk = ('PART_TYPE', line.component_type_id)
+                pool_need[pk] = pool_need.get(pk, 0.0) + pool
+                pool_name[pk] = line.component_type.name
+                if pk not in pool_need_by or nb < pool_need_by[pk]:
+                    pool_need_by[pk] = nb
+
             buy = buy_line_item(line)
             if buy is None:
                 continue
             k = buy.key
-            qty = float(line.quantity) * wo.quantity
-            demand[k] = demand.get(k, 0.0) + qty
-            # Reman AND the line allows recovery: a line override can forbid harvested
-            # parts (a customer contract, say), and that demand is a purchase too.
-            if is_reman and line_allows_recovery(line):
-                reman_demand[k] = reman_demand.get(k, 0.0) + qty
+            if firm:
+                demand[k] = demand.get(k, 0.0) + firm
+            if fc:
+                forecast[k] = forecast.get(k, 0.0) + fc
             buy_obj[k] = buy
-            nb = sched.get((wo.id, line.consumed_at_step_id)) or wo.expected_start or wo_need
             if k not in need_by or nb < need_by[k]:
                 need_by[k] = nb
 
     # --- recoverable: what teardown could yield, as its own lane ---------------
-    # Material planning counts stock and purchase orders and has no idea teardown is
-    # about to PRODUCE the component it is calling short — so a planner buys parts the
-    # shop was going to harvest. Only PART_TYPE keys can be recovered (you cannot
-    # harvest sealant) and only those the item master marks `can_recover`.
-    #
     # REPORTED, NEVER NETTED. Recoverable supply is a forecast — teardown has not
     # happened — while on-hand and on-order are facts. Subtracting it from `qty_short`
     # would let a planner skip an order on stock that does not exist yet, and the error
     # is asymmetric: over-counting future supply stops a line, under-counting only buys
-    # a part you could have harvested. So `qty_short` stays the buy figure and this
-    # rides alongside it.
+    # a part you could have harvested. Shown only where some exchange rebuild could use
+    # it: anywhere else the bank's yield is no help to the line.
     recoverable: dict = {}
-    # Only components some reman job needs: recovered stock cannot cover anything else.
-    pt_ids = [k[1] for k in demand if k[0] == 'PART_TYPE' and reman_demand.get(k)]
+    pt_ids = [k[1] for k in pool_need if k[0] == 'PART_TYPE']
     if pt_ids:
         from Tracker.models import PartTypes
         from Tracker.services.reman.recovery import recoverable_supply
@@ -310,116 +346,43 @@ def sourcing_requirements(tenant) -> dict:
             supply = recoverable_supply(pt, tenant=tenant)
             if supply.quantity > 0:
                 recoverable[('PART_TYPE', pt.id)] = supply
-    # Core types keyed by string id, so the recover lane can reach each one's authored
-    # teardown duration without a query per row.
-    from Tracker.services.reman.recovery import teardown_lead_days
-    core_types: dict = {}
-    if recoverable:
-        from Tracker.models import PartTypes as _PT
-        ct_ids = {src['core_type_id'] for sup in recoverable.values() for src in sup.sources}
-        for ct in _PT.objects.filter(tenant=tenant, id__in=list(ct_ids), archived=False):
-            core_types[str(ct.id)] = ct
 
     source = []
-    for k, qty in demand.items():
+    for k in set(demand) | set(forecast):
         buy = buy_obj[k]
         # Held-back buffer is not available to commit — see the per-WO pass above.
         safety = buy.safety_stock
-        short = qty - (onhand.get(k, 0.0) - safety) - incoming.get(k, 0.0)
-        if short <= 0:
+        cover = (onhand.get(k, 0.0) - safety) + incoming.get(k, 0.0)
+        firm = demand.get(k, 0.0)
+        short = firm - cover
+        # What ELSE would be short if the forecast came true — the part of the
+        # forecast that current cover does not already absorb. Purchasing can buy
+        # ahead on it; nothing here makes them.
+        forecast_short = max(0.0, firm + forecast.get(k, 0.0) - cover) - max(0.0, short)
+        if short <= 0 and forecast_short <= 0:
             continue
         nb = need_by.get(k, h_date)
         lead = buy.lead_time_days
         source.append({
             'material': buy.name,
             'buy_kind': buy.kind,
-            'qty_short': int(round(short)),
+            'qty_short': int(round(max(0.0, short))),
+            'forecast_short': round(forecast_short, 2),
             'safety_stock': safety,
             'need_by': nb,
             'lead_time_days': lead,
             'order_by': order_by(nb, lead),
             'incoming_date': incoming_date.get(k),
-            # Alongside `qty_short`, not subtracted from it — see the lane note above.
             'recoverable': float(recoverable[k].quantity) if k in recoverable else 0.0,
             'recoverable_cores': recoverable[k].core_count if k in recoverable else 0,
             # Which cores the number came from. A planner who cannot see the basis of a
             # forecast cannot judge whether to trust it, and an untrusted number is
             # just noise on the sheet.
             'recoverable_sources': recoverable[k].sources if k in recoverable else [],
-            # Internal join key for the recover lane below; popped before returning.
-            '_id': k[1] if k[0] == 'PART_TYPE' else None,
         })
     source.sort(key=lambda r: (r['order_by'] or r['need_by']))
 
-    # --- recover: turn the forecast into a schedulable action ------------------
-    # The `recoverable` column says the bank COULD yield 8. This says what to do about
-    # it: tear down N cores of which type, starting by when, covering this much of the
-    # shortfall and leaving that much to buy. That is the difference between a capacity
-    # statement and a plan.
-    #
-    # It PROPOSES; it does not raise the work order. Creating a teardown WO commits
-    # physical cores out of the bank on the strength of a forecast, and unlike a MAKE
-    # child WO there is no cheap undo — the unit is in pieces. So the lane is a
-    # proposal a planner accepts through the normal work-order path. Nothing here
-    # prevents auto-raising later; raising it now would prevent NOT auto-raising.
-    recover = []
-    for row in source:
-        k = ('PART_TYPE', row.get('_id'))
-        supply = recoverable.get(k)
-        if supply is None:
-            continue
-        short = float(row['qty_short'])
-        # Teardown can only cover the reman share of the shortfall; whatever new builds
-        # need is bought regardless of what the bank holds.
-        target = min(short, reman_demand.get(k, 0.0))
-        covered = min(target, float(supply.quantity))
-        if covered <= 0:
-            continue
-
-        # Allocate the coverable shortfall across the core types that yield it,
-        # greedily. A core is a physical unit: you tear down whole ones, so the count
-        # rounds UP.
-        remaining = target
-        plan = []
-        lead_known = True
-        worst_lead = 0
-        for src in supply.sources:
-            if remaining <= 0:
-                break
-            per_core = float(src['per_core'])
-            if per_core <= 0:
-                continue
-            want = min(int(-(-remaining // per_core)), int(src['cores']))
-            if want <= 0:
-                continue
-            lead = teardown_lead_days(core_types.get(src['core_type_id']), tenant=tenant)                 if src['core_type_id'] in core_types else None
-            if lead is None:
-                lead_known = False
-            else:
-                worst_lead = max(worst_lead, lead)
-            plan.append({
-                'core_type': src['core_type'],
-                'cores_to_tear_down': want,
-                'per_core': per_core,
-                'cores_available': int(src['cores']),
-                'lead_time_days': lead,
-            })
-            remaining -= want * per_core
-
-        nb = row['need_by']
-        recover.append({
-            'component': row['material'],
-            'qty_short': row['qty_short'],
-            'covered_by_teardown': covered,
-            'still_to_buy': max(0.0, short - covered),
-            'need_by': nb,
-            # Omitted when any contributing core type has no authored teardown
-            # duration. A made-up lead time is worse than none — it reads as authored
-            # fact on the sheet and a planner schedules against it.
-            'start_by': order_by(nb, worst_lead) if (lead_known and nb) else None,
-            'cores': plan,
-        })
-    recover.sort(key=lambda r: (r['start_by'] or r['need_by']))
+    recover = _recover_lane(tenant, pool_need, pool_need_by, pool_name, order_by)
 
     # --- produce: open pegged child work orders (MAKE) -----------------------
     produce = []
@@ -450,7 +413,92 @@ def sourcing_requirements(tenant) -> dict:
             'order_by': order_by(h_date, lead),
         })
 
-    for row in source:
-        row.pop('_id', None)
     return {'source': source, 'produce': produce, 'tooling': tooling,
             'recover': recover}
+
+
+def _recover_lane(tenant, pool_need, need_by, names, order_by) -> list:
+    """Teardown proposed to refill the recovered pool — one row per CORE TYPE.
+
+    Per core type, not per component: one core yields several components, so a
+    per-component list asks for the same unit over and over — nozzles need 2 cores,
+    bodies need 3 of the same type, and the answer is 3 cores, not 5.
+
+    What it covers is pool demand: replacement slots on exchange rebuilds. Against
+    that it counts, in order, what is already on the shelf and what teardowns already
+    committed will yield, and proposes only the rest — so accepting a proposal makes
+    it disappear rather than reappear.
+
+    It PROPOSES; accepting raises a PLANNED teardown work order through
+    `plan_teardown`. Nothing here commits a core: a unit in pieces has no undo.
+    """
+    from math import ceil
+    from Tracker.services.mes.bom import recovered_stock_by_type
+    from Tracker.services.reman.recovery import teardown_banks, teardown_lead_days
+
+    comp_ids = [k[1] for k, q in pool_need.items() if k[0] == 'PART_TYPE' and q > 0]
+    if not comp_ids:
+        return []
+    banks = teardown_banks(tenant)
+    on_shelf = recovered_stock_by_type(tenant)
+
+    in_flight_yield: dict = {}
+    for bank in banks.values():
+        for comp, per_core in bank.yields.items():
+            in_flight_yield[comp] = in_flight_yield.get(comp, 0.0) + bank.in_flight * per_core
+
+    gap, basis = {}, {}
+    for comp in comp_ids:
+        need = pool_need[('PART_TYPE', comp)]
+        shelf = float(on_shelf.get(comp, 0))
+        flight = in_flight_yield.get(comp, 0.0)
+        gap[comp] = max(0.0, need - shelf - flight)
+        basis[comp] = {'needed': need, 'on_shelf': shelf, 'in_flight': round(flight, 2)}
+
+    rows = []
+    for ct_id, bank in sorted(banks.items(), key=lambda kv: kv[1].core_type.name):
+        comps = [c for c in bank.yields if gap.get(c, 0.0) > 0]
+        if not comps or not bank.proposable:
+            continue
+        # Enough units for the component that needs the most of them; the others ride
+        # along. Whole units — you cannot tear down part of a core.
+        n = min(max(ceil(gap[c] / bank.yields[c]) for c in comps), len(bank.proposable))
+        components = []
+        for c in comps:
+            covered = min(gap[c], n * bank.yields[c])
+            gap[c] -= covered
+            components.append({
+                'component': names[('PART_TYPE', c)],
+                '_id': c,
+                **basis[c],
+                'covered_by_teardown': round(covered, 2),
+            })
+        needs = [need_by[('PART_TYPE', c)] for c in comps if ('PART_TYPE', c) in need_by]
+        nb = min(needs) if needs else None
+        lead = teardown_lead_days(bank.core_type, tenant=tenant)
+        rows.append({
+            'core_type': bank.core_type.name,
+            'core_type_id': str(ct_id),
+            'cores_to_tear_down': n,
+            'cores_available': len(bank.proposable),
+            'cores_in_flight': bank.in_flight,
+            # What "accept" commits, oldest received first. A planner can swap them:
+            # these are the default, not a decision.
+            'candidate_cores': [{'id': str(core.id), 'core_number': core.core_number}
+                                for core in bank.proposable[:n]],
+            'lead_time_days': lead,
+            'need_by': nb,
+            # Omitted when the core type has no authored teardown duration. A made-up
+            # lead time reads as authored fact on the sheet and gets scheduled against.
+            'start_by': order_by(nb, lead) if (lead is not None and nb) else None,
+            'components': components,
+        })
+
+    # What is still short once every core type has contributed — set last, since a
+    # component can be yielded by more than one type.
+    for row in rows:
+        for comp in row['components']:
+            comp['still_short'] = round(gap[comp.pop('_id')], 2)
+    # Soonest first; an undated row sorts last rather than failing the comparison.
+    rows.sort(key=lambda r: r['start_by'] or r['need_by'] or date.max)
+    return rows

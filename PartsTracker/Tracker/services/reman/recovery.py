@@ -131,16 +131,18 @@ def teardown_lead_days(core_type, tenant=None) -> int | None:
     is worse than none: it reads as authored fact on the sheet and a planner schedules
     against it.
     """
-    from Tracker.models import Processes, ProcessStep
+    from Tracker.models import ProcessStep
+    from Tracker.services.reman.teardown import _resolve_teardown_process
 
-    proc = Processes.objects.filter(  # tenant-safe: .objects auto-scopes; `tenant` narrows further when passed
-        part_type=core_type, is_disassembly=True, is_current_version=True,
-        archived=False,
-    )
-    if tenant is not None:
-        proc = proc.filter(tenant=tenant)
-    proc = proc.first()
-    if proc is None:
+    # The process a planned teardown would ACTUALLY use — the same resolution
+    # `plan_teardown` applies — rather than whichever disassembly process sorts first.
+    # A core type can carry several, and a lead time read off the wrong one is a date
+    # nobody will meet.
+    try:
+        proc = _resolve_teardown_process(core_type, None)
+    except ValueError:
+        return None
+    if tenant is not None and proc.tenant_id != tenant.id:
         return None
 
     total = timedelta()
@@ -157,3 +159,56 @@ def teardown_lead_days(core_type, tenant=None) -> int | None:
     # planner's calendar, and rounding down would quietly promise the components a day
     # earlier than the shop can produce them.
     return max(1, -(-int(total.total_seconds()) // 86400))
+
+
+@dataclass(frozen=True)
+class TeardownBank:
+    """One core type's exchange cores, split by whether they are still free to plan."""
+    core_type: object
+    #: RECEIVED and on no work order — what a proposal may commit. Oldest first, so a
+    #: planner's default is the unit that has waited longest.
+    proposable: list
+    #: Already committed: on a teardown work order, or being torn down now. Their yield
+    #: is on its way, so a proposal must count it rather than propose them again.
+    in_flight: int
+    #: Expected usable yield per core, by component type id.
+    yields: dict
+
+
+def teardown_banks(tenant) -> dict:
+    """`{core_type_id: TeardownBank}` for every core type with exchange cores waiting.
+
+    Exchange only, as everywhere in this module: a repair-and-return unit's parts go
+    back into it and are nobody else's supply.
+    """
+    from Tracker.models import Core, DisassemblyBOMLine
+
+    by_type: dict = {}
+    for core in (Core.objects  # tenant-safe: explicit tenant filter
+                 .filter(tenant=tenant, archived=False, status__in=_bank_statuses())
+                 .select_related('core_type')
+                 .order_by('received_date', 'created_at')):
+        if not core.allows_pooled_harvest:
+            continue
+        entry = by_type.setdefault(core.core_type_id,
+                                   {'core_type': core.core_type, 'free': [], 'flight': 0})
+        if core.status == 'RECEIVED' and core.work_order_id is None:
+            entry['free'].append(core)
+        else:
+            entry['flight'] += 1
+    if not by_type:
+        return {}
+
+    yields: dict = {}
+    for line in (DisassemblyBOMLine.objects  # tenant-safe: explicit tenant filter
+                 .filter(tenant=tenant, core_type_id__in=list(by_type),
+                         is_current_version=True, archived=False)):
+        per_core = float(line.expected_usable_qty)
+        if per_core > 0:
+            yields.setdefault(line.core_type_id, {})[line.component_type_id] = per_core
+
+    return {
+        ct_id: TeardownBank(core_type=e['core_type'], proposable=e['free'],
+                            in_flight=e['flight'], yields=yields.get(ct_id, {}))
+        for ct_id, e in by_type.items()
+    }

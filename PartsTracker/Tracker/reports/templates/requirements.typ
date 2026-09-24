@@ -65,7 +65,8 @@
   #for (idx, r) in data.source.enumerate() [
     #drow(idx, src-cols, (
       align(horizon)[#text(font: sans-font)[#r.material]],
-      align(horizon + right)[#text(font: mono-font)[#r.qty_short]],
+      align(horizon + right)[#text(font: mono-font)[#r.qty_short]
+        #if r.forecast_short > 0 [#linebreak()#text(size: 7pt, fill: muted)[+#r.forecast_short forecast]]],
       align(horizon + right)[#if r.recoverable <= 0 [#text(fill: muted)[—]] else [
         #text(font: mono-font)[#r.recoverable]
         #text(size: 7pt, fill: muted)[ (#r.recoverable_cores cores)]
@@ -79,22 +80,25 @@
 ]
 
 // ── RECOVER (tear down) ────────────────────────────────────────────────────────
-// Between Source and Produce because that is the order the decision is made in: the
-// buy list says a line is short, this says how much the core bank could cover instead.
-// A PROPOSAL — nothing here commits a core.
-#let rec-cols = (1.8fr, 0.6fr, 2.2fr, 0.7fr, 0.8fr, 1fr)
-#section-header("Recover — teardown proposed to cover a shortfall", data.recover.len())
-#hrow(rec-cols, (hcell[Component], hcell(a: right)[Short], hcell[Tear down], hcell(a: right)[Covers], hcell(a: right)[Buy], hcell[Start by]))
+// One row per CORE TYPE: one core yields several components, so a per-component list
+// would ask for the same unit repeatedly. Covers replacement slots on exchange rebuilds
+// — the only demand recovered stock may fill — after what is on the shelf and what
+// teardowns already committed will yield. A PROPOSAL — nothing here commits a core.
+#let rec-cols = (1.4fr, 0.8fr, 0.9fr, 2.6fr, 1fr)
+#section-header("Recover — teardown proposed to refill recovered stock", data.recover.len())
+#hrow(rec-cols, (hcell[Core type], hcell(a: right)[Tear down], hcell(a: right)[Committed], hcell[Covers], hcell[Start by]))
 #if data.recover.len() == 0 [ #drow(0, (1fr,), (text(fill: muted, style: "italic")[Nothing to recover.],)) ] else [
   #for (idx, r) in data.recover.enumerate() [
     #drow(idx, rec-cols, (
-      align(horizon)[#text(font: sans-font)[#r.component]],
-      align(horizon + right)[#text(font: mono-font)[#r.qty_short]],
-      align(horizon)[#for c in r.cores [
-        #text(font: sans-font)[#c.cores_to_tear_down × #c.core_type]
-        #text(size: 7pt, fill: muted)[ (#c.cores_available in bank)]       ]],
-      align(horizon + right)[#text(font: mono-font)[#r.covered_by_teardown]],
-      align(horizon + right)[#text(font: mono-font)[#r.still_to_buy]],
+      align(horizon)[#text(font: sans-font)[#r.core_type]
+        #linebreak()#text(size: 7pt, fill: muted)[#r.cores_available in bank]],
+      align(horizon + right)[#text(font: mono-font)[#r.cores_to_tear_down]],
+      align(horizon + right)[#text(font: mono-font)[#r.cores_in_flight]],
+      align(horizon)[#for c in r.components [
+        #text(font: sans-font)[#c.component: #c.covered_by_teardown]
+        #if c.still_short > 0 [#text(size: 7pt, fill: muted)[ (#c.still_short still short)]]
+        #linebreak()
+      ]],
       align(horizon)[#if r.start_by == none [#text(fill: muted)[—]] else [#date-cell(r.start_by)]],
     ))
   ]

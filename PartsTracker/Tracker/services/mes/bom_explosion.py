@@ -118,9 +118,10 @@ def _available_supply(component_type, parent_wo, line) -> Decimal:
     # build — recovered parts are on the shelf but unusable here. Over-counting cover
     # is the dangerous direction: explosion would skip raising the work order that
     # makes the component.
+    from Tracker.services.reman.demand import takes_pooled_parts
     on_hand = usable_stock_parts(
         component_type.id, tenant=parent_wo.tenant,
-        for_reman=parent_wo.cores.exists(),
+        for_reman=takes_pooled_parts(parent_wo),
     ).count()
     pegged = (
         WorkOrder.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant

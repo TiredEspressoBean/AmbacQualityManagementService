@@ -5518,6 +5518,37 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/Cores/plan_teardown/:
+    post:
+      operationId: api_Cores_plan_teardown_create
+      description: 'Accept a teardown proposal: create one PENDING teardown WorkOrder
+        dated to `start_by` that links the given cores WITHOUT starting disassembly.
+        The cores stay RECEIVED until an operator starts the first step. All-or-nothing;
+        the same rules as start_teardown_batch.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorePlanTeardownInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CorePlanTeardownInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CorePlanTeardownInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorePlanTeardownResponse'
+          description: ''
   /api/Cores/start_teardown_batch/:
     post:
       operationId: api_Cores_start_teardown_batch_create
@@ -43978,6 +44009,40 @@ components:
       - id
       - received_date
       - usable_component_count
+    CorePlanTeardownInputRequest:
+      type: object
+      properties:
+        core_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        start_by:
+          type: string
+          format: date
+          nullable: true
+        process_id:
+          type: string
+          format: uuid
+      required:
+      - core_ids
+    CorePlanTeardownResponse:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+          format: uuid
+        work_order_erp_id:
+          type: string
+        planned_core_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - planned_core_ids
+      - work_order_erp_id
+      - work_order_id
     CoreReleaseInventory:
       type: object
       properties:
@@ -62989,40 +63054,63 @@ components:
             $ref: '#/components/schemas/ReceivingSampleUnitRequest'
       required:
       - units
-    RecoverCorePlan:
+    RecoverCandidateCore:
       type: object
       properties:
-        core_type:
+        id:
           type: string
-        cores_to_tear_down:
-          type: integer
-        per_core:
-          type: number
-          format: double
-        cores_available:
-          type: integer
-        lead_time_days:
-          type: integer
-          nullable: true
+        core_number:
+          type: string
       required:
-      - core_type
-      - cores_available
-      - cores_to_tear_down
-      - lead_time_days
-      - per_core
-    RecoverRequirement:
+      - core_number
+      - id
+    RecoverComponent:
       type: object
       properties:
         component:
           type: string
-        qty_short:
-          type: integer
+        needed:
+          type: number
+          format: double
+        on_shelf:
+          type: number
+          format: double
+        in_flight:
+          type: number
+          format: double
         covered_by_teardown:
           type: number
           format: double
-        still_to_buy:
+        still_short:
           type: number
           format: double
+      required:
+      - component
+      - covered_by_teardown
+      - in_flight
+      - needed
+      - on_shelf
+      - still_short
+    RecoverRequirement:
+      type: object
+      properties:
+        core_type:
+          type: string
+        core_type_id:
+          type: string
+        cores_to_tear_down:
+          type: integer
+        cores_available:
+          type: integer
+        cores_in_flight:
+          type: integer
+        candidate_cores:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoverCandidateCore'
+        lead_time_days:
+          type: integer
+          nullable: true
         need_by:
           type: string
           format: date
@@ -63031,18 +63119,21 @@ components:
           type: string
           format: date
           nullable: true
-        cores:
+        components:
           type: array
           items:
-            $ref: '#/components/schemas/RecoverCorePlan'
+            $ref: '#/components/schemas/RecoverComponent'
       required:
-      - component
-      - cores
-      - covered_by_teardown
+      - candidate_cores
+      - components
+      - core_type
+      - core_type_id
+      - cores_available
+      - cores_in_flight
+      - cores_to_tear_down
+      - lead_time_days
       - need_by
-      - qty_short
       - start_by
-      - still_to_buy
     RecoverableSource:
       type: object
       properties:
@@ -65701,6 +65792,9 @@ components:
           type: string
         qty_short:
           type: integer
+        forecast_short:
+          type: number
+          format: double
         safety_stock:
           type: number
           format: double
@@ -65730,6 +65824,7 @@ components:
             $ref: '#/components/schemas/RecoverableSource'
       required:
       - buy_kind
+      - forecast_short
       - incoming_date
       - lead_time_days
       - material
@@ -72942,6 +73037,9 @@ components:
         quantity:
           type: number
           format: double
+        forecast:
+          type: number
+          format: double
         unit_of_measure:
           type: string
         consumed_at_step:
@@ -72978,6 +73076,7 @@ components:
       - buy_kind
       - component
       - consumed_at_step
+      - forecast
       - incoming
       - is_optional
       - kind

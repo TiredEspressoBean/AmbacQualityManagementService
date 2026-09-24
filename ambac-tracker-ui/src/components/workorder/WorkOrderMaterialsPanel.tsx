@@ -92,6 +92,13 @@ export function WorkOrderMaterialsPanel({ workOrderId }: { workOrderId: string }
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {num(r.quantity)} {r.unit_of_measure}
+                    {/* A reman order's expected replacements on units not yet opened —
+                        a forecast, shown beside the firm quantity and never added to it. */}
+                    {(r.forecast ?? 0) > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{num(r.forecast ?? 0)} forecast
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{num(r.on_hand)}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
