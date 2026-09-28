@@ -106,9 +106,11 @@ def start_teardown_batch(
             status=WorkOrderStatus.IN_PROGRESS,
             notes=f"Teardown batch of {len(cores)} cores",
         )
+        entry = _entry_step(target_process)
         for core in cores:
-            # A core's position is its part's: put the UNIT on the work order.
-            move_core(core, work_order=wo)
+            # A core's position is its part's: put the UNIT on the work order, at the
+            # route's first step — or there is nowhere to open it in the DWI runtime.
+            move_core(core, work_order=wo, step=entry)
             start_core_disassembly(core, user)
 
         logger.info(
@@ -134,11 +136,26 @@ def _validate_batch(cores, process):
             raise ValueError(
                 f"Core {core.core_number} is not RECEIVED (status={core.status})",
             )
-        if core.work_order_id is not None:
+        if core.part.work_order_id is not None:
             raise ValueError(
                 f"Core {core.core_number} is already linked to a work order",
             )
     return shared_core_type, _resolve_teardown_process(shared_core_type, process)
+
+
+def _entry_step(process):
+    """Where a unit enters this route: its authored entry point, else its first step
+    by order — the rule ordinary work orders use. A teardown once linked its cores to
+    the work order with NO step, which left the DWI runtime nothing to open."""
+    from Tracker.models import ProcessStep
+    entry = process.get_entry_step()
+    if entry is not None:
+        return entry
+    first = (ProcessStep.objects.filter(process=process)  # tenant-safe: scoped by `process` FK
+             .select_related('step').order_by('order').first())
+    if first is None:
+        raise ValueError(f"Process {process} has no steps to tear down on")
+    return first.step
 
 
 def _create_teardown_work_order(tenant, core_type, process, quantity, *, status,
@@ -184,9 +201,11 @@ def plan_teardown(cores: list[Core], user, *, start_by=None,
             notes=f"Planned teardown of {len(cores)} cores"
                   + (f", start by {start_by}" if start_by else ""),
         )
+        entry = _entry_step(target_process)
         for core in cores:
-            # A core's position is its part's: put the UNIT on the work order.
-            move_core(core, work_order=wo)
+            # A core's position is its part's: put the UNIT on the work order, at the
+            # route's first step, where an operator will start it.
+            move_core(core, work_order=wo, step=entry)
 
         logger.info(
             "Planned teardown WO %s: %d cores (core_type=%s), start by %s",

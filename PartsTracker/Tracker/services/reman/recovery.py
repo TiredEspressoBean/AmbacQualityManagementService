@@ -84,6 +84,11 @@ def recoverable_supply(component_type, tenant=None) -> RecoverableSupply:
             core_count=0, sources=[],
         )
 
+    from Tracker.services.reman.core_lot import bank_lots
+    lot_units: dict = {}
+    for lot in bank_lots(tenant, core_type_ids=list(yields)):
+        lot_units[lot.material_type_id] = lot_units.get(lot.material_type_id, 0) + int(lot.quantity_remaining)
+
     total = Decimal('0')
     cores_counted = 0
     sources = []
@@ -95,18 +100,23 @@ def recoverable_supply(component_type, tenant=None) -> RecoverableSupply:
         )
         # Exchange only: a repair-and-return core's components go back into it.
         available = [c for c in bank if c.allows_pooled_harvest]
-        if not available:
+        # Plus the units still unidentified in core lots — exchange by construction.
+        in_lots = lot_units.get(core_type_id, 0)
+        units = len(available) + in_lots
+        if not units:
             continue
         per_core = Decimal(str(line.expected_usable_qty))
-        qty = per_core * len(available)
+        qty = per_core * units
         total += qty
-        cores_counted += len(available)
+        cores_counted += units
         sources.append({
             'core_type': line.core_type.name,
             # Carried so a planner-facing lane can reach the core type's own teardown
             # lead time without re-deriving which types yielded the number.
             'core_type_id': str(line.core_type_id),
-            'cores': len(available),
+            'cores': units,
+            # Of `cores`, how many are still unidentified in a bulk lot.
+            'in_lots': in_lots,
             'per_core': float(per_core),
             'quantity': float(qty),
         })
@@ -173,6 +183,18 @@ class TeardownBank:
     in_flight: int
     #: Expected usable yield per core, by component type id.
     yields: dict
+    #: Core lots of this type with units still unidentified, oldest first. Free to plan
+    #: like `proposable`, but a unit must be given an identity before it is committed.
+    lots: tuple = ()
+
+    @property
+    def lot_units(self) -> int:
+        return sum(int(lot.quantity_remaining) for lot in self.lots)
+
+    @property
+    def available(self) -> int:
+        """Units a proposal may draw on: identified cores and unidentified lot units."""
+        return len(self.proposable) + self.lot_units
 
 
 def teardown_banks(tenant) -> dict:
@@ -192,10 +214,16 @@ def teardown_banks(tenant) -> dict:
             continue
         entry = by_type.setdefault(core.core_type_id,
                                    {'core_type': core.core_type, 'free': [], 'flight': 0})
-        if core.status == 'RECEIVED' and core.work_order_id is None:
+        if core.status == 'RECEIVED' and core.part.work_order_id is None:
             entry['free'].append(core)
         else:
             entry['flight'] += 1
+    # The unidentified half of the bank. A type seen only in bulk still gets a bank.
+    from Tracker.services.reman.core_lot import bank_lots
+    for lot in bank_lots(tenant):
+        entry = by_type.setdefault(lot.material_type_id,
+                                   {'core_type': lot.material_type, 'free': [], 'flight': 0})
+        entry.setdefault('lots', []).append(lot)
     if not by_type:
         return {}
 
@@ -209,6 +237,7 @@ def teardown_banks(tenant) -> dict:
 
     return {
         ct_id: TeardownBank(core_type=e['core_type'], proposable=e['free'],
-                            in_flight=e['flight'], yields=yields.get(ct_id, {}))
+                            in_flight=e['flight'], yields=yields.get(ct_id, {}),
+                            lots=tuple(e.get('lots', ())))
         for ct_id, e in by_type.items()
     }

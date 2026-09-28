@@ -464,6 +464,13 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     "id": serializers.CharField(),
                     "core_number": serializers.CharField(),
                 }),
+                # The remainder, drawn from bulk core lots: units without an identity yet,
+                # which must be given one before a teardown can commit them.
+                "candidate_lots": inline_serializer(name="RecoverCandidateLot", many=True, fields={
+                    "id": serializers.CharField(),
+                    "lot_number": serializers.CharField(),
+                    "quantity": serializers.IntegerField(),
+                }),
                 "lead_time_days": serializers.IntegerField(allow_null=True),
                 "need_by": serializers.DateField(allow_null=True),
                 # Null when the core type has no authored teardown duration.

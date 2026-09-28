@@ -5,6 +5,7 @@ from rest_framework import serializers
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
 from Tracker.models.scheduling import StepTiming
+from Tracker.models.mes_lite import PROGRESS_DONE_STATUSES
 from Tracker.models import (
     # MES Lite models
     Orders, OrdersStatus, OrderLine, OrderLineStatus, Parts, PartsStatus,
@@ -316,7 +317,7 @@ class OrdersSerializer(SecureModelMixin, BulkOperationsMixin):
     def get_parts_summary(self, obj):
         """Use model method for parts distribution"""
         return {'total_parts': obj.parts.count(), 'step_distribution': obj.get_step_distribution(),
-                'completed_parts': obj.parts.filter(part_status=PartsStatus.COMPLETED).count()}
+                'completed_parts': obj.parts.filter(part_status__in=PROGRESS_DONE_STATUSES).count()}
 
     @extend_schema_field({"type": "array", "items": _STAGE_SCHEMA})
     def get_process_stages(self, obj):
@@ -434,7 +435,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
         from Tracker.models import ProcessStep
 
         total = obj.parts.count()
-        completed = obj.parts.filter(part_status=PartsStatus.COMPLETED).count()
+        completed = obj.parts.filter(part_status__in=PROGRESS_DONE_STATUSES).count()
 
         if total == 0:
             return {
@@ -469,8 +470,8 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
         # Step order is 1-based, so step_order / total_steps gives progress
         total_progress = 0.0
         for part in obj.parts.select_related('step').all():
-            if part.part_status == PartsStatus.COMPLETED:
-                # Completed parts count as 100%
+            if part.part_status in PROGRESS_DONE_STATUSES:
+                # Completed parts (and harvested cores) count as 100%
                 total_progress += 1.0
             elif part.step_id and part.step_id in step_order_map:
                 # Progress = step_order / total_steps (1-based order)
@@ -530,6 +531,10 @@ class WorkOrderCoreSerializer(serializers.Serializer):
 class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
     """Enhanced parts serializer using model methods"""
 
+    # A core is a part; this is the role row when it plays one. Nullable on purpose —
+    # almost every part is not a core.
+    core_role = serializers.SerializerMethodField()
+
     # QA status from model properties (single source of truth)
     needs_qa = serializers.BooleanField(read_only=True)
     qa_completed = serializers.BooleanField(read_only=True)
@@ -574,6 +579,10 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
                   # accept time and released through its own service, never as a side
                   # effect of editing a part.
                   'reserved_for_core', 'reserved_for_core_number',
+                  # The reman core this part IS, when it plays that role — null for an
+                  # ordinary part. What the DWI runtime reads to reach the unit's rebuild
+                  # plan (Documents/CORE_AS_PART_DESIGN.md).
+                  'core_role',
                   # Lot-split genealogy (PART grain — distinct from WorkOrder.split_reason/at).
                   'split_from_lot', 'lot_split_reason', 'lot_split_at', 'rejoined_at')
         read_only_fields = (
@@ -594,7 +603,36 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
         if 'work_order' in attrs and self.instance is not None:
             from Tracker.services.reman.reservation import assert_work_order_allowed
             assert_work_order_allowed(self.instance, attrs['work_order'])
+        if self.instance is not None and ('part_status' in attrs or 'work_order' in attrs):
+            self._validate_core_part(attrs)
         return attrs
+
+    def _validate_core_part(self, attrs):
+        """A core's part follows its reman stage (Documents/CORE_AS_PART_DESIGN.md), so
+        an edit here must not move it around the stage: its order is set by teardown
+        planning and its ending by the core's own actions."""
+        from Tracker.services.reman.core_part import assert_status_settable
+        from Tracker.services.reman.core_steps import core_of
+
+        part = self.instance
+        core = core_of(part)
+        if core is None:
+            return
+        if 'work_order' in attrs and attrs['work_order'] != part.work_order:
+            raise serializers.ValidationError({'work_order': (
+                f"{core.core_number} is a core; it is put on a work order by planning its "
+                "teardown, not by editing the part")})
+        new_status = attrs.get('part_status', part.part_status)
+        if new_status == part.part_status:
+            return
+        if new_status == PartsStatus.SCRAPPED:
+            raise serializers.ValidationError({'part_status': (
+                f"{core.core_number} is a core; scrap it from the core so its stage "
+                "records it")})
+        try:
+            assert_status_settable(part, new_status)
+        except ValueError as exc:
+            raise serializers.ValidationError({'part_status': str(exc)}) from exc
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_lot_split_reason(self, obj):
@@ -614,6 +652,14 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             return {'id': obj.part_type.id, 'name': obj.part_type.name, 'version': obj.part_type.version,
                     'ID_prefix': obj.part_type.ID_prefix}
         return None
+
+    @extend_schema_field(serializers.UUIDField(allow_null=True))
+    def get_core_role(self, obj):
+        from Tracker.models import Core
+        try:
+            return obj.core_role.id
+        except Core.DoesNotExist:
+            return None
 
     @extend_schema_field(serializers.UUIDField(allow_null=True))
     def get_process(self, obj):

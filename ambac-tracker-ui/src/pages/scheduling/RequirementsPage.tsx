@@ -4,6 +4,7 @@
  * and by when. Three lanes (source / produce / tooling) with lead-time-driven order-by
  * dates; rows past their order-by are flagged. Export to spreadsheet (CSV) or PDF.
  */
+import { Link } from "@tanstack/react-router";
 import { ClipboardList, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ function PlanTeardownButton({ row }: { row: RecoverRow }) {
   const [startBy, setStartBy] = useState(row.start_by ?? "");
   const plan = usePlanTeardown();
   const n = row.candidate_cores.length;
+  const lotUnits = row.candidate_lots.reduce((sum, l) => sum + l.quantity, 0);
   const noun = `${row.core_type} core${n === 1 ? "" : "s"}`;
 
   const submit = () =>
@@ -78,6 +80,15 @@ function PlanTeardownButton({ row }: { row: RecoverRow }) {
               {row.candidate_cores.map((c) => c.core_number).join(", ")}
             </div>
           </div>
+          {lotUnits > 0 && (
+            <p className="rounded border border-amber-300/60 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200">
+              The proposal also draws {lotUnits} unit{lotUnits === 1 ? "" : "s"} from{" "}
+              {row.candidate_lots.map((l) => `${l.lot_number} (${l.quantity})`).join(", ")}.
+              Those have no identity yet, so this plans only the {n} identified.{" "}
+              <Link to="/reman/core-lots" className="underline">Identify them on Core lots</Link>
+              {" "}and the next proposal commits them.
+            </p>
+          )}
           <label className="block">
             <span className="mb-1 block text-muted-foreground">Start by</span>
             <Input type="date" value={startBy} onChange={(e) => setStartBy(e.target.value)} />
@@ -285,6 +296,10 @@ export function RequirementsPage() {
                 <div className="text-xs text-muted-foreground">
                   {r.cores_available} in bank
                   {r.cores_in_flight > 0 && ` · ${r.cores_in_flight} already committed`}
+                  {r.candidate_lots.length > 0 && (
+                    <> · {r.candidate_lots.reduce((s, l) => s + l.quantity, 0)} of the proposal
+                      from <Link to="/reman/core-lots" className="underline">bulk lots</Link></>
+                  )}
                 </div>
               </td>
               <td className="p-3 text-right tabular-nums">{r.cores_to_tear_down}</td>

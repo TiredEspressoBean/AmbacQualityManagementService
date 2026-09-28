@@ -222,8 +222,13 @@ def reduce_work_order_quantity(work_order: WorkOrder, new_quantity: int, user=No
             f"worked and can't be cancelled by a quantity change."
         )
 
+    from Tracker.services.reman.core_part import release_from_order_if_core
+
     with transaction.atomic():
         for p in removable[:to_remove]:
+            # A core is not cancelled — it goes back to the bank (core_part).
+            if release_from_order_if_core(p):
+                continue
             p.part_status = PartsStatus.CANCELLED
             p.save(update_fields=['part_status'])
         work_order.quantity = new_quantity
@@ -513,6 +518,18 @@ def _select_parts_for_split(
         if not part_ids:
             raise ValueError("part_ids is required for OPERATION/REWORK split")
         parts = list(base.filter(id__in=part_ids))
+        if reason == WorkOrderSplitReason.REWORK:
+            # A rework split restarts a part from nothing (PENDING, no step). A core's
+            # part follows its reman stage, which that would leave behind; a core is
+            # reworked inside its teardown or rebuild instead.
+            from Tracker.models import Core
+            cores = list(Core.unscoped.filter(tenant_id=parent_wo.tenant_id, part__in=parts)  # tenant-safe: explicit tenant filter
+                         .values_list('core_number', flat=True))
+            if cores:
+                raise ValueError(
+                    f"{', '.join(cores)} {'is a core' if len(cores) == 1 else 'are cores'}; "
+                    "rework a core within its teardown or rebuild, not by a rework split"
+                )
         if len(parts) != len(set(part_ids)):
             raise ValueError("One or more part_ids do not belong to this work order")
         return parts

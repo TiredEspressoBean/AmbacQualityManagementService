@@ -306,7 +306,7 @@ class CoreStartTeardownBatchTests(BulkActionsBaseTestCase):
         for core in cores:
             core.refresh_from_db()
             self.assertEqual(core.status, 'IN_DISASSEMBLY')
-            self.assertEqual(core.work_order_id, wo.id)
+            self.assertEqual(core.part.work_order_id, wo.id)
             self.assertIsNotNone(core.disassembly_started_at)
 
     def test_rejects_mismatched_core_types(self):
@@ -386,7 +386,7 @@ class CorePlanTeardownTests(BulkActionsBaseTestCase):
         self.assertEqual(wo.expected_start.isoformat(), start)
         for core in cores:
             core.refresh_from_db()
-            self.assertEqual(core.work_order_id, wo.id)
+            self.assertEqual(core.part.work_order_id, wo.id)
             self.assertEqual(core.status, 'RECEIVED')
             self.assertIsNone(core.disassembly_started_at)
 
@@ -408,3 +408,101 @@ class CorePlanTeardownTests(BulkActionsBaseTestCase):
         self.assertEqual(first.status_code, 201, first.content)
         again = self.client.post(self.url(), {"core_ids": [str(core.id)]}, format="json")
         self.assertEqual(again.status_code, 400)
+
+
+class CoreLotApiTests(BulkActionsBaseTestCase):
+    """/api/Cores/receive_lot/, /assign_identity/, /lots/ — bulk core receipt over HTTP.
+
+    The service rules are tested with the bank (test_buy_part_type_lines); these pin the
+    HTTP contract the generated client depends on, including that `lots` is a plain
+    array — the schema once promised pagination the view did not return."""
+
+    def setUp(self):
+        super().setUp()
+        # A first individually-received core makes the injector a core type.
+        create_core(tenant=self.tenant, core_number="SEED-1", core_type=self.injector_type,
+                    received_date=date.today(), received_by=self.user, condition_grade='A')
+
+    def _receive(self, qty=3, **extra):
+        return self.client.post("/api/Cores/receive_lot/", {
+            "core_type": str(self.injector_type.id), "quantity": qty, **extra,
+        }, format="json")
+
+    def test_receive_identify_and_list(self):
+        r = self._receive(qty=2, source_reference="PALLET-7")
+        self.assertEqual(r.status_code, 201, r.content)
+        lot = r.json()
+        self.assertEqual((lot['quantity'], lot['unidentified']), (2, 2))
+
+        r = self.client.post("/api/Cores/assign_identity/", {
+            "lot": lot['id'], "condition_grade": "B"}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()['fulfilment_mode'], "EXCHANGE")
+
+        r = self.client.get("/api/Cores/lots/")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIsInstance(r.json(), list)
+        [row] = r.json()
+        self.assertEqual((row['lot_number'], row['unidentified'], row['source_reference']),
+                         (lot['lot_number'], 1, "PALLET-7"))
+
+    def test_a_refused_receipt_says_why(self):
+        r = self._receive(qty=0)
+        self.assertEqual(r.status_code, 400)
+        from Tracker.models import Companies
+        acme = Companies.objects.create(tenant=self.tenant, name="Acme RR",
+                                        default_core_fulfilment_mode="REPAIR_RETURN")
+        r = self._receive(customer=str(acme.id))
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("received individually", r.json()['detail'])
+
+    def test_an_unknown_lot_is_not_found(self):
+        import uuid
+        r = self.client.post("/api/Cores/assign_identity/", {
+            "lot": str(uuid.uuid4()), "condition_grade": "B"}, format="json")
+        self.assertEqual(r.status_code, 404)
+
+
+class ParkedCoreApiTests(BulkActionsBaseTestCase):
+    """The runtime starts work by creating the execution IN_PROGRESS. A unit parked for
+    the customer's authorisation is refused there with a readable 400 — not a 500, and
+    not the supervisor-override prompt a training gate would offer."""
+
+    def test_starting_work_on_a_parked_core_is_refused(self):
+        core = create_core(
+            tenant=self.tenant, core_number="PARK-1", core_type=self.injector_type,
+            received_date=date.today(), received_by=self.user, condition_grade='B',
+            status='AWAITING_AUTHORISATION', work_order=self.work_order,
+            step=self.teardown_step)
+        r = self.client.post("/api/StepExecutions/", {
+            "part": str(core.part_id), "step": str(self.teardown_step.id),
+            "status": "IN_PROGRESS"}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("customer's authorisation", r.json()['detail'])
+
+
+class TeardownPutsTheUnitAtItsFirstStepTests(BulkActionsBaseTestCase):
+    """Starting or planning a teardown puts each core's part AT the route's first step,
+    not just on the work order — the DWI runtime opens a unit at its current step, and
+    a unit with none cannot be opened (found in the browser, 2026-09-24)."""
+
+    def _core(self, number):
+        return create_core(
+            tenant=self.tenant, core_number=number, core_type=self.injector_type,
+            received_date=date.today(), received_by=self.user, condition_grade='A')
+
+    def test_starting_a_teardown(self):
+        core = self._core("STEP-1")
+        r = self.client.post("/api/Cores/start_teardown_batch/",
+                             {"core_ids": [str(core.id)]}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        core.part.refresh_from_db()
+        self.assertEqual(core.part.step_id, self.teardown_step.id)
+
+    def test_planning_a_teardown(self):
+        core = self._core("STEP-2")
+        r = self.client.post("/api/Cores/plan_teardown/",
+                             {"core_ids": [str(core.id)]}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        core.part.refresh_from_db()
+        self.assertEqual(core.part.step_id, self.teardown_step.id)

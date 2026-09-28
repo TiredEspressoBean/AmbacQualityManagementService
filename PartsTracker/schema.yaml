@@ -4800,6 +4800,7 @@ paths:
           - IN_DISASSEMBLY
           - IN_REBUILD
           - REBUILT
+          - REBUILT_TO_STOCK
           - RECEIVED
           - RETURNED
           - RETURNED_UNREPAIRED
@@ -4811,6 +4812,7 @@ paths:
           * `IN_REBUILD` - In Rebuild
           * `REBUILT` - Rebuilt — ready to return
           * `RETURNED` - Returned to customer
+          * `REBUILT_TO_STOCK` - Rebuilt to stock
           * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
           * `DECLINED` - Scope declined — to be returned unrepaired
           * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -5124,6 +5126,7 @@ paths:
           - IN_DISASSEMBLY
           - IN_REBUILD
           - REBUILT
+          - REBUILT_TO_STOCK
           - RECEIVED
           - RETURNED
           - RETURNED_UNREPAIRED
@@ -5135,6 +5138,7 @@ paths:
           * `IN_REBUILD` - In Rebuild
           * `REBUILT` - Rebuilt — ready to return
           * `RETURNED` - Returned to customer
+          * `REBUILT_TO_STOCK` - Rebuilt to stock
           * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
           * `DECLINED` - Scope declined — to be returned unrepaired
           * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -5443,6 +5447,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Core'
           description: ''
+  /api/Cores/assign_identity/:
+    post:
+      operationId: api_Cores_assign_identity_create
+      description: 'Take one unit off a bulk core lot and give it an identity: its
+        core number, part and core role. From then on it is an ordinary (exchange)
+        core.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreAssignIdentityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreAssignIdentityRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreAssignIdentityRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Core'
+          description: ''
   /api/Cores/bulk_create/:
     post:
       operationId: api_Cores_bulk_create_create
@@ -5518,6 +5552,25 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/Cores/lots/:
+    get:
+      operationId: api_Cores_lots_list
+      description: Bulk core lots with units still to be given an identity, oldest
+        first.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CoreLot'
+          description: ''
   /api/Cores/plan_teardown/:
     post:
       operationId: api_Cores_plan_teardown_create
@@ -5548,6 +5601,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CorePlanTeardownResponse'
+          description: ''
+  /api/Cores/receive_lot/:
+    post:
+      operationId: api_Cores_receive_lot_create
+      description: 'Receive unidentified cores in bulk as one lot of the core type.
+        Exchange only: a repair-and-return customer''s units must be received individually.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreLotReceiveRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreLotReceiveRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreLotReceiveRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreLot'
           description: ''
   /api/Cores/start_teardown_batch/:
     post:
@@ -10226,6 +10308,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AcceptToInventoryResponse'
+          description: ''
+  /api/HarvestedComponents/{id}/apply_finding/:
+    post:
+      operationId: api_HarvestedComponents_apply_finding_create
+      description: 'Apply the finding waiting on this component: it takes the proposed
+        grade, and the unit''s rebuild plan re-resolves from it.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Harvested Component.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HarvestedComponent'
+          description: ''
+  /api/HarvestedComponents/{id}/dismiss_finding/:
+    post:
+      operationId: api_HarvestedComponents_dismiss_finding_create
+      description: Dismiss the finding waiting on this component; the grade stays.
+        The reason is kept on the component's notes.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Harvested Component.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HarvestedComponentFindingDismissRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HarvestedComponentFindingDismissRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HarvestedComponentFindingDismissRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HarvestedComponent'
           description: ''
   /api/HarvestedComponents/{id}/scrap/:
     post:
@@ -27224,6 +27368,7 @@ paths:
           - annotation
           - attestation
           - choice
+          - component_install
           - computed
           - defects
           - equipment_roles
@@ -27231,6 +27376,7 @@ paths:
           - harvested_components
           - personnel_roles
           - photo
+          - rebuild_finding
           - scan
           - signatures
           - status
@@ -27256,6 +27402,8 @@ paths:
           * `defects` - Defect findings
           * `annotation` - Part annotation (3D)
           * `harvested_components` - Harvested components (teardown)
+          * `component_install` - Components installed (rebuild)
+          * `rebuild_finding` - Finding raised during rebuild
       - name: limit
         required: false
         in: query
@@ -43880,6 +44028,26 @@ components:
       - work_order
       - work_order_erp_id
       - work_order_status
+    CoreAssignIdentityRequest:
+      type: object
+      description: |-
+        Give one unit of a bulk lot its identity. The unit is graded by whoever is
+        holding it, as at individual receipt.
+      properties:
+        lot:
+          type: string
+          format: uuid
+        condition_grade:
+          $ref: '#/components/schemas/ConditionGradeEnum'
+        serial_number:
+          type: string
+        condition_notes:
+          type: string
+        source_type:
+          $ref: '#/components/schemas/SourceTypeEnum'
+      required:
+      - condition_grade
+      - lot
     CoreAuthorisationError:
       type: object
       properties:
@@ -44023,6 +44191,94 @@ components:
       - part
       - received_date
       - usable_component_count
+    CoreLot:
+      type: object
+      description: |-
+        A bulk core receipt: a MaterialLot of a core type, and how many of its units are
+        still without an identity.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        lot_number:
+          type: string
+          readOnly: true
+        core_type:
+          type: string
+          format: uuid
+          readOnly: true
+        core_type_name:
+          type: string
+          readOnly: true
+        customer:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        customer_name:
+          type: string
+          readOnly: true
+          nullable: true
+        source_reference:
+          type: string
+          readOnly: true
+        received_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        quantity:
+          type: integer
+          readOnly: true
+        unidentified:
+          type: integer
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        storage_location:
+          type: string
+          readOnly: true
+      required:
+      - core_type
+      - core_type_name
+      - customer
+      - customer_name
+      - id
+      - lot_number
+      - quantity
+      - received_date
+      - source_reference
+      - status
+      - storage_location
+      - unidentified
+    CoreLotReceiveRequest:
+      type: object
+      properties:
+        core_type:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        customer:
+          type: string
+          format: uuid
+          nullable: true
+        received_date:
+          type: string
+          format: date
+          nullable: true
+        lot_number:
+          type: string
+        storage_location:
+          type: string
+        source_reference:
+          type: string
+      required:
+      - core_type
+      - quantity
     CorePlanTeardownInputRequest:
       type: object
       properties:
@@ -44257,6 +44513,7 @@ components:
       - IN_REBUILD
       - REBUILT
       - RETURNED
+      - REBUILT_TO_STOCK
       - AWAITING_AUTHORISATION
       - DECLINED
       - RETURNED_UNREPAIRED
@@ -44270,6 +44527,7 @@ components:
         * `IN_REBUILD` - In Rebuild
         * `REBUILT` - Rebuilt — ready to return
         * `RETURNED` - Returned to customer
+        * `REBUILT_TO_STOCK` - Rebuilt to stock
         * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
         * `DECLINED` - Scope declined — to be returned unrepaired
         * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -47537,6 +47795,7 @@ components:
           readOnly: true
         disassembled_by_name:
           type: string
+          nullable: true
           readOnly: true
         condition_grade:
           $ref: '#/components/schemas/ConditionGradeEnum'
@@ -47569,6 +47828,24 @@ components:
           type: string
           description: Original part number if readable
           maxLength: 100
+        proposed_grade:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/ConditionGradeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        proposed_finding:
+          type: string
+          readOnly: true
+          description: What was found, in the operator's words.
+        proposed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        proposed_by_name:
+          type: string
+          nullable: true
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -47593,6 +47870,10 @@ components:
       - disassembled_by_name
       - id
       - is_scrapped
+      - proposed_at
+      - proposed_by_name
+      - proposed_finding
+      - proposed_grade
       - scrap_reason
       - scrapped_at
       - scrapped_by
@@ -47605,6 +47886,14 @@ components:
         erp_id:
           type: string
           nullable: true
+    HarvestedComponentFindingDismissRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     HarvestedComponentRequest:
       type: object
       description: Harvested component serializer
@@ -54669,6 +54958,11 @@ components:
           type: string
           readOnly: true
           nullable: true
+        core_role:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
         split_from_lot:
           type: boolean
           readOnly: true
@@ -54698,6 +54992,7 @@ components:
             the part took.
       required:
       - ERP_id
+      - core_role
       - created_at
       - has_error
       - id
@@ -58811,6 +59106,8 @@ components:
             * `defects` - Defect findings
             * `annotation` - Part annotation (3D)
             * `harvested_components` - Harvested components (teardown)
+            * `component_install` - Components installed (rebuild)
+            * `rebuild_finding` - Finding raised during rebuild
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -63074,6 +63371,19 @@ components:
       required:
       - core_number
       - id
+    RecoverCandidateLot:
+      type: object
+      properties:
+        id:
+          type: string
+        lot_number:
+          type: string
+        quantity:
+          type: integer
+      required:
+      - id
+      - lot_number
+      - quantity
     RecoverComponent:
       type: object
       properties:
@@ -63118,6 +63428,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecoverCandidateCore'
+        candidate_lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoverCandidateLot'
         lead_time_days:
           type: integer
           nullable: true
@@ -63135,6 +63449,7 @@ components:
             $ref: '#/components/schemas/RecoverComponent'
       required:
       - candidate_cores
+      - candidate_lots
       - components
       - core_type
       - core_type_id
@@ -68481,6 +68796,8 @@ components:
             * `defects` - Defect findings
             * `annotation` - Part annotation (3D)
             * `harvested_components` - Harvested components (teardown)
+            * `component_install` - Components installed (rebuild)
+            * `rebuild_finding` - Finding raised during rebuild
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -68543,6 +68860,8 @@ components:
       - defects
       - annotation
       - harvested_components
+      - component_install
+      - rebuild_finding
       type: string
       description: |-
         * `text` - Text input
@@ -68561,6 +68880,8 @@ components:
         * `defects` - Defect findings
         * `annotation` - Part annotation (3D)
         * `harvested_components` - Harvested components (teardown)
+        * `component_install` - Components installed (rebuild)
+        * `rebuild_finding` - Finding raised during rebuild
     SubstepResponseRequest:
       type: object
       description: |-
@@ -68605,6 +68926,8 @@ components:
             * `defects` - Defect findings
             * `annotation` - Part annotation (3D)
             * `harvested_components` - Harvested components (teardown)
+            * `component_install` - Components installed (rebuild)
+            * `rebuild_finding` - Finding raised during rebuild
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'

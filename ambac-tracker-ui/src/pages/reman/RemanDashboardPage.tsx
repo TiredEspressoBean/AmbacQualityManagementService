@@ -31,6 +31,12 @@ export function RemanDashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" asChild>
+                        <Link to="/reman/core-lots">
+                            <Boxes className="mr-2 h-4 w-4" />
+                            Core Lots
+                        </Link>
+                    </Button>
+                    <Button variant="outline" asChild>
                         <Link to="/reman/cores/receive-batch">
                             <Package className="mr-2 h-4 w-4" />
                             Receive Cores

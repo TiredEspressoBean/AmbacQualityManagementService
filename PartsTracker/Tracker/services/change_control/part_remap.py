@@ -132,7 +132,11 @@ def _apply_resolution(part, res: dict, by_identity: dict) -> None:
         part.part_status = PartsStatus.QUARANTINED
         part.save(update_fields=["step", "part_status", "updated_at"])
     elif action == SCRAP:
+        from Tracker.services.reman.core_part import scrap_if_core
+
         part.step = None
+        # A core is scrapped by its stage; its part follows (core_part.scrap_if_core).
+        scrap_if_core(part, reason="stranded by a process change")
         part.part_status = PartsStatus.SCRAPPED
         part.save(update_fields=["step", "part_status", "updated_at"])
     else:

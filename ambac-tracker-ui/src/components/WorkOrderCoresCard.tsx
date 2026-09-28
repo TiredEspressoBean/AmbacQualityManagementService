@@ -26,6 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
     DISASSEMBLED: "Disassembled",
     IN_REBUILD: "In rebuild",
     REBUILT: "Rebuilt",
+    REBUILT_TO_STOCK: "Rebuilt to stock",
     RETURNED: "Returned",
     AWAITING_AUTHORISATION: "Awaiting authorisation",
     DECLINED: "Scope declined",
@@ -37,7 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
 function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
     if (status === "SCRAPPED" || status === "DECLINED") return "destructive";
     if (status === "AWAITING_AUTHORISATION") return "outline";
-    if (status === "RETURNED" || status === "RETURNED_UNREPAIRED") return "secondary";
+    if (status === "RETURNED" || status === "RETURNED_UNREPAIRED" || status === "REBUILT_TO_STOCK") return "secondary";
     if (status === "DISASSEMBLED") return "outline";
     if (status === "IN_REBUILD" || status === "REBUILT") return "default";
     return "secondary";
@@ -181,7 +182,7 @@ export function WorkOrderCoresCard(
                                                     <span>Rebuild &amp; return</span>
                                                 ) : (
                                                     <span className="text-muted-foreground">
-                                                        Harvest to stock
+                                                        Rebuild or harvest to stock
                                                     </span>
                                                 )}
                                             </TableCell>
@@ -264,6 +265,28 @@ export function WorkOrderCoresCard(
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 ) : ready ? (
+                                                    // Exchange: the shop's unit. Normally rebuilt to
+                                                    // stock, keeping its identity; harvested when its
+                                                    // body fails or cores are surplus. A planner picks.
+                                                    <span className="inline-flex gap-1">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span>
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={() => doRelease(core, "rebuild")}
+                                                                    disabled={busy}
+                                                                >
+                                                                    <Hammer className="mr-1 h-4 w-4" />
+                                                                    {busy ? "Releasing…" : "Rebuild to stock"}
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            Rebuilt as the same unit and stocked as reman
+                                                            finished goods, ready for the next exchange.
+                                                        </TooltipContent>
+                                                    </Tooltip>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <span>
@@ -284,6 +307,7 @@ export function WorkOrderCoresCard(
                                                             consumed.
                                                         </TooltipContent>
                                                     </Tooltip>
+                                                    </span>
                                                 ) : (
                                                     <span className="text-sm text-muted-foreground">—</span>
                                                 )}

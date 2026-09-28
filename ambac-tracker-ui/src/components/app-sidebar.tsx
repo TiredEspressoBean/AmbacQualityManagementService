@@ -29,6 +29,7 @@ import {
     BadgeCheck,
     Recycle,
     Hammer,
+    Boxes,
     Layers,
     Settings,
     ShieldCheck,
@@ -102,6 +103,7 @@ const inventoryPages = [
 const remanPages = [
     { name: "Dashboard", url: "/reman", icon: Recycle },
     { name: "Cores", url: "/reman/cores", icon: Package },
+    { name: "Core Lots", url: "/reman/core-lots", icon: Boxes },
     { name: "Ready to Rebuild", url: "/reman/rebuild-queue", icon: Hammer },
     { name: "Components", url: "/reman/components", icon: Wrench },
     // Engineering master data, but it lives in the reman group because reman is the

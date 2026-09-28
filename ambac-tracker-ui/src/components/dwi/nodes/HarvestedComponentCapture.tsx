@@ -7,12 +7,12 @@
  * routes captures through `services.dwi.harvested_component_capture` which
  * creates HarvestedComponent rows + dispatches scrap_component for SCRAP rows.
  *
- * v1 scope:
  * - Authoring UI for enumerate_from + strict_enumeration toggles.
- * - Operator runtime: row table, grade Select per row, position + notes
- *   inputs, missing toggle, "add unexpected component" button.
- * - Inline Accept-to-inventory per row gated by permission (Q5) — deferred
- *   until backend exposes the permission flag through the operator view.
+ * - Operator runtime: one row per expected component and position, from the unit's
+ *   core type (a core is a part, so the runtime's PartContext already names it); a
+ *   grade per row, a missing toggle, notes, and a picker for anything unexpected.
+ * - Inline Accept-to-inventory per row is not here: accepting is a disposition, held
+ *   under its own permission on the Harvested Components page.
  *
  * Operator response shape (lands in OperatorResponseContext keyed by node_id):
  *   { rows: [{component_type_id, condition_grade, position, condition_notes, is_missing, original_part_number}] }
@@ -20,7 +20,9 @@
  * The submit handler in `services/dwi/operator_capture.py` reads this and
  * passes it as the `rows` argument to create_harvested_components_from_capture.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
@@ -43,6 +45,7 @@ import { AuthoringPopover } from "../shared/AuthoringPopover";
 import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
 import { TextAttrRow } from "../shared/AttrInputs";
 import { useOperatorResponse } from "../shared/OperatorResponseContext";
+import { usePartContext } from "../shared/PartContext";
 
 type EnumerateFrom = "disassembly_bom" | "manual";
 
@@ -134,7 +137,9 @@ function View(props: NodeViewProps) {
     const { value, setValue } = useOperatorResponse(a.node_id);
 
     const captured = useMemo(() => asCapturedValue(value), [value]);
-    const rowCount = captured.rows.length;
+    // Recorded, not merely listed: the runtime seeds one blank row per expected
+    // component, so counting rows put "3 captured ✓" on a unit nobody had graded.
+    const rowCount = captured.rows.filter((r) => r.is_missing || !!r.condition_grade).length;
 
     const badges = (
         <>
@@ -147,7 +152,7 @@ function View(props: NodeViewProps) {
             {a.required && <Badge variant="secondary" className="text-[10px]">Required</Badge>}
             {isOperator && rowCount > 0 && (
                 <Badge variant="default" className="text-[10px]">
-                    {rowCount} captured ✓
+                    {rowCount} recorded ✓
                 </Badge>
             )}
         </>
@@ -187,18 +192,22 @@ function View(props: NodeViewProps) {
 }
 
 /**
- * Operator runtime placeholder.
+ * Operator runtime — one row per component the unit is expected to give up.
  *
- * Full runtime requires:
- * (a) A `CurrentCoreContext` exposing the StepExecution's core_id and
- *     core_type_id (needs a parent provider in the substep operator view).
- * (b) A query hook for DisassemblyBOMLine rows by core_type.
- * (c) Inline Accept-to-inventory button gated by `accept_harvestedcomponent`
- *     permission from the user's effective-permissions endpoint.
+ * A core is a part (Documents/CORE_AS_PART_DESIGN.md), so the runtime already knows the
+ * unit: `PartContext.part_id`. The part's type IS the core type, and its
+ * DisassemblyBOMLine rows say what to expect and where (`positions`), so the operator
+ * grades what they find rather than typing ids. This replaces a placeholder that had
+ * operators enter raw component-type UUIDs.
  *
- * v1 ships with an editable table that captures rows manually so the
- * authoring + submit path is end-to-end testable. The BOM-driven enumeration
- * path lands when (a)+(b) wire in.
+ * Rows are seeded once, when nothing has been captured yet, and are then the operator's:
+ * a component can be marked missing, and an unexpected one added — teardown finds what
+ * it finds. Strict enumeration (an author setting) is enforced twice: the runtime blocks
+ * Confirm while an expected row is neither graded nor marked missing
+ * (`build-captures.findMissingRequired`), and the server re-checks the submitted rows
+ * against the unit's disassembly BOM from the AUTHORED node
+ * (`operator_capture._strict_harvest_reason`) — the client sends only recorded rows, so
+ * only the server can compare them with what was expected.
  */
 function OperatorRuntime({
     attrs,
@@ -209,102 +218,166 @@ function OperatorRuntime({
     captured: CapturedValue;
     setCaptured: (next: CapturedValue) => void;
 }) {
-    function addBlankRow() {
-        setCaptured({
-            rows: [
-                ...captured.rows,
-                {
-                    component_type_id: "",
-                    condition_grade: "",
-                    position: "",
-                    condition_notes: "",
-                    is_missing: false,
-                    original_part_number: "",
-                },
-            ],
-        });
-    }
+    const { part_id } = usePartContext();
 
-    function updateRow(idx: number, patch: Partial<CapturedRow>) {
-        setCaptured({
-            rows: captured.rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)),
-        });
-    }
+    const partQ = useQuery({
+        queryKey: ["dwi-harvest", "part", part_id],
+        queryFn: () => api.api_Parts_retrieve({ params: { id: String(part_id) } }),
+        enabled: !!part_id,
+    });
+    const coreTypeId = partQ.data?.part_type ? String(partQ.data.part_type) : null;
 
-    function removeRow(idx: number) {
+    const linesQ = useQuery({
+        queryKey: ["dwi-harvest", "disassembly-bom", coreTypeId],
+        queryFn: () => api.api_DisassemblyBOMLines_list({
+            queries: { core_type: coreTypeId!, limit: 200 },
+        }),
+        enabled: !!coreTypeId && attrs.enumerate_from === "disassembly_bom",
+    });
+    // Names for manual mode, and for the "add an unexpected component" picker.
+    const typesQ = useQuery({
+        queryKey: ["dwi-harvest", "part-types"],
+        queryFn: () => api.api_PartTypes_list({ queries: { limit: 500 } }),
+    });
+    const typeName = useMemo(() => {
+        const m = new Map<string, string>();
+        for (const t of typesQ.data?.results ?? []) m.set(String(t.id), t.name);
+        for (const l of linesQ.data?.results ?? []) {
+            m.set(String(l.component_type), l.component_type_name);
+        }
+        return m;
+    }, [typesQ.data, linesQ.data]);
+
+    // Expected rows: one per unit per position, from the BOM (or the manual list).
+    const expected = useMemo<CapturedRow[]>(() => {
+        const blank = (component_type_id: string, position: string): CapturedRow => ({
+            component_type_id, position, condition_grade: "", condition_notes: "",
+            is_missing: false, original_part_number: "",
+        });
+        if (attrs.enumerate_from === "manual") {
+            return (attrs.manual_component_types ?? []).map((id) => blank(String(id), ""));
+        }
+        const rows: CapturedRow[] = [];
+        for (const line of linesQ.data?.results ?? []) {
+            const qty = Math.max(1, line.expected_qty ?? 1);
+            const positions = Array.isArray(line.positions) ? (line.positions as string[]) : [];
+            for (let i = 0; i < qty; i++) {
+                rows.push(blank(String(line.component_type), positions[i] ?? ""));
+            }
+        }
+        return rows;
+    }, [attrs.enumerate_from, attrs.manual_component_types, linesQ.data]);
+
+    // Seed once. Never overwrite what the operator has already recorded.
+    useEffect(() => {
+        if (captured.rows.length === 0 && expected.length > 0) {
+            setCaptured({ rows: expected });
+        }
+    }, [expected, captured.rows.length, setCaptured]);
+
+    const update = (idx: number, patch: Partial<CapturedRow>) =>
+        setCaptured({ rows: captured.rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)) });
+    const remove = (idx: number) =>
         setCaptured({ rows: captured.rows.filter((_, i) => i !== idx) });
+    const [unexpectedType, setUnexpectedType] = useState("");
+    const addUnexpected = () => {
+        if (!unexpectedType) return;
+        setCaptured({
+            rows: [...captured.rows, {
+                component_type_id: unexpectedType, position: "", condition_grade: "",
+                condition_notes: "", is_missing: false, original_part_number: "",
+            }],
+        });
+        setUnexpectedType("");
+    };
+
+    if (!part_id) {
+        return <p className="text-xs text-muted-foreground">Open this step on a unit to record what came out of it.</p>;
     }
+    if (partQ.isLoading || linesQ.isLoading) {
+        return <p className="text-xs text-muted-foreground">Loading what this unit should give up…</p>;
+    }
+
+    const expectedCount = expected.length;
+    const graded = captured.rows.filter((r) => r.is_missing || r.condition_grade).length;
 
     return (
         <div className="space-y-2">
-            {captured.rows.length === 0 && (
-                <div className="text-xs italic text-muted-foreground">
-                    {attrs.enumerate_from === "disassembly_bom"
-                        ? "BOM-driven enumeration pending CurrentCoreContext wiring; add rows manually for now."
-                        : "No components captured yet."}
-                </div>
+            {expectedCount === 0 && attrs.enumerate_from === "disassembly_bom" && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                    No disassembly BOM is authored for this core type, so there is nothing to
+                    expect. Add each component you find below.
+                </p>
             )}
-            {captured.rows.map((row, i) => (
-                <div
-                    key={i}
-                    className="grid grid-cols-[1fr_120px_1fr_auto] items-center gap-2 rounded border bg-background p-2"
-                >
-                    <input
-                        type="text"
-                        placeholder="component_type_id"
-                        className="rounded border bg-background px-2 py-1 text-xs"
-                        value={row.component_type_id}
-                        onChange={(e) =>
-                            updateRow(i, { component_type_id: e.target.value })
-                        }
-                    />
-                    <select
-                        className="rounded border bg-background px-2 py-1 text-xs"
-                        value={row.condition_grade}
-                        onChange={(e) =>
-                            updateRow(i, {
-                                condition_grade: e.target.value as CapturedRow["condition_grade"],
-                            })
-                        }
-                    >
-                        <option value="">— grade —</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                        <option value="SCRAP">SCRAP</option>
-                    </select>
-                    <input
-                        type="text"
-                        placeholder="position (e.g. Cyl 1)"
-                        className="rounded border bg-background px-2 py-1 text-xs"
-                        value={row.position}
-                        onChange={(e) => updateRow(i, { position: e.target.value })}
-                    />
-                    <button
-                        type="button"
-                        className="rounded px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
-                        onClick={() => removeRow(i)}
-                    >
-                        Remove
-                    </button>
-                    <textarea
-                        placeholder="condition notes (optional)"
-                        rows={1}
-                        className="col-span-4 rounded border bg-background px-2 py-1 text-xs"
-                        value={row.condition_notes}
-                        onChange={(e) =>
-                            updateRow(i, { condition_notes: e.target.value })
-                        }
-                    />
-                </div>
-            ))}
-            <button
-                type="button"
-                onClick={addBlankRow}
-                className="text-xs text-primary hover:underline"
-            >
-                + Add component row
-            </button>
+            {captured.rows.length > 0 && (
+                <p className="text-xs text-muted-foreground tabular-nums">
+                    {graded} of {captured.rows.length} recorded
+                    {attrs.strict_enumeration && " · every expected component must be graded or marked missing"}
+                </p>
+            )}
+            {captured.rows.map((row, i) => {
+                const unexpected = i >= expectedCount;
+                return (
+                    <div key={i} className={`grid grid-cols-[minmax(0,1fr)_7rem_7rem_auto] items-center gap-2 rounded border p-2 ${row.is_missing ? "bg-muted/40" : "bg-background"}`}>
+                        <div className="min-w-0 text-sm">
+                            <div className="truncate font-medium">
+                                {typeName.get(row.component_type_id) ?? "Component"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                {row.position || (unexpected ? "unexpected" : "no position")}
+                            </div>
+                        </div>
+                        <Select
+                            value={row.condition_grade || undefined}
+                            disabled={row.is_missing}
+                            onValueChange={(v) => update(i, { condition_grade: v as CapturedRow["condition_grade"] })}
+                        >
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Grade" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="A">A — serviceable</SelectItem>
+                                <SelectItem value="B">B — serviceable</SelectItem>
+                                <SelectItem value="C">C — recondition</SelectItem>
+                                <SelectItem value="SCRAP">Scrap</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <label className="flex items-center gap-2 text-xs">
+                            <Switch
+                                checked={row.is_missing}
+                                onCheckedChange={(checked) =>
+                                    update(i, { is_missing: checked, condition_grade: checked ? "" : row.condition_grade })}
+                            />
+                            Missing
+                        </label>
+                        {unexpected ? (
+                            <button type="button" className="text-xs text-destructive hover:underline" onClick={() => remove(i)}>
+                                Remove
+                            </button>
+                        ) : <span />}
+                        <input
+                            type="text"
+                            placeholder="Notes (optional)"
+                            className="col-span-4 rounded border bg-background px-2 py-1 text-xs"
+                            value={row.condition_notes}
+                            disabled={row.is_missing}
+                            onChange={(e) => update(i, { condition_notes: e.target.value })}
+                        />
+                    </div>
+                );
+            })}
+            <div className="flex items-center gap-2 pt-1">
+                <Select value={unexpectedType || undefined} onValueChange={setUnexpectedType}>
+                    <SelectTrigger className="h-8 w-64 text-sm"><SelectValue placeholder="Found something unexpected?" /></SelectTrigger>
+                    <SelectContent>
+                        {(typesQ.data?.results ?? []).map((t) => (
+                            <SelectItem key={String(t.id)} value={String(t.id)}>{t.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <button type="button" className="text-xs text-primary hover:underline disabled:opacity-50"
+                        disabled={!unexpectedType} onClick={addUnexpected}>
+                    + Add
+                </button>
+            </div>
         </div>
     );
 }

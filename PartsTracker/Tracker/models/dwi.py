@@ -778,6 +778,8 @@ class SubstepResponseKind(models.TextChoices):
     # `services.dwi.harvested_component_capture` in `value_json` so the substep
     # response carries an audit pointer back to the HarvestedComponent rows.
     HARVESTED_COMPONENTS = 'harvested_components', 'Harvested components (teardown)'
+    COMPONENT_INSTALL = 'component_install', 'Components installed (rebuild)'
+    REBUILD_FINDING = 'rebuild_finding', 'Finding raised during rebuild'
 
 
 class SubstepGateCompletion(SecureModel):

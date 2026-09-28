@@ -507,8 +507,8 @@ class SubstepResponseKindTests(DwiPhase2BaseTestCase):
                 # Structured inspection captures (Phase 2+)
                 'attestation', 'status', 'equipment_roles', 'personnel_roles',
                 'signatures', 'defects', 'annotation',
-                # Reman teardown capture (R4)
-                'harvested_components',
+                # Reman teardown and rebuild capture
+                'harvested_components', 'component_install', 'rebuild_finding',
             },
         )
 

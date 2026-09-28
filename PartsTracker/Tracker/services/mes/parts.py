@@ -238,6 +238,7 @@ def advance_part_step(
 
     Raises:
         ValueError: If step advancement is blocked by validation requirements.
+        ValidationError: The unit is a core waiting on the customer's authorisation.
     """
     from Tracker.models.qms import StepTransitionLog
 
@@ -248,6 +249,8 @@ def advance_part_step(
     # core role. A core finishing its first step having never been "started" still
     # begins its teardown.
     from Tracker.services.reman import core_steps as reman
+    # A unit parked for the customer's authorisation does not move (see assert_workable).
+    reman.assert_workable(part)
     reman.on_step_started(part, operator)
 
     # The transition log records the *performer* as `operator` (consistent
@@ -569,6 +572,17 @@ def rollback_part_step(
             "without elevated permission"
         )
 
+    # A core is rolled back only WITHIN a teardown or rebuild, where its stage does not
+    # change. Past the end of one (awaiting release, rebuilt, harvested...) the stage
+    # would stay put while the part went back to work — two answers to one question.
+    from Tracker.services.reman.core_steps import core_of
+    core = core_of(part)
+    if core is not None and core.status not in ('IN_DISASSEMBLY', 'IN_REBUILD'):
+        raise ValueError(
+            f"{core.core_number} is a core at '{core.get_status_display()}'; a step can "
+            "only be rolled back while its teardown or rebuild is under way"
+        )
+
     can_rollback, message, requires_approval = part.can_rollback_step(operator)
 
     if not can_rollback:
@@ -811,6 +825,8 @@ def bulk_set_status(
     Leaving a terminal status (e.g. un-scrapping) is blocked unless
     `allow_terminal_exit=True` is passed by an elevated caller (see viewset).
     """
+    from Tracker.services.reman.core_part import assert_status_settable, scrap_if_core
+
     if new_status not in PartsStatus.values:
         raise ValueError(f"Invalid part status: {new_status}")
 
@@ -830,6 +846,13 @@ def bulk_set_status(
                         id=pid, ok=False,
                         error=f"Cannot leave terminal status {part.part_status} without elevated permission",
                     ))
+                    continue
+                # A core's part follows its reman stage: an ending is refused, and a
+                # scrap is made to the stage, which cascades itself.
+                assert_status_settable(part, new_status)
+                if new_status == PartsStatus.SCRAPPED and scrap_if_core(part, reason="set in bulk"):
+                    transaction.savepoint_commit(sid)
+                    results.append(BulkResult(id=pid, ok=True))
                     continue
                 part.part_status = new_status
                 part.save(update_fields=['part_status', 'updated_at'])

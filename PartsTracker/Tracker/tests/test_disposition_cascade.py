@@ -291,3 +291,46 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
 
         disp.refresh_from_db()
         self.assertEqual(disp.current_state, "CLOSED")
+
+
+class CorePartDispositionTests(TenantContextMixin, VectorTestCase):
+    """A core IS a part, and its part status is derived from its reman stage — so a
+    disposition on a core's part must move the STAGE, not write the status around it."""
+
+    def setUp(self):
+        super().setUp()
+        from datetime import date
+        from Tracker.models import PartTypes
+        from Tracker.services.reman.core_part import create_core
+
+        self.tenant = Tenant.objects.create(name="Disp Core", slug="disp-core", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        from Tracker.models import User
+        core_type = PartTypes.objects.create(tenant=self.tenant, name="Injector core")
+        receiver = User.objects.create_user(
+            username="core-receiver", email="recv@test.com", password="x", tenant=self.tenant)
+        self.core = create_core(
+            tenant=self.tenant, core_type=core_type, received_date=date.today(),
+            received_by=receiver,
+            condition_grade='B', status='IN_DISASSEMBLY',
+        )
+
+    def _disposition(self, disposition_type):
+        return QuarantineDisposition.objects.create(
+            tenant=self.tenant, part=self.core.part,
+            disposition_type=disposition_type, description="core fixture",
+        )
+
+    def test_scrap_scraps_the_core_not_just_its_part(self):
+        self._disposition("SCRAP")
+        self.core.refresh_from_db()
+        self.core.part.refresh_from_db()
+        self.assertEqual(self.core.status, 'SCRAPPED')
+        self.assertEqual(self.core.part.part_status, PartsStatus.SCRAPPED)
+        self.assertIn("disposition", self.core.condition_notes)
+
+    def test_a_dismantled_part_is_not_revived_by_use_as_is(self):
+        Parts.objects.filter(pk=self.core.part_id).update(part_status=PartsStatus.DISMANTLED)
+        self._disposition("USE_AS_IS")
+        self.core.part.refresh_from_db()
+        self.assertEqual(self.core.part.part_status, PartsStatus.DISMANTLED)

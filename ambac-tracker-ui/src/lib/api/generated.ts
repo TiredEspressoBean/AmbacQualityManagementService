@@ -20,7 +20,7 @@ export type HarvestedComponent = {
   component_part_erp_id: string | null;
   disassembled_at: string;
   disassembled_by: number;
-  disassembled_by_name: string;
+  disassembled_by_name: string | null;
   condition_grade: ConditionGradeEnum;
   condition_notes?: string | undefined;
   is_scrapped: boolean;
@@ -40,6 +40,13 @@ export type HarvestedComponent = {
    * @maxLength 100
    */
   string | undefined;
+  proposed_grade: ConditionGradeEnum | BlankEnum;
+  /**
+   * What was found, in the operator's words.
+   */
+  proposed_finding: string;
+  proposed_at: string | null;
+  proposed_by_name: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -54,6 +61,11 @@ export type ConditionGradeEnum =
    * @enum A, B, C, SCRAP
    */
   "A" | "B" | "C" | "SCRAP";
+export type BlankEnum =
+  /**
+   * @enum
+   */
+  unknown;
 export type AddNoteInputRequest = {
   /**
    * @minLength 1
@@ -1588,11 +1600,6 @@ export type FulfilmentModeEnum =
    * @enum EXCHANGE, REPAIR_RETURN
    */
   "EXCHANGE" | "REPAIR_RETURN";
-export type BlankEnum =
-  /**
-   * @enum
-   */
-  unknown;
 export type NullEnum =
   /**
    * @enum
@@ -1748,13 +1755,14 @@ export type CoreStatusEnum =
    * `IN_REBUILD` - In Rebuild
    * `REBUILT` - Rebuilt — ready to return
    * `RETURNED` - Returned to customer
+   * `REBUILT_TO_STOCK` - Rebuilt to stock
    * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
    * `DECLINED` - Scope declined — to be returned unrepaired
    * `RETURNED_UNREPAIRED` - Returned unrepaired
    * `HARVESTED` - Harvested to inventory
    * `SCRAPPED` - Scrapped
    *
-   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, IN_REBUILD, REBUILT, RETURNED, AWAITING_AUTHORISATION, DECLINED, RETURNED_UNREPAIRED, HARVESTED, SCRAPPED
+   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, IN_REBUILD, REBUILT, RETURNED, REBUILT_TO_STOCK, AWAITING_AUTHORISATION, DECLINED, RETURNED_UNREPAIRED, HARVESTED, SCRAPPED
    */
   | "RECEIVED"
   | "IN_DISASSEMBLY"
@@ -1762,11 +1770,19 @@ export type CoreStatusEnum =
   | "IN_REBUILD"
   | "REBUILT"
   | "RETURNED"
+  | "REBUILT_TO_STOCK"
   | "AWAITING_AUTHORISATION"
   | "DECLINED"
   | "RETURNED_UNREPAIRED"
   | "HARVESTED"
   | "SCRAPPED";
+export type CoreAssignIdentityRequest = {
+  lot: string;
+  condition_grade: ConditionGradeEnum;
+  serial_number?: string | undefined;
+  condition_notes?: string | undefined;
+  source_type?: SourceTypeEnum | undefined;
+};
 export type CoreList = {
   id: string;
   core_number?: /**
@@ -6037,6 +6053,7 @@ export type Parts = {
    */
   reserved_for_core: string | null;
   reserved_for_core_number: string | null;
+  core_role: string | null;
   /**
    * True iff this part has been pulled off its WorkOrder cohort and now advances independently. Set via the split_part_from_lot service; cleared by rejoin_part_to_lot when the part re-converges with its siblings.
    */
@@ -9194,6 +9211,8 @@ export type SubstepResponse = {
     * `defects` - Defect findings
     * `annotation` - Part annotation (3D)
     * `harvested_components` - Harvested components (teardown)
+    * `component_install` - Components installed (rebuild)
+    * `rebuild_finding` - Finding raised during rebuild
      */
   kind: SubstepResponseKindEnum;
   value_text?: /**
@@ -9240,8 +9259,10 @@ export type SubstepResponseKindEnum =
    * `defects` - Defect findings
    * `annotation` - Part annotation (3D)
    * `harvested_components` - Harvested components (teardown)
+   * `component_install` - Components installed (rebuild)
+   * `rebuild_finding` - Finding raised during rebuild
    *
-   * @enum text, choice, photo, video, scan, file, timer, computed, attestation, status, equipment_roles, personnel_roles, signatures, defects, annotation, harvested_components
+   * @enum text, choice, photo, video, scan, file, timer, computed, attestation, status, equipment_roles, personnel_roles, signatures, defects, annotation, harvested_components, component_install, rebuild_finding
    */
   | "text"
   | "choice"
@@ -9258,7 +9279,9 @@ export type SubstepResponseKindEnum =
   | "signatures"
   | "defects"
   | "annotation"
-  | "harvested_components";
+  | "harvested_components"
+  | "component_install"
+  | "rebuild_finding";
 export type PaginatedSubstepTranslationList = {
   /**
    * @example 123
@@ -12976,6 +12999,8 @@ export type PatchedSubstepResponseRequest = Partial<{
     * `defects` - Defect findings
     * `annotation` - Part annotation (3D)
     * `harvested_components` - Harvested components (teardown)
+    * `component_install` - Components installed (rebuild)
+    * `rebuild_finding` - Finding raised during rebuild
      */
   kind: SubstepResponseKindEnum;
   /**
@@ -14022,6 +14047,7 @@ export type RecoverRequirement = {
   cores_available: number;
   cores_in_flight: number;
   candidate_cores: Array<RecoverCandidateCore>;
+  candidate_lots: Array<RecoverCandidateLot>;
   lead_time_days: number | null;
   need_by: string | null;
   start_by: string | null;
@@ -14030,6 +14056,11 @@ export type RecoverRequirement = {
 export type RecoverCandidateCore = {
   id: string;
   core_number: string;
+};
+export type RecoverCandidateLot = {
+  id: string;
+  lot_number: string;
+  quantity: number;
 };
 export type RecoverComponent = {
   component: string;
@@ -15564,6 +15595,8 @@ export type SubstepResponseRequest = {
     * `defects` - Defect findings
     * `annotation` - Part annotation (3D)
     * `harvested_components` - Harvested components (teardown)
+    * `component_install` - Components installed (rebuild)
+    * `rebuild_finding` - Finding raised during rebuild
      */
   kind: SubstepResponseKindEnum;
   value_text?: /**
@@ -17442,6 +17475,7 @@ const CoreStatusEnum = z.enum([
   "IN_REBUILD",
   "REBUILT",
   "RETURNED",
+  "REBUILT_TO_STOCK",
   "AWAITING_AUTHORISATION",
   "DECLINED",
   "RETURNED_UNREPAIRED",
@@ -17575,7 +17609,7 @@ const HarvestedComponent = z.object({
   component_part_erp_id: z.string().nullable(),
   disassembled_at: z.string().datetime({ offset: true }),
   disassembled_by: z.number().int(),
-  disassembled_by_name: z.string(),
+  disassembled_by_name: z.string().nullable(),
   condition_grade: ConditionGradeEnum,
   condition_notes: z.string().optional(),
   is_scrapped: z.boolean(),
@@ -17585,6 +17619,10 @@ const HarvestedComponent = z.object({
   scrapped_by_name: z.string().nullable(),
   position: z.string().max(50).optional(),
   original_part_number: z.string().max(100).optional(),
+  proposed_grade: z.union([ConditionGradeEnum, BlankEnum]),
+  proposed_finding: z.string(),
+  proposed_at: z.string().datetime({ offset: true }).nullable(),
+  proposed_by_name: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -17658,6 +17696,13 @@ const CoreRequestAuthorisationError = z.object({ detail: z.string() });
 const CoreReturnInputRequest = z.object({ reference: z.string() }).partial();
 const CoreReturnError = z.object({ detail: z.string() });
 const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
+const CoreAssignIdentityRequest = z.object({
+  lot: z.string().uuid(),
+  condition_grade: ConditionGradeEnum,
+  serial_number: z.string().optional(),
+  condition_notes: z.string().optional(),
+  source_type: SourceTypeEnum.optional(),
+});
 const CoreBulkCreateInputRequest = z.object({
   cores: z.array(z.object({}).partial().passthrough()),
 });
@@ -17671,6 +17716,20 @@ const CoreBulkCreateError = z
     errors: z.array(z.object({}).partial().passthrough()),
   })
   .partial();
+const CoreLot = z.object({
+  id: z.string().uuid(),
+  lot_number: z.string(),
+  core_type: z.string().uuid(),
+  core_type_name: z.string(),
+  customer: z.string().uuid().nullable(),
+  customer_name: z.string().nullable(),
+  source_reference: z.string(),
+  received_date: z.string().nullable(),
+  quantity: z.number().int(),
+  unidentified: z.number().int(),
+  status: z.string(),
+  storage_location: z.string(),
+});
 const CorePlanTeardownInputRequest = z.object({
   core_ids: z.array(z.string().uuid()),
   start_by: z.string().nullish(),
@@ -17680,6 +17739,15 @@ const CorePlanTeardownResponse = z.object({
   work_order_id: z.string().uuid(),
   work_order_erp_id: z.string(),
   planned_core_ids: z.array(z.string().uuid()),
+});
+const CoreLotReceiveRequest = z.object({
+  core_type: z.string().uuid(),
+  quantity: z.number().int().gte(1),
+  customer: z.string().uuid().nullish(),
+  received_date: z.string().nullish(),
+  lot_number: z.string().optional(),
+  storage_location: z.string().optional(),
+  source_reference: z.string().optional(),
 });
 const CoreStartTeardownBatchInputRequest = z.object({
   core_ids: z.array(z.string().uuid()),
@@ -18442,6 +18510,9 @@ const AcceptToInventoryResponse = z.object({
   component: HarvestedComponent,
   part_id: z.string().uuid(),
   part_erp_id: z.string(),
+});
+const HarvestedComponentFindingDismissRequest = z.object({
+  reason: z.string().min(1),
 });
 const HarvestedComponentScrapRequest = z
   .object({ reason: z.string().default("") })
@@ -20004,6 +20075,7 @@ const Parts = z.object({
   archived: z.boolean().optional(),
   reserved_for_core: z.string().uuid().nullable(),
   reserved_for_core_number: z.string().nullable(),
+  core_role: z.string().uuid().nullable(),
   split_from_lot: z.boolean(),
   lot_split_reason: z.string().nullable(),
   lot_split_at: z.string().datetime({ offset: true }).nullable(),
@@ -21541,6 +21613,11 @@ const RecoverCandidateCore = z.object({
   id: z.string(),
   core_number: z.string(),
 });
+const RecoverCandidateLot = z.object({
+  id: z.string(),
+  lot_number: z.string(),
+  quantity: z.number().int(),
+});
 const RecoverComponent = z.object({
   component: z.string(),
   needed: z.number(),
@@ -21556,6 +21633,7 @@ const RecoverRequirement = z.object({
   cores_available: z.number().int(),
   cores_in_flight: z.number().int(),
   candidate_cores: z.array(RecoverCandidateCore),
+  candidate_lots: z.array(RecoverCandidateLot),
   lead_time_days: z.number().int().nullable(),
   need_by: z.string().nullable(),
   start_by: z.string().nullable(),
@@ -22415,6 +22493,8 @@ const SubstepResponseKindEnum = z.enum([
   "defects",
   "annotation",
   "harvested_components",
+  "component_install",
+  "rebuild_finding",
 ]);
 const SubstepResponse = z.object({
   id: z.string().uuid(),
@@ -25731,11 +25811,14 @@ export const schemas = {
   CoreReturnInputRequest,
   CoreReturnError,
   CoreScrapRequest,
+  CoreAssignIdentityRequest,
   CoreBulkCreateInputRequest,
   CoreBulkCreateResponse,
   CoreBulkCreateError,
+  CoreLot,
   CorePlanTeardownInputRequest,
   CorePlanTeardownResponse,
+  CoreLotReceiveRequest,
   CoreStartTeardownBatchInputRequest,
   CoreStartTeardownBatchResponse,
   UserDetail,
@@ -25813,6 +25896,7 @@ export const schemas = {
   PatchedHarvestedComponentRequest,
   HarvestedComponentAcceptRequest,
   AcceptToInventoryResponse,
+  HarvestedComponentFindingDismissRequest,
   HarvestedComponentScrapRequest,
   HeatMapAnnotationsSeverityEnum,
   HeatMapAnnotations,
@@ -26132,6 +26216,7 @@ export const schemas = {
   SourceRequirement,
   ProduceRequirement,
   RecoverCandidateCore,
+  RecoverCandidateLot,
   RecoverComponent,
   RecoverRequirement,
   ToolingRequirement,
@@ -29979,6 +30064,7 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
             "IN_DISASSEMBLY",
             "IN_REBUILD",
             "REBUILT",
+            "REBUILT_TO_STOCK",
             "RECEIVED",
             "RETURNED",
             "RETURNED_UNREPAIRED",
@@ -30195,6 +30281,7 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
             "IN_DISASSEMBLY",
             "IN_REBUILD",
             "REBUILT",
+            "REBUILT_TO_STOCK",
             "RECEIVED",
             "RETURNED",
             "RETURNED_UNREPAIRED",
@@ -30391,6 +30478,21 @@ committed to rebuilding — which is also what lets the same call answer
   },
   {
     method: "post",
+    path: "/api/Cores/assign_identity/",
+    alias: "api_Cores_assign_identity_create",
+    description: `Take one unit off a bulk core lot and give it an identity: its core number, part and core role. From then on it is an ordinary (exchange) core.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreAssignIdentityRequest,
+      },
+    ],
+    response: Core,
+  },
+  {
+    method: "post",
     path: "/api/Cores/bulk_create/",
     alias: "api_Cores_bulk_create_create",
     description: `Create N cores from a shipment. All-or-nothing - any row error rolls back the batch.`,
@@ -30441,6 +30543,14 @@ committed to rebuilding — which is also what lets the same call answer
     response: z.instanceof(File),
   },
   {
+    method: "get",
+    path: "/api/Cores/lots/",
+    alias: "api_Cores_lots_list",
+    description: `Bulk core lots with units still to be given an identity, oldest first.`,
+    requestFormat: "json",
+    response: z.array(CoreLot),
+  },
+  {
     method: "post",
     path: "/api/Cores/plan_teardown/",
     alias: "api_Cores_plan_teardown_create",
@@ -30454,6 +30564,21 @@ committed to rebuilding — which is also what lets the same call answer
       },
     ],
     response: CorePlanTeardownResponse,
+  },
+  {
+    method: "post",
+    path: "/api/Cores/receive_lot/",
+    alias: "api_Cores_receive_lot_create",
+    description: `Receive unidentified cores in bulk as one lot of the core type. Exchange only: a repair-and-return customer&#x27;s units must be received individually.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreLotReceiveRequest,
+      },
+    ],
+    response: CoreLot,
   },
   {
     method: "post",
@@ -31505,7 +31630,10 @@ Returns the document&#x27;s current &#x60;links&#x60;.`,
       },
     ],
     response: DocumentLinksResponse,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "post",
     path: "/api/Documents/:id/detach/",
@@ -31567,10 +31695,7 @@ Sets status to OBSOLETE and records the obsolete_date.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Documents/:id/release/",
@@ -34280,6 +34405,41 @@ Components are created during core disassembly, then either:
   },
   {
     method: "post",
+    path: "/api/HarvestedComponents/:id/apply_finding/",
+    alias: "api_HarvestedComponents_apply_finding_create",
+    description: `Apply the finding waiting on this component: it takes the proposed grade, and the unit&#x27;s rebuild plan re-resolves from it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: HarvestedComponent,
+  },
+  {
+    method: "post",
+    path: "/api/HarvestedComponents/:id/dismiss_finding/",
+    alias: "api_HarvestedComponents_dismiss_finding_create",
+    description: `Dismiss the finding waiting on this component; the grade stays. The reason is kept on the component&#x27;s notes.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: HarvestedComponent,
+  },
+  {
+    method: "post",
     path: "/api/HarvestedComponents/:id/scrap/",
     alias: "api_HarvestedComponents_scrap_create",
     description: `Scrap a harvested component`,
@@ -36442,7 +36602,10 @@ Usage:
       },
     ],
     response: MeasurementDefinition,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/MeasurementDefinitions/:id/",
@@ -36638,10 +36801,7 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/MeasurementDefinitions/metadata/",
@@ -41367,7 +41527,10 @@ Lifecycle endpoints:
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/process-change-orders/:id/affected-workorders/",
@@ -41520,10 +41683,7 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/process-change-orders/:id/mark-approved/",
@@ -47024,7 +47184,10 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/StepExecutions/:id/claim/",
@@ -47320,10 +47483,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: PaginatedStepExecutionList,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/wip_at_step/",
@@ -48804,6 +48964,7 @@ substep (the typical authoring-popover query).`,
             "annotation",
             "attestation",
             "choice",
+            "component_install",
             "computed",
             "defects",
             "equipment_roles",
@@ -48811,6 +48972,7 @@ substep (the typical authoring-popover query).`,
             "harvested_components",
             "personnel_roles",
             "photo",
+            "rebuild_finding",
             "scan",
             "signatures",
             "status",
@@ -52423,7 +52585,10 @@ Provides endpoints for:
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/UserInvitations/accept/",
@@ -52495,10 +52660,7 @@ Admins can check any user; regular users can only check themselves.`,
 Admins can check any user; regular users can only check themselves.`,
     requestFormat: "json",
     response: EffectivePermissionsResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/UserWorkCenterMemberships/",

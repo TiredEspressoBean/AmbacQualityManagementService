@@ -45,6 +45,12 @@ class RecoverCandidateCore(BaseModel):
     core_number: str
 
 
+class RecoverCandidateLot(BaseModel):
+    id: str
+    lot_number: str
+    quantity: int
+
+
 class RecoverRow(BaseModel):
     """Teardown proposed to refill the recovered pool, per core type. A PROPOSAL —
     accepting it plans a teardown work order; nothing here commits a core."""
@@ -53,6 +59,7 @@ class RecoverRow(BaseModel):
     cores_available: int
     cores_in_flight: int
     candidate_cores: list[RecoverCandidateCore] = Field(default_factory=list)
+    candidate_lots: list[RecoverCandidateLot] = Field(default_factory=list)
     lead_time_days: Optional[int] = None
     need_by: Optional[datetime.date] = None
     #: Absent when the core type has no authored teardown duration.

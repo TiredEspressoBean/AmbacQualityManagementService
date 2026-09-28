@@ -14,7 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ArrowLeft, Trash2, DollarSign, Package, Wrench } from "lucide-react";
 
 // Status badge variants
@@ -45,6 +45,7 @@ const statusLabels: Record<string, string> = {
     'SCRAPPED': 'Scrapped',
     'IN_REBUILD': 'In Rebuild',
     'REBUILT': 'Rebuilt — ready to return',
+    'REBUILT_TO_STOCK': 'Rebuilt to stock',
     'RETURNED': 'Returned to customer',
     'AWAITING_AUTHORISATION': 'Awaiting customer authorisation',
     'DECLINED': 'Scope declined',
@@ -220,7 +221,7 @@ export function CoreDetailPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Received Date</p>
-                                <p>{format(new Date(core.received_date), "PPP")}</p>
+                                <p>{format(parseISO(core.received_date), "PPP")}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Received By</p>

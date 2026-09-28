@@ -273,9 +273,15 @@ def recovered_stock_by_type(tenant) -> dict:
 
 def _available_parts(tenant):
     """In-stock parts that are not archived and not spoken for by a core — the base
-    every finished-part coverage count starts from."""
+    every finished-part coverage count starts from.
+
+    Not a unit that IS a core, either: an exchange core rebuilt to stock is IN_STOCK
+    reman finished goods, and without this it read as ordinary new stock of its part
+    type — so a build consuming that type would draw a reman unit as if it were new.
+    It has no `harvested_from`, which is how recovered stock is otherwise told apart.
+    """
     from Tracker.models import Parts, PartsStatus
     return Parts.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, part_status=PartsStatus.IN_STOCK, archived=False,
-        reserved_for_core__isnull=True,
+        reserved_for_core__isnull=True, core_role__isnull=True,
     )

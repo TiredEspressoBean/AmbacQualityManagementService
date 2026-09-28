@@ -290,13 +290,14 @@ def _prepare_order_data(orders):
     """
     from django.db.models import Avg, Max
     from Tracker.models import ProcessStep
+    from Tracker.models.mes_lite import PROGRESS_DONE_STATUSES
 
     order_summaries = []
 
     for order in orders:
         parts_qs = order.parts.filter(archived=False).select_related('step', 'work_order', 'work_order__process')
         total_parts = parts_qs.count()
-        completed_parts = parts_qs.filter(part_status='COMPLETED').count()
+        completed_parts = parts_qs.filter(part_status__in=PROGRESS_DONE_STATUSES).count()
 
         # Calculate progress based on work order's process
         progress = 0

@@ -46,10 +46,13 @@ class Core(SecureModel):
         ('TRADE_IN', 'Trade-In'),
     ]
 
-    # Teardown ends in one of exactly two places, and which one is not a separate
-    # decision — it follows from `fulfilment_mode`. A unit that goes back to its
-    # customer must be rebuilt; anything else is a source of parts. So there is no
-    # "what shall we do with it" field: `returns_to_customer` already answers it.
+    # Where a torn-down unit goes depends on `fulfilment_mode`:
+    #  - repair-and-return: it is the customer's, so it is REBUILT and goes back to them
+    #    — never harvested.
+    #  - exchange: the customer already has a unit from stock, so this one is the
+    #    shop's. It is normally rebuilt TO STOCK (the diesel-reman and rotable-exchange
+    #    norm), keeping its identity; or, when its body fails or cores are surplus,
+    #    HARVESTED for parts. A planner picks which at release.
     CORE_STATUS_CHOICES = [
         ('RECEIVED', 'Received'),
         ('IN_DISASSEMBLY', 'In Disassembly'),
@@ -59,12 +62,16 @@ class Core(SecureModel):
         ('IN_REBUILD', 'In Rebuild'),
         ('REBUILT', 'Rebuilt — ready to return'),
         ('RETURNED', 'Returned to customer'),
+        # Exchange path, rebuilt: finished reman stock, ready to go out against the next
+        # exchange. Same unit, same core number — identity is kept (decided 2026-09-24).
+        ('REBUILT_TO_STOCK', 'Rebuilt to stock'),
         # Work paused while the customer decides on scope beyond what was sold. The
         # conversation happens elsewhere (§3.2); this is where the unit waits for it.
         ('AWAITING_AUTHORISATION', 'Awaiting customer authorisation'),
         ('DECLINED', 'Scope declined — to be returned unrepaired'),
         ('RETURNED_UNREPAIRED', 'Returned unrepaired'),
-        # Exchange path: the usable components became stock and the core is consumed.
+        # Exchange path, harvested: the usable components became stock and the core is
+        # consumed.
         ('HARVESTED', 'Harvested to inventory'),
         ('SCRAPPED', 'Scrapped'),
     ]
@@ -214,23 +221,9 @@ class Core(SecureModel):
     )
 
     # Where the unit is — its work order and its current step — belongs to the part, not
-    # the role. Read-through, so `core.work_order` / `core.step` keep working; to MOVE a
-    # core, move its part.
-    @property
-    def work_order(self):
-        return self.part.work_order if self.part_id else None
-
-    @property
-    def work_order_id(self):
-        return self.part.work_order_id if self.part_id else None
-
-    @property
-    def step(self):
-        return self.part.step if self.part_id else None
-
-    @property
-    def step_id(self):
-        return self.part.step_id if self.part_id else None
+    # the role: read `core.part.work_order` / `core.part.step`, and move a core with
+    # `move_core`. There is deliberately no read-through here; one made "where is this
+    # core" answerable in two places.
 
     class Meta:
         verbose_name = 'Core'
@@ -344,7 +337,8 @@ class Core(SecureModel):
     @property
     def process(self):
         """The process this core's unit is routing through — its part's work order's."""
-        return self.work_order.process if self.work_order else None
+        work_order = self.part.work_order if self.part_id else None
+        return work_order.process if work_order else None
 
     # The workflow engine that used to follow here (`_check_cycle_limit`, `_get_edge`,
     # `get_next_step`, `advance_step`) mirrored the one on Parts. A core is a part now,
@@ -442,6 +436,24 @@ class HarvestedComponent(SecureModel):
         blank=True,
         help_text="Original part number if readable"
     )
+
+    # A finding raised after teardown — at the bench during rebuild, say — is a PROPOSAL
+    # until a lead applies or dismisses it (`services/reman/findings.py`). The grade
+    # drives the slot's resolution and so the rebuild's scope, and scope on a
+    # repair-and-return unit is the customer's bill: an operator's observation must not
+    # change it on its own. One pending finding per component; the record of what was
+    # proposed and decided is kept in `condition_notes` and the audit log.
+    proposed_grade = models.CharField(
+        max_length=10, choices=CONDITION_GRADE_CHOICES, blank=True,
+        help_text="A re-grade raised after teardown, awaiting a lead's decision.",
+    )
+    proposed_finding = models.TextField(
+        blank=True, help_text="What was found, in the operator's words.")
+    proposed_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='proposed_component_findings',
+    )
+    proposed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Harvested Component'

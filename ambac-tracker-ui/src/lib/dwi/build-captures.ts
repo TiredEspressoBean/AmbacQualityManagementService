@@ -52,8 +52,12 @@ export function findMissingRequired(
         const required = attrs.required === true;
         const requireDetected = attrs.require_detected === true; // signatures
         const isSignatures = type === "inspectionSignatures";
+        // Strict teardown capture binds even when the node is not "required": if the
+        // author asked for every expected component, a partial record is not allowed.
+        const strictHarvest = type === "harvestedComponentCapture"
+            && attrs.strict_enumeration === true;
         // Skip nodes that are neither required nor have a sub-required flag.
-        if (!required && !(isSignatures && requireDetected)) continue;
+        if (!required && !(isSignatures && requireDetected) && !strictHarvest) continue;
 
         const node_id = attrs.node_id as string;
         const label = (attrs.label as string) || type;
@@ -66,12 +70,42 @@ export function findMissingRequired(
     return out;
 }
 
+function findingRows(response: unknown): { harvested_id: string; grade: string; finding: string }[] {
+    const rows = (response as { rows?: unknown } | undefined)?.rows;
+    return Array.isArray(rows) ? (rows as { harvested_id: string; grade: string; finding: string }[]) : [];
+}
+
 function checkSatisfied(
     type: string,
     attrs: Record<string, unknown>,
     response: unknown,
 ): string | null {
     switch (type) {
+        case "componentInstallCapture": {
+            const rows = (response as { rows?: unknown } | undefined)?.rows;
+            return Array.isArray(rows) && rows.length > 0 ? null : "No components recorded as fitted";
+        }
+
+        case "rebuildFindingCapture": {
+            const rows = findingRows(response);
+            if (rows.some((r) => !r.grade || !r.finding.trim())) return "A finding needs a new grade and what was found";
+            return rows.length > 0 ? null : "No finding recorded";
+        }
+
+        case "harvestedComponentCapture": {
+            const rows = harvestRows(response);
+            const recorded = rows.filter(isRecordedHarvestRow);
+            if (attrs.strict_enumeration === true) {
+                const open = rows.length - recorded.length;
+                return rows.length > 0 && open === 0
+                    ? null
+                    : open > 0
+                        ? `${open} component${open === 1 ? "" : "s"} not graded or marked missing`
+                        : "No components recorded";
+            }
+            return recorded.length > 0 ? null : "No components recorded";
+        }
+
         case "textInput":
         case "choiceInput":
         case "scanInput":
@@ -378,6 +412,34 @@ export function buildCaptures(
         if (response === undefined || response === null) continue;
 
         switch (type) {
+            case "rebuildFindingCapture": {
+                // Only complete rows: a component switched to "found worse" but not yet
+                // described is still being written, and the server would refuse it.
+                const rows = findingRows(response).filter((r) => r.grade && r.finding.trim());
+                if (rows.length > 0) captures.push({ node_id, kind: "rebuild_finding", rows });
+                break;
+            }
+
+            case "componentInstallCapture": {
+                // One row per slot the operator confirmed as fitted.
+                const rows = (response as { rows?: unknown } | undefined)?.rows;
+                if (Array.isArray(rows) && rows.length > 0) {
+                    captures.push({ node_id, kind: "component_install", rows });
+                }
+                break;
+            }
+
+            case "harvestedComponentCapture": {
+                // Only what the operator actually recorded — a grade, or "missing". An
+                // expected row left blank is not a finding, and the service would refuse
+                // it as a row with no grade.
+                const rows = harvestRows(response).filter(isRecordedHarvestRow);
+                if (rows.length > 0) {
+                    captures.push({ node_id, kind: "harvested_components", rows });
+                }
+                break;
+            }
+
             case "textInput":
             case "choiceInput":
             case "scanInput": {
@@ -527,4 +589,20 @@ export function buildCaptures(
     }
 
     return captures;
+}
+
+// --- HarvestedComponentCapture (reman teardown) ------------------------------------
+// This node's rows used to be captured and never sent: nothing here emitted the
+// `harvested_components` kind the backend routes on, so DWI teardown capture never
+// reached `create_harvested_components_from_capture`.
+
+type HarvestRow = { condition_grade?: string; is_missing?: boolean } & Record<string, unknown>;
+
+function harvestRows(response: unknown): HarvestRow[] {
+    const rows = (response as { rows?: unknown } | undefined)?.rows;
+    return Array.isArray(rows) ? (rows as HarvestRow[]) : [];
+}
+
+function isRecordedHarvestRow(row: HarvestRow): boolean {
+    return row.is_missing === true || (typeof row.condition_grade === "string" && row.condition_grade !== "");
 }

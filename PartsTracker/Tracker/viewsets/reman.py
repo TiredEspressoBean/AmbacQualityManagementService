@@ -19,7 +19,9 @@ from Tracker.models import (
 )
 from Tracker.serializers.reman import (
     CoreSerializer, CoreListSerializer, CoreScrapSerializer,
+    CoreLotSerializer, CoreLotReceiveSerializer, CoreAssignIdentitySerializer,
     HarvestedComponentSerializer, HarvestedComponentScrapSerializer, HarvestedComponentAcceptSerializer,
+    HarvestedComponentFindingDismissSerializer,
     DisassemblyBOMLineSerializer, RebuildPlanSerializer,
     RepairCodeSerializer, RebuildScopePresetSerializer, RebuildSlotOverrideSerializer,
 )
@@ -172,7 +174,7 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
         return Response({
             'core': CoreSerializer(core, context={'request': request}).data,
-            'first_step': core.step.name if core.step else None,
+            'first_step': core.part.step.name if core.part.step_id else None,
             'operation_count': len(plan.operations),
         })
 
@@ -363,6 +365,80 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    # ----- bulk core lots (Documents/CORE_AS_PART_DESIGN.md §6) -----------------------
+
+    @extend_schema(
+        request=CoreLotReceiveSerializer,
+        responses={201: CoreLotSerializer},
+        description=(
+            "Receive unidentified cores in bulk as one lot of the core type. Exchange "
+            "only: a repair-and-return customer's units must be received individually."
+        ),
+    )
+    @action(detail=False, methods=['post'], url_path='receive_lot')
+    def receive_lot(self, request):
+        from Tracker.services.reman.core_lot import receive_core_lot
+
+        ser = CoreLotReceiveSerializer(data=request.data, context={'request': request})
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        try:
+            lot = receive_core_lot(
+                tenant=self.tenant, core_type=d['core_type'], quantity=d['quantity'],
+                received_by=request.user, customer=d.get('customer'),
+                received_date=d.get('received_date'), lot_number=d.get('lot_number', ''),
+                storage_location=d.get('storage_location', ''),
+                source_reference=d.get('source_reference', ''),
+            )
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreLotSerializer(lot).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=CoreAssignIdentitySerializer,
+        responses={201: CoreSerializer},
+        description=(
+            "Take one unit off a bulk core lot and give it an identity: its core number, "
+            "part and core role. From then on it is an ordinary (exchange) core."
+        ),
+    )
+    @action(detail=False, methods=['post'], url_path='assign_identity')
+    def assign_identity(self, request):
+        from Tracker.models import MaterialLot
+        from Tracker.services.reman.core_lot import assign_core_identity
+
+        ser = CoreAssignIdentitySerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        lot = MaterialLot.objects.filter(pk=d['lot']).first()  # tenant-safe: .objects auto-scopes to the request tenant
+        if lot is None:
+            return Response({'detail': 'Lot not found'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            core = assign_core_identity(
+                lot, user=request.user, condition_grade=d['condition_grade'],
+                serial_number=d.get('serial_number', ''),
+                condition_notes=d.get('condition_notes', ''),
+                source_type=d.get('source_type', 'CUSTOMER_RETURN'),
+            )
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreSerializer(core, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        responses={200: CoreLotSerializer(many=True)},
+        description="Bulk core lots with units still to be given an identity, oldest first.",
+    )
+    # A short, whole list — the lots still being identified — so neither paginated nor
+    # filtered. Declared on the action, or the schema would promise the viewset's
+    # pagination and Core filters and the generated client would reject the array.
+    @action(detail=False, methods=['get'], url_path='lots',
+            pagination_class=None, filter_backends=[])
+    def lots(self, request):
+        from Tracker.services.reman.core_lot import bank_lots
+
+        return Response(CoreLotSerializer(bank_lots(self.tenant), many=True).data)
+
     @extend_schema(
         request=inline_serializer(name="CoreStartTeardownBatchInput", fields={
             "core_ids": serializers.ListField(child=serializers.UUIDField(), allow_empty=False),
@@ -540,11 +616,44 @@ class HarvestedComponentViewSet(TenantScopedMixin, DataExportMixin, viewsets.Mod
         'partial_update': ['grade_component'],
         'accept_to_inventory': ['accept_component'],
         'scrap': ['reject_component'],
+        # Deciding a finding is ACTING on an observation, not making one: it decides
+        # what goes back into the unit, and so the scope. That is a component
+        # disposition (QA / lead tier — see COMPONENT_DISPOSITION_PERMISSIONS in
+        # presets.py), not the operator's `grade_component`, which only records.
+        'apply_finding': ['accept_component'],
+        'dismiss_finding': ['accept_component'],
     }
-    crud_exempt_actions = {'accept_to_inventory', 'scrap'}
+    crud_exempt_actions = {'accept_to_inventory', 'scrap', 'apply_finding', 'dismiss_finding'}
 
     def perform_create(self, serializer):
         serializer.save(disassembled_by=self.request.user)
+
+    @extend_schema(
+        request=None,
+        responses={200: HarvestedComponentSerializer},
+        description="Apply the finding waiting on this component: it takes the proposed "
+                    "grade, and the unit's rebuild plan re-resolves from it.",
+    )
+    @action(detail=True, methods=['post'])
+    def apply_finding(self, request, pk=None):
+        from Tracker.services.reman.findings import apply_finding
+        component = apply_finding(self.get_object(), user=request.user)
+        return Response(HarvestedComponentSerializer(component, context={'request': request}).data)
+
+    @extend_schema(
+        request=HarvestedComponentFindingDismissSerializer,
+        responses={200: HarvestedComponentSerializer},
+        description="Dismiss the finding waiting on this component; the grade stays. "
+                    "The reason is kept on the component's notes.",
+    )
+    @action(detail=True, methods=['post'])
+    def dismiss_finding(self, request, pk=None):
+        from Tracker.services.reman.findings import dismiss_finding
+        ser = HarvestedComponentFindingDismissSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        component = dismiss_finding(self.get_object(), user=request.user,
+                                    reason=ser.validated_data['reason'])
+        return Response(HarvestedComponentSerializer(component, context={'request': request}).data)
 
     @extend_schema(request=HarvestedComponentScrapSerializer, responses={200: HarvestedComponentSerializer})
     @action(detail=True, methods=['post'])

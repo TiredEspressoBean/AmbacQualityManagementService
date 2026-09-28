@@ -580,7 +580,7 @@ class PlanTeardownTests(_TeardownProcessFixture):
         wo = self._plan(self.bank)
         for core in self.bank:
             core.refresh_from_db()
-            self.assertEqual(core.work_order_id, wo.id)
+            self.assertEqual(core.part.work_order_id, wo.id)
             self.assertEqual(core.status, "RECEIVED")
 
     def test_an_accepted_core_is_not_proposed_again(self):
@@ -734,3 +734,126 @@ class PerWorkOrderViewAgreesTests(_RecoverableFixture):
         self.assertEqual(rows[0]['quantity'], 4.0)
         self.assertEqual(rows[0]['forecast'], 0.0)
         self.assertEqual(rows[0]['recoverable'], 0.0)
+
+
+class BulkCoreLotTests(_RecoverableFixture):
+    """Cores received in bulk — counted, unidentified — and given identities one at a
+    time. Documents/CORE_AS_PART_DESIGN.md §6."""
+
+    def _receive(self, qty=3, **kw):
+        from Tracker.services.reman.core_lot import receive_core_lot
+        return receive_core_lot(tenant=self.tenant, core_type=self.core_type,
+                                quantity=qty, received_by=self.user, **kw)
+
+    def _assign(self, lot, grade="B", **kw):
+        from Tracker.services.reman.core_lot import assign_core_identity
+        return assign_core_identity(lot, user=self.user, condition_grade=grade, **kw)
+
+    # --- receipt -------------------------------------------------------------------------
+
+    def test_a_lot_is_received_as_a_count_of_the_core_type(self):
+        lot = self._receive(qty=4)
+        self.assertEqual(lot.material_type_id, self.core_type.id)
+        self.assertEqual((lot.quantity, lot.quantity_remaining), (4, 4))
+        self.assertEqual(lot.unit_of_measure, "EA")
+
+    def test_a_repair_and_return_customers_cores_cannot_arrive_in_bulk(self):
+        from Tracker.models import Companies
+        acme = Companies.objects.create(tenant=self.tenant, name="Acme",
+                                        default_core_fulfilment_mode="REPAIR_RETURN")
+        with self.assertRaisesRegex(ValueError, "received individually"):
+            self._receive(customer=acme)
+
+    def test_only_a_core_type_can_be_received_as_cores(self):
+        from Tracker.services.reman.core_lot import receive_core_lot
+        with self.assertRaisesRegex(ValueError, "not a core type"):
+            receive_core_lot(tenant=self.tenant, core_type=self.housing, quantity=2,
+                             received_by=self.user)
+
+    def test_a_fraction_of_a_core_is_refused(self):
+        with self.assertRaises(ValueError):
+            self._receive(qty=Decimal("1.5"))
+
+    # --- assigning identity ----------------------------------------------------------
+
+    def test_assigning_identity_mints_an_exchange_core_that_traces_to_its_lot(self):
+        lot = self._receive(qty=2)
+        core = self._assign(lot, grade="A", serial_number="SN-9")
+        self.assertEqual(core.fulfilment_mode, "EXCHANGE")
+        self.assertEqual(core.condition_grade, "A")
+        self.assertEqual(core.part.received_in_lot_id, lot.id)
+        self.assertEqual(core.part.part_type_id, self.core_type.id)
+        self.assertEqual(core.source_reference, lot.lot_number)
+        lot.refresh_from_db()
+        self.assertEqual(lot.quantity_remaining, 1)
+
+    def test_the_last_unit_consumes_the_lot_and_no_more_can_be_drawn(self):
+        lot = self._receive(qty=1)
+        self._assign(lot)
+        lot.refresh_from_db()
+        self.assertEqual(lot.status, "CONSUMED")
+        with self.assertRaises(ValueError):
+            self._assign(lot)
+
+    def test_a_held_lot_cannot_have_units_identified(self):
+        lot = self._receive(qty=2)
+        lot.status = "QUARANTINE"
+        lot.save(update_fields=["status"])
+        with self.assertRaisesRegex(ValueError, "in the building"):
+            self._assign(lot)
+
+    # --- the bank ----------------------------------------------------------------------
+
+    def test_the_recoverable_forecast_counts_unidentified_units(self):
+        from Tracker.services.reman.recovery import recoverable_supply
+        before = recoverable_supply(self.housing, tenant=self.tenant)
+        self._receive(qty=4)
+        after = recoverable_supply(self.housing, tenant=self.tenant)
+        # One usable housing per core (2 expected, 50% fallout).
+        self.assertEqual(after.quantity - before.quantity, 4)
+        self.assertEqual(after.sources[0]['in_lots'], 4)
+
+    def test_identifying_a_unit_moves_it_between_halves_of_the_bank_not_out(self):
+        from Tracker.services.reman.recovery import recoverable_supply
+        lot = self._receive(qty=2)
+        before = recoverable_supply(self.housing, tenant=self.tenant).quantity
+        self._assign(lot)
+        self.assertEqual(recoverable_supply(self.housing, tenant=self.tenant).quantity, before)
+
+    def test_the_recover_lane_draws_on_lots_after_identified_cores(self):
+        self._receive(qty=5, lot_number="CL-1")
+        self._rebuild(cores=3)
+        row = self._recover()
+        self.assertEqual(row['cores_to_tear_down'], 3)
+        self.assertEqual(row['cores_available'], 7)
+        self.assertEqual([c['core_number'] for c in row['candidate_cores']], ["RC-OLD", "RC-NEW"])
+        self.assertEqual(row['candidate_lots'], [
+            {'id': row['candidate_lots'][0]['id'], 'lot_number': "CL-1", 'quantity': 1}])
+
+    def test_a_core_type_seen_only_in_bulk_still_has_a_bank(self):
+        from Tracker.models import DisassemblyBOMLine
+        from Tracker.services.reman.core_lot import receive_core_lot
+        from Tracker.services.reman.recovery import teardown_banks
+        turbo = PartTypes.objects.create(tenant=self.tenant, name="Turbo core")
+        DisassemblyBOMLine.objects.create(
+            tenant=self.tenant, core_type=turbo, component_type=self.housing, expected_qty=1)
+        receive_core_lot(tenant=self.tenant, core_type=turbo, quantity=3, received_by=self.user)
+        bank = teardown_banks(self.tenant)[turbo.id]
+        self.assertEqual((len(bank.proposable), bank.lot_units, bank.available), (0, 3, 3))
+
+    def test_bought_stock_of_the_core_type_is_not_core_supply(self):
+        """The core type is often the part number the shop sells, so a purchased lot of
+        it shares the type with a pallet of cores. Only a lot received AS cores counts."""
+        from Tracker.models import MaterialLot
+        from Tracker.services.reman.core_lot import assign_core_identity, bank_lots
+        from Tracker.services.reman.recovery import recoverable_supply, teardown_banks
+        before = recoverable_supply(self.housing, tenant=self.tenant).quantity
+        bought = MaterialLot.objects.create(
+            tenant=self.tenant, lot_number="PO-STOCK-1", material_type=self.core_type,
+            quantity=50, quantity_remaining=50, unit_of_measure="EA", status="ACCEPTED",
+            received_date=date.today(), received_by=self.user)
+        self.assertEqual(bank_lots(self.tenant), [])
+        self.assertEqual(recoverable_supply(self.housing, tenant=self.tenant).quantity, before)
+        self.assertEqual(teardown_banks(self.tenant)[self.core_type.id].lot_units, 0)
+        with self.assertRaisesRegex(ValueError, "not a lot of cores"):
+            assign_core_identity(bought, user=self.user, condition_grade="B")

@@ -84,6 +84,7 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         PartsStatus.AWAITING_PICKUP: 1,
         PartsStatus.CORE_BANKED: 1,
         PartsStatus.RMA_CLOSED: 1,
+        PartsStatus.DISMANTLED: 1,
     }
 
     # Lock the part so the read-check-write below is atomic. Dispositions are
@@ -106,6 +107,16 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         if (disposition.disposition_type in LOOPBACK_TYPES
                 and part.part_status not in ROUTABLE_STATUSES):
             return
+
+        # A core's part takes its status from the core's reman stage
+        # (Documents/CORE_AS_PART_DESIGN.md), so scrapping one is a stage change:
+        # written straight to the part, the core would still read as in teardown or
+        # rebuild and the next stage write would revive the part.
+        if new_status == PartsStatus.SCRAPPED:
+            from Tracker.services.reman.core_part import scrap_if_core
+
+            if scrap_if_core(part, reason=f"disposition {disposition.disposition_number}"):
+                return
 
         part.part_status = new_status
         if disposition.disposition_type in ('REWORK', 'REPAIR'):

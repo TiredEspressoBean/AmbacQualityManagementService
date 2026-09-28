@@ -25,6 +25,8 @@ _BY_STAGE = {
     'AWAITING_AUTHORISATION': PartsStatus.ON_HOLD,
     'IN_REBUILD': PartsStatus.IN_PROGRESS,
     'REBUILT': PartsStatus.COMPLETED,
+    # An exchange unit rebuilt to stock is finished goods on the shelf.
+    'REBUILT_TO_STOCK': PartsStatus.IN_STOCK,
     'DECLINED': PartsStatus.AWAITING_PICKUP,
     'RETURNED': PartsStatus.SHIPPED,
     'RETURNED_UNREPAIRED': PartsStatus.SHIPPED,
@@ -43,7 +45,8 @@ _BY_STAGE = {
 # DISASSEMBLED and AWAITING_AUTHORISATION do NOT — a decision is outstanding, and an
 # open order is how that stays visible.
 ENDED_STAGES = frozenset({
-    'REBUILT', 'DECLINED', 'RETURNED', 'RETURNED_UNREPAIRED', 'HARVESTED', 'SCRAPPED',
+    'REBUILT', 'REBUILT_TO_STOCK', 'DECLINED', 'RETURNED', 'RETURNED_UNREPAIRED',
+    'HARVESTED', 'SCRAPPED',
 })
 
 
@@ -86,12 +89,14 @@ def sync_part_status(core) -> None:
         _cascade_work_order_completion_for_subject(part.work_order)
 
 
-def create_core(*, tenant, work_order=None, step=None, core_number=None, **fields):
+def create_core(*, tenant, work_order=None, step=None, core_number=None,
+                received_in_lot=None, **fields):
     """Receive a core: the part it is, and the role it plays, in one step.
 
     The part's ERP id IS the core number, and `Core.part` is required, so the number is
     generated first, the part minted with it, and the role created on the part.
-    `work_order` and `step` are where the UNIT is, so they go on the part.
+    `work_order` and `step` are where the UNIT is, so they go on the part, as does
+    `received_in_lot` — the bulk receipt a unit was given its identity from.
 
     Every core in the system is created here — receipt, bulk receipt, seeders and tests
     alike — so none can exist without its part.
@@ -110,6 +115,7 @@ def create_core(*, tenant, work_order=None, step=None, core_number=None, **field
             part_type_id=core_type_id,
             work_order=work_order,
             step=step,
+            received_in_lot=received_in_lot,
             part_status=part_status_for(stage, on_work_order=work_order is not None),
         )
         return Core.objects.create(tenant=tenant, part=part, core_number=number, **fields)
@@ -132,3 +138,81 @@ def move_core(core, *, work_order=..., step=...) -> None:
     if fields:
         part.save(update_fields=[*fields, 'updated_at'])
     sync_part_status(core)
+
+
+# ---------------------------------------------------------------------------------------
+# Generic part services that write a status directly. A core's part status follows its
+# stage, so each of these asks here first: for an ordinary part the answer is "not a
+# core, carry on"; for a core the change is made to the STAGE, and the part follows.
+# ---------------------------------------------------------------------------------------
+
+def scrap_if_core(part, *, reason: str = '') -> bool:
+    """Scrap `part` as a core if it plays one — a stage change — and return True.
+
+    Returns False for an ordinary part; the caller then writes SCRAPPED itself. Call it
+    BEFORE writing the part's own status, so the stage's work-order cascade sees the
+    scrapped unit.
+    """
+    from Tracker.services.reman.core import scrap_core
+    from Tracker.services.reman.core_steps import core_of
+
+    core = core_of(part)
+    if core is None:
+        return False
+    if core.status != 'SCRAPPED':
+        scrap_core(core, reason=reason)
+    return True
+
+
+def release_from_order_if_core(part) -> bool:
+    """Take a core that was never started off its work order, and return True.
+
+    For an ordinary part a smaller order CANCELS its unstarted units. A core is a
+    customer's or the bank's unit, not one the order made, so it is not cancelled: it
+    goes back to the bank, received and unplanned, as it was before it was planned.
+    Returns False for an ordinary part.
+    """
+    from Tracker.services.reman.core_steps import core_of
+
+    core = core_of(part)
+    if core is None:
+        return False
+    if core.status != 'RECEIVED':
+        raise ValueError(
+            f"Core {core.core_number} has started {core.get_status_display().lower()}; "
+            "only a core not yet started can be taken off its order"
+        )
+    move_core(core, work_order=None, step=None)
+    return True
+
+
+def assert_status_settable(part, new_status) -> None:
+    """Refuse a direct status change that would contradict a core's stage.
+
+    A QA hold, or any in-flow status, may be set on a core's part as on any part — the
+    next stage change re-derives it. An ENDING may not: a core ends by its reman stage
+    (rebuilt, returned, harvested, scrapped), and a part marked COMPLETED under a core
+    still "in teardown" is two answers to one question. Scrapping is allowed and routed
+    through the stage by the caller (`scrap_if_core`); un-ending is refused, since the
+    stage would stay ended.
+    """
+    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+    from Tracker.services.reman.core_steps import core_of
+
+    core = core_of(part)
+    if core is None or new_status == PartsStatus.SCRAPPED or new_status == part.part_status:
+        return
+    if core.status in ENDED_STAGES:
+        raise ValueError(
+            f"{core.core_number} is a core that has ended ({core.get_status_display()}); "
+            "its status follows its reman stage and cannot be reopened here"
+        )
+    if part.part_status == PartsStatus.CORE_BANKED:
+        raise ValueError(
+            f"{core.core_number} is in the core bank; plan its teardown to put it to work"
+        )
+    if new_status in TERMINAL_PART_STATUSES:
+        raise ValueError(
+            f"{core.core_number} is a core; it ends by its reman stage — rebuild, return, "
+            "harvest or scrap it — not by setting its part status"
+        )

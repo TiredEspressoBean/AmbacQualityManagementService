@@ -50,24 +50,22 @@ def _first_rebuild_step(core):
 
 @transaction.atomic
 def release_core_to_rebuild(core, user=None):
-    """Send a repair-and-return core into the rebuild half of its work order.
+    """Send a torn-down core into the rebuild half of its work order.
+
+    Either mode: a repair-and-return unit is rebuilt to go back to its customer, an
+    exchange unit to go into stock (the industry norm for exchange — harvesting is its
+    other exit, `release_core_to_inventory`). Which parts may go into it is the rebuild
+    plan's business: pooled recovered stock for exchange, only its own for
+    repair-and-return.
 
     Raises:
-        ValidationError: the core is not ready, is not a repair-and-return unit, or
-            has no resolved scope to enter.
+        ValidationError: the core is not ready, or has no resolved scope to enter.
     """
     if core.status != 'DISASSEMBLED':
         raise ValidationError(
             f"{core.core_number} is {core.get_status_display()} — only a disassembled "
             "core can be released into rebuild."
         )
-    if not core.returns_to_customer:
-        raise ValidationError(
-            f"{core.core_number} is an exchange unit: the customer already has a unit "
-            "from stock, so this core is a source of parts. Release it to inventory "
-            "instead."
-        )
-
     step, plan = _first_rebuild_step(core)
     if step is None:
         raise ValidationError(

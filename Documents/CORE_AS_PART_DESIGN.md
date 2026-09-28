@@ -168,6 +168,44 @@ whatever its role. Excluded only where a rule is about *building new product*:
 
 Each file is checked in phase 2 and the result recorded in its commit.
 
+### 8a. The audit (phase 4, 2026-09-24)
+
+The "17" was an estimate; the real set is every service, serializer and viewset that
+reads or writes `part_status` — about 40 files. They split by whether they WRITE it.
+
+**Readers — included, unchanged.** Sampling, quality gates and reports, the inspection
+inbox, batch lifecycle, outside processing (its statuses are in-flow and QA holds),
+change-control impact analysis, dispatch lists, exports, dashboards, scheduling and
+release. A core is a unit being worked; these apply to it as to any part.
+
+**Writers of an ENDING — each now asks `core_part` first.** Writing a terminal status
+straight onto a core's part leaves its stage behind (the core still "in teardown"), and
+the next stage write revives the part. So:
+
+| Writer | For a core |
+|---|---|
+| Disposition SCRAP | `scrap_if_core` — scrapped by its stage |
+| Lot split SCRAP (both paths) | `scrap_if_core` |
+| Change-control remap SCRAP | `scrap_if_core` |
+| Bulk set status | scrap → the stage; any other ending, or reopening an ended core, refused (`assert_status_settable`) |
+| Parts API PATCH | ending or scrap refused (scrap it from the core); moving its work order refused (teardown planning places cores) |
+| Work-order quantity reduction | NOT cancelled — back to the bank (`release_from_order_if_core`) |
+| Rework work-order split | refused — a core is reworked inside its teardown or rebuild |
+| Step rollback | allowed only while teardown or rebuild is under way |
+| Step-end in `advance_part_step` | already `finish_route` (phase 2) |
+
+QA holds (quarantine, rework-needed) and in-flow statuses stay settable on a core's part
+as on any part; `sync_part_status` preserves a hold across stage changes.
+
+**Excluded — building new product.** Make-up planning: a reman order owes no make-up,
+since a scrapped customer unit cannot be replaced by spawning another. BOM explosion
+already plans reman demand through `services/reman/demand.py`.
+
+**Order progress counts a harvested core as done** (`PROGRESS_DONE_STATUSES`,
+decided 2026-09-24): a teardown order's job is to take its units apart. It is still not
+output. Noted, not changed: progress counts only COMPLETED/DISMANTLED, so a unit that
+went on to SHIPPED reads as unfinished — pre-existing for ordinary parts too.
+
 ## 9. Rollout
 
 Each phase ships green on its own.
@@ -185,6 +223,88 @@ Each phase ships green on its own.
 4. **Reman services and staging re-keyed**, the 17-file audit, `Core.work_order`/`step`
    removed.
 5. **Bulk lots and assigning identity**, bank and RECOVER lane counting lots.
+
+## 9a. Status (2026-09-24)
+
+- **Phase 1 — statuses: shipped** (`b3a1920`).
+- **Phase 2 — the cutover: shipped** (`0e01dab`). Generic machinery runs on the part;
+  the mirrored core engine is deleted; the scheduler, completion cascade, pick sheet,
+  release readiness, diagnostics, RCCP and workload control count a core once, as a
+  part. Work-order completion was reworked with care — see its commit and the tests in
+  `test_reman_dwi_workflow.WorkOrderCompletionIsJudgedRightTests`.
+- **Phase 3 — DWI for teardown and rebuild: in progress.** Every reman entry point opens
+  the unit in the operator runtime; the standalone disassembly screen redirects. Two
+  findings on the way: the harvest node's operator view was a placeholder (operators
+  would have typed component-type ids), and **nothing sent its captures to the server**
+  — DWI teardown capture had never worked end to end. Both fixed, with strict
+  enumeration now enforced server-side against the authored node. A rebuild install
+  node records what went into each slot through `install_component`. The server's
+  capture allow-list had never included the harvest node, so its required check never
+  saw it; both reman nodes are on it now, and a resumed substep reseeds from what was
+  stored. Because these two captures create records (harvested components, installs),
+  an identical resubmit is a no-op and a different one is refused.
+- **Dispositions on a core's part move the stage.** A SCRAP disposition goes through
+  `scrap_core`; written straight to the part, the core would have stayed "in teardown"
+  and the next stage write revived it. `DISMANTLED` joins the terminal ranks, so a
+  later USE_AS_IS can't revive a harvested unit.
+- **Phase 4 — the audit: done** (§8a). Every direct writer of an ending asks
+  `core_part` first; `Core.work_order`/`step` read-through removed — a core's position
+  is read from its part only.
+- **Phase 5 — bulk core lots: done.** `services/reman/core_lot.py`:
+  `receive_core_lot` (exchange only — a repair-and-return customer is refused),
+  `assign_core_identity` (the unit is graded by whoever holds it; lot locked, so two
+  people can't overdraw it; `Parts.received_in_lot` traces it back), `bank_lots`. A core
+  type is one cores were received as, or one with a disassembly BOM, so a type first
+  seen in bulk still qualifies; the lot itself must be `holds_cores`. The recoverable forecast and the teardown banks count
+  unidentified lot units; the RECOVER lane proposes identified cores first, then draws
+  on lots (`candidate_lots`). API: `/api/Cores/receive_lot/`, `/assign_identity/`,
+  `/lots/`. UI: `/reman/core-lots`. A core lot is marked `MaterialLot.holds_cores`
+  (set only at bulk receipt): the first cut treated any lot of a core type as cores, and
+  the browser check showed the dev tenant's 1000 PURCHASED Common Rail Injectors in the
+  core bank — a reman shop's core type is usually the part number it sells.
+  **Decided 2026-09-24:** accepting a proposal commits only identified cores; lot
+  units are identified by hand first. This supersedes §6's "accepting assigns identities
+  as it commits units": an identity carries a condition grade, and industry practice
+  grades a core at inspection, by someone handling it — not at planning. Planning runs
+  on counts, which the lane already does. If the extra step chafes, the next step is to
+  let a proposal RESERVE lot quantity on the teardown work order and identify units at
+  induction (the scheduler and completion cascade would then count reservations).
+
+## 9b. Findings after teardown, and the authorisation hold (2026-09-24)
+
+Kept human by decision: people decide, the system records. Automation can come later,
+once there is data on how these are decided.
+
+- **Findings are proposals.** The DWI `rebuildFindingCapture` node lets an operator flag
+  one of the unit's own components as worse than teardown graded it (new grade + what
+  was found). That sets `HarvestedComponent.proposed_*` and changes nothing else. A lead
+  applies it on the rebuild plan (the component takes the grade; the plan and scope
+  re-resolve, as they would from a teardown grade) or dismisses it with a reason. Both
+  are recorded in `condition_notes` and the audit log. Deciding is gated on
+  `accept_component` — a disposition, lead tier — not the operator's `grade_component`.
+- **Authorisation stays a lead's act** (`request_authorisation`), but a parked unit is
+  now actually parked: `core_steps.assert_workable` refuses to start, capture on or
+  advance a unit at `AWAITING_AUTHORISATION`. Not a start-gate refusal, so no supervisor
+  override can wave it on — a supervisor cannot answer for the customer.
+- **Deferred:** the over-and-above scope document for the customer/pricing system, and
+  recording which codes an authorisation covered. Both matter once gating is automatic.
+
+## 9c. Exchange cores are rebuilt to stock (2026-09-24)
+
+Industry norm — diesel reman (the body carries the unit's identity; it is rebuilt
+around its own serviceable parts, pooled recovered ones and new) and aerospace rotable
+exchange (the returned unit is overhauled as itself into the pool) — is that an
+exchange core is normally REBUILT, to stock; harvesting is the fallback for a failed
+body or surplus cores. UQMES refused to release an exchange core into rebuild at all,
+while planning already planned exchange rebuilds against the recovered pool.
+
+- **Exits by mode.** Repair-and-return: rebuild → `REBUILT` → returned to its customer
+  (never harvested). Exchange: rebuild → **`REBUILT_TO_STOCK`** (part `IN_STOCK`,
+  reman finished goods), or harvest → `HARVESTED`. A planner picks at release.
+- **Identity is kept** (decided): the rebuilt unit is the same part, core number = ERP id.
+- **Not component stock.** A rebuilt exchange unit is excluded from component supply
+  (`bom._available_parts`), or a build consuming its part type would draw a reman unit
+  as if it were new.
 
 ## 10. Defaults taken — overrule any of these
 

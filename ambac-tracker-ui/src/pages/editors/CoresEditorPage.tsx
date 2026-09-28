@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useRetrieveCores, coresOptions } from "@/hooks/useRetrieveCores";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { QueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -304,7 +304,7 @@ export function CoresEditorPage() {
                         priority: 3,
                         renderCell: (core) =>
                             core.received_date
-                                ? format(new Date(core.received_date), "MMM d, yyyy")
+                                ? format(parseISO(core.received_date), "MMM d, yyyy")
                                 : "—",
                     }),
                     col({

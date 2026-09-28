@@ -36,6 +36,8 @@ export { SAMPLE_ERROR_TYPES } from "@/components/dwi/nodes/ErrorTypesField";
 export { SAMPLE_PART_ANNOTATION } from "@/components/dwi/nodes/PartAnnotation";
 export { SAMPLE_PART_CALLOUT } from "@/components/dwi/nodes/PartCallout";
 export { SAMPLE_HARVESTED_COMPONENT_CAPTURE } from "@/components/dwi/nodes/HarvestedComponentCapture";
+export { SAMPLE_COMPONENT_INSTALL_CAPTURE } from "@/components/dwi/nodes/ComponentInstallCapture";
+export { SAMPLE_REBUILD_FINDING_CAPTURE } from "@/components/dwi/nodes/RebuildFindingCapture";
 
 // ---------------------------------------------------------------------------
 // Bundles — pre-composed sets of nodes for "I want a whole inspection

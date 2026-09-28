@@ -42,7 +42,7 @@ def assert_work_order_allowed(part, work_order) -> None:
         return
 
     core = part.reserved_for_core
-    if core.work_order_id and core.work_order_id == work_order.pk:
+    if core.part.work_order_id and core.part.work_order_id == work_order.pk:
         return
 
     raise ValidationError({

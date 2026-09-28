@@ -191,6 +191,10 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     and saves. Raises `StartGateError` subclasses; the row is untouched on any
     raise (all checks precede the save).
     """
+    if execution.part_id:
+        from Tracker.services.reman.core_steps import assert_workable
+        assert_workable(execution.part)
+
     reassignment = None
     if execution.assigned_to_id and execution.assigned_to_id != operator.id:
         prior = execution.assigned_to

@@ -33,6 +33,24 @@ def core_of(part):
     return core
 
 
+def assert_workable(part) -> None:
+    """Refuse work on a unit a lead has parked for the customer's authorisation.
+
+    `AWAITING_AUTHORISATION` is a person's decision — the unit waits until the customer
+    answers — so nothing may be started, captured or advanced on it until someone
+    records that answer. Deliberately not a start-gate refusal: those can be overridden
+    with a supervisor's credentials, and a supervisor cannot answer for the customer.
+    """
+    from django.core.exceptions import ValidationError
+
+    core = core_of(part)
+    if core is not None and core.status == 'AWAITING_AUTHORISATION':
+        raise ValidationError(
+            f"{core.core_number} is waiting on the customer's authorisation. Record their "
+            "answer on the core before any more work is done on it."
+        )
+
+
 def on_step_started(part, operator=None) -> None:
     """A step has begun on this unit. The first one on a RECEIVED core starts teardown."""
     core = core_of(part)

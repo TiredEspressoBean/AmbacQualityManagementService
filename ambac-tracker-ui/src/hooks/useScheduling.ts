@@ -366,6 +366,9 @@ export type RecoverRow = {
   cores_in_flight: number;
   /** What accepting commits, oldest received first. */
   candidate_cores: { id: string; core_number: string }[];
+  /** The remainder, drawn from bulk core lots, oldest receipt first. These units have
+   *  no identity yet, so accepting cannot commit them until each is given one. */
+  candidate_lots: { id: string; lot_number: string; quantity: number }[];
   lead_time_days: number | null;
   need_by: string | null;
   /** Null when the core type has no authored teardown duration. */

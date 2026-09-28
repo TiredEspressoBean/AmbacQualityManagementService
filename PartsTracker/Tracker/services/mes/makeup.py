@@ -27,12 +27,15 @@ def work_order_shortfall(work_order) -> dict:
     parts = work_order.parts  # tenant-safe: reverse FK from the tenant-scoped WO
     alive = parts.exclude(
         part_status__in=[PartsStatus.SCRAPPED, PartsStatus.CANCELLED]).count()
+    # A reman order's units are cores — someone's units, received, not made — so a
+    # scrapped one cannot be "made up" by spawning another. It owes no make-up.
+    is_reman = work_order.cores.exists()
     return {
         'target_good': target,
         'alive': alive,
         'good': parts.filter(part_status=PartsStatus.COMPLETED).count(),
         'scrapped': parts.filter(part_status=PartsStatus.SCRAPPED).count(),
-        'shortfall': max(0, target - alive),
+        'shortfall': 0 if is_reman else max(0, target - alive),
     }
 
 

@@ -291,7 +291,9 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             'order', 'order__customer',
             'part_type',
             'step', 'step__part_type',
-            'work_order', 'work_order__process'
+            'work_order', 'work_order__process',
+            # The serializer reports the core role a part plays; read it on the same pass.
+            'core_role',
         )
 
     @extend_schema(
@@ -3185,6 +3187,12 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         from Tracker.services.mes.lifecycle import authorize_start
         self._pending_training_snapshot = None
         if str(request.data.get('status', '')).upper() == 'IN_PROGRESS':
+            # A unit parked for the customer's authorisation is not started, whoever
+            # asks (services/reman/core_steps.assert_workable).
+            part = Parts.objects.filter(pk=request.data.get('part')).first() if request.data.get('part') else None  # tenant-safe: .objects auto-scopes to the request tenant
+            if part is not None:
+                from Tracker.services.reman.core_steps import assert_workable
+                assert_workable(part)
             step = Steps.objects.filter(pk=request.data.get('step')).first()
             if step is not None:
                 process = self._gate_process_for(request.data)

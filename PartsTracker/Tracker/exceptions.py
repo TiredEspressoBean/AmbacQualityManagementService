@@ -20,6 +20,8 @@ from rest_framework.exceptions import (
 from rest_framework import status
 from django.http import Http404
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
 
 class TenantContextRequired(APIException):
@@ -76,6 +78,12 @@ def custom_exception_handler(exc, context):
     # Handle Django's PermissionDenied
     if isinstance(exc, DjangoPermissionDenied):
         exc = PermissionDenied(detail=str(exc) if str(exc) else None)
+
+    # A service's Django ValidationError is a refusal with a reason, not a crash: without
+    # this it reached the client as a bare 500. Views that catch it themselves are
+    # unaffected; this covers the ones that let it propagate.
+    if isinstance(exc, DjangoValidationError):
+        exc = DRFValidationError({'detail': '; '.join(exc.messages)})
 
     # Handle Django's Http404
     if isinstance(exc, Http404):

@@ -14,6 +14,7 @@ from Tracker.models import (
     PartTypes, Companies, User, WorkOrder,
 )
 from .core import SecureModelMixin
+from .fields import TenantScopedPrimaryKeyRelatedField
 
 
 # ===== CORE SERIALIZERS =====
@@ -31,11 +32,11 @@ class CoreSerializer(SecureModelMixin):
     # actually tests — "show me what happened to the unit I sent you".
     # A core is a part; where it sits — its work order — is the part's. Read-only here:
     # a core is put on a work order by teardown planning, which moves its part.
-    work_order = serializers.UUIDField(source='work_order_id', read_only=True, allow_null=True)
+    work_order = serializers.UUIDField(source='part.work_order_id', read_only=True, allow_null=True)
     work_order_erp_id = serializers.CharField(
-        source='work_order.ERP_id', read_only=True, allow_null=True)
+        source='part.work_order.ERP_id', read_only=True, allow_null=True)
     work_order_status = serializers.CharField(
-        source='work_order.workorder_status', read_only=True, allow_null=True)
+        source='part.work_order.workorder_status', read_only=True, allow_null=True)
     received_by_name = serializers.SerializerMethodField()
     disassembled_by_name = serializers.SerializerMethodField()
     harvested_component_count = serializers.IntegerField(read_only=True)
@@ -123,6 +124,47 @@ class CoreScrapSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, default="")
 
 
+# ===== BULK CORE LOTS (Documents/CORE_AS_PART_DESIGN.md §6) =====
+
+class CoreLotSerializer(serializers.Serializer):
+    """A bulk core receipt: a MaterialLot of a core type, and how many of its units are
+    still without an identity."""
+    id = serializers.UUIDField(read_only=True)
+    lot_number = serializers.CharField(read_only=True)
+    core_type = serializers.UUIDField(source='material_type_id', read_only=True)
+    core_type_name = serializers.CharField(source='material_type.name', read_only=True)
+    customer = serializers.UUIDField(source='supplier_id', read_only=True, allow_null=True)
+    customer_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
+    source_reference = serializers.CharField(source='supplier_lot_number', read_only=True)
+    received_date = serializers.DateField(read_only=True, allow_null=True)
+    quantity = serializers.IntegerField(read_only=True)
+    unidentified = serializers.IntegerField(source='quantity_remaining', read_only=True)
+    status = serializers.CharField(read_only=True)
+    storage_location = serializers.CharField(read_only=True)
+
+
+class CoreLotReceiveSerializer(serializers.Serializer):
+    core_type = TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all())
+    quantity = serializers.IntegerField(min_value=1)
+    customer = TenantScopedPrimaryKeyRelatedField(
+        queryset=Companies.unscoped.all(), required=False, allow_null=True)
+    received_date = serializers.DateField(required=False, allow_null=True)
+    lot_number = serializers.CharField(required=False, allow_blank=True)
+    storage_location = serializers.CharField(required=False, allow_blank=True)
+    source_reference = serializers.CharField(required=False, allow_blank=True)
+
+
+class CoreAssignIdentitySerializer(serializers.Serializer):
+    """Give one unit of a bulk lot its identity. The unit is graded by whoever is
+    holding it, as at individual receipt."""
+    lot = serializers.UUIDField()
+    condition_grade = serializers.ChoiceField(choices=Core.CONDITION_GRADE_CHOICES)
+    serial_number = serializers.CharField(required=False, allow_blank=True)
+    condition_notes = serializers.CharField(required=False, allow_blank=True)
+    source_type = serializers.ChoiceField(
+        choices=Core.SOURCE_TYPE_CHOICES, required=False)
+
+
 # ===== HARVESTED COMPONENT SERIALIZERS =====
 
 class HarvestedComponentSerializer(SecureModelMixin):
@@ -132,6 +174,13 @@ class HarvestedComponentSerializer(SecureModelMixin):
     component_part_erp_id = serializers.CharField(source='component_part.ERP_id', read_only=True, allow_null=True)
     disassembled_by_name = serializers.SerializerMethodField()
     scrapped_by_name = serializers.SerializerMethodField()
+    proposed_by_name = serializers.SerializerMethodField()
+    # Declared, not left to the model: it is BLANK whenever no finding is pending —
+    # nearly always — and the inferred field was typed as the bare grade enum, so the
+    # generated client would reject every harvested-component response. Explicit
+    # allow_blank puts the blank in the schema.
+    proposed_grade = serializers.ChoiceField(
+        choices=HarvestedComponent.CONDITION_GRADE_CHOICES, allow_blank=True, read_only=True)
 
     class Meta:
         model = HarvestedComponent
@@ -143,20 +192,34 @@ class HarvestedComponentSerializer(SecureModelMixin):
             'condition_grade', 'condition_notes',
             'is_scrapped', 'scrap_reason', 'scrapped_at', 'scrapped_by', 'scrapped_by_name',
             'position', 'original_part_number',
+            # A finding raised after teardown, waiting on a lead (services/reman/findings).
+            'proposed_grade', 'proposed_finding', 'proposed_at', 'proposed_by_name',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'created_at', 'updated_at',             'disassembled_at', 'disassembled_by', 'scrapped_at', 'scrapped_by',
-            'is_scrapped', 'scrap_reason', 'component_part'
+            'is_scrapped', 'scrap_reason', 'component_part',
+            # Written only by record/apply/dismiss_finding — never set directly.
+            'proposed_grade', 'proposed_finding', 'proposed_at',
         )
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_proposed_by_name(self, obj):
+        return obj.proposed_by.display_name if obj.proposed_by else None
+
+    # Nullable: `disassembled_by` is SET_NULL, and an un-annotated-null field makes the
+    # generated client reject the response the first time it is null.
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_disassembled_by_name(self, obj):
         return obj.disassembled_by.display_name if obj.disassembled_by else None
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_scrapped_by_name(self, obj):
         return obj.scrapped_by.display_name if obj.scrapped_by else None
+
+
+class HarvestedComponentFindingDismissSerializer(serializers.Serializer):
+    reason = serializers.CharField()
 
 
 class HarvestedComponentScrapSerializer(serializers.Serializer):

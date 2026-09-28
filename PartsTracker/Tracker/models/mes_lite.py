@@ -101,6 +101,13 @@ class PartsStatus(models.TextChoices):
     DISMANTLED = "DISMANTLED", "Dismantled"
 
 
+# Statuses at which a unit counts as DONE on an order's progress. A harvested core
+# (DISMANTLED) is done: a teardown order's job is to get its units taken apart, and
+# counting one as unfinished left a teardown-only order short of 100% for ever. It is
+# not OUTPUT — "units produced" metrics must not count it (CORE_AS_PART_DESIGN.md §8).
+PROGRESS_DONE_STATUSES = ('COMPLETED', 'DISMANTLED')
+
+
 # ===== MODELS =====
 
 class PartTypes(SecureModel):
@@ -3253,6 +3260,18 @@ class Parts(SecureModel):
     `services.reman.harvested_component.accept_component_to_inventory` from the core's
     `allows_pooled_harvest`, and enforced by
     `services.reman.reservation.assert_work_order_allowed`."""
+
+    # Cores that arrive in bulk — counted, unserialised — are received as a MaterialLot
+    # of the core type and given an identity one at a time
+    # (`services.reman.core_lot.assign_core_identity`). This is the trace from the unit
+    # back to that receipt. PROTECT: a lot that units were identified from is history.
+    received_in_lot = models.ForeignKey(
+        'Tracker.MaterialLot',
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name='identified_units',
+        help_text="The bulk receipt this unit was given its identity from, if any.",
+    )
 
     is_makeup = models.BooleanField(
         default=False,

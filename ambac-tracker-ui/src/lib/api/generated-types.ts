@@ -1674,6 +1674,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/assign_identity/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Take one unit off a bulk core lot and give it an identity: its core number, part and core role. From then on it is an ordinary (exchange) core. */
+        post: operations["api_Cores_assign_identity_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/bulk_create/": {
         parameters: {
             query?: never;
@@ -1708,6 +1725,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/lots/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Bulk core lots with units still to be given an identity, oldest first. */
+        get: operations["api_Cores_lots_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/plan_teardown/": {
         parameters: {
             query?: never;
@@ -1719,6 +1753,23 @@ export interface paths {
         put?: never;
         /** @description Accept a teardown proposal: create one PENDING teardown WorkOrder dated to `start_by` that links the given cores WITHOUT starting disassembly. The cores stay RECEIVED until an operator starts the first step. All-or-nothing; the same rules as start_teardown_batch. */
         post: operations["api_Cores_plan_teardown_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/receive_lot/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Receive unidentified cores in bulk as one lot of the core type. Exchange only: a repair-and-return customer's units must be received individually. */
+        post: operations["api_Cores_receive_lot_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3622,6 +3673,40 @@ export interface paths {
         put?: never;
         /** @description Accept a harvested component into inventory as a Part */
         post: operations["api_HarvestedComponents_accept_to_inventory_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/HarvestedComponents/{id}/apply_finding/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Apply the finding waiting on this component: it takes the proposed grade, and the unit's rebuild plan re-resolves from it. */
+        post: operations["api_HarvestedComponents_apply_finding_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/HarvestedComponents/{id}/dismiss_finding/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Dismiss the finding waiting on this component; the grade stays. The reason is kept on the component's notes. */
+        post: operations["api_HarvestedComponents_dismiss_finding_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18218,6 +18303,18 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        /**
+         * @description Give one unit of a bulk lot its identity. The unit is graded by whoever is
+         *     holding it, as at individual receipt.
+         */
+        CoreAssignIdentityRequest: {
+            /** Format: uuid */
+            lot: string;
+            condition_grade: components["schemas"]["ConditionGradeEnum"];
+            serial_number?: string;
+            condition_notes?: string;
+            source_type?: components["schemas"]["SourceTypeEnum"];
+        };
         CoreAuthorisationError: {
             detail: string;
         };
@@ -18295,6 +18392,40 @@ export interface components {
              * @description The part this core is. Its part_status is derived from `status`.
              */
             readonly part: string;
+        };
+        /**
+         * @description A bulk core receipt: a MaterialLot of a core type, and how many of its units are
+         *     still without an identity.
+         */
+        CoreLot: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly lot_number: string;
+            /** Format: uuid */
+            readonly core_type: string;
+            readonly core_type_name: string;
+            /** Format: uuid */
+            readonly customer: string | null;
+            readonly customer_name: string | null;
+            readonly source_reference: string;
+            /** Format: date */
+            readonly received_date: string | null;
+            readonly quantity: number;
+            readonly unidentified: number;
+            readonly status: string;
+            readonly storage_location: string;
+        };
+        CoreLotReceiveRequest: {
+            /** Format: uuid */
+            core_type: string;
+            quantity: number;
+            /** Format: uuid */
+            customer?: string | null;
+            /** Format: date */
+            received_date?: string | null;
+            lot_number?: string;
+            storage_location?: string;
+            source_reference?: string;
         };
         CorePlanTeardownInputRequest: {
             core_ids: string[];
@@ -18412,6 +18543,7 @@ export interface components {
          *     * `IN_REBUILD` - In Rebuild
          *     * `REBUILT` - Rebuilt — ready to return
          *     * `RETURNED` - Returned to customer
+         *     * `REBUILT_TO_STOCK` - Rebuilt to stock
          *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
          *     * `DECLINED` - Scope declined — to be returned unrepaired
          *     * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -18419,7 +18551,7 @@ export interface components {
          *     * `SCRAPPED` - Scrapped
          * @enum {string}
          */
-        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
+        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "REBUILT_TO_STOCK" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
         CreateBOMRevisionInputRequest: {
             change_description: string;
         };
@@ -20027,7 +20159,7 @@ export interface components {
             /** Format: date-time */
             readonly disassembled_at: string;
             readonly disassembled_by: number;
-            readonly disassembled_by_name: string;
+            readonly disassembled_by_name: string | null;
             condition_grade: components["schemas"]["ConditionGradeEnum"];
             condition_notes?: string;
             readonly is_scrapped: boolean;
@@ -20040,6 +20172,12 @@ export interface components {
             position?: string;
             /** @description Original part number if readable */
             original_part_number?: string;
+            readonly proposed_grade: components["schemas"]["ConditionGradeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description What was found, in the operator's words. */
+            readonly proposed_finding: string;
+            /** Format: date-time */
+            readonly proposed_at: string | null;
+            readonly proposed_by_name: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -20049,6 +20187,9 @@ export interface components {
         /** @description Serializer for accepting a component to inventory */
         HarvestedComponentAcceptRequest: {
             erp_id?: string | null;
+        };
+        HarvestedComponentFindingDismissRequest: {
+            reason: string;
         };
         /** @description Harvested component serializer */
         HarvestedComponentRequest: {
@@ -23838,6 +23979,8 @@ export interface components {
              */
             readonly reserved_for_core: string | null;
             readonly reserved_for_core_number: string | null;
+            /** Format: uuid */
+            readonly core_role: string | null;
             /** @description True iff this part has been pulled off its WorkOrder cohort and now advances independently. Set via the split_part_from_lot service; cleared by rejoin_part_to_lot when the part re-converges with its siblings. */
             readonly split_from_lot: boolean;
             readonly lot_split_reason: string | null;
@@ -26300,6 +26443,8 @@ export interface components {
              *     * `defects` - Defect findings
              *     * `annotation` - Part annotation (3D)
              *     * `harvested_components` - Harvested components (teardown)
+             *     * `component_install` - Components installed (rebuild)
+             *     * `rebuild_finding` - Finding raised during rebuild
              */
             kind?: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -28470,6 +28615,11 @@ export interface components {
             id: string;
             core_number: string;
         };
+        RecoverCandidateLot: {
+            id: string;
+            lot_number: string;
+            quantity: number;
+        };
         RecoverComponent: {
             component: string;
             /** Format: double */
@@ -28490,6 +28640,7 @@ export interface components {
             cores_available: number;
             cores_in_flight: number;
             candidate_cores: components["schemas"]["RecoverCandidateCore"][];
+            candidate_lots: components["schemas"]["RecoverCandidateLot"][];
             lead_time_days: number | null;
             /** Format: date */
             need_by: string | null;
@@ -31330,6 +31481,8 @@ export interface components {
              *     * `defects` - Defect findings
              *     * `annotation` - Part annotation (3D)
              *     * `harvested_components` - Harvested components (teardown)
+             *     * `component_install` - Components installed (rebuild)
+             *     * `rebuild_finding` - Finding raised during rebuild
              */
             kind: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -31371,9 +31524,11 @@ export interface components {
          *     * `defects` - Defect findings
          *     * `annotation` - Part annotation (3D)
          *     * `harvested_components` - Harvested components (teardown)
+         *     * `component_install` - Components installed (rebuild)
+         *     * `rebuild_finding` - Finding raised during rebuild
          * @enum {string}
          */
-        SubstepResponseKindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed" | "attestation" | "status" | "equipment_roles" | "personnel_roles" | "signatures" | "defects" | "annotation" | "harvested_components";
+        SubstepResponseKindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed" | "attestation" | "status" | "equipment_roles" | "personnel_roles" | "signatures" | "defects" | "annotation" | "harvested_components" | "component_install" | "rebuild_finding";
         /**
          * @description Per-node operator capture rows (text / choice / photo / file /
          *     timer / computed).
@@ -31410,6 +31565,8 @@ export interface components {
              *     * `defects` - Defect findings
              *     * `annotation` - Part annotation (3D)
              *     * `harvested_components` - Harvested components (teardown)
+             *     * `component_install` - Components installed (rebuild)
+             *     * `rebuild_finding` - Finding raised during rebuild
              */
             kind: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -37260,13 +37417,14 @@ export interface operations {
                  *     * `IN_REBUILD` - In Rebuild
                  *     * `REBUILT` - Rebuilt — ready to return
                  *     * `RETURNED` - Returned to customer
+                 *     * `REBUILT_TO_STOCK` - Rebuilt to stock
                  *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
                  *     * `DECLINED` - Scope declined — to be returned unrepaired
                  *     * `RETURNED_UNREPAIRED` - Returned unrepaired
                  *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
             };
             header?: never;
             path?: never;
@@ -37466,13 +37624,14 @@ export interface operations {
                  *     * `IN_REBUILD` - In Rebuild
                  *     * `REBUILT` - Rebuilt — ready to return
                  *     * `RETURNED` - Returned to customer
+                 *     * `REBUILT_TO_STOCK` - Rebuilt to stock
                  *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
                  *     * `DECLINED` - Scope declined — to be returned unrepaired
                  *     * `RETURNED_UNREPAIRED` - Returned unrepaired
                  *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
             };
             header?: never;
             path: {
@@ -37749,6 +37908,31 @@ export interface operations {
             };
         };
     };
+    api_Cores_assign_identity_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreAssignIdentityRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreAssignIdentityRequest"];
+                "multipart/form-data": components["schemas"]["CoreAssignIdentityRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Core"];
+                };
+            };
+        };
+    };
     api_Cores_bulk_create_create: {
         parameters: {
             query?: never;
@@ -37810,6 +37994,25 @@ export interface operations {
             };
         };
     };
+    api_Cores_lots_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreLot"][];
+                };
+            };
+        };
+    };
     api_Cores_plan_teardown_create: {
         parameters: {
             query?: never;
@@ -37831,6 +38034,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorePlanTeardownResponse"];
+                };
+            };
+        };
+    };
+    api_Cores_receive_lot_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreLotReceiveRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreLotReceiveRequest"];
+                "multipart/form-data": components["schemas"]["CoreLotReceiveRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreLot"];
                 };
             };
         };
@@ -41136,6 +41364,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptToInventoryResponse"];
+                };
+            };
+        };
+    };
+    api_HarvestedComponents_apply_finding_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Harvested Component. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HarvestedComponent"];
+                };
+            };
+        };
+    };
+    api_HarvestedComponents_dismiss_finding_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Harvested Component. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HarvestedComponentFindingDismissRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["HarvestedComponentFindingDismissRequest"];
+                "multipart/form-data": components["schemas"]["HarvestedComponentFindingDismissRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HarvestedComponent"];
                 };
             };
         };
@@ -52860,8 +53138,10 @@ export interface operations {
                  *     * `defects` - Defect findings
                  *     * `annotation` - Part annotation (3D)
                  *     * `harvested_components` - Harvested components (teardown)
+                 *     * `component_install` - Components installed (rebuild)
+                 *     * `rebuild_finding` - Finding raised during rebuild
                  */
-                kind?: "annotation" | "attestation" | "choice" | "computed" | "defects" | "equipment_roles" | "file" | "harvested_components" | "personnel_roles" | "photo" | "scan" | "signatures" | "status" | "text" | "timer" | "video";
+                kind?: "annotation" | "attestation" | "choice" | "component_install" | "computed" | "defects" | "equipment_roles" | "file" | "harvested_components" | "personnel_roles" | "photo" | "rebuild_finding" | "scan" | "signatures" | "status" | "text" | "timer" | "video";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 node_id?: string;

@@ -91,6 +91,8 @@ def split_part_from_lot(
                 "substep - reworked parts must be re-inspected before they can advance."
             )
 
+    from Tracker.services.reman.core_part import scrap_if_core
+
     with transaction.atomic():
         # Lock the part and re-check the idempotency guard under the lock: two
         # concurrent splits of the same part must not both proceed (which would
@@ -102,6 +104,7 @@ def split_part_from_lot(
             # scrapped. Without this, the idempotency guard would leave it non-terminal
             # (schedulable/rejoinable) despite the scrap request.
             if reason == PartSplitReason.SCRAP and part.part_status != PartsStatus.SCRAPPED:
+                scrap_if_core(part, reason="scrapped from its lot")
                 part.part_status = PartsStatus.SCRAPPED
                 part.lot_split_reason = PartSplitReason.SCRAP
                 part.save(update_fields=['part_status', 'lot_split_reason'])
@@ -122,6 +125,8 @@ def split_part_from_lot(
             # scheduling and can never rejoin. The split flag alone doesn't set status
             # (status is otherwise driven by the disposition cascade), so a scrap-split
             # made directly through this service must set it here to stay consistent.
+            # A core is scrapped by its stage, which its part then follows.
+            scrap_if_core(part, reason="scrapped from its lot")
             part.part_status = PartsStatus.SCRAPPED
             update_fields.append('part_status')
         elif reason == PartSplitReason.QUARANTINE:

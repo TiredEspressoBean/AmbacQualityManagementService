@@ -47,7 +47,7 @@ def install_component(core, *, harvested=None, part=None, user, bom_line=None, s
     else:
         # A reserved part may only serve the core it is reserved to — the existing rule,
         # read here rather than restated.
-        assert_work_order_allowed(part, core.work_order)
+        assert_work_order_allowed(part, core.part.work_order)
 
     return AssemblyUsage.objects.create(
         tenant=core.tenant,
@@ -63,7 +63,8 @@ def install_component(core, *, harvested=None, part=None, user, bom_line=None, s
 
 @transaction.atomic
 def complete_rebuild(core, user=None):
-    """Mark a rebuilt unit ready to go back.
+    """End a rebuild. A repair-and-return unit is REBUILT, ready to go back to its
+    customer; an exchange unit is REBUILT_TO_STOCK — finished reman goods, same identity.
 
     Deliberately does NOT check that every slot was filled. The as-built record is what
     went in, and a unit can legitimately ship with a slot resolved differently than
@@ -75,7 +76,7 @@ def complete_rebuild(core, user=None):
             f"{core.core_number} is {core.get_status_display()} — only a unit under "
             "rebuild can be completed."
         )
-    core.status = 'REBUILT'
+    core.status = 'REBUILT' if core.returns_to_customer else 'REBUILT_TO_STOCK'
     core.save(update_fields=['status', 'updated_at'])
     from Tracker.services.reman.core_part import sync_part_status
     sync_part_status(core)

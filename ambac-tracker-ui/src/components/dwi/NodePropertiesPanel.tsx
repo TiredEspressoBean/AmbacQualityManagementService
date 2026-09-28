@@ -33,6 +33,8 @@ import { ErrorTypesFieldEditForm } from "./nodes/ErrorTypesField";
 import { PartAnnotationEditForm } from "./nodes/PartAnnotation";
 import { PartCalloutEditForm } from "./nodes/PartCallout";
 import { HarvestedComponentCaptureEditForm } from "./nodes/HarvestedComponentCapture";
+import { ComponentInstallCaptureEditForm } from "./nodes/ComponentInstallCapture";
+import { RebuildFindingCaptureEditForm } from "./nodes/RebuildFindingCapture";
 
 const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
     measurementSpec: MeasurementSpecEditForm,
@@ -55,6 +57,8 @@ const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
     partAnnotation: PartAnnotationEditForm,
     partCallout: PartCalloutEditForm,
     harvestedComponentCapture: HarvestedComponentCaptureEditForm,
+    componentInstallCapture: ComponentInstallCaptureEditForm,
+    rebuildFindingCapture: RebuildFindingCaptureEditForm,
 };
 
 const NODE_LABELS: Record<string, string> = {
@@ -78,6 +82,8 @@ const NODE_LABELS: Record<string, string> = {
     partAnnotation: "Part annotation (3D)",
     partCallout: "Part callouts (3D)",
     harvestedComponentCapture: "Harvested components (teardown)",
+    componentInstallCapture: "Components installed (rebuild)",
+    rebuildFindingCapture: "Rebuild finding",
 };
 
 export function NodePropertiesPanel({ editor }: { editor: Editor | null }) {

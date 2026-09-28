@@ -19,6 +19,8 @@ import { ErrorTypesField } from "@/components/dwi/nodes/ErrorTypesField";
 import { PartAnnotation } from "@/components/dwi/nodes/PartAnnotation";
 import { PartCallout } from "@/components/dwi/nodes/PartCallout";
 import { HarvestedComponentCapture } from "@/components/dwi/nodes/HarvestedComponentCapture";
+import { ComponentInstallCapture } from "@/components/dwi/nodes/ComponentInstallCapture";
+import { RebuildFindingCapture } from "@/components/dwi/nodes/RebuildFindingCapture";
 import { DocumentLink } from "@/components/dwi/nodes/DocumentLink";
 import { SlashCommand } from "@/lib/dwi/slash-command";
 
@@ -48,4 +50,6 @@ export const DWI_EXTENSIONS = [
     PartAnnotation,
     PartCallout,
     HarvestedComponentCapture,
+    ComponentInstallCapture,
+    RebuildFindingCapture,
 ];

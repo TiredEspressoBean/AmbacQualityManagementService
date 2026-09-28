@@ -867,7 +867,7 @@ class RemanWorkOrderIntegrationTests(RemanBaseTestCase):
             work_order=work_order  # Link to WO
         )
 
-        self.assertEqual(core.work_order, work_order)
+        self.assertEqual(core.part.work_order, work_order)
         self.assertIn(core, work_order.cores.all())
 
     def test_reman_part_enters_production_workflow(self):
@@ -1753,13 +1753,17 @@ class CoreReleaseTests(TenantTestCase):
             release_core_to_inventory(self.theirs, self.user_a)
         self.assertIn('back to its customer', str(ctx.exception))
 
-    def test_an_exchange_core_cannot_be_released_into_rebuild(self):
+    def test_an_exchange_core_may_be_released_into_rebuild(self):
+        """Exchange cores are normally rebuilt — to stock (decided 2026-09-24; it used
+        to be refused, which left planning's exchange rebuilds unreachable). This one
+        has no scope authored, so it is refused for THAT reason, not for its mode."""
         from django.core.exceptions import ValidationError
         from Tracker.services.reman.release import release_core_to_rebuild
 
         with self.assertRaises(ValidationError) as ctx:
             release_core_to_rebuild(self.ours, self.user_a)
-        self.assertIn('exchange unit', str(ctx.exception))
+        self.assertNotIn('exchange unit', str(ctx.exception))
+        self.assertIn('No rebuild operations resolved', str(ctx.exception))
 
     def test_releasing_into_rebuild_needs_a_resolved_scope(self):
         """Releasing with no operations would put a unit on a work order with nothing
@@ -2109,7 +2113,7 @@ class ScopeAwareAdvancementTests(TenantTestCase):
         advance_part_step(self.core.part, operator=self.user_a)
         self.core.refresh_from_db()
         # Hone and Plate belong to a code this unit's findings never raised.
-        self.assertEqual(self.core.step, self.steps['Assemble'])
+        self.assertEqual(self.core.part.step, self.steps['Assemble'])
         skipped = set(
             StepExecution.objects.filter(part=self.core.part, status='SKIPPED')
             .values_list('step__name', flat=True))
@@ -2136,7 +2140,7 @@ class ScopeAwareAdvancementTests(TenantTestCase):
         self.core.save(update_fields=['status'])
         advance_part_step(self.core.part, operator=self.user_a)
         self.core.refresh_from_db()
-        self.assertEqual(self.core.step, self.steps['Hone'])
+        self.assertEqual(self.core.part.step, self.steps['Hone'])
         self.assertFalse(
             StepExecution.objects.filter(part=self.core.part, status='SKIPPED').exists())
 
@@ -2151,6 +2155,77 @@ class ScopeAwareAdvancementTests(TenantTestCase):
                 break
         self.core.refresh_from_db()
         self.assertEqual(self.core.status, 'REBUILT')
+
+
+    def test_a_disassembled_unit_is_released_into_its_first_in_scope_operation(self):
+        """The happy path of `release_core_to_rebuild`, which no test reached: every
+        other release test stops at a refusal before the core's process is read — so
+        removing the core's own `work_order` accessor broke every release into rebuild
+        (`Core.process` still read it) and the suite stayed green. Found in the browser,
+        2026-09-24."""
+        from decimal import Decimal
+        from Tracker.models import BOM, BOMLine
+        from Tracker.services.reman.release import release_core_to_rebuild
+        # A rebuild plan is laid out against the core type's released assembly BOM.
+        bom = BOM.objects.create(
+            tenant=self.tenant_a, part_type=self.core_type, revision='A',
+            bom_type='ASSEMBLY', status='RELEASED', is_current_version=True)
+        BOMLine.objects.create(tenant=self.tenant_a, bom=bom, component_type=self.nozzle,
+                               quantity=Decimal(1), source='BUY', line_number=1)
+        unit = create_core(
+            tenant=self.tenant_a, core_number='CORE-SCOPE-REL', core_type=self.core_type,
+            fulfilment_mode='REPAIR_RETURN', status='DISASSEMBLED', work_order=self.wo,
+            received_date=date.today(), received_by=self.user_a)
+        core, plan = release_core_to_rebuild(unit, self.user_a)
+        core.part.refresh_from_db()
+        self.assertEqual(core.status, 'IN_REBUILD')
+        self.assertEqual(core.part.step, self.steps['Clean'])
+        self.assertTrue(plan.operations)
+
+    def _released(self, number, mode):
+        from decimal import Decimal
+        from Tracker.models import BOM, BOMLine
+        from Tracker.services.reman.release import release_core_to_rebuild
+        if not BOM.objects.filter(part_type=self.core_type).exists():
+            bom = BOM.objects.create(
+                tenant=self.tenant_a, part_type=self.core_type, revision='A',
+                bom_type='ASSEMBLY', status='RELEASED', is_current_version=True)
+            BOMLine.objects.create(tenant=self.tenant_a, bom=bom, component_type=self.nozzle,
+                                   quantity=Decimal(1), source='BUY', line_number=1)
+        unit = create_core(
+            tenant=self.tenant_a, core_number=number, core_type=self.core_type,
+            fulfilment_mode=mode, status='DISASSEMBLED', work_order=self.wo,
+            received_date=date.today(), received_by=self.user_a)
+        core, _ = release_core_to_rebuild(unit, self.user_a)
+        return core
+
+    def test_an_exchange_unit_is_rebuilt_to_stock_keeping_its_identity(self):
+        from Tracker.models import PartsStatus
+        from Tracker.services.reman.rebuild_execution import complete_rebuild
+        core = complete_rebuild(self._released('CORE-EX-STOCK', 'EXCHANGE'), self.user_a)
+        core.part.refresh_from_db()
+        self.assertEqual(core.status, 'REBUILT_TO_STOCK')
+        self.assertEqual(core.part.part_status, PartsStatus.IN_STOCK)
+        # Same unit: the core number is still its part's identity.
+        self.assertEqual(core.part.ERP_id, 'CORE-EX-STOCK')
+
+    def test_a_repair_and_return_unit_is_rebuilt_to_go_back(self):
+        from Tracker.models import PartsStatus
+        from Tracker.services.reman.rebuild_execution import complete_rebuild
+        core = complete_rebuild(self._released('CORE-RR-BACK', 'REPAIR_RETURN'), self.user_a)
+        core.part.refresh_from_db()
+        self.assertEqual(core.status, 'REBUILT')
+        self.assertEqual(core.part.part_status, PartsStatus.COMPLETED)
+
+    def test_a_rebuilt_exchange_unit_is_not_component_stock(self):
+        """Reman finished goods on the shelf are not new stock of their part type — a
+        build consuming that type must not draw one as if it were new."""
+        from Tracker.services.mes.bom import usable_stock_parts
+        from Tracker.services.reman.rebuild_execution import complete_rebuild
+        complete_rebuild(self._released('CORE-EX-SHELF', 'EXCHANGE'), self.user_a)
+        for for_reman in (False, True):
+            self.assertFalse(list(usable_stock_parts(
+                self.core_type.id, tenant=self.tenant_a, for_reman=for_reman)))
 
 
 class RemanStagingTests(TenantTestCase):

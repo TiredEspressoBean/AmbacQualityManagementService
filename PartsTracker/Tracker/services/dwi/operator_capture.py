@@ -151,6 +151,9 @@ def submit_substep(
     # previously a UI-only convenience, now enforced here so an API caller can't
     # jump the sequence. See `_enforce_sequencing`.
     _enforce_sequencing(substep, step_execution, batch_execution)
+    if step_execution is not None and step_execution.part_id:
+        from Tracker.services.reman.core_steps import assert_workable
+        assert_workable(step_execution.part)
 
     if marked_not_applicable:
         if substep.is_critical:
@@ -169,7 +172,7 @@ def submit_substep(
         # Required-field capture gate. A substep marked N/A skips it (the whole
         # substep is declared inapplicable); otherwise every engineer-required
         # capture node must carry a satisfactory value in this payload.
-        missing = find_missing_required(substep, captures)
+        missing = find_missing_required(substep, captures, step_execution=step_execution)
         if missing:
             detail = '; '.join(f"{m['type']} ({m['reason']})" for m in missing[:5])
             more = '' if len(missing) <= 5 else f" (+{len(missing) - 5} more)"
@@ -209,6 +212,62 @@ def submit_substep(
                 measurement_count += 1
                 continue
 
+            if kind == "component_install":
+                if is_batch:
+                    raise ValidationError(
+                        "Component-install capture is per-unit; not valid on a batch substep."
+                    )
+                # Reman rebuild capture — record what went into each slot via the
+                # install service, then persist the created usage ids with the response.
+                if _replayed_rows(substep, step_execution, node_id, cap):
+                    continue
+                from Tracker.services.dwi.component_install_capture import (
+                    install_components_from_capture,
+                )
+                try:
+                    result = install_components_from_capture(
+                        step_execution=step_execution,
+                        substep=substep,
+                        rows=cap.get("rows") or [],
+                        user=user,
+                    )
+                except ValueError as exc:
+                    raise ValidationError(str(exc)) from exc
+                cap = {**cap, **result}
+                sr = _write_substep_response(
+                    substep=substep,
+                    step_execution=step_execution,
+                    batch_execution=batch_execution,
+                    user=user,
+                    cap=cap,
+                )
+                if sr is not None:
+                    response_count += 1
+                continue
+
+            if kind == "rebuild_finding":
+                if is_batch:
+                    raise ValidationError(
+                        "A rebuild finding is per-unit; not valid on a batch substep."
+                    )
+                # Proposals only — a lead applies or dismisses each (services/reman/findings).
+                if _replayed_rows(substep, step_execution, node_id, cap):
+                    continue
+                from Tracker.services.reman.findings import record_findings_from_capture
+                result = record_findings_from_capture(
+                    step_execution, cap.get("rows") or [], user)
+                cap = {**cap, **result}
+                sr = _write_substep_response(
+                    substep=substep,
+                    step_execution=step_execution,
+                    batch_execution=batch_execution,
+                    user=user,
+                    cap=cap,
+                )
+                if sr is not None:
+                    response_count += 1
+                continue
+
             if kind == "harvested_components":
                 if is_batch:
                     raise ValidationError(
@@ -217,6 +276,8 @@ def submit_substep(
                 # Reman teardown capture — write HarvestedComponent rows via
                 # the dedicated service, then enrich the cap payload so the
                 # SubstepResponse persists the created IDs for traceability.
+                if _replayed_rows(substep, step_execution, node_id, cap):
+                    continue
                 from Tracker.services.dwi.harvested_component_capture import (
                     create_harvested_components_from_capture,
                 )
@@ -324,7 +385,8 @@ def submit_substep(
 # Required-field enforcement
 # -------------------------------------------------------------------------
 
-def find_missing_required(substep, captures: list[dict[str, Any]]) -> list[dict[str, str]]:
+def find_missing_required(substep, captures: list[dict[str, Any]],
+                          step_execution=None) -> list[dict[str, str]]:
     """Server-side mirror of the FE `findMissingRequired` (build-captures.ts).
 
     Walks the substep's `body_blocks`, and for every capture node the engineer
@@ -346,11 +408,17 @@ def find_missing_required(substep, captures: list[dict[str, Any]]) -> list[dict[
         is_sig = node_type == "inspectionSignatures"
         require_detected = attrs.get("require_detected") is True
         require_verified = attrs.get("require_verified") is True
-        if not required and not (is_sig and (require_detected or require_verified)):
+        # Strict teardown capture binds even when the node is not "required" (FE parity).
+        strict_harvest = (node_type == "harvestedComponentCapture"
+                          and attrs.get("strict_enumeration") is True)
+        if not required and not (is_sig and (require_detected or require_verified))                 and not strict_harvest:
             continue
         node_id = attrs.get("node_id")
         cap = cap_by_node.get(node_id)
-        reason = _capture_missing_reason(node_type, attrs, cap)
+        if strict_harvest:
+            reason = _strict_harvest_reason(cap, step_execution)
+        else:
+            reason = _capture_missing_reason(node_type, attrs, cap)
         if reason is not None:
             out.append({"node_id": str(node_id), "type": node_type, "reason": reason})
     return out
@@ -420,8 +488,47 @@ def _capture_missing_reason(node_type, attrs, cap) -> Optional[str]:
             return "Verified-by signature missing"
         return None
 
+    if node_type in ("harvestedComponentCapture", "componentInstallCapture", "rebuildFindingCapture"):
+        rows = cap.get("rows") if cap and isinstance(cap.get("rows"), list) else []
+        return None if rows else "No components recorded"
+
     # partAnnotation and unknown nodes: treated as satisfied (FE parity).
     return None
+
+
+def _strict_harvest_reason(cap, step_execution) -> Optional[str]:
+    """Strict teardown capture: every component the unit is EXPECTED to give up —
+    its core type's disassembly BOM, per position — must be graded or marked missing.
+
+    The authoritative check the FE mirrors, and the reason it has to live here: the
+    client sends only the rows the operator recorded, so only the server can compare
+    them against what was expected. Counted per (component, position), so two
+    unpositioned nozzles need two rows.
+    """
+    from collections import Counter
+    from Tracker.models import DisassemblyBOMLine
+    from Tracker.services.reman.core_steps import core_of
+
+    rows = cap.get("rows") if cap and isinstance(cap.get("rows"), list) else []
+    core = core_of(step_execution.part) if (step_execution and step_execution.part_id) else None
+    if core is None:
+        return None if rows else "No components recorded"
+
+    expected: Counter = Counter()
+    for line in DisassemblyBOMLine.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+            core_type_id=core.core_type_id, is_current_version=True, archived=False):
+        positions = line.positions if isinstance(line.positions, list) else []
+        for i in range(max(1, line.expected_qty or 1)):
+            expected[(str(line.component_type_id), str(positions[i]) if i < len(positions) else '')] += 1
+    recorded: Counter = Counter(
+        (str(r.get("component_type_id") or ''), str(r.get("position") or ''))
+        for r in rows
+        if r.get("is_missing") is True or _nonempty_str(r.get("condition_grade"))
+    )
+    open_count = sum((expected - recorded).values())
+    if open_count:
+        return f"{open_count} expected component(s) not graded or marked missing"
+    return None if (rows or not expected) else "No components recorded"
 
 
 # -------------------------------------------------------------------------
@@ -659,6 +766,8 @@ def _write_substep_response(*, substep, step_execution=None, batch_execution=Non
         SubstepResponseKind.DEFECTS,
         SubstepResponseKind.ANNOTATION,
         SubstepResponseKind.HARVESTED_COMPONENTS,
+        SubstepResponseKind.COMPONENT_INSTALL,
+        SubstepResponseKind.REBUILD_FINDING,
     }:
         # Drop bookkeeping fields the model doesn't need; keep everything
         # else as a generic blob.
@@ -859,6 +968,9 @@ _CAPTURE_NODE_TYPES = {
     'timer', 'computedValue', 'attestationCheckpoint', 'measurementInput',
     'qualityStatusField', 'equipmentRolesField', 'personnelRolesField',
     'errorTypesField', 'inspectionSignatures', 'partAnnotation',
+    # Reman teardown and rebuild capture. The harvest node was missing here, so the
+    # server's required check never saw it — only the client enforced it.
+    'harvestedComponentCapture', 'componentInstallCapture', 'rebuildFindingCapture',
 }
 
 
@@ -874,6 +986,32 @@ def _collect_capture_nodes(node, out):
     elif isinstance(node, list):
         for value in node:
             _collect_capture_nodes(value, out)
+
+
+def _replayed_rows(substep, step_execution, node_id, cap) -> bool:
+    """Whether this teardown/rebuild capture was already recorded for this visit.
+
+    These two captures have side effects beyond their SubstepResponse — each row
+    becomes a HarvestedComponent or an installed AssemblyUsage — so a resubmit must not
+    run them again. The runtime reseeds a resumed substep from the stored rows, so an
+    identical resubmit is a replay and is a no-op (True). A resubmit with DIFFERENT rows
+    is refused: what came out of or went into a unit is corrected on the unit's own
+    records, not by re-recording the capture over them.
+    """
+    from django.core.exceptions import ValidationError
+    from Tracker.models import SubstepResponse
+
+    prior = SubstepResponse.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+        step_execution=step_execution, substep=substep, node_id=node_id,
+    ).first()
+    if prior is None:
+        return False
+    if ((prior.value_json or {}).get('rows') or []) == (cap.get('rows') or []):
+        return True
+    raise ValidationError(
+        "These components were already recorded for this unit at this step. "
+        "Correct them on the core's record rather than recording the capture again."
+    )
 
 
 def _response_from_stored(node_type, attrs, sr):
@@ -900,6 +1038,10 @@ def _response_from_stored(node_type, attrs, sr):
         return {'detected': payload.get('detected'), 'verified': payload.get('verified')}
     if node_type == 'partAnnotation':
         return payload
+    if node_type in ('harvestedComponentCapture', 'componentInstallCapture', 'rebuildFindingCapture'):
+        # Both runtimes read `{rows: [...]}`; resuming a half-done teardown or rebuild
+        # reseeds them from what was recorded rather than from the BOM.
+        return {'rows': payload.get('rows') or []}
     return sr.value_text or payload
 
 

@@ -434,6 +434,17 @@ def _recover_lane(tenant, pool_need, need_by, names, order_by) -> list:
     """
     from math import ceil
     from Tracker.services.mes.bom import recovered_stock_by_type
+
+    def _lot_draw(lots, wanted):
+        draw = []
+        for lot in lots:
+            if wanted <= 0:
+                break
+            take = min(wanted, int(lot.quantity_remaining))
+            draw.append({'id': str(lot.id), 'lot_number': lot.lot_number, 'quantity': take})
+            wanted -= take
+        return draw
+
     from Tracker.services.reman.recovery import teardown_banks, teardown_lead_days
 
     comp_ids = [k[1] for k, q in pool_need.items() if k[0] == 'PART_TYPE' and q > 0]
@@ -458,11 +469,11 @@ def _recover_lane(tenant, pool_need, need_by, names, order_by) -> list:
     rows = []
     for ct_id, bank in sorted(banks.items(), key=lambda kv: kv[1].core_type.name):
         comps = [c for c in bank.yields if gap.get(c, 0.0) > 0]
-        if not comps or not bank.proposable:
+        if not comps or not bank.available:
             continue
         # Enough units for the component that needs the most of them; the others ride
         # along. Whole units — you cannot tear down part of a core.
-        n = min(max(ceil(gap[c] / bank.yields[c]) for c in comps), len(bank.proposable))
+        n = min(max(ceil(gap[c] / bank.yields[c]) for c in comps), bank.available)
         components = []
         for c in comps:
             covered = min(gap[c], n * bank.yields[c])
@@ -480,12 +491,15 @@ def _recover_lane(tenant, pool_need, need_by, names, order_by) -> list:
             'core_type': bank.core_type.name,
             'core_type_id': str(ct_id),
             'cores_to_tear_down': n,
-            'cores_available': len(bank.proposable),
+            'cores_available': bank.available,
             'cores_in_flight': bank.in_flight,
             # What "accept" commits, oldest received first. A planner can swap them:
             # these are the default, not a decision.
             'candidate_cores': [{'id': str(core.id), 'core_number': core.core_number}
                                 for core in bank.proposable[:n]],
+            # The rest come out of bulk lots, oldest receipt first. A lot unit has no
+            # identity yet, so it cannot be committed until it is given one.
+            'candidate_lots': _lot_draw(bank.lots, n - min(n, len(bank.proposable))),
             'lead_time_days': lead,
             'need_by': nb,
             # Omitted when the core type has no authored teardown duration. A made-up

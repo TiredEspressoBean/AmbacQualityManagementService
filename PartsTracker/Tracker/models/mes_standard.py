@@ -1557,6 +1557,15 @@ class MaterialLot(SecureModel):
     # Location
     storage_location = models.CharField(max_length=100, blank=True)
 
+    # Set by `services.reman.core_lot.receive_core_lot` only: this lot is cores received
+    # in bulk, units waiting to be given an identity — not stock of the part. The part
+    # type alone cannot say so: a reman shop's core type is usually the very part number
+    # it sells, so a bought lot of that part and a pallet of returned cores look alike.
+    holds_cores = models.BooleanField(
+        default=False,
+        help_text="Cores received in bulk (units to be identified), not stock of the part.",
+    )
+
     class Meta:
         verbose_name = 'Material Lot'
         verbose_name_plural = 'Material Lots'

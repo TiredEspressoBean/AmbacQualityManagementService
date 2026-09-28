@@ -26,6 +26,7 @@ import { Pencil, Undo2 } from "lucide-react";
 import { useRebuildPlan } from "@/hooks/useRebuildPlan";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
+import { PendingFindingsCard } from "@/components/reman/PendingFindingsCard";
 import {
     useCreateSlotOverride, useDeleteSlotOverride, useUpdateSlotOverride,
 } from "@/hooks/useRebuildSlotOverrides";
@@ -201,6 +202,9 @@ export function RebuildPlanPage() {
                         unit is at; this page is the plan, not the bench. */}
                     {core && <WorkThisUnit core={core} />}
                 </div>
+
+                {/* Findings from the bench wait here for a lead before they touch the plan. */}
+                <PendingFindingsCard coreId={id} />
 
                 {/* A proposal is not a commitment, and the screen should not imply it is. */}
                 <Card>
