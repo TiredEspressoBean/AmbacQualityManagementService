@@ -11,6 +11,7 @@
  * lot for such a customer; this page says so before anyone tries.
  */
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Boxes, Plus, Tag } from "lucide-react";
@@ -26,6 +27,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "@/lib/api/generated";
 
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
@@ -62,6 +64,29 @@ function ReceiveLotDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     const { data: typesData } = useRetrievePartTypes({ limit: 500 });
     const { data: companiesData } = useRetrieveCompanies({ limit: 200 });
     const [coreType, setCoreType] = useState("");
+
+    // Offer only core types — the server's rule (services/reman/core_lot.is_core_type):
+    // a type with a disassembly BOM, or one cores have already been received as. The
+    // server still enforces it; this just stops the list offering what it would refuse.
+    // Recent cores only (500): a type seen only in older cores and with no disassembly
+    // BOM drops out of the list, which is the case its BOM should be authored for anyway.
+    const bomQ = useQuery({
+        queryKey: ["core-lots", "core-types", "disassembly-bom"],
+        queryFn: () => api.api_DisassemblyBOMLines_list({ queries: { limit: 500 } }),
+        enabled: open,
+    });
+    const coresQ = useQuery({
+        queryKey: ["core-lots", "core-types", "cores"],
+        queryFn: () => api.api_Cores_list({ queries: { limit: 500 } }),
+        enabled: open,
+    });
+    const coreTypes = useMemo(() => {
+        const ids = new Set<string>();
+        for (const l of bomQ.data?.results ?? []) ids.add(String(l.core_type));
+        for (const c of coresQ.data?.results ?? []) ids.add(String(c.core_type));
+        return (typesData?.results ?? []).filter((t) => ids.has(String(t.id)));
+    }, [typesData, bomQ.data, coresQ.data]);
+    const typesLoading = bomQ.isLoading || coresQ.isLoading;
     const [quantity, setQuantity] = useState("");
     const [customer, setCustomer] = useState(NO_CUSTOMER);
     const [reference, setReference] = useState("");
@@ -111,14 +136,23 @@ function ReceiveLotDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                 <div className="grid gap-3 text-sm">
                     <div className="grid gap-1">
                         <Label>Core type</Label>
-                        <Select value={coreType || undefined} onValueChange={setCoreType}>
-                            <SelectTrigger><SelectValue placeholder="Choose the core type" /></SelectTrigger>
+                        <Select value={coreType || undefined} onValueChange={setCoreType}
+                                disabled={typesLoading || coreTypes.length === 0}>
+                            <SelectTrigger>
+                                <SelectValue placeholder={typesLoading ? "Loading core types…" : "Choose the core type"} />
+                            </SelectTrigger>
                             <SelectContent>
-                                {(typesData?.results ?? []).map((t) => (
+                                {coreTypes.map((t) => (
                                     <SelectItem key={String(t.id)} value={String(t.id)}>{t.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
+                        {!typesLoading && coreTypes.length === 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                No core types yet. Author a disassembly BOM for the unit, or receive
+                                a first one individually, and it will appear here.
+                            </p>
+                        )}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="grid gap-1">
