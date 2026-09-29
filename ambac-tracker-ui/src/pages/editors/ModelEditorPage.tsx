@@ -64,6 +64,17 @@ export interface ListMetadata {
     } | null;
 }
 
+/**
+ * The generated client's function for `/api/<endpoint>/<action>`, if the backend has one.
+ *
+ * The client names functions after the route with `-` turned into `_`
+ * (`Error-types` → `api_Error_types_…`). Looking one up by the raw endpoint missed
+ * every hyphenated route. What exists here is what the backend's schema has, so this is
+ * also how the toolbar knows which models import and export at all.
+ */
+// eslint-disable-next-line local/no-as-any -- dynamic API alias lookup by string; see modelEditorMetadataOptions
+const endpointFn = (apiEndpoint: string, action: string): unknown => (api as any)[`api_${apiEndpoint.replace(/-/g, "_")}_${action}`];
+
 const modelEditorMetadataOptions = (modelName: string | undefined, apiEndpoint: string | undefined) => queryOptions({
     queryKey: ["metadata", modelName, apiEndpoint] as const,
     queryFn: async () => {
@@ -75,8 +86,7 @@ const modelEditorMetadataOptions = (modelName: string | undefined, apiEndpoint: 
         // for the double-cast one), and `keyof typeof api` makes tsc give up --
         // "Type instantiation is excessively deep" against a 1005-endpoint
         // client. The typeof guard below is what actually makes this safe.
-        // eslint-disable-next-line local/no-as-any -- dynamic API alias lookup by string; see above for what was tried
-        const metadataFn = (api as any)[`api_${apiEndpoint}_metadata_retrieve`];
+        const metadataFn = endpointFn(apiEndpoint, "metadata_retrieve");
         if (typeof metadataFn === "function") {
             return metadataFn() as Promise<ListMetadata>;
         }
@@ -595,20 +605,28 @@ export function ModelEditorPage<T extends { id: string | number }>({
                 <div className="ml-auto flex flex-shrink-0 items-center gap-2">
                     {apiEndpoint && !disableExport && (
                         <>
-                            <DataImportDialog
-                                modelName={apiEndpoint}
-                                onImportComplete={() => {
-                                    queryClient.invalidateQueries(matchKey([modelName]));
-                                }}
-                            />
-                            <DataExportMenu
-                                modelName={apiEndpoint}
-                                queryParams={{
-                                    ordering,
-                                    search: debouncedSearch,
-                                    ...activeFilters,
-                                }}
-                            />
+                            {/* Only what the backend has: an Import button on a model
+                                with no import endpoint opened a dialog whose every
+                                call 404'd. */}
+                            {typeof endpointFn(apiEndpoint, "import_create") === "function" && (
+                                <DataImportDialog
+                                    modelName={apiEndpoint}
+                                    onImportComplete={() => {
+                                        queryClient.invalidateQueries(matchKey([modelName]));
+                                    }}
+                                />
+                            )}
+                            {typeof endpointFn(apiEndpoint, "export_retrieve") === "function" && (
+                                <DataExportMenu
+                                    modelName={apiEndpoint}
+                                    showTemplateOption={typeof endpointFn(apiEndpoint, "import_template_retrieve") === "function"}
+                                    queryParams={{
+                                        ordering,
+                                        search: debouncedSearch,
+                                        ...activeFilters,
+                                    }}
+                                />
+                            )}
                         </>
                     )}
                     {extraToolbarContent}

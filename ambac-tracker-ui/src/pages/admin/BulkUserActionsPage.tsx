@@ -556,7 +556,7 @@ export function BulkUserActionsPage() {
                                 <Input
                                     id="bulk-user-csv"
                                     type="file"
-                                    accept=".csv,.xlsx,.xls"
+                                    accept=".csv,.xlsx"
                                     className="hidden"
                                     onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
                                 />

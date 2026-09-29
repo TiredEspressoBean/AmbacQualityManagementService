@@ -1,5 +1,7 @@
 import { api } from "@/lib/api/generated";
 import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { blobErrorMessage, downloadBlob } from "@/lib/download";
 
 type ExportFormat = "csv" | "xlsx";
 
@@ -41,16 +43,9 @@ export const useExport = (modelName: string) => {
                 ?? `${modelName.toLowerCase()}_export.${variables.format}`;
             downloadBlob(blob, filename);
         },
+        // Without this a refused download (too many rows, no permission) did nothing.
+        onError: async (error) => {
+            toast.error(await blobErrorMessage(error, "Export failed."));
+        },
     });
 };
-
-function downloadBlob(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}

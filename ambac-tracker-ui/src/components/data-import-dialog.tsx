@@ -154,12 +154,12 @@ export function DataImportDialog({
                 const data = response.data;
                 setPreviewData(data);
 
-                // Initialize column mappings from auto-detected values
+                // Initialize column mappings from auto-detected values. A column with no
+                // match is sent as skipped, as the select shows it — left out, the server
+                // would still read it and refuse every row over it.
                 const initialMappings: Record<string, string> = {};
                 data.columns.forEach((col) => {
-                    if (col.mapped_to) {
-                        initialMappings[col.original] = col.mapped_to;
-                    }
+                    initialMappings[col.original] = col.mapped_to || "_skip_";
                 });
                 setColumnMappings(initialMappings);
 
@@ -390,7 +390,6 @@ export function DataImportDialog({
                                 accept: {
                                     "text/csv": [".csv"],
                                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-                                    "application/vnd.ms-excel": [".xls"],
                                 },
                                 maxFiles: 1,
                                 maxSize: 10 * 1024 * 1024, // 10MB
@@ -404,7 +403,7 @@ export function DataImportDialog({
                                         Drag & drop your file here
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        or click to browse (.csv, .xlsx, .xls)
+                                        or click to browse (.csv or .xlsx)
                                     </p>
                                 </div>
                             </FileInput>
@@ -622,6 +621,36 @@ export function DataImportDialog({
                                 </div>
                             </div>
                         )}
+
+                        {/* Rows that imported, but not quite as written: a value that
+                            couldn't be read and was left unchanged, a date read month-first,
+                            a reference that couldn't be found. These used to be returned and
+                            never shown, so a "complete" import could be quietly wrong. */}
+                        {(() => {
+                            const warned = results.results.filter(
+                                (r) => r.status !== "error" && (r.warnings?.length ?? 0) > 0);
+                            if (warned.length === 0) return null;
+                            return (
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">
+                                        Check these rows ({warned.length})
+                                    </p>
+                                    <div className="max-h-48 space-y-1 overflow-y-auto">
+                                        {warned.slice(0, 20).map((r) => (
+                                            <div key={r.row} className="rounded bg-amber-50 p-2 text-xs dark:bg-amber-950/30">
+                                                <span className="font-medium">Row {r.row}:</span>{" "}
+                                                {r.warnings!.join("; ")}
+                                            </div>
+                                        ))}
+                                        {warned.length > 20 && (
+                                            <p className="text-xs text-muted-foreground">
+                                                ... and {warned.length - 20} more
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
 

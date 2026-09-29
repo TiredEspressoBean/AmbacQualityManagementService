@@ -8246,6 +8246,50 @@ export type StepDistributionResponse = {
   count: number;
   name: string;
 };
+export type PaginatedStepEquipmentAffinityList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<StepEquipmentAffinity>;
+};
+export type StepEquipmentAffinity = {
+  id: string;
+  step: string;
+  step_name: string;
+  equipment: string;
+  equipment_name: string;
+  affinity?: AffinityEnum | undefined;
+  cycle_time_override?:
+    | /**
+     * Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
+     *
+     * @minimum 0
+     */
+    (number | null)
+    | undefined;
+};
+export type AffinityEnum =
+  /**
+   * * `eligible` - Eligible
+   * `preferred` - Preferred
+   * `dialed_in` - Dialed in (proven best)
+   *
+   * @enum eligible, preferred, dialed_in
+   */
+  "eligible" | "preferred" | "dialed_in";
 export type PaginatedStepExecutionList = {
   /**
    * @example 123
@@ -8608,6 +8652,74 @@ export type StepOverrideStatusEnum =
    * @enum PENDING, APPROVED, REJECTED, EXPIRED
    */
   "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+export type PaginatedStepTimingRecordList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<StepTimingRecord>;
+};
+export type StepTimingRecord = {
+  id: string;
+  /**
+   * The step these timings describe.
+   */
+  step: string;
+  step_name: string;
+  setup_minutes?: /**
+   * Internal (machine-stopped) setup / changeover minutes.
+   *
+   * @minimum 0
+   */
+  number | undefined;
+  cycle_time_minutes?: /**
+   * Deterministic per-piece machine cycle time (minutes).
+   *
+   * @minimum 0
+   */
+  number | undefined;
+  load_unload_per_piece?: /**
+   * Operator touch time to load/unload one piece (minutes).
+   *
+   * @minimum 0
+   */
+  number | undefined;
+  attention_type?: /**
+     * Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+    
+    * `full` - Full attention (operator tied to the machine)
+    * `load_unload` - Load/unload only (machine runs unattended between)
+    * `unattended` - Unattended (robot/cobot fed — setup only)
+     */
+  AttentionTypeEnum | undefined;
+  external_setup_minutes?: /**
+   * SMED external setup that can overlap the previous op's run time.
+   *
+   * @minimum 0
+   */
+  number | undefined;
+};
+export type AttentionTypeEnum =
+  /**
+   * * `full` - Full attention (operator tied to the machine)
+   * `load_unload` - Load/unload only (machine runs unattended between)
+   * `unattended` - Unattended (robot/cobot fed — setup only)
+   *
+   * @enum full, load_unload, unattended
+   */
+  "full" | "load_unload" | "unattended";
 export type PaginatedStepsList = {
   /**
    * @example 123
@@ -8784,15 +8896,6 @@ export type StepTiming = Partial<{
    */
   external_setup_minutes: number;
 }>;
-export type AttentionTypeEnum =
-  /**
-   * * `full` - Full attention (operator tied to the machine)
-   * `load_unload` - Load/unload only (machine runs unattended between)
-   * `unattended` - Unattended (robot/cobot fed — setup only)
-   *
-   * @enum full, load_unload, unattended
-   */
-  "full" | "load_unload" | "unattended";
 export type PaginatedSubstepCompletionList = {
   /**
    * @example 123
@@ -10287,6 +10390,38 @@ export type WIPSummary = {
   pending_count: number;
   in_progress_count: number;
   total_active: number;
+};
+export type PaginatedWorkCenterChangeoverList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<WorkCenterChangeover>;
+};
+export type WorkCenterChangeover = {
+  id: string;
+  equipment: string;
+  equipment_name: string;
+  from_step: string;
+  from_step_name: string;
+  to_step: string;
+  to_step_name: string;
+  changeover_minutes?: /**
+   * @minimum 0
+   */
+  number | undefined;
 };
 export type PaginatedWorkCenterList = {
   /**
@@ -12563,6 +12698,17 @@ export type PatchedShiftNoteRequest = Partial<{
   effective_from: string | null;
   effective_until: string | null;
 }>;
+export type PatchedStepEquipmentAffinityRequest = Partial<{
+  step: string;
+  equipment: string;
+  affinity: AffinityEnum;
+  /**
+   * Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
+   *
+   * @minimum 0
+   */
+  cycle_time_override: number | null;
+}>;
 export type PatchedStepExecutionRequest = Partial<{
   /**
    * The part being tracked through this step. A reman core is a part too; its role is `part.core_role`.
@@ -12648,6 +12794,44 @@ export type PatchedStepOverrideRequest = Partial<{
    */
   used: boolean;
   archived: boolean;
+}>;
+export type PatchedStepTimingRecordRequest = Partial<{
+  /**
+   * The step these timings describe.
+   */
+  step: string;
+  /**
+   * Internal (machine-stopped) setup / changeover minutes.
+   *
+   * @minimum 0
+   */
+  setup_minutes: number;
+  /**
+   * Deterministic per-piece machine cycle time (minutes).
+   *
+   * @minimum 0
+   */
+  cycle_time_minutes: number;
+  /**
+   * Operator touch time to load/unload one piece (minutes).
+   *
+   * @minimum 0
+   */
+  load_unload_per_piece: number;
+  /**
+     * Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+    
+    * `full` - Full attention (operator tied to the machine)
+    * `load_unload` - Load/unload only (machine runs unattended between)
+    * `unattended` - Unattended (robot/cobot fed — setup only)
+     */
+  attention_type: AttentionTypeEnum;
+  /**
+   * SMED external setup that can overlap the previous op's run time.
+   *
+   * @minimum 0
+   */
+  external_setup_minutes: number;
 }>;
 export type PatchedStepsRequest = Partial<{
   /**
@@ -14928,6 +15112,19 @@ export type StepEdgeRequest = {
      */
   TechContinuityEnum | undefined;
 };
+export type StepEquipmentAffinityRequest = {
+  step: string;
+  equipment: string;
+  affinity?: AffinityEnum | undefined;
+  cycle_time_override?:
+    | /**
+     * Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
+     *
+     * @minimum 0
+     */
+    (number | null)
+    | undefined;
+};
 export type StepExecutionCreateRequest = {
   part?:
     | /**
@@ -15226,6 +15423,44 @@ export type StepSummary = {
   attachment_count: number;
   is_outside_process: boolean;
   parts_at_supplier: number;
+};
+export type StepTimingRecordRequest = {
+  /**
+   * The step these timings describe.
+   */
+  step: string;
+  setup_minutes?: /**
+   * Internal (machine-stopped) setup / changeover minutes.
+   *
+   * @minimum 0
+   */
+  number | undefined;
+  cycle_time_minutes?: /**
+   * Deterministic per-piece machine cycle time (minutes).
+   *
+   * @minimum 0
+   */
+  number | undefined;
+  load_unload_per_piece?: /**
+   * Operator touch time to load/unload one piece (minutes).
+   *
+   * @minimum 0
+   */
+  number | undefined;
+  attention_type?: /**
+     * Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+    
+    * `full` - Full attention (operator tied to the machine)
+    * `load_unload` - Load/unload only (machine runs unattended between)
+    * `unattended` - Unattended (robot/cobot fed — setup only)
+     */
+  AttentionTypeEnum | undefined;
+  external_setup_minutes?: /**
+   * SMED external setup that can overlap the previous op's run time.
+   *
+   * @minimum 0
+   */
+  number | undefined;
 };
 export type StepsRequest = {
   /**
@@ -17253,6 +17488,38 @@ const PatchedCalibrationRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
+const api_CalibrationRecords_import_create_Body = z.object({
+  file: z.instanceof(File),
+  mode: z.enum(["create", "update", "upsert"]).optional(),
+});
+const ImportQueued = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  total_rows: z.number().int(),
+  message: z.string(),
+});
+const ImportSummary = z.object({
+  total: z.number().int(),
+  created: z.number().int(),
+  updated: z.number().int(),
+  errors: z.number().int(),
+});
+const ImportResponse = z.object({
+  summary: ImportSummary,
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const ImportPreviewResponse = z.object({
+  total_rows: z.number().int(),
+  columns: z.array(z.object({}).partial().passthrough()),
+  sample_data: z.array(z.object({}).partial().passthrough()),
+  model_fields: z.array(z.object({}).partial().passthrough()),
+});
+const ImportStatusResponse = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  progress: z.object({}).partial().passthrough(),
+  result: z.object({}).partial().passthrough().optional(),
+});
 const GaugeNagRow = z.object({
   equipment_id: z.string(),
   equipment_name: z.string(),
@@ -19690,38 +19957,6 @@ const PaginatedStepDistributionResponseList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(StepDistributionResponse),
 });
-const api_Orders_import_create_Body = z.object({
-  file: z.instanceof(File),
-  mode: z.enum(["create", "update", "upsert"]).optional(),
-});
-const ImportQueued = z.object({
-  task_id: z.string(),
-  status: z.string(),
-  total_rows: z.number().int(),
-  message: z.string(),
-});
-const ImportSummary = z.object({
-  total: z.number().int(),
-  created: z.number().int(),
-  updated: z.number().int(),
-  errors: z.number().int(),
-});
-const ImportResponse = z.object({
-  summary: ImportSummary,
-  results: z.array(z.object({}).partial().passthrough()),
-});
-const ImportPreviewResponse = z.object({
-  total_rows: z.number().int(),
-  columns: z.array(z.object({}).partial().passthrough()),
-  sample_data: z.array(z.object({}).partial().passthrough()),
-  model_fields: z.array(z.object({}).partial().passthrough()),
-});
-const ImportStatusResponse = z.object({
-  task_id: z.string(),
-  status: z.string(),
-  progress: z.object({}).partial().passthrough(),
-  result: z.object({}).partial().passthrough().optional(),
-});
 const OutsideProcessShipmentStatusEnum = z.enum(["SENT", "RETURNED", "CLOSED"]);
 const OutsideProcessShipment = z.object({
   id: z.string().uuid(),
@@ -21780,6 +22015,36 @@ const PatchedShiftRequest = z
     archived: z.boolean(),
   })
   .partial();
+const AffinityEnum = z.enum(["eligible", "preferred", "dialed_in"]);
+const StepEquipmentAffinity = z.object({
+  id: z.string().uuid(),
+  step: z.string().uuid(),
+  step_name: z.string(),
+  equipment: z.string().uuid(),
+  equipment_name: z.string(),
+  affinity: AffinityEnum.optional(),
+  cycle_time_override: z.number().gte(0).nullish(),
+});
+const PaginatedStepEquipmentAffinityList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StepEquipmentAffinity),
+});
+const StepEquipmentAffinityRequest = z.object({
+  step: z.string().uuid(),
+  equipment: z.string().uuid(),
+  affinity: AffinityEnum.optional(),
+  cycle_time_override: z.number().gte(0).nullish(),
+});
+const PatchedStepEquipmentAffinityRequest = z
+  .object({
+    step: z.string().uuid(),
+    equipment: z.string().uuid(),
+    affinity: AffinityEnum,
+    cycle_time_override: z.number().gte(0).nullable(),
+  })
+  .partial();
 const StepExecutionMeasurement = z.object({
   id: z.string().uuid(),
   step_execution: z.string().uuid().nullish(),
@@ -22066,6 +22331,40 @@ const PatchedStepOverrideRequest = z
   })
   .partial();
 const AttentionTypeEnum = z.enum(["full", "load_unload", "unattended"]);
+const StepTimingRecord = z.object({
+  id: z.string().uuid(),
+  step: z.string().uuid(),
+  step_name: z.string(),
+  setup_minutes: z.number().gte(0).optional(),
+  cycle_time_minutes: z.number().gte(0).optional(),
+  load_unload_per_piece: z.number().gte(0).optional(),
+  attention_type: AttentionTypeEnum.optional(),
+  external_setup_minutes: z.number().gte(0).optional(),
+});
+const PaginatedStepTimingRecordList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StepTimingRecord),
+});
+const StepTimingRecordRequest = z.object({
+  step: z.string().uuid(),
+  setup_minutes: z.number().gte(0).optional(),
+  cycle_time_minutes: z.number().gte(0).optional(),
+  load_unload_per_piece: z.number().gte(0).optional(),
+  attention_type: AttentionTypeEnum.optional(),
+  external_setup_minutes: z.number().gte(0).optional(),
+});
+const PatchedStepTimingRecordRequest = z
+  .object({
+    step: z.string().uuid(),
+    setup_minutes: z.number().gte(0),
+    cycle_time_minutes: z.number().gte(0),
+    load_unload_per_piece: z.number().gte(0),
+    attention_type: AttentionTypeEnum,
+    external_setup_minutes: z.number().gte(0),
+  })
+  .partial();
 const StepTiming = z
   .object({
     setup_minutes: z.number().gte(0),
@@ -23626,6 +23925,36 @@ const PatchedUserWorkCenterMembershipRequest = z
     user: z.number().int(),
     work_center: z.string().uuid(),
     is_primary: z.boolean(),
+  })
+  .partial();
+const WorkCenterChangeover = z.object({
+  id: z.string().uuid(),
+  equipment: z.string().uuid(),
+  equipment_name: z.string(),
+  from_step: z.string().uuid(),
+  from_step_name: z.string(),
+  to_step: z.string().uuid(),
+  to_step_name: z.string(),
+  changeover_minutes: z.number().gte(0).optional(),
+});
+const PaginatedWorkCenterChangeoverList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(WorkCenterChangeover),
+});
+const WorkCenterChangeoverRequest = z.object({
+  equipment: z.string().uuid(),
+  from_step: z.string().uuid(),
+  to_step: z.string().uuid(),
+  changeover_minutes: z.number().gte(0).optional(),
+});
+const PatchedWorkCenterChangeoverRequest = z
+  .object({
+    equipment: z.string().uuid(),
+    from_step: z.string().uuid(),
+    to_step: z.string().uuid(),
+    changeover_minutes: z.number().gte(0),
   })
   .partial();
 const WorkCenterKindEnum = z.enum([
@@ -25759,6 +26088,12 @@ export const schemas = {
   PaginatedCalibrationRecordList,
   CalibrationRecordRequest,
   PatchedCalibrationRecordRequest,
+  api_CalibrationRecords_import_create_Body,
+  ImportQueued,
+  ImportSummary,
+  ImportResponse,
+  ImportPreviewResponse,
+  ImportStatusResponse,
   GaugeNagRow,
   CalibrationStats,
   PaginatedCapaTasksList,
@@ -26007,12 +26342,6 @@ export const schemas = {
   PatchedSetMilestoneInputRequest,
   StepDistributionResponse,
   PaginatedStepDistributionResponseList,
-  api_Orders_import_create_Body,
-  ImportQueued,
-  ImportSummary,
-  ImportResponse,
-  ImportPreviewResponse,
-  ImportStatusResponse,
   OutsideProcessShipmentStatusEnum,
   OutsideProcessShipment,
   PaginatedOutsideProcessShipmentList,
@@ -26235,6 +26564,11 @@ export const schemas = {
   PaginatedShiftList,
   ShiftRequest,
   PatchedShiftRequest,
+  AffinityEnum,
+  StepEquipmentAffinity,
+  PaginatedStepEquipmentAffinityList,
+  StepEquipmentAffinityRequest,
+  PatchedStepEquipmentAffinityRequest,
   StepExecutionMeasurement,
   PaginatedStepExecutionMeasurementList,
   StepExecutionMeasurementRequest,
@@ -26261,6 +26595,10 @@ export const schemas = {
   StepOverrideRequest,
   PatchedStepOverrideRequest,
   AttentionTypeEnum,
+  StepTimingRecord,
+  PaginatedStepTimingRecordList,
+  StepTimingRecordRequest,
+  PatchedStepTimingRecordRequest,
   StepTiming,
   Steps,
   PaginatedStepsList,
@@ -26409,6 +26747,10 @@ export const schemas = {
   PaginatedUserWorkCenterMembershipList,
   UserWorkCenterMembershipRequest,
   PatchedUserWorkCenterMembershipRequest,
+  WorkCenterChangeover,
+  PaginatedWorkCenterChangeoverList,
+  WorkCenterChangeoverRequest,
+  PatchedWorkCenterChangeoverRequest,
   WorkCenterKindEnum,
   WorkCenter,
   PaginatedWorkCenterList,
@@ -28674,6 +29016,78 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     response: PaginatedCalibrationRecordList,
   },
   {
+    method: "post",
+    path: "/api/CalibrationRecords/import-preview/",
+    alias: "api_CalibrationRecords_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/CalibrationRecords/import-status/:task_id/",
+    alias: "api_CalibrationRecords_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/CalibrationRecords/import-template/:template_format/",
+    alias: "api_CalibrationRecords_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/CalibrationRecords/import/",
+    alias: "api_CalibrationRecords_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/CalibrationRecords/metadata/",
     alias: "api_CalibrationRecords_metadata_retrieve",
@@ -29950,6 +30364,78 @@ Provides list, create, retrieve, update, and delete operations.`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Companies/import-preview/",
+    alias: "api_Companies_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Companies/import-status/:task_id/",
+    alias: "api_Companies_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Companies/import-template/:template_format/",
+    alias: "api_Companies_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Companies/import/",
+    alias: "api_Companies_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -31444,7 +31930,10 @@ Response:
       },
     ],
     response: DisassemblyBOMLine,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "delete",
     path: "/api/DisassemblyBOMLines/:id/",
@@ -31630,10 +32119,7 @@ Returns the document&#x27;s current &#x60;links&#x60;.`,
       },
     ],
     response: DocumentLinksResponse,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Documents/:id/detach/",
@@ -32824,6 +33310,78 @@ Usage:
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/Equipment-types/import-preview/",
+    alias: "api_Equipment_types_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Equipment-types/import-status/:task_id/",
+    alias: "api_Equipment_types_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Equipment-types/import-template/:template_format/",
+    alias: "api_Equipment_types_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Equipment-types/import/",
+    alias: "api_Equipment_types_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/Equipment-types/metadata/",
     alias: "api_Equipment_types_metadata_retrieve",
@@ -33144,6 +33702,78 @@ Usage:
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/Equipment/import-preview/",
+    alias: "api_Equipment_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Equipment/import-status/:task_id/",
+    alias: "api_Equipment_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Equipment/import-template/:template_format/",
+    alias: "api_Equipment_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Equipment/import/",
+    alias: "api_Equipment_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/Equipment/metadata/",
     alias: "api_Equipment_metadata_retrieve",
@@ -33449,6 +34079,78 @@ Usage:
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Error-types/import-preview/",
+    alias: "api_Error_types_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Error-types/import-status/:task_id/",
+    alias: "api_Error_types_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Error-types/import-template/:template_format/",
+    alias: "api_Error_types_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Error-types/import/",
+    alias: "api_Error_types_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -33927,6 +34629,78 @@ operations against the quantity available (cumulative capacity).`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Fixtures/import-preview/",
+    alias: "api_Fixtures_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Fixtures/import-status/:task_id/",
+    alias: "api_Fixtures_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Fixtures/import-template/:template_format/",
+    alias: "api_Fixtures_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Fixtures/import/",
+    alias: "api_Fixtures_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -35208,6 +35982,78 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/JobRoles/import-preview/",
+    alias: "api_JobRoles_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/JobRoles/import-status/:task_id/",
+    alias: "api_JobRoles_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/JobRoles/import-template/:template_format/",
+    alias: "api_JobRoles_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/JobRoles/import/",
+    alias: "api_JobRoles_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/JobRoles/metadata/",
     alias: "api_JobRoles_metadata_retrieve",
@@ -35393,6 +36239,78 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/LaborCalendarBlocks/import-preview/",
+    alias: "api_LaborCalendarBlocks_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/LaborCalendarBlocks/import-status/:task_id/",
+    alias: "api_LaborCalendarBlocks_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/LaborCalendarBlocks/import-template/:template_format/",
+    alias: "api_LaborCalendarBlocks_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/LaborCalendarBlocks/import/",
+    alias: "api_LaborCalendarBlocks_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -35894,7 +36812,10 @@ Query params:
       },
     ],
     response: PaginatedMaterialLotList,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/MaterialLots/",
@@ -36423,6 +37344,78 @@ The buy-side item list, distinct from in-house PartTypes; holds purchase lead ti
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/Materials/import-preview/",
+    alias: "api_Materials_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Materials/import-status/:task_id/",
+    alias: "api_Materials_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Materials/import-template/:template_format/",
+    alias: "api_Materials_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Materials/import/",
+    alias: "api_Materials_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/Materials/metadata/",
     alias: "api_Materials_metadata_retrieve",
@@ -36602,10 +37595,7 @@ Usage:
       },
     ],
     response: MeasurementDefinition,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/MeasurementDefinitions/:id/",
@@ -36801,6 +37791,78 @@ Usage:
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/MeasurementDefinitions/import-preview/",
+    alias: "api_MeasurementDefinitions_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/MeasurementDefinitions/import-status/:task_id/",
+    alias: "api_MeasurementDefinitions_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/MeasurementDefinitions/import-template/:template_format/",
+    alias: "api_MeasurementDefinitions_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/MeasurementDefinitions/import/",
+    alias: "api_MeasurementDefinitions_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -37181,6 +38243,108 @@ customer FK validation handled at the serializer layer.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/external-contacts/export/:export_format/",
+    alias: "api_notifications_external_contacts_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/notifications/external-contacts/import-preview/",
+    alias: "api_notifications_external_contacts_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/notifications/external-contacts/import-status/:task_id/",
+    alias: "api_notifications_external_contacts_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/external-contacts/import-template/:template_format/",
+    alias: "api_notifications_external_contacts_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/notifications/external-contacts/import/",
+    alias: "api_notifications_external_contacts_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -38732,7 +39896,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: api_Orders_import_create_Body,
+        schema: api_CalibrationRecords_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -39252,6 +40416,78 @@ availability (plant closures still win).`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/OvertimeWindows/import-preview/",
+    alias: "api_OvertimeWindows_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/OvertimeWindows/import-status/:task_id/",
+    alias: "api_OvertimeWindows_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/OvertimeWindows/import-template/:template_format/",
+    alias: "api_OvertimeWindows_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/OvertimeWindows/import/",
+    alias: "api_OvertimeWindows_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -40219,7 +41455,10 @@ Import/Export endpoints (auto-configured from model):
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Parts/import-status/:task_id/",
@@ -40270,7 +41509,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: api_Orders_import_create_Body,
+        schema: api_CalibrationRecords_import_create_Body,
       },
       {
         name: "status__in",
@@ -40523,6 +41762,108 @@ and whether tracking is required when creating parts.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/PartTypeLifeLimits/export/:export_format/",
+    alias: "api_PartTypeLifeLimits_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/PartTypeLifeLimits/import-preview/",
+    alias: "api_PartTypeLifeLimits_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/PartTypeLifeLimits/import-status/:task_id/",
+    alias: "api_PartTypeLifeLimits_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/PartTypeLifeLimits/import-template/:template_format/",
+    alias: "api_PartTypeLifeLimits_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/PartTypeLifeLimits/import/",
+    alias: "api_PartTypeLifeLimits_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -40845,7 +42186,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: api_Orders_import_create_Body,
+        schema: api_CalibrationRecords_import_create_Body,
       },
       {
         name: "part_type",
@@ -41095,6 +42436,78 @@ blocks every machine and treats operators as absent during these.`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/PlantCalendarExceptions/import-preview/",
+    alias: "api_PlantCalendarExceptions_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/PlantCalendarExceptions/import-status/:task_id/",
+    alias: "api_PlantCalendarExceptions_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/PlantCalendarExceptions/import-template/:template_format/",
+    alias: "api_PlantCalendarExceptions_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/PlantCalendarExceptions/import/",
+    alias: "api_PlantCalendarExceptions_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -41527,10 +42940,7 @@ Lifecycle endpoints:
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/process-change-orders/:id/affected-workorders/",
@@ -44101,6 +45511,108 @@ the completion blockers.`,
     response: z.void(),
   },
   {
+    method: "get",
+    path: "/api/RepairCodes/export/:export_format/",
+    alias: "api_RepairCodes_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/RepairCodes/import-preview/",
+    alias: "api_RepairCodes_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/RepairCodes/import-status/:task_id/",
+    alias: "api_RepairCodes_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/RepairCodes/import-template/:template_format/",
+    alias: "api_RepairCodes_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/RepairCodes/import/",
+    alias: "api_RepairCodes_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "post",
     path: "/api/reports/download/",
     alias: "api_reports_download_create",
@@ -45509,7 +47021,10 @@ SUCCESS, or FAILURE; on SUCCESS &#x60;result&#x60; carries the task&#x27;s retur
         limit_seconds: z.number().int(),
       })
       .partial(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/Schedules/solve-draft/",
@@ -46262,6 +47777,108 @@ to current versions. Delete is the SecureModel soft-delete (archive).`,
   },
   {
     method: "get",
+    path: "/api/Shifts/export/:export_format/",
+    alias: "api_Shifts_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Shifts/import-preview/",
+    alias: "api_Shifts_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Shifts/import-status/:task_id/",
+    alias: "api_Shifts_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Shifts/import-template/:template_format/",
+    alias: "api_Shifts_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Shifts/import/",
+    alias: "api_Shifts_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
     path: "/api/spc-baselines/",
     alias: "api_spc_baselines_list",
     description: `ViewSet for SPC Baselines (frozen control limits).
@@ -46717,6 +48334,252 @@ Response:
       },
     ],
     response: z.array(ProcessSPC),
+  },
+  {
+    method: "get",
+    path: "/api/StepEquipmentAffinities/",
+    alias: "api_StepEquipmentAffinities_list",
+    description: `CRUD for step-to-machine eligibility: a machine that can run a step, how well
+(eligible / preferred / dialed in), and optionally its own cycle time for it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "affinity",
+        type: "Query",
+        schema: z.enum(["dialed_in", "eligible", "preferred"]).optional(),
+      },
+      {
+        name: "equipment",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedStepEquipmentAffinityList,
+  },
+  {
+    method: "post",
+    path: "/api/StepEquipmentAffinities/",
+    alias: "api_StepEquipmentAffinities_create",
+    description: `CRUD for step-to-machine eligibility: a machine that can run a step, how well
+(eligible / preferred / dialed in), and optionally its own cycle time for it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepEquipmentAffinityRequest,
+      },
+    ],
+    response: StepEquipmentAffinity,
+  },
+  {
+    method: "get",
+    path: "/api/StepEquipmentAffinities/:id/",
+    alias: "api_StepEquipmentAffinities_retrieve",
+    description: `CRUD for step-to-machine eligibility: a machine that can run a step, how well
+(eligible / preferred / dialed in), and optionally its own cycle time for it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepEquipmentAffinity,
+  },
+  {
+    method: "put",
+    path: "/api/StepEquipmentAffinities/:id/",
+    alias: "api_StepEquipmentAffinities_update",
+    description: `CRUD for step-to-machine eligibility: a machine that can run a step, how well
+(eligible / preferred / dialed in), and optionally its own cycle time for it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepEquipmentAffinityRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepEquipmentAffinity,
+  },
+  {
+    method: "patch",
+    path: "/api/StepEquipmentAffinities/:id/",
+    alias: "api_StepEquipmentAffinities_partial_update",
+    description: `CRUD for step-to-machine eligibility: a machine that can run a step, how well
+(eligible / preferred / dialed in), and optionally its own cycle time for it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedStepEquipmentAffinityRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepEquipmentAffinity,
+  },
+  {
+    method: "delete",
+    path: "/api/StepEquipmentAffinities/:id/",
+    alias: "api_StepEquipmentAffinities_destroy",
+    description: `CRUD for step-to-machine eligibility: a machine that can run a step, how well
+(eligible / preferred / dialed in), and optionally its own cycle time for it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/StepEquipmentAffinities/export/:export_format/",
+    alias: "api_StepEquipmentAffinities_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/StepEquipmentAffinities/import-preview/",
+    alias: "api_StepEquipmentAffinities_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/StepEquipmentAffinities/import-status/:task_id/",
+    alias: "api_StepEquipmentAffinities_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/StepEquipmentAffinities/import-template/:template_format/",
+    alias: "api_StepEquipmentAffinities_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/StepEquipmentAffinities/import/",
+    alias: "api_StepEquipmentAffinities_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/StepEquipmentAffinities/metadata/",
+    alias: "api_StepEquipmentAffinities_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -47184,10 +49047,7 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepExecutions/:id/claim/",
@@ -48480,6 +50340,247 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.string().optional(),
       },
     ],
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/StepTimings/",
+    alias: "api_StepTimings_list",
+    description: `CRUD for step standard times — what the solver and RCCP size every operation
+from. One row per step (the step is the key).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "attention_type",
+        type: "Query",
+        schema: z.enum(["full", "load_unload", "unattended"]).optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedStepTimingRecordList,
+  },
+  {
+    method: "post",
+    path: "/api/StepTimings/",
+    alias: "api_StepTimings_create",
+    description: `CRUD for step standard times — what the solver and RCCP size every operation
+from. One row per step (the step is the key).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepTimingRecordRequest,
+      },
+    ],
+    response: StepTimingRecord,
+  },
+  {
+    method: "get",
+    path: "/api/StepTimings/:id/",
+    alias: "api_StepTimings_retrieve",
+    description: `CRUD for step standard times — what the solver and RCCP size every operation
+from. One row per step (the step is the key).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepTimingRecord,
+  },
+  {
+    method: "put",
+    path: "/api/StepTimings/:id/",
+    alias: "api_StepTimings_update",
+    description: `CRUD for step standard times — what the solver and RCCP size every operation
+from. One row per step (the step is the key).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepTimingRecordRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepTimingRecord,
+  },
+  {
+    method: "patch",
+    path: "/api/StepTimings/:id/",
+    alias: "api_StepTimings_partial_update",
+    description: `CRUD for step standard times — what the solver and RCCP size every operation
+from. One row per step (the step is the key).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedStepTimingRecordRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepTimingRecord,
+  },
+  {
+    method: "delete",
+    path: "/api/StepTimings/:id/",
+    alias: "api_StepTimings_destroy",
+    description: `CRUD for step standard times — what the solver and RCCP size every operation
+from. One row per step (the step is the key).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/StepTimings/export/:export_format/",
+    alias: "api_StepTimings_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/StepTimings/import-preview/",
+    alias: "api_StepTimings_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/StepTimings/import-status/:task_id/",
+    alias: "api_StepTimings_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/StepTimings/import-template/:template_format/",
+    alias: "api_StepTimings_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/StepTimings/import/",
+    alias: "api_StepTimings_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/StepTimings/metadata/",
+    alias: "api_StepTimings_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
     response: ListMetadataResponse,
   },
   {
@@ -50407,7 +52508,10 @@ Endpoints:
       },
     ],
     response: TenantLLMProvider,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "patch",
     path: "/api/TenantLLMProviders/:id/",
@@ -51879,6 +53983,78 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     response: PaginatedTrainingRequirementList,
   },
   {
+    method: "post",
+    path: "/api/TrainingRequirements/import-preview/",
+    alias: "api_TrainingRequirements_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/TrainingRequirements/import-status/:task_id/",
+    alias: "api_TrainingRequirements_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/TrainingRequirements/import-template/:template_format/",
+    alias: "api_TrainingRequirements_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/TrainingRequirements/import/",
+    alias: "api_TrainingRequirements_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/TrainingRequirements/metadata/",
     alias: "api_TrainingRequirements_metadata_retrieve",
@@ -52035,6 +54211,78 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/TrainingTypes/import-preview/",
+    alias: "api_TrainingTypes_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/TrainingTypes/import-status/:task_id/",
+    alias: "api_TrainingTypes_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/TrainingTypes/import-template/:template_format/",
+    alias: "api_TrainingTypes_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/TrainingTypes/import/",
+    alias: "api_TrainingTypes_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -52585,10 +54833,7 @@ Provides endpoints for:
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/UserInvitations/accept/",
@@ -52827,6 +55072,252 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
   },
   {
     method: "get",
+    path: "/api/WorkCenterChangeovers/",
+    alias: "api_WorkCenterChangeovers_list",
+    description: `CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+switches from running one step to another. One row per matrix cell.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "equipment",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "from_step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "to_step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedWorkCenterChangeoverList,
+  },
+  {
+    method: "post",
+    path: "/api/WorkCenterChangeovers/",
+    alias: "api_WorkCenterChangeovers_create",
+    description: `CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+switches from running one step to another. One row per matrix cell.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkCenterChangeoverRequest,
+      },
+    ],
+    response: WorkCenterChangeover,
+  },
+  {
+    method: "get",
+    path: "/api/WorkCenterChangeovers/:id/",
+    alias: "api_WorkCenterChangeovers_retrieve",
+    description: `CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+switches from running one step to another. One row per matrix cell.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkCenterChangeover,
+  },
+  {
+    method: "put",
+    path: "/api/WorkCenterChangeovers/:id/",
+    alias: "api_WorkCenterChangeovers_update",
+    description: `CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+switches from running one step to another. One row per matrix cell.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkCenterChangeoverRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkCenterChangeover,
+  },
+  {
+    method: "patch",
+    path: "/api/WorkCenterChangeovers/:id/",
+    alias: "api_WorkCenterChangeovers_partial_update",
+    description: `CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+switches from running one step to another. One row per matrix cell.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedWorkCenterChangeoverRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkCenterChangeover,
+  },
+  {
+    method: "delete",
+    path: "/api/WorkCenterChangeovers/:id/",
+    alias: "api_WorkCenterChangeovers_destroy",
+    description: `CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+switches from running one step to another. One row per matrix cell.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/WorkCenterChangeovers/export/:export_format/",
+    alias: "api_WorkCenterChangeovers_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/WorkCenterChangeovers/import-preview/",
+    alias: "api_WorkCenterChangeovers_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/WorkCenterChangeovers/import-status/:task_id/",
+    alias: "api_WorkCenterChangeovers_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkCenterChangeovers/import-template/:template_format/",
+    alias: "api_WorkCenterChangeovers_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/WorkCenterChangeovers/import/",
+    alias: "api_WorkCenterChangeovers_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/WorkCenterChangeovers/metadata/",
+    alias: "api_WorkCenterChangeovers_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/WorkCenters-Options/",
     alias: "api_WorkCenters_Options_list",
     description: `Lightweight work center endpoint for dropdowns`,
@@ -52999,6 +55490,78 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/WorkCenters/import-preview/",
+    alias: "api_WorkCenters_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/WorkCenters/import-status/:task_id/",
+    alias: "api_WorkCenters_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkCenters/import-template/:template_format/",
+    alias: "api_WorkCenters_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/WorkCenters/import/",
+    alias: "api_WorkCenters_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_CalibrationRecords_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "post",
@@ -53776,7 +56339,7 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
       {
         name: "body",
         type: "Body",
-        schema: api_Orders_import_create_Body,
+        schema: api_CalibrationRecords_import_create_Body,
       },
     ],
     response: ImportQueued,

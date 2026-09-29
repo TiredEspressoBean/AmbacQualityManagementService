@@ -908,6 +908,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/CalibrationRecords/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_CalibrationRecords_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CalibrationRecords/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_CalibrationRecords_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CalibrationRecords/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_CalibrationRecords_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CalibrationRecords/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_CalibrationRecords_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/CalibrationRecords/metadata/": {
         parameters: {
             query?: never;
@@ -1341,6 +1409,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_Companies_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Companies/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Companies_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Companies/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Companies_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Companies/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Companies_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Companies/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Companies_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2764,6 +2900,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Equipment-types/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Equipment_types_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Equipment-types/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Equipment_types_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Equipment-types/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Equipment_types_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Equipment-types/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Equipment_types_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Equipment-types/metadata/": {
         parameters: {
             query?: never;
@@ -2914,6 +3118,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_Equipment_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Equipment/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Equipment_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Equipment/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Equipment_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Equipment/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Equipment_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Equipment/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Equipment_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3142,6 +3414,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_Error_types_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Error-types/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Error_types_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Error-types/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Error_types_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Error-types/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Error_types_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Error-types/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Error_types_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3571,6 +3911,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Fixtures/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Fixtures_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Fixtures/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Fixtures_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Fixtures/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Fixtures_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Fixtures/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Fixtures_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Fixtures/metadata/": {
         parameters: {
             query?: never;
@@ -3928,6 +4336,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/JobRoles/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_JobRoles_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/JobRoles/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_JobRoles_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/JobRoles/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_JobRoles_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/JobRoles/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_JobRoles_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/JobRoles/metadata/": {
         parameters: {
             query?: never;
@@ -4016,6 +4492,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_LaborCalendarBlocks_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LaborCalendarBlocks/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_LaborCalendarBlocks_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LaborCalendarBlocks/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_LaborCalendarBlocks_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LaborCalendarBlocks/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_LaborCalendarBlocks_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LaborCalendarBlocks/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_LaborCalendarBlocks_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4740,6 +5284,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Materials/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Materials_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Materials/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Materials_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Materials/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Materials_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Materials/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Materials_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Materials/metadata/": {
         parameters: {
             query?: never;
@@ -4960,6 +5572,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_MeasurementDefinitions_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MeasurementDefinitions/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_MeasurementDefinitions_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MeasurementDefinitions/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_MeasurementDefinitions_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MeasurementDefinitions/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_MeasurementDefinitions_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MeasurementDefinitions/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_MeasurementDefinitions_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5790,6 +6470,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/OvertimeWindows/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_OvertimeWindows_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OvertimeWindows/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_OvertimeWindows_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OvertimeWindows/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_OvertimeWindows_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OvertimeWindows/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_OvertimeWindows_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/OvertimeWindows/metadata/": {
         parameters: {
             query?: never;
@@ -6056,6 +6804,91 @@ export interface paths {
          *     and whether tracking is required when creating parts.
          */
         patch: operations["api_PartTypeLifeLimits_partial_update"];
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_PartTypeLifeLimits_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_PartTypeLifeLimits_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_PartTypeLifeLimits_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_PartTypeLifeLimits_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_PartTypeLifeLimits_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/PartTypes/": {
@@ -6860,6 +7693,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_PlantCalendarExceptions_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_PlantCalendarExceptions_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_PlantCalendarExceptions_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_PlantCalendarExceptions_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PlantCalendarExceptions/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_PlantCalendarExceptions_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8138,6 +9039,91 @@ export interface paths {
         head?: never;
         /** @description Repair codes — what operations a finding adds to a rebuild. */
         patch: operations["api_RepairCodes_partial_update"];
+        trace?: never;
+    };
+    "/api/RepairCodes/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_RepairCodes_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RepairCodes/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_RepairCodes_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RepairCodes/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_RepairCodes_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RepairCodes/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_RepairCodes_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RepairCodes/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_RepairCodes_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/Sampling-rule-sets/": {
@@ -9646,6 +10632,249 @@ export interface paths {
         patch: operations["api_Shifts_partial_update"];
         trace?: never;
     };
+    "/api/Shifts/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Shifts_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Shifts/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Shifts_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Shifts/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Shifts_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Shifts/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Shifts_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Shifts/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Shifts_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for step-to-machine eligibility: a machine that can run a step, how well
+         *     (eligible / preferred / dialed in), and optionally its own cycle time for it.
+         */
+        get: operations["api_StepEquipmentAffinities_list"];
+        put?: never;
+        /**
+         * @description CRUD for step-to-machine eligibility: a machine that can run a step, how well
+         *     (eligible / preferred / dialed in), and optionally its own cycle time for it.
+         */
+        post: operations["api_StepEquipmentAffinities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for step-to-machine eligibility: a machine that can run a step, how well
+         *     (eligible / preferred / dialed in), and optionally its own cycle time for it.
+         */
+        get: operations["api_StepEquipmentAffinities_retrieve"];
+        /**
+         * @description CRUD for step-to-machine eligibility: a machine that can run a step, how well
+         *     (eligible / preferred / dialed in), and optionally its own cycle time for it.
+         */
+        put: operations["api_StepEquipmentAffinities_update"];
+        post?: never;
+        /**
+         * @description CRUD for step-to-machine eligibility: a machine that can run a step, how well
+         *     (eligible / preferred / dialed in), and optionally its own cycle time for it.
+         */
+        delete: operations["api_StepEquipmentAffinities_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for step-to-machine eligibility: a machine that can run a step, how well
+         *     (eligible / preferred / dialed in), and optionally its own cycle time for it.
+         */
+        patch: operations["api_StepEquipmentAffinities_partial_update"];
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_StepEquipmentAffinities_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_StepEquipmentAffinities_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_StepEquipmentAffinities_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_StepEquipmentAffinities_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_StepEquipmentAffinities_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepEquipmentAffinities/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_StepEquipmentAffinities_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepExecutionMeasurements/": {
         parameters: {
             query?: never;
@@ -10154,6 +11383,164 @@ export interface paths {
         };
         /** @description List pending override requests that need approval */
         get: operations["api_StepOverrides_pending_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepTimings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for step standard times — what the solver and RCCP size every operation
+         *     from. One row per step (the step is the key).
+         */
+        get: operations["api_StepTimings_list"];
+        put?: never;
+        /**
+         * @description CRUD for step standard times — what the solver and RCCP size every operation
+         *     from. One row per step (the step is the key).
+         */
+        post: operations["api_StepTimings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepTimings/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for step standard times — what the solver and RCCP size every operation
+         *     from. One row per step (the step is the key).
+         */
+        get: operations["api_StepTimings_retrieve"];
+        /**
+         * @description CRUD for step standard times — what the solver and RCCP size every operation
+         *     from. One row per step (the step is the key).
+         */
+        put: operations["api_StepTimings_update"];
+        post?: never;
+        /**
+         * @description CRUD for step standard times — what the solver and RCCP size every operation
+         *     from. One row per step (the step is the key).
+         */
+        delete: operations["api_StepTimings_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for step standard times — what the solver and RCCP size every operation
+         *     from. One row per step (the step is the key).
+         */
+        patch: operations["api_StepTimings_partial_update"];
+        trace?: never;
+    };
+    "/api/StepTimings/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_StepTimings_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepTimings/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_StepTimings_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepTimings/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_StepTimings_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepTimings/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_StepTimings_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepTimings/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_StepTimings_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepTimings/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_StepTimings_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12116,6 +13503,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/TrainingRequirements/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_TrainingRequirements_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingRequirements/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_TrainingRequirements_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingRequirements/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_TrainingRequirements_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingRequirements/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_TrainingRequirements_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/TrainingRequirements/metadata/": {
         parameters: {
             query?: never;
@@ -12180,6 +13635,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_TrainingTypes_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingTypes/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_TrainingTypes_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingTypes/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_TrainingTypes_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingTypes/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_TrainingTypes_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingTypes/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_TrainingTypes_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12649,6 +14172,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkCenterChangeovers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+         *     switches from running one step to another. One row per matrix cell.
+         */
+        get: operations["api_WorkCenterChangeovers_list"];
+        put?: never;
+        /**
+         * @description CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+         *     switches from running one step to another. One row per matrix cell.
+         */
+        post: operations["api_WorkCenterChangeovers_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenterChangeovers/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+         *     switches from running one step to another. One row per matrix cell.
+         */
+        get: operations["api_WorkCenterChangeovers_retrieve"];
+        /**
+         * @description CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+         *     switches from running one step to another. One row per matrix cell.
+         */
+        put: operations["api_WorkCenterChangeovers_update"];
+        post?: never;
+        /**
+         * @description CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+         *     switches from running one step to another. One row per matrix cell.
+         */
+        delete: operations["api_WorkCenterChangeovers_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+         *     switches from running one step to another. One row per matrix cell.
+         */
+        patch: operations["api_WorkCenterChangeovers_partial_update"];
+        trace?: never;
+    };
+    "/api/WorkCenterChangeovers/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_WorkCenterChangeovers_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenterChangeovers/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_WorkCenterChangeovers_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenterChangeovers/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_WorkCenterChangeovers_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenterChangeovers/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_WorkCenterChangeovers_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenterChangeovers/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_WorkCenterChangeovers_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenterChangeovers/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_WorkCenterChangeovers_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkCenters/": {
         parameters: {
             query?: never;
@@ -12730,6 +14411,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_WorkCenters_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenters/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_WorkCenters_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenters/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_WorkCenters_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenters/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_WorkCenters_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkCenters/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_WorkCenters_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -14604,6 +16353,91 @@ export interface paths {
          *     customer FK validation handled at the serializer layer.
          */
         patch: operations["api_notifications_external_contacts_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/external-contacts/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_notifications_external_contacts_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/external-contacts/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_notifications_external_contacts_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/external-contacts/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_notifications_external_contacts_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/external-contacts/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_notifications_external_contacts_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/external-contacts/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_notifications_external_contacts_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/notifications/feed/": {
@@ -16773,6 +18607,13 @@ export interface components {
             results: components["schemas"]["AffectedWorkorderRow"][];
             available_steps: components["schemas"]["AvailableStep"][];
         };
+        /**
+         * @description * `eligible` - Eligible
+         *     * `preferred` - Preferred
+         *     * `dialed_in` - Dialed in (proven best)
+         * @enum {string}
+         */
+        AffinityEnum: "eligible" | "preferred" | "dialed_in";
         /**
          * @description * `ALL_REQUIRED` - All Required
          *     * `THRESHOLD` - Threshold
@@ -23154,6 +24995,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["StepDistributionResponse"][];
         };
+        PaginatedStepEquipmentAffinityList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["StepEquipmentAffinity"][];
+        };
         PaginatedStepExecutionList: {
             /** @example 123 */
             count: number;
@@ -23213,6 +25069,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["StepOverride"][];
+        };
+        PaginatedStepTimingRecordList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["StepTimingRecord"][];
         };
         PaginatedStepsList: {
             /** @example 123 */
@@ -23558,6 +25429,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["WIPSummary"][];
+        };
+        PaginatedWorkCenterChangeoverList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["WorkCenterChangeover"][];
         };
         PaginatedWorkCenterList: {
             /** @example 123 */
@@ -26051,6 +27937,19 @@ export interface components {
             is_active?: boolean;
             archived?: boolean;
         };
+        /** @description A machine that can run a step, how well, and optionally its own cycle time. */
+        PatchedStepEquipmentAffinityRequest: {
+            /** Format: uuid */
+            step?: string;
+            /** Format: uuid */
+            equipment?: string;
+            affinity?: components["schemas"]["AffinityEnum"];
+            /**
+             * Format: double
+             * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
+             */
+            cycle_time_override?: number | null;
+        };
         /** @description Serializer for step execution measurements. */
         PatchedStepExecutionMeasurementRequest: {
             /**
@@ -26161,6 +28060,42 @@ export interface components {
             /** @description Whether this override has been used */
             used?: boolean;
             archived?: boolean;
+        };
+        /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
+        PatchedStepTimingRecordRequest: {
+            /**
+             * Format: uuid
+             * @description The step these timings describe.
+             */
+            step?: string;
+            /**
+             * Format: double
+             * @description Internal (machine-stopped) setup / changeover minutes.
+             */
+            setup_minutes?: number;
+            /**
+             * Format: double
+             * @description Deterministic per-piece machine cycle time (minutes).
+             */
+            cycle_time_minutes?: number;
+            /**
+             * Format: double
+             * @description Operator touch time to load/unload one piece (minutes).
+             */
+            load_unload_per_piece?: number;
+            /**
+             * @description Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+             *
+             *     * `full` - Full attention (operator tied to the machine)
+             *     * `load_unload` - Load/unload only (machine runs unattended between)
+             *     * `unattended` - Unattended (robot/cobot fed — setup only)
+             */
+            attention_type?: components["schemas"]["AttentionTypeEnum"];
+            /**
+             * Format: double
+             * @description SMED external setup that can overlap the previous op's run time.
+             */
+            external_setup_minutes?: number;
         };
         /**
          * @description Steps serializer - represents step node properties.
@@ -26870,6 +28805,17 @@ export interface components {
             work_center?: string;
             /** @description The user's preferred default station (drives the operator home's initial scope). */
             is_primary?: boolean;
+        };
+        /** @description One cell of a machine's changeover matrix: minutes to go from one step to another. */
+        PatchedWorkCenterChangeoverRequest: {
+            /** Format: uuid */
+            equipment?: string;
+            /** Format: uuid */
+            from_step?: string;
+            /** Format: uuid */
+            to_step?: string;
+            /** Format: double */
+            changeover_minutes?: number;
         };
         /**
          * @description Work center serializer with equipment list.
@@ -30158,6 +32104,36 @@ export interface components {
              */
             tech_continuity?: components["schemas"]["TechContinuityEnum"];
         };
+        /** @description A machine that can run a step, how well, and optionally its own cycle time. */
+        StepEquipmentAffinity: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            step: string;
+            readonly step_name: string;
+            /** Format: uuid */
+            equipment: string;
+            readonly equipment_name: string;
+            affinity?: components["schemas"]["AffinityEnum"];
+            /**
+             * Format: double
+             * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
+             */
+            cycle_time_override?: number | null;
+        };
+        /** @description A machine that can run a step, how well, and optionally its own cycle time. */
+        StepEquipmentAffinityRequest: {
+            /** Format: uuid */
+            step: string;
+            /** Format: uuid */
+            equipment: string;
+            affinity?: components["schemas"]["AffinityEnum"];
+            /**
+             * Format: double
+             * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
+             */
+            cycle_time_override?: number | null;
+        };
         /**
          * @description Serializer for step execution tracking (workflow engine).
          *
@@ -30696,6 +32672,81 @@ export interface components {
          *     `labor_model` and the outside-process fields.
          */
         StepTiming: {
+            /**
+             * Format: double
+             * @description Internal (machine-stopped) setup / changeover minutes.
+             */
+            setup_minutes?: number;
+            /**
+             * Format: double
+             * @description Deterministic per-piece machine cycle time (minutes).
+             */
+            cycle_time_minutes?: number;
+            /**
+             * Format: double
+             * @description Operator touch time to load/unload one piece (minutes).
+             */
+            load_unload_per_piece?: number;
+            /**
+             * @description Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+             *
+             *     * `full` - Full attention (operator tied to the machine)
+             *     * `load_unload` - Load/unload only (machine runs unattended between)
+             *     * `unattended` - Unattended (robot/cobot fed — setup only)
+             */
+            attention_type?: components["schemas"]["AttentionTypeEnum"];
+            /**
+             * Format: double
+             * @description SMED external setup that can overlap the previous op's run time.
+             */
+            external_setup_minutes?: number;
+        };
+        /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
+        StepTimingRecord: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The step these timings describe.
+             */
+            step: string;
+            readonly step_name: string;
+            /**
+             * Format: double
+             * @description Internal (machine-stopped) setup / changeover minutes.
+             */
+            setup_minutes?: number;
+            /**
+             * Format: double
+             * @description Deterministic per-piece machine cycle time (minutes).
+             */
+            cycle_time_minutes?: number;
+            /**
+             * Format: double
+             * @description Operator touch time to load/unload one piece (minutes).
+             */
+            load_unload_per_piece?: number;
+            /**
+             * @description Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+             *
+             *     * `full` - Full attention (operator tied to the machine)
+             *     * `load_unload` - Load/unload only (machine runs unattended between)
+             *     * `unattended` - Unattended (robot/cobot fed — setup only)
+             */
+            attention_type?: components["schemas"]["AttentionTypeEnum"];
+            /**
+             * Format: double
+             * @description SMED external setup that can overlap the previous op's run time.
+             */
+            external_setup_minutes?: number;
+        };
+        /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
+        StepTimingRecordRequest: {
+            /**
+             * Format: uuid
+             * @description The step these timings describe.
+             */
+            step: string;
             /**
              * Format: double
              * @description Internal (machine-stopped) setup / changeover minutes.
@@ -33345,6 +35396,33 @@ export interface components {
             name: string;
             is_critical: boolean;
             series: components["schemas"]["WorkCenterBucket"][];
+        };
+        /** @description One cell of a machine's changeover matrix: minutes to go from one step to another. */
+        WorkCenterChangeover: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            equipment: string;
+            readonly equipment_name: string;
+            /** Format: uuid */
+            from_step: string;
+            readonly from_step_name: string;
+            /** Format: uuid */
+            to_step: string;
+            readonly to_step_name: string;
+            /** Format: double */
+            changeover_minutes?: number;
+        };
+        /** @description One cell of a machine's changeover matrix: minutes to go from one step to another. */
+        WorkCenterChangeoverRequest: {
+            /** Format: uuid */
+            equipment: string;
+            /** Format: uuid */
+            from_step: string;
+            /** Format: uuid */
+            to_step: string;
+            /** Format: double */
+            changeover_minutes?: number;
         };
         /**
          * @description * `PRODUCTION` - Production
@@ -36268,6 +38346,136 @@ export interface operations {
             };
         };
     };
+    api_CalibrationRecords_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_CalibrationRecords_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_CalibrationRecords_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_CalibrationRecords_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_CalibrationRecords_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -37328,6 +39536,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Companies_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Companies_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Companies_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Companies_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -39801,6 +42139,136 @@ export interface operations {
             };
         };
     };
+    api_Equipment_types_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Equipment_types_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Equipment_types_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Equipment_types_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_Equipment_types_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -39932,6 +42400,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Equipment_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Equipment_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Equipment_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Equipment_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -40133,6 +42731,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Error_types_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Error_types_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Error_types_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Error_types_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -41159,6 +43887,136 @@ export interface operations {
             };
         };
     };
+    api_Fixtures_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Fixtures_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Fixtures_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Fixtures_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_Fixtures_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -41948,6 +44806,136 @@ export interface operations {
             };
         };
     };
+    api_JobRoles_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_JobRoles_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_JobRoles_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_JobRoles_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_JobRoles_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -42148,6 +45136,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_LaborCalendarBlocks_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -43478,6 +46596,136 @@ export interface operations {
             };
         };
     };
+    api_Materials_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Materials_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Materials_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Materials_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_Materials_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -43666,6 +46914,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_MeasurementDefinitions_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_MeasurementDefinitions_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_MeasurementDefinitions_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_MeasurementDefinitions_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -45302,6 +48680,136 @@ export interface operations {
             };
         };
     };
+    api_OvertimeWindows_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_OvertimeWindows_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_OvertimeWindows_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -45803,6 +49311,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartTypeLifeLimit"];
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
@@ -47231,6 +50897,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_PlantCalendarExceptions_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -49092,6 +52888,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RepairCode"];
+                };
+            };
+        };
+    };
+    api_RepairCodes_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_RepairCodes_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_RepairCodes_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_RepairCodes_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_RepairCodes_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
@@ -51145,6 +55099,501 @@ export interface operations {
             };
         };
     };
+    api_Shifts_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Shifts_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Shifts_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Shifts_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Shifts_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `eligible` - Eligible
+                 *     * `preferred` - Preferred
+                 *     * `dialed_in` - Dialed in (proven best)
+                 */
+                affinity?: "dialed_in" | "eligible" | "preferred";
+                equipment?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                step?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedStepEquipmentAffinityList"];
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepEquipmentAffinityRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StepEquipmentAffinityRequest"];
+                "multipart/form-data": components["schemas"]["StepEquipmentAffinityRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepEquipmentAffinity"];
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step-Equipment Affinity. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepEquipmentAffinity"];
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step-Equipment Affinity. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepEquipmentAffinityRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StepEquipmentAffinityRequest"];
+                "multipart/form-data": components["schemas"]["StepEquipmentAffinityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepEquipmentAffinity"];
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step-Equipment Affinity. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_StepEquipmentAffinities_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step-Equipment Affinity. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedStepEquipmentAffinityRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedStepEquipmentAffinityRequest"];
+                "multipart/form-data": components["schemas"]["PatchedStepEquipmentAffinityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepEquipmentAffinity"];
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_StepEquipmentAffinities_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
     api_StepExecutionMeasurements_list: {
         parameters: {
             query?: {
@@ -52230,6 +56679,344 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_StepTimings_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+                 *
+                 *     * `full` - Full attention (operator tied to the machine)
+                 *     * `load_unload` - Load/unload only (machine runs unattended between)
+                 *     * `unattended` - Unattended (robot/cobot fed — setup only)
+                 */
+                attention_type?: "full" | "load_unload" | "unattended";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                step?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedStepTimingRecordList"];
+                };
+            };
+        };
+    };
+    api_StepTimings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepTimingRecordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StepTimingRecordRequest"];
+                "multipart/form-data": components["schemas"]["StepTimingRecordRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepTimingRecord"];
+                };
+            };
+        };
+    };
+    api_StepTimings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Timing. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepTimingRecord"];
+                };
+            };
+        };
+    };
+    api_StepTimings_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Timing. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepTimingRecordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StepTimingRecordRequest"];
+                "multipart/form-data": components["schemas"]["StepTimingRecordRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepTimingRecord"];
+                };
+            };
+        };
+    };
+    api_StepTimings_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Timing. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_StepTimings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Timing. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedStepTimingRecordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedStepTimingRecordRequest"];
+                "multipart/form-data": components["schemas"]["PatchedStepTimingRecordRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepTimingRecord"];
+                };
+            };
+        };
+    };
+    api_StepTimings_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_StepTimings_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_StepTimings_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_StepTimings_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_StepTimings_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_StepTimings_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -56119,6 +60906,136 @@ export interface operations {
             };
         };
     };
+    api_TrainingRequirements_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_TrainingRequirements_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_TrainingRequirements_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_TrainingRequirements_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_TrainingRequirements_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -56304,6 +61221,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_TrainingTypes_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_TrainingTypes_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_TrainingTypes_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_TrainingTypes_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -57168,6 +62215,338 @@ export interface operations {
             };
         };
     };
+    api_WorkCenterChangeovers_list: {
+        parameters: {
+            query?: {
+                equipment?: string;
+                from_step?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                to_step?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWorkCenterChangeoverList"];
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkCenterChangeoverRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkCenterChangeoverRequest"];
+                "multipart/form-data": components["schemas"]["WorkCenterChangeoverRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkCenterChangeover"];
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work-Center Changeover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkCenterChangeover"];
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work-Center Changeover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkCenterChangeoverRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkCenterChangeoverRequest"];
+                "multipart/form-data": components["schemas"]["WorkCenterChangeoverRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkCenterChangeover"];
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work-Center Changeover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_WorkCenterChangeovers_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work-Center Changeover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedWorkCenterChangeoverRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedWorkCenterChangeoverRequest"];
+                "multipart/form-data": components["schemas"]["PatchedWorkCenterChangeoverRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkCenterChangeover"];
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_WorkCenterChangeovers_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
     api_WorkCenters_list: {
         parameters: {
             query?: {
@@ -57377,6 +62756,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_WorkCenters_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_WorkCenters_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_WorkCenters_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_WorkCenters_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };
@@ -59652,6 +65161,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExternalContact"];
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
