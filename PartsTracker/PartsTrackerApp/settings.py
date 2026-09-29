@@ -134,12 +134,7 @@ INSTALLED_APPS = [
     # Microsoft SSO provider - only loaded if SSO_ENABLED=true
     *(['allauth.socialaccount.providers.microsoft'] if SSO_ENABLED else []),
     'Tracker.apps.TrackerConfig',
-    "tailwind",
-    "theme",
-    "django_browser_reload",
-    "formtools",
     'auditlog',
-    'widget_tweaks',
     "rest_framework",
     # The conventional registration from django-filter's own docs. It ships no models
     # and no migrations — only templates — so with the browsable renderer switched off
@@ -179,9 +174,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "allauth.account.middleware.AccountMiddleware",
 ]
-
-if DEBUG:
-    MIDDLEWARE.append("django_browser_reload.middleware.BrowserReloadMiddleware")
 
 ROOT_URLCONF = 'PartsTrackerApp.urls'
 
@@ -564,11 +556,16 @@ _backend_public = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip().rstrip("/"
 if _backend_public:
     CSRF_TRUSTED_ORIGINS.append(f"https://{_backend_public}")
 
+# Where allauth lands a user after login — in practice the end of the Microsoft SSO flow
+# the frontend starts at /accounts/microsoft/login/ (and LOGOUT_REDIRECT_URL after
+# logout). Relative on purpose: the browser is on the proxy's origin (proxy-service's
+# Caddyfile, or the Vite proxy in dev), which serves the React app at "/" and forwards
+# /accounts/* to Django. Django itself has no "/" route; it never receives this path.
+# Don't make it absolute (e.g. FRONTEND_URL): a frontend service's own URL bypasses
+# the proxy, where /api and /accounts don't exist.
 LOGIN_REDIRECT_URL = '/'
 
 LOGOUT_REDIRECT_URL = '/'
-
-TAILWIND_APP_NAME = 'theme'
 
 INTERNAL_IPS = [
     "127.0.0.1",
@@ -606,8 +603,6 @@ if os.getenv("AWS_S3_ENDPOINT_URL"):
     AWS_DEFAULT_ACL = 'private'
     AWS_QUERYSTRING_AUTH = True  # Generate signed URLs for private files
     AWS_S3_SIGNATURE_VERSION = 's3v4'
-
-NPM_BIN_PATH = os.environ.get("NPM_BIN_PATH")
 
 AUDITLOG_INCLUDE_ALL_MODELS = True
 
