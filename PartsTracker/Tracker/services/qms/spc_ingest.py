@@ -59,7 +59,7 @@ def collect_spc_rows(*, tenant, measurement_id, start: datetime, end: datetime) 
 
     inspection_rows = (
         MeasurementResult.objects
-        .filter(archived=False,
+        .filter(
             tenant=tenant,
             definition_id=measurement_id,
             value_numeric__isnull=False,
@@ -76,7 +76,7 @@ def collect_spc_rows(*, tenant, measurement_id, start: datetime, end: datetime) 
     # kept: they never promote, so they have no MR twin.
     process_rows = (
         StepExecutionMeasurement.objects
-        .filter(archived=False,
+        .filter(
             tenant=tenant,
             measurement_definition_id=measurement_id,
             value__isnull=False,
