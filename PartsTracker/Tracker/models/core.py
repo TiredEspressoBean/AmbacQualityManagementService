@@ -1402,6 +1402,13 @@ class SecureModel(models.Model):
             from Tracker.services.core.documents import forward_target_links
             forward_target_links(old_target=locked, new_target=new_version)
 
+            # Every other link to this row: re-pointed, copied or left on history as
+            # its declared policy says (Tracker.services.core.version_links). A new
+            # version is the same thing, updated — links used to stay on the old row
+            # unless each model remembered to move them.
+            from Tracker.services.core.version_links import apply_version_links
+            apply_version_links(locked, new_version, supersede_source=supersede_source)
+
         # Emitted outside the transaction so handlers observe committed
         # state. Use send_robust so one misbehaving receiver can't abort
         # the version operation post-hoc.

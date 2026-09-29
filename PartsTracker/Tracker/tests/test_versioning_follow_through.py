@@ -4,8 +4,8 @@ version; history stays on the version where it happened.
 
 Covers:
 - Equipments: `operating_shifts` M2M, StepEquipmentAffinity, WorkCenterChangeover,
-  ContinuousMachine, and current WorkCenter membership move to the new version;
-  CalibrationRecord stays.
+  ContinuousMachine, current WorkCenter membership — and its calibration history —
+  move to the new version: it is the same machine (see version_links.py).
 - TrainingType: TrainingRequirement moves to the new version; TrainingRecord
   stays, and qualification reads (authorization, qualified users, matrix,
   expiry supersession) compare across the version chain.
@@ -119,16 +119,18 @@ class EquipmentVersionFollowThroughTests(TenantTestCase):
         new = self._version(name='CNC-1A')
         self.assertEqual(list(wc.equipment.all()), [new])
 
-    def test_calibration_history_stays_on_the_old_version(self):
+    def test_calibration_history_follows_the_machine(self):
+        """Left on the old version, the CURRENT machine read as uncalibrated — not
+        operational — so the scheduler dropped it. It is the same machine."""
         cal = CalibrationRecord.objects.create(
             equipment=self.machine,
             calibration_date=date.today() - timedelta(days=10),
             due_date=date.today() + timedelta(days=355),
             result=CalibrationRecord.CalibrationResult.PASS,
         )
-        self._version(name='CNC-1A')
+        new = self._version(name='CNC-1A')
         cal.refresh_from_db()
-        self.assertEqual(cal.equipment_id, self.machine.id)
+        self.assertEqual(cal.equipment_id, new.id)
 
 
 # =============================================================================
