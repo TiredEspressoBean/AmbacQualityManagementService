@@ -5,6 +5,7 @@ import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditor
 import { format, parseISO } from "date-fns";
 import type { QueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { coreStageLabel, coreStageVariant } from "@/lib/reman/core-stages";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Schema } from "@/lib/api/types";
@@ -55,16 +56,6 @@ function getConditionBadgeVariant(grade: string): "default" | "secondary" | "des
     }
 }
 
-// Core status color mapping
-function getCoreStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-    switch (status) {
-        case 'RECEIVED': return 'secondary';
-        case 'IN_DISASSEMBLY': return 'default';
-        case 'DISASSEMBLED': return 'outline';
-        case 'SCRAPPED': return 'destructive';
-        default: return 'outline';
-    }
-}
 
 type CoreRow = Schema<"CoreList">;
 
@@ -232,15 +223,9 @@ export function CoresEditorPage() {
                         renderCell: (core) => {
                             const status = core.status;
                             if (!status) return "—";
-                            const labels: Record<string, string> = {
-                                'RECEIVED': 'Received',
-                                'IN_DISASSEMBLY': 'In Disassembly',
-                                'DISASSEMBLED': 'Disassembled',
-                                'SCRAPPED': 'Scrapped',
-                            };
                             return (
-                                <Badge variant={getCoreStatusVariant(status)}>
-                                    {labels[status] || status}
+                                <Badge variant={coreStageVariant(status)}>
+                                    {coreStageLabel(status)}
                                 </Badge>
                             );
                         },

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Hammer, PackageCheck, Play, Truck, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { coreStageLabel, coreStageVariant } from "@/lib/reman/core-stages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,29 +21,6 @@ import type { Schema } from "@/lib/api/types";
 
 type WorkOrderCore = NonNullable<Schema<"WorkOrder">["cores"]>[number];
 
-const STATUS_LABEL: Record<string, string> = {
-    RECEIVED: "Received",
-    IN_DISASSEMBLY: "In disassembly",
-    DISASSEMBLED: "Disassembled",
-    IN_REBUILD: "In rebuild",
-    REBUILT: "Rebuilt",
-    REBUILT_TO_STOCK: "Rebuilt to stock",
-    RETURNED: "Returned",
-    AWAITING_AUTHORISATION: "Awaiting authorisation",
-    DECLINED: "Scope declined",
-    RETURNED_UNREPAIRED: "Returned unrepaired",
-    HARVESTED: "Harvested",
-    SCRAPPED: "Scrapped",
-};
-
-function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-    if (status === "SCRAPPED" || status === "DECLINED") return "destructive";
-    if (status === "AWAITING_AUTHORISATION") return "outline";
-    if (status === "RETURNED" || status === "RETURNED_UNREPAIRED" || status === "REBUILT_TO_STOCK") return "secondary";
-    if (status === "DISASSEMBLED") return "outline";
-    if (status === "IN_REBUILD" || status === "REBUILT") return "default";
-    return "secondary";
-}
 
 /**
  * The cores on a teardown work order.
@@ -167,8 +145,8 @@ export function WorkOrderCoresCard(
                                             </TableCell>
                                             <TableCell>{core.customer_name || "—"}</TableCell>
                                             <TableCell>
-                                                <Badge variant={statusVariant(core.status ?? "")}>
-                                                    {STATUS_LABEL[core.status ?? ""] ?? core.status}
+                                                <Badge variant={coreStageVariant(core.status)}>
+                                                    {coreStageLabel(core.status)}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-sm text-muted-foreground">

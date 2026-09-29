@@ -171,11 +171,10 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     CONSUMED: { icon: CheckCircle2, colorClass: COLORS.neutral, label: "Consumed" },
     QUARANTINE: { icon: AlertTriangle, colorClass: COLORS.danger, label: "Quarantine" },
 
-    // ═══════════════════════════════════════════════════════════════
-    // REMAN / CORE STATUSES
-    // ═══════════════════════════════════════════════════════════════
-    IN_DISASSEMBLY: { icon: Wrench, colorClass: COLORS.info, label: "In Disassembly" },
-    DISASSEMBLY_COMPLETE: { icon: CheckCircle2, colorClass: COLORS.success, label: "Disassembly Complete" },
+    // Reman core stages are NOT here: several share names with lot and part statuses
+    // (RECEIVED, RETURNED, SCRAPPED) and mean different things. Their labels live in
+    // src/lib/reman/core-stages.ts. (A DISASSEMBLY_COMPLETE entry here named a stage
+    // that never existed.)
 
     // ═══════════════════════════════════════════════════════════════
     // SCHEDULE SLOT STATUSES

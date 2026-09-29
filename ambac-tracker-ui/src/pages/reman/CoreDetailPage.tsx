@@ -1,9 +1,11 @@
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
+import { IssueCreditButton, ScrapCoreButton } from "@/components/reman/CoreLifecycleActions";
 import { useRetrieveHarvestedComponents } from "@/hooks/useRetrieveHarvestedComponents";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { coreStageLabel } from "@/lib/reman/core-stages";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,7 +17,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
-import { ArrowLeft, Trash2, DollarSign, Package, Wrench } from "lucide-react";
+import { ArrowLeft, Package, Wrench } from "lucide-react";
 
 // Status badge variants
 function getStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -38,20 +40,6 @@ function getConditionVariant(grade: string): "default" | "secondary" | "destruct
     }
 }
 
-const statusLabels: Record<string, string> = {
-    'RECEIVED': 'Received',
-    'IN_DISASSEMBLY': 'In Disassembly',
-    'DISASSEMBLED': 'Disassembled',
-    'SCRAPPED': 'Scrapped',
-    'IN_REBUILD': 'In Rebuild',
-    'REBUILT': 'Rebuilt — ready to return',
-    'REBUILT_TO_STOCK': 'Rebuilt to stock',
-    'RETURNED': 'Returned to customer',
-    'AWAITING_AUTHORISATION': 'Awaiting customer authorisation',
-    'DECLINED': 'Scope declined',
-    'RETURNED_UNREPAIRED': 'Returned unrepaired',
-    'HARVESTED': 'Harvested to inventory',
-};
 
 const conditionLabels: Record<string, string> = {
     'A': 'Grade A - Excellent',
@@ -111,7 +99,7 @@ export function CoreDetailPage() {
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             Core {core.core_number}
                             <Badge variant={getStatusVariant(core.status || '')}>
-                                {statusLabels[core.status || ''] || core.status}
+                                {coreStageLabel(core.status)}
                             </Badge>
                             {/* Only repair-and-return is flagged here. Exchange is the
                                 mode with no extra obligations, and badging both would
@@ -136,23 +124,8 @@ export function CoreDetailPage() {
                         </Button>
                     )}
                     <WorkThisUnit core={core} />
-                    {core.status === 'RECEIVED' && (
-                        <>
-                            <Button
-                                variant="destructive"
-                                onClick={() => navigate({ to: `/reman/cores/${id}/scrap` })}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Scrap
-                            </Button>
-                        </>
-                    )}
-                    {!core.core_credit_issued && core.core_credit_value && (
-                        <Button variant="outline">
-                            <DollarSign className="mr-2 h-4 w-4" />
-                            Issue Credit
-                        </Button>
-                    )}
+                    <ScrapCoreButton core={core} />
+                    <IssueCreditButton core={core} />
                 </div>
             </div>
 
@@ -322,7 +295,7 @@ export function CoreDetailPage() {
                             <div>
                                 <p className="text-sm text-muted-foreground">Status</p>
                                 <Badge variant={getStatusVariant(core.status || '')}>
-                                    {statusLabels[core.status || ''] || core.status}
+                                    {coreStageLabel(core.status)}
                                 </Badge>
                             </div>
                             <div>

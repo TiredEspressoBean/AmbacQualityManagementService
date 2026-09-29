@@ -3,7 +3,15 @@ import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditor
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { api } from "@/lib/api/generated";
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { getCookie } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import type { QueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import type { Schema } from "@/lib/api/types";
@@ -60,7 +68,9 @@ function getConditionVariant(grade: string): "default" | "secondary" | "destruct
 
 // Actions cell component
 function ComponentActionsCell({ component }: { component: any }) {
+    const [action, setAction] = useState<"accept" | "scrap" | null>(null);
     return (
+        <>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -84,11 +94,11 @@ function ComponentActionsCell({ component }: { component: any }) {
                 )}
                 {!component.is_scrapped && !component.component_part && (
                     <>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setAction("accept")}>
                             <Package className="mr-2 h-4 w-4" />
                             Accept to Inventory
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem className="text-destructive" onSelect={() => setAction("scrap")}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Scrap Component
                         </DropdownMenuItem>
@@ -96,6 +106,91 @@ function ComponentActionsCell({ component }: { component: any }) {
                 )}
             </DropdownMenuContent>
         </DropdownMenu>
+        <ComponentActionDialog component={component} action={action} onClose={() => setAction(null)} />
+        </>
+    );
+}
+
+/** Accept a harvested component into stock, or scrap it. Both are dispositions (lead /
+ *  QA tier: accept_component, reject_component) — the teardown tech grades, someone with
+ *  that authority decides. Both menu items used to have no handler at all. */
+function ComponentActionDialog({ component, action, onClose }: {
+    component: Schema<"HarvestedComponent">;
+    action: "accept" | "scrap" | null;
+    onClose: () => void;
+}) {
+    const qc = useQueryClient();
+    const [erpId, setErpId] = useState("");
+    const [reason, setReason] = useState("");
+    const headers = { "X-CSRFToken": getCookie("csrftoken") };
+    const done = (msg: string) => {
+        toast.success(msg);
+        qc.invalidateQueries({ predicate: (q) =>
+            ["harvested-components", "core", "cores", "rebuildPlan"].includes(String(q.queryKey[0])) });
+        setErpId(""); setReason(""); onClose();
+    };
+    const fail = (e: unknown, fallback: string) => {
+        const d = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        toast.error(d ?? fallback);
+    };
+    const accept = useMutation({
+        mutationFn: () => api.api_HarvestedComponents_accept_to_inventory_create(
+            { erp_id: erpId.trim() || null }, { params: { id: String(component.id) }, headers }),
+        onSuccess: (r) => done(`Accepted to stock as ${r.part_erp_id}`),
+        onError: (e) => fail(e, "Could not accept the component."),
+    });
+    const scrap = useMutation({
+        mutationFn: () => api.api_HarvestedComponents_scrap_create(
+            { reason: reason.trim() }, { params: { id: String(component.id) }, headers }),
+        onSuccess: () => done("Component scrapped"),
+        onError: (e) => fail(e, "Could not scrap the component."),
+    });
+    const name = `${component.component_type_name}${component.position ? ` (${component.position})` : ""}`;
+
+    return (
+        <Dialog open={action !== null} onOpenChange={(o) => { if (!o) onClose(); }}>
+            <DialogContent>
+                {action === "accept" ? (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Accept {name} to inventory</DialogTitle>
+                            <DialogDescription>
+                                Grade {component.condition_grade}, from {component.core_number}. It becomes a
+                                part in stock. If its core goes back to its customer, the part is
+                                reserved for that core and can't go into anyone else's rebuild.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Input value={erpId} onChange={(e) => setErpId(e.target.value)}
+                               placeholder="Part ID (optional — generated if blank)" />
+                        <DialogFooter>
+                            <Button variant="outline" onClick={onClose}>Cancel</Button>
+                            <Button disabled={accept.isPending} onClick={() => accept.mutate()}>
+                                {accept.isPending ? "Accepting…" : "Accept to inventory"}
+                            </Button>
+                        </DialogFooter>
+                    </>
+                ) : (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Scrap {name}</DialogTitle>
+                            <DialogDescription>
+                                From {component.core_number}. A scrapped component can't be accepted or
+                                installed afterwards.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
+                                  placeholder="Why it can't be used" />
+                        <DialogFooter>
+                            <Button variant="outline" onClick={onClose}>Cancel</Button>
+                            <Button variant="destructive" disabled={!reason.trim() || scrap.isPending}
+                                    onClick={() => scrap.mutate()}>
+                                {scrap.isPending ? "Scrapping…" : "Scrap component"}
+                            </Button>
+                        </DialogFooter>
+                    </>
+                )}
+            </DialogContent>
+        </Dialog>
     );
 }
 
