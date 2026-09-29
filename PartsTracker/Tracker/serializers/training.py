@@ -100,6 +100,8 @@ class TrainingRecordSerializer(SecureModelMixin):
     Records that a user has completed a specific training.
     Includes computed status property and related info fields.
     """
+    is_migrated = serializers.SerializerMethodField()
+
     # Display/info fields
     user_info = serializers.SerializerMethodField()
     training_type_info = serializers.SerializerMethodField()
@@ -115,9 +117,12 @@ class TrainingRecordSerializer(SecureModelMixin):
             'completed_date', 'level', 'level_display', 'expires_date',
             'trainer', 'trainer_info',
             'notes', 'status', 'is_current',
+            # Go-live history: which load it came in with, and where its original lives.
+            'migration_batch', 'source_reference', 'is_migrated',
             'created_at', 'updated_at', 'archived'
         ]
-        read_only_fields = ('id', 'level_display', 'status', 'is_current', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'level_display', 'status', 'is_current', 'created_at', 'updated_at',
+                            'migration_batch', 'source_reference', 'is_migrated')
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_user_info(self, obj):
@@ -153,6 +158,10 @@ class TrainingRecordSerializer(SecureModelMixin):
             }
         return None
 
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_migrated(self, obj):
+        """Loaded from another system at go-live, not captured here."""
+        return obj.migration_batch_id is not None
 
 class TrainingRequirementSerializer(SecureModelMixin):
     """

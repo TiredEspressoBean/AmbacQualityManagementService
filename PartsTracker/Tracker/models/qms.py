@@ -2372,6 +2372,15 @@ class TrainingRecord(SecureModel):
     )
     """When this training expires. Calculated from TrainingType.validity_period_days if not set."""
 
+    # Loaded from another system at go-live (services.core.migration_import): the batch
+    # it came in with, and where its original evidence lives. Blank when captured here.
+    migration_batch = models.ForeignKey(
+        'Tracker.MigrationBatch', null=True, blank=True, on_delete=models.PROTECT,
+        related_name='training_records')
+    source_reference = models.CharField(
+        max_length=255, blank=True,
+        help_text="Where the original record lives, for migrated history "
+                  "(e.g. 'HR system, cert #4471').")
     trainer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

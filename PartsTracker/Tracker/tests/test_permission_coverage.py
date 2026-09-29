@@ -116,6 +116,9 @@ WITHHELD_PERMS = {
 # delete_ intentionally not granted — these soft-delete / void, or hard-delete
 # is disabled (SecureModel.hard_delete raises). Records are retired, not destroyed.
 SOFT_DELETE_MODELS = {
+    # A go-live history load is a controlled record (who loaded what, and its one
+    # verification) — it is never deleted; its rows stay traceable to it.
+    'migrationbatch',
     # A demand line is cancelled (status=CANCELLED), never deleted: the fact a customer
     # asked for something survives the decision not to build it, and work orders peg to
     # the line with PROTECT anyway.

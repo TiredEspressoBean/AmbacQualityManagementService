@@ -396,9 +396,16 @@ from .shift_notes import (
     ShiftNoteAck,
     ShiftNotePriority,
 )
+from .migration import (
+    MigrationBatch,
+    MigrationBatchKind,
+)
 
 # Define __all__ for explicit exports
 __all__ = [
+    # Go-live history loads
+    'MigrationBatch',
+    'MigrationBatchKind',
     # Shift notes (human-authored floor handoff)
     'ShiftNote',
     'ShiftNoteAck',

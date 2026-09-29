@@ -509,6 +509,13 @@ NOTIFICATION_ADMIN_PERMISSIONS = [
     'change_externalcontact', 'delete_externalcontact',
 ]
 
+# Go-live history loads (services.core.migration_import): loading a batch and signing
+# it off are manager acts, and the two are done by DIFFERENT people (the service refuses
+# a loader verifying their own batch) — so the same three manager roles hold both.
+MIGRATION_PERMISSIONS = [
+    'view_migrationbatch', 'add_migrationbatch', 'change_migrationbatch',
+]
+
 # Authoring shift notes (floor handoff) = the supervisor tier (Shift Lead +
 # Production Manager + Tenant Admin), NOT line operators. No delete_ — notes
 # soft-delete via void (retract), so retract is gated by change_shiftnote.
@@ -591,6 +598,7 @@ GROUP_PRESETS = {
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
+            *MIGRATION_PERMISSIONS,
             *COMPLIANCE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
@@ -635,6 +643,7 @@ GROUP_PRESETS = {
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
+            *MIGRATION_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
             # Classification authority (no secret tier)
@@ -698,6 +707,7 @@ GROUP_PRESETS = {
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
+            *MIGRATION_PERMISSIONS,
             # Resolve (close) NCR dispositions
             *DISPOSITION_RESOLUTION_PERMISSIONS,
             # Resolve MANUAL decision-point routing (4a)

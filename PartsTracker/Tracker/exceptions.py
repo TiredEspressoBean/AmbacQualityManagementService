@@ -101,7 +101,11 @@ def custom_exception_handler(exc, context):
             response['WWW-Authenticate'] = 'Bearer realm="api"'
 
         # Add error code to response if available
-        if hasattr(exc, 'default_code') and 'code' not in response.data:
+        # A ValidationError raised with a plain message (or list) has list data; only a
+        # dict body can carry `code`. Indexing a list by 'code' used to crash the handler.
+        if not isinstance(response.data, dict):
+            pass
+        elif hasattr(exc, 'default_code') and 'code' not in response.data:
             response.data['code'] = exc.default_code
         elif hasattr(exc, 'get_codes'):
             codes = exc.get_codes()
