@@ -3595,6 +3595,12 @@ export type MaterialLot = {
    */
   string | undefined;
   child_lot_count: number;
+  migration_batch: string | null;
+  /**
+   * For migrated stock: where its certificate / traceability record lives.
+   */
+  source_reference: string;
+  is_migrated: boolean;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -3911,6 +3917,52 @@ export type MeasurementResultRequest = {
     | (ValuePassFailEnum | BlankEnum | NullEnum | null)
     | undefined;
   archived?: boolean | undefined;
+};
+export type MigrationBatch = {
+  id: string;
+  kind: MigrationBatchKindEnum;
+  /**
+   * The system this history came from (e.g. 'Legacy HR — Workday').
+   */
+  source_system: string;
+  notes: string;
+  row_count: number;
+  imported_by: number;
+  imported_by_email: string;
+  created_at: string;
+  /**
+   * Who checked the load against the source (quantities against the go-live count, a sample of records against the originals). Not the loader.
+   */
+  verified_by: number | null;
+  verified_by_email: string | null;
+  verified_at: string | null;
+  verification_notes: string;
+  is_verified: boolean;
+};
+export type MigrationBatchKindEnum =
+  /**
+   * * `TRAINING_RECORDS` - Training records
+   * `MATERIAL_LOTS` - Material lots
+   *
+   * @enum TRAINING_RECORDS, MATERIAL_LOTS
+   */
+  "TRAINING_RECORDS" | "MATERIAL_LOTS";
+export type MigrationImportRequestRequest = {
+  file: string;
+  kind: MigrationBatchKindEnum;
+  /**
+   * @minLength 1
+   */
+  source_system: string;
+  notes?: /**
+   * @minLength 1
+   */
+  string | undefined;
+};
+export type MigrationImportResponse = {
+  batch: MigrationBatch;
+  summary: {};
+  results: Array<{}>;
 };
 export type MilestoneTemplate = {
   id: string;
@@ -5664,6 +5716,25 @@ export type PaginatedMeasurementDefinitionList = {
     (string | null)
     | undefined;
   results: Array<MeasurementDefinition>;
+};
+export type PaginatedMigrationBatchList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<MigrationBatch>;
 };
 export type PaginatedNotificationFeedItemList = {
   /**
@@ -10071,6 +10142,12 @@ export type TrainingRecord = {
   notes?: string | undefined;
   status: string;
   is_current: boolean;
+  migration_batch: string | null;
+  /**
+   * Where the original record lives, for migrated history (e.g. 'HR system, cert #4471').
+   */
+  source_reference: string;
+  is_migrated: boolean;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -17044,6 +17121,38 @@ const PatchedBOMLineRequest = z
     archived: z.boolean(),
   })
   .partial();
+const api_BOMLines_import_create_Body = z.object({
+  file: z.instanceof(File),
+  mode: z.enum(["create", "update", "upsert"]).optional(),
+});
+const ImportQueued = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  total_rows: z.number().int(),
+  message: z.string(),
+});
+const ImportSummary = z.object({
+  total: z.number().int(),
+  created: z.number().int(),
+  updated: z.number().int(),
+  errors: z.number().int(),
+});
+const ImportResponse = z.object({
+  summary: ImportSummary,
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const ImportPreviewResponse = z.object({
+  total_rows: z.number().int(),
+  columns: z.array(z.object({}).partial().passthrough()),
+  sample_data: z.array(z.object({}).partial().passthrough()),
+  model_fields: z.array(z.object({}).partial().passthrough()),
+});
+const ImportStatusResponse = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  progress: z.object({}).partial().passthrough(),
+  result: z.object({}).partial().passthrough().optional(),
+});
 const BOMTypeEnum = z.enum(["ASSEMBLY", "DISASSEMBLY"]);
 const BOMStatusEnum = z.enum(["DRAFT", "RELEASED", "OBSOLETE"]);
 const BOMList = z.object({
@@ -17488,38 +17597,6 @@ const PatchedCalibrationRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
-const api_CalibrationRecords_import_create_Body = z.object({
-  file: z.instanceof(File),
-  mode: z.enum(["create", "update", "upsert"]).optional(),
-});
-const ImportQueued = z.object({
-  task_id: z.string(),
-  status: z.string(),
-  total_rows: z.number().int(),
-  message: z.string(),
-});
-const ImportSummary = z.object({
-  total: z.number().int(),
-  created: z.number().int(),
-  updated: z.number().int(),
-  errors: z.number().int(),
-});
-const ImportResponse = z.object({
-  summary: ImportSummary,
-  results: z.array(z.object({}).partial().passthrough()),
-});
-const ImportPreviewResponse = z.object({
-  total_rows: z.number().int(),
-  columns: z.array(z.object({}).partial().passthrough()),
-  sample_data: z.array(z.object({}).partial().passthrough()),
-  model_fields: z.array(z.object({}).partial().passthrough()),
-});
-const ImportStatusResponse = z.object({
-  task_id: z.string(),
-  status: z.string(),
-  progress: z.object({}).partial().passthrough(),
-  result: z.object({}).partial().passthrough().optional(),
-});
 const GaugeNagRow = z.object({
   equipment_id: z.string(),
   equipment_name: z.string(),
@@ -19233,6 +19310,9 @@ const MaterialLot = z.object({
   certificate_of_conformance: z.string().url().nullish(),
   storage_location: z.string().max(100).optional(),
   child_lot_count: z.number().int(),
+  migration_batch: z.string().uuid().nullable(),
+  source_reference: z.string(),
+  is_migrated: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -19650,6 +19730,42 @@ const PatchedMeasurementDefinitionRequest = z
     backup_equipment: z.string().uuid().nullable(),
   })
   .partial();
+const MigrationBatchKindEnum = z.enum(["TRAINING_RECORDS", "MATERIAL_LOTS"]);
+const MigrationBatch = z.object({
+  id: z.string().uuid(),
+  kind: MigrationBatchKindEnum,
+  source_system: z.string(),
+  notes: z.string(),
+  row_count: z.number().int(),
+  imported_by: z.number().int(),
+  imported_by_email: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  verified_by: z.number().int().nullable(),
+  verified_by_email: z.string().nullable(),
+  verified_at: z.string().datetime({ offset: true }).nullable(),
+  verification_notes: z.string(),
+  is_verified: z.boolean(),
+});
+const PaginatedMigrationBatchList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(MigrationBatch),
+});
+const MigrationVerifyRequestRequest = z
+  .object({ notes: z.string().min(1) })
+  .partial();
+const MigrationImportRequestRequest = z.object({
+  file: z.instanceof(File),
+  kind: MigrationBatchKindEnum,
+  source_system: z.string().min(1),
+  notes: z.string().min(1).optional(),
+});
+const MigrationImportResponse = z.object({
+  batch: MigrationBatch,
+  summary: z.object({}).partial().passthrough(),
+  results: z.array(z.object({}).partial().passthrough()),
+});
 const Milestone = z.object({
   id: z.string().uuid(),
   template: z.string().uuid(),
@@ -23586,6 +23702,9 @@ const TrainingRecord = z.object({
   notes: z.string().optional(),
   status: z.string(),
   is_current: z.boolean(),
+  migration_batch: z.string().uuid().nullable(),
+  source_reference: z.string(),
+  is_migrated: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -26047,6 +26166,12 @@ export const schemas = {
   PaginatedBOMLineList,
   BOMLineRequest,
   PatchedBOMLineRequest,
+  api_BOMLines_import_create_Body,
+  ImportQueued,
+  ImportSummary,
+  ImportResponse,
+  ImportPreviewResponse,
+  ImportStatusResponse,
   BOMTypeEnum,
   BOMStatusEnum,
   BOMList,
@@ -26088,12 +26213,6 @@ export const schemas = {
   PaginatedCalibrationRecordList,
   CalibrationRecordRequest,
   PatchedCalibrationRecordRequest,
-  api_CalibrationRecords_import_create_Body,
-  ImportQueued,
-  ImportSummary,
-  ImportResponse,
-  ImportPreviewResponse,
-  ImportStatusResponse,
   GaugeNagRow,
   CalibrationStats,
   PaginatedCapaTasksList,
@@ -26313,6 +26432,12 @@ export const schemas = {
   PaginatedMeasurementDefinitionList,
   MeasurementDefinitionRequest,
   PatchedMeasurementDefinitionRequest,
+  MigrationBatchKindEnum,
+  MigrationBatch,
+  PaginatedMigrationBatchList,
+  MigrationVerifyRequestRequest,
+  MigrationImportRequestRequest,
+  MigrationImportResponse,
   Milestone,
   MilestoneTemplate,
   MilestoneTemplateRequest,
@@ -28430,7 +28555,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "get",
     path: "/api/BOMLines/",
     alias: "api_BOMLines_list",
-    description: `BOM line item management`,
+    description: `BOM line item management — and BOM import/export, one sheet of lines.`,
     requestFormat: "json",
     parameters: [
       {
@@ -28470,7 +28595,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "post",
     path: "/api/BOMLines/",
     alias: "api_BOMLines_create",
-    description: `BOM line item management`,
+    description: `BOM line item management — and BOM import/export, one sheet of lines.`,
     requestFormat: "json",
     parameters: [
       {
@@ -28485,7 +28610,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "get",
     path: "/api/BOMLines/:id/",
     alias: "api_BOMLines_retrieve",
-    description: `BOM line item management`,
+    description: `BOM line item management — and BOM import/export, one sheet of lines.`,
     requestFormat: "json",
     parameters: [
       {
@@ -28500,7 +28625,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "put",
     path: "/api/BOMLines/:id/",
     alias: "api_BOMLines_update",
-    description: `BOM line item management`,
+    description: `BOM line item management — and BOM import/export, one sheet of lines.`,
     requestFormat: "json",
     parameters: [
       {
@@ -28520,7 +28645,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "patch",
     path: "/api/BOMLines/:id/",
     alias: "api_BOMLines_partial_update",
-    description: `BOM line item management`,
+    description: `BOM line item management — and BOM import/export, one sheet of lines.`,
     requestFormat: "json",
     parameters: [
       {
@@ -28540,7 +28665,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "delete",
     path: "/api/BOMLines/:id/",
     alias: "api_BOMLines_destroy",
-    description: `BOM line item management`,
+    description: `BOM line item management — and BOM import/export, one sheet of lines.`,
     requestFormat: "json",
     parameters: [
       {
@@ -28550,6 +28675,108 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/BOMLines/export/:export_format/",
+    alias: "api_BOMLines_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/BOMLines/import-preview/",
+    alias: "api_BOMLines_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/BOMLines/import-status/:task_id/",
+    alias: "api_BOMLines_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/BOMLines/import-template/:template_format/",
+    alias: "api_BOMLines_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/BOMLines/import/",
+    alias: "api_BOMLines_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -29076,7 +29303,7 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -30426,7 +30653,7 @@ Provides list, create, retrieve, update, and delete operations.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -31825,7 +32052,10 @@ Response:
       },
     ],
     response: RepeatDefectsResponse,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/DisassemblyBOMLines/",
@@ -31930,10 +32160,7 @@ Response:
       },
     ],
     response: DisassemblyBOMLine,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/DisassemblyBOMLines/:id/",
@@ -33370,7 +33597,7 @@ Usage:
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -33762,7 +33989,7 @@ Usage:
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -34141,7 +34368,7 @@ Usage:
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -34691,7 +34918,7 @@ operations against the quantity available (cumulative capacity).`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -36042,7 +36269,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -36301,7 +36528,7 @@ keep running (only PlantCalendarException stops machines).`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -36702,7 +36929,10 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
       },
     ],
     response: LifeTracking,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/LifeTracking/:id/reset/",
@@ -36812,10 +37042,7 @@ Query params:
       },
     ],
     response: PaginatedMaterialLotList,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/MaterialLots/",
@@ -37404,7 +37631,7 @@ The buy-side item list, distinct from in-house PartTypes; holds purchase lead ti
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -37853,7 +38080,7 @@ Usage:
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -37871,6 +38098,98 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/MigrationBatches/",
+    alias: "api_MigrationBatches_list",
+    description: `Loads of go-live history. Each import makes one batch; each batch is verified once,
+by someone other than the person who loaded it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedMigrationBatchList,
+  },
+  {
+    method: "get",
+    path: "/api/MigrationBatches/:id/",
+    alias: "api_MigrationBatches_retrieve",
+    description: `Loads of go-live history. Each import makes one batch; each batch is verified once,
+by someone other than the person who loaded it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MigrationBatch,
+  },
+  {
+    method: "post",
+    path: "/api/MigrationBatches/:id/verify/",
+    alias: "api_MigrationBatches_verify_create",
+    description: `Sign the batch off as checked against its source.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ notes: z.string().min(1) }).partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MigrationBatch,
+  },
+  {
+    method: "post",
+    path: "/api/MigrationBatches/import/",
+    alias: "api_MigrationBatches_import_create",
+    description: `Load one file of history as a new batch (create-only).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MigrationImportRequestRequest,
+      },
+    ],
+    response: MigrationImportResponse,
+  },
+  {
+    method: "get",
+    path: "/api/MigrationBatches/template/",
+    alias: "api_MigrationBatches_template_retrieve",
+    description: `A CSV header for one kind of history.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "kind",
+        type: "Query",
+        schema: z.enum(["MATERIAL_LOTS", "TRAINING_RECORDS"]),
+      },
+    ],
+    response: z.void(),
   },
   {
     method: "get",
@@ -38335,7 +38654,7 @@ customer FK validation handled at the serializer layer.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -39896,7 +40215,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -40478,7 +40797,7 @@ availability (plant closures still win).`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -41190,7 +41509,10 @@ points route automatically from the QualityReport and don&#x27;t use this.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Parts/:id/rework_status/",
@@ -41455,10 +41777,7 @@ Import/Export endpoints (auto-configured from model):
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Parts/import-status/:task_id/",
@@ -41509,7 +41828,7 @@ const endpoints3 = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
       {
         name: "status__in",
@@ -41854,7 +42173,7 @@ and whether tracking is required when creating parts.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -42186,7 +42505,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
       {
         name: "part_type",
@@ -42498,7 +42817,7 @@ blocks every machine and treats operators as absent during these.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -45601,7 +45920,7 @@ the completion blockers.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -46867,7 +47186,10 @@ PATCH updates the subset provided, gated on change_optimizationconfig
 action_permissions applies per action, not per HTTP method.`,
     requestFormat: "json",
     response: OptimizationConfig,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "patch",
     path: "/api/Schedules/config/",
@@ -47021,10 +47343,7 @@ SUCCESS, or FAILURE; on SUCCESS &#x60;result&#x60; carries the task&#x27;s retur
         limit_seconds: z.number().int(),
       })
       .partial(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Schedules/solve-draft/",
@@ -47866,7 +48185,7 @@ to current versions. Delete is the SecureModel soft-delete (archive).`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -48562,7 +48881,7 @@ Response:
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -50564,7 +50883,7 @@ from. One row per step (the step is the key).`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -52256,7 +52575,10 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
       },
     ],
     response: z.object({ status: z.string() }),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/TenantGroups/:id/permissions/",
@@ -52508,10 +52830,7 @@ Endpoints:
       },
     ],
     response: TenantLLMProvider,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/TenantLLMProviders/:id/",
@@ -54043,7 +54362,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -54273,7 +54592,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -55297,7 +55616,7 @@ switches from running one step to another. One row per matrix cell.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -55562,7 +55881,7 @@ old version. Archived ones are excluded outright, not left to &#x60;?include_arc
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,
@@ -56349,7 +56668,7 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
       {
         name: "body",
         type: "Body",
-        schema: api_CalibrationRecords_import_create_Body,
+        schema: api_BOMLines_import_create_Body,
       },
     ],
     response: ImportQueued,

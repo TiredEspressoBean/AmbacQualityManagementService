@@ -440,10 +440,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description BOM line item management */
+        /** @description BOM line item management — and BOM import/export, one sheet of lines. */
         get: operations["api_BOMLines_list"];
         put?: never;
-        /** @description BOM line item management */
+        /** @description BOM line item management — and BOM import/export, one sheet of lines. */
         post: operations["api_BOMLines_create"];
         delete?: never;
         options?: never;
@@ -458,17 +458,102 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description BOM line item management */
+        /** @description BOM line item management — and BOM import/export, one sheet of lines. */
         get: operations["api_BOMLines_retrieve"];
-        /** @description BOM line item management */
+        /** @description BOM line item management — and BOM import/export, one sheet of lines. */
         put: operations["api_BOMLines_update"];
         post?: never;
-        /** @description BOM line item management */
+        /** @description BOM line item management — and BOM import/export, one sheet of lines. */
         delete: operations["api_BOMLines_destroy"];
         options?: never;
         head?: never;
-        /** @description BOM line item management */
+        /** @description BOM line item management — and BOM import/export, one sheet of lines. */
         patch: operations["api_BOMLines_partial_update"];
+        trace?: never;
+    };
+    "/api/BOMLines/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_BOMLines_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/BOMLines/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_BOMLines_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/BOMLines/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_BOMLines_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/BOMLines/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_BOMLines_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/BOMLines/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_BOMLines_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/BOMs/": {
@@ -5657,6 +5742,97 @@ export interface paths {
         };
         /** @description Return searchable/filterable/orderable field information with filter options. */
         get: operations["api_MeasurementDefinitions_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MigrationBatches/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Loads of go-live history. Each import makes one batch; each batch is verified once,
+         *     by someone other than the person who loaded it.
+         */
+        get: operations["api_MigrationBatches_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MigrationBatches/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Loads of go-live history. Each import makes one batch; each batch is verified once,
+         *     by someone other than the person who loaded it.
+         */
+        get: operations["api_MigrationBatches_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MigrationBatches/{id}/verify/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Sign the batch off as checked against its source. */
+        post: operations["api_MigrationBatches_verify_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MigrationBatches/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Load one file of history as a new batch (create-only). */
+        post: operations["api_MigrationBatches_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MigrationBatches/template/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A CSV header for one kind of history. */
+        get: operations["api_MigrationBatches_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -22983,6 +23159,11 @@ export interface components {
             certificate_of_conformance?: string | null;
             storage_location?: string;
             readonly child_lot_count: number;
+            /** Format: uuid */
+            readonly migration_batch: string | null;
+            /** @description For migrated stock: where its certificate / traceability record lives. */
+            readonly source_reference: string;
+            readonly is_migrated: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -23331,6 +23512,51 @@ export interface components {
             value_numeric?: number | null;
             value_pass_fail?: (components["schemas"]["ValuePassFailEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             archived?: boolean;
+        };
+        MigrationBatch: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly kind: components["schemas"]["MigrationBatchKindEnum"];
+            /** @description The system this history came from (e.g. 'Legacy HR — Workday'). */
+            readonly source_system: string;
+            readonly notes: string;
+            readonly row_count: number;
+            readonly imported_by: number;
+            readonly imported_by_email: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** @description Who checked the load against the source (quantities against the go-live count, a sample of records against the originals). Not the loader. */
+            readonly verified_by: number | null;
+            readonly verified_by_email: string | null;
+            /** Format: date-time */
+            readonly verified_at: string | null;
+            readonly verification_notes: string;
+            readonly is_verified: boolean;
+        };
+        /**
+         * @description * `TRAINING_RECORDS` - Training records
+         *     * `MATERIAL_LOTS` - Material lots
+         * @enum {string}
+         */
+        MigrationBatchKindEnum: "TRAINING_RECORDS" | "MATERIAL_LOTS";
+        MigrationImportRequestRequest: {
+            /** Format: binary */
+            file: string;
+            kind: components["schemas"]["MigrationBatchKindEnum"];
+            source_system: string;
+            notes?: string;
+        };
+        MigrationImportResponse: {
+            batch: components["schemas"]["MigrationBatch"];
+            summary: {
+                [key: string]: unknown;
+            };
+            results: {
+                [key: string]: unknown;
+            }[];
+        };
+        MigrationVerifyRequestRequest: {
+            notes?: string;
         };
         /** @description Single milestone within a template. */
         Milestone: {
@@ -24489,6 +24715,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["MeasurementDefinition"][];
+        };
+        PaginatedMigrationBatchList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["MigrationBatch"][];
         };
         PaginatedNotificationFeedItemList: {
             /** @example 123 */
@@ -34677,6 +34918,11 @@ export interface components {
             notes?: string;
             readonly status: string;
             readonly is_current: boolean;
+            /** Format: uuid */
+            readonly migration_batch: string | null;
+            /** @description Where the original record lives, for migrated history (e.g. 'HR system, cert #4471'). */
+            readonly source_reference: string;
+            readonly is_migrated: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -37271,6 +37517,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BOMLine"];
+                };
+            };
+        };
+    };
+    api_BOMLines_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_BOMLines_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_BOMLines_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_BOMLines_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_BOMLines_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
@@ -47097,6 +47501,126 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_MigrationBatches_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMigrationBatchList"];
+                };
+            };
+        };
+    };
+    api_MigrationBatches_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Migration batch. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MigrationBatch"];
+                };
+            };
+        };
+    };
+    api_MigrationBatches_verify_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Migration batch. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MigrationVerifyRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MigrationVerifyRequestRequest"];
+                "multipart/form-data": components["schemas"]["MigrationVerifyRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MigrationBatch"];
+                };
+            };
+        };
+    };
+    api_MigrationBatches_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["MigrationImportRequestRequest"];
+            };
+        };
+        responses: {
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MigrationImportResponse"];
+                };
+            };
+        };
+    };
+    api_MigrationBatches_template_retrieve: {
+        parameters: {
+            query: {
+                kind: "MATERIAL_LOTS" | "TRAINING_RECORDS";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
                 };
             };
         };

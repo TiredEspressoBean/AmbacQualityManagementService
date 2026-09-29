@@ -43,6 +43,8 @@ import {
 import {BomLineDialog, type BomLine} from "@/components/bom/BomLineDialog";
 import {useCreateBom, useReleaseBom, useCreateBomRevision, useDeleteBomLine} from "@/hooks/useBom";
 import {useRetrieveSteps} from "@/hooks/useRetrieveSteps";
+import {DataIOButtons} from "@/components/data-io-buttons";
+import {hasEndpoint} from "@/lib/api/endpoint-fn";
 
 const supplierPickerOptions = () =>
     queryOptions({
@@ -454,6 +456,16 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                                 New revision
                             </Button>
                         )}
+                        {/* One sheet of lines, the BOM named on every row. The export is
+                            scoped to the BOM shown here (the BOMLines `bom` filter);
+                            with no BOM yet it exports every current BOM. */}
+                        <DataIOButtons
+                            endpoint="BOMLines"
+                            displayName="BOM Lines"
+                            invalidateKeys={[["BOMs"]]}
+                            allowImport={canAuthor}
+                            {...(chosen ? {queryParams: {bom: String(chosen.id)}} : {})}
+                        />
                         <ReportButton
                             reportType="bom_report"
                             label="BOM Report"
@@ -461,6 +473,11 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                         />
                     </div>
                 </div>
+                {canAuthor && hasEndpoint("BOMLines", "import_create") && (
+                    <p className="text-xs text-muted-foreground text-right">
+                        Import: replaces this BOM's lines; creates a draft to release.
+                    </p>
+                )}
                 {chosen && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
                         <span>Rev {chosen.revision}</span>
