@@ -25,7 +25,7 @@ def _reevaluate_active_parts_for_ruleset(ruleset: SamplingRuleSet, user=None) ->
     from Tracker.models.mes_lite import Parts, PartsStatus
     from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
 
-    active_parts = Parts.objects.filter(
+    active_parts = Parts.objects.filter(archived=False,
         step=ruleset.step,
         part_type=ruleset.part_type,
         part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
@@ -55,7 +55,7 @@ def _apply_fallback_to_remaining_parts_for_ruleset(
     from Tracker.models.mes_lite import Parts, PartsStatus
     from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
 
-    remaining_parts = Parts.objects.filter(
+    remaining_parts = Parts.objects.filter(archived=False,
         work_order=triggering_part.work_order,
         step=ruleset.step,
         part_type=ruleset.part_type,
@@ -153,7 +153,7 @@ def create_sampling_fallback_trigger(
     step = ruleset.step
 
     # Already tightened for this work order at this step — nothing to do.
-    existing = SamplingTriggerState.objects.filter(
+    existing = SamplingTriggerState.objects.filter(archived=False,
         ruleset=ruleset.fallback_ruleset,
         work_order=work_order,
         step=step,

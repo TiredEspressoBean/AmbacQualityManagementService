@@ -88,7 +88,7 @@ def _severity_summary(lot) -> dict | None:
     if step is None:
         return None
     state = (SamplingSeverityState.objects  # tenant-safe: .objects auto-scopes
-             .filter(step=step, supplier_id=lot.supplier_id).first())
+             .filter(archived=False, step=step, supplier_id=lot.supplier_id).first())
     if state is None:
         return None
     status = switching_status(state)
@@ -107,12 +107,12 @@ def _resume_progress(lot) -> str | None:
     from Tracker.models import MeasurementResult, QualityReports
 
     report = (QualityReports.objects  # tenant-safe: .objects auto-scopes
-              .filter(material_lot=lot, status="PENDING")
+              .filter(archived=False, material_lot=lot, status="PENDING")
               .order_by("-created_at").first())
     if report is None or not report.sample_size:
         return None
     done = (MeasurementResult.objects
-            .filter(report=report, sample_number__isnull=False)
+            .filter(archived=False, report=report, sample_number__isnull=False)
             .values("sample_number").distinct().count())
     if done == 0:
         return None
@@ -215,7 +215,7 @@ def _in_process_rows():
 def _fpi_rows():
     from Tracker.models import FPIRecord
     qs = (FPIRecord.objects  # tenant-safe: .objects auto-scopes
-          .filter(status="PENDING")
+          .filter(archived=False, status="PENDING")
           .select_related("work_order", "step", "part_type", "designated_part", "equipment"))
     for r in qs:
         age = _hours_since(r.created_at)

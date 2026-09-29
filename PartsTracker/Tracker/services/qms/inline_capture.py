@@ -163,7 +163,7 @@ def _promote_to_inspection_record(
         }
         report = (
             QualityReports.objects
-            .filter(batch_execution=batch_execution, substep=substep)
+            .filter(archived=False, batch_execution=batch_execution, substep=substep)
             .first()
         )
     elif step_execution is not None and step_execution.part_id is not None:
@@ -177,7 +177,7 @@ def _promote_to_inspection_record(
         }
         report = (
             QualityReports.objects
-            .filter(step_execution=step_execution, substep=substep)
+            .filter(archived=False, step_execution=step_execution, substep=substep)
             .first()
         )
     else:
@@ -193,14 +193,14 @@ def _promote_to_inspection_record(
             report_fields = {'material_lot': subj}
             report = (
                 QualityReports.objects
-                .filter(step=step, material_lot=subj)
+                .filter(archived=False, step=step, material_lot=subj)
                 .order_by('-created_at').first()
             )
         elif isinstance(subj, OutsideProcessShipment):
             report_fields = {'osp_shipment': subj}
             report = (
                 QualityReports.objects
-                .filter(step=step, osp_shipment=subj)
+                .filter(archived=False, step=step, osp_shipment=subj)
                 .order_by('-created_at').first()
             )
         else:

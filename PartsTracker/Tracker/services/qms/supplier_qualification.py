@@ -39,7 +39,7 @@ def _active_qs(supplier):
     today = timezone.now().date()
     return (
         SupplierQualification.objects
-        .filter(supplier=supplier, status__in=SupplierQualification.ACTIVE_STATUSES)
+        .filter(archived=False, supplier=supplier, status__in=SupplierQualification.ACTIVE_STATUSES)
         .filter(Q(effective_date__isnull=True) | Q(effective_date__lte=today))
         .filter(Q(expiry_date__isnull=True) | Q(expiry_date__gte=today))
         .order_by('-effective_date', '-created_at')

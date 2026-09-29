@@ -75,7 +75,7 @@ def _stamp_production_equipment(execution) -> None:
 
     aff = StepEquipmentAffinity.Affinity
     candidates = list(
-        StepEquipmentAffinity.objects.filter(
+        StepEquipmentAffinity.objects.filter(archived=False,
             step_id=execution.step_id,
             affinity__in=[aff.DIALED_IN, aff.PREFERRED],
         ).select_related('equipment')
@@ -91,7 +91,7 @@ def _stamp_production_equipment(execution) -> None:
         from Tracker.models import ScheduledTask
         task = (
             ScheduledTask.objects
-            .filter(part_id=execution.part_id, step_id=execution.step_id,
+            .filter(archived=False, part_id=execution.part_id, step_id=execution.step_id,
                     machine__isnull=False, schedule__is_active=True)
             .select_related('machine')
             .order_by('-start_time')
@@ -358,7 +358,7 @@ def advance_part_step(
             part.part_status = PartsStatus.READY_FOR_NEXT_STEP
         part.save()
 
-        other_parts_pending = Parts.objects.filter(
+        other_parts_pending = Parts.objects.filter(archived=False,
             work_order=part.work_order,
             part_type=part.part_type,
             step=part.step,
@@ -372,7 +372,7 @@ def advance_part_step(
         ):
             return "marked_ready"
 
-        ready_parts = list(Parts.objects.filter(
+        ready_parts = list(Parts.objects.filter(archived=False,
             work_order=part.work_order,
             part_type=part.part_type,
             step=part.step,
@@ -492,7 +492,7 @@ def _close_open_rework_disposition(part, operator) -> None:
     from Tracker.services.qms.disposition import complete_disposition_resolution
 
     disp = (
-        QuarantineDisposition.objects.filter(
+        QuarantineDisposition.objects.filter(archived=False,
             part=part,
             disposition_type__in=('REWORK', 'REPAIR'),
             current_state__in=('OPEN', 'IN_PROGRESS'),
@@ -588,13 +588,13 @@ def rollback_part_step(
     if not can_rollback:
         raise ValueError(f"Cannot rollback: {message}")
 
-    current_execution = StepExecution.objects.filter(
+    current_execution = StepExecution.objects.filter(archived=False,
         part=part,
         step=part.step,
         status='COMPLETED',
     ).order_by('-exited_at').first()
 
-    previous_execution = StepExecution.objects.filter(
+    previous_execution = StepExecution.objects.filter(archived=False,
         part=part,
         next_step=part.step,
         status='COMPLETED',

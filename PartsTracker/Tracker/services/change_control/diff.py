@@ -205,10 +205,10 @@ def _diff_substeps(from_process: "Processes", to_process: "Processes") -> Dict[s
         from_step = from_steps_by_identity[step_identity]
         to_step = to_steps_by_identity[step_identity]
         from_subs = {
-            s.identity_id: s for s in Substep.objects.filter(step=from_step)
+            s.identity_id: s for s in Substep.objects.filter(archived=False, step=from_step)
         }
         to_subs = {
-            s.identity_id: s for s in Substep.objects.filter(step=to_step)
+            s.identity_id: s for s in Substep.objects.filter(archived=False, step=to_step)
         }
         added: List[Dict[str, Any]] = []
         removed: List[Dict[str, Any]] = []

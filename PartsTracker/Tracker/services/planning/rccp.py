@@ -186,7 +186,7 @@ def _load_reference(tenant) -> _RefData:
     wc_machine_hours: dict = {}
     wc_names: dict = {}
     wc_critical: set = set()
-    for wc in WorkCenter.objects.filter(tenant=tenant, is_current_version=True).prefetch_related('equipment'):
+    for wc in WorkCenter.objects.filter(archived=False, tenant=tenant, is_current_version=True).prefetch_related('equipment'):
         wc_names[wc.id] = wc.name
         if wc.is_critical:
             wc_critical.add(wc.id)
@@ -471,7 +471,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
     from Tracker.models import WorkOrder
     # tenant-safe: explicit tenant filter
     released_ids = set(
-        WorkOrder.objects.filter(tenant=tenant, released_at__isnull=False)
+        WorkOrder.objects.filter(archived=False, tenant=tenant, released_at__isnull=False)
         .values_list('id', flat=True))
 
     today = start.date()
@@ -615,7 +615,7 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
 
     # candidate routing: the part type's current process, walked from its head along
     # DEFAULT edges (same resolver as the solver — no rework branch, no terminal state)
-    proc = Processes.objects.filter(tenant=tenant, part_type_id=part_type_id).order_by('-created_at').first()
+    proc = Processes.objects.filter(archived=False, tenant=tenant, part_type_id=part_type_id).order_by('-created_at').first()
     if proc is None:
         return {'feasible': False, 'reason': 'No process/routing defined for that part type.'}
     from Tracker.services.scheduling.manual_move import _process_graph

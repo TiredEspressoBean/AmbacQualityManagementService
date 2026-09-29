@@ -61,12 +61,12 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
         if part_type_id not in bom_lines:
             # Latest RELEASED, not is_current_version — an open DRAFT revision must not
             # hide the BOM the floor is actually building to.
-            bom = (BOM.objects.filter(tenant=tenant, part_type_id=part_type_id,
+            bom = (BOM.objects.filter(archived=False, tenant=tenant, part_type_id=part_type_id,
                                       bom_type='ASSEMBLY', status='RELEASED')
                    .order_by('-version').first())
             # tenant-safe: `bom` is a tenant-scoped row; its lines belong to the same tenant.
             bom_lines[part_type_id] = list(
-                BOMLine.objects.filter(bom=bom)
+                BOMLine.objects.filter(archived=False, bom=bom)
                 .select_related('material', 'component_type')
                 if bom else [])
         return bom_lines[part_type_id]
@@ -115,7 +115,7 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
                 else ('PART_TYPE', row['material_type_id']))
 
     on_hand: dict = {}
-    for r in (MaterialLot.objects.filter(tenant=tenant, status__in=_ON_HAND_STATUSES)
+    for r in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=_ON_HAND_STATUSES)
               .filter(lot_scope)
               .values('material_id', 'material_type_id', 'quantity_remaining')):
         k = _key(r)
@@ -124,7 +124,7 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
     # Incoming, placed in the bucket it is promised for — a receipt that lands in March
     # cannot cover a February commitment.
     incoming: dict = defaultdict(lambda: [0.0] * n)
-    for lot in (MaterialLot.objects.filter(
+    for lot in (MaterialLot.objects.filter(archived=False,
             tenant=tenant, promised_date__isnull=False, quantity_remaining__gt=0)
             .filter(lot_scope)
             .exclude(status__in=_ON_HAND_STATUSES + _TERMINAL_STATUSES)

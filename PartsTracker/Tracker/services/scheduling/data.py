@@ -217,7 +217,7 @@ def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
     hist = {
         row['step']: row
         for row in StepExecution.objects
-        .filter(tenant=tenant, exited_at__isnull=False)
+        .filter(archived=False, tenant=tenant, exited_at__isnull=False)
         .values('step').annotate(avg=Avg(dur), n=Count('id'))
     }
 
@@ -304,14 +304,14 @@ def get_outside_process_data(tenant, config, horizon) -> dict:
     default_days = int(getattr(config, 'default_outside_process_turnaround_days', 7) or 7)
 
     return_min: dict = {}
-    for sh in (OutsideProcessShipment.objects.filter(tenant=tenant, status='SENT')
+    for sh in (OutsideProcessShipment.objects.filter(archived=False, tenant=tenant, status='SENT')
                .select_related('step')):
         days = step_days.get(sh.step_id, default_days)
         expected = sh.shipped_at + timedelta(days=days)
         rmin = max(1, int((expected - horizon.start).total_seconds() // 60))
         # tenant-safe: scoped via outside_process_shipment=sh (a tenant-owned shipment).
         for pid in (StepExecution.objects
-                    .filter(outside_process_shipment=sh, part__isnull=False)
+                    .filter(archived=False, outside_process_shipment=sh, part__isnull=False)
                     .values_list('part_id', flat=True)):
             if pid is not None and (pid not in return_min or rmin < return_min[pid]):
                 return_min[pid] = rmin
@@ -329,7 +329,7 @@ def get_machine_batch_capacities(tenant) -> dict:
     from Tracker.models import Equipments
     concurrent: dict = {}
     cycle: dict = {}
-    for e in Equipments.objects.filter(tenant=tenant, is_schedulable=True, batch_capacity__gt=1):
+    for e in Equipments.objects.filter(archived=False, tenant=tenant, is_schedulable=True, batch_capacity__gt=1):
         (cycle if e.batch_mode == Equipments.BatchMode.CYCLE else concurrent)[e.id] = e.batch_capacity
     return {'concurrent': concurrent, 'cycle': cycle}
 
@@ -345,7 +345,7 @@ def get_step_equipment_affinities(tenant) -> dict[UUID, list[AffinityData]]:
 
     result: dict[UUID, list[AffinityData]] = {}
     for a in (
-        StepEquipmentAffinity.objects.filter(tenant=tenant)
+        StepEquipmentAffinity.objects.filter(archived=False, tenant=tenant)
         .select_related('equipment__equipment_type')
     ):
         if not a.equipment.is_operational:
@@ -370,7 +370,7 @@ def get_step_secondary_resources(tenant) -> dict[UUID, frozenset]:
     result: dict[UUID, set] = {}
     for md in (
         MeasurementDefinition.objects
-        .filter(tenant=tenant, default_equipment__is_schedulable=True)
+        .filter(archived=False, tenant=tenant, default_equipment__is_schedulable=True)
         .values('step_id', 'default_equipment_id')
     ):
         result.setdefault(md['step_id'], set()).add(md['default_equipment_id'])
@@ -383,7 +383,7 @@ def get_changeover_matrix(tenant) -> dict[tuple, float]:
 
     return {
         (c.equipment_id, c.from_step_id, c.to_step_id): c.changeover_minutes
-        for c in WorkCenterChangeover.objects.filter(tenant=tenant)
+        for c in WorkCenterChangeover.objects.filter(archived=False, tenant=tenant)
     }
 
 
@@ -392,7 +392,7 @@ def get_fixture_availability(tenant) -> dict[UUID, FixtureData]:
     from Tracker.models import Fixture
 
     result: dict[UUID, FixtureData] = {}
-    for f in Fixture.objects.filter(tenant=tenant).prefetch_related('steps'):
+    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('steps'):
         result[f.id] = FixtureData(
             fixture_id=f.id,
             quantity=f.quantity,
@@ -460,7 +460,7 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
     excluded = [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED,
                 WorkOrderStatus.ON_HOLD]
     wos = (
-        WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
+        WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
         .exclude(workorder_status__in=excluded)
         .select_related('pegged_to_bom_line')
         .prefetch_related('parts__core_role')
@@ -505,7 +505,7 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
     now = timezone.now()
     open_execs = {
         (se['part_id'], se['step_id']): se['entered_at']
-        for se in StepExecution.objects.filter(
+        for se in StepExecution.objects.filter(archived=False,
             tenant=tenant, exited_at__isnull=True, part__isnull=False
         ).values('part_id', 'step_id', 'entered_at')
     }
@@ -547,7 +547,8 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
                 individual=_under_rebuild(p),
             )
             for p in wo.parts.all()
-            if p.part_status not in _UNSCHEDULABLE_PART_STATUSES
+            # A deleted part is not work to schedule (read off the prefetch).
+            if not p.archived and p.part_status not in _UNSCHEDULABLE_PART_STATUSES
         )
         consumes_step_id = (wo.pegged_to_bom_line.consumed_at_step_id
                             if wo.pegged_to_bom_line_id else None)
@@ -573,7 +574,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
     are applied separately by the solver, which blocks every machine.)"""
     from Tracker.models import DowntimeEvent, Equipments, Shift
 
-    tenant_shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
+    tenant_shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
     tz = plant_tz(tenant)
     tenant_base = _expand_shifts(tenant_shifts, horizon.start, horizon.end, tz)
     base_cache: dict[tuple, list] = {}
@@ -589,7 +590,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
 
     downtime: dict[UUID, list[tuple]] = {}
     for d in (
-        DowntimeEvent.objects.filter(tenant=tenant, equipment__isnull=False)
+        DowntimeEvent.objects.filter(archived=False, tenant=tenant, equipment__isnull=False)
         .filter(start_time__lt=horizon.end)
         .exclude(end_time__lt=horizon.start)
     ):
@@ -598,7 +599,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
         )
 
     result: dict[UUID, list[MachineWindow]] = {}
-    for eq in (Equipments.objects.filter(tenant=tenant)
+    for eq in (Equipments.objects.filter(archived=False, tenant=tenant)
                .select_related('equipment_type').prefetch_related('operating_shifts')):
         free = _subtract_intervals(_base_for(eq), downtime.get(eq.id, []))
         # Calibration-as-time-window: a machine calibrated now but whose calibration
@@ -677,7 +678,7 @@ def get_attended_only_machines(tenant) -> frozenset:
     cfg = OptimizationConfig.objects.filter(tenant=tenant).first()
     default_unattended = bool(cfg.default_machine_unattended) if cfg else False
     attended = set()
-    for eid, ru in Equipments.objects.filter(tenant=tenant).values_list('id', 'runs_unattended'):
+    for eid, ru in Equipments.objects.filter(archived=False, tenant=tenant).values_list('id', 'runs_unattended'):
         effective_unattended = ru if ru is not None else default_unattended
         if not effective_unattended:
             attended.add(eid)
@@ -692,7 +693,7 @@ def get_machine_downtime(tenant, horizon: HorizonData) -> dict[UUID, list[tuple]
 
     out: dict[UUID, list[tuple]] = {}
     for d in (
-        DowntimeEvent.objects.filter(tenant=tenant, equipment__isnull=False)
+        DowntimeEvent.objects.filter(archived=False, tenant=tenant, equipment__isnull=False)
         .filter(start_time__lt=horizon.end)
         .exclude(end_time__lt=horizon.start)
     ):
@@ -726,7 +727,7 @@ def get_calendar_closures(tenant, horizon: HorizonData) -> list[tuple]:
     from Tracker.models import PlantCalendarException
 
     out: list[tuple] = []
-    for e in PlantCalendarException.objects.filter(tenant=tenant, is_active=True):
+    for e in PlantCalendarException.objects.filter(archived=False, tenant=tenant, is_active=True):
         if e.recurrence == 'YEARLY':
             out.extend(_yearly_closure_occurrences(e, horizon))
         elif e.start_time < horizon.end and e.end_time >= horizon.start:
@@ -744,14 +745,14 @@ def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:
     no shifts are configured (the solver treats that as always-available)."""
     from Tracker.models import PlantCalendarException, Shift
 
-    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
+    shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
     horizon = HorizonData(start=start, end=end, frozen_end=start, slushy_end=start)
     base = _merge_intervals(
         _expand_shifts(shifts, start, end, plant_tz(tenant))
         + get_overtime_machine_windows(tenant, horizon))
     closures = _merge_intervals([
         (max(e.start_time, start), min(e.end_time, end))
-        for e in PlantCalendarException.objects.filter(tenant=tenant, is_active=True)
+        for e in PlantCalendarException.objects.filter(archived=False, tenant=tenant, is_active=True)
         .filter(start_time__lt=end).exclude(end_time__lt=start)
     ])
     return _subtract_intervals(base, closures)
@@ -793,7 +794,7 @@ def get_material_gates(tenant, horizon: HorizonData):
         return None
 
     onhand: dict = {}
-    for row in (MaterialLot.objects.filter(tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
+    for row in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
                 .values('material_id', 'material_type_id', 'quantity_remaining')):
         k = _lot_key(row)
         if k is not None:
@@ -801,7 +802,7 @@ def get_material_gates(tenant, horizon: HorizonData):
 
     receipts: dict = defaultdict(list)
     for lot in (
-        MaterialLot.objects.filter(tenant=tenant, promised_date__isnull=False,
+        MaterialLot.objects.filter(archived=False, tenant=tenant, promised_date__isnull=False,
                                    quantity_remaining__gt=0)
         .exclude(status__in=('CONSUMED', 'SCRAPPED', 'REJECTED'))
         .values('material_id', 'material_type_id', 'promised_date')
@@ -817,11 +818,11 @@ def get_material_gates(tenant, horizon: HorizonData):
             # Latest RELEASED — not is_current_version: an open draft revision flips the
             # released row non-current but the floor still builds to it, so the material
             # gate must keep seeing it (else drafting a rev silently drops the gate).
-            bom = (BOM.objects.filter(part_type_id=pt_id, bom_type='ASSEMBLY',
+            bom = (BOM.objects.filter(archived=False, part_type_id=pt_id, bom_type='ASSEMBLY',
                    status='RELEASED').order_by('-version').first())
             # tenant-safe: `bom` is a tenant-scoped row; its lines belong to the same tenant.
             bom_cache[pt_id] = (
-                list(BOMLine.objects.filter(bom=bom).values(
+                list(BOMLine.objects.filter(archived=False, bom=bom).values(
                     'material_id', 'material__name', 'material__purchase_lead_time_days',
                     'component_type_id', 'component_type__name',
                     'component_type__can_buy', 'component_type__can_recover',
@@ -836,7 +837,7 @@ def get_material_gates(tenant, horizon: HorizonData):
     short: set = set()
     detail: dict = {}  # (wo_id, step_id|None) -> [human shortage lines]
     hstart_date = horizon.start.date()
-    for wo in (WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
+    for wo in (WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
                .exclude(workorder_status__in=excluded)
                .select_related('process').prefetch_related('parts__core_role')):
         pt_id = wo.process.part_type_id
@@ -1015,7 +1016,7 @@ def get_continuous_machines(tenant) -> list[ContinuousMachineData]:
             bar_change_interval_hours=cm.bar_change_interval_hours,
             bar_change_duration_minutes=cm.bar_change_duration_minutes,
         )
-        for cm in ContinuousMachine.objects.filter(tenant=tenant)
+        for cm in ContinuousMachine.objects.filter(archived=False, tenant=tenant)
     ]
 
 
@@ -1025,7 +1026,7 @@ def get_break_windows(tenant, horizon: HorizonData) -> list[tuple]:
     kept out of these; actual clock-out/in lives in TimeEntry BREAK/LUNCH."""
     from Tracker.models import Shift
 
-    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
+    shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
     tz = plant_tz(tenant)
     intervals: list[tuple] = []
     day = timezone.localtime(horizon.start, tz).date()
@@ -1071,7 +1072,7 @@ def get_previous_schedule(tenant) -> PreviousScheduleData | None:
     from Tracker.models import ScheduleResult
 
     sched = (
-        ScheduleResult.objects.filter(tenant=tenant, is_active=True)
+        ScheduleResult.objects.filter(archived=False, tenant=tenant, is_active=True)
         .order_by('-created_at').first()
     )
     if sched is None:
@@ -1184,7 +1185,7 @@ def get_labor_calendar_blocks(tenant, horizon: HorizonData):
 
     company: list[tuple] = []
     by_user: dict[int, list[tuple]] = {}
-    rows = LaborCalendarBlock.objects.filter(tenant=tenant, is_active=True)
+    rows = LaborCalendarBlock.objects.filter(archived=False, tenant=tenant, is_active=True)
     for b in rows:
         intervals = _labor_block_intervals(b, horizon, plant_tz(tenant))
         if not intervals:
@@ -1234,7 +1235,7 @@ def get_overtime_windows(tenant, horizon: HorizonData) -> dict[int, list[tuple]]
     from Tracker.models import OvertimeWindow
 
     by_shift: dict[int, list[tuple]] = {}
-    for o in (OvertimeWindow.objects.filter(tenant=tenant, is_active=True)
+    for o in (OvertimeWindow.objects.filter(archived=False, tenant=tenant, is_active=True)
               .select_related('shift')):
         sh = o.shift
         if sh is None or not sh.is_active:
@@ -1273,7 +1274,7 @@ def get_operator_shift_windows(tenant, horizon: HorizonData) -> dict[int, list[t
     closures = get_calendar_closures(tenant, horizon)
     by_shift = {
         s.id: _expand_shifts([s], horizon.start, horizon.end, plant_tz(tenant))
-        for s in Shift.objects.filter(tenant=tenant, id__in=shift_ids, is_active=True, is_current_version=True)
+        for s in Shift.objects.filter(archived=False, tenant=tenant, id__in=shift_ids, is_active=True, is_current_version=True)
     }
     overtime_by_shift = get_overtime_windows(tenant, horizon)  # {shift_id: [(s,e)]}
     company_blocks, user_blocks = get_labor_calendar_blocks(tenant, horizon)
@@ -1299,7 +1300,7 @@ def get_shift_windows(tenant, horizon: HorizonData) -> list[tuple]:
     per-operator roster exists yet, so this is shared across operators."""
     from Tracker.models import Shift
 
-    shifts = list(Shift.objects.filter(tenant=tenant, is_active=True, is_current_version=True))
+    shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
     return _expand_shifts(shifts, horizon.start, horizon.end, plant_tz(tenant))
 
 
@@ -1314,7 +1315,7 @@ def get_operator_unavailability(tenant, horizon: HorizonData,
 
     out: dict[int, list[tuple]] = {}
     entries = (
-        TimeEntry.objects.filter(tenant=tenant, entry_type__in=['BREAK', 'LUNCH'])
+        TimeEntry.objects.filter(archived=False, tenant=tenant, entry_type__in=['BREAK', 'LUNCH'])
         .filter(start_time__lt=horizon.end)
     )
     for e in entries:

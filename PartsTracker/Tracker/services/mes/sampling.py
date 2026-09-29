@@ -27,7 +27,7 @@ def update_sampling_trigger_state(part, status: str):
 
     No-op when no active trigger state exists.
     """
-    active_state = SamplingTriggerState.objects.filter(
+    active_state = SamplingTriggerState.objects.filter(archived=False,
         step=part.step,
         work_order=part.work_order,
         active=True,

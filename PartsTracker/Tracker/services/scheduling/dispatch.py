@@ -155,7 +155,7 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
     with tenant_context(str(tenant.id)):
         if schedule is None:
             schedule = (
-                ScheduleResult.objects.filter(tenant=tenant, is_active=True)
+                ScheduleResult.objects.filter(archived=False, tenant=tenant, is_active=True)
                 .order_by('-created_at').first()
             )
         if schedule is None:

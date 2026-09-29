@@ -90,7 +90,7 @@ def build_ready_to_ship_groups():
 
     by_step = defaultdict(list)
     parts = (Parts.objects  # tenant-safe: .objects auto-scopes (request context)
-             .filter(step_id__in=osp_step_ids, part_status__in=_READY_TO_SHIP_STATUSES)
+             .filter(archived=False, step_id__in=osp_step_ids, part_status__in=_READY_TO_SHIP_STATUSES)
              .select_related("step", "step__outside_supplier", "work_order"))
     for p in parts:
         by_step[p.step_id].append(p)
@@ -123,7 +123,7 @@ def _active_execution_for(part, step):
     from Tracker.models import StepExecution
 
     ex = (StepExecution.objects
-          .filter(part=part, step=step,
+          .filter(archived=False, part=part, step=step,
                   status__in=["PENDING", "CLAIMED", "IN_PROGRESS"])
           .order_by("-entered_at").first())
     if ex is None:
@@ -248,7 +248,7 @@ def _return_execution(shipment):
     from Tracker.models import StepExecution
     ct = ContentType.objects.get_for_model(shipment.__class__)
     return (StepExecution.objects
-            .filter(subject_content_type=ct, subject_id=shipment.id,
+            .filter(archived=False, subject_content_type=ct, subject_id=shipment.id,
                     status__in=["PENDING", "CLAIMED", "IN_PROGRESS"])
             .order_by("-entered_at").first())
 

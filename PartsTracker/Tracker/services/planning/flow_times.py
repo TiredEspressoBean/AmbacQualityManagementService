@@ -70,7 +70,7 @@ def measure_flow_times(tenant, lookback_days: int = DEFAULT_LOOKBACK_DAYS,
     # tenant-safe: explicit tenant filter
     rows = list(
         StepExecution.objects
-        .filter(tenant=tenant, part__isnull=False, entered_at__gte=cutoff)
+        .filter(archived=False, tenant=tenant, part__isnull=False, entered_at__gte=cutoff)
         .order_by('part_id', 'entered_at')
         .values('part_id', 'step__work_center_id',
                 'entered_at', 'started_at', 'exited_at')

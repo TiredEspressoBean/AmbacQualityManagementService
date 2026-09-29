@@ -12,13 +12,13 @@ from django.db import transaction
 
 def _latest_draft(tenant):
     from Tracker.models.scheduling import ScheduleResult
-    return (ScheduleResult.objects.filter(tenant=tenant, is_draft=True)
+    return (ScheduleResult.objects.filter(archived=False, tenant=tenant, is_draft=True)
             .order_by('-created_at').first())
 
 
 def _active(tenant):
     from Tracker.models.scheduling import ScheduleResult
-    return (ScheduleResult.objects.filter(tenant=tenant, is_active=True)
+    return (ScheduleResult.objects.filter(archived=False, tenant=tenant, is_active=True)
             .order_by('-created_at').first())
 
 

@@ -107,7 +107,7 @@ def get_user_current_levels(user):
     today = timezone.now().date()
 
     # tenant-safe: scoped to a specific user; users belong to one tenant
-    current_records = TrainingRecord.objects.filter(
+    current_records = TrainingRecord.objects.filter(archived=False,
         user=user
     ).filter(
         models.Q(expires_date__isnull=True) | models.Q(expires_date__gte=today)
@@ -165,7 +165,7 @@ def check_training_authorization(
         else:
             # No current record — expired or never completed.
             from Tracker.models import TrainingRecord
-            expired_record = TrainingRecord.objects.filter(
+            expired_record = TrainingRecord.objects.filter(archived=False,
                 user=user,
                 training_type=training_type,
                 expires_date__lt=timezone.now().date()
@@ -234,7 +234,7 @@ def get_qualified_users_for_step(step, process=None, equipment_type=None, tenant
     qualified_user_ids = None
     for training_type, min_level in required.items():
         ids = set(
-            TrainingRecord.objects.filter(
+            TrainingRecord.objects.filter(archived=False,
                 training_type=training_type,
                 level__gte=min_level,
             ).filter(
@@ -305,7 +305,7 @@ def build_training_matrix(tenant=None):
         from Tracker.utils.tenant_context import current_tenant_var
         tenant = current_tenant_var.get()
 
-    types = list(TrainingType.objects.all().order_by('name'))
+    types = list(TrainingType.objects.filter(archived=False).order_by('name'))
 
     users_qs = User.objects.filter(user_type='INTERNAL')
     if tenant:
@@ -316,7 +316,7 @@ def build_training_matrix(tenant=None):
 
     # One pass over the tenant's records. `.objects` is tenant-scoped in-request;
     # `tenant` narrows further when called outside a request context.
-    rec_qs = TrainingRecord.objects.select_related('training_type')
+    rec_qs = TrainingRecord.objects.filter(archived=False).select_related('training_type')
     if tenant:
         rec_qs = rec_qs.filter(user__tenant=tenant)
 
@@ -343,7 +343,7 @@ def build_training_matrix(tenant=None):
     # Role requirements: job_role_id -> {type_id: strictest min_level}
     from Tracker.models import JobRole, TrainingRequirement
     role_reqs: dict = {}
-    rr_qs = TrainingRequirement.objects.filter(job_role__isnull=False).select_related('training_type')
+    rr_qs = TrainingRequirement.objects.filter(archived=False, job_role__isnull=False).select_related('training_type')
     if tenant:
         rr_qs = rr_qs.filter(job_role__tenant=tenant)
     for req in rr_qs:
@@ -351,7 +351,7 @@ def build_training_matrix(tenant=None):
         if req.min_level > d.get(req.training_type_id, 0):
             d[req.training_type_id] = req.min_level
 
-    roles_qs = JobRole.objects.all()
+    roles_qs = JobRole.objects.filter(archived=False)
     if tenant:
         roles_qs = roles_qs.filter(tenant=tenant)
     all_roles = {r.id: r for r in roles_qs}
@@ -443,7 +443,7 @@ def _training_superseded(record) -> bool:
     — a renewal with a later (or never) expiry. Prevents nagging about a cert that
     has already been renewed; the superseding record is evaluated on its own."""
     from Tracker.models import TrainingRecord
-    return TrainingRecord.objects.filter(
+    return TrainingRecord.objects.filter(archived=False,
         user_id=record.user_id,
         training_type_id=record.training_type_id,
     ).exclude(pk=record.pk).filter(

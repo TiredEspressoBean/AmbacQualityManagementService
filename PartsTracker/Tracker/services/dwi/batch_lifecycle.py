@@ -63,7 +63,7 @@ def assert_no_open_batch_overlap(*, step, parts) -> None:
     if not part_ids:
         return
     in_open_batch = set(
-        BatchExecution.objects.filter(
+        BatchExecution.objects.filter(archived=False,
             step=step, sealed_at__isnull=True, parts__id__in=part_ids,
         ).values_list('parts__id', flat=True)
     )

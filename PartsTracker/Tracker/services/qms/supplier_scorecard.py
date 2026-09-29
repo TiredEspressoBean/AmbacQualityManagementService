@@ -51,7 +51,7 @@ def _rating(*, inspected, reject_rate, on_time_rate, coc_compliance, open_scar_c
 def compute_supplier_scorecard(supplier) -> SupplierScorecard:
     from Tracker.models import MaterialLot, CAPA
 
-    lots = MaterialLot.objects.filter(supplier=supplier)  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
+    lots = MaterialLot.objects.filter(archived=False, supplier=supplier)  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
     received = lots.count()
     accepted = lots.filter(status="ACCEPTED").count()
     rejected = lots.filter(status="REJECTED").count()
@@ -64,7 +64,7 @@ def compute_supplier_scorecard(supplier) -> SupplierScorecard:
     on_time = promised.filter(received_date__lte=F("promised_date")).count()
 
     open_scars = (
-        CAPA.objects.filter(supplier=supplier, capa_type="SUPPLIER")  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
+        CAPA.objects.filter(archived=False, supplier=supplier, capa_type="SUPPLIER")  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
         .exclude(status__in=["CLOSED", "CANCELLED"]).count()
     )
 

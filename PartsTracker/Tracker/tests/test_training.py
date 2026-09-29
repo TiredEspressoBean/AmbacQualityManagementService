@@ -440,6 +440,24 @@ class GetQualifiedUsersTests(TrainingModuleTestCase):
         self.assertIn(self.operator, qualified)
         self.assertNotIn(self.untrained_user, qualified)
 
+    def test_a_deleted_training_record_no_longer_qualifies(self):
+        """A record deleted because it was entered wrongly used to keep qualifying the
+        operator: `.objects` doesn't exclude archived rows, and the qualification reads
+        didn't either."""
+        TrainingRequirement.objects.create(
+            training_type=self.cmm_training, step=self.inspection_step, tenant=self.tenant)
+        record = TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today(), tenant=self.tenant)
+        self.assertIn(self.operator, get_qualified_users_for_step(
+            step=self.inspection_step, tenant=self.tenant))
+
+        record.delete()
+        self.assertNotIn(self.operator, get_qualified_users_for_step(
+            step=self.inspection_step, tenant=self.tenant))
+        self.assertFalse(check_training_authorization(
+            user=self.operator, step=self.inspection_step).authorized)
+
     def test_qualified_respects_min_level(self):
         """Only users at/above the requirement's min_level are returned."""
         TrainingRequirement.objects.create(

@@ -34,6 +34,8 @@ def get_or_create_shelf_life_definition(tenant):
     use (mirrors the values the seeders use: days, warn at 270, expire at 365)."""
     from Tracker.models import LifeLimitDefinition
 
+    # Deliberately NOT `archived=False`: the name is unique among current versions,
+    # archived ones included, so a deleted definition must be reused, not re-created.
     existing = LifeLimitDefinition.objects.filter(
         name=SHELF_LIFE_DEFINITION_NAME, is_current_version=True
     ).first()
@@ -59,7 +61,7 @@ def resolve_lot_shelf_life_definition(lot):
     from Tracker.models import PartTypeLifeLimit
 
     link = (
-        PartTypeLifeLimit.objects.filter(
+        PartTypeLifeLimit.objects.filter(archived=False,
             part_type_id=lot.material_type_id,
             definition__is_calendar_based=True,
             definition__is_current_version=True,

@@ -91,7 +91,7 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
     # (regardless of current cohort-split status — see Case 19 in the
     # sandbox).
     sealed_batches_for_part = list(
-        BatchExecution.objects.filter(
+        BatchExecution.objects.filter(archived=False,
             step=step,
             parts=part,
             sealed_at__isnull=False,

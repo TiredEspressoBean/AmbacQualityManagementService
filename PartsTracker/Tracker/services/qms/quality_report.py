@@ -72,7 +72,7 @@ def _notify_step_failure(report) -> None:
     if part and step:
         step_execution = (
             StepExecution.objects
-            .filter(part=part, step=step)
+            .filter(archived=False, part=part, step=step)
             .order_by('exited_at', '-entered_at')
             .first()
         )

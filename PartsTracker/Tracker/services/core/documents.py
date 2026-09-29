@@ -104,6 +104,7 @@ def submit_document_for_approval(document, user):
             template = ApprovalTemplate.objects.get(
                 approval_type='DOCUMENT_RELEASE',
                 is_current_version=True,
+                archived=False,
             )
         except ApprovalTemplate.DoesNotExist:
             raise ValueError(
@@ -182,7 +183,7 @@ def clone_current_documents(*, source, target):
 
     ct = ContentType.objects.get_for_model(type(source))
     # tenant-safe: scoped via the source content_type/object_id GFK
-    source_docs = Documents.objects.filter(
+    source_docs = Documents.objects.filter(archived=False,
         content_type=ct,
         object_id=source.pk,
         is_current_version=True,

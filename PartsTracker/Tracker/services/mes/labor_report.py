@@ -25,7 +25,7 @@ def operator_hours(tenant, start, end) -> list[dict]:
 
     cap = min(end, timezone.now())
     entries = (
-        TimeEntry.objects.filter(tenant=tenant, start_time__lt=end)
+        TimeEntry.objects.filter(archived=False, tenant=tenant, start_time__lt=end)
         .exclude(end_time__lt=start)
         .values('user_id', 'entry_type', 'start_time', 'end_time')
     )

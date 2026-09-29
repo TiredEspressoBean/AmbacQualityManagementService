@@ -33,7 +33,7 @@ def gate_ruleset_for_step(step, part_type):
     """The active primary (gate-bearing) ruleset for a (step, part_type)."""
     return (
         SamplingRuleSet.objects
-        .filter(step=step, part_type=part_type, active=True, is_fallback=False)
+        .filter(archived=False, step=step, part_type=part_type, active=True, is_fallback=False)
         .order_by("version")
         .last()
     )
@@ -55,7 +55,7 @@ def evaluate_step_gate(*, ruleset, work_order=None, material_lot=None,
 
     step = ruleset.step
 
-    existing = StepGateFiring.objects.filter(
+    existing = StepGateFiring.objects.filter(archived=False,
         ruleset=ruleset, step=step, work_order=work_order, material_lot=material_lot,
     ).first()
     if existing:
@@ -104,7 +104,7 @@ def _report_window_qs(ruleset, work_order, material_lot):
     """Base QualityReports queryset for the gate's window, newest first."""
     from Tracker.models.qms import QualityReports
 
-    qs = QualityReports.objects.filter(status__in=["PASS", "FAIL"])
+    qs = QualityReports.objects.filter(archived=False, status__in=["PASS", "FAIL"])
     if material_lot is not None:
         qs = qs.filter(material_lot=material_lot)
     else:

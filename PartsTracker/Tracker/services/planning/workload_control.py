@@ -118,7 +118,7 @@ def build_policy(tenant, config=None) -> ReleasePolicy:
     policy = getattr(cfg, 'release_policy', ReleasePolicy.key) if cfg else ReleasePolicy.key
     if policy == ConstraintFocusPolicy.key:
         ids = frozenset(
-            WorkCenter.objects.filter(tenant=tenant, is_constraint=True, is_current_version=True)
+            WorkCenter.objects.filter(archived=False, tenant=tenant, is_constraint=True, is_current_version=True)
             .values_list('id', flat=True))
         return ConstraintFocusPolicy(pct, ids)
     return ReleasePolicy(pct)

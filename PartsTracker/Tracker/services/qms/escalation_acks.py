@@ -32,7 +32,7 @@ def _ncr_is_acknowledged(quality_report) -> bool:
     from Tracker.models import QuarantineDisposition
     # tenant-safe: predicate is invoked from `fire_one` inside `tenant_context(...)`;
     # the implicit tenant ContextVar already scopes the QuerySet.
-    return QuarantineDisposition.objects.filter(
+    return QuarantineDisposition.objects.filter(archived=False,
         quality_reports=quality_report,
         current_state='CLOSED',
     ).exists()

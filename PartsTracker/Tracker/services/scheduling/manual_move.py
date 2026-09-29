@@ -307,7 +307,7 @@ def reassign_machine(task, machine, user=None) -> dict:
     (planner override). Marks the schedule stale. Returns {'warning': str | None}."""
     from Tracker.models import StepEquipmentAffinity
 
-    eligible = StepEquipmentAffinity.objects.filter(
+    eligible = StepEquipmentAffinity.objects.filter(archived=False,
         step_id=task.step_id, equipment=machine).exists()
     task.machine = machine
     task.is_pinned = True
@@ -407,7 +407,7 @@ def bulk_reassign_machine(tasks, machine, user=None) -> dict:
     step_ids = {t.step_id for t in tasks}
     eligible_steps = set(
         StepEquipmentAffinity.objects
-        .filter(equipment=machine, step_id__in=step_ids)
+        .filter(archived=False, equipment=machine, step_id__in=step_ids)
         .values_list('step_id', flat=True)
     )
     schedules, warned, warnings = {}, set(), []

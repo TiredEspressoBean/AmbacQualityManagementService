@@ -40,7 +40,7 @@ def contain_failed_batch(report) -> None:
         return
 
     # Idempotency: one open disposition per batch.
-    if QuarantineDisposition.objects.filter(
+    if QuarantineDisposition.objects.filter(archived=False,
         batch_execution=batch, current_state__in=["OPEN", "IN_PROGRESS"],
     ).exists():
         return

@@ -27,7 +27,7 @@ class SamplingFallbackApplier:
             return {"requires_sampling": False}
 
         # Fallback rules take priority if present
-        active_fallback = SamplingTriggerState.objects.filter(
+        active_fallback = SamplingTriggerState.objects.filter(archived=False,
             step=self.step,
             work_order=self.work_order,
             active=True
@@ -38,7 +38,7 @@ class SamplingFallbackApplier:
             context_info = "Using fallback ruleset"
             ruleset_type = "FALLBACK"
         else:
-            ruleset = SamplingRuleSet.objects.filter(
+            ruleset = SamplingRuleSet.objects.filter(archived=False,
                 step=self.step,
                 part_type=self.part_type,
                 active=True,
@@ -50,7 +50,7 @@ class SamplingFallbackApplier:
         if not ruleset:
             return {"requires_sampling": False}
 
-        applicable_rules = ruleset.rules.order_by("order")
+        applicable_rules = ruleset.rules.filter(archived=False).order_by("order")
 
         for rule in applicable_rules:
             if self._should_sample(rule):
@@ -87,7 +87,7 @@ class SamplingFallbackApplier:
         if not rule.value:
             return False
 
-        qs = Parts.objects.filter(
+        qs = Parts.objects.filter(archived=False,
             work_order=self.work_order,
             part_type=self.part_type,
             step=self.step
@@ -154,7 +154,7 @@ class SamplingFallbackApplier:
     def _reevaluate_remaining_parts(self):
         from Tracker.models import Parts, PartsStatus
 
-        remaining_parts = Parts.objects.filter(
+        remaining_parts = Parts.objects.filter(archived=False,
             work_order=self.work_order,
             step=self.step,
             part_type=self.part_type,

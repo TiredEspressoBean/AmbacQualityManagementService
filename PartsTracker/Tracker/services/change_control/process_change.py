@@ -236,7 +236,7 @@ def approve_pcr(
         from Tracker.models import Approval_Status_Type
         pcr_ct = ContentType.objects.get_for_model(ProcessChangeRequest)
         # tenant-safe: .objects auto-scopes to the request tenant; further bound to this PCR via object_id
-        ApprovalRequest.objects.filter(
+        ApprovalRequest.objects.filter(archived=False,
             content_type=pcr_ct,
             object_id=str(pcr.id),
             status=Approval_Status_Type.PENDING,

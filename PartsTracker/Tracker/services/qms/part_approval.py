@@ -43,7 +43,7 @@ def _active_qs(part_type, supplier):
     today = timezone.now().date()
     return (
         PartApproval.objects
-        .filter(part_type=part_type, supplier=supplier,
+        .filter(archived=False, part_type=part_type, supplier=supplier,
                 status__in=PartApproval.ACTIVE_STATUSES)
         .filter(Q(effective_date__isnull=True) | Q(effective_date__lte=today))
         .filter(Q(expiry_date__isnull=True) | Q(expiry_date__gte=today))

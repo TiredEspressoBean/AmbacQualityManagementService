@@ -82,7 +82,7 @@ def _released_bom(part_type):
     """
     from Tracker.models import BOM
     return (
-        BOM.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+        BOM.objects.filter(archived=False,   # tenant-safe: .objects auto-scopes to the request tenant
             part_type=part_type, bom_type='ASSEMBLY', status='RELEASED')
         .order_by('-version').first()
     )
@@ -94,7 +94,7 @@ def _build_process(component_type):
     routing to use when it's ambiguous."""
     from Tracker.models import Processes
     procs = list(
-        Processes.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+        Processes.objects.filter(archived=False,   # tenant-safe: .objects auto-scopes to the request tenant
             part_type=component_type, status='APPROVED',
             is_current_version=True, is_disassembly=False)[:2]
     )
@@ -124,7 +124,7 @@ def _available_supply(component_type, parent_wo, line) -> Decimal:
         for_reman=takes_pooled_parts(parent_wo),
     ).count()
     pegged = (
-        WorkOrder.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+        WorkOrder.objects.filter(archived=False,   # tenant-safe: .objects auto-scopes to the request tenant
             pegged_to_workorder=parent_wo, pegged_to_bom_line=line,
             workorder_status__in=_LIVE_WO_STATUSES)
         .aggregate(s=Sum('quantity'))['s'] or 0
@@ -154,7 +154,7 @@ def explode_work_order(work_order, user=None, create: bool = True, _seen=None, _
         return result  # leaf / no assembly BOM → nothing to explode
 
     # tenant-safe: `bom` is a tenant-scoped row; its lines belong to the same tenant.
-    lines = BOMLine.objects.filter(bom=bom).select_related('component_type', 'material')
+    lines = BOMLine.objects.filter(archived=False, bom=bom).select_related('component_type', 'material')
     for line in lines:
         if line.is_optional:
             continue

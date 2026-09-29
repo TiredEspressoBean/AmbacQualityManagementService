@@ -142,7 +142,7 @@ def split_part_from_lot(
             # Close out the current StepExecution as ROLLED_BACK (part
             # didn't pass), then create a new StepExecution at the
             # rework target with a bumped visit_number.
-            current_exec = StepExecution.objects.filter(
+            current_exec = StepExecution.objects.filter(archived=False,
                 part=part,
                 step=part.step,
                 status__in=['PENDING', 'CLAIMED', 'IN_PROGRESS'],
@@ -267,7 +267,7 @@ def rejoin_part_to_lot(
             PartsStatus.COMPLETED, PartsStatus.CORE_BANKED,
         }
         has_sibling = (
-            Parts.objects.filter(work_order_id=part.work_order_id, step_id=part.step_id)
+            Parts.objects.filter(archived=False, work_order_id=part.work_order_id, step_id=part.step_id)
             .exclude(pk=part.id)
             .exclude(part_status__in=[s.value for s in _terminal])
             .exists()

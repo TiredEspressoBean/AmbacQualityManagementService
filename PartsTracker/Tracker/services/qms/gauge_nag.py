@@ -66,6 +66,6 @@ def my_gauge_nag(user, used_within_days: int = DEFAULT_USED_WITHIN_DAYS,
 
 def __reports_by(user, cutoff):
     from Tracker.models import QualityReports
-    return QualityReports.objects.filter(  # tenant-safe: .objects auto-scopes
+    return QualityReports.objects.filter(archived=False,   # tenant-safe: .objects auto-scopes
         detected_by=user, created_at__gte=cutoff,
     )

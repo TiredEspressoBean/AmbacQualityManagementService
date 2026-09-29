@@ -82,7 +82,7 @@ def create_parts_batch(
         Parts.objects.bulk_create(parts_to_create)
 
     fresh_parts = list(
-        Parts.objects.filter(work_order=work_order, part_type=part_type, step=step)
+        Parts.objects.filter(archived=False, work_order=work_order, part_type=part_type, step=step)
         .order_by('id')
     )
 
@@ -201,7 +201,7 @@ def reduce_work_order_quantity(work_order: WorkOrder, new_quantity: int, user=No
 
     if new_quantity < 0:
         raise ValueError("quantity must be >= 0")
-    live = Parts.objects.filter(work_order=work_order).exclude(
+    live = Parts.objects.filter(archived=False, work_order=work_order).exclude(
         part_status__in=[PartsStatus.CANCELLED, PartsStatus.SCRAPPED])
     current = live.count()
     if new_quantity >= current:

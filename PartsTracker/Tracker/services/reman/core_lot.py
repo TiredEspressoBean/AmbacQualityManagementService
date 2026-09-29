@@ -168,7 +168,7 @@ def bank_lots(tenant=None, core_type_ids=None):
     if tenant is not None:
         qs = qs.filter(tenant=tenant)
     qs = (qs
-          .filter(holds_cores=True, status__in=BANK_LOT_STATUSES, quantity_remaining__gte=1)
+          .filter(archived=False, holds_cores=True, status__in=BANK_LOT_STATUSES, quantity_remaining__gte=1)
           .select_related('material_type')
           .order_by('received_date', 'created_at'))
     if core_type_ids is not None:

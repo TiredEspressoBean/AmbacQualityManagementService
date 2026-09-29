@@ -52,7 +52,7 @@ def evaluate_substep_sampling(step_execution: "StepExecution") -> None:
         # Cores (reman) don't run the per-part substep gate yet.
         return
 
-    substeps = list(Substep.objects.filter(step_id=step_execution.step_id))
+    substeps = list(Substep.objects.filter(archived=False, step_id=step_execution.step_id))
     if not substeps:
         return
 

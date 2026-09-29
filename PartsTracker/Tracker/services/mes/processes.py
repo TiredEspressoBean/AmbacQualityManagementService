@@ -100,6 +100,7 @@ def submit_process_for_approval(process: Processes, user) -> ApprovalRequest:
         template = ApprovalTemplate.objects.get(
             approval_type='PROCESS_APPROVAL',
             is_current_version=True,
+            archived=False,
         )
     except ApprovalTemplate.DoesNotExist:
         raise ValueError(

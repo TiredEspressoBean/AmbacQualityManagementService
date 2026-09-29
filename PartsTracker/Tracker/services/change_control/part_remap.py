@@ -48,7 +48,7 @@ def _new_steps_by_identity(new_process) -> dict:
 
 def _in_flight_parts(wo):
     return (
-        Parts.objects.filter(work_order=wo)
+        Parts.objects.filter(archived=False, work_order=wo)
         .exclude(part_status__in=_SETTLED)
         .select_related("step")
     )

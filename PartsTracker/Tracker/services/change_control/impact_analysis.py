@@ -104,7 +104,7 @@ def affected_workorders_with_impact(
 
     rows: list[dict] = []
     for wo in list_affected_workorders(target_process):
-        in_flight_parts = Parts.objects.filter(work_order=wo).exclude(
+        in_flight_parts = Parts.objects.filter(archived=False, work_order=wo).exclude(
             part_status__in=settled_statuses,
         )
         total_parts = in_flight_parts.count()

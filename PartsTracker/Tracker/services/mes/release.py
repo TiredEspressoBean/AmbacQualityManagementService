@@ -259,7 +259,7 @@ def bulk_release(tenant, work_order_ids, user, override_reason: str = "") -> lis
 
 def releasable_work_orders(tenant):
     """Open work orders awaiting release — the planning workbench's inbox."""
-    return (WorkOrder.objects.filter(tenant=tenant, released_at__isnull=True)
+    return (WorkOrder.objects.filter(archived=False, tenant=tenant, released_at__isnull=True)
             .exclude(workorder_status__in=[WorkOrderStatus.COMPLETED,
                                            WorkOrderStatus.CANCELLED])
             .select_related('process', 'process__part_type')

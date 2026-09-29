@@ -197,7 +197,7 @@ def _evaluate_and_advance(
     # these row locks, then re-reads the post-move state and no-ops.
     parts_at_step = list(
         Parts.objects.select_for_update(of=('self',))
-        .filter(work_order=wo, step=step)
+        .filter(archived=False, work_order=wo, step=step)
         .exclude(part_status__in=TERMINAL_PART_STATUSES)
         .select_related('step', 'work_order', 'part_type')
     )

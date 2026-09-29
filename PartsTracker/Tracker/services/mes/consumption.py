@@ -60,13 +60,13 @@ def _released_bom_lines(part_type_id, cache: dict) -> list:
     if part_type_id not in cache:
         from Tracker.models import BOM, BOMLine
 
-        bom = (BOM.objects.filter(part_type_id=part_type_id, bom_type='ASSEMBLY',
+        bom = (BOM.objects.filter(archived=False, part_type_id=part_type_id, bom_type='ASSEMBLY',
                                   status='RELEASED').order_by('-version').first())
         if not bom:
             cache[part_type_id] = []
         else:
             # tenant-safe: `bom` is a tenant-scoped row; its lines share its tenant.
-            lines = BOMLine.objects.filter(bom=bom).select_related('material')
+            lines = BOMLine.objects.filter(archived=False, bom=bom).select_related('material')
             cache[part_type_id] = list(lines)
     return cache[part_type_id]
 
@@ -112,7 +112,7 @@ def _usable_lots(item, tenant):
     # whole point of having reserved. Netting therefore lives in `plan_draw`, which
     # makes suggestions, not in the path that draws stock down.
     return list(
-        MaterialLot.objects.filter(
+        MaterialLot.objects.filter(archived=False,
             tenant=tenant, **item_filter(item),
             status__in=('ACCEPTED', 'IN_USE'), quantity_remaining__gt=0,
         ).order_by(F('expiration_date').asc(nulls_last=True), 'received_date')
@@ -131,7 +131,7 @@ def reserved_by_lot(item, tenant) -> dict:
     held: dict = {}
     # tenant-safe: explicit tenant filter
     for row in (MaterialStagingLine.objects
-                .filter(tenant=tenant, issued_at__isnull=True, **item_filter(item))
+                .filter(archived=False, tenant=tenant, issued_at__isnull=True, **item_filter(item))
                 .values_list('picked_lots', flat=True)):
         for entry in (row or []):
             lot_id = entry.get('lot_id')
@@ -156,7 +156,7 @@ def reserved_quantity(material_id, tenant) -> Decimal:
 
     # tenant-safe: explicit tenant filter
     total = (MaterialStagingLine.objects
-             .filter(tenant=tenant, material_id=material_id, issued_at__isnull=True)
+             .filter(archived=False, tenant=tenant, material_id=material_id, issued_at__isnull=True)
              .aggregate(q=Sum('qty_picked'))['q'])
     return Decimal(str(total or 0))
 
@@ -168,7 +168,7 @@ def available_quantity(material_id, tenant) -> Decimal:
 
     # tenant-safe: explicit tenant filter
     on_hand = (MaterialLot.objects
-               .filter(tenant=tenant, material_id=material_id,
+               .filter(archived=False, tenant=tenant, material_id=material_id,
                        status__in=('ACCEPTED', 'IN_USE'))
                .aggregate(q=Sum('quantity_remaining'))['q'])
     return max(Decimal('0'), Decimal(str(on_hand or 0)) - reserved_quantity(material_id, tenant))
@@ -336,7 +336,7 @@ def _staging_line(part, step, item, tenant):
         return None
     # tenant-safe: explicit tenant filter
     return (MaterialStagingLine.objects
-            .filter(tenant=tenant, staging__work_order_id=wo_id,
+            .filter(archived=False, tenant=tenant, staging__work_order_id=wo_id,
                     staging__step_id=step.id, **item_filter(item))
             .first())
 

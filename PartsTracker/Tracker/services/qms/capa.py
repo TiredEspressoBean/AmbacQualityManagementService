@@ -289,6 +289,7 @@ def auto_request_capa_approval(capa: CAPA) -> ApprovalRequest | None:
         template = ApprovalTemplate.objects.get(
             approval_type='CAPA_APPROVAL',
             is_current_version=True,
+            archived=False,
         )
     except ApprovalTemplate.DoesNotExist:
         return None
@@ -324,9 +325,11 @@ def request_capa_approval(capa: CAPA, user) -> ApprovalRequest:
         raise ValueError("CAPA approval is already pending")
 
     try:
+        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
         template = ApprovalTemplate.objects.get(
             approval_type='CAPA_APPROVAL',
             is_current_version=True,
+            archived=False,
         )
     except ApprovalTemplate.DoesNotExist:
         raise ValueError(

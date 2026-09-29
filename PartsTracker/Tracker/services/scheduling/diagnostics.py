@@ -65,7 +65,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     from Tracker.services.scheduling.preflight import find_unstaffable_steps
     from Tracker.services.scheduling.routing import resolve_route
 
-    schedule = (ScheduleResult.objects.filter(tenant=tenant, is_active=True)
+    schedule = (ScheduleResult.objects.filter(archived=False, tenant=tenant, is_active=True)
                 .order_by('-created_at').first())
 
     horizon = data.get_schedule_horizon(tenant, horizon_days)
@@ -84,7 +84,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     # Everything still owed: finished/cancelled WOs are out, held ones stay in (being
     # held is the very thing we want to report).
     wos = list(
-        WorkOrder.objects.filter(tenant=tenant)
+        WorkOrder.objects.filter(archived=False, tenant=tenant)
         .exclude(workorder_status__in=[WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED])
         .select_related('process', 'process__part_type')
         .prefetch_related('parts__core_role')

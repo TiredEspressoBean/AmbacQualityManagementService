@@ -42,7 +42,7 @@ def resolve_receiving_step(part_type):
     from Tracker.models import PartTypes, Steps
     if not isinstance(part_type, PartTypes):
         return None
-    qs = Steps.objects.filter(part_type=part_type, step_type="RECEIVING")
+    qs = Steps.objects.filter(archived=False, part_type=part_type, step_type="RECEIVING")
     # Prefer the current version when the versioning flag is present.
     return qs.filter(is_current_version=True).first() or qs.first()
 
@@ -51,7 +51,7 @@ def resolve_sampling_ruleset(step, supplier):
     """Active sampling ruleset for (step, supplier), falling back to the
     supplier-agnostic ruleset for the step."""
     from Tracker.models import SamplingRuleSet
-    base = SamplingRuleSet.objects.filter(step=step, active=True)
+    base = SamplingRuleSet.objects.filter(archived=False, step=step, active=True)
     return base.filter(supplier=supplier).first() or base.filter(supplier__isnull=True).first()
 
 
@@ -103,7 +103,7 @@ def receiving_execution(lot):
     from Tracker.models import StepExecution
     ct = ContentType.objects.get_for_model(lot.__class__)
     return (StepExecution.objects
-            .filter(subject_content_type=ct, subject_id=lot.id,
+            .filter(archived=False, subject_content_type=ct, subject_id=lot.id,
                     status__in=["PENDING", "CLAIMED", "IN_PROGRESS"])
             .order_by("-entered_at").first())
 

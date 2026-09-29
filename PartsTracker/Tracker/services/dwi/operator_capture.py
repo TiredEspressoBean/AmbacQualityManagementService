@@ -558,7 +558,7 @@ def _enforce_sequencing(substep, step_execution=None, batch_execution=None) -> N
     if getattr(step, 'sequencing_mode', SequencingMode.SEQUENTIAL) != SequencingMode.SEQUENTIAL:
         return
 
-    prior = Substep.objects.filter(
+    prior = Substep.objects.filter(archived=False,
         step=step, order__lt=substep.order, is_optional=False,
     ).exclude(pk=substep.pk)
 
@@ -669,7 +669,7 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
         return None  # type: ignore[return-value]
     report = (
         QualityReports.objects
-        .filter(step=step_execution.step, **subject_filter)
+        .filter(archived=False, step=step_execution.step, **subject_filter)
         .order_by("-created_at").first()
     )
     if report is None:
@@ -1001,7 +1001,7 @@ def _replayed_rows(substep, step_execution, node_id, cap) -> bool:
     from django.core.exceptions import ValidationError
     from Tracker.models import SubstepResponse
 
-    prior = SubstepResponse.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+    prior = SubstepResponse.objects.filter(archived=False,   # tenant-safe: .objects auto-scopes to the request tenant
         step_execution=step_execution, substep=substep, node_id=node_id,
     ).first()
     if prior is None:
@@ -1052,16 +1052,16 @@ def build_capture_state(step_execution) -> dict:
 
     sr_by_key = {
         (str(sr.substep_id), str(sr.node_id)): sr
-        for sr in SubstepResponse.objects.filter(step_execution=step_execution)
+        for sr in SubstepResponse.objects.filter(archived=False, step_execution=step_execution)
     }
     meas_by_key = {
         (str(m.substep_id), str(m.measurement_definition_id)): m
-        for m in StepExecutionMeasurement.objects.filter(step_execution=step_execution)
+        for m in StepExecutionMeasurement.objects.filter(archived=False, step_execution=step_execution)
         if m.substep_id and m.measurement_definition_id
     }
 
     out: dict = {}
-    for substep in Substep.objects.filter(step=step_execution.step):
+    for substep in Substep.objects.filter(archived=False, step=step_execution.step):
         nodes: list = []
         _collect_capture_nodes(substep.body_blocks, nodes)
         node_map: dict = {}

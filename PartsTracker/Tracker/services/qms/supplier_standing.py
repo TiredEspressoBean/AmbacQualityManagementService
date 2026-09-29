@@ -62,7 +62,7 @@ def evaluate_supplier_standing(supplier) -> StandingRecommendation:
     sc = compute_supplier_scorecard(supplier)
     active_statuses = list(
         SupplierQualification.objects
-        .filter(supplier=supplier, status__in=SupplierQualification.ACTIVE_STATUSES)
+        .filter(archived=False, supplier=supplier, status__in=SupplierQualification.ACTIVE_STATUSES)
         .values_list('status', flat=True)
     )
     action, reason = _recommend(sc, active_statuses)

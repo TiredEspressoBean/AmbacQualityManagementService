@@ -63,7 +63,7 @@ def work_order_material_requirements(work_order) -> dict:
     # The effective production BOM is the latest RELEASED one — NOT gated on
     # is_current_version, since an open DRAFT revision makes the released row
     # non-current while it's still what the floor builds to.
-    bom = (BOM.objects.filter(part_type_id=pt_id, bom_type='ASSEMBLY',
+    bom = (BOM.objects.filter(archived=False, part_type_id=pt_id, bom_type='ASSEMBLY',
            status='RELEASED').order_by('-version').first())
     if bom is None:
         return {'rows': []}
@@ -81,7 +81,7 @@ def work_order_material_requirements(work_order) -> dict:
     takes_pool = takes_pooled_parts(work_order)
     rows = []
     # tenant-safe: `bom` is a tenant-scoped row; its lines belong to the same tenant.
-    lines = list(BOMLine.objects.filter(bom=bom)
+    lines = list(BOMLine.objects.filter(archived=False, bom=bom)
                  .select_related('component_type', 'material', 'consumed_at_step')
                  .order_by('line_number'))
     # A reman work order's demand is read per core from where each core is — the
@@ -120,10 +120,10 @@ def work_order_material_requirements(work_order) -> dict:
             # the tenant-scoping lint reads these literally, and a scoping filter that
             # only a human can see is exactly the kind it exists to catch.
             item_q = {f'{buy.lot_field}_id': buy.id}
-            on_hand = float(MaterialLot.objects.filter(
+            on_hand = float(MaterialLot.objects.filter(archived=False,
                 tenant=tenant, **item_q, status__in=_ON_HAND_LOT_STATUSES)
                 .aggregate(s=Sum('quantity_remaining'))['s'] or 0)
-            incoming = float(MaterialLot.objects.filter(
+            incoming = float(MaterialLot.objects.filter(archived=False,
                 tenant=tenant, **item_q,
                 promised_date__isnull=False, quantity_remaining__gt=0)
                 .exclude(status__in=_NOT_INCOMING_LOT_STATUSES)  # not already on-hand or terminal
@@ -163,7 +163,7 @@ def work_order_material_requirements(work_order) -> dict:
             comp = line.component_type
             on_hand = float(usable_stock_parts(
                 comp.id, tenant=tenant, for_reman=takes_pool).count())
-            pegged = float(WorkOrder.objects.filter(
+            pegged = float(WorkOrder.objects.filter(archived=False,
                 tenant=tenant, pegged_to_workorder=work_order, pegged_to_bom_line=line,
                 workorder_status__in=live_wo).aggregate(s=Sum('quantity'))['s'] or 0)
             short = max(0.0, required - on_hand - pegged)
@@ -193,13 +193,13 @@ def _active_schedule_starts(tenant):
     """{(work_order_id, step_id): earliest scheduled start date} on the live schedule."""
     from Tracker.models import ScheduledTask, ScheduleResult
 
-    active = (ScheduleResult.objects.filter(tenant=tenant, is_active=True, is_draft=False)
+    active = (ScheduleResult.objects.filter(archived=False, tenant=tenant, is_active=True, is_draft=False)
               .order_by('-created_at').first())
     if active is None:
         return {}
     out: dict = {}
     # tenant-safe: scoped via schedule=active (the tenant's own active ScheduleResult).
-    for t in (ScheduledTask.objects.filter(schedule=active, part__isnull=False)
+    for t in (ScheduledTask.objects.filter(archived=False, schedule=active, part__isnull=False)
               .values('part__work_order_id', 'step_id', 'start_time')):
         key = (t['part__work_order_id'], t['step_id'])
         d = t['start_time'].date()
@@ -235,7 +235,7 @@ def sourcing_requirements(tenant) -> dict:
         return None  # ad-hoc lot named only by description — not a planning subject
 
     onhand: dict = {}
-    for r in (MaterialLot.objects.filter(tenant=tenant, status__in=_ON_HAND_LOT_STATUSES)
+    for r in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=_ON_HAND_LOT_STATUSES)
               .values('material_id', 'material_type_id', 'quantity_remaining')):
         k = _lot_key(r)
         if k is not None:
@@ -243,7 +243,7 @@ def sourcing_requirements(tenant) -> dict:
 
     incoming: dict = {}
     incoming_date: dict = {}
-    for lot in (MaterialLot.objects.filter(tenant=tenant, promised_date__isnull=False,
+    for lot in (MaterialLot.objects.filter(archived=False, tenant=tenant, promised_date__isnull=False,
                                            quantity_remaining__gt=0)
                 .exclude(status__in=_NOT_INCOMING_LOT_STATUSES)  # not already on-hand or terminal
                 .values('material_id', 'material_type_id', 'promised_date',
@@ -262,10 +262,10 @@ def sourcing_requirements(tenant) -> dict:
         if pt_id not in bom_cache:
             # Latest RELEASED — not is_current_version (an open draft revision must not
             # hide the in-force production BOM). See work_order_material_requirements.
-            bom = (BOM.objects.filter(part_type_id=pt_id, bom_type='ASSEMBLY',
+            bom = (BOM.objects.filter(archived=False, part_type_id=pt_id, bom_type='ASSEMBLY',
                    status='RELEASED').order_by('-version').first())
             bom_cache[pt_id] = list(
-                BOMLine.objects.filter(bom=bom)  # tenant-safe: `bom` is tenant-scoped; its lines share its tenant
+                BOMLine.objects.filter(archived=False, bom=bom)  # tenant-safe: `bom` is tenant-scoped; its lines share its tenant
                 .select_related('material', 'component_type')
                 if bom else [])
         return bom_cache[pt_id]
@@ -284,7 +284,7 @@ def sourcing_requirements(tenant) -> dict:
     pool_name: dict = {}
     need_by: dict = {}      # (kind, id) -> earliest need-by date
     buy_obj: dict = {}      # (kind, id) -> BuyItem
-    for wo in (WorkOrder.objects.filter(tenant=tenant, process__isnull=False)
+    for wo in (WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
                .exclude(workorder_status__in=excluded).select_related('process')
                .prefetch_related('parts__core_role')):
         pt_id = wo.process.part_type_id
@@ -386,7 +386,7 @@ def sourcing_requirements(tenant) -> dict:
 
     # --- produce: open pegged child work orders (MAKE) -----------------------
     produce = []
-    for cwo in (WorkOrder.objects.filter(tenant=tenant, pegged_to_bom_line__isnull=False)
+    for cwo in (WorkOrder.objects.filter(archived=False, tenant=tenant, pegged_to_bom_line__isnull=False)
                 .exclude(workorder_status__in=excluded)
                 .select_related('process__part_type', 'pegged_to_workorder')):
         comp = cwo.process.part_type.name if (cwo.process_id and cwo.process.part_type_id) else cwo.ERP_id
@@ -403,7 +403,7 @@ def sourcing_requirements(tenant) -> dict:
 
     # --- tooling: fixtures not yet on hand ----------------------------------
     tooling = []
-    for fx in Fixture.objects.filter(tenant=tenant, quantity=0):
+    for fx in Fixture.objects.filter(archived=False, tenant=tenant, quantity=0):
         lead = fx.lead_time_days
         tooling.append({
             'fixture': fx.name,

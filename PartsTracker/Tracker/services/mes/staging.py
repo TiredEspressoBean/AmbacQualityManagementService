@@ -42,13 +42,13 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     now = timezone.now()
     until = now + timedelta(hours=hours)
 
-    schedule = (ScheduleResult.objects.filter(tenant=tenant, is_active=True)
+    schedule = (ScheduleResult.objects.filter(archived=False, tenant=tenant, is_active=True)
                 .order_by('-created_at').first())
     if schedule is None:
         return _empty(now, until, hours, "No active schedule — solve first.")
 
     # tenant-safe: `schedule` is a tenant-scoped row; its tasks share its tenant.
-    tasks = (ScheduledTask.objects.filter(
+    tasks = (ScheduledTask.objects.filter(archived=False,
                 schedule=schedule, start_time__lt=until, end_time__gt=now)
              .select_related('part__part_type', 'part__work_order',
                              # A core's role, read on the same pass: it says whether the
@@ -124,7 +124,7 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
 
     onhand: dict = {}                      # purchased lots only; see `recovered` above
     for row in (MaterialLot.objects
-                .filter(tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
+                .filter(archived=False, tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
                 .values('material', 'material_type')
                 .annotate(q=Sum('quantity_remaining'))):
         if row['material'] is None and row['material_type'] is None:
@@ -137,7 +137,7 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     from Tracker.models import MaterialStagingLine
     # tenant-safe: explicit tenant filter
     for row in (MaterialStagingLine.objects
-                .filter(tenant=tenant, issued_at__isnull=True)
+                .filter(archived=False, tenant=tenant, issued_at__isnull=True)
                 .values('material', 'material_type').annotate(q=Sum('qty_picked'))):
         k = _key(row)
         if k in onhand:
@@ -307,7 +307,7 @@ def _fixtures_by_step(tenant) -> dict:
     from Tracker.models import Fixture
 
     by_step: dict = defaultdict(set)
-    for f in Fixture.objects.filter(tenant=tenant).prefetch_related('steps'):
+    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('steps'):
         for s in f.steps.all():
             by_step[str(s.id)].add(f.name)
     return by_step
@@ -449,7 +449,7 @@ def _picked_map(tenant, keys) -> dict:
     out = {}
     # tenant-safe: explicit tenant filter
     for r in (MaterialStagingLine.objects
-              .filter(tenant=tenant, staging__work_order_id__in=wo_ids,
+              .filter(archived=False, tenant=tenant, staging__work_order_id__in=wo_ids,
                       staging__step_id__in=step_ids)
               .select_related('staging')):
         out[(str(r.staging.work_order_id), str(r.staging.step_id),

@@ -183,7 +183,7 @@ def create_new_step_version(
         # are copied with the cloned Substep so the content stays
         # complete on the new Step row.
         from Tracker.models.dwi import Substep, SubstepResource, SubstepTranslation
-        for sub in Substep.objects.filter(step=step):
+        for sub in Substep.objects.filter(archived=False, step=step):
             new_sub = Substep.objects.create(
                 step=new_version,
                 identity_id=sub.identity_id,
@@ -248,7 +248,7 @@ def create_new_step_version(
         # Only copy rows where this step is the exclusive target.
         # Rows linked via `process` or `equipment_type` belong to those
         # aggregates' own version lifecycles and must not be duplicated here.
-        for tr in TrainingRequirement.objects.filter(
+        for tr in TrainingRequirement.objects.filter(archived=False,
             step=step,
             process__isnull=True,
             equipment_type__isnull=True,
@@ -416,7 +416,7 @@ def apply_step_sampling_rules_update(
         if dirty:
             main_ruleset.save(update_fields=dirty)
 
-        active_parts = Parts.objects.filter(
+        active_parts = Parts.objects.filter(archived=False,
             step=step,
             part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
         )
@@ -443,7 +443,7 @@ def update_step_sampling_rules(
     Returns the new primary SamplingRuleSet.
     """
     with transaction.atomic():
-        primary_ruleset = SamplingRuleSet.objects.filter(
+        primary_ruleset = SamplingRuleSet.objects.filter(archived=False,
             step=step,
             part_type=step.part_type,
             active=True,
@@ -489,8 +489,8 @@ def validate_step_sampling_coverage(step: Steps, work_order) -> bool:
     Queries Parts for the given work_order / step pair and compares the
     sampled fraction against ``step.min_sampling_rate``.
     """
-    total_parts = Parts.objects.filter(work_order=work_order, step=step).count()
-    sampled_parts = Parts.objects.filter(
+    total_parts = Parts.objects.filter(archived=False, work_order=work_order, step=step).count()
+    sampled_parts = Parts.objects.filter(archived=False,
         work_order=work_order, step=step, requires_sampling=True
     ).count()
     actual_rate = (sampled_parts / total_parts * 100) if total_parts > 0 else 0
