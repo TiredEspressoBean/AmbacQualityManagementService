@@ -1134,14 +1134,80 @@ class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         )
 
 
-class BOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-    """BOM line item management"""
+# The one sheet a BOM imports from and exports to: each row a line, its BOM named by
+# part type + revision + type (see services.mes.bom_import). Export labels ARE the
+# import column names, so an exported file imports back.
+_BOM_SHEET = [
+    ('bom__part_type__name', 'part_type'), ('bom__revision', 'revision'),
+    ('bom__bom_type', 'bom_type'), ('line_number', 'line_number'),
+    ('component_type__name', 'component_type'), ('material__name', 'material'),
+    ('quantity', 'quantity'), ('unit_of_measure', 'unit_of_measure'),
+    ('source', 'source'), ('consumed_at_step__ref', 'consumed_at_step'),
+    ('find_number', 'find_number'), ('reference_designator', 'reference_designator'),
+    ('is_optional', 'is_optional'), ('allow_harvested', 'allow_harvested'),
+    ('notes', 'notes'),
+]
+
+
+def _bom_template():
+    from Tracker.services.template_generator import TemplateField, TemplateGenerator
+    help_text = {
+        'part_type': "The part this BOM builds (name or ERP id) — on every row of its BOM",
+        'revision': "The BOM revision (a new draft revision if the released one differs)",
+        'bom_type': "ASSEMBLY (default) or another BOM type",
+        'component_type': "A part (name or ERP id) — or leave blank and name a material",
+        'material': "A raw material (part number or name) — or name a component_type",
+        'source': "MAKE or BUY",
+        'consumed_at_step': "The step that consumes it: Process > Step",
+    }
+    required = {'part_type', 'quantity'}
+    return TemplateGenerator(
+        model_name="BOMLines",
+        description=("One row per BOM line. The file is the COMPLETE line list for each BOM "
+                     "it names; an import creates a draft, never releases it."),
+        fields=[TemplateField(col, required=col in required, description=help_text.get(col, ''))
+                for _, col in _BOM_SHEET])
+
+
+class BOMLineViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+    """BOM line item management — and BOM import/export, one sheet of lines."""
     queryset = BOMLine.unscoped.select_related('bom', 'component_type')
     serializer_class = BOMLineSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['bom', 'component_type', 'is_optional']
     ordering_fields = ['line_number', 'component_type__name']
     ordering = ['bom', 'line_number']
+
+    export_fields = [path for path, _ in _BOM_SHEET]
+    export_field_labels = {path: col for path, col in _BOM_SHEET}
+    # The parent BOM's part type / revision / type name the sheet's BOM on every row.
+    export_extra_paths = frozenset({'bom__part_type__name', 'bom__revision', 'bom__bom_type'})
+    export_filename = 'bom_lines'
+    csv_template_generator = _bom_template()
+    # The import runs through services.mes.bom_import; this importer only tells the
+    # template and preview which columns it reads beyond the line's own fields.
+    csv_import_serializer = create_import_serializer_for_model(
+        BOMLine, meta={'import_only_fields': ['part_type', 'revision', 'bom_type']})
+
+    def get_export_queryset(self):
+        """The lines of each part's current BOM only — older revisions would put two
+        versions of one BOM in the file."""
+        return (super().get_export_queryset()
+                .filter(archived=False, bom__archived=False, bom__is_current_version=True)
+                .order_by('bom__part_type__name', 'bom__revision', 'line_number'))
+
+    def _process_import_inline(self, rows, mode, serializer_class, tenant, user):
+        """A BOM's lines import together (services.mes.bom_import), not row by row."""
+        from Tracker.services.mes.bom_import import import_bom_rows
+        with transaction.atomic():
+            body = import_bom_rows(rows, tenant=tenant, user=user,
+                                   context=self.get_serializer_context())
+        return Response(body, status=status.HTTP_207_MULTI_STATUS)
+
+    def _queue_background_import(self, rows, mode, serializer_class, tenant, user):
+        # A BOM file is lines of a handful of BOMs; each BOM must land whole, so it's
+        # imported inline however many rows it has (the upload cap still applies).
+        return self._process_import_inline(rows, mode, serializer_class, tenant, user)
 
 
 # ===== ASSEMBLY USAGE VIEWSETS =====
