@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ExternalLink, Plus } from "lucide-react";
 import { useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api/generated";
+import { endpointFn } from "@/lib/api/endpoint-fn";
 import { DataExportMenu } from "@/components/data-export-menu";
 import { DataImportDialog } from "@/components/data-import-dialog";
 
@@ -64,17 +64,6 @@ export interface ListMetadata {
     } | null;
 }
 
-/**
- * The generated client's function for `/api/<endpoint>/<action>`, if the backend has one.
- *
- * The client names functions after the route with `-` turned into `_`
- * (`Error-types` → `api_Error_types_…`). Looking one up by the raw endpoint missed
- * every hyphenated route. What exists here is what the backend's schema has, so this is
- * also how the toolbar knows which models import and export at all.
- */
-// eslint-disable-next-line local/no-as-any -- dynamic API alias lookup by string; see modelEditorMetadataOptions
-const endpointFn = (apiEndpoint: string, action: string): unknown => (api as any)[`api_${apiEndpoint.replace(/-/g, "_")}_${action}`];
-
 const modelEditorMetadataOptions = (modelName: string | undefined, apiEndpoint: string | undefined) => queryOptions({
     queryKey: ["metadata", modelName, apiEndpoint] as const,
     queryFn: async () => {
@@ -109,6 +98,7 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     Equipment: "Equipment",
     Equipments: "Equipment",
     Fixtures: "Fixtures",
+    RepairCodes: "RepairCodes",
     "Equipment-types": "Equipment-types",
     EquipmentTypes: "Equipment-types",
 
@@ -154,6 +144,19 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     Cores: "Cores",
     HarvestedComponents: "HarvestedComponents",
     DisassemblyBOMLines: "DisassemblyBOMLines",
+
+    // Training + calibration (their pages pass the singular model name)
+    JobRole: "JobRoles",
+    JobRoles: "JobRoles",
+    TrainingType: "TrainingTypes",
+    TrainingTypes: "TrainingTypes",
+    CalibrationRecord: "CalibrationRecords",
+    CalibrationRecords: "CalibrationRecords",
+
+    // Scheduling setup
+    StepTimings: "StepTimings",
+    StepEquipmentAffinities: "StepEquipmentAffinities",
+    WorkCenterChangeovers: "WorkCenterChangeovers",
 
     // Life Tracking
     LifeLimitDefinitions: "LifeLimitDefinitions",
@@ -271,6 +274,12 @@ export interface ModelEditorProps<T> {
     /** Disable the export button */
     disableExport?: boolean;
     /**
+     * Query-key prefix of this page's list query, invalidated when an import lands.
+     * Defaults to `[modelName]`, which only matches hooks keyed by the model name —
+     * pass the hook's real root (e.g. `["job-roles"]`) when it differs.
+     */
+    listQueryKey?: readonly unknown[];
+    /**
      * Notify the parent whenever the current page's items change. Use to
      * drive selection toolbars or other parent-side state that depends on
      * the visible rows without lifting the editor's pagination/filter
@@ -294,6 +303,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                                               headerContent,
                                                               disableMetadata = false,
                                                               disableExport = false,
+                                                              listQueryKey,
                                                               onDataChange,
                                                           }: ModelEditorProps<T>) {
     // Deep-linkable list filters. Any `?key=value` query string on the URL
@@ -612,7 +622,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                 <DataImportDialog
                                     modelName={apiEndpoint}
                                     onImportComplete={() => {
-                                        queryClient.invalidateQueries(matchKey([modelName]));
+                                        queryClient.invalidateQueries(matchKey(listQueryKey ?? [modelName]));
                                     }}
                                 />
                             )}

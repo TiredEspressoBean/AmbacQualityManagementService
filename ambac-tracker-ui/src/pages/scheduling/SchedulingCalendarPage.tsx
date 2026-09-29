@@ -49,6 +49,7 @@ import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
+import { DataIOButtons } from "@/components/data-io-buttons";
 
 // Work centers + memberships back the WC filter (station membership → people).
 const calendarWorkCentersOptions = () =>
@@ -812,7 +813,9 @@ export function SchedulingCalendarPage() {
             </>
           )}
 
-          <ListCard title="Plant closures" empty="No closures.">
+          <ListCard title="Plant closures" empty="No closures."
+            actions={<DataIOButtons endpoint="PlantCalendarExceptions" displayName="Plant Closures"
+              invalidateKeys={[["plant-closures"]]} allowImport={canPlan} />}>
             {closures.filter((c) => c.is_active).map((c: PlantClosure) => (
               <Row key={c.id}
                 label={c.name || "Closure"}
@@ -844,7 +847,11 @@ export function SchedulingCalendarPage() {
             </ListCard>
           )}
 
-          <ListCard title="Recurring blocks" empty="No recurring blocks.">
+          {/* Labor blocks' import/export sits here: one file holds every labor
+              block, recurring and one-off alike. */}
+          <ListCard title="Recurring blocks" empty="No recurring blocks."
+            actions={<DataIOButtons endpoint="LaborCalendarBlocks" displayName="Labor Blocks"
+              invalidateKeys={[["labor-blocks"]]} allowImport={canPlan} />}>
             {recurring.filter((b) => inScope(b.user)).map((b: LaborBlock) => (
               <Row key={b.id}
                 label={`${userName(b.user)}: ${b.kind}`}
@@ -871,7 +878,9 @@ export function SchedulingCalendarPage() {
             ))}
           </ListCard>
 
-          <ListCard title="Overtime / extra shifts" empty="No overtime.">
+          <ListCard title="Overtime / extra shifts" empty="No overtime."
+            actions={<DataIOButtons endpoint="OvertimeWindows" displayName="Overtime Windows"
+              invalidateKeys={[["overtime-windows"]]} allowImport={canPlan} />}>
             {overtimes.filter((o) => o.is_active).map((o: Overtime) => (
               <Row key={o.id}
                 label={`Overtime: ${o.shift_name ?? "shift"}`}
@@ -1075,14 +1084,17 @@ function SelectedDaysHint({ count }: { count: number }) {
   );
 }
 
-function ListCard({ title, empty, children }: {
-  title: string; empty: string; children: React.ReactNode;
+function ListCard({ title, empty, actions, children }: {
+  title: string; empty: string; actions?: React.ReactNode; children: React.ReactNode;
 }) {
   const arr = Array.isArray(children) ? children.filter(Boolean) : (children ? [children] : []);
   const hasItems = arr.length > 0;
   return (
     <div className="rounded-lg border p-3">
-      <h4 className="mb-2 text-sm font-medium">{title}</h4>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <h4 className="flex-1 text-sm font-medium">{title}</h4>
+        {actions && <div className="flex items-center gap-1.5">{actions}</div>}
+      </div>
       {hasItems ? <div className="space-y-1.5">{children}</div>
         : <p className="text-xs text-muted-foreground">{empty}</p>}
     </div>

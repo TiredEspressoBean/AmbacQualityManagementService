@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, Ruler } from 'lucide-react';
 import { useRetrieveMeasurementDefinitions } from '@/hooks/useRetrieveMeasurementDefinitions';
 import { useDeleteMeasurementDefinition } from '@/hooks/useDeleteMeasurementDefinition';
 import MeasurementDefinitionForm from '@/components/measurement-definition-form';
+import { DataIOButtons } from '@/components/data-io-buttons';
 import { toast } from 'sonner';
 
 interface MeasurementDefinition {
@@ -111,9 +112,22 @@ export function MeasurementsEditor({ stepId, stepName, open, onOpenChange, readO
             {mode === 'edit' && 'Edit Measurement'}
           </DialogTitle>
           {mode === 'list' && (
-            <DialogDescription>
-              Define what measurements are taken at this step
-            </DialogDescription>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <DialogDescription>
+                Define what measurements are taken at this step
+              </DialogDescription>
+              {/* Export is this step's measurements; an import file names each
+                  row's step, so it can add to any step. */}
+              <div className="flex items-center gap-2">
+                <DataIOButtons
+                  endpoint="MeasurementDefinitions"
+                  displayName="Measurement Definitions"
+                  invalidateKeys={[['measurementDefinitions']]}
+                  queryParams={{ step: stepId }}
+                  allowImport={!readOnly}
+                />
+              </div>
+            </div>
           )}
         </DialogHeader>
 

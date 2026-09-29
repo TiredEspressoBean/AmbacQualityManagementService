@@ -16,6 +16,7 @@ import { useTrainingTypes } from "@/hooks/useTrainingTypes";
 import { useCreateTrainingRequirement } from "@/hooks/useCreateTrainingRequirement";
 import { useDeleteTrainingRequirement } from "@/hooks/useDeleteTrainingRequirement";
 import { api } from "@/lib/api/generated";
+import { DataIOButtons } from "@/components/data-io-buttons";
 
 /**
  * Reusable "required training" editor for any TrainingRequirement scope
@@ -86,9 +87,22 @@ export function TrainingRequirementsEditor({
 
     return (
         <div className="space-y-3 rounded-md border p-4">
-            <div>
-                <h2 className="text-sm font-semibold">{title}</h2>
-                <p className="text-xs text-muted-foreground">{description}</p>
+            <div className="flex flex-wrap items-start gap-2">
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-semibold">{title}</h2>
+                    <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+                {/* Export is narrowed to this scope; an import file names its own
+                    scope per row, so it can add requirements anywhere. */}
+                <div className="flex flex-shrink-0 items-center gap-2">
+                    <DataIOButtons
+                        endpoint="TrainingRequirements"
+                        displayName="Training Requirements"
+                        invalidateKeys={[["training-requirements"]]}
+                        queryParams={scope}
+                        allowImport={!readOnly}
+                    />
+                </div>
             </div>
 
             {isLoading ? (

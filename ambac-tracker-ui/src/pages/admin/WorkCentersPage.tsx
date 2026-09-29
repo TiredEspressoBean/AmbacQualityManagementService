@@ -31,6 +31,7 @@ import {
 import { StationDialog } from "@/components/stations/StationDialog";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { matchKey } from "@/lib/query-filters";
+import { DataIOButtons } from "@/components/data-io-buttons";
 
 const workCentersAdminOptions = (search: string) =>
     queryOptions({
@@ -178,6 +179,13 @@ export default function WorkCentersPage() {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
+                <DataIOButtons
+                    endpoint="WorkCenters"
+                    displayName="Work Centers"
+                    invalidateKeys={[["work-centers"]]}
+                    {...(search ? { queryParams: { search } } : {})}
+                    allowImport={canCreate}
+                />
                 {canCreate && (
                     <Button onClick={openCreate}>
                         <Plus className="mr-1 h-4 w-4" /> New work center

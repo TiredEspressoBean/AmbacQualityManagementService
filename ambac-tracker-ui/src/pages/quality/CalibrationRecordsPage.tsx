@@ -12,13 +12,17 @@ function useCalibrationRecordsList({
     limit,
     ordering,
     search,
+    filters,
 }: {
     offset: number;
     limit: number;
     ordering?: string;
     search?: string;
+    filters?: Record<string, string>;
 }) {
-    const queries: Parameters<typeof useCalibrationRecords>[0] = { offset, limit };
+    // Filters come from the list metadata's filterset (the dropdowns ModelEditorPage
+    // renders), so they are this endpoint's own query params.
+    const queries: Parameters<typeof useCalibrationRecords>[0] = { ...filters, offset, limit };
     if (ordering !== undefined) queries.ordering = ordering;
     if (search !== undefined) queries.search = search;
     return useCalibrationRecords(queries);
@@ -106,6 +110,7 @@ export function CalibrationRecordsPage() {
             renderActions={(record) => <EditCalibrationRecordActionCell recordId={record.id} />}
             onCreate={() => navigate({ to: "/CalibrationRecordForm/$id", params: { id: "new" } })}
             showDetailsLink={false}
+            listQueryKey={["calibration-records"]}
         />
     );
 }

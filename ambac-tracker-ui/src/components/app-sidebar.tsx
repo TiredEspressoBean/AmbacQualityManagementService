@@ -4,6 +4,7 @@ import {
     BookOpen,
     Bot,
     CalendarDays,
+    Cog,
     CalendarRange,
     CheckSquare,
     ClipboardList,
@@ -27,6 +28,8 @@ import {
     PackageCheck,
     PackageSearch,
     BadgeCheck,
+    Repeat,
+    Timer,
     Recycle,
     Hammer,
     Boxes,
@@ -83,6 +86,11 @@ const schedulingPages = [
     { name: "Staging List", url: "/production/staging", icon: PackageCheck },
     { name: "Operator Hours", url: "/production/labor-hours", icon: Clock },
     { name: "Requirements", url: "/production/requirements", icon: ClipboardList },
+    // Setup data the solver reads: standard times, which machines run a step, and
+    // the changeover matrix.
+    { name: "Step Timings", url: "/production/step-timings", icon: Timer },
+    { name: "Machine Eligibility", url: "/production/step-equipment-affinities", icon: Cog },
+    { name: "Changeovers", url: "/production/work-center-changeovers", icon: Repeat },
 ]
 
 // Supply - inbound material + suppliers (staff only, collapsible). "Materials"

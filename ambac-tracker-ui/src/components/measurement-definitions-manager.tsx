@@ -8,6 +8,7 @@ import { ChevronDown, Plus, Ruler } from "lucide-react";
 import { useRetrieveMeasurementDefinitions } from "@/hooks/useRetrieveMeasurementDefinitions";
 import MeasurementDefinitionCard from "./measurement-definition-card";
 import MeasurementDefinitionForm from "./measurement-definition-form";
+import { DataIOButtons } from "@/components/data-io-buttons";
 
 interface MeasurementDefinitionsManagerProps {
   stepId: string;
@@ -62,28 +63,36 @@ export default function MeasurementDefinitionsManager({
       </CollapsibleTrigger>
 
       <CollapsibleContent className="space-y-4 pt-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <p className="text-sm text-muted-foreground">
             Define what measurements need to be taken for this step.
           </p>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Measurement
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Create Measurement Definition</DialogTitle>
-              </DialogHeader>
-              <MeasurementDefinitionForm
-                stepId={stepId}
-                onSuccess={handleCreateSuccess}
-                onCancel={() => setIsCreateDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <DataIOButtons
+              endpoint="MeasurementDefinitions"
+              displayName="Measurement Definitions"
+              invalidateKeys={[["measurementDefinitions"]]}
+              queryParams={{ step: stepId }}
+            />
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Measurement
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create Measurement Definition</DialogTitle>
+                </DialogHeader>
+                <MeasurementDefinitionForm
+                  stepId={stepId}
+                  onSuccess={handleCreateSuccess}
+                  onCancel={() => setIsCreateDialogOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {definitions.length === 0 ? (

@@ -12,13 +12,17 @@ function useJobRolesList({
     limit,
     ordering,
     search,
+    filters,
 }: {
     offset: number;
     limit: number;
     ordering?: string;
     search?: string;
+    filters?: Record<string, string>;
 }) {
-    const queries: Parameters<typeof useJobRoles>[0] = { offset, limit };
+    // Filters come from the list metadata's filterset (the dropdowns ModelEditorPage
+    // renders), so they are this endpoint's own query params.
+    const queries: Parameters<typeof useJobRoles>[0] = { ...filters, offset, limit };
     if (ordering !== undefined) queries.ordering = ordering;
     if (search !== undefined) queries.search = search;
     return useJobRoles(queries);
@@ -57,6 +61,7 @@ export function JobRolesPage() {
             renderActions={(role) => <EditJobRoleActionCell roleId={role.id} />}
             onCreate={() => navigate({ to: "/quality/training/roles/new" })}
             showDetailsLink={false}
+            listQueryKey={["job-roles"]}
         />
     );
 }

@@ -55320,7 +55320,12 @@ switches from running one step to another. One row per matrix cell.`,
     method: "get",
     path: "/api/WorkCenters-Options/",
     alias: "api_WorkCenters_Options_list",
-    description: `Lightweight work center endpoint for dropdowns`,
+    description: `Lightweight work center endpoint for dropdowns.
+
+Current, live versions only: WorkCenter is versioned, so &#x60;.all()&#x60; listed every
+superseded revision beside the current one and a pick could bind a record to an
+old version. Archived ones are excluded outright, not left to &#x60;?include_archived&#x60;
+— a dropdown offers what can be chosen now.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55335,7 +55340,12 @@ switches from running one step to another. One row per matrix cell.`,
     method: "get",
     path: "/api/WorkCenters-Options/:id/",
     alias: "api_WorkCenters_Options_retrieve",
-    description: `Lightweight work center endpoint for dropdowns`,
+    description: `Lightweight work center endpoint for dropdowns.
+
+Current, live versions only: WorkCenter is versioned, so &#x60;.all()&#x60; listed every
+superseded revision beside the current one and a pick could bind a record to an
+old version. Archived ones are excluded outright, not left to &#x60;?include_archived&#x60;
+— a dropdown offers what can be chosen now.`,
     requestFormat: "json",
     parameters: [
       {

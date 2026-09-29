@@ -14355,7 +14355,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Lightweight work center endpoint for dropdowns */
+        /**
+         * @description Lightweight work center endpoint for dropdowns.
+         *
+         *     Current, live versions only: WorkCenter is versioned, so `.all()` listed every
+         *     superseded revision beside the current one and a pick could bind a record to an
+         *     old version. Archived ones are excluded outright, not left to `?include_archived`
+         *     — a dropdown offers what can be chosen now.
+         */
         get: operations["api_WorkCenters_Options_list"];
         put?: never;
         post?: never;
@@ -14372,7 +14379,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Lightweight work center endpoint for dropdowns */
+        /**
+         * @description Lightweight work center endpoint for dropdowns.
+         *
+         *     Current, live versions only: WorkCenter is versioned, so `.all()` listed every
+         *     superseded revision beside the current one and a pick could bind a record to an
+         *     old version. Archived ones are excluded outright, not left to `?include_archived`
+         *     — a dropdown offers what can be chosen now.
+         */
         get: operations["api_WorkCenters_Options_retrieve"];
         put?: never;
         post?: never;
@@ -21481,6 +21495,9 @@ export interface components {
          * @description CRUD over `ExternalContact`. Tenant-scoped automatically by the
          *     viewset; the customer FK is validated to belong to the current tenant
          *     via TenantScopedPrimaryKeyRelatedField.
+         *
+         *     The unsubscribe token is never exposed or writable here; it is issued by
+         *     `issue_unsubscribe_token_if_enabling` when a write turns the contact on.
          */
         ExternalContact: {
             /** Format: uuid */
@@ -21502,6 +21519,9 @@ export interface components {
          * @description CRUD over `ExternalContact`. Tenant-scoped automatically by the
          *     viewset; the customer FK is validated to belong to the current tenant
          *     via TenantScopedPrimaryKeyRelatedField.
+         *
+         *     The unsubscribe token is never exposed or writable here; it is issued by
+         *     `issue_unsubscribe_token_if_enabling` when a write turns the contact on.
          */
         ExternalContactRequest: {
             /** Format: uuid */
@@ -26591,6 +26611,9 @@ export interface components {
          * @description CRUD over `ExternalContact`. Tenant-scoped automatically by the
          *     viewset; the customer FK is validated to belong to the current tenant
          *     via TenantScopedPrimaryKeyRelatedField.
+         *
+         *     The unsubscribe token is never exposed or writable here; it is issued by
+         *     `issue_unsubscribe_token_if_enabling` when a write turns the contact on.
          */
         PatchedExternalContactRequest: {
             /** Format: uuid */

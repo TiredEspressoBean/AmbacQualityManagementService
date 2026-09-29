@@ -41,6 +41,7 @@ export function RepairCodesEditorPage() {
         <ModelEditorPage
             title="Repair Codes"
             modelName="RepairCodes"
+            listQueryKey={["repair-code"]}
             useList={useRepairCodesList}
             sortOptions={[
                 { label: "Code (A-Z)", value: "code" },

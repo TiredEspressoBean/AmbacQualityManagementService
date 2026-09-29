@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useShifts, useSaveShift, useDeleteShift } from "@/hooks/useScheduling";
+import { DataIOButtons } from "@/components/data-io-buttons";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // index = day number 0..6
 
@@ -138,12 +139,17 @@ export function ShiftsSettingsTab() {
 
   return (
     <div className="grid gap-3">
-      <p className="text-xs text-muted-foreground">
-        The solver only schedules attended work inside active shift windows. Times are
-        local; overnight shifts (end ≤ start) roll into the next day. Breaks are the
-        shift's standing daily pauses (morning break, lunch) — subtracted from every
-        working day.
-      </p>
+      <div className="flex flex-wrap items-start gap-2">
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+          The solver only schedules attended work inside active shift windows. Times are
+          local; overnight shifts (end ≤ start) roll into the next day. Breaks are the
+          shift's standing daily pauses (morning break, lunch) — subtracted from every
+          working day.
+        </p>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <DataIOButtons endpoint="Shifts" invalidateKeys={[["shifts"]]} />
+        </div>
+      </div>
 
       {rows.length === 0 && (
         <p className="text-sm text-muted-foreground">No shifts yet — add one below.</p>
