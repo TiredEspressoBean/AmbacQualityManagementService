@@ -4,7 +4,8 @@ WorkCenter: matched on `code`; `equipment` is a `; ` list of names. An import ed
 way `WorkCenterSerializer.update` does — a content edit versions, a placement/planning
 edit (equipment, is_constraint, is_critical) saves in place.
 
-Shift: matched on `code`; every edit versions (as `ShiftViewSet.perform_update` does).
+Shift: matched on `code`; a content edit versions and an is_active/archived flip saves
+in place (the serializer's `_NON_VERSIONING_FIELDS`, as `ShiftViewSet.perform_update` routes).
 Breaks are written `12:00-12:30; 15:00-15:15`.
 
 Both round trips also prove the unchanged import forked NO new version: the snapshot

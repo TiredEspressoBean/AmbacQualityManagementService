@@ -135,8 +135,10 @@ STAFF_VIEW_PERMISSIONS = [
     'view_generatedreport',
     # AI Chat & Embeddings
     'view_chatsession', 'view_docchunk',
-    # Notifications (config is admin-managed; everyone can see what's configured)
-    'view_notificationrule', 'view_notificationschedule',
+    # Notifications (config is admin-managed; everyone can see what's configured —
+    # including the customer contacts a rule sends to, so the recipient list on a
+    # rule staff can open isn't a 403. Managing contacts stays manager-tier.)
+    'view_notificationrule', 'view_notificationschedule', 'view_externalcontact',
     # Audit & traceability (viewing is universal; exporting is compliance-gated)
     # `view_logentry` is the django-auditlog perm the /api/auditlog/ endpoint
     # actually enforces (TenantModelPermissions derives it from the LogEntry
@@ -501,6 +503,10 @@ NOTIFICATION_ADMIN_PERMISSIONS = [
     'edit_notification_rules', 'edit_notification_schedules',
     'add_notificationrule', 'change_notificationrule',
     'add_notificationschedule', 'change_notificationschedule',
+    # External contacts are the customer-side recipients of customer-scoped
+    # rules — the same configuration, managed by the same roles.
+    'view_externalcontact', 'add_externalcontact',
+    'change_externalcontact', 'delete_externalcontact',
 ]
 
 # Authoring shift notes (floor handoff) = the supervisor tier (Shift Lead +

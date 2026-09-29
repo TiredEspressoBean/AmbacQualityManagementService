@@ -36,7 +36,8 @@ ADMIN_ONLY_MODELS = {
     'tenant', 'tenantllmprovider',
     'tenantnotificationbranding', 'tenantnotificationdefault',
     'usernotificationpreference',          # per-user prefs (self-service via /me)
-    'hubspotsynclog', 'externalcontact',   # integration / external contacts
+    'hubspotsynclog',                      # integration sync log
+    # ('externalcontact' moved out: staff view it, notification managers manage it.)
     'artifactsequence',                    # change-control sequence counter
     'notificationtemplate', 'notificationoutbox', 'notificationtask',
     'escalationpolicy', 'escalationstep', 'escalationinstance',

@@ -89,14 +89,20 @@ def _released_bom(part_type):
 
 
 def _build_process(component_type):
-    """The single APPROVED, current, non-disassembly process that builds `component_type`.
+    """The single APPROVED, non-disassembly process that builds `component_type`.
     Returns (process, None) on a unique match, else (None, reason) — we never guess which
-    routing to use when it's ambiguous."""
+    routing to use when it's ambiguous.
+
+    Not `is_current_version`: opening a draft revision makes the approved row
+    non-current (the draft is now the latest version) while it is still the routing in
+    force. Approving the revision archives its predecessor, so "approved and not
+    archived" is exactly the version in force — one per process, even mid-revision.
+    Requiring "current" made every open revision read as "no approved build process".
+    """
     from Tracker.models import Processes
     procs = list(
         Processes.objects.filter(archived=False,   # tenant-safe: .objects auto-scopes to the request tenant
-            part_type=component_type, status='APPROVED',
-            is_current_version=True, is_disassembly=False)[:2]
+            part_type=component_type, status='APPROVED', is_disassembly=False)[:2]
     )
     if not procs:
         return None, "no approved build process for this component"

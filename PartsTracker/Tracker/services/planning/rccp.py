@@ -594,7 +594,6 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     """Can we take `quantity` of `part_type_id` due `target_date`? Explode its routing,
     add to the existing load, and check whether any resource in the target bucket
     crosses capacity. Returns feasibility + the binding resource + earliest-fit bucket."""
-    from Tracker.models import Processes
     import collections
 
     ref = _load_reference(tenant)
@@ -613,11 +612,18 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
         _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load,
                          pool_h, pool_load)
 
-    # candidate routing: the part type's current process, walked from its head along
-    # DEFAULT edges (same resolver as the solver — no rework branch, no terminal state)
-    proc = Processes.objects.filter(archived=False, tenant=tenant, part_type_id=part_type_id).order_by('-created_at').first()
+    # candidate routing: the process a new work order for this part type would be built
+    # on — the single APPROVED, non-disassembly one (the version in force, even while a
+    # revision is open), resolved exactly as BOM
+    # explosion resolves it for the component work orders the solver then schedules.
+    # Not "the newest process": that picked up an unapproved draft revision and quoted
+    # against a routing nobody can release work on. Walked from its head along DEFAULT
+    # edges (same route resolver as the solver — no rework branch, no terminal state).
+    from Tracker.services.mes.bom_explosion import _build_process
+    proc, why_not = _build_process(part_type_id)
     if proc is None:
-        return {'feasible': False, 'reason': 'No process/routing defined for that part type.'}
+        return {'feasible': False,
+                'reason': f'No approved process/routing defined for that part type ({why_not}).'}
     from Tracker.services.scheduling.manual_move import _process_graph
     from Tracker.services.scheduling.routing import resolve_route
     nodes, edges = _process_graph(proc.id)

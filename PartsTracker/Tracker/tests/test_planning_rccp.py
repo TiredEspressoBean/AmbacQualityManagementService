@@ -15,7 +15,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from Tracker.models import (
-    Companies, Equipments, OptimizationConfig, Parts, PartTypes, Processes, ProcessStep,
+    Companies, Equipments, OptimizationConfig, Parts, PartTypes, Processes, ProcessStatus,
+    ProcessStep,
     Shift, StepEdge, Steps, StepTiming, Tenant, WorkCenter, WorkOrder, WorkOrderStatus,
 )
 from Tracker.services.planning import rccp
@@ -51,8 +52,9 @@ class _RccpFixture(TenantContextMixin):
         self.wc.equipment.add(self.machine)
 
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="Widget")
+        # APPROVED: CTP quotes only against a releasable (approved, current) routing.
         self.process = Processes.objects.create(
-            tenant=self.tenant, name="W", part_type=self.pt)
+            tenant=self.tenant, name="W", part_type=self.pt, status=ProcessStatus.APPROVED)
         # 60 min/piece on one step in Cell A → 1 hour of work per unit.
         self.step = Steps.objects.create(
             tenant=self.tenant, part_type=self.pt, name="Cut", step_type="TASK",

@@ -75,9 +75,12 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
     # Create-only (see _CalibrationRecordImport). The same equipment + date + certificate
     # is the same calibration: it matches the existing record, so it is refused in
     # `create` mode and can't be changed in any mode — never a second record.
+    # `certificate_number?`: a row with no certificate still matches — it means "the
+    # uncertified calibration of this machine on this date". Without the `?` a blank
+    # certificate skipped the check, so re-importing uncertified records duplicated them.
     csv_import_serializer = create_import_serializer_for_model(
         CalibrationRecord,
-        lookup_fields=['id', ('equipment', 'calibration_date', 'certificate_number')],
+        lookup_fields=['id', ('equipment', 'calibration_date', 'certificate_number?')],
         extra_fk_fields={'equipment': (Equipments, ['serial_number', 'name', 'id'])},
         base=_CalibrationRecordImport)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

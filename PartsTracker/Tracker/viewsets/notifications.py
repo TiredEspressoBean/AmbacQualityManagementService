@@ -30,7 +30,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, inline_serializer
 
-from Tracker.permissions import TenantAccessPermission
+from Tracker.permissions import TenantAccessPermission, TenantModelPermissions
 from Tracker.models import (
     ExternalContact,
     NotificationOutbox,
@@ -43,13 +43,14 @@ from Tracker.serializers.notifications import (
     NotificationFeedItemSerializer,
     PersonalRuleSerializer,
     TenantRuleSerializer,
+    issue_unsubscribe_token_if_enabling,
 )
 from Tracker.serializers.notification_schedule import (
     CustomerScheduleSerializer,
     PersonalScheduleSerializer,
     TenantScheduleSerializer,
 )
-from Tracker.serializers.csv_import import create_import_serializer_for_model
+from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from Tracker.viewsets.base import TenantScopedMixin
 from Tracker.viewsets.mixins import CSVImportMixin, DataExportMixin
 
@@ -136,6 +137,20 @@ class PersonalRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 # External contacts.
 # =============================================================================
 
+class _ExternalContactImportBase(BaseCSVImportSerializer):
+    """A spreadsheet row that turns a contact on issues its unsubscribe token,
+    exactly as the API does — the import writes the model directly, bypassing
+    `ExternalContactSerializer.create/update`."""
+
+    def create_instance(self, data):
+        issue_unsubscribe_token_if_enabling(data, was_enabled=None)
+        return super().create_instance(data)
+
+    def update_instance(self, instance, data):
+        issue_unsubscribe_token_if_enabling(data, was_enabled=instance.enabled)
+        return super().update_instance(instance, data)
+
+
 @extend_schema_view(list=extend_schema(parameters=[_customer_param]))
 class ExternalContactViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
                              viewsets.ModelViewSet):
@@ -147,8 +162,11 @@ class ExternalContactViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
     # A contact is its email at its customer — the model's unique constraint. The
     # customer is found by company name.
     csv_import_serializer = create_import_serializer_for_model(
-        ExternalContact, lookup_fields=['id', ('customer', 'email')])
-    permission_classes = [IsAuthenticated, TenantAccessPermission]
+        ExternalContact, lookup_fields=['id', ('customer', 'email')],
+        base=_ExternalContactImportBase)
+    # Model perms gate writes: contacts are notification config (who outside the
+    # tenant gets mailed), so only the NOTIFICATION_ADMIN_PERMISSIONS roles manage them.
+    permission_classes = [IsAuthenticated, TenantAccessPermission, TenantModelPermissions]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "email", "role"]
     ordering_fields = ["created_at", "updated_at", "name"]

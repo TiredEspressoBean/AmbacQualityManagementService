@@ -36478,7 +36478,13 @@ paths:
   /api/WorkCenters-Options/:
     get:
       operationId: api_WorkCenters_Options_list
-      description: Lightweight work center endpoint for dropdowns
+      description: |-
+        Lightweight work center endpoint for dropdowns.
+
+        Current, live versions only: WorkCenter is versioned, so `.all()` listed every
+        superseded revision beside the current one and a pick could bind a record to an
+        old version. Archived ones are excluded outright, not left to `?include_archived`
+        — a dropdown offers what can be chosen now.
       parameters:
       - name: ordering
         required: false
@@ -36503,7 +36509,13 @@ paths:
   /api/WorkCenters-Options/{id}/:
     get:
       operationId: api_WorkCenters_Options_retrieve
-      description: Lightweight work center endpoint for dropdowns
+      description: |-
+        Lightweight work center endpoint for dropdowns.
+
+        Current, live versions only: WorkCenter is versioned, so `.all()` listed every
+        superseded revision beside the current one and a pick could bind a record to an
+        old version. Archived ones are excluded outright, not left to `?include_archived`
+        — a dropdown offers what can be chosen now.
       parameters:
       - in: path
         name: id
@@ -50593,6 +50605,9 @@ components:
         CRUD over `ExternalContact`. Tenant-scoped automatically by the
         viewset; the customer FK is validated to belong to the current tenant
         via TenantScopedPrimaryKeyRelatedField.
+
+        The unsubscribe token is never exposed or writable here; it is issued by
+        `issue_unsubscribe_token_if_enabling` when a write turns the contact on.
       properties:
         id:
           type: string
@@ -50635,6 +50650,9 @@ components:
         CRUD over `ExternalContact`. Tenant-scoped automatically by the
         viewset; the customer FK is validated to belong to the current tenant
         via TenantScopedPrimaryKeyRelatedField.
+
+        The unsubscribe token is never exposed or writable here; it is issued by
+        `issue_unsubscribe_token_if_enabling` when a write turns the contact on.
       properties:
         customer:
           type: string
@@ -60252,6 +60270,9 @@ components:
         CRUD over `ExternalContact`. Tenant-scoped automatically by the
         viewset; the customer FK is validated to belong to the current tenant
         via TenantScopedPrimaryKeyRelatedField.
+
+        The unsubscribe token is never exposed or writable here; it is issued by
+        `issue_unsubscribe_token_if_enabling` when a write turns the contact on.
       properties:
         customer:
           type: string

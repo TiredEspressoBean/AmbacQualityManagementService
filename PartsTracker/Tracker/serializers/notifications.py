@@ -14,6 +14,8 @@ surfacing at the API boundary.
 """
 from __future__ import annotations
 
+import secrets
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
@@ -386,10 +388,29 @@ class PersonalRuleSerializer(_BaseRuleSerializer):
 # External contacts (customer-side recipients).
 # =============================================================================
 
+def issue_unsubscribe_token_if_enabling(values: dict, was_enabled: bool | None) -> None:
+    """Put a fresh `unsubscribe_token` into `values` when this write turns a contact on.
+
+    `was_enabled` is the contact's state before the write — None for a new contact.
+    A contact that is created enabled, or flips from disabled back to enabled, gets
+    a new token: an unsubscribe link sent before the contact was disabled must not
+    silently work again once they're re-enabled. Any other write leaves the token
+    alone. Mutates `values` (validated data / import changes) in place; the caller
+    saves. Used by the API serializer and the spreadsheet importer alike.
+    """
+    enabling = values.get('enabled', True if was_enabled is None else was_enabled)
+    if enabling and not was_enabled:
+        values['unsubscribe_token'] = secrets.token_urlsafe(32)
+
+
 class ExternalContactSerializer(serializers.ModelSerializer):
     """CRUD over `ExternalContact`. Tenant-scoped automatically by the
     viewset; the customer FK is validated to belong to the current tenant
-    via TenantScopedPrimaryKeyRelatedField."""
+    via TenantScopedPrimaryKeyRelatedField.
+
+    The unsubscribe token is never exposed or writable here; it is issued by
+    `issue_unsubscribe_token_if_enabling` when a write turns the contact on.
+    """
 
     customer = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all())
 
@@ -406,5 +427,13 @@ class ExternalContactSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        issue_unsubscribe_token_if_enabling(validated_data, was_enabled=None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        issue_unsubscribe_token_if_enabling(validated_data, was_enabled=instance.enabled)
+        return super().update(instance, validated_data)
 
 

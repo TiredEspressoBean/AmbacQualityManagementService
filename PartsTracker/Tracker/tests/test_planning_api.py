@@ -30,7 +30,9 @@ class PlanningAPITests(TenantTestCase):
         self.wc.equipment.add(self.machine)
 
         self.pt = PartTypes.objects.create(tenant=t, name="Widget")
-        self.process = Processes.objects.create(tenant=t, name="W", part_type=self.pt)
+        # APPROVED: capable-to-promise quotes only against a releasable routing.
+        self.process = Processes.objects.create(tenant=t, name="W", part_type=self.pt,
+                                                status="APPROVED")
         self.step = Steps.objects.create(
             tenant=t, part_type=self.pt, name="Cut", step_type="TASK", work_center=self.wc)
         StepTiming.objects.create(tenant=t, step=self.step, cycle_time_minutes=60)

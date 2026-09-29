@@ -240,8 +240,14 @@ class WorkCenterViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, view
 
 
 class WorkCenterSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
-    """Lightweight work center endpoint for dropdowns"""
-    queryset = WorkCenter.unscoped.all()
+    """Lightweight work center endpoint for dropdowns.
+
+    Current, live versions only: WorkCenter is versioned, so `.all()` listed every
+    superseded revision beside the current one and a pick could bind a record to an
+    old version. Archived ones are excluded outright, not left to `?include_archived`
+    — a dropdown offers what can be chosen now."""
+    # Tenant-scoped per request by TenantScopedMixin.get_queryset.
+    queryset = WorkCenter.unscoped.filter(is_current_version=True, archived=False)
     serializer_class = WorkCenterSelectSerializer
     pagination_class = None
 
@@ -367,11 +373,14 @@ class ShiftViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.
     """
     queryset = Shift.unscoped.filter(is_current_version=True)
     serializer_class = ShiftSerializer
-    # Matched on its code. An edit versions the shift, as `perform_update` does.
+    # Matched on its code. An edit is routed as `perform_update` routes it: the
+    # importer's automatic path (a versioned model whose serializer declares
+    # `_NON_VERSIONING_FIELDS`) versions a content edit and saves an
+    # is_active/archived flip in place.
     # `days_of_week` is the model's own text (`0,1,2,3,4`, 0 = Monday).
     csv_import_serializer = create_import_serializer_for_model(
         Shift, lookup_fields=['id', 'code'], base=_ShiftImport,
-        meta={'update_via_new_version': True, 'import_column_help': {
+        meta={'import_column_help': {
             'break_windows': "Breaks as start-end, e.g. 12:00-12:30; 15:00-15:15. "
                              "Blank leaves them unchanged.",
             'days_of_week': "Day numbers, comma-separated: 0 = Monday … 6 = Sunday.",
@@ -388,17 +397,25 @@ class ShiftViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.
         return super()._convert_df_for_excel(df)
 
     def perform_update(self, serializer):
-        """Version the shift instead of mutating it in place, so labor-hour changes
-        keep an audit trail. The validated changes become field overrides on the new
-        current version; the response reflects that new version."""
+        """Version a content edit so labor-hour changes keep an audit trail; save a
+        flip of only the serializer's `_NON_VERSIONING_FIELDS` (is_active, archived)
+        in place. The routing is `apply_versioned_update`'s, keyed on the fields that
+        actually changed — the same rule the spreadsheet import applies. On a
+        version, the validated changes become field overrides on the new current
+        version and the response reflects it."""
+        from Tracker.services.core.versioning import apply_versioned_update
+
         instance = serializer.instance
         updates = {k: v for k, v in serializer.validated_data.items() if k != 'tenant'}
         if not updates:
-            return  # nothing changed — don't spin a no-op version
-        serializer.instance = instance.create_new_version(
-            user=self.request.user,
-            change_description="Edited via scheduling settings",
-            **updates,
+            return  # nothing submitted — don't spin a no-op version
+        serializer.instance = apply_versioned_update(
+            instance, updates,
+            non_versioning_fields=ShiftSerializer._NON_VERSIONING_FIELDS,
+            # The plain in-place save — ShiftSerializer.update would route a second time.
+            default_update=super(ShiftSerializer, serializer).update,
+            version_kwargs={'user': self.request.user,
+                            'change_description': "Edited via scheduling settings"},
         )
 
 

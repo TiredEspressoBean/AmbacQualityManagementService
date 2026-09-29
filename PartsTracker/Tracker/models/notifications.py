@@ -441,8 +441,11 @@ class ExternalContact(SecureModel):
     notifications, late-risk alerts. Tenant-scoped via SecureModel; cross-
     tenant routing is blocked by the customer_id FK chain.
 
-    `unsubscribe_token` is rotated whenever `enabled` flips on; expired or
-    cross-tenant tokens are rejected by the unsubscribe endpoint (Phase 4).
+    `unsubscribe_token` is issued when a contact is created enabled and rotated
+    whenever `enabled` flips back on (`serializers.notifications.
+    issue_unsubscribe_token_if_enabling`, used by the API and the spreadsheet
+    import — not save()); expired or cross-tenant tokens are rejected by the
+    unsubscribe endpoint (Phase 4).
     """
 
     customer = models.ForeignKey(
