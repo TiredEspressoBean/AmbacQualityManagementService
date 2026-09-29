@@ -2317,6 +2317,16 @@ class TrainingType(SecureModel):
     def __str__(self):
         return self.name
 
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.training.create_new_training_type_version`,
+        which repoints TrainingRequirements (configuration) to the new current row.
+        TrainingRecords (history) stay on the version they were earned against;
+        qualification reads compare across the version chain."""
+        from Tracker.services.training import create_new_training_type_version
+        return create_new_training_type_version(
+            self, user=user, change_description=change_description, **field_updates,
+        )
+
 
 class TrainingRecord(SecureModel):
     """

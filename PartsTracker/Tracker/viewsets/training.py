@@ -65,9 +65,20 @@ class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, 
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
+        """Current versions only when listing.
+
+        TrainingType is versioned, so an edit leaves the superseded row behind and
+        the list showed both. Scoped to `list` (as `WorkCenterViewSet` does) rather
+        than the class queryset because `TrainingRecord.training_type` stays on the
+        version a record was earned against — a by-id fetch of that version must
+        keep working.
+        """
         if getattr(self, 'swagger_fake_view', False):
             return TrainingType.objects.none()
-        return super().get_queryset()
+        qs = super().get_queryset()
+        if self.action == 'list':
+            qs = qs.filter(is_current_version=True)
+        return qs
 
 
 # ===== TRAINING RECORD VIEWSET =====

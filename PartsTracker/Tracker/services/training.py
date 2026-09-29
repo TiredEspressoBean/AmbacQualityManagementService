@@ -27,8 +27,72 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
+
+
+# ---- Versioning ------------------------------------------------------------
+#
+# TrainingType is versioned: each revision is its own row. Requirements are
+# configuration and follow the type to its new version; TrainingRecords are
+# history and stay on the version they were earned against. So a qualification
+# read can never compare `record.training_type_id == requirement.training_type_id`
+# — after one revision that matches nobody. Every read below compares by LINEAGE
+# (the root of the version chain) instead.
+
+def create_new_training_type_version(training_type, *, user=None, change_description=None,
+                                     **field_updates):
+    """Create a new version of a TrainingType and repoint its requirements.
+
+    Deliberately NOT repointed: `TrainingRecord.training_type`. A record is
+    evidence that someone completed the curriculum as it stood then; it stays on
+    that version. Qualification reads resolve both sides to the chain root
+    (`training_type_lineage`), so an existing record still satisfies a
+    requirement that now points at the new version.
+    """
+    from Tracker.models import TrainingType
+
+    with transaction.atomic():
+        new = super(TrainingType, training_type).create_new_version(
+            user=user, change_description=change_description, **field_updates,
+        )
+        # tenant-safe: reverse relation of an in-tenant TrainingType row.
+        training_type.requirements.all().update(training_type=new.pk)
+    return new
+
+
+def training_type_lineage(tenant_id) -> dict:
+    """Map every TrainingType version id in a tenant to its chain root id.
+
+    One query over `(id, previous_version_id)`; archived versions included,
+    since a record may point at any version. A type that never versioned maps
+    to itself, so for unversioned data this is the identity.
+    """
+    from Tracker.models import TrainingType
+
+    # tenant-safe: explicit tenant filter; all_tenants so this also works in
+    # scheduler/beat code paths that pass a tenant rather than set a context.
+    parent = dict(
+        TrainingType.all_tenants.filter(tenant_id=tenant_id)
+        .values_list('id', 'previous_version_id')
+    )
+    roots: dict = {}
+    for tid in parent:
+        seen = {tid}
+        cur = tid
+        while parent.get(cur) is not None and parent[cur] not in seen:
+            cur = parent[cur]
+            seen.add(cur)
+        roots[tid] = cur
+    return roots
+
+
+def _lineage_ids(lineage: dict, training_type_id) -> set:
+    """Every version id in the same chain as `training_type_id`."""
+    root = lineage.get(training_type_id, training_type_id)
+    ids = {tid for tid, r in lineage.items() if r == root}
+    ids.add(training_type_id)
+    return ids
 
 
 @dataclass
@@ -91,16 +155,22 @@ def get_required_training(step, process=None, equipment_type=None):
     return required
 
 
-def get_user_current_levels(user):
+def get_user_current_levels(user, lineage=None):
     """
     Get the user's current (in-date) competency level for each training type.
 
     A user may hold several records for one training type over time
     (renewals / progression); the current competency is the MAX level among
-    their in-date records.
+    their in-date records. Records against different VERSIONS of one training
+    type count as the same training — they fold together under the chain root.
+
+    Args:
+        lineage: optional `training_type_lineage(...)` map, to reuse one the
+            caller already built.
 
     Returns:
-        Dict mapping training_type_id -> (level, expires_date)
+        Dict mapping training-type LINEAGE root id -> (level, expires_date).
+        For a type that never versioned, the root id is its own id.
     """
     from Tracker.models import TrainingRecord
 
@@ -113,11 +183,15 @@ def get_user_current_levels(user):
         models.Q(expires_date__isnull=True) | models.Q(expires_date__gte=today)
     ).select_related('training_type')
 
+    if lineage is None:
+        lineage = training_type_lineage(user.tenant_id)
+
     levels: dict = {}
     for record in current_records:
-        existing = levels.get(record.training_type_id)
+        key = lineage.get(record.training_type_id, record.training_type_id)
+        existing = levels.get(key)
         if existing is None or record.level > existing[0]:
-            levels[record.training_type_id] = (record.level, record.expires_date)
+            levels[key] = (record.level, record.expires_date)
 
     return levels
 
@@ -146,13 +220,14 @@ def check_training_authorization(
     if not required:
         return TrainingAuthorizationResult(authorized=True)
 
-    user_levels = get_user_current_levels(user)
+    lineage = training_type_lineage(next(iter(required)).tenant_id)
+    user_levels = get_user_current_levels(user, lineage=lineage)
 
     missing = []
     verified = []
 
     for training_type, min_level in required.items():
-        held = user_levels.get(training_type.id)
+        held = user_levels.get(lineage.get(training_type.id, training_type.id))
 
         if held is not None and held[0] >= min_level:
             verified.append((training_type.name, held[1]))
@@ -167,7 +242,7 @@ def check_training_authorization(
             from Tracker.models import TrainingRecord
             expired_record = TrainingRecord.objects.filter(archived=False,
                 user=user,
-                training_type=training_type,
+                training_type_id__in=_lineage_ids(lineage, training_type.id),  # tenant-safe: ids from the tenant-filtered lineage
                 expires_date__lt=timezone.now().date()
             ).order_by('-expires_date').first()
 
@@ -230,12 +305,15 @@ def get_qualified_users_for_step(step, process=None, equipment_type=None, tenant
 
     # Each requirement has its own level threshold, so we can't use a single
     # distinct-count; intersect the qualifying user sets per (type, min_level).
+    # A record against ANY version of the required type counts (records stay on
+    # the version they were earned against; requirements follow the type).
     # tenant-safe: training types are already tenant-scoped upstream; RLS applies
+    lineage = training_type_lineage(next(iter(required)).tenant_id)
     qualified_user_ids = None
     for training_type, min_level in required.items():
         ids = set(
             TrainingRecord.objects.filter(archived=False,
-                training_type=training_type,
+                training_type_id__in=_lineage_ids(lineage, training_type.id),  # tenant-safe: ids from the tenant-filtered lineage
                 level__gte=min_level,
             ).filter(
                 models.Q(expires_date__isnull=True) | models.Q(expires_date__gte=today)
@@ -305,7 +383,16 @@ def build_training_matrix(tenant=None):
         from Tracker.utils.tenant_context import current_tenant_var
         tenant = current_tenant_var.get()
 
-    types = list(TrainingType.objects.filter(archived=False).order_by('name'))
+    # One column per training type — its CURRENT version. Records and role
+    # requirements on any version of the chain fold into that column.
+    types = list(TrainingType.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
+        archived=False, is_current_version=True).order_by('name'))
+    tenant_id = getattr(tenant, 'pk', tenant)
+    lineage = training_type_lineage(tenant_id) if tenant_id else {}
+    column_for_root = {lineage.get(t.id, t.id): t.id for t in types}
+
+    def _column(type_id):
+        return column_for_root.get(lineage.get(type_id, type_id), type_id)
 
     users_qs = User.objects.filter(user_type='INTERNAL')
     if tenant:
@@ -324,7 +411,7 @@ def build_training_matrix(tenant=None):
     best: dict = {}
     expired_pairs: set = set()
     for rec in rec_qs:
-        key = (rec.user_id, rec.training_type_id)
+        key = (rec.user_id, _column(rec.training_type_id))
         if rec.is_current:
             cur = best.get(key)
             if cur is None or rec.level > cur['level']:
@@ -348,8 +435,9 @@ def build_training_matrix(tenant=None):
         rr_qs = rr_qs.filter(job_role__tenant=tenant)
     for req in rr_qs:
         d = role_reqs.setdefault(req.job_role_id, {})
-        if req.min_level > d.get(req.training_type_id, 0):
-            d[req.training_type_id] = req.min_level
+        col = _column(req.training_type_id)
+        if req.min_level > d.get(col, 0):
+            d[col] = req.min_level
 
     roles_qs = JobRole.objects.filter(archived=False)
     if tenant:
@@ -443,9 +531,10 @@ def _training_superseded(record) -> bool:
     — a renewal with a later (or never) expiry. Prevents nagging about a cert that
     has already been renewed; the superseding record is evaluated on its own."""
     from Tracker.models import TrainingRecord
+    lineage = training_type_lineage(record.tenant_id)
     return TrainingRecord.objects.filter(archived=False,
         user_id=record.user_id,
-        training_type_id=record.training_type_id,
+        training_type_id__in=_lineage_ids(lineage, record.training_type_id),  # tenant-safe: ids from the tenant-filtered lineage
     ).exclude(pk=record.pk).filter(
         models.Q(expires_date__isnull=True) | models.Q(expires_date__gt=record.expires_date)
     ).exists()

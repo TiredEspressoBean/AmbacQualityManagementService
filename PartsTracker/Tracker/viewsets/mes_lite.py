@@ -4066,6 +4066,10 @@ class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
+        # The list shows current versions only (as WorkCenter / TrainingType do); an
+        # old version stays retrievable by id, since history points at it.
+        if self.action == 'list':
+            qs = qs.filter(is_current_version=True)
         return qs.select_related('equipment_type')
 
 

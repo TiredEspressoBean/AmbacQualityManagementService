@@ -285,6 +285,16 @@ class Equipments(SecureModel):
     def __str__(self):
         return f"{self.name} ({self.equipment_type})" if self.equipment_type else self.name
 
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.mes.equipment.create_new_equipment_version`,
+        which carries the `operating_shifts` M2M and repoints scheduling configuration
+        (step affinities, changeovers, continuous profile, current work-centre
+        membership) to the new current row. History (calibration, downtime) stays."""
+        from Tracker.services.mes.equipment import create_new_equipment_version
+        return create_new_equipment_version(
+            self, user=user, change_description=change_description, **field_updates,
+        )
+
     # === CALIBRATION PROPERTIES ===
 
     @property

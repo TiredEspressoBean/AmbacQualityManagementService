@@ -329,7 +329,8 @@ def get_machine_batch_capacities(tenant) -> dict:
     from Tracker.models import Equipments
     concurrent: dict = {}
     cycle: dict = {}
-    for e in Equipments.objects.filter(archived=False, tenant=tenant, is_schedulable=True, batch_capacity__gt=1):
+    for e in Equipments.objects.filter(archived=False, is_current_version=True, tenant=tenant,
+                                       is_schedulable=True, batch_capacity__gt=1):
         (cycle if e.batch_mode == Equipments.BatchMode.CYCLE else concurrent)[e.id] = e.batch_capacity
     return {'concurrent': concurrent, 'cycle': cycle}
 
@@ -599,7 +600,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
         )
 
     result: dict[UUID, list[MachineWindow]] = {}
-    for eq in (Equipments.objects.filter(archived=False, tenant=tenant)
+    for eq in (Equipments.objects.filter(archived=False, is_current_version=True, tenant=tenant)
                .select_related('equipment_type').prefetch_related('operating_shifts')):
         free = _subtract_intervals(_base_for(eq), downtime.get(eq.id, []))
         # Calibration-as-time-window: a machine calibrated now but whose calibration
@@ -678,7 +679,8 @@ def get_attended_only_machines(tenant) -> frozenset:
     cfg = OptimizationConfig.objects.filter(tenant=tenant).first()
     default_unattended = bool(cfg.default_machine_unattended) if cfg else False
     attended = set()
-    for eid, ru in Equipments.objects.filter(archived=False, tenant=tenant).values_list('id', 'runs_unattended'):
+    for eid, ru in Equipments.objects.filter(archived=False, is_current_version=True,
+                                             tenant=tenant).values_list('id', 'runs_unattended'):
         effective_unattended = ru if ru is not None else default_unattended
         if not effective_unattended:
             attended.add(eid)
