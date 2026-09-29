@@ -48,16 +48,47 @@ from Tracker.services.qms import receiving_inspection
 from Tracker.services.qms import incoming_inspection
 from Tracker.services.qms import inspection_inbox
 from .base import TenantScopedMixin
+from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from .core import ListMetadataMixin
-from .mixins import DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin
 
 
 # ===== WORK CENTER VIEWSETS =====
 
-class WorkCenterViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
+class _WorkCenterImport(BaseCSVImportSerializer):
+    """A work-centre import edits a row the way the API does: `WorkCenterSerializer.update`
+    versions a content edit (name, code, kind, capacity, cost centre) and saves a
+    placement/planning edit (equipment, is_constraint, is_critical) in place."""
+
+    def transform_data(self, data):
+        from decimal import Decimal
+        result = super().transform_data(data)
+        # The base reads a number as a float, and a float is not equal to the Decimal
+        # on the row (92.3 != Decimal('92.30')) — so an unchanged efficiency looked
+        # edited and forked a version.
+        if isinstance(result.get('default_efficiency'), float):
+            result['default_efficiency'] = Decimal(str(result['default_efficiency']))
+        return result
+
+    def update_instance(self, instance, data):
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, data,
+            non_versioning_fields=WorkCenterSerializer._NON_VERSIONING_FIELDS,
+            default_update=super().update_instance,
+            version_kwargs={'user': self.user,
+                            'change_description': "Imported from a spreadsheet"},
+        )
+
+
+class WorkCenterViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """Work center management"""
     queryset = WorkCenter.unscoped.all()
     serializer_class = WorkCenterSerializer
+    # A row is matched on its code (unique per tenant among current versions);
+    # `equipment` is a `; `-separated list of equipment names.
+    csv_import_serializer = create_import_serializer_for_model(
+        WorkCenter, lookup_fields=['id', 'code'], base=_WorkCenterImport)
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['name', 'code', 'created_at']
@@ -259,7 +290,75 @@ class UserWorkCenterMembershipViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
 # ===== SHIFT VIEWSETS =====
 
-class ShiftViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+# A shift's breaks in a spreadsheet cell: `12:00-12:30; 15:00-15:15`. The export writes
+# this and the import reads it (JSON — `[{"start": "12:00", "end": "12:30"}]` — is read
+# too). A blank cell leaves the breaks as they are.
+_BREAK_SEPARATOR = '; '
+
+
+def _format_break_windows(value):
+    if not isinstance(value, list):
+        return value
+    return _BREAK_SEPARATOR.join(
+        f"{b.get('start')}-{b.get('end')}" if isinstance(b, dict) else str(b) for b in value)
+
+
+def _parse_break_windows(value):
+    import json
+    if isinstance(value, list):
+        return value
+    text = str(value).strip()
+    if text.startswith('['):
+        try:
+            return json.loads(text)
+        except ValueError:
+            raise serializers.ValidationError({'break_windows': (
+                f"Couldn't read {text!r} as JSON.")})
+    out = []
+    for item in (p.strip() for p in text.split(_BREAK_SEPARATOR.strip())):
+        if not item:
+            continue
+        start, sep, end = item.partition('-')
+        if not sep:
+            raise serializers.ValidationError({'break_windows': (
+                f"Couldn't read {item!r} — write breaks as 12:00-12:30; 15:00-15:15.")})
+        out.append({'start': start.strip(), 'end': end.strip()})
+    return out
+
+
+def _parse_time(value):
+    """A cell's time as a `datetime.time` — the export writes `06:00:00`, Excel may hand
+    back a time. Anything unreadable is passed through for the API to refuse."""
+    import datetime as _dt
+    if isinstance(value, _dt.datetime):
+        return value.time()
+    if isinstance(value, _dt.time):
+        return value
+    for fmt in ('%H:%M:%S', '%H:%M'):
+        try:
+            return _dt.datetime.strptime(str(value).strip(), fmt).time()
+        except ValueError:
+            continue
+    return value
+
+
+class _ShiftImport(BaseCSVImportSerializer):
+    """Shift's times and breaks, read the way the export writes them.
+
+    The base passes a time column through as text, and '06:00:00' != time(6, 0) — so
+    every row of an unchanged export looked edited and forked a new version."""
+
+    def transform_data(self, data):
+        result = super().transform_data(data)
+        for f in ('start_time', 'end_time'):
+            if f in result:
+                result[f] = _parse_time(result[f])
+        if 'break_windows' in result:
+            result['break_windows'] = _parse_break_windows(result['break_windows'])
+        return result
+
+
+class ShiftViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """Shift definition management.
 
     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
@@ -268,10 +367,25 @@ class ShiftViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """
     queryset = Shift.unscoped.filter(is_current_version=True)
     serializer_class = ShiftSerializer
+    # Matched on its code. An edit versions the shift, as `perform_update` does.
+    # `days_of_week` is the model's own text (`0,1,2,3,4`, 0 = Monday).
+    csv_import_serializer = create_import_serializer_for_model(
+        Shift, lookup_fields=['id', 'code'], base=_ShiftImport,
+        meta={'update_via_new_version': True, 'import_column_help': {
+            'break_windows': "Breaks as start-end, e.g. 12:00-12:30; 15:00-15:15. "
+                             "Blank leaves them unchanged.",
+            'days_of_week': "Day numbers, comma-separated: 0 = Monday … 6 = Sunday.",
+        }})
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['is_active']
     ordering_fields = ['start_time', 'name']
     ordering = ['start_time']
+
+    def _convert_df_for_excel(self, df):
+        # Before the base turns the list into its Python repr, which nothing reads back.
+        if 'break_windows' in df.columns:
+            df['break_windows'] = df['break_windows'].apply(_format_break_windows)
+        return super()._convert_df_for_excel(df)
 
     def perform_update(self, serializer):
         """Version the shift instead of mutating it in place, so labor-hour changes
@@ -373,11 +487,16 @@ class DowntimeEventViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelVie
 
 # ===== MATERIAL LOT VIEWSETS =====
 
-class MaterialViewSet(TenantScopedMixin, DataExportMixin, ListMetadataMixin, viewsets.ModelViewSet):
+class MaterialViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, ListMetadataMixin,
+                      viewsets.ModelViewSet):
     """Purchased items — raw materials / bought components (O-rings, seals, fasteners).
     The buy-side item list, distinct from in-house PartTypes; holds purchase lead time."""
     queryset = Material.unscoped.select_related('preferred_supplier').all()
     serializer_class = MaterialSerializer
+    # A row is matched on its part number, then its name; `preferred_supplier` is found
+    # by company name. Everything else is read from the model.
+    csv_import_serializer = create_import_serializer_for_model(
+        Material, lookup_fields=['id', 'part_number', 'name'])
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['name', 'part_number', 'description']
     filterset_fields = ['is_active', 'preferred_supplier']

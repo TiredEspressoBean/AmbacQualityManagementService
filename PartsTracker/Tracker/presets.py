@@ -535,9 +535,13 @@ SHIFT_NOTE_AUTHOR_PERMISSIONS = [
 SCHEDULING_PLANNER_PERMISSIONS = [
     'add_scheduleresult',        # run the solver
     'change_scheduledtask',      # operator dispatch + pin/unpin
-    'add_steptiming', 'change_steptiming',
-    'add_stepequipmentaffinity', 'change_stepequipmentaffinity',
-    'add_workcenterchangeover', 'change_workcenterchangeover',
+    # delete_ on the three setup tables: their CRUD endpoints (StepTimings,
+    # StepEquipmentAffinities, WorkCenterChangeovers) expose DELETE, and removing a
+    # machine's eligibility or a changeover cell is a real planner edit (DELETE
+    # soft-archives via SecureModel.delete).
+    'add_steptiming', 'change_steptiming', 'delete_steptiming',
+    'add_stepequipmentaffinity', 'change_stepequipmentaffinity', 'delete_stepequipmentaffinity',
+    'add_workcenterchangeover', 'change_workcenterchangeover', 'delete_workcenterchangeover',
     # delete_fixture: the scheduling settings UI has a fixture remove button
     # (DELETE soft-archives via SecureModel.delete).
     'add_fixture', 'change_fixture', 'delete_fixture',

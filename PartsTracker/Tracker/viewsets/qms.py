@@ -40,8 +40,9 @@ from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSer
 # Module-level so `request_approval` can name it in @extend_schema; the
 # function-local import stays for the runtime path.
 from Tracker.serializers.core import ApprovalRequestSerializer
+from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .core import ListMetadataMixin
-from .mixins import DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin
 from .base import TenantScopedMixin
 from .mixins import SecondPersonMixin
 
@@ -75,9 +76,15 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin
         ).prefetch_related('operators', 'errors', 'equipment_links__equipment')
 
 
-class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                       viewsets.ModelViewSet):
     queryset = QualityErrorsList.unscoped.all()
     serializer_class = QualityErrorsListSerializer
+    # A defect-catalog entry is its name within its part type; a blank part type is a
+    # general entry and matches only the general entry of that name (`part_type?`).
+    # Edits version the way the API's do (QualityErrorsListSerializer.update).
+    csv_import_serializer = create_import_serializer_for_model(
+        QualityErrorsList, lookup_fields=['id', ('error_name', 'part_type?')])
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["error_name", "part_type"]
     ordering_fields = ["id", "error_name", "part_type__name"]
@@ -561,9 +568,15 @@ class MeasurementDefinitionFilter(django_filters.FilterSet):
         fields = ["step__name", "label", "step"]
 
 
-class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin,
+                                    DataExportMixin, viewsets.ModelViewSet):
     queryset = MeasurementDefinition.unscoped.all()
     serializer_class = MeasurementDefinitionSerializer
+    # A measurement is its label at its step (`Process > Step`); the gauges are found by
+    # serial number, then name. Edits version the way the API's do
+    # (MeasurementDefinitionSerializer.update).
+    csv_import_serializer = create_import_serializer_for_model(
+        MeasurementDefinition, lookup_fields=['id', ('step', 'label')])
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_class = MeasurementDefinitionFilter
     ordering_fields = ["step__name", "label"]

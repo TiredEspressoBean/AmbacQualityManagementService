@@ -49,7 +49,9 @@ from Tracker.serializers.notification_schedule import (
     PersonalScheduleSerializer,
     TenantScheduleSerializer,
 )
+from Tracker.serializers.csv_import import create_import_serializer_for_model
 from Tracker.viewsets.base import TenantScopedMixin
+from Tracker.viewsets.mixins import CSVImportMixin, DataExportMixin
 
 
 # =============================================================================
@@ -135,12 +137,17 @@ class PersonalRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 # =============================================================================
 
 @extend_schema_view(list=extend_schema(parameters=[_customer_param]))
-class ExternalContactViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class ExternalContactViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
+                             viewsets.ModelViewSet):
     """CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
     customer FK validation handled at the serializer layer."""
 
     queryset = ExternalContact.all_tenants.none()
     serializer_class = ExternalContactSerializer
+    # A contact is its email at its customer — the model's unique constraint. The
+    # customer is found by company name.
+    csv_import_serializer = create_import_serializer_for_model(
+        ExternalContact, lookup_fields=['id', ('customer', 'email')])
     permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "email", "role"]

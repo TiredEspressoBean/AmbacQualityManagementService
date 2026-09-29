@@ -3275,6 +3275,138 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedCalibrationRecordList'
           description: ''
+  /api/CalibrationRecords/import/:
+    post:
+      operationId: api_CalibrationRecords_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/CalibrationRecords/import-preview/:
+    post:
+      operationId: api_CalibrationRecords_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/CalibrationRecords/import-status/{task_id}/:
+    get:
+      operationId: api_CalibrationRecords_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/CalibrationRecords/import-template/{template_format}/:
+    get:
+      operationId: api_CalibrationRecords_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/CalibrationRecords/metadata/:
     get:
       operationId: api_CalibrationRecords_metadata_retrieve
@@ -4675,6 +4807,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/Companies/import/:
+    post:
+      operationId: api_Companies_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/Companies/import-preview/:
+    post:
+      operationId: api_Companies_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/Companies/import-status/{task_id}/:
+    get:
+      operationId: api_Companies_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/Companies/import-template/{template_format}/:
+    get:
+      operationId: api_Companies_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/Companies/metadata/:
     get:
@@ -8117,6 +8381,138 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/Equipment-types/import/:
+    post:
+      operationId: api_Equipment_types_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/Equipment-types/import-preview/:
+    post:
+      operationId: api_Equipment_types_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/Equipment-types/import-status/{task_id}/:
+    get:
+      operationId: api_Equipment_types_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/Equipment-types/import-template/{template_format}/:
+    get:
+      operationId: api_Equipment_types_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/Equipment-types/metadata/:
     get:
       operationId: api_Equipment_types_metadata_retrieve
@@ -8385,6 +8781,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/Equipment/import/:
+    post:
+      operationId: api_Equipment_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/Equipment/import-preview/:
+    post:
+      operationId: api_Equipment_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/Equipment/import-status/{task_id}/:
+    get:
+      operationId: api_Equipment_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/Equipment/import-template/{template_format}/:
+    get:
+      operationId: api_Equipment_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/Equipment/metadata/:
     get:
@@ -8781,6 +9309,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/Error-types/import/:
+    post:
+      operationId: api_Error_types_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/Error-types/import-preview/:
+    post:
+      operationId: api_Error_types_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/Error-types/import-status/{task_id}/:
+    get:
+      operationId: api_Error_types_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/Error-types/import-template/{template_format}/:
+    get:
+      operationId: api_Error_types_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/Error-types/metadata/:
     get:
@@ -10019,6 +10679,138 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/Fixtures/import/:
+    post:
+      operationId: api_Fixtures_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/Fixtures/import-preview/:
+    post:
+      operationId: api_Fixtures_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/Fixtures/import-status/{task_id}/:
+    get:
+      operationId: api_Fixtures_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/Fixtures/import-template/{template_format}/:
+    get:
+      operationId: api_Fixtures_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/Fixtures/metadata/:
     get:
       operationId: api_Fixtures_metadata_retrieve
@@ -11077,6 +11869,138 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/JobRoles/import/:
+    post:
+      operationId: api_JobRoles_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/JobRoles/import-preview/:
+    post:
+      operationId: api_JobRoles_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/JobRoles/import-status/{task_id}/:
+    get:
+      operationId: api_JobRoles_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/JobRoles/import-template/{template_format}/:
+    get:
+      operationId: api_JobRoles_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/JobRoles/metadata/:
     get:
       operationId: api_JobRoles_metadata_retrieve
@@ -11365,6 +12289,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/LaborCalendarBlocks/import/:
+    post:
+      operationId: api_LaborCalendarBlocks_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/LaborCalendarBlocks/import-preview/:
+    post:
+      operationId: api_LaborCalendarBlocks_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/LaborCalendarBlocks/import-status/{task_id}/:
+    get:
+      operationId: api_LaborCalendarBlocks_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/LaborCalendarBlocks/import-template/{template_format}/:
+    get:
+      operationId: api_LaborCalendarBlocks_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/LaborCalendarBlocks/metadata/:
     get:
@@ -13069,6 +14125,138 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/Materials/import/:
+    post:
+      operationId: api_Materials_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/Materials/import-preview/:
+    post:
+      operationId: api_Materials_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/Materials/import-status/{task_id}/:
+    get:
+      operationId: api_Materials_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/Materials/import-template/{template_format}/:
+    get:
+      operationId: api_Materials_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/Materials/metadata/:
     get:
       operationId: api_Materials_metadata_retrieve
@@ -13473,6 +14661,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/MeasurementDefinitions/import/:
+    post:
+      operationId: api_MeasurementDefinitions_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/MeasurementDefinitions/import-preview/:
+    post:
+      operationId: api_MeasurementDefinitions_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/MeasurementDefinitions/import-status/{task_id}/:
+    get:
+      operationId: api_MeasurementDefinitions_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/MeasurementDefinitions/import-template/{template_format}/:
+    get:
+      operationId: api_MeasurementDefinitions_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/MeasurementDefinitions/metadata/:
     get:
@@ -15619,6 +16939,138 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/OvertimeWindows/import/:
+    post:
+      operationId: api_OvertimeWindows_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/OvertimeWindows/import-preview/:
+    post:
+      operationId: api_OvertimeWindows_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/OvertimeWindows/import-status/{task_id}/:
+    get:
+      operationId: api_OvertimeWindows_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/OvertimeWindows/import-template/{template_format}/:
+    get:
+      operationId: api_OvertimeWindows_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/OvertimeWindows/metadata/:
     get:
       operationId: api_OvertimeWindows_metadata_retrieve
@@ -16299,6 +17751,178 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/PartTypeLifeLimits/export/{export_format}/:
+    get:
+      operationId: api_PartTypeLifeLimits_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/PartTypeLifeLimits/import/:
+    post:
+      operationId: api_PartTypeLifeLimits_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/PartTypeLifeLimits/import-preview/:
+    post:
+      operationId: api_PartTypeLifeLimits_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/PartTypeLifeLimits/import-status/{task_id}/:
+    get:
+      operationId: api_PartTypeLifeLimits_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/PartTypeLifeLimits/import-template/{template_format}/:
+    get:
+      operationId: api_PartTypeLifeLimits_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/PartTypes/:
     get:
       operationId: api_PartTypes_list
@@ -18396,6 +20020,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/PlantCalendarExceptions/import/:
+    post:
+      operationId: api_PlantCalendarExceptions_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/PlantCalendarExceptions/import-preview/:
+    post:
+      operationId: api_PlantCalendarExceptions_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/PlantCalendarExceptions/import-status/{task_id}/:
+    get:
+      operationId: api_PlantCalendarExceptions_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/PlantCalendarExceptions/import-template/{template_format}/:
+    get:
+      operationId: api_PlantCalendarExceptions_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/PlantCalendarExceptions/metadata/:
     get:
@@ -21341,6 +23097,178 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/RepairCodes/export/{export_format}/:
+    get:
+      operationId: api_RepairCodes_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/RepairCodes/import/:
+    post:
+      operationId: api_RepairCodes_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/RepairCodes/import-preview/:
+    post:
+      operationId: api_RepairCodes_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/RepairCodes/import-status/{task_id}/:
+    get:
+      operationId: api_RepairCodes_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/RepairCodes/import-template/{template_format}/:
+    get:
+      operationId: api_RepairCodes_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/Sampling-rule-sets/:
     get:
       operationId: api_Sampling_rule_sets_list
@@ -24217,6 +26145,581 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Shifts/export/{export_format}/:
+    get:
+      operationId: api_Shifts_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/Shifts/import/:
+    post:
+      operationId: api_Shifts_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/Shifts/import-preview/:
+    post:
+      operationId: api_Shifts_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/Shifts/import-status/{task_id}/:
+    get:
+      operationId: api_Shifts_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/Shifts/import-template/{template_format}/:
+    get:
+      operationId: api_Shifts_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
+  /api/StepEquipmentAffinities/:
+    get:
+      operationId: api_StepEquipmentAffinities_list
+      description: |-
+        CRUD for step-to-machine eligibility: a machine that can run a step, how well
+        (eligible / preferred / dialed in), and optionally its own cycle time for it.
+      parameters:
+      - in: query
+        name: affinity
+        schema:
+          type: string
+          enum:
+          - dialed_in
+          - eligible
+          - preferred
+        description: |-
+          * `eligible` - Eligible
+          * `preferred` - Preferred
+          * `dialed_in` - Dialed in (proven best)
+      - in: query
+        name: equipment
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStepEquipmentAffinityList'
+          description: ''
+    post:
+      operationId: api_StepEquipmentAffinities_create
+      description: |-
+        CRUD for step-to-machine eligibility: a machine that can run a step, how well
+        (eligible / preferred / dialed in), and optionally its own cycle time for it.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepEquipmentAffinityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepEquipmentAffinityRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepEquipmentAffinityRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepEquipmentAffinity'
+          description: ''
+  /api/StepEquipmentAffinities/{id}/:
+    get:
+      operationId: api_StepEquipmentAffinities_retrieve
+      description: |-
+        CRUD for step-to-machine eligibility: a machine that can run a step, how well
+        (eligible / preferred / dialed in), and optionally its own cycle time for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step-Equipment Affinity.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepEquipmentAffinity'
+          description: ''
+    put:
+      operationId: api_StepEquipmentAffinities_update
+      description: |-
+        CRUD for step-to-machine eligibility: a machine that can run a step, how well
+        (eligible / preferred / dialed in), and optionally its own cycle time for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step-Equipment Affinity.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepEquipmentAffinityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepEquipmentAffinityRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepEquipmentAffinityRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepEquipmentAffinity'
+          description: ''
+    patch:
+      operationId: api_StepEquipmentAffinities_partial_update
+      description: |-
+        CRUD for step-to-machine eligibility: a machine that can run a step, how well
+        (eligible / preferred / dialed in), and optionally its own cycle time for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step-Equipment Affinity.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStepEquipmentAffinityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStepEquipmentAffinityRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStepEquipmentAffinityRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepEquipmentAffinity'
+          description: ''
+    delete:
+      operationId: api_StepEquipmentAffinities_destroy
+      description: |-
+        CRUD for step-to-machine eligibility: a machine that can run a step, how well
+        (eligible / preferred / dialed in), and optionally its own cycle time for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step-Equipment Affinity.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/StepEquipmentAffinities/export/{export_format}/:
+    get:
+      operationId: api_StepEquipmentAffinities_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/StepEquipmentAffinities/import/:
+    post:
+      operationId: api_StepEquipmentAffinities_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/StepEquipmentAffinities/import-preview/:
+    post:
+      operationId: api_StepEquipmentAffinities_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/StepEquipmentAffinities/import-status/{task_id}/:
+    get:
+      operationId: api_StepEquipmentAffinities_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/StepEquipmentAffinities/import-template/{template_format}/:
+    get:
+      operationId: api_StepEquipmentAffinities_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
+  /api/StepEquipmentAffinities/metadata/:
+    get:
+      operationId: api_StepEquipmentAffinities_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/StepExecutionMeasurements/:
     get:
       operationId: api_StepExecutionMeasurements_list
@@ -25968,6 +28471,406 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/StepTimings/:
+    get:
+      operationId: api_StepTimings_list
+      description: |-
+        CRUD for step standard times — what the solver and RCCP size every operation
+        from. One row per step (the step is the key).
+      parameters:
+      - in: query
+        name: attention_type
+        schema:
+          type: string
+          enum:
+          - full
+          - load_unload
+          - unattended
+        description: |-
+          Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+
+          * `full` - Full attention (operator tied to the machine)
+          * `load_unload` - Load/unload only (machine runs unattended between)
+          * `unattended` - Unattended (robot/cobot fed — setup only)
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStepTimingRecordList'
+          description: ''
+    post:
+      operationId: api_StepTimings_create
+      description: |-
+        CRUD for step standard times — what the solver and RCCP size every operation
+        from. One row per step (the step is the key).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepTimingRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepTimingRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepTimingRecordRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepTimingRecord'
+          description: ''
+  /api/StepTimings/{id}/:
+    get:
+      operationId: api_StepTimings_retrieve
+      description: |-
+        CRUD for step standard times — what the solver and RCCP size every operation
+        from. One row per step (the step is the key).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Timing.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepTimingRecord'
+          description: ''
+    put:
+      operationId: api_StepTimings_update
+      description: |-
+        CRUD for step standard times — what the solver and RCCP size every operation
+        from. One row per step (the step is the key).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Timing.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepTimingRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepTimingRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepTimingRecordRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepTimingRecord'
+          description: ''
+    patch:
+      operationId: api_StepTimings_partial_update
+      description: |-
+        CRUD for step standard times — what the solver and RCCP size every operation
+        from. One row per step (the step is the key).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Timing.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStepTimingRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStepTimingRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStepTimingRecordRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepTimingRecord'
+          description: ''
+    delete:
+      operationId: api_StepTimings_destroy
+      description: |-
+        CRUD for step standard times — what the solver and RCCP size every operation
+        from. One row per step (the step is the key).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Timing.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/StepTimings/export/{export_format}/:
+    get:
+      operationId: api_StepTimings_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/StepTimings/import/:
+    post:
+      operationId: api_StepTimings_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/StepTimings/import-preview/:
+    post:
+      operationId: api_StepTimings_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/StepTimings/import-status/{task_id}/:
+    get:
+      operationId: api_StepTimings_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/StepTimings/import-template/{template_format}/:
+    get:
+      operationId: api_StepTimings_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
+  /api/StepTimings/metadata/:
+    get:
+      operationId: api_StepTimings_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/Steps/:
     get:
@@ -31500,6 +34403,138 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedTrainingRequirementList'
           description: ''
+  /api/TrainingRequirements/import/:
+    post:
+      operationId: api_TrainingRequirements_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/TrainingRequirements/import-preview/:
+    post:
+      operationId: api_TrainingRequirements_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/TrainingRequirements/import-status/{task_id}/:
+    get:
+      operationId: api_TrainingRequirements_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/TrainingRequirements/import-template/{template_format}/:
+    get:
+      operationId: api_TrainingRequirements_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/TrainingRequirements/metadata/:
     get:
       operationId: api_TrainingRequirements_metadata_retrieve
@@ -31739,6 +34774,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/TrainingTypes/import/:
+    post:
+      operationId: api_TrainingTypes_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/TrainingTypes/import-preview/:
+    post:
+      operationId: api_TrainingTypes_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/TrainingTypes/import-status/{task_id}/:
+    get:
+      operationId: api_TrainingTypes_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/TrainingTypes/import-template/{template_format}/:
+    get:
+      operationId: api_TrainingTypes_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/TrainingTypes/metadata/:
     get:
@@ -32844,6 +36011,402 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserWorkCenterMembership'
           description: ''
+  /api/WorkCenterChangeovers/:
+    get:
+      operationId: api_WorkCenterChangeovers_list
+      description: |-
+        CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+        switches from running one step to another. One row per matrix cell.
+      parameters:
+      - in: query
+        name: equipment
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: from_step
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: to_step
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWorkCenterChangeoverList'
+          description: ''
+    post:
+      operationId: api_WorkCenterChangeovers_create
+      description: |-
+        CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+        switches from running one step to another. One row per matrix cell.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkCenterChangeoverRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkCenterChangeoverRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkCenterChangeoverRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkCenterChangeover'
+          description: ''
+  /api/WorkCenterChangeovers/{id}/:
+    get:
+      operationId: api_WorkCenterChangeovers_retrieve
+      description: |-
+        CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+        switches from running one step to another. One row per matrix cell.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work-Center Changeover.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkCenterChangeover'
+          description: ''
+    put:
+      operationId: api_WorkCenterChangeovers_update
+      description: |-
+        CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+        switches from running one step to another. One row per matrix cell.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work-Center Changeover.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkCenterChangeoverRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkCenterChangeoverRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkCenterChangeoverRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkCenterChangeover'
+          description: ''
+    patch:
+      operationId: api_WorkCenterChangeovers_partial_update
+      description: |-
+        CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+        switches from running one step to another. One row per matrix cell.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work-Center Changeover.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkCenterChangeoverRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkCenterChangeoverRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkCenterChangeoverRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkCenterChangeover'
+          description: ''
+    delete:
+      operationId: api_WorkCenterChangeovers_destroy
+      description: |-
+        CRUD for sequence-dependent setup: minutes to reconfigure a machine when it
+        switches from running one step to another. One row per matrix cell.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work-Center Changeover.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/WorkCenterChangeovers/export/{export_format}/:
+    get:
+      operationId: api_WorkCenterChangeovers_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/WorkCenterChangeovers/import/:
+    post:
+      operationId: api_WorkCenterChangeovers_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/WorkCenterChangeovers/import-preview/:
+    post:
+      operationId: api_WorkCenterChangeovers_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/WorkCenterChangeovers/import-status/{task_id}/:
+    get:
+      operationId: api_WorkCenterChangeovers_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/WorkCenterChangeovers/import-template/{template_format}/:
+    get:
+      operationId: api_WorkCenterChangeovers_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
+  /api/WorkCenterChangeovers/metadata/:
+    get:
+      operationId: api_WorkCenterChangeovers_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/WorkCenters/:
     get:
       operationId: api_WorkCenters_list
@@ -33112,6 +36675,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/WorkCenters/import/:
+    post:
+      operationId: api_WorkCenters_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/WorkCenters/import-preview/:
+    post:
+      operationId: api_WorkCenters_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/WorkCenters/import-status/{task_id}/:
+    get:
+      operationId: api_WorkCenters_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/WorkCenters/import-template/{template_format}/:
+    get:
+      operationId: api_WorkCenters_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/WorkCenters/mark-staged/:
     post:
@@ -36238,6 +39933,178 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/notifications/external-contacts/export/{export_format}/:
+    get:
+      operationId: api_notifications_external_contacts_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/notifications/external-contacts/import/:
+    post:
+      operationId: api_notifications_external_contacts_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/notifications/external-contacts/import-preview/:
+    post:
+      operationId: api_notifications_external_contacts_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/notifications/external-contacts/import-status/{task_id}/:
+    get:
+      operationId: api_notifications_external_contacts_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/notifications/external-contacts/import-template/{template_format}/:
+    get:
+      operationId: api_notifications_external_contacts_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/notifications/feed/:
     get:
       operationId: api_notifications_feed_list
@@ -40804,6 +44671,16 @@ components:
       required:
       - available_steps
       - results
+    AffinityEnum:
+      enum:
+      - eligible
+      - preferred
+      - dialed_in
+      type: string
+      description: |-
+        * `eligible` - Eligible
+        * `preferred` - Preferred
+        * `dialed_in` - Dialed in (proven best)
     ApprovalFlowTypeEnum:
       enum:
       - ALL_REQUIRED
@@ -53473,6 +57350,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StepDistributionResponse'
+    PaginatedStepEquipmentAffinityList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepEquipmentAffinity'
     PaginatedStepExecutionList:
       type: object
       required:
@@ -53565,6 +57465,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StepOverride'
+    PaginatedStepTimingRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepTimingRecord'
     PaginatedStepsList:
       type: object
       required:
@@ -54094,6 +58017,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WIPSummary'
+    PaginatedWorkCenterChangeoverList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkCenterChangeover'
     PaginatedWorkCenterList:
       type: object
       required:
@@ -58520,6 +62466,26 @@ components:
           type: boolean
         archived:
           type: boolean
+    PatchedStepEquipmentAffinityRequest:
+      type: object
+      description: A machine that can run a step, how well, and optionally its own
+        cycle time.
+      properties:
+        step:
+          type: string
+          format: uuid
+        equipment:
+          type: string
+          format: uuid
+        affinity:
+          $ref: '#/components/schemas/AffinityEnum'
+        cycle_time_override:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          description: Per-piece cycle on THIS machine, overriding StepTiming (a faster
+            or slower machine for the same step).
     PatchedStepExecutionMeasurementRequest:
       type: object
       description: Serializer for step execution measurements.
@@ -58667,6 +62633,45 @@ components:
           description: Whether this override has been used
         archived:
           type: boolean
+    PatchedStepTimingRecordRequest:
+      type: object
+      description: One step's standard times — setup, cycle, load/unload, attention,
+        SMED setup.
+      properties:
+        step:
+          type: string
+          format: uuid
+          description: The step these timings describe.
+        setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Internal (machine-stopped) setup / changeover minutes.
+        cycle_time_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Deterministic per-piece machine cycle time (minutes).
+        load_unload_per_piece:
+          type: number
+          format: double
+          minimum: 0
+          description: Operator touch time to load/unload one piece (minutes).
+        attention_type:
+          allOf:
+          - $ref: '#/components/schemas/AttentionTypeEnum'
+          description: |-
+            Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+
+            * `full` - Full attention (operator tied to the machine)
+            * `load_unload` - Load/unload only (machine runs unattended between)
+            * `unattended` - Unattended (robot/cobot fed — setup only)
+        external_setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: SMED external setup that can overlap the previous op's run
+            time.
     PatchedStepsRequest:
       type: object
       description: |-
@@ -59806,6 +63811,24 @@ components:
           type: boolean
           description: The user's preferred default station (drives the operator home's
             initial scope).
+    PatchedWorkCenterChangeoverRequest:
+      type: object
+      description: 'One cell of a machine''s changeover matrix: minutes to go from
+        one step to another.'
+      properties:
+        equipment:
+          type: string
+          format: uuid
+        from_step:
+          type: string
+          format: uuid
+        to_step:
+          type: string
+          format: uuid
+        changeover_minutes:
+          type: number
+          format: double
+          minimum: 0
     PatchedWorkCenterRequest:
       type: object
       description: |-
@@ -66475,6 +70498,65 @@ components:
       required:
       - from_step
       - to_step
+    StepEquipmentAffinity:
+      type: object
+      description: A machine that can run a step, how well, and optionally its own
+        cycle time.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+          readOnly: true
+        equipment:
+          type: string
+          format: uuid
+        equipment_name:
+          type: string
+          readOnly: true
+        affinity:
+          $ref: '#/components/schemas/AffinityEnum'
+        cycle_time_override:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          description: Per-piece cycle on THIS machine, overriding StepTiming (a faster
+            or slower machine for the same step).
+      required:
+      - equipment
+      - equipment_name
+      - id
+      - step
+      - step_name
+    StepEquipmentAffinityRequest:
+      type: object
+      description: A machine that can run a step, how well, and optionally its own
+        cycle time.
+      properties:
+        step:
+          type: string
+          format: uuid
+        equipment:
+          type: string
+          format: uuid
+        affinity:
+          $ref: '#/components/schemas/AffinityEnum'
+        cycle_time_override:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          description: Per-piece cycle on THIS machine, overriding StepTiming (a faster
+            or slower machine for the same step).
+      required:
+      - equipment
+      - step
     StepExecution:
       type: object
       description: |-
@@ -67446,6 +71528,97 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+    StepTimingRecord:
+      type: object
+      description: One step's standard times — setup, cycle, load/unload, attention,
+        SMED setup.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+          description: The step these timings describe.
+        step_name:
+          type: string
+          readOnly: true
+        setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Internal (machine-stopped) setup / changeover minutes.
+        cycle_time_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Deterministic per-piece machine cycle time (minutes).
+        load_unload_per_piece:
+          type: number
+          format: double
+          minimum: 0
+          description: Operator touch time to load/unload one piece (minutes).
+        attention_type:
+          allOf:
+          - $ref: '#/components/schemas/AttentionTypeEnum'
+          description: |-
+            Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+
+            * `full` - Full attention (operator tied to the machine)
+            * `load_unload` - Load/unload only (machine runs unattended between)
+            * `unattended` - Unattended (robot/cobot fed — setup only)
+        external_setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: SMED external setup that can overlap the previous op's run
+            time.
+      required:
+      - id
+      - step
+      - step_name
+    StepTimingRecordRequest:
+      type: object
+      description: One step's standard times — setup, cycle, load/unload, attention,
+        SMED setup.
+      properties:
+        step:
+          type: string
+          format: uuid
+          description: The step these timings describe.
+        setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Internal (machine-stopped) setup / changeover minutes.
+        cycle_time_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: Deterministic per-piece machine cycle time (minutes).
+        load_unload_per_piece:
+          type: number
+          format: double
+          minimum: 0
+          description: Operator touch time to load/unload one piece (minutes).
+        attention_type:
+          allOf:
+          - $ref: '#/components/schemas/AttentionTypeEnum'
+          description: |-
+            Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+
+            * `full` - Full attention (operator tied to the machine)
+            * `load_unload` - Load/unload only (machine runs unattended between)
+            * `unattended` - Unattended (robot/cobot fed — setup only)
+        external_setup_minutes:
+          type: number
+          format: double
+          minimum: 0
+          description: SMED external setup that can overlap the previous op's run
+            time.
+      required:
+      - step
     StepTimingRequest:
       type: object
       description: |-
@@ -72722,6 +76895,67 @@ components:
       - is_critical
       - name
       - series
+    WorkCenterChangeover:
+      type: object
+      description: 'One cell of a machine''s changeover matrix: minutes to go from
+        one step to another.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        equipment:
+          type: string
+          format: uuid
+        equipment_name:
+          type: string
+          readOnly: true
+        from_step:
+          type: string
+          format: uuid
+        from_step_name:
+          type: string
+          readOnly: true
+        to_step:
+          type: string
+          format: uuid
+        to_step_name:
+          type: string
+          readOnly: true
+        changeover_minutes:
+          type: number
+          format: double
+          minimum: 0
+      required:
+      - equipment
+      - equipment_name
+      - from_step
+      - from_step_name
+      - id
+      - to_step
+      - to_step_name
+    WorkCenterChangeoverRequest:
+      type: object
+      description: 'One cell of a machine''s changeover matrix: minutes to go from
+        one step to another.'
+      properties:
+        equipment:
+          type: string
+          format: uuid
+        from_step:
+          type: string
+          format: uuid
+        to_step:
+          type: string
+          format: uuid
+        changeover_minutes:
+          type: number
+          format: double
+          minimum: 0
+      required:
+      - equipment
+      - from_step
+      - to_step
     WorkCenterKindEnum:
       enum:
       - PRODUCTION

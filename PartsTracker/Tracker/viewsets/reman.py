@@ -25,8 +25,9 @@ from Tracker.serializers.reman import (
     DisassemblyBOMLineSerializer, RebuildPlanSerializer,
     RepairCodeSerializer, RebuildScopePresetSerializer, RebuildSlotOverrideSerializer,
 )
+from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .base import TenantScopedMixin
-from .mixins import DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin
 
 
 # ===== CORE VIEWSETS =====
@@ -715,10 +716,17 @@ class DisassemblyBOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     ordering = ['core_type', 'line_number']
 
 
-class RepairCodeViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class RepairCodeViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
+                        viewsets.ModelViewSet):
     """Repair codes — what operations a finding adds to a rebuild."""
     queryset = RepairCode.unscoped.select_related('component_type').prefetch_related('steps')
     serializer_class = RepairCodeSerializer
+    # A code is matched on its code (unique among current versions); `component_type`
+    # is found by part type name; `steps` is `Process > Step; Process > Step`. Edits
+    # version the way the serializer's do (apply_versioned_update); a new version keeps
+    # its steps.
+    csv_import_serializer = create_import_serializer_for_model(
+        RepairCode, lookup_fields=['id', 'code'])
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['component_type', 'trigger']
     search_fields = ['code', 'name']

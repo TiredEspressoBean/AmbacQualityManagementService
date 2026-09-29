@@ -31,8 +31,9 @@ from Tracker.serializers.core import (
     ApprovalTemplateSerializer, ApprovalRequestSerializer, ApprovalResponseSerializer
 )
 from Tracker.serializers.dms import DocumentsSerializer, DocumentTypeSerializer
+from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from .base import TenantScopedMixin, NonTenantModelViewSet
-from .mixins import DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin
 
 
 # ===== BASE MIXINS =====
@@ -637,6 +638,14 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
                 {"detail": "Provide a 'file' upload or non-empty 'rows' list."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # Inline rows skip parse_file's limit, so apply it here too.
+        from Tracker.services.csv_utils import MAX_UPLOAD_ROWS
+        if len(rows) > MAX_UPLOAD_ROWS:
+            return Response(
+                {"detail": f"{len(rows)} rows is more than one reconcile takes "
+                           f"({MAX_UPLOAD_ROWS}). Split it into smaller batches."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Threshold: synchronous below 25, async above. Matches the
         # existing CSVImportMixin pattern so behavior is consistent.
@@ -878,10 +887,36 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         return Response(payload)
 
 
-class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class VersionedLikeTheAPIImport(BaseCSVImportSerializer):
+    """An import that edits a row the way the API serializer's `update()` does, for
+    serializers that route through `apply_versioned_update`: a change to a content field
+    makes a new version, a change limited to the serializer's `_NON_VERSIONING_FIELDS`
+    (archive, operational status, commercial defaults) is saved in place.
+
+    `Meta.update_via_new_version` is all-or-nothing, so it would version a status flip
+    the API saves in place. Used by Companies, Equipments and EquipmentType.
+    """
+
+    def update_instance(self, instance, data):
+        from Tracker.services.core.versioning import apply_versioned_update
+        non_versioning = getattr(self.api_serializer_class, '_NON_VERSIONING_FIELDS',
+                                 frozenset({'archived'}))
+        return apply_versioned_update(
+            instance, data,
+            non_versioning_fields=non_versioning,
+            default_update=super().update_instance,
+            version_kwargs={'user': self.user,
+                            'change_description': "Imported from a spreadsheet"})
+
+
+class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                     viewsets.ModelViewSet):
     """Company management - scoped to tenant and user permissions."""
     queryset = Companies.unscoped.all()
     serializer_class = CompanySerializer
+    # A row is matched on its name. Content edits version, as the API's do.
+    csv_import_serializer = create_import_serializer_for_model(
+        Companies, lookup_fields=['id', 'name'], base=VersionedLikeTheAPIImport)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["name"]
     search_fields = ["name"]

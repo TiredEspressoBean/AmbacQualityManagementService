@@ -11,7 +11,10 @@ from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-from Tracker.models import TrainingType, TrainingRecord, TrainingRequirement, JobRole
+from Tracker.models import (
+    EquipmentType, JobRole, Processes, TrainingRecord, TrainingRequirement, TrainingType,
+)
+from Tracker.serializers.csv_import import create_import_serializer_for_model
 from Tracker.serializers.training import (
     TrainingTypeSerializer,
     TrainingRecordSerializer,
@@ -22,7 +25,7 @@ from Tracker.serializers.training import (
 from Tracker.services.training import build_training_matrix
 from .base import TenantScopedMixin
 from .core import ListMetadataMixin
-from .mixins import DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin
 
 
 # ===== TRAINING TYPE VIEWSET =====
@@ -40,7 +43,8 @@ from .mixins import DataExportMixin
     partial_update=extend_schema(description="Partially update a training type"),
     destroy=extend_schema(description="Soft delete a training type")
 )
-class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                          viewsets.ModelViewSet):
     """
     ViewSet for managing training types.
 
@@ -49,6 +53,10 @@ class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
     """
     queryset = TrainingType.unscoped.all()
     serializer_class = TrainingTypeSerializer
+    # Versioned: an import's edit versions the way the API's does
+    # (TrainingTypeSerializer.update). A name matches the current one.
+    csv_import_serializer = create_import_serializer_for_model(
+        TrainingType, lookup_fields=['id', 'name'])
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['validity_period_days']
     search_fields = ['name', 'description']
@@ -245,7 +253,8 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixi
     partial_update=extend_schema(description="Partially update a training requirement"),
     destroy=extend_schema(description="Soft delete a training requirement")
 )
-class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                                 viewsets.ModelViewSet):
     """
     ViewSet for managing training requirements.
 
@@ -254,6 +263,19 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, DataExpor
     """
     queryset = TrainingRequirement.unscoped.all()
     serializer_class = TrainingRequirementSerializer
+    # A requirement is one training type on one target, so it is found by that pair
+    # (the model's four unique constraints). Steps are `Process > Step`; a process by
+    # name is its current version.
+    csv_import_serializer = create_import_serializer_for_model(
+        TrainingRequirement,
+        lookup_fields=['id', ('training_type', 'step'), ('training_type', 'process'),
+                       ('training_type', 'equipment_type'), ('training_type', 'job_role')],
+        extra_fk_fields={
+            'training_type': (TrainingType, ['name', 'id']),
+            'process': (Processes, ['name', 'id']),
+            'equipment_type': (EquipmentType, ['name', 'id']),
+            'job_role': (JobRole, ['name', 'id']),
+        })
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['training_type', 'step', 'process', 'equipment_type', 'job_role', 'min_level']
     search_fields = ['training_type__name', 'step__name', 'process__name', 'equipment_type__name', 'job_role__name', 'notes']
@@ -321,7 +343,8 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, DataExpor
     partial_update=extend_schema(description="Partially update a job role"),
     destroy=extend_schema(description="Soft delete a job role"),
 )
-class JobRoleViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class JobRoleViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                     viewsets.ModelViewSet):
     """
     ViewSet for managing job roles (HR/organizational positions).
 
@@ -330,6 +353,8 @@ class JobRoleViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, view
     """
     queryset = JobRole.unscoped.all()
     serializer_class = JobRoleSerializer
+    csv_import_serializer = create_import_serializer_for_model(
+        JobRole, lookup_fields=['id', 'name'])
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['active']
     search_fields = ['name', 'description']

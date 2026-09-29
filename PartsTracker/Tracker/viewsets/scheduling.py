@@ -44,8 +44,9 @@ from Tracker.services.scheduling.run_status import (
     current_run, mark_finished, mark_started,
 )
 from .base import TenantScopedMixin
+from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .core import ListMetadataMixin
-from .mixins import DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin
 
 # Solve/dispatch time cap lives on `OptimizationConfig.solver_time_limit_seconds`
 # (default 180s, editable from the scheduling settings dialog); CP-SAT returns
@@ -968,12 +969,17 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         return Response(svc(tasks, operator, user=request.user))
 
 
-class FixtureViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class FixtureViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                     viewsets.ModelViewSet):
     """CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
     operations against the quantity available (cumulative capacity)."""
     queryset = Fixture.unscoped.all().prefetch_related('steps')
     serializer_class = FixtureSerializer
+    # `steps` is a many-to-many: a `; `-separated list, each step named with its process
+    # ("Pump Build > Assembly") — the importer reads it and the export writes it.
+    csv_import_serializer = create_import_serializer_for_model(
+        Fixture, lookup_fields=['id', 'name'])
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_fields = ['kind']
     search_fields = ['name']
@@ -981,12 +987,102 @@ class FixtureViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, view
     ordering = ['name']
 
 
-class PlantCalendarExceptionViewSet(TenantScopedMixin, ListMetadataMixin,
+from Tracker.models import Shift, User  # noqa: E402
+from Tracker.serializers.csv_import import BaseCSVImportSerializer  # noqa: E402
+
+
+class _CalendarImportSerializer(BaseCSVImportSerializer):
+    """The calendar entries' import: times of day and date-times read as a CSV has them.
+
+    The base importer reads dates only (`2026-12-24`), so a CSV's `2026-12-24 08:00:00`
+    — what the export writes, and what a person types for a closure that starts at 8 —
+    was left unread, and a `09:00:00` time of day reached the model as text, so an
+    unchanged file still re-saved every row. These are parsed here, before the row is
+    matched, so a natural-key combination that includes a start compares a real value.
+
+    `days_of_week` keeps the model's own format, day numbers joined by commas
+    (`0,2,4`, 0=Monday..6=Sunday) — what the API takes and the export writes. A
+    number cell (Excel turns `0` into 0) and `;` or space separators are read too;
+    anything that isn't a day 0-6 is refused.
+
+    A person (`user`) is named by email. When a row has both the ID column and the
+    email, the email wins: it is the column a person edits.
+    """
+
+    def _canonical_columns(self, row):
+        from django.db import models as dj
+        from django.utils import dateparse, timezone as tz
+        email = next((v for k, v in row.items()
+                      if k.lower() in ('user__email', 'user_email') and v not in (None, '')),
+                     None)
+        if email is not None:
+            row = {k: v for k, v in row.items() if k.lower() != 'user'}
+        out = super()._canonical_columns(row)
+        model = self.Meta.model
+        for name, value in list(out.items()):
+            if name == 'days_of_week':
+                out[name] = self._days(value)
+                continue
+            if not isinstance(value, str):
+                continue
+            try:
+                field = model._meta.get_field(name)
+            except Exception:
+                continue
+            text = value.strip()
+            parsed = None
+            if isinstance(field, dj.DateTimeField):
+                try:
+                    parsed = dateparse.parse_datetime(text)
+                except ValueError:
+                    parsed = None
+                if parsed is not None and tz.is_naive(parsed):
+                    parsed = tz.make_aware(parsed)
+            elif isinstance(field, dj.DateField):
+                try:
+                    parsed = dateparse.parse_date(text)
+                except ValueError:
+                    parsed = None
+            elif isinstance(field, dj.TimeField):
+                try:
+                    parsed = dateparse.parse_time(text)
+                except ValueError:
+                    parsed = None
+                if parsed is None:
+                    raise serializers.ValidationError({name: (
+                        f"Couldn't read {value!r} as a time of day. Write it as HH:MM.")})
+            if parsed is not None:
+                out[name] = parsed
+        return out
+
+    @staticmethod
+    def _days(value):
+        import re
+        if value in (None, ''):
+            return value
+        if isinstance(value, float) and value.is_integer():
+            value = int(value)
+        text = str(value).strip()
+        tokens = [t for t in re.split(r'[,;\s]+', text) if t]
+        bad = [t for t in tokens if t not in {'0', '1', '2', '3', '4', '5', '6'}]
+        if bad:
+            raise serializers.ValidationError({'days_of_week': (
+                f"Not a day number: {', '.join(bad)}. Write day numbers joined by commas, "
+                "0=Monday..6=Sunday — e.g. 0,2,4.")})
+        return ','.join(tokens)
+
+
+class PlantCalendarExceptionViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin,
                                     DataExportMixin, viewsets.ModelViewSet):
     """CRUD for plant-wide closures — holidays, shutdowns, inventory days. The solver
     blocks every machine and treats operators as absent during these."""
     queryset = PlantCalendarException.unscoped.all()
     serializer_class = PlantCalendarExceptionSerializer
+    # No unique key: a name repeats year to year ("Christmas" 2026, 2027), so a row is
+    # matched on its name AND start. Moving a closure's start needs its id.
+    csv_import_serializer = create_import_serializer_for_model(
+        PlantCalendarException, lookup_fields=['id', ('name', 'start_time')],
+        base=_CalendarImportSerializer)
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_fields = ['kind', 'is_active']
     search_fields = ['name']
@@ -994,13 +1090,24 @@ class PlantCalendarExceptionViewSet(TenantScopedMixin, ListMetadataMixin,
     ordering = ['start_time']
 
 
-class LaborCalendarBlockViewSet(TenantScopedMixin, ListMetadataMixin,
+class LaborCalendarBlockViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin,
                                 DataExportMixin, viewsets.ModelViewSet):
     """CRUD for operator non-working time — PTO / sick / training / meetings / breaks,
     one-off or weekly, company-wide (user null) or per person. Operators only; machines
     keep running (only PlantCalendarException stops machines)."""
     queryset = LaborCalendarBlock.unscoped.all().select_related('user')
     serializer_class = LaborCalendarBlockSerializer
+    # A block is ABOUT its person, so the export names them by email — the form the
+    # import reads back (the serializer shows only their ID and display name).
+    export_extra_paths = frozenset({'user__email'})
+    # No unique key. A personal one-off block is its person + kind + start; a weekly
+    # one its person + kind + days. Company-wide blocks (no person) are matched by id.
+    # `user` is found by email, username or (integer) id.
+    csv_import_serializer = create_import_serializer_for_model(
+        LaborCalendarBlock,
+        lookup_fields=['id', ('user', 'kind', 'start_time'), ('user', 'kind', 'days_of_week')],
+        extra_fk_fields={'user': (User, ['email', 'username', 'pk'])},
+        base=_CalendarImportSerializer)
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_fields = ['kind', 'recurrence', 'user', 'is_active']
     search_fields = ['reason']
@@ -1008,13 +1115,21 @@ class LaborCalendarBlockViewSet(TenantScopedMixin, ListMetadataMixin,
     ordering = ['start_time']
 
 
-class OvertimeWindowViewSet(TenantScopedMixin, ListMetadataMixin,
+class OvertimeWindowViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin,
                             DataExportMixin, viewsets.ModelViewSet):
     """CRUD for additive shop-open time — overtime / extra / weekend shifts, one-off or
     weekly, company-wide. The solver adds these to operator + attended-machine
     availability (plant closures still win)."""
     queryset = OvertimeWindow.unscoped.all().select_related('shift')
     serializer_class = OvertimeWindowSerializer
+    # `shift` is found by code, then name — the current version (a new shift version
+    # re-points its overtime windows, see services.mes.shifts). No unique key: a
+    # one-off window is its shift + first date, a weekly one its shift + days.
+    csv_import_serializer = create_import_serializer_for_model(
+        OvertimeWindow,
+        lookup_fields=['id', ('shift', 'start_date'), ('shift', 'days_of_week')],
+        extra_fk_fields={'shift': (Shift, ['code', 'name', 'id'])},
+        base=_CalendarImportSerializer)
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_fields = ['recurrence', 'shift', 'is_active']
     search_fields = ['reason']

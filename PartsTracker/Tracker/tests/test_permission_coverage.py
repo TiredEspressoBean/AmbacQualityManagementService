@@ -135,11 +135,13 @@ SOFT_DELETE_MODELS = {
     # Shift notes soft-delete via void (retract); retract is gated by
     # change_shiftnote, not delete_shiftnote.
     'shiftnote',
-    # Scheduler records: config is retired via void/re-author and the solver's
-    # ScheduledTask rows are regenerated each solve — never hard-deleted via a role.
-    'scheduledtask', 'steptiming', 'stepequipmentaffinity', 'workcenterchangeover',
-    # ('fixture' moved out: the scheduling settings UI has a fixture delete
-    # button, so delete_fixture is granted to the planner tier — presets.py.)
+    # Scheduler records: the solver's ScheduledTask rows are regenerated each solve —
+    # never deleted via a role.
+    'scheduledtask',
+    # ('fixture', 'steptiming', 'stepequipmentaffinity' and 'workcenterchangeover'
+    # moved out: they have DELETE endpoints (soft-archive, which the solver skips, and
+    # re-adding revives the row), so delete_* is granted to the planner tier —
+    # presets.py.)
     'optimizationconfig', 'continuousmachine',
     # (Calendar entries — laborcalendarblock/overtimewindow/plantcalendarexception —
     # are removable planning inputs: delete_ (a soft-archive via SecureModel.delete)

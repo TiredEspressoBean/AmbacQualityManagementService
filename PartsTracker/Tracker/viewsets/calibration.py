@@ -16,7 +16,32 @@ from Tracker.serializers.calibration import (
 )
 from .base import TenantScopedMixin
 from .core import ListMetadataMixin
-from .mixins import DataExportMixin
+from Tracker.serializers.csv_import import (
+    BaseCSVImportSerializer, create_import_serializer_for_model,
+)
+from Tracker.services.csv_utils import parse_date
+from .mixins import CSVImportMixin, DataExportMixin
+
+
+class _CalibrationRecordImport(BaseCSVImportSerializer):
+    """A calibration record is evidence of what happened: an import adds records and
+    never rewrites one. A row that matches an existing record and changes nothing (an
+    unchanged export, imported back) is a no-op; one that would change it is refused."""
+
+    def find_existing(self, data):
+        # The combination compares a plain column as typed text, so `1/15/2026` never
+        # matched the stored 2026-01-15. Match on the date it reads as.
+        raw = data.get('calibration_date')
+        parsed = parse_date(raw) if raw not in (None, '') else None
+        if parsed is not None:
+            data = {**data, 'calibration_date': parsed.date()}
+        return super().find_existing(data)
+
+    def update_instance(self, instance, data):
+        if any(getattr(instance, f, None) != v for f, v in data.items()):
+            raise serializers.ValidationError(
+                "CalibrationRecord rows are records; an import adds them, it doesn't change them.")
+        return instance
 
 
 @extend_schema_view(
@@ -33,7 +58,8 @@ from .mixins import DataExportMixin
     partial_update=extend_schema(description="Partially update a calibration record"),
     destroy=extend_schema(description="Soft delete a calibration record")
 )
-class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                               viewsets.ModelViewSet):
     """
     ViewSet for managing calibration records.
 
@@ -46,6 +72,14 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportM
     """
     queryset = CalibrationRecord.unscoped.all()
     serializer_class = CalibrationRecordSerializer
+    # Create-only (see _CalibrationRecordImport). The same equipment + date + certificate
+    # is the same calibration: it matches the existing record, so it is refused in
+    # `create` mode and can't be changed in any mode — never a second record.
+    csv_import_serializer = create_import_serializer_for_model(
+        CalibrationRecord,
+        lookup_fields=['id', ('equipment', 'calibration_date', 'certificate_number')],
+        extra_fk_fields={'equipment': (Equipments, ['serial_number', 'name', 'id'])},
+        base=_CalibrationRecordImport)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['equipment', 'result', 'calibration_type']
     search_fields = [

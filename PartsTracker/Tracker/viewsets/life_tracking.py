@@ -20,7 +20,11 @@ from Tracker.serializers.life_tracking import (
     LifeTrackingSerializer, LifeTrackingListSerializer,
     LifeTrackingIncrementSerializer, LifeTrackingResetSerializer, LifeTrackingOverrideSerializer,
 )
+from Tracker.serializers.csv_import import (
+    BaseCSVImportSerializer, create_import_serializer_for_model,
+)
 from .base import TenantScopedMixin
+from .mixins import CSVImportMixin, DataExportMixin
 
 
 class LifeLimitDefinitionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
@@ -97,7 +101,30 @@ class LifeLimitDefinitionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         )
 
 
-class PartTypeLifeLimitViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class _PartTypeLifeLimitImport(BaseCSVImportSerializer):
+    """Keeps a link on the version it is pinned to when the file names that version.
+
+    Revising a definition copies its links onto the new version and leaves the old ones
+    on the old version (historical pinning — create_new_life_limit_definition_version),
+    so an export lists both. An .xlsx export's ID columns are lookups the import skips,
+    so the old link's `definition` arrives as a name, which finds the CURRENT version:
+    re-pointing the old link there collides with the copy already on it. A name that is
+    the linked row's own name names that row, so it is kept.
+    """
+
+    def resolve_with_existing(self, row, transformed, existing):
+        if existing is None:
+            return
+        for field in ('part_type', 'definition'):
+            new, old = transformed.get(field), getattr(existing, field, None)
+            if new is None or old is None or new.pk == old.pk:
+                continue
+            if str(row.get(field, '')).strip().lower() == (old.name or '').strip().lower():
+                transformed[field] = old
+
+
+class PartTypeLifeLimitViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
+                               viewsets.ModelViewSet):
     """
     Links life limit definitions to part types.
 
@@ -106,6 +133,12 @@ class PartTypeLifeLimitViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """
     queryset = PartTypeLifeLimit.unscoped.select_related('part_type', 'definition')
     serializer_class = PartTypeLifeLimitSerializer
+    # A link is its (part type, definition) pair — the model's unique constraint. Both
+    # are found by name, and a versioned definition's name finds its current version.
+    # A link pinned to an older version imports back onto that version (see the base).
+    csv_import_serializer = create_import_serializer_for_model(
+        PartTypeLifeLimit, lookup_fields=['id', ('part_type', 'definition')],
+        base=_PartTypeLifeLimitImport)
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['part_type', 'definition', 'is_required']
     ordering_fields = ['part_type__name', 'definition__name']

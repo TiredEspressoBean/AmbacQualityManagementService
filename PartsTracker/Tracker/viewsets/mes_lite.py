@@ -48,7 +48,8 @@ from Tracker.serializers.qms import (
 )
 from Tracker.services.mes import outside_process
 from Tracker.serializers.dms import DocumentsSerializer
-from .core import ListMetadataMixin, with_int_pk_schema
+from .core import ListMetadataMixin, VersionedLikeTheAPIImport, with_int_pk_schema
+from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .base import TenantScopedMixin
 from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin
 
@@ -4043,9 +4044,16 @@ class EquipmentSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         return qs
 
 
-class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                      viewsets.ModelViewSet):
     queryset = Equipments.unscoped.all()
     serializer_class = EquipmentsSerializer
+    # A row is matched on its serial number, then its name; `equipment_type` is found by
+    # name. Content edits version and status/scheduling edits save in place, as the API's
+    # do. `operating_shifts` is not imported or exported: EquipmentsSerializer doesn't show it.
+    csv_import_serializer = create_import_serializer_for_model(
+        Equipments, lookup_fields=['id', 'serial_number', 'name'],
+        base=VersionedLikeTheAPIImport)
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["equipment_type", "status", "location"]
     ordering_fields = ["name", "equipment_type__name", "serial_number", "status", "location", "updated_at", "created_at"]
@@ -4061,9 +4069,13 @@ class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
         return qs.select_related('equipment_type')
 
 
-class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                           viewsets.ModelViewSet):
     queryset = EquipmentType.unscoped.all()
     serializer_class = EquipmentTypeSerializer
+    # A row is matched on its name. Content edits version, as the API's do.
+    csv_import_serializer = create_import_serializer_for_model(
+        EquipmentType, lookup_fields=['id', 'name'], base=VersionedLikeTheAPIImport)
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["name"]
     ordering_fields = ["id", "name"]

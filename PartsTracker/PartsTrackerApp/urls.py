@@ -38,6 +38,9 @@ from Tracker.viewsets.tenant import (
     TenantGroupViewSet, PermissionListView, PresetListView, EffectivePermissionsView,
     UserTenantsView, SwitchTenantView, DemoResetView, TenantLLMProviderViewSet
 )
+from Tracker.viewsets.scheduling_setup import (
+    StepEquipmentAffinityViewSet, StepTimingViewSet, WorkCenterChangeoverViewSet,
+)
 
 urlpatterns = [
     # Health check endpoints for Azure Container Apps
@@ -264,6 +267,10 @@ router.register(r'Fixtures', FixtureViewSet, basename='Fixtures')
 router.register(r'PlantCalendarExceptions', PlantCalendarExceptionViewSet, basename='PlantCalendarExceptions')
 router.register(r'LaborCalendarBlocks', LaborCalendarBlockViewSet, basename='LaborCalendarBlocks')
 router.register(r'OvertimeWindows', OvertimeWindowViewSet, basename='OvertimeWindows')
+# The scheduler's setup data (standard times, machine eligibility, changeovers).
+router.register(r'StepTimings', StepTimingViewSet, basename='StepTimings')
+router.register(r'StepEquipmentAffinities', StepEquipmentAffinityViewSet, basename='StepEquipmentAffinities')
+router.register(r'WorkCenterChangeovers', WorkCenterChangeoverViewSet, basename='WorkCenterChangeovers')
 
 # ===== DWI VIEWSETS =====
 router.register(r'Substeps', SubstepViewSet, basename='Substeps')
