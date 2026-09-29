@@ -31,6 +31,8 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
+from Tracker.services.spreadsheet_safety import csv_safe, write_cell
+
 # Fields to skip in auto-export
 SKIP_EXPORT_FIELDS = {
     'tenant', 'created_by', 'modified_by', 'classification',
@@ -39,6 +41,47 @@ SKIP_EXPORT_FIELDS = {
 
 # Fields that are typically required
 COMMON_REQUIRED_FIELDS = {'id', 'name', 'ERP_id'}
+
+
+def _is_sensitive_segment(segment: str) -> bool:
+    """Never exported, whatever a serializer or a `?fields=` request says.
+
+    Belt and braces behind the serializer allow-list: a serializer that forgot to hide
+    a credential must not turn an export into a way to read it.
+    """
+    s = segment.lower()
+    return s == 'password' or 'secret' in s or 'token' in s or s == 'api_key'
+
+
+def _is_sensitive_path(path: str) -> bool:
+    """A path is refused if ANY segment is sensitive — `created_by__password` as well
+    as `password`."""
+    return any(_is_sensitive_segment(seg) for seg in path.split('__'))
+
+
+def _model_path(model, dotted: str) -> Optional[str]:
+    """`part.work_order.ERP_id` -> `part__work_order__ERP_id` when every segment is a
+    concrete column or forward relation, else None.
+
+    Only such paths can be exported: they are what `.values()` fetches in the ONE query
+    the export makes. A property, a method field or a reverse relation is not.
+    """
+    if not dotted or dotted == '*':
+        return None
+    current = model
+    parts = dotted.split('.')
+    for i, part in enumerate(parts):
+        try:
+            field = current._meta.get_field(part)
+        except Exception:
+            return None
+        if not getattr(field, 'concrete', False) or field.many_to_many:
+            return None
+        if i < len(parts) - 1:
+            if not field.is_relation:
+                return None
+            current = field.related_model
+    return '__'.join(parts)
 
 
 def _has_name_column(model) -> bool:
@@ -278,6 +321,43 @@ class DataExportMixin:
             return self.queryset.model
         return None
 
+    def get_export_allowed_paths(self) -> Optional[set]:
+        """Model paths this viewset's serializer already shows its reader.
+
+        An export can never show more than the API does. It reads the model directly,
+        so without this every column a serializer deliberately hides — a password hash,
+        a field masked for this user — was exportable, and `?fields=` reached any of
+        them through any relation. The serializer is instantiated with the request
+        context, so a field it drops for this user is dropped here too.
+
+        A foreign key the serializer shows also allows `<fk>__name`: the related row's
+        name is what the dropdown sheets are built from.
+
+        None when the serializer cannot be introspected; callers then fall back to the
+        model's own fields minus sensitive ones, never to "anything".
+        """
+        model = self._get_model()
+        if model is None:
+            return None
+        try:
+            serializer = self.get_serializer_class()(context=self.get_serializer_context())
+            fields = serializer.fields
+        except Exception:
+            return None
+        allowed = {'id'}
+        for name, field in fields.items():
+            if getattr(field, 'write_only', False):
+                continue
+            path = _model_path(model, getattr(field, 'source', None) or name)
+            if path is None:
+                continue
+            allowed.add(path)
+            if '__' not in path:
+                mf = model._meta.get_field(path)
+                if isinstance(mf, models.ForeignKey) and _has_name_column(mf.related_model):
+                    allowed.add(f'{path}__name')
+        return {p for p in allowed if not _is_sensitive_path(p)}
+
     def get_export_fields(self) -> List[str]:
         """
         Get the list of fields to export.
@@ -286,21 +366,37 @@ class DataExportMixin:
         1. Query param ?fields=id,name,status (user override)
         2. self.export_fields (class attribute)
         3. Auto-detected from model (all non-system fields)
+
+        Whichever it is, only paths the serializer shows (`get_export_allowed_paths`),
+        and no sensitive path, survive. A requested field outside that is refused with
+        a 400 naming it rather than dropped silently.
         """
-        # Check query params first
+        from rest_framework.exceptions import ValidationError
+
+        allowed = self.get_export_allowed_paths()
+
+        def permitted(path: str) -> bool:
+            if _is_sensitive_path(path):
+                return False
+            return allowed is None or path in allowed
+
         if hasattr(self, 'request'):
             fields_param = self.request.query_params.get('fields')
             if fields_param:
-                return [f.strip() for f in fields_param.split(',')]
+                requested = [f.strip() for f in fields_param.split(',') if f.strip()]
+                refused = [f for f in requested if not permitted(f)]
+                if refused:
+                    raise ValidationError({'fields': (
+                        f"Not exportable: {', '.join(refused)}. Only fields this list "
+                        "already shows can be exported.")})
+                return requested
 
-        # Use class attribute if specified
         if self.export_fields:
-            return self.export_fields
+            return [f for f in self.export_fields if permitted(f)] or ['id']
 
-        # Auto-detect from model
         model = self._get_model()
         if model:
-            return get_exportable_fields(model)
+            return [f for f in get_exportable_fields(model) if permitted(f)] or ['id']
 
         return ['id']
 
@@ -376,36 +472,12 @@ class DataExportMixin:
 
         Handles related field lookups (field__subfield) and applies labels.
         """
-        # Separate simple fields from related fields
-        simple_fields = []
-        related_lookups = {}
-
-        for field in fields:
-            if '__' in field:
-                # Related field lookup
-                parts = field.split('__')
-                related_lookups[field] = parts
-            else:
-                simple_fields.append(field)
-
-        # Get data using values()
-        if simple_fields:
-            data = list(queryset.values(*simple_fields))
-        else:
-            data = list(queryset.values('id'))
-
-        # Add related field values
-        if related_lookups:
-            # Re-fetch with related objects for lookups
-            for i, obj in enumerate(queryset):
-                for field_key, parts in related_lookups.items():
-                    value = obj
-                    for part in parts:
-                        value = getattr(value, part, None)
-                        if value is None:
-                            break
-                    if i < len(data):
-                        data[i][field_key] = value
+        # One query for every column, related ones included. Related columns used to
+        # be filled by a second pass over the queryset and matched to the first by
+        # POSITION: two queries whose row order agreed only when the ordering had no
+        # ties, so a row could carry another row's related values — and the second
+        # pass cost a query per relation per row. `.values()` follows `fk__name` itself.
+        data = list(queryset.values(*(fields or ['id'])))
 
         # Create DataFrame
         df = pd.DataFrame(data)
@@ -441,30 +513,30 @@ class DataExportMixin:
         else:
             display_field = None
 
-        # Build queryset - respect tenant if applicable
-        qs = related_model.objects.all()
+        # Only rows this user may see. `.objects` scopes by tenant but not by the
+        # user's own permission, so a reference sheet listed every related row in the
+        # tenant — every user by name, say — to someone who can't view that model.
+        manager = related_model.objects
+        user = getattr(getattr(self, 'request', None), 'user', None)
+        qs = manager.for_user(user) if (user is not None and hasattr(manager, 'for_user')) \
+            else manager.all()
 
-        # Try to filter by tenant if the model has tenant field
-        if hasattr(self, 'request') and hasattr(self.request, 'tenant'):
-            if hasattr(related_model, 'tenant'):
-                qs = qs.filter(tenant=self.request.tenant)
-
-        # Limit results
+        # Limit results — one extra row fetched, to know whether the list was cut short.
+        qs = list(qs[:limit + 1])
+        truncated = len(qs) > limit
         qs = qs[:limit]
 
         # Get data
         if display_field:
-            data = list(qs.values('id', display_field))
-            df = pd.DataFrame(data)
-            if not df.empty:
-                df.columns = ['id', 'name']
+            data = [{'id': obj.pk, 'name': getattr(obj, display_field)} for obj in qs]
         else:
             data = [{'id': str(obj.pk), 'name': str(obj)} for obj in qs]
-            df = pd.DataFrame(data)
+        df = pd.DataFrame(data)
 
         # Convert types
         df = self._convert_df_for_excel(df)
 
+        df.attrs['truncated'] = truncated
         return df
 
     def _create_instructions_sheet(self, ws, model, field_info: Dict[str, Dict], fk_fields: Dict[str, models.ForeignKey]):
@@ -553,7 +625,7 @@ class DataExportMixin:
         # Write data
         for row_idx, row_data in enumerate(ref_df.values, 2):
             for col_idx, value in enumerate(row_data, 1):
-                ws.cell(row=row_idx, column=col_idx, value=value)
+                write_cell(ws, row_idx, col_idx, value)
 
         # Adjust column widths
         ws.column_dimensions['A'].width = 40  # UUID width
@@ -569,13 +641,20 @@ class DataExportMixin:
         defn = DefinedName(range_name, attr_text=ref)
         wb.defined_names[range_name] = defn
 
+        truncated = bool(ref_df.attrs.get('truncated'))
+        if truncated:
+            # Say so on the sheet: this list is the first rows only.
+            write_cell(ws, 1, 4, f"First {len(ref_df)} only — a value not listed can still "
+                                 "be typed into the Data sheet.")
         return {
             'range_name': range_name,
             'sheet_name': sheet_name,
             'max_row': max_row,
+            'truncated': truncated,
         }
 
-    def _add_data_validation(self, ws, col_idx: int, range_name: str, max_row: int):
+    def _add_data_validation(self, ws, col_idx: int, range_name: str, max_row: int,
+                             strict: bool = True):
         """Add dropdown data validation to a column."""
         col_letter = get_column_letter(col_idx)
 
@@ -589,6 +668,13 @@ class DataExportMixin:
             errorTitle='Invalid Value',
             error='Please select a value from the dropdown list.',
         )
+        # A truncated list can't be strict: Excel's default "stop" style would refuse a
+        # valid value that is simply past the reference sheet's cap, and flag every
+        # existing row holding one. Warn instead.
+        if not strict:
+            dv.errorStyle = 'warning'
+            dv.error = ('Not in the list shown — the list is incomplete, so this may '
+                        'still be valid.')
 
         # Apply to column (rows 2 to max_row, skipping header)
         dv.add(f'{col_letter}2:{col_letter}{max_row}')
@@ -622,7 +708,11 @@ class DataExportMixin:
         Returns the Excel file as bytes.
         """
         model = self._get_model()
-        fk_fields = get_fk_fields(model) if model else {}
+        # Reference sheets only for the foreign keys actually being exported — every FK
+        # on the model got one before, whether or not its column was in the file.
+        exported = {f.split('__')[0] for f in fields}
+        fk_fields = {k: v for k, v in (get_fk_fields(model) if model else {}).items()
+                     if k in exported}
         choice_fields = get_choice_fields(model) if model else {}
         boolean_fields = get_boolean_fields(model) if model else []
         field_info = get_field_info(model) if model else {}
@@ -729,7 +819,9 @@ class DataExportMixin:
                         cell.fill = formula_fill  # Light green to indicate formula
                         continue
 
-                cell = data_ws.cell(row=row_idx, column=col_idx, value=value)
+                # Data, never a formula — the export's own lookups are the ONLY
+                # formulas it writes (above).
+                cell = write_cell(data_ws, row_idx, col_idx, value)
 
                 # Highlight required field cells that are empty
                 is_required = field_info.get(field_name, {}).get('required', False)
@@ -740,7 +832,9 @@ class DataExportMixin:
         max_row = max(len(df) + 1, 100)  # At least 100 rows for new entries
         for col_idx, fk_name in fk_name_columns.items():
             if fk_name in ref_sheet_info:
-                self._add_data_validation(data_ws, col_idx, ref_sheet_info[fk_name]['range_name'], max_row)
+                info = ref_sheet_info[fk_name]
+                self._add_data_validation(data_ws, col_idx, info['range_name'], max_row,
+                                          strict=not info.get('truncated'))
 
         # Add data validation for choice/enum columns
         for col_idx, choices in choice_columns.items():
@@ -832,7 +926,7 @@ class DataExportMixin:
         # Create response
         if export_format == 'csv':
             # Simple CSV export
-            df = self.prepare_export_data(queryset, fields)
+            df = self.prepare_export_data(queryset, fields).map(csv_safe)
             output = io.StringIO()
             df.to_csv(output, index=False)
             content = output.getvalue().encode('utf-8-sig')

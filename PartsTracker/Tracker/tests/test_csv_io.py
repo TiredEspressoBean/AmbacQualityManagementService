@@ -338,76 +338,144 @@ class CsvImportSerializerTests(TenantContextMixin, TestCase):
 
 
 class CsvImportApiTests(APITestCase):
-    """API tests for CSV import/export endpoints."""
+    """The import/export endpoints over HTTP.
+
+    These used to call `/api/part-types/...` -- a route that doesn't exist -- with every
+    assertion behind `if response.status_code == 200`, so each passed on a 404 and the
+    suite never exercised the endpoints at all. That is how a crash in every export
+    (2026-09-21 to -29) went unnoticed. They now hit the real routes and assert."""
 
     @classmethod
     def setUpTestData(cls):
-        """Create test data."""
-        cls.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123",
-            is_staff=True,
-        )
+        from Tracker.models import Tenant
+        from Tracker.utils.tenant_context import reset_current_tenant, set_current_tenant_id
+        cls.tenant = Tenant.objects.create(name="CSV Shop", slug="csv-shop")
+        token = set_current_tenant_id(cls.tenant.id)
+        try:
+            cls.user = User.objects.create_user(
+                username="csvadmin", email="csvadmin@example.com", password="testpass123",
+                tenant=cls.tenant, is_staff=True)
+            cls.user.is_superuser = True
+            cls.user.save(update_fields=["is_superuser"])
+        finally:
+            reset_current_tenant(token)
 
     def setUp(self):
-        """Authenticate before each test."""
+        from Tracker.utils.tenant_context import set_current_tenant_id
         self.client.force_authenticate(user=self.user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
+        self._token = set_current_tenant_id(self.tenant.id)
+
+    def tearDown(self):
+        from Tracker.utils.tenant_context import reset_current_tenant
+        reset_current_tenant(self._token)
+
+    def _upload(self, content, mode="create", user=None):
+        if user is not None:
+            self.client.force_authenticate(user=user)
+        f = io.BytesIO(content.encode("utf-8"))
+        f.name = "import.csv"
+        return self.client.post("/api/PartTypes/import/", {"file": f, "mode": mode},
+                                format="multipart")
 
     def test_import_template_endpoint_csv(self):
-        """Test import template download - CSV format."""
-        response = self.client.get("/api/part-types/import-template/?format=csv")
-        # May return 404 if endpoint not wired up yet
-        if response.status_code == status.HTTP_200_OK:
-            self.assertEqual(response["Content-Type"], "text/csv")
-            self.assertIn("attachment", response.get("Content-Disposition", ""))
+        response = self.client.get("/api/PartTypes/import-template/csv/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn("attachment", response.get("Content-Disposition", ""))
 
     def test_import_template_endpoint_xlsx(self):
-        """Test import template download - Excel format."""
-        response = self.client.get("/api/part-types/import-template/?format=xlsx")
-        # May return 404 if endpoint not wired up yet
-        if response.status_code == status.HTTP_200_OK:
-            self.assertIn("spreadsheet", response["Content-Type"])
+        response = self.client.get("/api/PartTypes/import-template/xlsx/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("spreadsheet", response["Content-Type"])
 
     def test_export_endpoint_csv(self):
-        """Test data export - CSV format."""
-        response = self.client.get("/api/part-types/export/?format=csv")
-        # May return 404 if endpoint not wired up yet
-        if response.status_code == status.HTTP_200_OK:
-            self.assertEqual(response["Content-Type"], "text/csv")
+        response = self.client.get("/api/PartTypes/export/csv/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "text/csv")
 
     def test_export_endpoint_xlsx(self):
-        """Test data export - Excel format."""
-        response = self.client.get("/api/part-types/export/?format=xlsx")
-        # May return 404 if endpoint not wired up yet
-        if response.status_code == status.HTTP_200_OK:
-            self.assertIn("spreadsheet", response["Content-Type"])
+        response = self.client.get("/api/PartTypes/export/xlsx/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("spreadsheet", response["Content-Type"])
 
     def test_import_endpoint_no_file(self):
-        """Test import endpoint with no file."""
-        response = self.client.post("/api/part-types/import/")
-        # May return 404 if endpoint not wired up yet
-        if response.status_code != status.HTTP_404_NOT_FOUND:
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.post("/api/PartTypes/import/")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_import_endpoint_with_csv(self):
-        """Test import endpoint with CSV file."""
-        csv_content = "name,ERP_id\nTest Part,PT-TEST"
-        csv_file = io.BytesIO(csv_content.encode("utf-8"))
-        csv_file.name = "test.csv"
+        from Tracker.models import PartTypes
+        response = self._upload("name,ERP_id\nTest Part,PT-TEST")
+        self.assertEqual(response.status_code, status.HTTP_207_MULTI_STATUS, response.content)
+        self.assertEqual(response.json()["summary"]["created"], 1, response.content)
+        self.assertTrue(PartTypes.objects.filter(name="Test Part").exists())
 
-        response = self.client.post(
-            "/api/part-types/import/",
-            {"file": csv_file, "mode": "create"},
-            format="multipart",
-        )
+    # --- what an import may write ---------------------------------------------------
 
-        # May return 404 if endpoint not wired up yet
-        if response.status_code not in [status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED]:
-            self.assertEqual(response.status_code, status.HTTP_207_MULTI_STATUS)
-            data = response.json()
-            self.assertIn("summary", data)
-            self.assertIn("results", data)
+    def test_an_import_cannot_move_a_record_to_another_tenant(self):
+        """Columns were setattr'd onto the row, so `tenant_id` on an update moved it."""
+        from Tracker.models import PartTypes, Tenant
+        other = Tenant.objects.create(name="Elsewhere", slug="elsewhere")
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Stays Home")
+        response = self._upload(f"id,name,tenant_id\n{pt.id},Stays Home,{other.id}", mode="update")
+        self.assertEqual(response.status_code, status.HTTP_207_MULTI_STATUS, response.content)
+        self.assertEqual(response.json()["summary"]["errors"], 1)
+        pt.refresh_from_db()
+        self.assertEqual(pt.tenant_id, self.tenant.id)
+
+    def test_an_import_cannot_write_a_field_the_api_does_not_accept(self):
+        from Tracker.models import PartTypes
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Versioned")
+        response = self._upload(f"id,name,is_current_version\n{pt.id},Versioned,false", mode="update")
+        self.assertEqual(response.json()["summary"]["errors"], 1, response.content)
+        pt.refresh_from_db()
+        self.assertTrue(pt.is_current_version)
+
+    def test_update_modes_need_change_permission(self):
+        """The POST gate checks ADD only; update/upsert rewrite existing rows."""
+        from django.contrib.auth.models import Permission
+        from Tracker.models import PartTypes, TenantGroup, UserRole
+        adder = User.objects.create_user(username="adder", email="adder@example.com",
+                                         password="x", tenant=self.tenant)
+        group = TenantGroup.objects.create(tenant=self.tenant, name="Adders", is_custom=True)
+        group.permissions.add(*Permission.objects.filter(
+            codename__in=["add_parttypes", "view_parttypes"]))
+        UserRole.objects.create(user=adder, group=group)
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Protected")
+        r = self._upload(f"id,name\n{pt.id},Overwritten", mode="upsert", user=adder)
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN, r.content)
+        pt.refresh_from_db()
+        self.assertEqual(pt.name, "Protected")
+        r = self._upload("name\nBrand New", mode="create", user=adder)
+        self.assertEqual(r.status_code, status.HTTP_207_MULTI_STATUS, r.content)
+
+    def test_one_bad_row_does_not_take_the_rest_with_it(self):
+        """All rows ran in one transaction with no savepoints: after a row failed, every
+        later row could fail with it."""
+        from Tracker.models import PartTypes
+        existing = PartTypes.objects.create(tenant=self.tenant, name="Taken", ERP_id="TAKEN")
+        response = self._upload(f"id,name\n{existing.id},Taken\n,Fresh One", mode="create")
+        summary = response.json()["summary"]
+        self.assertEqual((summary["errors"], summary["created"]), (1, 1), response.content)
+        self.assertTrue(PartTypes.objects.filter(name="Fresh One").exists())
+
+    def test_import_status_is_not_readable_by_task_id_alone(self):
+        response = self.client.get(f"/api/PartTypes/import-status/{uuid4()}/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # --- formula injection ----------------------------------------------------------
+
+    def test_exports_never_carry_a_live_formula(self):
+        from openpyxl import load_workbook
+        from Tracker.models import PartTypes
+        PartTypes.objects.create(tenant=self.tenant, name='=HYPERLINK("http://x","go")')
+        body = self.client.get("/api/PartTypes/export/csv/?fields=name").content.decode("utf-8-sig")
+        self.assertIn(chr(39) + "=HYPERLINK", body)
+        wb = load_workbook(io.BytesIO(self.client.get("/api/PartTypes/export/xlsx/?fields=name").content))
+        cells = [c for row in wb["Data"].iter_rows(min_row=2) for c in row if c.value]
+        self.assertTrue(cells)
+        self.assertTrue(all(c.data_type == "s" for c in cells),
+                        [(c.value, c.data_type) for c in cells])
 
 
 class AutomaticIntrospectionTests(TestCase):

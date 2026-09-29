@@ -1273,7 +1273,8 @@ class RetryableImportTask(Task):
 
 @shared_task(bind=True, base=RetryableImportTask)
 def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode: str,
-                        tenant_id: str, user_id: int, serializer_path: str):
+                        tenant_id: str, user_id: int, serializer_path: str,
+                        api_serializer_path: str | None = None):
     """
     Process CSV/Excel import in background.
 
@@ -1311,6 +1312,22 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
         logger.error(f"Failed to load serializer {serializer_path}: {e}")
         return {'status': 'error', 'message': f'Invalid serializer: {serializer_path}'}
 
+    # The API serializer each row is checked against (see BaseCSVImportSerializer.
+    # _check_against_api). Optional only so a task queued before this change still runs.
+    api_class = None
+    if api_serializer_path:
+        try:
+            mod_path, cls_name = api_serializer_path.rsplit('.', 1)
+            api_class = getattr(importlib.import_module(mod_path), cls_name)
+        except (ValueError, ImportError, AttributeError) as e:
+            logger.error(f"Failed to load API serializer {api_serializer_path}: {e}")
+            return {'status': 'error', 'message': f'Invalid serializer: {api_serializer_path}'}
+    # No request in a worker: the context carries who is importing, which is what the
+    # serializers' scoping reads.
+    from types import SimpleNamespace
+    api_context = {'request': SimpleNamespace(user=user, tenant=tenant, query_params={},
+                                              method='POST', data={})}
+
     # Run with tenant context for RLS enforcement
     with tenant_context(tenant_id):
         # Process rows
@@ -1329,10 +1346,15 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
                     tenant=tenant,
                     user=user,
                     mode=mode,
+                    api_serializer_class=api_class,
+                    api_context=api_context,
                 )
 
+                # A savepoint per row, so one failed row doesn't abort the rest.
+                sid = transaction.savepoint()
                 try:
                     instance, was_created, warnings = serializer.import_row(row)
+                    transaction.savepoint_commit(sid)
                     if was_created:
                         created += 1
                         results.append({'row': i, 'status': 'created', 'id': str(instance.id)})
@@ -1344,6 +1366,7 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
                         results[-1]['warnings'] = warnings
 
                 except Exception as e:
+                    transaction.savepoint_rollback(sid)
                     errors += 1
                     error_detail = e.detail if hasattr(e, 'detail') else str(e)
                     results.append({'row': i, 'status': 'error', 'errors': error_detail})

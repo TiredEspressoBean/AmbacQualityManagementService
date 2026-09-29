@@ -75,12 +75,18 @@ class BaseCSVImportSerializer(serializers.Serializer):
         fk_fields = {}
         required_fields = []
 
-    def __init__(self, *args, tenant=None, user=None, mode=ImportMode.UPSERT, **kwargs):
+    def __init__(self, *args, tenant=None, user=None, mode=ImportMode.UPSERT,
+                 api_serializer_class=None, api_context=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.tenant = tenant
         self.user = user
         self.mode = mode
         self.warnings = []
+        # The viewset's own API serializer. An import is another way to write the
+        # model, so it may write only what the API accepts, and each row must pass
+        # the API's own validation — see `_check_against_api`.
+        self.api_serializer_class = api_serializer_class
+        self.api_context = api_context or {}
 
     def resolve_fk(
         self,
@@ -326,6 +332,11 @@ class BaseCSVImportSerializer(serializers.Serializer):
         """
         self.warnings = []
 
+        # Headers arrive lowercased (csv_utils.normalize_header), so a column named after
+        # a field with capitals — `ERP_id`, `ID_prefix` — never matched its own field and
+        # was refused. Map each column back to the field it names, ignoring case.
+        row_data = self._canonical_columns(row_data)
+
         # Validate required fields
         missing = self.validate_required_fields(row_data)
         if missing:
@@ -338,6 +349,9 @@ class BaseCSVImportSerializer(serializers.Serializer):
 
         # Find existing record
         existing = self.find_existing(row_data)
+
+        # Only what the API itself accepts, and only if the API would accept it.
+        self._check_against_api(transformed, existing)
 
         # Handle based on mode
         if self.mode == ImportMode.CREATE:
@@ -363,6 +377,82 @@ class BaseCSVImportSerializer(serializers.Serializer):
             else:
                 instance = self.create_instance(transformed)
                 return instance, True, self.warnings
+
+
+    # Columns an import never writes, whatever the file says. `tenant_id` is the one
+    # that mattered: every column used to be setattr'd onto the row, so a `tenant_id`
+    # column on an update moved the record into another tenant.
+    NEVER_IMPORTED = frozenset({
+        'id', 'pk', 'tenant', 'tenant_id', 'created_at', 'updated_at', 'created_by',
+        'created_by_id', 'modified_by', 'modified_by_id', 'archived', 'deleted_at',
+        'version', 'previous_version', 'previous_version_id', 'is_current_version',
+        'classification',
+    })
+
+    def _canonical_columns(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """`row` with each key renamed to the model field it names, case-insensitively.
+
+        A key that already names a field, or names none, is left as it is (an unknown
+        column is refused later, by name, in `_check_against_api`).
+        """
+        model = getattr(getattr(self, 'Meta', None), 'model', None)
+        if model is None:
+            return row
+        names = {f.name for f in model._meta.get_fields() if getattr(f, 'concrete', False)}
+        names |= set(getattr(self.Meta, 'fk_fields', {}) or {})
+        by_lower = {n.lower(): n for n in names}
+        return {(k if k in names else by_lower.get(k.lower(), k)): v for k, v in row.items()}
+
+    def _writable_columns(self) -> set:
+        """Columns this import may write: the API serializer's writable fields.
+
+        Without an API serializer, the model's own editable concrete fields. Either way
+        NEVER_IMPORTED is excluded, and a subclass may add columns it consumes itself
+        (`Meta.import_only_fields`, e.g. a quantity that becomes parts).
+        """
+        extra = set(getattr(getattr(self, 'Meta', None), 'import_only_fields', ()) or ())
+        if self.api_serializer_class is not None:
+            api = self.api_serializer_class(context=self.api_context)
+            cols = {name for name, f in api.fields.items() if not f.read_only}
+        else:
+            model = getattr(getattr(self, 'Meta', None), 'model', None)
+            cols = {f.name for f in model._meta.concrete_fields
+                    if getattr(f, 'editable', True)} if model else set()
+        return (cols | extra) - self.NEVER_IMPORTED
+
+    def _check_against_api(self, transformed: Dict[str, Any], existing) -> None:
+        """Refuse a row the API would refuse.
+
+        Two checks. (1) Every column must be one the API accepts — an import used to
+        write any model field, including ones the API deliberately keeps read-only, by
+        `create(**data)` / `setattr` + `save()`. (2) The row must pass the API
+        serializer's own validation (its `validate()` and field rules), as a partial
+        update of the matched record. The import's own create/update still does the
+        write, so model-specific import behaviour (a work order's parts, appended
+        notes) is kept.
+        """
+        allowed = self._writable_columns()
+        refused = sorted(k for k in transformed if k not in allowed)
+        if refused:
+            raise serializers.ValidationError({
+                k: "Can't be imported — the API doesn't accept this field." for k in refused})
+        if self.api_serializer_class is None:
+            return
+        import datetime as _dt
+        api = self.api_serializer_class(instance=existing, data={}, partial=True,
+                                        context=self.api_context)
+        payload = {}
+        for k, v in transformed.items():
+            field = api.fields.get(k)
+            if isinstance(v, models.Model):
+                v = v.pk
+            elif (isinstance(field, serializers.DateField) and not isinstance(field, serializers.DateTimeField)
+                  and isinstance(v, _dt.datetime)):
+                v = v.date()
+            payload[k] = v
+        checker = self.api_serializer_class(instance=existing, data=payload, partial=True,
+                                            context=self.api_context)
+        checker.is_valid(raise_exception=True)
 
 
 # ===== Model-specific CSV Import Serializers =====

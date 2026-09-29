@@ -20,6 +20,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.datavalidation import DataValidation
 
+from Tracker.services.spreadsheet_safety import write_cell
+
 
 # Style constants
 HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -150,6 +152,7 @@ class TemplateGenerator:
         self,
         tenant=None,
         include_lookups: bool = True,
+        user=None,
         include_instructions: bool = True,
     ) -> bytes:
         """
@@ -174,7 +177,7 @@ class TemplateGenerator:
 
         # FK lookup sheets
         if include_lookups:
-            self._create_lookup_sheets(wb, tenant)
+            self._create_lookup_sheets(wb, tenant, user)
 
         # Save to bytes
         output = io.BytesIO()
@@ -293,7 +296,7 @@ class TemplateGenerator:
         ws.column_dimensions['D'].width = 30
         ws.column_dimensions['E'].width = 20
 
-    def _create_lookup_sheets(self, wb: Workbook, tenant=None):
+    def _create_lookup_sheets(self, wb: Workbook, tenant=None, user=None):
         """Create FK lookup sheets for related models."""
         # Get unique FK models
         fk_models = {}
@@ -302,7 +305,7 @@ class TemplateGenerator:
                 fk_models[field.fk_model] = field
 
         for model, field in fk_models.items():
-            self._create_lookup_sheet(wb, model, field, tenant)
+            self._create_lookup_sheet(wb, model, field, tenant, user)
 
     def _create_lookup_sheet(
         self,
@@ -310,12 +313,17 @@ class TemplateGenerator:
         model: Type[models.Model],
         field: TemplateField,
         tenant=None,
+        user=None,
     ):
         """Create a single FK lookup sheet."""
         ws = wb.create_sheet(model.__name__)
 
-        # Get queryset
-        qs = model.objects.all()
+        # Only rows this user may see. A template is downloadable with VIEW permission
+        # on the importing model, and its lookup sheets used to list every row of each
+        # related model in the tenant — users by name, say — whatever the reader could
+        # otherwise see.
+        manager = model.objects
+        qs = manager.for_user(user) if (user is not None and hasattr(manager, 'for_user'))             else manager.all()
 
         # Apply tenant filter if model has tenant field
         if tenant and hasattr(model, 'tenant'):
@@ -361,10 +369,10 @@ class TemplateGenerator:
             cell.font = HEADER_FONT
             cell.border = THIN_BORDER
 
-        # Write data
+        # Write data — database values, so never as formulas.
         for r_idx, row in enumerate(df.values, start=2):
             for c_idx, value in enumerate(row, start=1):
-                ws.cell(row=r_idx, column=c_idx).value = value
+                write_cell(ws, r_idx, c_idx, value)
 
         # Auto-size columns
         for col in range(1, len(df.columns) + 1):

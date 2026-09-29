@@ -113,7 +113,20 @@ def record_access(
             'action_type': action_type,
             'user_id': str(getattr(user, 'pk', '') or ''),
             'remote_addr': remote_addr,
-            **data,
+            **_log_safe(data),
         },
     )
     return True
+
+
+# Attributes every LogRecord already has. `logging` raises KeyError when `extra` tries to
+# set one, so a payload key like `filename` (the bulk export's) turned every export into
+# a 500 after the file was built — from 2026-09-21, when egress started being recorded.
+_RESERVED_LOG_ATTRS = frozenset(vars(logging.LogRecord('', 0, '', 0, '', (), None))) | {
+    'message', 'asctime'}
+
+
+def _log_safe(data: dict) -> dict:
+    """`data` for a log record's `extra`, with any key a LogRecord reserves prefixed
+    `payload_` — kept for the compliance trail, never allowed to crash the request."""
+    return {(f'payload_{k}' if k in _RESERVED_LOG_ATTRS else k): v for k, v in data.items()}

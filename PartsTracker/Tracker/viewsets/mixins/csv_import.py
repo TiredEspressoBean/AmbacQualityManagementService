@@ -30,6 +30,11 @@ from Tracker.serializers.csv_import import (
 # Threshold for background processing
 BACKGROUND_IMPORT_THRESHOLD = 100
 
+# The most rows one file may carry. A file is parsed whole into memory and, above
+# BACKGROUND_IMPORT_THRESHOLD, sent to Celery as one message — so an unbounded file is
+# an unbounded message. Split larger loads into several files.
+MAX_IMPORT_ROWS = 10_000
+
 
 class CSVImportMixin:
     """
@@ -268,7 +273,7 @@ class CSVImportMixin:
             content_type = 'text/csv'
             filename = f'{model_name.lower()}_import_template.csv'
         else:
-            content = generator.generate_excel(tenant=tenant)
+            content = generator.generate_excel(tenant=tenant, user=request.user)
             content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             filename = f'{model_name.lower()}_import_template.xlsx'
 
@@ -360,6 +365,20 @@ class CSVImportMixin:
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Update and upsert rewrite existing records, so they need the model's CHANGE
+        # permission as well — the POST gate only checks ADD, which let anyone who could
+        # create a model's rows overwrite any of them through a file.
+        if mode != ImportMode.CREATE:
+            model = self._get_model()
+            if model is not None:
+                perm = f"change_{model._meta.model_name}"
+                if not request.user.has_tenant_perm(perm):
+                    return Response(
+                        {"detail": f"Mode '{mode}' updates existing records, which needs the "
+                                   f"'{perm}' permission. Use mode 'create' to add new ones only."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
         # Get custom column mapping from request (overrides viewset defaults)
         import json
         custom_mapping = {}
@@ -407,6 +426,12 @@ class CSVImportMixin:
                 {"detail": "No data rows found in file"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        if len(rows) > MAX_IMPORT_ROWS:
+            return Response(
+                {"detail": f"{len(rows)} rows is more than one import takes "
+                           f"({MAX_IMPORT_ROWS}). Split the file and import it in parts."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Get tenant and user
         tenant = getattr(self, 'tenant', None) or getattr(request.user, 'tenant', None)
@@ -422,7 +447,8 @@ class CSVImportMixin:
     def _process_import_inline(self, rows, mode, serializer_class, tenant, user):
         """Process small imports synchronously."""
         result = ImportResult()
-
+        api_class = self.get_serializer_class()
+        api_context = self.get_serializer_context()
         with transaction.atomic():
             for i, row in enumerate(rows, start=1):
                 serializer = serializer_class(
@@ -430,16 +456,22 @@ class CSVImportMixin:
                     tenant=tenant,
                     user=user,
                     mode=mode,
+                    api_serializer_class=api_class,
+                    api_context=api_context,
                 )
-
+                # A savepoint per row. Without one, the first row that failed IN THE
+                # DATABASE left the whole transaction aborted, and every row after it
+                # failed too — reported as unrelated per-row errors.
+                sid = transaction.savepoint()
                 try:
                     instance, created, warnings = serializer.import_row(row)
+                    transaction.savepoint_commit(sid)
                     if created:
                         result.add_created(i, instance.id, warnings or None)
                     else:
                         result.add_updated(i, instance.id, warnings or None)
-
                 except Exception as e:
+                    transaction.savepoint_rollback(sid)
                     if hasattr(e, 'detail'):
                         errors = e.detail
                     else:
@@ -464,6 +496,11 @@ class CSVImportMixin:
         task_id = str(uuid4())
         tenant_id = str(tenant.id) if tenant else None
         user_id = user.id
+        api_class = self.get_serializer_class()
+        api_serializer_path = f"{api_class.__module__}.{api_class.__qualname__}"
+        # Who may read this task's status: the user who started it, in this tenant.
+        from django.core.cache import cache
+        cache.set(f"import-owner:{task_id}", f"{tenant_id}:{user_id}", 60 * 60 * 24)
         transaction.on_commit(lambda: process_import_task.apply_async(
             kwargs={
                 'rows': rows,
@@ -472,6 +509,7 @@ class CSVImportMixin:
                 'tenant_id': tenant_id,
                 'user_id': user_id,
                 'serializer_path': serializer_path,
+                'api_serializer_path': api_serializer_path,
             },
             task_id=task_id,
         ))
@@ -514,8 +552,16 @@ class CSVImportMixin:
 
         Returns current state, progress, and results when complete.
         """
-        result = AsyncResult(task_id)
+        # Only the import's own starter may read it. Without this any user could read
+        # any Celery task's result — another tenant's import, or an unrelated task — by
+        # id. Ids are random, but a result is not a capability to leave lying about.
+        from django.core.cache import cache
+        tenant = getattr(self, 'tenant', None) or getattr(request.user, 'tenant', None)
+        owner = cache.get(f"import-owner:{task_id}")
+        if owner != f"{getattr(tenant, 'id', None)}:{request.user.id}":
+            return Response({"detail": "Import not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        result = AsyncResult(task_id)
         response = {
             'task_id': task_id,
             'status': result.status,
