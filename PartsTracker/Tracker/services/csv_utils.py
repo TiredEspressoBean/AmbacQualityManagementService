@@ -107,7 +107,10 @@ def normalize_header(header: str) -> str:
     if not header:
         return ""
 
-    normalized = header.strip().lower()
+    # A byte-order mark (Excel's "CSV UTF-8", and our own CSV template) and the `*` our
+    # templates put on required columns are not part of the name. With them, the first
+    # column of such a file and every required column matched nothing.
+    normalized = str(header).replace('\ufeff', '').strip().rstrip('*').strip().lower()
 
     # Normalize quote characters
     for quote in ["'", "'", "`", "´"]:
@@ -118,6 +121,10 @@ def normalize_header(header: str) -> str:
         normalized = normalized.replace(char, "_")
 
     return normalized
+
+
+# What the import dialog sends for a column the user chose not to import.
+SKIP_COLUMN = '_skip_'
 
 
 def create_field_mapping(headers: List[str], field_map: Dict[str, str]) -> Dict[str, str]:
@@ -137,7 +144,12 @@ def create_field_mapping(headers: List[str], field_map: Dict[str, str]) -> Dict[
     for header in headers:
         normalized = normalize_header(header)
 
-        if normalized in field_map:
+        # The import dialog keys its choices by the header as the file spells it
+        # ("Item"); viewset mappings key by the normalized header ("item"). Try both —
+        # matching only the normalized form ignored every manual remap.
+        if header in field_map:
+            result[header] = field_map[header]
+        elif normalized in field_map:
             result[header] = field_map[normalized]
         else:
             # Keep original if no mapping found
@@ -161,6 +173,17 @@ def remap_row(row: Dict[str, Any], field_mapping: Dict[str, str]) -> Dict[str, A
 
     for key, value in row.items():
         new_key = field_mapping.get(key, normalize_header(key))
+        if new_key in (None, '', SKIP_COLUMN):
+            continue
+
+        # An empty xlsx cell reaches here as pandas' NaN / NaT, not ''. Left alone it
+        # became the text "nan" — "not a valid UUID", "a valid integer is required" —
+        # so any xlsx with an optional column left blank failed.
+        try:
+            if pd.isna(value):
+                value = None
+        except (TypeError, ValueError):
+            pass  # a list-like value; not a blank cell
 
         # Trim string values
         if isinstance(value, str):
@@ -234,8 +257,23 @@ def parse_excel_file(
     Returns:
         Tuple of (list of row dicts, list of headers)
     """
-    # Read Excel file
-    df = pd.read_excel(file, sheet_name=sheet_name)
+    # Our exports and templates put the rows on a sheet named "Data", and an export's
+    # first sheet is its guide — reading sheet 0 imported the guide. Prefer "Data".
+    if sheet_name == 0:
+        try:
+            names = pd.ExcelFile(file).sheet_names
+            if 'Data' in names:
+                sheet_name = 'Data'
+        except Exception:
+            pass
+        if hasattr(file, 'seek'):
+            file.seek(0)
+
+    # Read Excel file — every cell as text, as a CSV arrives. pandas otherwise guesses
+    # a type per column: a text "7" or "0045" became the number 7 / 45 (7.0 where the
+    # column had blanks), so a part number or a characteristic lost its value. The
+    # importer converts by FIELD type instead, which is what it does for CSV.
+    df = pd.read_excel(file, sheet_name=sheet_name, dtype=str)
 
     # Get headers
     headers = list(df.columns)
@@ -250,6 +288,14 @@ def parse_excel_file(
         rows.append(remap_row(row_dict, field_mapping))
 
     return rows, list(field_mapping.values())
+
+
+# Limits on any uploaded spreadsheet, enforced here so every caller (import, preview,
+# user reconcile) gets them. An .xlsx is a zip, so a small upload can decompress to
+# gigabytes; and every row is held in memory, and for large imports sent to Celery as
+# one message. Split larger loads into several files.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_UPLOAD_ROWS = 10_000
 
 
 def parse_file(
@@ -273,14 +319,28 @@ def parse_file(
     Raises:
         ValueError: If file type is not supported
     """
+    size = getattr(file, 'size', None)
+    if size and size > MAX_UPLOAD_BYTES:
+        raise ValueError(
+            f"The file is {size // (1024 * 1024)} MB; the limit is "
+            f"{MAX_UPLOAD_BYTES // (1024 * 1024)} MB. Split it into smaller files.")
     filename_lower = filename.lower()
-
     if filename_lower.endswith('.csv'):
-        return parse_csv_file(file, field_map, encoding)
-    elif filename_lower.endswith(('.xlsx', '.xls')):
-        return parse_excel_file(file, field_map)
+        rows, headers = parse_csv_file(file, field_map, encoding)
+    elif filename_lower.endswith('.xlsx'):
+        rows, headers = parse_excel_file(file, field_map)
+    elif filename_lower.endswith('.xls'):
+        # The old binary format needs xlrd, which isn't installed, so .xls uploads only
+        # ever failed as "Error reading file". Say what to do instead.
+        raise ValueError("Old-format .xls files aren't supported. Save it as .xlsx or .csv "
+                         "and upload that.")
     else:
-        raise ValueError(f"Unsupported file type: {filename}. Use .csv, .xlsx, or .xls")
+        raise ValueError(f"Unsupported file type: {filename}. Use .csv or .xlsx")
+    if len(rows) > MAX_UPLOAD_ROWS:
+        raise ValueError(
+            f"{len(rows)} rows is more than one upload takes ({MAX_UPLOAD_ROWS}). "
+            "Split the file into smaller ones.")
+    return rows, headers
 
 
 def parse_date(value: Any) -> Optional[datetime]:
@@ -320,7 +380,66 @@ def parse_date(value: Any) -> Optional[datetime]:
             except ValueError:
                 continue
 
+        # A date with a time — what a CSV export writes for a date-time
+        # (`2026-12-24 08:00:00`), and what people type (`12/24/2026 8:00 AM`). Only
+        # dates were read, so every date-time in a CSV was "couldn't read".
+        from django.utils.dateparse import parse_datetime as _iso
+        try:
+            parsed = _iso(value.replace('/', '-') if value[:4].isdigit() else value)
+        except ValueError:
+            parsed = None
+        if parsed:
+            return parsed
+        for date_fmt in DATE_FORMATS:
+            for time_fmt in DATETIME_TIME_FORMATS:
+                try:
+                    return datetime.strptime(value, f"{date_fmt} {time_fmt}")
+                except ValueError:
+                    continue
+
     return None
+
+
+# Times accepted after a date, and on their own for a time-of-day field.
+DATETIME_TIME_FORMATS = ["%H:%M:%S", "%H:%M", "%I:%M %p", "%I:%M:%S %p", "%I:%M%p"]
+
+
+def parse_time(value: Any):
+    """A time of day (`09:00`, `9:00 AM`, `09:00:00`, an Excel time cell), or None."""
+    from datetime import time as _time
+    if value is None or value == "":
+        return None
+    if isinstance(value, _time):
+        return value
+    if isinstance(value, datetime):
+        return value.time()
+    if hasattr(value, 'to_pydatetime'):
+        return value.to_pydatetime().time()
+    if isinstance(value, str):
+        value = value.strip()
+        for fmt in DATETIME_TIME_FORMATS:
+            try:
+                return datetime.strptime(value.upper(), fmt).time()
+            except ValueError:
+                continue
+    return None
+
+
+def ambiguous_day_month(value: Any) -> bool:
+    """Whether a slash- or dash-separated date could be read either way round.
+
+    `03/04/2026` is 4 March in the US and 3 April almost everywhere else; parse_date
+    reads month first. True when both of the first two numbers are 12 or under and they
+    differ — the only case the order changes the answer.
+    """
+    import re
+    if not isinstance(value, str):
+        return False
+    m = re.match(r'^\s*(\d{1,2})[/-](\d{1,2})[/-]\d{2,4}\s*$', value)
+    if not m:
+        return False
+    a, b = int(m.group(1)), int(m.group(2))
+    return a <= 12 and b <= 12 and a != b
 
 
 def parse_boolean(value: Any) -> Optional[bool]:

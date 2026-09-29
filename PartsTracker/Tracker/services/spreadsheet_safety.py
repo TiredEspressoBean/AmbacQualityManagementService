@@ -15,6 +15,7 @@ Two formats, two rules:
 from __future__ import annotations
 
 import re
+from uuid import UUID
 
 _FORMULA_START = ('=', '+', '-', '@', '\t', '\r')
 _PLAIN_NUMBER = re.compile(r'^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$')
@@ -34,6 +35,8 @@ def write_cell(ws, row: int, column: int, value):
     Only for values that came from the database or a user. A cell the export builds as
     a formula on purpose (a lookup it computes) must be written with `ws.cell` directly.
     """
+    if isinstance(value, UUID):
+        value = str(value)  # openpyxl refuses a UUID outright
     cell = ws.cell(row=row, column=column, value=value)
     if isinstance(value, str) and value.startswith('='):
         cell.data_type = 's'

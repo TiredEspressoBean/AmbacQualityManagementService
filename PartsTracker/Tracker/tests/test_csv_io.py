@@ -228,7 +228,8 @@ class TemplateGeneratorTests(TestCase):
         rows = list(reader)
 
         self.assertEqual(rows[0], ["name*", "quantity"])
-        self.assertEqual(rows[1], ["Test Name", "100"])
+        # Header only: a sample row under it was imported as data.
+        self.assertEqual(len(rows), 1)
 
     def test_get_part_types_template(self):
         """Test pre-built part types template."""
@@ -337,6 +338,33 @@ class CsvImportSerializerTests(TenantContextMixin, TestCase):
             serializer.import_row(row_data)
 
 
+class ImportValueReadingTests(TestCase):
+    """Values an import can't read, or can read two ways, are reported on the row.
+
+    Both used to be silent: an unreadable value was dropped (the field kept its old
+    value and the row reported success), and `03/04/2026` became 4 March for a file
+    whose author meant 3 April."""
+
+    def _transform(self, row):
+        s = OrdersCSVImportSerializer(data={}, mode="create")
+        s.warnings = []
+        return s.transform_data(row), s.warnings
+
+    def test_an_ambiguous_date_is_read_month_first_and_says_so(self):
+        out, warnings = self._transform({"estimated_completion": "03/04/2026"})
+        self.assertEqual(str(out["estimated_completion"]), "2026-03-04")
+        self.assertTrue(any("month first" in w for w in warnings), warnings)
+
+    def test_an_unambiguous_date_needs_no_warning(self):
+        _, warnings = self._transform({"estimated_completion": "2026-04-03"})
+        self.assertEqual(warnings, [])
+
+    def test_an_unreadable_value_is_reported_not_dropped_silently(self):
+        out, warnings = self._transform({"estimated_completion": "next tuesday"})
+        self.assertNotIn("estimated_completion", out)
+        self.assertTrue(any("couldn't read" in w for w in warnings), warnings)
+
+
 class CsvImportApiTests(APITestCase):
     """The import/export endpoints over HTTP.
 
@@ -431,6 +459,23 @@ class CsvImportApiTests(APITestCase):
         pt.refresh_from_db()
         self.assertTrue(pt.is_current_version)
 
+    def test_a_read_only_column_is_ignored_with_a_warning(self):
+        """An export carries columns the API shows but won't take. Ignored, not refused,
+        so an exported file imports back — and never written."""
+        from Tracker.models import PartTypes
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Shown")
+        r = self._upload(f"id,name,ID_prefix,is_current_version\n{pt.id},Shown,SH,true", mode="update")
+        body = r.json()
+        self.assertEqual(body["summary"]["updated"], 1, r.content)
+        self.assertIn("is_current_version", str(body["results"][0].get("warnings")), r.content)
+        # A content edit versions a part type, as the API's does: read the current one.
+        current = PartTypes.objects.get(name="Shown", is_current_version=True)
+        self.assertEqual(current.ID_prefix, "SH")
+
+    def test_a_column_that_names_no_field_is_still_refused(self):
+        r = self._upload("name,colour\nTypo,red", mode="create")
+        self.assertIn("colour", str(r.json()["results"][0]["errors"]), r.content)
+
     def test_update_modes_need_change_permission(self):
         """The POST gate checks ADD only; update/upsert rewrite existing rows."""
         from django.contrib.auth.models import Permission
@@ -476,6 +521,271 @@ class CsvImportApiTests(APITestCase):
         self.assertTrue(cells)
         self.assertTrue(all(c.data_type == "s" for c in cells),
                         [(c.value, c.data_type) for c in cells])
+
+    # --- round trips: the files we hand out must import back -------------------------
+
+    def _post_file(self, url, content, name, mode):
+        f = io.BytesIO(content)
+        f.name = name
+        return self.client.post(url, {"file": f, "mode": mode}, format="multipart")
+
+    def test_a_filled_in_xlsx_template_imports_only_what_was_filled_in(self):
+        """Required columns are headed `name*`, and the template put a hint row and a
+        sample row under the header — the star matched nothing, and the two rows were
+        imported as data."""
+        from openpyxl import load_workbook
+        from Tracker.models import PartTypes
+        wb = load_workbook(io.BytesIO(self.client.get("/api/PartTypes/import-template/xlsx/").content))
+        ws = wb["Data"]
+        headers = [c.value for c in ws[1]]
+        self.assertIn("name*", headers)
+        ws.cell(row=2, column=headers.index("name*") + 1, value="From Template")
+        out = io.BytesIO(); wb.save(out)
+        r = self._post_file("/api/PartTypes/import/", out.getvalue(), "filled.xlsx", "create")
+        self.assertEqual(r.json()["summary"], {"total": 1, "created": 1, "updated": 0, "errors": 0}, r.content)
+        self.assertTrue(PartTypes.objects.filter(name="From Template").exists())
+        self.assertFalse(PartTypes.objects.filter(name__in=["Part type name", "Widget Assembly"]).exists())
+
+    def test_a_filled_in_csv_template_imports(self):
+        """Our CSV template (like Excel's "CSV UTF-8") starts with a byte-order mark,
+        which hid the first column."""
+        from Tracker.models import PartTypes
+        template = self.client.get("/api/PartTypes/import-template/csv/").content
+        self.assertTrue(template.startswith(b"\xef\xbb\xbf"))
+        self.assertEqual(len(template.decode("utf-8-sig").strip().splitlines()), 1)
+        header = template.decode("utf-8-sig").strip().split(",")
+        row = ",".join("From CSV" if h == "name*" else "" for h in header)
+        r = self._post_file("/api/PartTypes/import/", template + (row + "\n").encode(), "t.csv", "create")
+        self.assertEqual(r.json()["summary"]["created"], 1, r.content)
+        self.assertTrue(PartTypes.objects.filter(name="From CSV").exists())
+
+    # --- the dialog's column mapping ------------------------------------------------
+
+    def _upload_mapped(self, content, mapping, mode="create"):
+        import json
+        f = io.BytesIO(content.encode("utf-8"))
+        f.name = "import.csv"
+        return self.client.post("/api/PartTypes/import/", {
+            "file": f, "mode": mode, "column_mapping": json.dumps(mapping)}, format="multipart")
+
+    def test_a_manual_remap_of_a_spelled_out_header_is_applied(self):
+        """The dialog keys its choices by the header as written; the parser looked them
+        up by the normalized header only, so every manual remap was ignored."""
+        from Tracker.models import PartTypes
+        r = self._upload_mapped("Product Title\nRemapped", {"Product Title": "name"})
+        self.assertEqual(r.json()["summary"]["created"], 1, r.content)
+        self.assertTrue(PartTypes.objects.filter(name="Remapped").exists())
+
+    def test_a_skipped_column_is_not_read(self):
+        from Tracker.models import PartTypes
+        r = self._upload_mapped("name,Internal Notes\nSkipper,ignore me",
+                                {"name": "name", "Internal Notes": "_skip_"})
+        self.assertEqual(r.json()["summary"]["created"], 1, r.content)
+        self.assertTrue(PartTypes.objects.filter(name="Skipper").exists())
+
+    def test_an_id_column_updates_that_record(self):
+        """An exported file's `id` column is how a re-import finds its records; it was
+        refused as a field the API doesn't accept."""
+        from Tracker.models import PartTypes
+        pt = PartTypes.objects.create(tenant=self.tenant, name="By Id")
+        r = self._upload(f"id,ID_prefix\n{pt.id},BI", mode="update")
+        self.assertEqual(r.json()["summary"]["updated"], 1, r.content)
+        # A content edit versions a part type, as the API's does: read the current one.
+        current = PartTypes.objects.get(name="By Id", is_current_version=True)
+        self.assertEqual(current.ID_prefix, "BI")
+
+    def test_the_preview_offers_id_to_match_on(self):
+        f = io.BytesIO(b"id,name\n,x")
+        f.name = "p.csv"
+        r = self.client.post("/api/PartTypes/import-preview/", {"file": f}, format="multipart")
+        body = r.json()
+        self.assertIn("id", [m["name"] for m in body["model_fields"]], r.content)
+        self.assertEqual(body["columns"][0]["mapped_to"], "id")
+
+    # --- which existing record an import matches -----------------------------------
+
+    def test_a_voided_record_is_not_matched(self):
+        """`.objects` does not exclude archived rows, so an import used to upsert onto a
+        voided record — or refuse a create because a voided one 'already exists'."""
+        from Tracker.models import PartTypes
+        PartTypes.objects.create(tenant=self.tenant, name="Retired", archived=True)
+        response = self._upload("name\nRetired", mode="create")
+        self.assertEqual(response.json()["summary"]["created"], 1, response.content)
+
+    def test_a_name_matching_two_records_is_refused_not_guessed(self):
+        from Tracker.models import PartTypes
+        PartTypes.objects.create(tenant=self.tenant, name="Twin", ERP_id="TWIN-A")
+        PartTypes.objects.create(tenant=self.tenant, name="Twin", ERP_id="TWIN-B")
+        response = self._upload("name,ID_prefix\nTwin,TW", mode="upsert")
+        body = response.json()
+        self.assertEqual(body["summary"]["errors"], 1, response.content)
+        self.assertIn("more than one", str(body["results"][0]["errors"]))
+        self.assertFalse(PartTypes.objects.filter(ID_prefix="TW").exists())
+
+    # --- templates and previews offer only what an import accepts -------------------
+
+    def test_the_template_offers_only_importable_columns(self):
+        response = self.client.get("/api/PartTypes/import-template/csv/")
+        header = response.content.decode("utf-8-sig").splitlines()[0].lower()
+        self.assertIn("name", header)
+        for never in ("tenant", "is_current_version", "created_at"):
+            self.assertNotIn(never, header, header)
+
+    # --- limits ---------------------------------------------------------------------
+
+    def test_an_old_format_xls_says_what_to_do(self):
+        f = io.BytesIO(b"not really a workbook")
+        f.name = "legacy.xls"
+        r = self.client.post("/api/PartTypes/import/", {"file": f, "mode": "create"},
+                             format="multipart")
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST, r.content)
+        self.assertIn(".xlsx", r.json()["detail"])
+
+    def test_too_many_rows_is_refused_before_any_is_written(self):
+        from Tracker.models import PartTypes
+        from Tracker.services.csv_utils import MAX_UPLOAD_ROWS
+        rows = "\n".join(f"Bulk {i}" for i in range(MAX_UPLOAD_ROWS + 1))
+        r = self._upload("name\n" + rows, mode="create")
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST, r.content[:200])
+        self.assertFalse(PartTypes.objects.filter(name__startswith="Bulk ").exists())
+
+
+class PartsStepImportTests(APITestCase):
+    """A parts import may place parts at a step — loading in-flight work — resolved
+    within the part's own process, since step names repeat across processes."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from Tracker.models import (
+            PartTypes, Processes, ProcessStep, Steps, Tenant, WorkOrder, WorkOrderStatus,
+        )
+        from Tracker.utils.tenant_context import reset_current_tenant, set_current_tenant_id
+        cls.tenant = Tenant.objects.create(name="Step Shop", slug="step-shop")
+        token = set_current_tenant_id(cls.tenant.id)
+        try:
+            cls.user = User.objects.create_user(
+                username="stepadmin", email="stepadmin@example.com", password="x",
+                tenant=cls.tenant, is_staff=True)
+            cls.user.is_superuser = True
+            cls.user.save(update_fields=["is_superuser"])
+            cls.pt = PartTypes.objects.create(tenant=cls.tenant, name="Pump")
+            procs = {}
+            for pname in ("Build", "Repair"):
+                proc = Processes.objects.create(tenant=cls.tenant, name=pname,
+                                                part_type=cls.pt, status="APPROVED")
+                steps = {}
+                for i, sname in enumerate(("Cut", "Assembly", "Test"), start=1):
+                    st = Steps.objects.create(tenant=cls.tenant, part_type=cls.pt, name=sname)
+                    ProcessStep.objects.create(process=proc, step=st, order=i)
+                    steps[sname] = st
+                procs[pname] = (proc, steps)
+            cls.build, cls.build_steps = procs["Build"]
+            cls.repair_steps = procs["Repair"][1]
+            cls.wo = WorkOrder.objects.create(
+                tenant=cls.tenant, ERP_id="WO-STEP", quantity=1,
+                workorder_status=WorkOrderStatus.IN_PROGRESS, process=cls.build)
+        finally:
+            reset_current_tenant(token)
+
+    def setUp(self):
+        from Tracker.utils.tenant_context import set_current_tenant_id
+        self.client.force_authenticate(user=self.user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
+        self._token = set_current_tenant_id(self.tenant.id)
+
+    def tearDown(self):
+        from Tracker.utils.tenant_context import reset_current_tenant
+        reset_current_tenant(self._token)
+
+    def _upload(self, content, mode="upsert"):
+        f = io.BytesIO(content.encode("utf-8"))
+        f.name = "parts.csv"
+        return self.client.post("/api/Parts/import/", {"file": f, "mode": mode},
+                                format="multipart")
+
+    def test_a_new_part_is_placed_at_its_processs_step_by_name(self):
+        """'Assembly' exists in both processes; the work order's process decides."""
+        from Tracker.models import Parts
+        r = self._upload("ERP_id,part_type,work_order,step\nP-1,Pump,WO-STEP,Assembly", mode="create")
+        self.assertEqual(r.json()["summary"]["created"], 1, r.content)
+        self.assertEqual(Parts.objects.get(ERP_id="P-1").step_id, self.build_steps["Assembly"].id)
+
+    def test_a_step_outside_the_process_is_refused(self):
+        r = self._upload("ERP_id,part_type,work_order,step\nP-2,Pump,WO-STEP,Paint", mode="create")
+        body = r.json()
+        self.assertEqual(body["summary"]["errors"], 1, r.content)
+        self.assertIn("not a step of", str(body["results"][0]["errors"]))
+
+    def test_an_existing_part_can_be_moved_to_a_step(self):
+        from Tracker.models import Parts
+        part = Parts.objects.create(tenant=self.tenant, ERP_id="P-3", part_type=self.pt,
+                                    work_order=self.wo, step=self.build_steps["Cut"])
+        r = self._upload(f"id,step\n{part.id},Test", mode="update")
+        self.assertEqual(r.json()["summary"]["updated"], 1, r.content)
+        part.refresh_from_db()
+        self.assertEqual(part.step_id, self.build_steps["Test"].id)
+
+    def test_a_core_part_is_not_moved_by_import(self):
+        from datetime import date
+        from Tracker.services.reman.core_part import create_core
+        core = create_core(tenant=self.tenant, core_number="CORE-STEP", core_type=self.pt,
+                           received_date=date.today(), received_by=self.user,
+                           condition_grade="B", work_order=self.wo,
+                           step=self.build_steps["Cut"])
+        r = self._upload(f"id,step\n{core.part_id},Test", mode="update")
+        self.assertEqual(r.json()["summary"]["errors"], 1, r.content)
+        core.part.refresh_from_db()
+        self.assertEqual(core.part.step_id, self.build_steps["Cut"].id)
+
+    def test_a_create_still_needs_its_required_columns(self):
+        """Required columns are relaxed for updates only."""
+        r = self._upload("ERP_id,work_order\nP-4,WO-STEP", mode="create")
+        self.assertIn("part_type", str(r.json()["results"][0]["errors"]), r.content)
+
+    def test_the_parts_template_offers_step(self):
+        header = self.client.get("/api/Parts/import-template/csv/").content.decode("utf-8-sig")
+        self.assertIn("step", header.splitlines()[0].lower())
+
+    def test_an_exported_file_imports_back_as_an_update(self):
+        """Export headers are labels — `Part Type Name`, `Part Type (auto)`, `Created
+        At` — and none of them mapped back, so every row of a re-import failed."""
+        from Tracker.models import Parts
+        part = Parts.objects.create(tenant=self.tenant, ERP_id="P-RT", part_type=self.pt,
+                                    work_order=self.wo, step=self.build_steps["Cut"])
+        exported = self.client.get("/api/Parts/export/xlsx/").content
+        # Uploaded as it is, straight to the API: read-only columns are ignored.
+        f = io.BytesIO(exported); f.name = "parts-export.xlsx"
+        raw = self.client.post("/api/Parts/import/", {"file": f, "mode": "update"}, format="multipart")
+        self.assertEqual(raw.json()["summary"]["updated"], 1, raw.content)
+        # And as the dialog does it: preview, keep its mapping (unmatched columns skipped).
+        import json
+        f = io.BytesIO(exported); f.name = "parts-export.xlsx"
+        cols = self.client.post("/api/Parts/import-preview/", {"file": f},
+                                format="multipart").json()["columns"]
+        mapping = {c["original"]: c["mapped_to"] or "_skip_" for c in cols}
+        self.assertEqual(mapping.get("part_type_name"), "part_type", mapping)
+        self.assertEqual(mapping.get("step_ref"), "step", mapping)
+        f = io.BytesIO(exported); f.name = "parts-export.xlsx"
+        r = self.client.post("/api/Parts/import/", {"file": f, "mode": "update",
+                                                    "column_mapping": json.dumps(mapping)},
+                             format="multipart")
+        body = r.json()
+        self.assertEqual(body["summary"]["errors"], 0, r.content)
+        self.assertEqual(body["summary"]["updated"], 1, r.content)
+        part.refresh_from_db()
+        self.assertEqual(part.part_type_id, self.pt.id)
+
+    def test_the_preview_maps_an_exported_fk_name_column_to_the_fk(self):
+        f = io.BytesIO(b"Part Type Name,Part Type (auto)\nPump,\n"); f.name = "p.csv"
+        cols = self.client.post("/api/Parts/import-preview/", {"file": f},
+                                format="multipart").json()["columns"]
+        self.assertEqual([c["mapped_to"] for c in cols], ["part_type", None])
+
+    def test_the_parts_template_explains_step(self):
+        from openpyxl import load_workbook
+        wb = load_workbook(io.BytesIO(self.client.get("/api/Parts/import-template/xlsx/").content))
+        text = " ".join(str(c.value) for ws in wb.worksheets for row in ws.iter_rows() for c in row if c.value)
+        self.assertIn("work-order process", text)
 
 
 class AutomaticIntrospectionTests(TestCase):

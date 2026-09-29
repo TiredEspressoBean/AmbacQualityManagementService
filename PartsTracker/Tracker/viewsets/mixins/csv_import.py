@@ -20,7 +20,7 @@ from rest_framework import serializers, status, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from Tracker.services.csv_utils import parse_file, ImportResult
+from Tracker.services.csv_utils import parse_file, ImportResult, normalize_header
 from Tracker.serializers.csv_import import (
     BaseCSVImportSerializer,
     ImportMode,
@@ -33,7 +33,12 @@ BACKGROUND_IMPORT_THRESHOLD = 100
 # The most rows one file may carry. A file is parsed whole into memory and, above
 # BACKGROUND_IMPORT_THRESHOLD, sent to Celery as one message — so an unbounded file is
 # an unbounded message. Split larger loads into several files.
-MAX_IMPORT_ROWS = 10_000
+from Tracker.services.csv_utils import MAX_UPLOAD_BYTES, MAX_UPLOAD_ROWS
+MAX_IMPORT_ROWS = MAX_UPLOAD_ROWS
+
+# The largest file accepted, checked BEFORE parsing. An .xlsx is a zip: a small upload
+# can decompress to gigabytes, and the whole file is read into memory either way.
+MAX_IMPORT_BYTES = MAX_UPLOAD_BYTES
 
 
 class CSVImportMixin:
@@ -88,6 +93,56 @@ class CSVImportMixin:
         if model:
             return get_or_create_import_serializer(model)
 
+        return None
+
+    def _importable_columns(self):
+        """Column names (lowercased) an import may write — the API serializer's writable
+        fields, as `BaseCSVImportSerializer._writable_columns` enforces. None when the
+        serializer can't be introspected (then nothing is filtered)."""
+        from Tracker.serializers.csv_import import BaseCSVImportSerializer
+        try:
+            api = self.get_serializer_class()(context=self.get_serializer_context())
+            cols = {n for n, f in api.fields.items() if not f.read_only}
+        except Exception:
+            return None
+        # Plus what this model's import consumes itself (e.g. a part's step).
+        importer = self.get_csv_import_serializer()
+        cols |= set(getattr(getattr(importer, 'Meta', None), 'import_only_fields', ()) or ())
+        return {c.lower() for c in cols - BaseCSVImportSerializer.NEVER_IMPORTED}
+
+    def _importable_generator(self):
+        """The template generator, limited to columns an import will accept — so a
+        template and a preview never invite a column the import then refuses."""
+        import copy
+        generator = self.get_csv_template_generator()
+        allowed = self._importable_columns()
+        if generator is not None and allowed is not None:
+            # A copy: a viewset may set `csv_template_generator` at class level, and
+            # filtering that instance in place would shrink it for every later request.
+            generator = copy.copy(generator)
+            generator.fields = [f for f in generator.fields if f.name.lower() in allowed]
+        if generator is not None:
+            # A column the importer reads its own way explains itself (`Meta.import_column_help`)
+            # — the model's help text says what the field is, not how an import fills it.
+            importer = self.get_csv_import_serializer()
+            help_text = getattr(getattr(importer, 'Meta', None), 'import_column_help', {}) or {}
+            if help_text:
+                generator = copy.copy(generator)
+                fields = []
+                for f in generator.fields:
+                    if f.name in help_text:
+                        f = copy.copy(f)
+                        f.description = help_text[f.name]
+                    fields.append(f)
+                generator.fields = fields
+        return generator
+
+    def _too_big(self, file):
+        if getattr(file, 'size', 0) and file.size > MAX_IMPORT_BYTES:
+            return Response(
+                {"detail": f"The file is {file.size // (1024 * 1024)} MB; imports take up to "
+                           f"{MAX_IMPORT_BYTES // (1024 * 1024)} MB. Split it into smaller files."},
+                status=status.HTTP_400_BAD_REQUEST)
         return None
 
     def get_csv_template_generator(self):
@@ -159,7 +214,9 @@ class CSVImportMixin:
                 {"detail": "No file provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
+        too_big = self._too_big(file)
+        if too_big:
+            return too_big
         # Parse file
         try:
             rows, headers = parse_file(
@@ -178,37 +235,56 @@ class CSVImportMixin:
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get model fields from template generator
-        generator = self.get_csv_template_generator()
+        # Get model fields from template generator — importable columns only
+        generator = self._importable_generator()
         model_fields = []
         field_names_set = set()
 
         if generator:
             for field in generator.fields:
+                # TemplateField has no display_name / field_type — reading them made
+                # every preview 500, so the dialog never reached its mapping step.
                 model_fields.append({
                     'name': field.name,
-                    'display': field.display_name,
+                    'display': field.name.replace('_', ' '),
                     'required': field.required,
-                    'type': field.field_type,
+                    'type': 'reference' if field.fk_model else 'choice' if field.choices else 'value',
                 })
                 field_names_set.add(field.name.lower())
+            # `id` is never written, but it is how a row names the record it updates —
+            # an exported file carries it — so offer it as a column to match on.
+            if 'id' not in field_names_set:
+                model_fields.insert(0, {'name': 'id', 'display': 'ID (matches an existing record)',
+                                        'required': False, 'type': 'string'})
+                field_names_set.add('id')
 
         # Build column mapping suggestions
         columns = []
         viewset_mapping = getattr(self, 'csv_field_mapping', {})
+        reference_fields = {f['name'].lower() for f in model_fields if f['type'] == 'reference'}
 
         for header in headers:
-            header_lower = header.lower().replace(' ', '_').replace('-', '_')
+            header_lower = normalize_header(header)
             mapped_to = None
             confidence = 'none'
+            # An exported FK by name (`part_type__name` / "Part Type Name") is the FK.
+            fk_base = next((header_lower[:-len(sfx)] for sfx in ('__name', '_name', '__ref', '_ref', '__email', '_email')
+                            if header_lower.endswith(sfx)
+                            and header_lower[:-len(sfx)] in reference_fields), None)
 
+            # An export's looked-up ID column is a formula with nothing stored: skip it.
+            if header_lower.endswith('(auto)'):
+                pass
             # Check viewset's custom mapping first
-            if header_lower in viewset_mapping:
+            elif header_lower in viewset_mapping:
                 mapped_to = viewset_mapping[header_lower]
                 confidence = 'high'
             # Check exact match
             elif header_lower in field_names_set:
                 mapped_to = header_lower
+                confidence = 'high'
+            elif fk_base:
+                mapped_to = fk_base
                 confidence = 'high'
             # Check if header matches a field display name
             else:
@@ -254,7 +330,7 @@ class CSVImportMixin:
         - /import-template/csv/ - CSV format
         - /import-template/xlsx/ - Excel format
         """
-        generator = self.get_csv_template_generator()
+        generator = self._importable_generator()
 
         if not generator:
             return Response(
@@ -356,6 +432,10 @@ class CSVImportMixin:
                 {"detail": "No file provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        too_big = self._too_big(file)
+        if too_big:
+            return too_big
 
         # Get import mode
         mode = request.data.get('mode', ImportMode.UPSERT)
@@ -487,6 +567,18 @@ class CSVImportMixin:
 
         # Get serializer path for task
         serializer_path = f"{serializer_class.__module__}.{serializer_class.__name__}"
+        # An importer built at runtime (`create_import_serializer_for_model`, or the
+        # registry's fallback) lives at no module path, so its own path imports nothing
+        # and every background import (100+ rows) failed "Invalid serializer". Point the
+        # task at the viewset instead; it asks the viewset for its importer.
+        import importlib
+        try:
+            found = getattr(importlib.import_module(serializer_class.__module__),
+                            serializer_class.__name__, None)
+        except ImportError:
+            found = None
+        if found is not serializer_class:
+            serializer_path = f"viewset:{type(self).__module__}.{type(self).__name__}"
 
         model = self._get_model()
         model_name = model.__name__ if model else 'Unknown'

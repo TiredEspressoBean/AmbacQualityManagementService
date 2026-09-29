@@ -42,6 +42,11 @@ SKIP_EXPORT_FIELDS = {
 # Fields that are typically required
 COMMON_REQUIRED_FIELDS = {'id', 'name', 'ERP_id'}
 
+# The most rows one export returns. The whole filtered table is built in memory in a
+# single request, so an unfiltered export of a large table could exhaust the worker.
+# Past this the user is asked to filter the list first.
+MAX_EXPORT_ROWS = 50_000
+
 
 def _is_sensitive_segment(segment: str) -> bool:
     """Never exported, whatever a serializer or a `?fields=` request says.
@@ -100,6 +105,31 @@ def _has_name_column(model) -> bool:
     return getattr(field, 'concrete', False)
 
 
+def _is_steps(model) -> bool:
+    return model._meta.label == 'Tracker.Steps'
+
+
+def _is_user(model) -> bool:
+    from django.contrib.auth import get_user_model
+    return model is get_user_model()
+
+
+def virtual_export_columns(model) -> Dict[str, tuple]:
+    """Columns an export computes rather than reads with `.values()`.
+
+    `{column: (kind, field_name)}` — kind is 'm2m' (a many-to-many set as `a; b`) or
+    'step_ref' (a step FK as `Process > Step`). Both are written in the form an import
+    reads back: see csv_import.M2M_SEPARATOR and Tracker.services.step_refs.
+    """
+    out = {}
+    for field in model._meta.get_fields():
+        if isinstance(field, models.ManyToManyField):
+            out[field.name] = ('m2m', field.name)
+        elif isinstance(field, models.ForeignKey) and _is_steps(field.related_model):
+            out[f'{field.name}__ref'] = ('step_ref', field.name)
+    return out
+
+
 def get_exportable_fields(model) -> List[str]:
     """
     Get list of exportable fields from a model via introspection.
@@ -126,17 +156,21 @@ def get_exportable_fields(model) -> List[str]:
         if field.name in SKIP_EXPORT_FIELDS:
             continue
 
-        # Handle ForeignKey - add both ID and name lookup
+        # Handle ForeignKey - add both ID and a readable column that imports back
         if isinstance(field, models.ForeignKey):
             fields.append(field.name)
-            # Add __name lookup if related model has name field
             related_model = field.related_model
-            if _has_name_column(related_model):
+            if _is_steps(related_model):
+                fields.append(f'{field.name}__ref')  # "Process > Step"
+            elif _is_user(related_model):
+                fields.append(f'{field.name}__email')
+            elif _has_name_column(related_model):
                 fields.append(f'{field.name}__name')
             continue
 
-        # Skip ManyToMany
+        # ManyToMany: one column listing the related rows, `a; b`
         if isinstance(field, models.ManyToManyField):
+            fields.append(field.name)
             continue
 
         # Include regular fields
@@ -314,6 +348,10 @@ class DataExportMixin:
     export_filename: Optional[str] = None
     export_field_labels: Dict[str, str] = {}
     export_include_references: bool = True
+    # Paths exported beyond what the serializer shows — a deliberate, per-viewset choice
+    # (see get_export_allowed_paths). E.g. {'user__email'} so a row about a person
+    # exports them in a form an import reads back.
+    export_extra_paths: frozenset = frozenset()
 
     def _get_model(self):
         """Get the model class from queryset."""
@@ -345,17 +383,29 @@ class DataExportMixin:
         except Exception:
             return None
         allowed = {'id'}
+        m2m_names = {f.name for f in model._meta.many_to_many}
         for name, field in fields.items():
             if getattr(field, 'write_only', False):
                 continue
-            path = _model_path(model, getattr(field, 'source', None) or name)
+            source = getattr(field, 'source', None) or name
+            if source in m2m_names:
+                allowed.add(source)  # listed as `a; b`
+                continue
+            path = _model_path(model, source)
             if path is None:
                 continue
             allowed.add(path)
             if '__' not in path:
                 mf = model._meta.get_field(path)
-                if isinstance(mf, models.ForeignKey) and _has_name_column(mf.related_model):
-                    allowed.add(f'{path}__name')
+                if isinstance(mf, models.ForeignKey):
+                    if _is_steps(mf.related_model):
+                        allowed.add(f'{path}__ref')
+                    elif _has_name_column(mf.related_model):
+                        allowed.add(f'{path}__name')
+        # A person's email is NOT allowed just because the serializer shows their ID:
+        # it is data the API may deliberately hide. A viewset whose rows are about a
+        # person (a labor block) opts in: `export_extra_paths = {'user__email'}`.
+        allowed |= set(self.export_extra_paths or ())
         return {p for p in allowed if not _is_sensitive_path(p)}
 
     def get_export_fields(self) -> List[str]:
@@ -445,24 +495,48 @@ class DataExportMixin:
         """
         Get the queryset for export.
 
-        Uses the same filtering as the list view.
+        Uses the same filtering as the list view — and, for a versioned model, only
+        the current versions. Several of those viewsets list every version (or limit to
+        current only for the `list` action), so an export carried superseded rows too:
+        the same code twice, and an edit to an old row's line would land on the old row.
         """
-        return self.filter_queryset(self.get_queryset())
+        qs = self.filter_queryset(self.get_queryset())
+        model = qs.model
+        if getattr(model, '_is_versioned', False) and any(
+                f.name == 'is_current_version' for f in model._meta.concrete_fields):
+            qs = qs.filter(is_current_version=True)
+        return qs
+
+    def _export_timezone(self):
+        """The tenant's shop-floor clock (`Tenant.default_timezone`), else UTC."""
+        import zoneinfo
+        tenant = getattr(self, 'tenant', None) or getattr(
+            getattr(getattr(self, 'request', None), 'user', None), 'tenant', None)
+        name = getattr(tenant, 'default_timezone', None) or 'UTC'
+        try:
+            return zoneinfo.ZoneInfo(name)
+        except Exception:
+            return zoneinfo.ZoneInfo('UTC')
 
     def _convert_df_for_excel(self, df: pd.DataFrame) -> pd.DataFrame:
         """Convert DataFrame types for Excel compatibility."""
         for col in df.columns:
-            # Handle timezone-aware datetimes (openpyxl doesn't support them)
+            # Timezone-aware datetimes (openpyxl doesn't support them) are written on
+            # the tenant's clock, and an import reads them on the same clock. Stripping
+            # the zone without converting wrote UTC, which is what people then typed.
             if pd.api.types.is_datetime64_any_dtype(df[col]):
                 try:
                     if df[col].dt.tz is not None:
-                        df[col] = df[col].dt.tz_localize(None)
+                        df[col] = df[col].dt.tz_convert(self._export_timezone()).dt.tz_localize(None)
                 except (AttributeError, TypeError):
                     pass
-            # Convert object columns (UUIDs, complex objects, etc.)
+            # Convert object columns (UUIDs, complex objects, etc.). A list or dict is
+            # written as JSON — its Python repr (`[{'start': ...}]`) couldn't be read back.
             elif df[col].dtype == 'object':
+                import json as _json
                 df[col] = df[col].apply(
-                    lambda x: str(x) if x is not None and not isinstance(x, (str, int, float, bool)) else x
+                    lambda x: _json.dumps(x, default=str) if isinstance(x, (list, dict))
+                    else str(x) if x is not None and not isinstance(x, (str, int, float, bool)) else x
                 )
         return df
 
@@ -477,10 +551,19 @@ class DataExportMixin:
         # POSITION: two queries whose row order agreed only when the ordering had no
         # ties, so a row could carry another row's related values — and the second
         # pass cost a query per relation per row. `.values()` follows `fk__name` itself.
-        data = list(queryset.values(*(fields or ['id'])))
+        virtual = virtual_export_columns(queryset.model)
+        wanted_virtual = [f for f in fields if f in virtual]
+        db_fields = [f for f in fields if f not in virtual]
+        need_id = bool(wanted_virtual) and 'id' not in db_fields
+        data = list(queryset.values(*((db_fields + (['id'] if need_id else [])) or ['id'])))
+        if wanted_virtual:
+            self._fill_virtual_columns(queryset.model, data, wanted_virtual, virtual)
+            if need_id:
+                for row in data:
+                    row.pop('id', None)
 
         # Create DataFrame
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data, columns=[f for f in fields] if not data else None)
 
         # Convert types for Excel compatibility
         df = self._convert_df_for_excel(df)
@@ -498,6 +581,40 @@ class DataExportMixin:
                 df.rename(columns=rename_map, inplace=True)
 
         return df
+
+    def _fill_virtual_columns(self, model, data, columns, virtual) -> None:
+        """Fill each computed column (see `virtual_export_columns`) into `data`, in a
+        couple of queries per column however many rows there are."""
+        from Tracker.services.step_refs import step_refs
+        from Tracker.serializers.csv_import import M2M_SEPARATOR
+
+        ids = [row['id'] for row in data]
+        for column in columns:
+            kind, field_name = virtual[column]
+            if kind == 'step_ref':
+                pairs = list(model.objects.filter(pk__in=ids).values_list('pk', field_name))  # tenant-safe: .objects auto-scopes
+                refs = step_refs(r for _, r in pairs)
+                by_row = {pk: refs.get(r) for pk, r in pairs}
+                for row in data:
+                    row[column] = by_row.get(row['id'])
+                continue
+            # m2m
+            rel_model = model._meta.get_field(field_name).related_model
+            pairs = [(pk, r) for pk, r in model.objects.filter(pk__in=ids)  # tenant-safe: .objects auto-scopes
+                     .values_list('pk', field_name) if r is not None]
+            rel_ids = {r for _, r in pairs}
+            if _is_steps(rel_model):
+                labels = step_refs(rel_ids)
+            elif _has_name_column(rel_model):
+                labels = dict(rel_model.objects.filter(pk__in=rel_ids).values_list('pk', 'name'))  # tenant-safe: .objects auto-scopes
+            else:
+                labels = {o.pk: str(o) for o in rel_model.objects.filter(pk__in=rel_ids)}  # tenant-safe: .objects auto-scopes
+            grouped: Dict[Any, List[str]] = {}
+            for pk, r in pairs:
+                if r in labels:
+                    grouped.setdefault(pk, []).append(str(labels[r]))
+            for row in data:
+                row[column] = M2M_SEPARATOR.join(sorted(grouped.get(row['id'], [])))
 
     def _get_reference_data(self, fk_field: models.ForeignKey, limit: int = 1000) -> pd.DataFrame:
         """
@@ -746,11 +863,9 @@ class DataExportMixin:
         header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
         header_font = Font(bold=True, color='FFFFFF')
         required_fill = PatternFill(start_color='FFEB9C', end_color='FFEB9C', fill_type='solid')
-        formula_fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')  # Light green for formula columns
 
-        # Track columns for data validation and formulas
+        # Track columns for data validation
         fk_name_columns = {}  # col_idx -> fk_name (for name columns with dropdowns)
-        fk_id_columns = {}    # col_idx -> fk_name (for ID columns that need formulas)
         choice_columns = {}   # col_idx -> list of choices (for enum dropdowns)
         boolean_columns = []  # col_idx (for True/False dropdowns)
 
@@ -764,11 +879,10 @@ class DataExportMixin:
             if is_required:
                 label = f'{label}*'
 
-            # Check if this is an FK ID column (will have formula)
-            is_fk_id = field_name in fk_fields and field_name in ref_sheet_info
-            if is_fk_id:
-                label = f'{label} (auto)'  # Mark as auto-calculated
-
+            # An FK's own column carries the row's ID, as a value; its name is in the
+            # column beside it. It used to be a lookup formula, which has no stored
+            # value, so an import fell back to the name — and a name always finds the
+            # CURRENT version, re-pointing every link to an older one.
             cell = data_ws.cell(row=1, column=col_idx, value=label)
             cell.font = header_font
             cell.fill = header_fill
@@ -778,8 +892,6 @@ class DataExportMixin:
             base_field = field_name.split('__')[0]
             if base_field in fk_fields and field_name.endswith('__name'):
                 fk_name_columns[col_idx] = base_field
-            elif field_name in fk_fields and field_name in ref_sheet_info:
-                fk_id_columns[col_idx] = field_name
 
             # Track choice/enum columns
             if field_name in choice_fields:
@@ -789,38 +901,12 @@ class DataExportMixin:
             if field_name in boolean_fields:
                 boolean_columns.append(col_idx)
 
-        # Build mapping of FK name to name column letter (for INDEX/MATCH formulas)
-        fk_name_col_letters = {}  # fk_name -> column letter
-        for col_idx, fk_name in fk_name_columns.items():
-            fk_name_col_letters[fk_name] = get_column_letter(col_idx)
-
         # Write data rows
         for row_idx, row_data in enumerate(df.values, 2):
             for col_idx, value in enumerate(row_data, 1):
                 field_name = df.columns[col_idx - 1]
 
-                # Check if this is an FK ID column that should have a formula
-                if col_idx in fk_id_columns:
-                    fk_name = fk_id_columns[col_idx]
-                    if fk_name in ref_sheet_info and fk_name in fk_name_col_letters:
-                        info = ref_sheet_info[fk_name]
-                        name_col = fk_name_col_letters[fk_name]
-                        sheet = info['sheet_name']
-                        max_ref_row = info['max_row']
-
-                        # INDEX/MATCH formula: look up ID based on name selection
-                        # =IF(NameCol="","",INDEX(Sheet!$A$2:$A$max,MATCH(NameCol,Sheet!$B$2:$B$max,0)))
-                        formula = (
-                            f'=IF({name_col}{row_idx}="","",'
-                            f"INDEX('{sheet}'!$A$2:$A${max_ref_row},"
-                            f"MATCH({name_col}{row_idx},'{sheet}'!$B$2:$B${max_ref_row},0)))"
-                        )
-                        cell = data_ws.cell(row=row_idx, column=col_idx, value=formula)
-                        cell.fill = formula_fill  # Light green to indicate formula
-                        continue
-
-                # Data, never a formula — the export's own lookups are the ONLY
-                # formulas it writes (above).
+                # Data, never a formula.
                 cell = write_cell(data_ws, row_idx, col_idx, value)
 
                 # Highlight required field cells that are empty
@@ -916,6 +1002,12 @@ class DataExportMixin:
         """
         # Get filtered queryset
         queryset = self.get_export_queryset()
+        row_count = queryset.count()
+        if row_count > MAX_EXPORT_ROWS:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'detail': (
+                f"{row_count:,} rows is more than one export returns ({MAX_EXPORT_ROWS:,}). "
+                "Filter the list first, then export.")})
 
         # Get fields to export
         fields = self.get_export_fields()
@@ -950,10 +1042,7 @@ class DataExportMixin:
         from Tracker.throttling import get_client_ip
 
         model = queryset.model
-        # One COUNT on an already-filtered queryset, against an endpoint that
-        # just serialised the whole thing -- not worth threading a count back
-        # out of both format branches to avoid.
-        row_count = queryset.count()
+        # `row_count` was taken up front, where it also enforces MAX_EXPORT_ROWS.
         record_access(
             obj=model,
             user=request.user,

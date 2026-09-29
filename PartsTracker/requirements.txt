@@ -1,6 +1,7 @@
 # Verified working requirements - tested with all module imports
 # Generated from clean venv on 2026-01-20
 # Integration framework dependencies
+defusedxml==0.7.1  # openpyxl parses uploaded .xlsx safely only when this is installed
 django-model-utils>=4.4.0
 hubspot-api-client>=12.0.0
 # Report pipeline

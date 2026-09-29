@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Type
 import pandas as pd
 from django.db import models
 from openpyxl import Workbook
+from openpyxl.comments import Comment
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -138,13 +139,10 @@ class TemplateGenerator:
         """
         output = io.StringIO()
 
-        # Header row with required markers
+        # The header row only. A sample row under it was imported as data by anyone who
+        # filled in the template and left it there.
         headers = [f.header_name for f in self.fields]
         output.write(",".join(headers) + "\n")
-
-        # Sample row
-        examples = [str(f.example) if f.example else "" for f in self.fields]
-        output.write(",".join(examples) + "\n")
 
         return output.getvalue().encode('utf-8-sig')  # BOM for Excel compatibility
 
@@ -207,19 +205,15 @@ class TemplateGenerator:
             width = max(len(field.header_name), len(str(field.example or "")), 15)
             ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width + 2
 
-        # Row 2: Hints
+        # Hints go on the header cells as comments, examples with them and on the
+        # Instructions sheet: the import reads every row under the header as data, so a
+        # hint row and a sample row there were imported — a part type "Part type name".
         for col, field in enumerate(self.fields, start=1):
-            cell = ws.cell(row=2, column=col)
-            cell.value = field.hint_text
-            cell.fill = HINT_FILL
-            cell.font = HINT_FONT
-            cell.alignment = Alignment(wrap_text=True)
-
-        # Row 3: Sample data
-        for col, field in enumerate(self.fields, start=1):
-            cell = ws.cell(row=3, column=col)
-            cell.value = field.example
-            cell.font = Font(italic=True, color="808080")
+            hint = field.hint_text
+            if field.example not in (None, ""):
+                hint = f"{hint}\nExample: {field.example}" if hint else f"Example: {field.example}"
+            if hint:
+                ws.cell(row=1, column=col).comment = Comment(hint, "Import template")
 
         # Add data validation for choice fields
         for col, field in enumerate(self.fields, start=1):
@@ -232,12 +226,12 @@ class TemplateGenerator:
                 dv.error = f"Please select a valid {field.name}"
                 dv.errorTitle = "Invalid Value"
                 ws.add_data_validation(dv)
-                # Apply to rows 4-1000 (data entry area)
+                # Apply to the data entry area
                 col_letter = ws.cell(row=1, column=col).column_letter
-                dv.add(f"{col_letter}4:{col_letter}1000")
+                dv.add(f"{col_letter}2:{col_letter}1000")
 
-        # Freeze header rows
-        ws.freeze_panes = "A3"
+        # Freeze the header row
+        ws.freeze_panes = "A2"
 
     def _create_instructions_sheet(self, wb: Workbook):
         """Create the instructions/field reference sheet."""
@@ -462,10 +456,14 @@ def introspect_model(model: Type[models.Model], skip_fields: Optional[set] = Non
             fk_display = 'name' if hasattr(related_model, 'name') else 'id'
             fk_value = fk_display
 
+            description = get_field_description(model_field)
+            if related_model._meta.label == 'Tracker.Steps':
+                description = (description + " — name it with its process: "
+                               "Process > Step").lstrip(" —")
             fields.append(TemplateField(
                 name=model_field.name,
                 required=not model_field.null and not model_field.blank,
-                description=get_field_description(model_field),
+                description=description,
                 example=f"Example {related_model.__name__}",
                 fk_model=related_model,
                 fk_display_field=fk_display,
@@ -473,8 +471,16 @@ def introspect_model(model: Type[models.Model], skip_fields: Optional[set] = Non
             ))
             continue
 
-        # Skip ManyToMany for now
+        # ManyToMany: one column listing the related rows, `a; b`
         if isinstance(model_field, models.ManyToManyField):
+            related_model = model_field.related_model
+            fields.append(TemplateField(
+                name=model_field.name,
+                description=(get_field_description(model_field) + " — list them separated by "
+                             "semicolons: a; b; c").lstrip(" —"),
+                fk_model=related_model,
+                fk_display_field='name' if hasattr(related_model, 'name') else 'id',
+            ))
             continue
 
         # Handle choice fields

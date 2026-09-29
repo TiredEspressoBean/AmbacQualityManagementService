@@ -1305,9 +1305,17 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
 
     # Load serializer class
     try:
-        module_path, class_name = serializer_path.rsplit('.', 1)
-        module = importlib.import_module(module_path)
-        serializer_class = getattr(module, class_name)
+        # `pkg.mod.Class`, or `viewset:pkg.mod.ViewSet` (see _queue_background_import).
+        if serializer_path.startswith('viewset:'):
+            # An importer built at runtime: ask the viewset that built it.
+            vs_module, vs_name = serializer_path[len('viewset:'):].rsplit('.', 1)
+            viewset = getattr(importlib.import_module(vs_module), vs_name)
+            serializer_class = viewset().get_csv_import_serializer()
+            if serializer_class is None:
+                raise AttributeError(serializer_path)
+        else:
+            module_path, class_name = serializer_path.rsplit('.', 1)
+            serializer_class = getattr(importlib.import_module(module_path), class_name)
     except (ValueError, ImportError, AttributeError) as e:
         logger.error(f"Failed to load serializer {serializer_path}: {e}")
         return {'status': 'error', 'message': f'Invalid serializer: {serializer_path}'}
