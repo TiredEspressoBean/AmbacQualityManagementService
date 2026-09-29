@@ -404,9 +404,31 @@ class RepairCodeSerializer(SecureModelMixin):
     def get_step_names(self, obj):
         return [s.name for s in obj.steps.all()]
 
+    # Retiring a code is not a revision of it.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
     def update(self, instance, validated_data):
+        """A content edit makes a new version; `archived` saves in place.
+
+        This passed the request positionally where `apply_versioned_update` takes
+        `non_versioning_fields` and `default_update` by keyword, so every edit of a
+        repair code was a TypeError (500). `steps` is a many-to-many, which
+        `create_new_version` can't take: it is set on whichever row comes back, and a
+        new version with no `steps` in the edit keeps the old one's.
+        """
         from Tracker.services.core.versioning import apply_versioned_update
-        return apply_versioned_update(instance, validated_data, self.context.get('request'))
+        steps = validated_data.pop('steps', None)
+        request = self.context.get('request')
+        result = apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+            version_kwargs={'user': getattr(request, 'user', None)})
+        if steps is not None:
+            result.steps.set(steps)
+        elif result.pk != instance.pk:
+            result.steps.set(instance.steps.all())
+        return result
 
 
 class RebuildScopePresetSerializer(SecureModelMixin):
