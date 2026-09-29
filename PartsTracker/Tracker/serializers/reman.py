@@ -76,6 +76,39 @@ class CoreSerializer(SecureModelMixin):
         from Tracker.services.reman.core_part import create_core
         return create_core(tenant=validated_data.pop('tenant', None), **validated_data)
 
+    # Fields an EDIT may not change. The stage moves only through the reman services
+    # (which keep the part's status derived from it); credit is recorded by
+    # `issue_credit`, and the API is not an undo for it; core type and number are the
+    # part's type and ERP id, so changing them here would split the unit from its part.
+    _IMMUTABLE_ON_UPDATE = {
+        'status': "the stage changes only through its actions (teardown, release, "
+                  "rebuild, return, scrap)",
+        'core_credit_issued': "credit is recorded by the Issue Credit action",
+        'core_type': "the core type is its part's type",
+        'core_number': "the core number is its part's identity",
+    }
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        core = self.instance
+        if core is None:
+            return attrs
+        errors = {}
+        for field, why in self._IMMUTABLE_ON_UPDATE.items():
+            if field in attrs and attrs[field] != getattr(core, field):
+                errors[field] = f"Can't be edited: {why}."
+        # Fulfilment decides whether the unit may be harvested, whether its parts are
+        # reserved to it, and whether scope needs the customer's authorisation — so it
+        # can be corrected only before any of that has happened.
+        if ('fulfilment_mode' in attrs and attrs['fulfilment_mode'] != core.fulfilment_mode
+                and core.status != 'RECEIVED'):
+            errors['fulfilment_mode'] = (
+                "Can only be changed while the core is Received — teardown has started, "
+                "and harvest, reservations and authorisation already follow from it.")
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
+
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_received_by_name(self, obj):
         return obj.received_by.display_name if obj.received_by else None

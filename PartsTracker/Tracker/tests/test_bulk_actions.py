@@ -506,3 +506,52 @@ class TeardownPutsTheUnitAtItsFirstStepTests(BulkActionsBaseTestCase):
         self.assertEqual(r.status_code, 201, r.content)
         core.part.refresh_from_db()
         self.assertEqual(core.part.step_id, self.teardown_step.id)
+
+
+class CoreEditGuardTests(BulkActionsBaseTestCase):
+    """PATCH /api/Cores/{id}/ may correct a core's details, but not move its stage,
+    undo its credit, or split it from its part. Nothing in the UI edits a core, so the
+    API was the only door — and it let any of these through, skipping the stage's
+    services and the part-status derivation."""
+
+    def _core(self, number, **kw):
+        kw.setdefault('status', 'RECEIVED')
+        return create_core(
+            tenant=self.tenant, core_number=number, core_type=self.injector_type,
+            received_date=date.today(), received_by=self.user, condition_grade='B', **kw)
+
+    def _patch(self, core, **data):
+        return self.client.patch(f"/api/Cores/{core.id}/", data, format="json")
+
+    def test_the_stage_cannot_be_written(self):
+        core = self._core("EDIT-1")
+        r = self._patch(core, status="REBUILT")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('status', r.json())
+        core.refresh_from_db()
+        self.assertEqual(core.status, 'RECEIVED')
+
+    def test_an_issued_credit_cannot_be_unissued_here(self):
+        core = self._core("EDIT-2", core_credit_value=50, core_credit_issued=True)
+        r = self._patch(core, core_credit_issued=False)
+        self.assertEqual(r.status_code, 400, r.content)
+        core.refresh_from_db()
+        self.assertTrue(core.core_credit_issued)
+
+    def test_identity_cannot_be_split_from_the_part(self):
+        core = self._core("EDIT-3")
+        self.assertEqual(self._patch(core, core_number="RENAMED").status_code, 400)
+        self.assertEqual(self._patch(core, core_type=str(self.other_type.id)).status_code, 400)
+
+    def test_fulfilment_can_be_corrected_only_while_received(self):
+        core = self._core("EDIT-4", fulfilment_mode="EXCHANGE")
+        self.assertEqual(self._patch(core, fulfilment_mode="REPAIR_RETURN").status_code, 200)
+        started = self._core("EDIT-5", fulfilment_mode="EXCHANGE", status='IN_DISASSEMBLY')
+        r = self._patch(started, fulfilment_mode="REPAIR_RETURN")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('fulfilment_mode', r.json())
+
+    def test_ordinary_details_can_still_be_corrected(self):
+        core = self._core("EDIT-6")
+        r = self._patch(core, condition_notes="Corrected at receiving inspection")
+        self.assertEqual(r.status_code, 200, r.content)
