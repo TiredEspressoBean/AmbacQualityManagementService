@@ -3,8 +3,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileUp, PackagePlus, Tag, Truck } from "lucide-react";
-import { ReportButton } from "@/components/reports/ReportButton";
+import { FileUp, MoreHorizontal, PackagePlus, Truck } from "lucide-react";
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useReportEmail } from "@/hooks/useReportEmail";
 import { AdjustLotQuantityDialog } from "@/components/receiving/AdjustLotQuantityDialog";
 import type { Schema } from "@/lib/api/types";
 import { useListMaterialLots } from "@/hooks/useListMaterialLots";
@@ -16,6 +19,13 @@ import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 
 type Lot = Schema<"MaterialLot">;
 const col = createColumnHelper<Schema<"MaterialLot">>();
+
+// Read as words, not codes — AWAITING_INSPECTION truncated on a tablet.
+const STATUS_LABEL: Record<string, string> = {
+    ON_ORDER: "On order", RECEIVED: "Received", AWAITING_INSPECTION: "Awaiting inspection",
+    ACCEPTED: "Accepted", REJECTED: "Rejected", IN_USE: "In use", CONSUMED: "Consumed",
+    SCRAPPED: "Scrapped", QUARANTINE: "Held",
+};
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     ACCEPTED: "default",
@@ -80,6 +90,7 @@ export function MaterialsPage() {
     const [expectOpen, setExpectOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [adjustLot, setAdjustLot] = useState<Lot | null>(null);
+    const { downloadReport } = useReportEmail();
     const onOrderLens = tab === "onorder" || tab === "late";
     const [receiveLot, setReceiveLot] = useState<Lot | null>(null);
 
@@ -179,7 +190,9 @@ export function MaterialsPage() {
                     header: "Status",
                     renderCell: (l) => (
                         <div className="flex items-center gap-1.5">
-                            <Badge variant={STATUS_VARIANT[l.status ?? ""] ?? "outline"}>{l.status}</Badge>
+                            <Badge variant={STATUS_VARIANT[l.status ?? ""] ?? "outline"} className="whitespace-nowrap">
+                                {STATUS_LABEL[l.status ?? ""] ?? l.status}
+                            </Badge>
                             <LotHoldBadges lot={l} />
                         </div>
                     ),
@@ -216,43 +229,50 @@ export function MaterialsPage() {
                           ),
                       }),
             ]}
-            renderActions={(l) => (
-                <div className="flex items-center gap-2">
-                    {l.status === "ON_ORDER" && (
-                        <Button size="sm" onClick={() => setReceiveLot(l)}>
-                            Receive
-                        </Button>
-                    )}
-                    {l.status !== "ON_ORDER" && (
-                        <ReportButton
-                            reportType="material_lot_label"
-                            params={{ lot_ids: [String(l.id)], copies: 1, layout: "thermal" }}
-                            label="Label"
-                            icon={<Tag className="h-4 w-4" />}
-                            size="sm"
-                            variant="outline"
-                        />
-                    )}
-                    {["ACCEPTED", "IN_USE", "QUARANTINE", "AWAITING_INSPECTION", "RECEIVED"].includes(l.status ?? "") && (
-                        <Button size="sm" variant="ghost" onClick={() => setAdjustLot(l)}>
-                            Adjust
-                        </Button>
-                    )}
-                    {canExtend(l) && (
-                        <Button size="sm" variant="outline" onClick={() => setExtendLot(l)}>
-                            Extend shelf life
-                        </Button>
-                    )}
-                    {(l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED") && (
-                        <Button
-                            size="sm"
-                            onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}
-                        >
-                            Inspect
-                        </Button>
-                    )}
-                </div>
-            )}
+            // One primary action per row — what the lot is waiting for — and the rest in a
+            // menu. Three buttons a row pushed Qty and Status off a tablet screen.
+            renderActions={(l) => {
+                const inStock = ["ACCEPTED", "IN_USE", "QUARANTINE", "AWAITING_INSPECTION", "RECEIVED"]
+                    .includes(l.status ?? "");
+                return (
+                    <div className="flex items-center justify-end gap-1">
+                        {l.status === "ON_ORDER" && (
+                            <Button size="sm" onClick={() => setReceiveLot(l)}>Receive</Button>
+                        )}
+                        {(l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
+                            <Button size="sm"
+                                onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}>
+                                {l.status === "QUARANTINE" ? "Resolve" : "Inspect"}
+                            </Button>
+                        )}
+                        {l.status !== "ON_ORDER" && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="ghost" aria-label={`More actions for ${l.lot_number}`}>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => void downloadReport("material_lot_label",
+                                        { lot_ids: [String(l.id)], copies: 1, layout: "thermal" })}>
+                                        Print label
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => void downloadReport("material_lot_label",
+                                        { lot_ids: [String(l.id)], copies: 1, layout: "sheet" })}>
+                                        Print label (Letter sheet)
+                                    </DropdownMenuItem>
+                                    {inStock && (
+                                        <DropdownMenuItem onSelect={() => setAdjustLot(l)}>Adjust quantity…</DropdownMenuItem>
+                                    )}
+                                    {canExtend(l) && (
+                                        <DropdownMenuItem onSelect={() => setExtendLot(l)}>Extend shelf life…</DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
+                );
+            }}
             showDetailsLink={false}
         />
         <ExpectedReceiptDialog open={expectOpen} onOpenChange={setExpectOpen} />
