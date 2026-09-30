@@ -1535,6 +1535,12 @@ class MaterialLot(SecureModel):
         max_length=100, blank=True,
         help_text="ERP purchase-order reference (UQMES does not own purchasing)."
     )
+    # With the PO number, the key an expected-receipts import matches on — a PO with
+    # several lines would otherwise re-import as duplicates.
+    erp_po_line = models.CharField(
+        max_length=20, blank=True,
+        help_text="Line on the ERP purchase order."
+    )
     promised_date = models.DateField(
         null=True, blank=True,
         help_text="Supplier's promised delivery date (from the PO); drives on-time-delivery scoring."

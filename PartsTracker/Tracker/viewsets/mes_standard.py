@@ -33,6 +33,7 @@ from Tracker.serializers.mes_standard import (
     MaterialSerializer,
     MaterialLotSerializer, MaterialLotSplitSerializer,
     ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
+    BulkExpectedReceiptSerializer, ExpectedReceiptImportResultSerializer, LateDeliverySerializer,
     MaterialUsageSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
@@ -537,6 +538,14 @@ class MaterialViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, ListMe
                 "(QUARANTINE with a hold_reason)."
             ),
         ),
+        OpenApiParameter(
+            name='delivery', type=OpenApiTypes.STR, required=False,
+            enum=['overdue', 'due_soon', 'late'],
+            description=(
+                "ON_ORDER lots by promised date on the plant's day: 'overdue' (passed), "
+                "'due_soon' (today through DUE_SOON_DAYS ahead), 'late' (both)."
+            ),
+        ),
     ]),
 )
 class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
@@ -571,6 +580,21 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                 Q(status__in=['RECEIVED', 'AWAITING_INSPECTION'])
                 | (Q(status='QUARANTINE') & ~Q(hold_reason=''))
             )
+        # Late deliveries: ON_ORDER lots past (overdue), or within DUE_SOON_DAYS of
+        # (due_soon), their promised date; `late` is both. The plant's day, not UTC's.
+        delivery = self.request.query_params.get('delivery')
+        if delivery in ('overdue', 'due_soon', 'late'):
+            from datetime import timedelta
+            from Tracker.services.mes.material_lot import DUE_SOON_DAYS
+            today = tenant_today(getattr(self.request, 'tenant', None))
+            qs = qs.filter(status='ON_ORDER', promised_date__isnull=False)
+            if delivery == 'overdue':
+                qs = qs.filter(promised_date__lt=today)
+            elif delivery == 'due_soon':
+                qs = qs.filter(promised_date__gte=today,
+                               promised_date__lte=today + timedelta(days=DUE_SOON_DAYS))
+            else:
+                qs = qs.filter(promised_date__lte=today + timedelta(days=DUE_SOON_DAYS))
         return qs
 
     def perform_create(self, serializer):
@@ -625,12 +649,80 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                 unit_of_measure=ser.validated_data.get('unit_of_measure', ''),
                 supplier=ser.validated_data.get('supplier'),
                 erp_po_number=ser.validated_data.get('erp_po_number', ''),
+                erp_po_line=ser.validated_data.get('erp_po_line', ''),
                 lot_number=ser.validated_data.get('lot_number', ''),
             )
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(MaterialLotSerializer(lot, context={'request': request}).data,
                         status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=BulkExpectedReceiptSerializer,
+                   responses={201: MaterialLotSerializer(many=True)})
+    # pagination_class=None: a many=True response on a paginated viewset would be
+    # documented as a paginated envelope; this returns the bare list it created.
+    @action(detail=False, methods=['post'], url_path='bulk-expected-receipt',
+            pagination_class=None)
+    def bulk_expected_receipt(self, request):
+        """Several expected receipts at once, all or nothing — a buyer recording what
+        they just ordered against a list of shortages."""
+        ser = BulkExpectedReceiptSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from Tracker.services.mes.material_lot import record_expected_receipts
+        keys = ('material', 'material_type', 'quantity', 'promised_date', 'unit_of_measure',
+                'supplier', 'erp_po_number', 'erp_po_line', 'lot_number')
+        rows = [{k: r[k] for k in keys if k in r} for r in ser.validated_data['receipts']]
+        try:
+            lots = record_expected_receipts(tenant=request.tenant, rows=rows)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lots, many=True, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request={'multipart/form-data': inline_serializer(
+            name='ExpectedReceiptImportRequest', fields={'file': serializers.FileField()})},
+        responses={200: ExpectedReceiptImportResultSerializer},
+        description=(
+            "Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched "
+            "on PO number + line. Only adds and updates — a line missing from the file is "
+            "left alone, and a line already received is never put back on order."),
+    )
+    @action(detail=False, methods=['post'], url_path='import-expected',
+            parser_classes=[parsers.MultiPartParser])
+    def import_expected(self, request):
+        upload = request.FILES.get('file')
+        if upload is None:
+            return Response({'detail': 'Attach the file as "file".'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        from Tracker.services.mes.expected_receipt_import import import_expected_receipts
+        try:
+            result = import_expected_receipts(tenant=request.tenant, file=upload,
+                                              filename=upload.name)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ExpectedReceiptImportResultSerializer(result).data)
+
+    @extend_schema(responses={(200, 'text/csv'): OpenApiTypes.STR},
+                   description="A blank expected-receipts import sheet with one example row.")
+    @action(detail=False, methods=['get'], url_path='import-expected-template')
+    def import_expected_template(self, request):
+        from django.http import HttpResponse
+        from Tracker.services.mes.expected_receipt_import import template_csv
+        resp = HttpResponse(template_csv(), content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = 'attachment; filename="expected_receipts_template.csv"'
+        return resp
+
+    # pagination_class / filter_backends off: the viewset paginates and filters, so
+    # this bare list would otherwise be documented as a filtered, paginated envelope.
+    @extend_schema(responses={200: LateDeliverySerializer(many=True)})
+    @action(detail=False, methods=['get'], url_path='late-deliveries',
+            pagination_class=None, filter_backends=[])
+    def late_deliveries(self, request):
+        """Expected receipts overdue or due soon, most overdue first, each with the open
+        work orders whose BOM calls for the item."""
+        from Tracker.services.mes.late_deliveries import late_deliveries
+        return Response(LateDeliverySerializer(late_deliveries(request.tenant), many=True).data)
 
     @extend_schema(
         description=(

@@ -420,6 +420,13 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 # Only the part carries a receiving-inspection plan and supplier
                 # qualification, so purchasing treats the two differently.
                 "buy_kind": serializers.CharField(),
+                # Enough to raise an expected receipt from the row without re-keying.
+                # item_id is a Material id or a PartTypes id, per buy_kind.
+                "item_id": serializers.CharField(),
+                "part_number": serializers.CharField(),
+                "unit_of_measure": serializers.CharField(),
+                "preferred_supplier_id": serializers.CharField(allow_null=True),
+                "preferred_supplier_name": serializers.CharField(allow_null=True),
                 "qty_short": serializers.IntegerField(),
                 # What ELSE would be short if expected replacements on unopened
                 # repair-and-return units came true. Beside `qty_short`, never in it:

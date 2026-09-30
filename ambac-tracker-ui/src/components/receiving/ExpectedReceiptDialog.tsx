@@ -49,6 +49,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
     const [promisedDate, setPromisedDate] = useState("");
     const [supplier, setSupplier] = useState("");
     const [poNumber, setPoNumber] = useState("");
+    const [poLine, setPoLine] = useState("");
 
     const stockItems = useStockItems();
     const companies = useRetrieveCompanies({ ordering: "name", limit: 1000 });
@@ -68,6 +69,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
         setPromisedDate("");
         setSupplier("");
         setPoNumber("");
+        setPoLine("");
     };
 
     const qtyValid = quantity !== "" && Number(quantity) > 0;
@@ -82,6 +84,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
                 promised_date: promisedDate,
                 supplier: supplier || null,
                 erp_po_number: poNumber.trim(),
+                erp_po_line: poLine.trim(),
             },
             {
                 onSuccess: () => {
@@ -175,12 +178,20 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
                         <Label htmlFor="er-po">
                             PO reference <span className="text-muted-foreground">(optional)</span>
                         </Label>
-                        <Input
-                            id="er-po"
-                            placeholder="e.g. PO-4471"
-                            value={poNumber}
-                            onChange={(e) => setPoNumber(e.target.value)}
-                        />
+                        <div className="grid grid-cols-[1fr_6rem] gap-2">
+                            <Input
+                                id="er-po"
+                                placeholder="e.g. PO-4471"
+                                value={poNumber}
+                                onChange={(e) => setPoNumber(e.target.value)}
+                            />
+                            <Input
+                                aria-label="PO line"
+                                placeholder="Line"
+                                value={poLine}
+                                onChange={(e) => setPoLine(e.target.value)}
+                            />
+                        </div>
                         <p className="text-xs text-muted-foreground">
                             Points back at the order in your ERP, and names the placeholder lot
                             until the supplier&rsquo;s real lot number arrives with the goods.

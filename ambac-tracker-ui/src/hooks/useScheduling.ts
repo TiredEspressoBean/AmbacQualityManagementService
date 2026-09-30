@@ -377,6 +377,14 @@ export type RecoverRow = {
 };
 export type SourceRow = {
   material: string; qty_short: number; need_by: string; lead_time_days: number | null;
+  /** MATERIAL or PART_TYPE — which of the lot's two item fields `item_id` belongs in. */
+  buy_kind: "MATERIAL" | "PART_TYPE";
+  item_id: string;
+  /** A material's part number or a part type's ERP id — what a buyer keys into the ERP. */
+  part_number: string;
+  unit_of_measure: string;
+  preferred_supplier_id: string | null;
+  preferred_supplier_name: string | null;
   /** Extra shortfall if expected replacements on unopened repair-and-return units came
    *  true. Beside `qty_short`, never in it: purchasing may buy ahead, nothing makes them. */
   forecast_short?: number;

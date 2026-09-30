@@ -258,6 +258,11 @@ class MaterialSerializer(SecureModelMixin):
         read_only_fields = ('created_at', 'updated_at')
 
 
+# An expected receipt against its promised date (services.mes.material_lot.delivery_state).
+# Shared by the lot's field and the late-deliveries list, so both name one enum.
+DELIVERY_STATES = [('OVERDUE', 'Overdue'), ('DUE_SOON', 'Due soon')]
+
+
 class MaterialLotSerializer(SecureModelMixin):
     """Material lot serializer.
 
@@ -281,6 +286,15 @@ class MaterialLotSerializer(SecureModelMixin):
     # Live calendar shelf-life status (OK/WARNING/EXPIRED), or null when the lot
     # has no shelf life. Reads the LifeTracking record, not the raw scalar.
     shelf_life_status = serializers.SerializerMethodField()
+    # OVERDUE / DUE_SOON for an ON_ORDER lot against its promised date, else null.
+    delivery_state = serializers.SerializerMethodField()
+    # Declared, not derived: as a read-only model field DRF drops allow_blank, so the
+    # schema offered only BACKORDERED/CLOSED and the FE client rejected the "" every
+    # full delivery carries — every lot list failed in the browser.
+    short_receipt = serializers.ChoiceField(
+        choices=SHORT_RECEIPT_CHOICES, allow_blank=True, read_only=True,
+        help_text="For a short delivery: the remainder stays on order (BACKORDERED) or the "
+                  "order closed at what arrived (CLOSED). Blank for a full delivery.")
 
     class Meta:
         model = MaterialLot
@@ -289,7 +303,8 @@ class MaterialLotSerializer(SecureModelMixin):
             'material_type', 'material_type_name',
             'material', 'material_name', 'item_name', 'material_description',
             'supplier', 'supplier_name', 'supplier_lot_number',
-            'erp_po_number', 'promised_date', 'ordered_quantity', 'short_receipt',
+            'erp_po_number', 'erp_po_line', 'promised_date', 'delivery_state',
+            'ordered_quantity', 'short_receipt',
             'received_date', 'received_by', 'received_by_name',
             'quantity', 'quantity_remaining', 'unit_of_measure',
             'status', 'hold_reason', 'manufacture_date', 'expiration_date',
@@ -318,6 +333,19 @@ class MaterialLotSerializer(SecureModelMixin):
     def get_shelf_life_status(self, obj):
         from Tracker.services.life_tracking.shelf_life import shelf_life_status
         return shelf_life_status(obj)
+
+    @extend_schema_field(serializers.ChoiceField(choices=DELIVERY_STATES, allow_null=True))
+    def get_delivery_state(self, obj):
+        from Tracker.services.mes.material_lot import delivery_state
+        if obj.status != 'ON_ORDER':
+            return None
+        # The plant's day, resolved once per response rather than once per row.
+        today = self.context.get('_tenant_today')
+        if today is None:
+            from Tracker.services.core.clock import tenant_today
+            today = tenant_today(obj.tenant_id)
+            self.context['_tenant_today'] = today
+        return delivery_state(obj, today)
 
 class MaterialLotSplitSerializer(serializers.Serializer):
     """Serializer for splitting a lot"""
@@ -352,6 +380,7 @@ class ExpectedReceiptSerializer(serializers.Serializer):
         queryset=Companies.unscoped.all(), required=False, allow_null=True,
         help_text="Defaults to the material's preferred supplier.")
     erp_po_number = serializers.CharField(required=False, allow_blank=True, default="")
+    erp_po_line = serializers.CharField(required=False, allow_blank=True, default="", max_length=20)
     unit_of_measure = serializers.CharField(required=False, allow_blank=True, default="")
     lot_number = serializers.CharField(
         required=False, allow_blank=True, default="",
@@ -362,6 +391,57 @@ class ExpectedReceiptSerializer(serializers.Serializer):
         if bool(attrs.get('material')) == bool(attrs.get('material_type')):
             raise serializers.ValidationError("Give the material or the part on order — one of the two.")
         return attrs
+
+
+class BulkExpectedReceiptSerializer(serializers.Serializer):
+    """Several expected receipts at once, all or nothing — e.g. raised from shortages."""
+    receipts = ExpectedReceiptSerializer(many=True, allow_empty=False)
+
+
+class ExpectedReceiptImportRowResultSerializer(serializers.Serializer):
+    row = serializers.IntegerField(help_text="1-based data row in the file (header excluded).")
+    outcome = serializers.ChoiceField(
+        choices=['CREATED', 'UPDATED', 'UNCHANGED', 'ALREADY_RECEIVED', 'ERROR'])
+    erp_po_number = serializers.CharField(allow_blank=True)
+    erp_po_line = serializers.CharField(allow_blank=True)
+    lot_number = serializers.CharField(allow_null=True)
+    detail = serializers.CharField(allow_blank=True)
+
+
+class ExpectedReceiptImportResultSerializer(serializers.Serializer):
+    """What an expected-receipts import did, row by row. Rows that fail are reported and
+    skipped; the rest still land — a person re-typed this sheet from the ERP, and one
+    typo shouldn't throw the other ninety rows away."""
+    created = serializers.IntegerField()
+    updated = serializers.IntegerField()
+    unchanged = serializers.IntegerField()
+    already_received = serializers.IntegerField()
+    errors = serializers.IntegerField()
+    rows = ExpectedReceiptImportRowResultSerializer(many=True)
+
+
+class LateDeliveryWorkOrderSerializer(serializers.Serializer):
+    work_order_id = serializers.CharField()
+    erp_id = serializers.CharField()
+    expected_start = serializers.DateField(allow_null=True)
+
+
+class LateDeliverySerializer(serializers.Serializer):
+    """An expected receipt past, or near, its promised date, and the work it holds up."""
+    lot_id = serializers.CharField()
+    lot_number = serializers.CharField()
+    item_name = serializers.CharField()
+    supplier_name = serializers.CharField(allow_null=True)
+    erp_po_number = serializers.CharField(allow_blank=True)
+    erp_po_line = serializers.CharField(allow_blank=True)
+    promised_date = serializers.DateField()
+    days_late = serializers.IntegerField(
+        help_text="Positive: days past the promised date. Zero or negative: due today or in that many days.")
+    quantity = serializers.FloatField()
+    unit_of_measure = serializers.CharField(allow_blank=True)
+    state = serializers.ChoiceField(choices=DELIVERY_STATES)
+    holding_up_count = serializers.IntegerField()
+    holding_up = LateDeliveryWorkOrderSerializer(many=True)
 
 
 class ReceiveExpectedLotSerializer(serializers.Serializer):

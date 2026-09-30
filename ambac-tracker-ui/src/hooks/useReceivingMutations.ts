@@ -59,6 +59,7 @@ export const useRecordExpectedReceipt = () => {
             promised_date: string;
             supplier?: string | null;
             erp_po_number?: string;
+            erp_po_line?: string;
         }) =>
             api.api_MaterialLots_expected_receipt_create(
                 {
@@ -68,22 +69,80 @@ export const useRecordExpectedReceipt = () => {
                     promised_date: vars.promised_date,
                     ...(vars.supplier ? { supplier: vars.supplier } : {}),
                     erp_po_number: vars.erp_po_number ?? "",
+                    erp_po_line: vars.erp_po_line ?? "",
                 },
                 { headers: csrf() },
             ),
-        onSuccess: () => {
-            invalidateReceiving(queryClient);
-            // The sourcing report and the RCCP material lane both count on-order stock
-            // as incoming supply — a new expectation changes what they say.
-            queryClient.invalidateQueries({
-                predicate: (q) => q.queryKey[0] === "schedule" && q.queryKey[1] === "requirements",
-            });
-            queryClient.invalidateQueries({
-                predicate: (q) => q.queryKey[0] === "planning" && q.queryKey[1] === "capacity-load",
-            });
-        },
+        onSuccess: () => invalidateSupply(queryClient),
     });
 };
+
+/** Everything an expected receipt changes: the lot views, the sourcing report and the
+ *  RCCP material lane (both count on-order stock as incoming), and late deliveries. */
+const invalidateSupply = (queryClient: ReturnType<typeof useQueryClient>) => {
+    invalidateReceiving(queryClient);
+    queryClient.invalidateQueries({
+        predicate: (q) =>
+            (q.queryKey[0] === "schedule" && q.queryKey[1] === "requirements") ||
+            (q.queryKey[0] === "planning" && q.queryKey[1] === "capacity-load") ||
+            q.queryKey[0] === "late-deliveries",
+    });
+};
+
+export type ExpectedReceiptRow = {
+    /** One of the two: a raw material, or a bought part (PartType). */
+    material?: string;
+    material_type?: string;
+    quantity: string;
+    promised_date: string;
+    supplier?: string | null;
+    erp_po_number?: string;
+    erp_po_line?: string;
+};
+
+/** Several expected receipts at once, all or nothing — raised from shortages. */
+export const useBulkExpectedReceipts = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (rows: ExpectedReceiptRow[]) =>
+            api.api_MaterialLots_bulk_expected_receipt_create(
+                {
+                    receipts: rows.map((r) => ({
+                        ...(r.material ? { material: r.material } : {}),
+                        ...(r.material_type ? { material_type: r.material_type } : {}),
+                        quantity: r.quantity,
+                        promised_date: r.promised_date,
+                        ...(r.supplier ? { supplier: r.supplier } : {}),
+                        erp_po_number: r.erp_po_number ?? "",
+                        erp_po_line: r.erp_po_line ?? "",
+                    })),
+                },
+                { headers: csrf() },
+            ),
+        onSuccess: () => invalidateSupply(queryClient),
+    });
+};
+
+/** Upload a sheet of open PO lines. Matches on PO + line; only adds and updates. */
+export const useImportExpectedReceipts = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (file: File) =>
+            api.api_MaterialLots_import_expected_create({ file }, { headers: csrf() }),
+        onSuccess: () => invalidateSupply(queryClient),
+    });
+};
+
+/** Expected receipts overdue or due soon, with the work each holds up. */
+export const useLateDeliveries = () =>
+    useQuery(
+        queryOptions({
+            queryKey: ["late-deliveries"],
+            queryFn: () => api.api_MaterialLots_late_deliveries_list(),
+        }),
+    );
+
+export type LateDelivery = Schema<"LateDelivery">;
 
 export const useReceiveExpectedLot = () => {
     const queryClient = useQueryClient();
@@ -109,6 +168,7 @@ export const useReceiveExpectedLot = () => {
             ),
         onSuccess: () => {
             invalidateReceiving(queryClient);
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "late-deliveries" });
             queryClient.invalidateQueries({
                 predicate: (q) => q.queryKey[0] === "schedule" && q.queryKey[1] === "requirements",
             });

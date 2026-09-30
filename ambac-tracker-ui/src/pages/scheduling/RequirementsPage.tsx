@@ -5,7 +5,7 @@
  * dates; rows past their order-by are flagged. Export to spreadsheet (CSV) or PDF.
  */
 import { Link } from "@tanstack/react-router";
-import { ClipboardList, Download } from "lucide-react";
+import { ClipboardList, Download, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReportButton } from "@/components/reports/ReportButton";
@@ -14,6 +14,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ExpectFromShortagesDialog } from "@/components/receiving/ExpectFromShortagesDialog";
 import { usePlanTeardown } from "@/hooks/usePlanTeardown";
 import { useRequirements, type RecoverRow } from "@/hooks/useScheduling";
 import { useState } from "react";
@@ -115,15 +117,19 @@ function PlanTeardownButton({ row }: { row: RecoverRow }) {
 const isLate = (orderBy: string | null) => !!orderBy && orderBy < todayISO;
 
 function Section({
-  title, subtitle, children, empty, count,
+  title, subtitle, children, empty, count, action,
 }: {
   title: string; subtitle: string; children: React.ReactNode; empty: boolean; count: number;
+  action?: React.ReactNode;
 }) {
   return (
     <section className="space-y-2">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        <span className="text-xs text-muted-foreground">{count} item{count === 1 ? "" : "s"}</span>
+        <div className="flex items-center gap-3">
+          {action}
+          <span className="text-xs text-muted-foreground">{count} item{count === 1 ? "" : "s"}</span>
+        </div>
       </div>
       <p className="text-sm text-muted-foreground">{subtitle}</p>
       <div className="overflow-x-auto rounded-lg border">
@@ -143,6 +149,14 @@ export function RequirementsPage() {
   const produce = data?.produce ?? [];
   const tooling = data?.tooling ?? [];
   const recover = data?.recover ?? [];
+  // Shortage rows ticked to raise expected receipts from. Keyed by item, not index,
+  // so a refetch that reorders the lane keeps the right rows ticked.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [expectOpen, setExpectOpen] = useState(false);
+  const keyOf = (r: (typeof source)[number]) => `${r.buy_kind}:${r.item_id}`;
+  const pickedRows = source.filter((r) => picked.has(keyOf(r)));
+  const toggle = (k: string, on: boolean) =>
+    setPicked((p) => { const n = new Set(p); if (on) n.add(k); else n.delete(k); return n; });
 
   const exportCsv = () =>
     downloadCsv(
@@ -203,9 +217,23 @@ export function RequirementsPage() {
         subtitle="Purchased materials short of coverage across open work orders."
         empty={source.length === 0}
         count={source.length}
+        action={
+          <Button size="sm" variant="outline" disabled={pickedRows.length === 0}
+            onClick={() => setExpectOpen(true)}>
+            <Truck className="mr-1.5 h-4 w-4" />
+            Expect{pickedRows.length > 0 ? ` ${pickedRows.length}` : ""}
+          </Button>
+        }
       >
         <thead>
           <tr className="border-b bg-muted/40 text-left text-muted-foreground">
+            <th className="w-10 p-3">
+              <Checkbox
+                aria-label="Select all shortages"
+                checked={source.length > 0 && pickedRows.length === source.length}
+                onCheckedChange={(on) => setPicked(on ? new Set(source.map(keyOf)) : new Set())}
+              />
+            </th>
             <th className="p-3 font-medium">Material</th>
             <th className="p-3 text-right font-medium">Short</th>
             <th
@@ -221,9 +249,23 @@ export function RequirementsPage() {
           </tr>
         </thead>
         <tbody>
-          {source.map((r, i) => (
-            <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-              <td className="p-3 font-medium">{r.material}</td>
+          {source.map((r) => (
+            <tr key={keyOf(r)} className="border-b last:border-0 hover:bg-muted/30">
+              <td className="p-3">
+                <Checkbox
+                  aria-label={`Select ${r.material}`}
+                  checked={picked.has(keyOf(r))}
+                  onCheckedChange={(on) => toggle(keyOf(r), on === true)}
+                />
+              </td>
+              <td className="p-3">
+                <div className="font-medium">{r.material}</div>
+                {(r.part_number || r.preferred_supplier_name) && (
+                  <div className="text-xs text-muted-foreground">
+                    {[r.part_number, r.preferred_supplier_name].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </td>
               <td className="p-3 text-right tabular-nums">
                 {r.qty_short}
                 {/* Beside the short figure, never inside it: purchasing may buy ahead
@@ -267,6 +309,12 @@ export function RequirementsPage() {
           ))}
         </tbody>
       </Section>
+      <ExpectFromShortagesDialog
+        rows={pickedRows}
+        open={expectOpen}
+        onOpenChange={setExpectOpen}
+        onDone={() => setPicked(new Set())}
+      />
 
       {/* Between Source and Produce because that is the order the decision is made in.
           One row per CORE TYPE — one core yields several components, so a per-component

@@ -81,7 +81,8 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
 
 def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, material=None,
                             material_type=None, unit_of_measure: str = "", supplier=None,
-                            erp_po_number: str = "", lot_number: str = ""):
+                            erp_po_number: str = "", erp_po_line: str = "",
+                            lot_number: str = ""):
     """Record stock that is **ordered but not yet delivered** as an ON_ORDER lot.
 
     UQMES does not own purchasing — the PO lives in the ERP and we only reference it
@@ -132,6 +133,7 @@ def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, materia
         material_type=material_type,
         supplier=supplier or getattr(material or material_type, "preferred_supplier", None),
         erp_po_number=erp_po_number,
+        erp_po_line=erp_po_line,
         promised_date=promised_date,
         quantity=quantity,
         quantity_remaining=quantity,
@@ -208,10 +210,114 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
                 tenant=locked.tenant, quantity=short_by, promised_date=locked.promised_date,
                 material=locked.material, material_type=locked.material_type,
                 unit_of_measure=locked.unit_of_measure, supplier=locked.supplier,
-                erp_po_number=locked.erp_po_number,
+                erp_po_number=locked.erp_po_number, erp_po_line=locked.erp_po_line,
             )
         # Status flip goes through the stock-state seam so the ledger swap stays contained.
         inventory.mark_expected_lot_received(locked)
         lot.refresh_from_db()
 
     return lot
+
+
+def record_expected_receipts(*, tenant, rows: list[dict]) -> list:
+    """Several expected receipts at once — a buyer raising what they just ordered from a
+    list of shortages. All or nothing: a half-recorded batch leaves the buyer unsure which
+    rows made it, and re-submitting would double the ones that did.
+
+    Each row takes `record_expected_receipt`'s keyword arguments (tenant excluded)."""
+    with transaction.atomic():
+        return [record_expected_receipt(tenant=tenant, **row) for row in rows]
+
+
+# Outcomes of one row of an expected-receipts import.
+IMPORT_CREATED = "CREATED"
+IMPORT_UPDATED = "UPDATED"
+IMPORT_UNCHANGED = "UNCHANGED"
+IMPORT_ALREADY_RECEIVED = "ALREADY_RECEIVED"
+
+
+def upsert_expected_receipt(*, tenant, erp_po_number: str, erp_po_line: str,
+                            quantity: Decimal, promised_date, material=None,
+                            material_type=None, supplier=None, unit_of_measure: str = ""):
+    """One row of an expected-receipts import, matched on (PO, line). Returns
+    ``(lot | None, outcome)``.
+
+    The import is typed up by a person from the ERP — the ERP can't send it — so it is
+    never a complete snapshot. It therefore **only adds and updates**: a PO line missing
+    from the file says nothing, and nothing here closes or cancels an order. Closing is
+    a person's act (receiving short with "that's all").
+
+    - An open (ON_ORDER) lot on that PO line → quantity, promised date, supplier and unit
+      are brought up to date. For a back-ordered remainder that is the open quantity.
+    - None open, but the line was already received → left alone (``ALREADY_RECEIVED``):
+      re-importing last week's sheet must not put a delivered order back on order.
+    - Otherwise → a new expected receipt.
+    """
+    from Tracker.models import MaterialLot
+
+    erp_po_number = (erp_po_number or "").strip()
+    erp_po_line = (erp_po_line or "").strip()
+    if not erp_po_number or not erp_po_line:
+        raise ValueError("An imported expected receipt needs its PO number and line")
+
+    on_line = MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, archived=False, erp_po_number=erp_po_number, erp_po_line=erp_po_line)
+    open_lot = on_line.filter(status="ON_ORDER").order_by("created_at").first()
+    if open_lot is None:
+        if on_line.exists():
+            return None, IMPORT_ALREADY_RECEIVED
+        lot = record_expected_receipt(
+            tenant=tenant, quantity=quantity, promised_date=promised_date,
+            material=material, material_type=material_type, supplier=supplier,
+            unit_of_measure=unit_of_measure, erp_po_number=erp_po_number,
+            erp_po_line=erp_po_line)
+        return lot, IMPORT_CREATED
+
+    if (material is not None and open_lot.material_id != material.id) or (
+            material_type is not None and open_lot.material_type_id != material_type.id):
+        raise ValueError(
+            f"PO {erp_po_number} line {erp_po_line} is on order for {open_lot.item_name}, "
+            f"not {(material or material_type).name}")
+    if quantity is None or Decimal(str(quantity)) <= Decimal("0"):
+        raise ValueError("Expected quantity must be greater than zero")
+    if promised_date is None:
+        raise ValueError("A promised delivery date is required")
+
+    changes = {"quantity": Decimal(str(quantity)), "promised_date": promised_date}
+    if supplier is not None:
+        changes["supplier"] = supplier
+    if unit_of_measure:
+        changes["unit_of_measure"] = unit_of_measure
+    changed = [f for f, v in changes.items() if getattr(open_lot, f) != v]
+    if not changed:
+        return open_lot, IMPORT_UNCHANGED
+    for f in changed:
+        setattr(open_lot, f, changes[f])
+    if "quantity" in changed:
+        # Nothing has been drawn from a lot that hasn't arrived.
+        open_lot.quantity_remaining = open_lot.quantity
+        changed.append("quantity_remaining")
+    open_lot.save(update_fields=changed + ["updated_at"])
+    return open_lot, IMPORT_UPDATED
+
+
+# How far ahead an expected receipt counts as "due soon" on the late-deliveries list.
+DUE_SOON_DAYS = 3
+DELIVERY_OVERDUE = "OVERDUE"
+DELIVERY_DUE_SOON = "DUE_SOON"
+
+
+def delivery_state(lot, today) -> str | None:
+    """OVERDUE (promised date passed), DUE_SOON (due within DUE_SOON_DAYS, today
+    included), or None — for an ON_ORDER lot. Anything received has no delivery state.
+
+    ``today`` is the plant's day (`services.core.clock.tenant_today`), passed in so a
+    list can resolve it once rather than per row."""
+    from datetime import timedelta
+    if lot.status != "ON_ORDER" or lot.promised_date is None:
+        return None
+    if lot.promised_date < today:
+        return DELIVERY_OVERDUE
+    if lot.promised_date <= today + timedelta(days=DUE_SOON_DAYS):
+        return DELIVERY_DUE_SOON
+    return None

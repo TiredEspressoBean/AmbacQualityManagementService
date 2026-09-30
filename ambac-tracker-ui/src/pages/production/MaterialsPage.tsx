@@ -3,11 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PackagePlus, Truck } from "lucide-react";
+import { FileUp, PackagePlus, Truck } from "lucide-react";
 import type { Schema } from "@/lib/api/types";
 import { useListMaterialLots } from "@/hooks/useListMaterialLots";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
 import { ExpectedReceiptDialog } from "@/components/receiving/ExpectedReceiptDialog";
+import { ImportExpectedReceiptsDialog } from "@/components/receiving/ImportExpectedReceiptsDialog";
 import { ReceiveExpectedLotDialog } from "@/components/receiving/ReceiveExpectedLotDialog";
 import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 
@@ -29,11 +30,13 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
  * use "+ Receive"; QA works the "Awaiting inspection" lens; planners read "On
  * hand"; supervisors read the funnel counts.
  */
-type Tab = "onorder" | "awaiting" | "onhand" | "held" | "all";
+type Tab = "onorder" | "late" | "awaiting" | "onhand" | "held" | "all";
 
 // Ordered by lifecycle stage: ordered → arrived, awaiting disposition → usable → held.
 const TABS: { id: Tab; label: string }[] = [
     { id: "onorder", label: "On order" },
+    // Overdue or due within a few days — what a buyer chases today.
+    { id: "late", label: "Late" },
     { id: "awaiting", label: "Awaiting inspection" },
     { id: "onhand", label: "On hand" },
     { id: "held", label: "Held" },
@@ -44,6 +47,7 @@ const TABS: { id: Tab; label: string }[] = [
  *  AWAITING_INSPECTION) is honored server-side; the rest map to a single status. */
 function queriesForTab(tab: Tab): Record<string, unknown> {
     if (tab === "onorder") return { status: "ON_ORDER" };
+    if (tab === "late") return { delivery: "late" };
     if (tab === "awaiting") return { inspection_pending: "true" };
     if (tab === "onhand") return { status: "ACCEPTED" };
     if (tab === "held") return { status: "QUARANTINE" };
@@ -57,11 +61,13 @@ export function MaterialsPage() {
     // Funnel counts — cheap (limit:1, read total) and double as the manager's
     // at-a-glance of where material is piling up.
     const onorder = useListMaterialLots({ status: "ON_ORDER", limit: 1 });
+    const late = useListMaterialLots({ delivery: "late", limit: 1 });
     const awaiting = useListMaterialLots({ inspection_pending: "true", limit: 1 });
     const onhand = useListMaterialLots({ status: "ACCEPTED", limit: 1 });
     const held = useListMaterialLots({ status: "QUARANTINE", limit: 1 });
     const counts: Record<Tab, number | undefined> = {
         onorder: onorder.data?.count,
+        late: late.data?.count,
         awaiting: awaiting.data?.count,
         onhand: onhand.data?.count,
         held: held.data?.count,
@@ -70,6 +76,8 @@ export function MaterialsPage() {
 
     const [extendLot, setExtendLot] = useState<Lot | null>(null);
     const [expectOpen, setExpectOpen] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const onOrderLens = tab === "onorder" || tab === "late";
     const [receiveLot, setReceiveLot] = useState<Lot | null>(null);
 
     // List for the active lens. Defined inline so it closes over `tab`; the
@@ -99,7 +107,12 @@ export function MaterialsPage() {
                         >
                             {t.label}
                             {counts[t.id] != null && (
-                                <Badge variant="secondary" className="ml-2 tabular-nums">{counts[t.id]}</Badge>
+                                <Badge
+                                    variant={t.id === "late" && (counts.late ?? 0) > 0 ? "destructive" : "secondary"}
+                                    className="ml-2 tabular-nums"
+                                >
+                                    {counts[t.id]}
+                                </Badge>
                             )}
                         </Button>
                     ))}
@@ -107,6 +120,9 @@ export function MaterialsPage() {
             }
             extraToolbarContent={
                 <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                        <FileUp className="h-4 w-4 mr-1" /> Import POs
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setExpectOpen(true)}>
                         <Truck className="h-4 w-4 mr-1" /> Expect
                     </Button>
@@ -118,7 +134,7 @@ export function MaterialsPage() {
             sortOptions={
                 // On order, nothing has been received yet — the useful axis is when it
                 // lands, soonest first.
-                tab === "onorder"
+                onOrderLens
                     ? [
                           { label: "Promised (Soonest)", value: "promised_date" },
                           { label: "Promised (Latest)", value: "-promised_date" },
@@ -137,6 +153,14 @@ export function MaterialsPage() {
                 // material_type_name pairing rendered blank for every Material-based lot.
                 col({ header: "Material", renderCell: (l) => l.item_name || "—" }),
                 col({ header: "Supplier", renderCell: (l) => l.supplier_name ?? "—" }),
+                ...(onOrderLens
+                    ? [col({
+                          header: "PO",
+                          renderCell: (l) => l.erp_po_number
+                              ? <span className="font-mono text-xs">{l.erp_po_number}{l.erp_po_line ? ` / ${l.erp_po_line}` : ""}</span>
+                              : "—",
+                      })]
+                    : []),
                 col({ header: "Qty", renderCell: (l) => `${l.quantity ?? "—"} ${l.unit_of_measure ?? ""}`.trim() }),
                 col({
                     header: "Status",
@@ -149,8 +173,19 @@ export function MaterialsPage() {
                 }),
                 // An on-order lot has no receipt date — the date that matters is when it
                 // is due to land, which is also what the planning lanes place it by.
-                tab === "onorder"
-                    ? col({ header: "Promised", renderCell: (l) => l.promised_date ?? "—" })
+                onOrderLens
+                    ? col({
+                          header: "Promised",
+                          renderCell: (l) => (
+                              <div className="flex items-center gap-1.5">
+                                  <span>{l.promised_date ?? "—"}</span>
+                                  {l.delivery_state === "OVERDUE" && <Badge variant="destructive">Overdue</Badge>}
+                                  {l.delivery_state === "DUE_SOON" && (
+                                      <Badge className="bg-amber-500 text-white hover:bg-amber-500">Due soon</Badge>
+                                  )}
+                              </div>
+                          ),
+                      })
                     : col({
                           header: "Received",
                           // Who took it in, under the date — the AS9100 question about a
@@ -193,6 +228,7 @@ export function MaterialsPage() {
             showDetailsLink={false}
         />
         <ExpectedReceiptDialog open={expectOpen} onOpenChange={setExpectOpen} />
+        <ImportExpectedReceiptsDialog open={importOpen} onOpenChange={setImportOpen} />
         {receiveLot && (
             <ReceiveExpectedLotDialog
                 // Keyed by lot so the prefilled quantity resets between rows.

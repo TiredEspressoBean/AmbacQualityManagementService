@@ -33,6 +33,10 @@ class BuyItem:
     safety_stock: float
     #: MaterialLot column this item's stock hangs off — 'material' or 'material_type'.
     lot_field: str
+    #: What a buyer keys into the ERP: a material's part number, a part type's ERP id.
+    part_number: str = ""
+    unit_of_measure: str = "EA"
+    preferred_supplier_id: object = None
 
     @property
     def key(self):
@@ -58,6 +62,9 @@ def buy_line_item(line) -> BuyItem | None:
             lead_time_days=mat.purchase_lead_time_days,
             safety_stock=float(mat.safety_stock or 0),
             lot_field='material',
+            part_number=mat.part_number or "",
+            unit_of_measure=mat.unit_of_measure or "EA",
+            preferred_supplier_id=mat.preferred_supplier_id,
         )
     if line.component_type_id is not None:
         pt = line.component_type
@@ -73,6 +80,8 @@ def buy_line_item(line) -> BuyItem | None:
             # than guessed. Adding the field makes this line pick it up unchanged.
             safety_stock=float(getattr(pt, 'safety_stock', None) or 0),
             lot_field='material_type',
+            part_number=pt.ERP_id or "",
+            preferred_supplier_id=getattr(pt, 'preferred_supplier_id', None),
         )
     return None
 

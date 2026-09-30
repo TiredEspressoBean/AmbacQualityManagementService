@@ -5450,6 +5450,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/bulk-expected-receipt/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Several expected receipts at once, all or nothing — a buyer recording what
+         *     they just ordered against a list of shortages.
+         */
+        post: operations["api_MaterialLots_bulk_expected_receipt_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/bulk_create/": {
         parameters: {
             query?: never;
@@ -5499,6 +5519,60 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_MaterialLots_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/import-expected/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched on PO number + line. Only adds and updates — a line missing from the file is left alone, and a line already received is never put back on order. */
+        post: operations["api_MaterialLots_import_expected_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/import-expected-template/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A blank expected-receipts import sheet with one example row. */
+        get: operations["api_MaterialLots_import_expected_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/late-deliveries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Expected receipts overdue or due soon, most overdue first, each with the open
+         *     work orders whose BOM calls for the item.
+         */
+        get: operations["api_MaterialLots_late_deliveries_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -19934,6 +20008,10 @@ export interface components {
             /** Format: uuid */
             company_id: string | null;
         };
+        /** @description Several expected receipts at once, all or nothing — e.g. raised from shortages. */
+        BulkExpectedReceiptRequest: {
+            receipts: components["schemas"]["ExpectedReceiptRequest"][];
+        };
         /** @description Move several scheduled tasks onto one machine at once (planner override). */
         BulkReassignMachineRequestRequest: {
             task_ids: string[];
@@ -21326,6 +21404,12 @@ export interface components {
          * @enum {string}
          */
         DelegationPolicyEnum: "OPTIONAL" | "DISABLED";
+        /**
+         * @description * `OVERDUE` - Overdue
+         *     * `DUE_SOON` - Due soon
+         * @enum {string}
+         */
+        DeliveryStateEnum: "OVERDUE" | "DUE_SOON";
         DemoResetForbidden: {
             detail: string;
         };
@@ -22030,6 +22114,41 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        ExpectedReceiptImportRequestRequest: {
+            /** Format: binary */
+            file: string;
+        };
+        /**
+         * @description What an expected-receipts import did, row by row. Rows that fail are reported and
+         *     skipped; the rest still land — a person re-typed this sheet from the ERP, and one
+         *     typo shouldn't throw the other ninety rows away.
+         */
+        ExpectedReceiptImportResult: {
+            created: number;
+            updated: number;
+            unchanged: number;
+            already_received: number;
+            errors: number;
+            rows: components["schemas"]["ExpectedReceiptImportRowResult"][];
+        };
+        ExpectedReceiptImportRowResult: {
+            /** @description 1-based data row in the file (header excluded). */
+            row: number;
+            outcome: components["schemas"]["ExpectedReceiptImportRowResultOutcomeEnum"];
+            erp_po_number: string;
+            erp_po_line: string;
+            lot_number: string | null;
+            detail: string;
+        };
+        /**
+         * @description * `CREATED` - CREATED
+         *     * `UPDATED` - UPDATED
+         *     * `UNCHANGED` - UNCHANGED
+         *     * `ALREADY_RECEIVED` - ALREADY_RECEIVED
+         *     * `ERROR` - ERROR
+         * @enum {string}
+         */
+        ExpectedReceiptImportRowResultOutcomeEnum: "CREATED" | "UPDATED" | "UNCHANGED" | "ALREADY_RECEIVED" | "ERROR";
         /**
          * @description Stock ordered but not yet delivered, so planning can see it as incoming supply.
          *
@@ -22062,6 +22181,8 @@ export interface components {
             supplier?: string | null;
             /** @default  */
             erp_po_number: string;
+            /** @default  */
+            erp_po_line: string;
             /** @default  */
             unit_of_measure: string;
             /**
@@ -23230,6 +23351,31 @@ export interface components {
          * @enum {string}
          */
         LaborRecurrenceEnum: "ONCE" | "WEEKLY";
+        /** @description An expected receipt past, or near, its promised date, and the work it holds up. */
+        LateDelivery: {
+            lot_id: string;
+            lot_number: string;
+            item_name: string;
+            supplier_name: string | null;
+            erp_po_number: string;
+            erp_po_line: string;
+            /** Format: date */
+            promised_date: string;
+            /** @description Positive: days past the promised date. Zero or negative: due today or in that many days. */
+            days_late: number;
+            /** Format: double */
+            quantity: number;
+            unit_of_measure: string;
+            state: components["schemas"]["DeliveryStateEnum"];
+            holding_up_count: number;
+            holding_up: components["schemas"]["LateDeliveryWorkOrder"][];
+        };
+        LateDeliveryWorkOrder: {
+            work_order_id: string;
+            erp_id: string;
+            /** Format: date */
+            expected_start: string | null;
+        };
         /** @description Life limit definition serializer */
         LifeLimitDefinition: {
             /** Format: uuid */
@@ -23560,23 +23706,26 @@ export interface components {
             supplier_lot_number?: string;
             /** @description ERP purchase-order reference (UQMES does not own purchasing). */
             erp_po_number?: string;
+            /** @description Line on the ERP purchase order. */
+            erp_po_line?: string;
             /**
              * Format: date
              * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
              */
             promised_date?: string | null;
+            readonly delivery_state: (components["schemas"]["DeliveryStateEnum"] | components["schemas"]["NullEnum"]) | null;
             /**
              * Format: decimal
              * @description What was on order, when the delivery was short of it.
              */
             readonly ordered_quantity: string | null;
             /**
-             * @description For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED).
+             * @description For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED). Blank for a full delivery.
              *
              *     * `BACKORDERED` - More coming
              *     * `CLOSED` - That's all
              */
-            readonly short_receipt: components["schemas"]["ShortReceiptEnum"];
+            readonly short_receipt: components["schemas"]["ShortReceiptEnum"] | components["schemas"]["BlankEnum"];
             /** Format: date */
             received_date?: string | null;
             readonly received_by: number | null;
@@ -23669,6 +23818,8 @@ export interface components {
             supplier_lot_number?: string;
             /** @description ERP purchase-order reference (UQMES does not own purchasing). */
             erp_po_number?: string;
+            /** @description Line on the ERP purchase order. */
+            erp_po_line?: string;
             /**
              * Format: date
              * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
@@ -27519,6 +27670,8 @@ export interface components {
             supplier_lot_number?: string;
             /** @description ERP purchase-order reference (UQMES does not own purchasing). */
             erp_po_number?: string;
+            /** @description Line on the ERP purchase order. */
+            erp_po_line?: string;
             /**
              * Format: date
              * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
@@ -32585,6 +32738,11 @@ export interface components {
         SourceRequirement: {
             material: string;
             buy_kind: string;
+            item_id: string;
+            part_number: string;
+            unit_of_measure: string;
+            preferred_supplier_id: string | null;
+            preferred_supplier_name: string | null;
             qty_short: number;
             /** Format: double */
             forecast_short: number;
@@ -47072,6 +47230,8 @@ export interface operations {
     api_MaterialLots_list: {
         parameters: {
             query?: {
+                /** @description ON_ORDER lots by promised date on the plant's day: 'overdue' (passed), 'due_soon' (today through DUE_SOON_DAYS ahead), 'late' (both). */
+                delivery?: "due_soon" | "late" | "overdue";
                 /** @description 'true'/'1' narrows to lots still needing a receiving disposition: RECEIVED, AWAITING_INSPECTION, plus lots soft-held at receiving (QUARANTINE with a hold_reason). */
                 inspection_pending?: string;
                 /** @description Number of results to return per page. */
@@ -47537,6 +47697,50 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_bulk_expected_receipt_create: {
+        parameters: {
+            query?: {
+                material_type?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `ON_ORDER` - On Order
+                 *     * `RECEIVED` - Received
+                 *     * `AWAITING_INSPECTION` - Awaiting Inspection
+                 *     * `ACCEPTED` - Accepted
+                 *     * `REJECTED` - Rejected
+                 *     * `IN_USE` - In Use
+                 *     * `CONSUMED` - Consumed
+                 *     * `SCRAPPED` - Scrapped
+                 *     * `QUARANTINE` - Quarantine
+                 */
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "SCRAPPED";
+                supplier?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["BulkExpectedReceiptRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BulkExpectedReceiptRequest"];
+                "application/json": components["schemas"]["BulkExpectedReceiptRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"][];
+                };
+            };
+        };
+    };
     api_MaterialLots_bulk_create_create: {
         parameters: {
             query?: never;
@@ -47619,6 +47823,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_MaterialLots_import_expected_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ExpectedReceiptImportRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpectedReceiptImportResult"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_import_expected_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    api_MaterialLots_late_deliveries_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateDelivery"][];
                 };
             };
         };

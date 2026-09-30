@@ -13890,6 +13890,16 @@ paths:
       description: Material lot tracking with split capability
       parameters:
       - in: query
+        name: delivery
+        schema:
+          type: string
+          enum:
+          - due_soon
+          - late
+          - overdue
+        description: 'ON_ORDER lots by promised date on the plant''s day: ''overdue''
+          (passed), ''due_soon'' (today through DUE_SOON_DAYS ahead), ''late'' (both).'
+      - in: query
         name: inspection_pending
         schema:
           type: string
@@ -14472,6 +14482,85 @@ paths:
               schema:
                 $ref: '#/components/schemas/MaterialLot'
           description: ''
+  /api/MaterialLots/bulk-expected-receipt/:
+    post:
+      operationId: api_MaterialLots_bulk_expected_receipt_create
+      description: |-
+        Several expected receipts at once, all or nothing — a buyer recording what
+        they just ordered against a list of shortages.
+      parameters:
+      - in: query
+        name: material_type
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - ACCEPTED
+          - AWAITING_INSPECTION
+          - CONSUMED
+          - IN_USE
+          - ON_ORDER
+          - QUARANTINE
+          - RECEIVED
+          - REJECTED
+          - SCRAPPED
+        description: |-
+          * `ON_ORDER` - On Order
+          * `RECEIVED` - Received
+          * `AWAITING_INSPECTION` - Awaiting Inspection
+          * `ACCEPTED` - Accepted
+          * `REJECTED` - Rejected
+          * `IN_USE` - In Use
+          * `CONSUMED` - Consumed
+          * `SCRAPPED` - Scrapped
+          * `QUARANTINE` - Quarantine
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkExpectedReceiptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkExpectedReceiptRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkExpectedReceiptRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/bulk_create/:
     post:
       operationId: api_MaterialLots_bulk_create_create
@@ -14579,6 +14668,66 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/MaterialLots/import-expected/:
+    post:
+      operationId: api_MaterialLots_import_expected_create
+      description: Import open purchase-order lines (.csv or .xlsx) as expected receipts,
+        matched on PO number + line. Only adds and updates — a line missing from the
+        file is left alone, and a line already received is never put back on order.
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExpectedReceiptImportRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpectedReceiptImportResult'
+          description: ''
+  /api/MaterialLots/import-expected-template/:
+    get:
+      operationId: api_MaterialLots_import_expected_template_retrieve
+      description: A blank expected-receipts import sheet with one example row.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+          description: ''
+  /api/MaterialLots/late-deliveries/:
+    get:
+      operationId: api_MaterialLots_late_deliveries_list
+      description: |-
+        Expected receipts overdue or due soon, most overdue first, each with the open
+        work orders whose BOM calls for the item.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LateDelivery'
           description: ''
   /api/MaterialLots/locations/:
     get:
@@ -47794,6 +47943,17 @@ components:
       required:
       - company_id
       - user_ids
+    BulkExpectedReceiptRequest:
+      type: object
+      description: Several expected receipts at once, all or nothing — e.g. raised
+        from shortages.
+      properties:
+        receipts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpectedReceiptRequest'
+      required:
+      - receipts
     BulkReassignMachineRequestRequest:
       type: object
       description: Move several scheduled tasks onto one machine at once (planner
@@ -50796,6 +50956,14 @@ components:
       description: |-
         * `OPTIONAL` - Optional
         * `DISABLED` - Disabled
+    DeliveryStateEnum:
+      enum:
+      - OVERDUE
+      - DUE_SOON
+      type: string
+      description: |-
+        * `OVERDUE` - Overdue
+        * `DUE_SOON` - Due soon
     DemoResetForbidden:
       type: object
       properties:
@@ -52175,6 +52343,80 @@ components:
       - limit
       - model
       - results
+    ExpectedReceiptImportRequestRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
+    ExpectedReceiptImportResult:
+      type: object
+      description: |-
+        What an expected-receipts import did, row by row. Rows that fail are reported and
+        skipped; the rest still land — a person re-typed this sheet from the ERP, and one
+        typo shouldn't throw the other ninety rows away.
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        unchanged:
+          type: integer
+        already_received:
+          type: integer
+        errors:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpectedReceiptImportRowResult'
+      required:
+      - already_received
+      - created
+      - errors
+      - rows
+      - unchanged
+      - updated
+    ExpectedReceiptImportRowResult:
+      type: object
+      properties:
+        row:
+          type: integer
+          description: 1-based data row in the file (header excluded).
+        outcome:
+          $ref: '#/components/schemas/ExpectedReceiptImportRowResultOutcomeEnum'
+        erp_po_number:
+          type: string
+        erp_po_line:
+          type: string
+        lot_number:
+          type: string
+          nullable: true
+        detail:
+          type: string
+      required:
+      - detail
+      - erp_po_line
+      - erp_po_number
+      - lot_number
+      - outcome
+      - row
+    ExpectedReceiptImportRowResultOutcomeEnum:
+      enum:
+      - CREATED
+      - UPDATED
+      - UNCHANGED
+      - ALREADY_RECEIVED
+      - ERROR
+      type: string
+      description: |-
+        * `CREATED` - CREATED
+        * `UPDATED` - UPDATED
+        * `UNCHANGED` - UNCHANGED
+        * `ALREADY_RECEIVED` - ALREADY_RECEIVED
+        * `ERROR` - ERROR
     ExpectedReceiptRequest:
       type: object
       description: |-
@@ -52212,6 +52454,10 @@ components:
         erp_po_number:
           type: string
           default: ''
+        erp_po_line:
+          type: string
+          default: ''
+          maxLength: 20
         unit_of_measure:
           type: string
           default: ''
@@ -54707,6 +54953,73 @@ components:
       description: |-
         * `ONCE` - One-off (dated)
         * `WEEKLY` - Weekly (recurring)
+    LateDelivery:
+      type: object
+      description: An expected receipt past, or near, its promised date, and the work
+        it holds up.
+      properties:
+        lot_id:
+          type: string
+        lot_number:
+          type: string
+        item_name:
+          type: string
+        supplier_name:
+          type: string
+          nullable: true
+        erp_po_number:
+          type: string
+        erp_po_line:
+          type: string
+        promised_date:
+          type: string
+          format: date
+        days_late:
+          type: integer
+          description: 'Positive: days past the promised date. Zero or negative: due
+            today or in that many days.'
+        quantity:
+          type: number
+          format: double
+        unit_of_measure:
+          type: string
+        state:
+          $ref: '#/components/schemas/DeliveryStateEnum'
+        holding_up_count:
+          type: integer
+        holding_up:
+          type: array
+          items:
+            $ref: '#/components/schemas/LateDeliveryWorkOrder'
+      required:
+      - days_late
+      - erp_po_line
+      - erp_po_number
+      - holding_up
+      - holding_up_count
+      - item_name
+      - lot_id
+      - lot_number
+      - promised_date
+      - quantity
+      - state
+      - supplier_name
+      - unit_of_measure
+    LateDeliveryWorkOrder:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+        erp_id:
+          type: string
+        expected_start:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - erp_id
+      - expected_start
+      - work_order_id
     LifeLimitDefinition:
       type: object
       description: Life limit definition serializer
@@ -55356,12 +55669,22 @@ components:
           type: string
           description: ERP purchase-order reference (UQMES does not own purchasing).
           maxLength: 100
+        erp_po_line:
+          type: string
+          description: Line on the ERP purchase order.
+          maxLength: 20
         promised_date:
           type: string
           format: date
           nullable: true
           description: Supplier's promised delivery date (from the PO); drives on-time-delivery
             scoring.
+        delivery_state:
+          nullable: true
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/DeliveryStateEnum'
+          - $ref: '#/components/schemas/NullEnum'
         ordered_quantity:
           type: string
           format: decimal
@@ -55370,14 +55693,15 @@ components:
           nullable: true
           description: What was on order, when the delivery was short of it.
         short_receipt:
-          allOf:
-          - $ref: '#/components/schemas/ShortReceiptEnum'
           readOnly: true
           description: |-
-            For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED).
+            For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED). Blank for a full delivery.
 
             * `BACKORDERED` - More coming
             * `CLOSED` - That's all
+          oneOf:
+          - $ref: '#/components/schemas/ShortReceiptEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         received_date:
           type: string
           format: date
@@ -55444,6 +55768,7 @@ components:
       required:
       - child_lot_count
       - created_at
+      - delivery_state
       - hold_reason
       - id
       - item_name
@@ -55594,6 +55919,10 @@ components:
           type: string
           description: ERP purchase-order reference (UQMES does not own purchasing).
           maxLength: 100
+        erp_po_line:
+          type: string
+          description: Line on the ERP purchase order.
+          maxLength: 20
         promised_date:
           type: string
           format: date
@@ -62422,6 +62751,10 @@ components:
           type: string
           description: ERP purchase-order reference (UQMES does not own purchasing).
           maxLength: 100
+        erp_po_line:
+          type: string
+          description: Line on the ERP purchase order.
+          maxLength: 20
         promised_date:
           type: string
           format: date
@@ -71877,6 +72210,18 @@ components:
           type: string
         buy_kind:
           type: string
+        item_id:
+          type: string
+        part_number:
+          type: string
+        unit_of_measure:
+          type: string
+        preferred_supplier_id:
+          type: string
+          nullable: true
+        preferred_supplier_name:
+          type: string
+          nullable: true
         qty_short:
           type: integer
         forecast_short:
@@ -71913,15 +72258,20 @@ components:
       - buy_kind
       - forecast_short
       - incoming_date
+      - item_id
       - lead_time_days
       - material
       - need_by
       - order_by
+      - part_number
+      - preferred_supplier_id
+      - preferred_supplier_name
       - qty_short
       - recoverable
       - recoverable_cores
       - recoverable_sources
       - safety_stock
+      - unit_of_measure
     SourceTypeEnum:
       enum:
       - CUSTOMER_RETURN

@@ -398,6 +398,8 @@ SPECTACULAR_SETTINGS = {
         "InspectionInboxTypeEnum": "Tracker.serializers.qms.INSPECTION_INBOX_TYPES",
         # A short delivery's outcome: the lot's field and the receive action's choice.
         "ShortReceiptEnum": "Tracker.models.mes_standard.SHORT_RECEIPT_CHOICES",
+        # An expected receipt's lateness: the lot's field and the late-deliveries row.
+        "DeliveryStateEnum": "Tracker.serializers.mes_standard.DELIVERY_STATES",
         # Calendar 'recurrence' fields — two distinct choice sets (ONCE/YEARLY for
         # plant closures, ONCE/WEEKLY for labor blocks + overtime) share the field
         # name; name them explicitly so drf-spectacular doesn't hash-suffix them.

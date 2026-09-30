@@ -52,6 +52,7 @@ import { useCapaStats } from "@/hooks/useCapaStats";
 import { useTrainingStats } from "@/hooks/useTrainingStats";
 import { useApprovalRequests } from "@/hooks/useApprovalRequests";
 import { useListSupplierQualifications } from "@/hooks/useSupplierQualifications";
+import { useLateDeliveries } from "@/hooks/useReceivingMutations";
 import {
     useProcessChangeRequests, useProcessChangeOrders, useProcessChangeNotices,
 } from "@/hooks/useProcessChangeArtifacts";
@@ -1177,6 +1178,60 @@ function ApprovalsInFlightBlock() {
 
 const SUPPLIER_EXPIRY_HORIZON_DAYS = 60;
 
+// ---------------------------------------------------------------------------
+// Late deliveries (purchasing / production) — expected receipts overdue or due
+// within a few days, with the work each holds up. The buyer's "who do I chase?".
+// Hides when nothing is late.
+// ---------------------------------------------------------------------------
+
+function LateDeliveriesBlock() {
+    const { data: rows = [] } = useLateDeliveries();
+    if (rows.length === 0) return null;
+    const overdue = rows.filter((r) => r.state === "OVERDUE").length;
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <Truck className="h-4 w-4 text-muted-foreground" />
+                    Late deliveries
+                    {overdue > 0 && <Badge variant="destructive" className="ml-1">{overdue} overdue</Badge>}
+                    {rows.length > overdue && <Badge variant="outline">{rows.length - overdue} due soon</Badge>}
+                    <Link to="/production/material-lots" className="ml-auto">
+                        <Button size="sm" variant="ghost">All <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {rows.slice(0, 6).map((r) => (
+                    <div key={r.lot_id} className="flex items-center gap-3 rounded-md border p-2.5">
+                        <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">
+                                {r.item_name}
+                                <span className="ml-1.5 font-normal text-muted-foreground">
+                                    {r.quantity} {r.unit_of_measure}
+                                </span>
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                                {r.supplier_name ?? "No supplier"}
+                                {r.erp_po_number ? ` · PO ${r.erp_po_number}${r.erp_po_line ? `/${r.erp_po_line}` : ""}` : ""}
+                                {r.holding_up_count > 0
+                                    ? ` · holding up ${r.holding_up.slice(0, 3).map((w) => w.erp_id).join(", ")}${r.holding_up_count > 3 ? ` +${r.holding_up_count - 3}` : ""}`
+                                    : ""}
+                            </div>
+                        </div>
+                        <Badge
+                            variant={r.state === "OVERDUE" ? "destructive" : "outline"}
+                            className="shrink-0 tabular-nums"
+                        >
+                            {r.days_late > 0 ? `${r.days_late}d late` : r.days_late === 0 ? "due today" : `due in ${-r.days_late}d`}
+                        </Badge>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
 function SupplierQualsExpiringBlock() {
     // Fetch expired + approaching-expiry in parallel and merge. The list
     // endpoint doesn't take a computed `status` filter, so we scope with the
@@ -1328,7 +1383,8 @@ const BLOCKS: BlockDef[] = [
     { id: "wos-on-hold", size: "full", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <WosOnHoldBlock /> },
     { id: "ncr-aging", size: "half", groups: ["QA Manager", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
     { id: "capa-status", size: "half", groups: ["QA Manager", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
-    { id: "supplier-quals-expiring", size: "half", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
+    { id: "late-deliveries", size: "half", groups: ["Purchasing", "Production Manager", "Tenant Admin"], Component: () => <LateDeliveriesBlock /> },
+    { id: "supplier-quals-expiring", size: "half", groups: ["QA Manager", "Production Manager", "Purchasing", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
     { id: "training-strip", size: "half", groups: ["QA Manager", "Shift Lead", "Document Controller", "Tenant Admin"], Component: () => <TrainingStripBlock /> },
     { id: "approvals-in-flight", size: "half", groups: ["Document Controller", "QA Manager", "Engineering", "Tenant Admin"], Component: () => <ApprovalsInFlightBlock /> },
     { id: "doc-review-due", size: "half", groups: ["Document Controller", "QA Manager", "Tenant Admin"], Component: () => <DocReviewDueBlock /> },

@@ -808,6 +808,53 @@ export type PartsStatusEnum =
   | "CORE_BANKED"
   | "RMA_CLOSED"
   | "DISMANTLED";
+export type BulkExpectedReceiptRequest = {
+  receipts: Array<ExpectedReceiptRequest>;
+};
+export type ExpectedReceiptRequest = {
+  material?: (string | null) | undefined;
+  material_type?:
+    | /**
+     * A bought part, instead of a material.
+     */
+    (string | null)
+    | undefined;
+  /**
+   * Quantity on order.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  quantity: string;
+  /**
+   * Supplier's promised delivery date. Required — an undated receipt cannot be placed in a planning bucket, so it would count as cover without ever landing anywhere.
+   */
+  promised_date: string;
+  supplier?:
+    | /**
+     * Defaults to the material's preferred supplier.
+     */
+    (string | null)
+    | undefined;
+  erp_po_number?: /**
+   * @default ""
+   */
+  string | undefined;
+  erp_po_line?: /**
+   * @default ""
+   * @maxLength 20
+   */
+  string | undefined;
+  unit_of_measure?: /**
+   * @default ""
+   */
+  string | undefined;
+  lot_number?: /**
+   * Usually unknown until the supplier ships. Left blank, a placeholder is generated and replaced with the real number at receipt.
+   *
+   * @default ""
+   */
+  string | undefined;
+};
 export type BulkReconcileResultRow = {
   row: number;
   outcome: BulkReconcileResultRowOutcomeEnum;
@@ -2671,6 +2718,36 @@ export type EquipmentsRequest = {
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
+export type ExpectedReceiptImportResult = {
+  created: number;
+  updated: number;
+  unchanged: number;
+  already_received: number;
+  errors: number;
+  rows: Array<ExpectedReceiptImportRowResult>;
+};
+export type ExpectedReceiptImportRowResult = {
+  /**
+   * 1-based data row in the file (header excluded).
+   */
+  row: number;
+  outcome: ExpectedReceiptImportRowResultOutcomeEnum;
+  erp_po_number: string;
+  erp_po_line: string;
+  lot_number: string | null;
+  detail: string;
+};
+export type ExpectedReceiptImportRowResultOutcomeEnum =
+  /**
+   * * `CREATED` - CREATED
+   * `UPDATED` - UPDATED
+   * `UNCHANGED` - UNCHANGED
+   * `ALREADY_RECEIVED` - ALREADY_RECEIVED
+   * `ERROR` - ERROR
+   *
+   * @enum CREATED, UPDATED, UNCHANGED, ALREADY_RECEIVED, ERROR
+   */
+  "CREATED" | "UPDATED" | "UNCHANGED" | "ALREADY_RECEIVED" | "ERROR";
 export type FPIGetOrCreateCreated = {
   created: boolean;
   fpi: FPIRecord;
@@ -3358,6 +3435,37 @@ export type LaborCalendarBlockRequest = Partial<{
   reason: string;
   is_active: boolean;
 }>;
+export type LateDelivery = {
+  lot_id: string;
+  lot_number: string;
+  item_name: string;
+  supplier_name: string | null;
+  erp_po_number: string;
+  erp_po_line: string;
+  promised_date: string;
+  /**
+   * Positive: days past the promised date. Zero or negative: due today or in that many days.
+   */
+  days_late: number;
+  quantity: number;
+  unit_of_measure: string;
+  state: DeliveryStateEnum;
+  holding_up_count: number;
+  holding_up: Array<LateDeliveryWorkOrder>;
+};
+export type DeliveryStateEnum =
+  /**
+   * * `OVERDUE` - Overdue
+   * `DUE_SOON` - Due soon
+   *
+   * @enum OVERDUE, DUE_SOON
+   */
+  "OVERDUE" | "DUE_SOON";
+export type LateDeliveryWorkOrder = {
+  work_order_id: string;
+  erp_id: string;
+  expected_start: string | null;
+};
 export type LifeTracking = {
   id: string;
   content_type: number;
@@ -3562,12 +3670,19 @@ export type MaterialLot = {
    * @maxLength 100
    */
   string | undefined;
+  erp_po_line?: /**
+   * Line on the ERP purchase order.
+   *
+   * @maxLength 20
+   */
+  string | undefined;
   promised_date?:
     | /**
      * Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
      */
     (string | null)
     | undefined;
+  delivery_state: DeliveryStateEnum | NullEnum | null;
   /**
    * What was on order, when the delivery was short of it.
    *
@@ -3575,12 +3690,12 @@ export type MaterialLot = {
    */
   ordered_quantity: string | null;
   /**
-     * For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED).
+     * For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED). Blank for a full delivery.
     
     * `BACKORDERED` - More coming
     * `CLOSED` - That's all
      */
-  short_receipt: ShortReceiptEnum;
+  short_receipt: ShortReceiptEnum | BlankEnum;
   received_date?: (string | null) | undefined;
   received_by: number | null;
   received_by_name: string | null;
@@ -3716,6 +3831,12 @@ export type MaterialLotRequest = {
    * ERP purchase-order reference (UQMES does not own purchasing).
    *
    * @maxLength 100
+   */
+  string | undefined;
+  erp_po_line?: /**
+   * Line on the ERP purchase order.
+   *
+   * @maxLength 20
    */
   string | undefined;
   promised_date?:
@@ -11697,6 +11818,12 @@ export type PatchedMaterialLotRequest = Partial<{
    */
   erp_po_number: string;
   /**
+   * Line on the ERP purchase order.
+   *
+   * @maxLength 20
+   */
+  erp_po_line: string;
+  /**
    * Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
    */
   promised_date: string | null;
@@ -15106,6 +15233,11 @@ export type ShiftNoteRequest = {
 export type SourceRequirement = {
   material: string;
   buy_kind: string;
+  item_id: string;
+  part_number: string;
+  unit_of_measure: string;
+  preferred_supplier_id: string | null;
+  preferred_supplier_name: string | null;
   qty_short: number;
   forecast_short: number;
   safety_stock: number;
@@ -19276,6 +19408,7 @@ const LifeTrackingIncrementRequest = z.object({
 const LifeTrackingResetRequest = z
   .object({ reason: z.string().default("") })
   .partial();
+const DeliveryStateEnum = z.enum(["OVERDUE", "DUE_SOON"]);
 const ShortReceiptEnum = z.enum(["BACKORDERED", "CLOSED"]);
 const MaterialLotStatusEnum = z.enum([
   "ON_ORDER",
@@ -19303,12 +19436,14 @@ const MaterialLot = z.object({
   supplier_name: z.string().nullable(),
   supplier_lot_number: z.string().max(100).optional(),
   erp_po_number: z.string().max(100).optional(),
+  erp_po_line: z.string().max(20).optional(),
   promised_date: z.string().nullish(),
+  delivery_state: z.union([DeliveryStateEnum, NullEnum]).nullable(),
   ordered_quantity: z
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullable(),
-  short_receipt: ShortReceiptEnum,
+  short_receipt: z.union([ShortReceiptEnum, BlankEnum]),
   received_date: z.string().nullish(),
   received_by: z.number().int().nullable(),
   received_by_name: z.string().nullable(),
@@ -19342,6 +19477,7 @@ const MaterialLotRequest = z.object({
   supplier: z.string().uuid().nullish(),
   supplier_lot_number: z.string().max(100).optional(),
   erp_po_number: z.string().max(100).optional(),
+  erp_po_line: z.string().max(20).optional(),
   promised_date: z.string().nullish(),
   received_date: z.string().nullish(),
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
@@ -19363,6 +19499,7 @@ const PatchedMaterialLotRequest = z
     supplier: z.string().uuid().nullable(),
     supplier_lot_number: z.string().max(100),
     erp_po_number: z.string().max(100),
+    erp_po_line: z.string().max(20),
     promised_date: z.string().nullable(),
     received_date: z.string().nullable(),
     quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
@@ -19536,6 +19673,20 @@ const MaterialLotSplitRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   reason: z.string().optional().default(""),
 });
+const ExpectedReceiptRequest = z.object({
+  material: z.string().uuid().nullish(),
+  material_type: z.string().uuid().nullish(),
+  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  promised_date: z.string(),
+  supplier: z.string().uuid().nullish(),
+  erp_po_number: z.string().optional().default(""),
+  erp_po_line: z.string().max(20).optional().default(""),
+  unit_of_measure: z.string().optional().default(""),
+  lot_number: z.string().optional().default(""),
+});
+const BulkExpectedReceiptRequest = z.object({
+  receipts: z.array(ExpectedReceiptRequest),
+});
 const MaterialLotBulkRowRequest = z.object({
   lot_number: z.string().min(1).max(100),
   received_date: z.string(),
@@ -19564,15 +19715,51 @@ const MaterialLotBulkCreateError = z
     errors: z.array(z.object({}).partial().passthrough()),
   })
   .partial();
-const ExpectedReceiptRequest = z.object({
-  material: z.string().uuid().nullish(),
-  material_type: z.string().uuid().nullish(),
-  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+const ExpectedReceiptImportRequestRequest = z.object({
+  file: z.instanceof(File),
+});
+const ExpectedReceiptImportRowResultOutcomeEnum = z.enum([
+  "CREATED",
+  "UPDATED",
+  "UNCHANGED",
+  "ALREADY_RECEIVED",
+  "ERROR",
+]);
+const ExpectedReceiptImportRowResult = z.object({
+  row: z.number().int(),
+  outcome: ExpectedReceiptImportRowResultOutcomeEnum,
+  erp_po_number: z.string(),
+  erp_po_line: z.string(),
+  lot_number: z.string().nullable(),
+  detail: z.string(),
+});
+const ExpectedReceiptImportResult = z.object({
+  created: z.number().int(),
+  updated: z.number().int(),
+  unchanged: z.number().int(),
+  already_received: z.number().int(),
+  errors: z.number().int(),
+  rows: z.array(ExpectedReceiptImportRowResult),
+});
+const LateDeliveryWorkOrder = z.object({
+  work_order_id: z.string(),
+  erp_id: z.string(),
+  expected_start: z.string().nullable(),
+});
+const LateDelivery = z.object({
+  lot_id: z.string(),
+  lot_number: z.string(),
+  item_name: z.string(),
+  supplier_name: z.string().nullable(),
+  erp_po_number: z.string(),
+  erp_po_line: z.string(),
   promised_date: z.string(),
-  supplier: z.string().uuid().nullish(),
-  erp_po_number: z.string().optional().default(""),
-  unit_of_measure: z.string().optional().default(""),
-  lot_number: z.string().optional().default(""),
+  days_late: z.number().int(),
+  quantity: z.number(),
+  unit_of_measure: z.string(),
+  state: DeliveryStateEnum,
+  holding_up_count: z.number().int(),
+  holding_up: z.array(LateDeliveryWorkOrder),
 });
 const MaterialUsage = z.object({
   id: z.string().uuid(),
@@ -21926,6 +22113,11 @@ const RecoverableSource = z.object({
 const SourceRequirement = z.object({
   material: z.string(),
   buy_kind: z.string(),
+  item_id: z.string(),
+  part_number: z.string(),
+  unit_of_measure: z.string(),
+  preferred_supplier_id: z.string().nullable(),
+  preferred_supplier_name: z.string().nullable(),
   qty_short: z.number().int(),
   forecast_short: z.number(),
   safety_stock: z.number(),
@@ -26390,6 +26582,7 @@ export const schemas = {
   LifeTrackingOverrideRequest,
   LifeTrackingIncrementRequest,
   LifeTrackingResetRequest,
+  DeliveryStateEnum,
   ShortReceiptEnum,
   MaterialLotStatusEnum,
   MaterialLot,
@@ -26416,11 +26609,18 @@ export const schemas = {
   ReceivingCharacteristic,
   SamplePlanResponse,
   MaterialLotSplitRequest,
+  ExpectedReceiptRequest,
+  BulkExpectedReceiptRequest,
   MaterialLotBulkRowRequest,
   MaterialLotBulkCreateRequest,
   MaterialLotBulkCreateResponse,
   MaterialLotBulkCreateError,
-  ExpectedReceiptRequest,
+  ExpectedReceiptImportRequestRequest,
+  ExpectedReceiptImportRowResultOutcomeEnum,
+  ExpectedReceiptImportRowResult,
+  ExpectedReceiptImportResult,
+  LateDeliveryWorkOrder,
+  LateDelivery,
   MaterialUsage,
   PaginatedMaterialUsageList,
   Material,
@@ -37388,6 +37588,11 @@ Query params:
     requestFormat: "json",
     parameters: [
       {
+        name: "delivery",
+        type: "Query",
+        schema: z.enum(["due_soon", "late", "overdue"]).optional(),
+      },
+      {
         name: "inspection_pending",
         type: "Query",
         schema: z.string().optional(),
@@ -37761,6 +37966,59 @@ to incoming inspection like any other receipt).`,
   },
   {
     method: "post",
+    path: "/api/MaterialLots/bulk-expected-receipt/",
+    alias: "api_MaterialLots_bulk_expected_receipt_create",
+    description: `Several expected receipts at once, all or nothing — a buyer recording what
+they just ordered against a list of shortages.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BulkExpectedReceiptRequest,
+      },
+      {
+        name: "material_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "ACCEPTED",
+            "AWAITING_INSPECTION",
+            "CONSUMED",
+            "IN_USE",
+            "ON_ORDER",
+            "QUARANTINE",
+            "RECEIVED",
+            "REJECTED",
+            "SCRAPPED",
+          ])
+          .optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: z.array(MaterialLot),
+  },
+  {
+    method: "post",
     path: "/api/MaterialLots/expected-receipt/",
     alias: "api_MaterialLots_expected_receipt_create",
     description: `Record stock ordered but not yet delivered, so netting can see it.
@@ -37807,6 +38065,38 @@ so the lot lands ON_ORDER with a generated placeholder lot number.`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/MaterialLots/import-expected-template/",
+    alias: "api_MaterialLots_import_expected_template_retrieve",
+    description: `A blank expected-receipts import sheet with one example row.`,
+    requestFormat: "json",
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/import-expected/",
+    alias: "api_MaterialLots_import_expected_create",
+    description: `Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched on PO number + line. Only adds and updates — a line missing from the file is left alone, and a line already received is never put back on order.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ExpectedReceiptImportResult,
+  },
+  {
+    method: "get",
+    path: "/api/MaterialLots/late-deliveries/",
+    alias: "api_MaterialLots_late_deliveries_list",
+    description: `Expected receipts overdue or due soon, most overdue first, each with the open
+work orders whose BOM calls for the item.`,
+    requestFormat: "json",
+    response: z.array(LateDelivery),
   },
   {
     method: "get",
@@ -41424,7 +41714,10 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       },
     ],
     response: PartApproval,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "patch",
     path: "/api/PartApprovals/:id/",
@@ -41514,10 +41807,7 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/PartApprovals/:id/suspend/",
@@ -47132,7 +47422,10 @@ Usage:
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Sampling-rules/export/:export_format/",
@@ -47213,10 +47506,7 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Sampling-rules/import/",
@@ -52605,7 +52895,10 @@ transaction every time.`,
       },
     ],
     response: SubstepTranslation,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/SubstepTranslations/:id/",
@@ -52675,10 +52968,7 @@ transaction every time.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/SupplierQualifications/",
@@ -57183,7 +57473,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrder,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/WorkOrders/:id/release_readiness/",
@@ -57274,10 +57567,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrderSplitResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkOrders/:id/step_history/",

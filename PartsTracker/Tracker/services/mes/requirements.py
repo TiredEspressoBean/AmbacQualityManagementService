@@ -366,6 +366,13 @@ def sourcing_requirements(tenant) -> dict:
         source.append({
             'material': buy.name,
             'buy_kind': buy.kind,
+            # What a buyer needs to raise an expected receipt from this row without
+            # re-keying it: the item itself, its number in the ERP, and who to buy from.
+            'item_id': str(buy.id),
+            'part_number': buy.part_number,
+            'unit_of_measure': buy.unit_of_measure,
+            'preferred_supplier_id': (str(buy.preferred_supplier_id)
+                                      if buy.preferred_supplier_id else None),
             'qty_short': int(round(max(0.0, short))),
             'forecast_short': round(forecast_short, 2),
             'safety_stock': safety,
@@ -381,8 +388,16 @@ def sourcing_requirements(tenant) -> dict:
             'recoverable_sources': recoverable[k].sources if k in recoverable else [],
         })
     source.sort(key=lambda r: (r['order_by'] or r['need_by']))
+    # Supplier names in one query rather than a join per BOM line.
+    from Tracker.models import Companies
+    sup_ids = {r['preferred_supplier_id'] for r in source if r['preferred_supplier_id']}
+    sup_names = {str(i): n for i, n in
+                 Companies.objects.filter(tenant=tenant, id__in=sup_ids)  # tenant-safe: explicit tenant filter
+                 .values_list('id', 'name')} if sup_ids else {}
+    for r in source:
+        r['preferred_supplier_name'] = sup_names.get(r['preferred_supplier_id'])
 
-    recover = _recover_lane(tenant, pool_need, pool_need_by, pool_name, order_by)
+    recover =_recover_lane(tenant, pool_need, pool_need_by, pool_name, order_by)
 
     # --- produce: open pegged child work orders (MAKE) -----------------------
     produce = []
