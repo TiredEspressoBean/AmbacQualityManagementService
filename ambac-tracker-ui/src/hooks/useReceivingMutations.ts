@@ -22,6 +22,8 @@ const invalidateReceiving = (queryClient: ReturnType<typeof useQueryClient>) =>
 export type LotBulkRow = {
     lot_number: string;
     received_date: string;
+    /** A lot is stock of a raw material (`material`) or a bought part (`material_type`), not both. */
+    material?: string | null;
     material_type?: string | null;
     material_description?: string;
     supplier?: string | null;
@@ -50,7 +52,9 @@ export const useRecordExpectedReceipt = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (vars: {
-            material: string;
+            /** One of the two: a raw material, or a bought part (PartType). */
+            material?: string;
+            material_type?: string;
             quantity: string;
             promised_date: string;
             supplier?: string | null;
@@ -58,7 +62,8 @@ export const useRecordExpectedReceipt = () => {
         }) =>
             api.api_MaterialLots_expected_receipt_create(
                 {
-                    material: vars.material,
+                    ...(vars.material ? { material: vars.material } : {}),
+                    ...(vars.material_type ? { material_type: vars.material_type } : {}),
                     quantity: vars.quantity,
                     promised_date: vars.promised_date,
                     ...(vars.supplier ? { supplier: vars.supplier } : {}),
@@ -89,6 +94,8 @@ export const useReceiveExpectedLot = () => {
             quantity?: string | null;
             received_date?: string | null;
             storage_location?: string;
+            /** Required when short: BACKORDERED keeps the rest on order, CLOSED closes it. */
+            remainder?: "BACKORDERED" | "CLOSED";
         }) =>
             api.api_MaterialLots_receive_create(
                 {
@@ -96,6 +103,7 @@ export const useReceiveExpectedLot = () => {
                     ...(vars.quantity ? { quantity: vars.quantity } : {}),
                     ...(vars.received_date ? { received_date: vars.received_date } : {}),
                     ...(vars.storage_location ? { storage_location: vars.storage_location } : {}),
+                    ...(vars.remainder ? { remainder: vars.remainder } : {}),
                 },
                 { params: { id: vars.id }, headers: csrf() },
             ),

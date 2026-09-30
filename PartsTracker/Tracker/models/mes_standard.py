@@ -1439,6 +1439,10 @@ class Material(SecureModel):
         return self.name
 
 
+# A short delivery's outcome, from the packing slip (see MaterialLot.short_receipt).
+SHORT_RECEIPT_CHOICES = [("BACKORDERED", "More coming"), ("CLOSED", "That's all")]
+
+
 class MaterialLot(SecureModel):
     """
     Tracks a lot of material received from a supplier.
@@ -1535,6 +1539,16 @@ class MaterialLot(SecureModel):
         null=True, blank=True,
         help_text="Supplier's promised delivery date (from the PO); drives on-time-delivery scoring."
     )
+    # A delivery short of what was on order: what had been ordered, and the clerk's call
+    # from the packing slip. The ERP can't tell us, so closing short is never inferred.
+    ordered_quantity = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True,
+        help_text="What was on order, when the delivery was short of it.")
+    short_receipt = models.CharField(
+        max_length=12, blank=True, default="",
+        choices=SHORT_RECEIPT_CHOICES,
+        help_text="For a short delivery: the remainder stays on order (BACKORDERED) or the "
+                  "order closed at what arrived (CLOSED).")
 
     # Null while the lot is ON_ORDER: nobody has received it, so there is no receipt date
     # and no receiver. Both are stamped by `receive_expected_lot` when it actually lands.

@@ -618,7 +618,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         try:
             lot = record_expected_receipt(
                 tenant=request.tenant,
-                material=ser.validated_data['material'],
+                material=ser.validated_data.get('material'),
+                material_type=ser.validated_data.get('material_type'),
                 quantity=ser.validated_data['quantity'],
                 promised_date=ser.validated_data['promised_date'],
                 unit_of_measure=ser.validated_data.get('unit_of_measure', ''),
@@ -670,6 +671,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                 received_date=ser.validated_data.get('received_date'),
                 quantity=ser.validated_data.get('quantity'),
                 storage_location=ser.validated_data.get('storage_location'),
+                remainder=ser.validated_data.get('remainder'),
             )
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

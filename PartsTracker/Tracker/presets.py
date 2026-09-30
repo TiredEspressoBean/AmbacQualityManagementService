@@ -822,13 +822,18 @@ GROUP_PRESETS = {
     # compliance-shaped, they have it via the base bundles.
     'purchasing': {
         'name': 'Purchasing',
-        'description': 'Procurement / supplier management: supplier qualification, receiving, PO records',
+        'description': 'Supplier management and receiving: supplier qualification, part approvals, expected receipts and incoming lots (purchase orders stay in the ERP)',
         'permissions': [
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
+            # A SCAR is a CAPA against a supplier: MaterialLot.raise_scar is gated on it.
+            'initiate_capa',
+            # Buyers own purchased materials: lead time, preferred supplier, safety stock
+            # (what the requirements report nets against).
+            'add_material', 'change_material',
         ],
     },
 

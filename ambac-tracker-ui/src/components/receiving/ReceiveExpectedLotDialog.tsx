@@ -60,6 +60,8 @@ export function ReceiveExpectedLotDialog({
     const [quantity, setQuantity] = useState(orderedQuantity ?? "");
     const [receivedDate, setReceivedDate] = useState(today());
     const [location, setLocation] = useState("");
+    // A short delivery: the clerk says, from the packing slip, whether more is coming.
+    const [remainder, setRemainder] = useState<"BACKORDERED" | "CLOSED" | "">("");
     const receive = useReceiveExpectedLot();
 
     const reset = () => {
@@ -67,11 +69,15 @@ export function ReceiveExpectedLotDialog({
         setQuantity(orderedQuantity ?? "");
         setReceivedDate(today());
         setLocation("");
+        setRemainder("");
     };
 
     const qtyValid = quantity !== "" && Number(quantity) > 0;
-    const canSubmit = lotNumber.trim() !== "" && qtyValid && receivedDate !== "" && !receive.isPending;
     const short = qtyValid && orderedQuantity != null && Number(quantity) !== Number(orderedQuantity);
+    /** How many fewer arrived than were on order (negative for an overage). */
+    const shortBy = qtyValid && orderedQuantity != null ? Number(orderedQuantity) - Number(quantity) : 0;
+    const canSubmit = lotNumber.trim() !== "" && qtyValid && receivedDate !== "" && !receive.isPending
+        && (shortBy <= 0 || remainder !== "");
 
     const submit = () => {
         if (!canSubmit) return;
@@ -82,6 +88,7 @@ export function ReceiveExpectedLotDialog({
                 quantity,
                 received_date: receivedDate,
                 storage_location: location.trim(),
+                ...(shortBy > 0 && remainder ? { remainder } : {}),
             },
             {
                 onSuccess: (data: unknown) => {
@@ -155,7 +162,7 @@ export function ReceiveExpectedLotDialog({
                                 value={quantity}
                                 onChange={(e) => setQuantity(e.target.value)}
                             />
-                            {short && (
+                            {short && shortBy < 0 && (
                                 <p className="text-xs text-amber-600">
                                     Ordered {orderedQuantity} — booking in what actually arrived.
                                 </p>
@@ -171,6 +178,25 @@ export function ReceiveExpectedLotDialog({
                             />
                         </div>
                     </div>
+                    {shortBy > 0 && (
+                        <fieldset className="space-y-2 rounded-md border border-amber-300 bg-amber-50/50 p-3 dark:bg-amber-950/20">
+                            <legend className="px-1 text-sm font-medium">
+                                {shortBy} fewer than the {orderedQuantity} on order. What does the packing slip say?
+                            </legend>
+                            <label className="flex items-start gap-2 text-sm">
+                                <input type="radio" name="rel-remainder" className="mt-1" checked={remainder === "BACKORDERED"}
+                                    onChange={() => setRemainder("BACKORDERED")} />
+                                <span><span className="font-medium">More coming</span> — keep the other {shortBy} on
+                                    order, same supplier, PO and promised date.</span>
+                            </label>
+                            <label className="flex items-start gap-2 text-sm">
+                                <input type="radio" name="rel-remainder" className="mt-1" checked={remainder === "CLOSED"}
+                                    onChange={() => setRemainder("CLOSED")} />
+                                <span><span className="font-medium">That&rsquo;s all</span> — the order is complete at what
+                                    arrived.</span>
+                            </label>
+                        </fieldset>
+                    )}
                     <div className="space-y-1.5">
                         <Label htmlFor="rel-location">Put away at</Label>
                         <LocationCombobox id="rel-location" value={location} onChange={setLocation}

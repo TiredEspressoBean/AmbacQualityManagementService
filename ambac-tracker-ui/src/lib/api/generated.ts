@@ -3568,6 +3568,19 @@ export type MaterialLot = {
      */
     (string | null)
     | undefined;
+  /**
+   * What was on order, when the delivery was short of it.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  ordered_quantity: string | null;
+  /**
+     * For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED).
+    
+    * `BACKORDERED` - More coming
+    * `CLOSED` - That's all
+     */
+  short_receipt: ShortReceiptEnum;
   received_date?: (string | null) | undefined;
   received_by: number | null;
   received_by_name: string | null;
@@ -3601,6 +3614,14 @@ export type MaterialLot = {
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type ShortReceiptEnum =
+  /**
+   * * `BACKORDERED` - More coming
+   * `CLOSED` - That's all
+   *
+   * @enum BACKORDERED, CLOSED
+   */
+  "BACKORDERED" | "CLOSED";
 export type MaterialLotStatusEnum =
   /**
    * * `ON_ORDER` - On Order
@@ -14200,6 +14221,38 @@ export type RebuildSlotOverrideRequest = {
   reason: string;
   archived?: boolean | undefined;
 };
+export type ReceiveExpectedLotRequest = {
+  /**
+   * The supplier's actual lot/batch number.
+   *
+   * @minLength 1
+   */
+  lot_number: string;
+  quantity?:
+    | /**
+     * Quantity actually delivered, when it differs from what was ordered. Omit to keep the ordered quantity.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  received_date?: (string | null) | undefined;
+  storage_location?: /**
+   * Where it was put away. Omit to keep what the expected receipt recorded.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  remainder?:
+    | /**
+     * Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED closes the order at what came.
+    
+    * `BACKORDERED` - More coming
+    * `CLOSED` - That's all
+     */
+    (ShortReceiptEnum | NullEnum | null)
+    | undefined;
+};
 export type ReceivingMeasurementInputRequest = {
   definition: string;
   value_numeric?: (number | null) | undefined;
@@ -19223,6 +19276,7 @@ const LifeTrackingIncrementRequest = z.object({
 const LifeTrackingResetRequest = z
   .object({ reason: z.string().default("") })
   .partial();
+const ShortReceiptEnum = z.enum(["BACKORDERED", "CLOSED"]);
 const MaterialLotStatusEnum = z.enum([
   "ON_ORDER",
   "RECEIVED",
@@ -19250,6 +19304,11 @@ const MaterialLot = z.object({
   supplier_lot_number: z.string().max(100).optional(),
   erp_po_number: z.string().max(100).optional(),
   promised_date: z.string().nullish(),
+  ordered_quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullable(),
+  short_receipt: ShortReceiptEnum,
   received_date: z.string().nullish(),
   received_by: z.number().int().nullable(),
   received_by_name: z.string().nullable(),
@@ -19429,6 +19488,7 @@ const ReceiveExpectedLotRequest = z.object({
     .nullish(),
   received_date: z.string().nullish(),
   storage_location: z.string().max(100).optional(),
+  remainder: z.union([ShortReceiptEnum, NullEnum]).nullish(),
 });
 const RecordBulkRequestRequest = z.object({
   defectives_found: z.number().int().gte(0),
@@ -19505,7 +19565,8 @@ const MaterialLotBulkCreateError = z
   })
   .partial();
 const ExpectedReceiptRequest = z.object({
-  material: z.string().uuid(),
+  material: z.string().uuid().nullish(),
+  material_type: z.string().uuid().nullish(),
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   promised_date: z.string(),
   supplier: z.string().uuid().nullish(),
@@ -26329,6 +26390,7 @@ export const schemas = {
   LifeTrackingOverrideRequest,
   LifeTrackingIncrementRequest,
   LifeTrackingResetRequest,
+  ShortReceiptEnum,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,

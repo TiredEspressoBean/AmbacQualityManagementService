@@ -79,8 +79,8 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
     return child
 
 
-def record_expected_receipt(*, tenant, material, quantity: Decimal, promised_date,
-                            unit_of_measure: str = "", supplier=None,
+def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, material=None,
+                            material_type=None, unit_of_measure: str = "", supplier=None,
                             erp_po_number: str = "", lot_number: str = ""):
     """Record stock that is **ordered but not yet delivered** as an ON_ORDER lot.
 
@@ -101,6 +101,8 @@ def record_expected_receipt(*, tenant, material, quantity: Decimal, promised_dat
     from django.db.models import Q
     from Tracker.models import MaterialLot
 
+    if (material is None) == (material_type is None):
+        raise ValueError("An expected receipt is of a material or a part — one of the two")
     if quantity is None or Decimal(str(quantity)) <= Decimal("0"):
         raise ValueError("Expected quantity must be greater than zero")
     if promised_date is None:
@@ -127,25 +129,32 @@ def record_expected_receipt(*, tenant, material, quantity: Decimal, promised_dat
         tenant=tenant,
         lot_number=lot_number,
         material=material,
-        supplier=supplier or getattr(material, "preferred_supplier", None),
+        material_type=material_type,
+        supplier=supplier or getattr(material or material_type, "preferred_supplier", None),
         erp_po_number=erp_po_number,
         promised_date=promised_date,
         quantity=quantity,
         quantity_remaining=quantity,
-        unit_of_measure=unit_of_measure or material.unit_of_measure,
+        unit_of_measure=unit_of_measure or getattr(material, "unit_of_measure", "") or "EA",
         status="ON_ORDER",
         # received_date / received_by stay null — nothing has been received yet.
     )
 
 
 def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=None,
-                         quantity: Decimal | None = None, storage_location: str | None = None):
+                         quantity: Decimal | None = None, storage_location: str | None = None,
+                         remainder: str | None = None):
     """ON_ORDER → RECEIVED: the truck arrived. Stamps the supplier's real lot number,
     who took it in, and when.
 
     ``quantity`` is accepted because deliveries differ from orders — short shipments and
     overages are normal, and the received amount is the one that is true. Passing None
     keeps the ordered quantity.
+
+    A delivery short of the order needs ``remainder`` — the clerk's call from the packing
+    slip, never inferred (the ERP can't tell us): ``BACKORDERED`` keeps the rest on order
+    as a new expected lot (same item, supplier, PO and promised date); ``CLOSED`` closes the
+    order at what arrived. Either way the lot records what had been ordered.
 
     Leaves the lot at RECEIVED rather than ACCEPTED: routing to incoming inspection (or
     dock-to-stock) is `receiving_inspection.route_received_lot`'s decision, and this must
@@ -165,11 +174,24 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
                 f"Lot {locked.lot_number} is {locked.status}; only an ON_ORDER lot can "
                 f"be received this way."
             )
+        ordered = Decimal(str(locked.quantity))
+        short_by = Decimal("0")
         if quantity is not None:
             if Decimal(str(quantity)) <= Decimal("0"):
                 raise ValueError("Received quantity must be greater than zero")
+            short_by = ordered - Decimal(str(quantity))
             locked.quantity = quantity
             locked.quantity_remaining = quantity
+        update = ["lot_number", "received_by", "received_date",
+                  "quantity", "quantity_remaining", "storage_location", "updated_at"]
+        if short_by > 0:
+            if remainder not in ("BACKORDERED", "CLOSED"):
+                raise ValueError(
+                    f"{quantity} of {ordered} arrived — say whether more is coming "
+                    f"(back-ordered) or that's all (closed).")
+            locked.ordered_quantity = ordered
+            locked.short_receipt = remainder
+            update += ["ordered_quantity", "short_receipt"]
 
         locked.lot_number = lot_number
         locked.received_by = received_by
@@ -179,10 +201,15 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
         # in a UTC-5 plant was dated tomorrow.
         from Tracker.services.core.clock import tenant_today
         locked.received_date = received_date or tenant_today(locked.tenant)
-        locked.save(update_fields=[
-            "lot_number", "received_by", "received_date",
-            "quantity", "quantity_remaining", "storage_location", "updated_at",
-        ])
+        locked.save(update_fields=update)
+        if short_by > 0 and remainder == "BACKORDERED":
+            # The rest stays on order as its own expected lot, so planning still sees it.
+            record_expected_receipt(
+                tenant=locked.tenant, quantity=short_by, promised_date=locked.promised_date,
+                material=locked.material, material_type=locked.material_type,
+                unit_of_measure=locked.unit_of_measure, supplier=locked.supplier,
+                erp_po_number=locked.erp_po_number,
+            )
         # Status flip goes through the stock-state seam so the ledger swap stays contained.
         inventory.mark_expected_lot_received(locked)
         lot.refresh_from_db()

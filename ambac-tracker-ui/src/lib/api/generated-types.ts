@@ -22034,10 +22034,17 @@ export interface components {
          * @description Stock ordered but not yet delivered, so planning can see it as incoming supply.
          *
          *     Purchasing itself lives in the ERP — `erp_po_number` is a reference, not an order.
+         *     The stock is a raw material (`material`) or a bought part (`material_type`), one of
+         *     the two — the same either/or a lot holds.
          */
         ExpectedReceiptRequest: {
             /** Format: uuid */
-            material: string;
+            material?: string | null;
+            /**
+             * Format: uuid
+             * @description A bought part, instead of a material.
+             */
+            material_type?: string | null;
             /**
              * Format: decimal
              * @description Quantity on order.
@@ -23558,6 +23565,18 @@ export interface components {
              * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
              */
             promised_date?: string | null;
+            /**
+             * Format: decimal
+             * @description What was on order, when the delivery was short of it.
+             */
+            readonly ordered_quantity: string | null;
+            /**
+             * @description For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED).
+             *
+             *     * `BACKORDERED` - More coming
+             *     * `CLOSED` - That's all
+             */
+            readonly short_receipt: components["schemas"]["ShortReceiptEnum"];
             /** Format: date */
             received_date?: string | null;
             readonly received_by: number | null;
@@ -31109,6 +31128,13 @@ export interface components {
             received_date?: string | null;
             /** @description Where it was put away. Omit to keep what the expected receipt recorded. */
             storage_location?: string;
+            /**
+             * @description Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED closes the order at what came.
+             *
+             *     * `BACKORDERED` - More coming
+             *     * `CLOSED` - That's all
+             */
+            remainder?: (components["schemas"]["ShortReceiptEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
@@ -32521,6 +32547,12 @@ export interface components {
             is_active?: boolean;
             archived?: boolean;
         };
+        /**
+         * @description * `BACKORDERED` - More coming
+         *     * `CLOSED` - That's all
+         * @enum {string}
+         */
+        ShortReceiptEnum: "BACKORDERED" | "CLOSED";
         /** @description Serializer for self-service tenant signup. */
         SignupRequest: {
             company_name: string;

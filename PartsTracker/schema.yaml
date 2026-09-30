@@ -52181,10 +52181,18 @@ components:
         Stock ordered but not yet delivered, so planning can see it as incoming supply.
 
         Purchasing itself lives in the ERP — `erp_po_number` is a reference, not an order.
+        The stock is a raw material (`material`) or a bought part (`material_type`), one of
+        the two — the same either/or a lot holds.
       properties:
         material:
           type: string
           format: uuid
+          nullable: true
+        material_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: A bought part, instead of a material.
         quantity:
           type: string
           format: decimal
@@ -52213,7 +52221,6 @@ components:
           description: Usually unknown until the supplier ships. Left blank, a placeholder
             is generated and replaced with the real number at receipt.
       required:
-      - material
       - promised_date
       - quantity
     ExplodeWorkOrderInputRequest:
@@ -55355,6 +55362,22 @@ components:
           nullable: true
           description: Supplier's promised delivery date (from the PO); drives on-time-delivery
             scoring.
+        ordered_quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          readOnly: true
+          nullable: true
+          description: What was on order, when the delivery was short of it.
+        short_receipt:
+          allOf:
+          - $ref: '#/components/schemas/ShortReceiptEnum'
+          readOnly: true
+          description: |-
+            For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED).
+
+            * `BACKORDERED` - More coming
+            * `CLOSED` - That's all
         received_date:
           type: string
           format: date
@@ -55427,12 +55450,14 @@ components:
       - lot_number
       - material_name
       - material_type_name
+      - ordered_quantity
       - parent_lot_number
       - quantity
       - quantity_remaining
       - received_by
       - received_by_name
       - shelf_life_status
+      - short_receipt
       - supplier_name
       - unit_of_measure
       - updated_at
@@ -68907,6 +68932,16 @@ components:
           description: Where it was put away. Omit to keep what the expected receipt
             recorded.
           maxLength: 100
+        remainder:
+          nullable: true
+          description: |-
+            Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED closes the order at what came.
+
+            * `BACKORDERED` - More coming
+            * `CLOSED` - That's all
+          oneOf:
+          - $ref: '#/components/schemas/ShortReceiptEnum'
+          - $ref: '#/components/schemas/NullEnum'
       required:
       - lot_number
     ReceivingCharacteristic:
@@ -71763,6 +71798,14 @@ components:
       - end_time
       - name
       - start_time
+    ShortReceiptEnum:
+      enum:
+      - BACKORDERED
+      - CLOSED
+      type: string
+      description: |-
+        * `BACKORDERED` - More coming
+        * `CLOSED` - That's all
     SignupRequest:
       type: object
       description: Serializer for self-service tenant signup.

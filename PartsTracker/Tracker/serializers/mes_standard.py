@@ -24,6 +24,9 @@ from .core import SecureModelMixin, UserSelectSerializer
 
 # ===== WORK CENTER SERIALIZERS =====
 
+from Tracker.models.mes_standard import SHORT_RECEIPT_CHOICES
+
+
 class WorkCenterSerializer(SecureModelMixin):
     """Work center serializer with equipment list.
 
@@ -286,7 +289,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'material_type', 'material_type_name',
             'material', 'material_name', 'item_name', 'material_description',
             'supplier', 'supplier_name', 'supplier_lot_number',
-            'erp_po_number', 'promised_date',
+            'erp_po_number', 'promised_date', 'ordered_quantity', 'short_receipt',
             'received_date', 'received_by', 'received_by_name',
             'quantity', 'quantity_remaining', 'unit_of_measure',
             'status', 'hold_reason', 'manufacture_date', 'expiration_date',
@@ -299,6 +302,8 @@ class MaterialLotSerializer(SecureModelMixin):
             'created_at', 'updated_at', 'quantity_remaining',
             'parent_lot_number', 'child_lot_count', 'received_by',
             'hold_reason',
+            # Set by receiving a short delivery, not edited.
+            'ordered_quantity', 'short_receipt',
         )
 
     @extend_schema_field(serializers.CharField(allow_null=True))
@@ -328,8 +333,14 @@ class MaterialLotSplitSerializer(serializers.Serializer):
 class ExpectedReceiptSerializer(serializers.Serializer):
     """Stock ordered but not yet delivered, so planning can see it as incoming supply.
 
-    Purchasing itself lives in the ERP — `erp_po_number` is a reference, not an order."""
-    material = TenantScopedPrimaryKeyRelatedField(queryset=Material.unscoped.all())
+    Purchasing itself lives in the ERP — `erp_po_number` is a reference, not an order.
+    The stock is a raw material (`material`) or a bought part (`material_type`), one of
+    the two — the same either/or a lot holds."""
+    material = TenantScopedPrimaryKeyRelatedField(
+        queryset=Material.unscoped.all(), required=False, allow_null=True)
+    material_type = TenantScopedPrimaryKeyRelatedField(
+        queryset=PartTypes.unscoped.all(), required=False, allow_null=True,
+        help_text="A bought part, instead of a material.")
     quantity = serializers.DecimalField(
         max_digits=12, decimal_places=4, min_value=Decimal('0.0001'),
         help_text="Quantity on order.")
@@ -347,6 +358,11 @@ class ExpectedReceiptSerializer(serializers.Serializer):
         help_text="Usually unknown until the supplier ships. Left blank, a placeholder "
                   "is generated and replaced with the real number at receipt.")
 
+    def validate(self, attrs):
+        if bool(attrs.get('material')) == bool(attrs.get('material_type')):
+            raise serializers.ValidationError("Give the material or the part on order — one of the two.")
+        return attrs
+
 
 class ReceiveExpectedLotSerializer(serializers.Serializer):
     """Book in an ON_ORDER lot that has physically arrived."""
@@ -361,6 +377,11 @@ class ReceiveExpectedLotSerializer(serializers.Serializer):
     storage_location = serializers.CharField(
         required=False, allow_blank=True, max_length=100,
         help_text="Where it was put away. Omit to keep what the expected receipt recorded.")
+    remainder = serializers.ChoiceField(
+        choices=SHORT_RECEIPT_CHOICES,
+        required=False, allow_null=True,
+        help_text="Required when fewer arrived than were on order: BACKORDERED keeps the "
+                  "rest on order as a new expected lot; CLOSED closes the order at what came.")
 
 
 class ExtendShelfLifeSerializer(serializers.Serializer):

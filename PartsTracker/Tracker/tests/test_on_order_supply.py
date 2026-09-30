@@ -218,9 +218,28 @@ class ReceiveExpectedLotTests(_MaterialFixture):
     def test_short_shipment_books_what_actually_arrived(self):
         lot = receive_expected_lot(
             self._expect(qty=20), lot_number="SUP-B", received_by=self.user,
-            quantity=Decimal(17))
+            quantity=Decimal(17), remainder="CLOSED")
         self.assertEqual(lot.quantity, Decimal(17))
         self.assertEqual(lot.quantity_remaining, Decimal(17))
+
+    def test_a_short_shipment_needs_the_clerks_call(self):
+        """The ERP can't say whether the rest is coming, so it is never inferred."""
+        with self.assertRaises(ValueError):
+            receive_expected_lot(self._expect(qty=20), lot_number="SUP-D", received_by=self.user,
+                                 quantity=Decimal(12))
+
+    def test_more_coming_keeps_the_rest_on_order(self):
+        lot = receive_expected_lot(self._expect(qty=20), lot_number="SUP-E", received_by=self.user,
+                                   quantity=Decimal(12), remainder="BACKORDERED")
+        self.assertEqual((lot.ordered_quantity, lot.short_receipt), (Decimal(20), "BACKORDERED"))
+        rest = MaterialLot.objects.get(status="ON_ORDER", material=self.oring, erp_po_number="PO-5")
+        self.assertEqual((rest.quantity, rest.promised_date), (Decimal(8), lot.promised_date))
+
+    def test_thats_all_closes_at_what_arrived(self):
+        lot = receive_expected_lot(self._expect(qty=20), lot_number="SUP-F", received_by=self.user,
+                                   quantity=Decimal(12), remainder="CLOSED")
+        self.assertEqual((lot.ordered_quantity, lot.short_receipt), (Decimal(20), "CLOSED"))
+        self.assertFalse(MaterialLot.objects.filter(status="ON_ORDER", material=self.oring).exists())
 
     def test_lands_at_received_not_accepted(self):
         """Incoming inspection still owns whether the stock is usable — receiving an

@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMaterialOptions } from "@/hooks/useMaterials";
+import { StockItemCombobox, stockItemFields, useStockItems } from "@/components/receiving/StockItemCombobox";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useRecordExpectedReceipt } from "@/hooks/useReceivingMutations";
 
@@ -50,17 +50,16 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
     const [supplier, setSupplier] = useState("");
     const [poNumber, setPoNumber] = useState("");
 
-    const materials = useMaterialOptions();
+    const stockItems = useStockItems();
     const companies = useRetrieveCompanies({ ordering: "name", limit: 1000 });
     const record = useRecordExpectedReceipt();
 
     /** Picking a material pre-selects its preferred supplier — the common case is buying
      *  from the usual source, and a second-source order just overrides it. */
-    const chooseMaterial = (id: string) => {
-        setMaterial(id);
-        const m = materials.data?.results?.find((x) => String(x.id) === id);
-        const preferred = m?.preferred_supplier;
-        if (preferred) setSupplier(String(preferred));
+    const chooseMaterial = (value: string | null) => {
+        setMaterial(value ?? "");
+        const preferred = value ? stockItems.supplierOf.get(value) : null;
+        if (preferred) setSupplier(preferred);
     };
 
     const reset = () => {
@@ -78,7 +77,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
         if (!canSubmit) return;
         record.mutate(
             {
-                material,
+                ...stockItemFields(material),
                 quantity,
                 promised_date: promisedDate,
                 supplier: supplier || null,
@@ -111,7 +110,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
                 <DialogHeader>
                     <DialogTitle>Expect a delivery</DialogTitle>
                     <DialogDescription>
-                        Record material that&rsquo;s on order but hasn&rsquo;t arrived, so planning
+                        Record a material or part that&rsquo;s on order but hasn&rsquo;t arrived, so planning
                         counts it as incoming supply. It stays out of stock and can&rsquo;t be
                         picked until it&rsquo;s booked in at receiving.
                     </DialogDescription>
@@ -119,24 +118,9 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
 
                 <div className="space-y-4 py-2">
                     <div className="space-y-1.5">
-                        <Label htmlFor="er-material">Material</Label>
-                        <Select value={material} onValueChange={chooseMaterial}>
-                            <SelectTrigger id="er-material">
-                                <SelectValue
-                                    placeholder={
-                                        materials.isLoading ? "Loading…" : "Select a material"
-                                    }
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {(materials.data?.results ?? []).map((m) => (
-                                    <SelectItem key={String(m.id)} value={String(m.id)}>
-                                        {m.name}
-                                        {m.part_number ? ` · ${m.part_number}` : ""}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="er-material">Material or part</Label>
+                        <StockItemCombobox id="er-material" items={stockItems}
+                            value={material || null} onChange={chooseMaterial} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">

@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useMaterialOptions } from "@/hooks/useMaterials";
+import { StockItemCombobox, stockItemFields, useStockItems } from "@/components/receiving/StockItemCombobox";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useBulkCreateLots, type LotBulkRow } from "@/hooks/useReceivingMutations";
 
@@ -16,7 +16,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 type Row = {
     lot_number: string;
-    material_type: string; // id or NONE
+    item: string; // "m:<material id>" / "p:<part type id>", or NONE
     supplier: string; // id or NONE
     supplier_lot_number: string;
     quantity: string;
@@ -26,13 +26,13 @@ type Row = {
 };
 
 const emptyRow = (): Row => ({
-    lot_number: "", material_type: NONE, supplier: NONE, supplier_lot_number: "",
+    lot_number: "", item: NONE, supplier: NONE, supplier_lot_number: "",
     quantity: "", unit_of_measure: "EA", received_date: today(), storage_location: "",
 });
 
 // Column order used when pasting a spreadsheet without headers.
 const PASTE_COLUMNS: (keyof Row)[] = [
-    "lot_number", "material_type", "supplier", "quantity", "unit_of_measure", "received_date", "supplier_lot_number", "storage_location",
+    "lot_number", "item", "supplier", "quantity", "unit_of_measure", "received_date", "supplier_lot_number", "storage_location",
 ];
 
 function parsePaste(text: string): string[][] {
@@ -45,13 +45,9 @@ export function ReceiveLotsBatchPage() {
     const [rows, setRows] = useState<Row[]>([emptyRow()]);
     const [serverErrors, setServerErrors] = useState<Record<number, unknown>>({});
     const mutation = useBulkCreateLots();
-    const { data: materials } = useMaterialOptions();
+    const stockItems = useStockItems();
     const { data: companies } = useRetrieveCompanies({ limit: 500 });
 
-    const materialByName = useMemo(
-        () => new Map((materials?.results ?? []).filter((p) => p.name).map((p) => [p.name.toLowerCase(), String(p.id)])),
-        [materials],
-    );
     const companyByName = useMemo(
         () => new Map((companies?.results ?? []).filter((c) => c.name).map((c) => [c.name.toLowerCase(), String(c.id)])),
         [companies],
@@ -72,7 +68,7 @@ export function ReceiveLotsBatchPage() {
                 const key = PASTE_COLUMNS[ci];
                 if (!key) return;
                 const v = val.trim();
-                if (key === "material_type") r.material_type = (materialByName.get(v.toLowerCase()) as string) ?? NONE;
+                if (key === "item") r.item = stockItems.byName.get(v.toLowerCase()) ?? NONE;
                 else if (key === "supplier") r.supplier = companyByName.get(v.toLowerCase()) ?? NONE;
                 else (r as Record<string, string>)[key] = v;
             });
@@ -96,7 +92,9 @@ export function ReceiveLotsBatchPage() {
             received_date: r.received_date,
             quantity: r.quantity.trim(),
         };
-        if (r.material_type !== NONE) out.material_type = r.material_type;
+        // A lot is stock of a material OR a part — the picker says which, and only that
+        // field is sent. (Materials were being sent as `material_type`, a PartType FK.)
+        if (r.item !== NONE) Object.assign(out, stockItemFields(r.item));
         if (r.supplier !== NONE) out.supplier = r.supplier;
         if (r.supplier_lot_number.trim()) out.supplier_lot_number = r.supplier_lot_number.trim();
         if (r.unit_of_measure.trim()) out.unit_of_measure = r.unit_of_measure.trim();
@@ -132,7 +130,7 @@ export function ReceiveLotsBatchPage() {
             <CardHeader>
                 <CardTitle>Receive Lots</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                    Paste rows from a spreadsheet (Lot #, Material, Supplier, Qty, Unit, Received, Supplier Lot, Location) or add manually.
+                    Paste rows from a spreadsheet (Lot #, Material or part, Supplier, Qty, Unit, Received, Supplier Lot, Location) or add manually.
                 </p>
             </CardHeader>
             <CardContent>
@@ -141,7 +139,7 @@ export function ReceiveLotsBatchPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Lot #</TableHead>
-                                <TableHead>Material</TableHead>
+                                <TableHead>Material / part</TableHead>
                                 <TableHead>Supplier</TableHead>
                                 <TableHead>Qty</TableHead>
                                 <TableHead>Unit</TableHead>
@@ -161,13 +159,15 @@ export function ReceiveLotsBatchPage() {
                                                 className={e.lot_number ? "border-destructive" : ""} />
                                         </TableCell>
                                         <TableCell>
-                                            <Select value={r.material_type} onValueChange={(v) => setCell(idx, "material_type", v)}>
-                                                <SelectTrigger className="min-w-32"><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value={NONE}>—</SelectItem>
-                                                    {materials?.results?.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
+                                            <StockItemCombobox className="min-w-44" aria-label={`Material or part, row ${idx + 1}`}
+                                                items={stockItems} value={r.item === NONE ? null : r.item}
+                                                onChange={(v) => {
+                                                    setCell(idx, "item", v ?? NONE);
+                                                    // The usual source, when nothing's chosen yet.
+                                                    const pref = v ? stockItems.supplierOf.get(v) : null;
+                                                    if (pref && r.supplier === NONE) setCell(idx, "supplier", pref);
+                                                }}
+                                                clearLabel="—" placeholder="—" />
                                         </TableCell>
                                         <TableCell>
                                             <Select value={r.supplier} onValueChange={(v) => setCell(idx, "supplier", v)}>

@@ -396,6 +396,8 @@ SPECTACULAR_SETTINGS = {
         # Inspection-inbox row 'type' — would otherwise collide with
         # MeasurementDefinition.type and rename the long-exported TypeEnum.
         "InspectionInboxTypeEnum": "Tracker.serializers.qms.INSPECTION_INBOX_TYPES",
+        # A short delivery's outcome: the lot's field and the receive action's choice.
+        "ShortReceiptEnum": "Tracker.models.mes_standard.SHORT_RECEIPT_CHOICES",
         # Calendar 'recurrence' fields — two distinct choice sets (ONCE/YEARLY for
         # plant closures, ONCE/WEEKLY for labor blocks + overtime) share the field
         # name; name them explicitly so drf-spectacular doesn't hash-suffix them.
