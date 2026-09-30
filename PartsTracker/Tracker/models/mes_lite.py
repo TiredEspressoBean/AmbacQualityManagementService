@@ -524,7 +524,6 @@ class StepMeasurementRequirement(models.Model):
     # Control Plan fields
     is_mandatory = models.BooleanField(default=True, help_text="Must be recorded to advance step")
     sequence = models.PositiveIntegerField(default=0, help_text="Display/collection order")
-    characteristic_number = models.CharField(max_length=20, blank=True, help_text="Balloon number on drawing")
 
     # Per-step tolerance overrides (null = use MeasurementDefinition defaults)
     tolerance_upper_override = models.FloatField(null=True, blank=True)

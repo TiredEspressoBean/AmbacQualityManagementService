@@ -167,7 +167,6 @@ class StepMeasurementRequirementCopyTestCase(TenantTestCase):
             measurement=self.mdef,
             is_mandatory=True,
             sequence=1,
-            characteristic_number='B01',
             tolerance_upper_override=0.05,
             tolerance_lower_override=-0.05,
         )
@@ -182,7 +181,6 @@ class StepMeasurementRequirementCopyTestCase(TenantTestCase):
         # Same measurement FK — historically pinned
         self.assertEqual(v2_smr.measurement_id, self.mdef.pk)
         # Control Plan metadata carried forward
-        self.assertEqual(v2_smr.characteristic_number, 'B01')
         self.assertEqual(v2_smr.tolerance_upper_override, 0.05)
         self.assertNotEqual(v2_smr.pk, self.smr.pk)
 

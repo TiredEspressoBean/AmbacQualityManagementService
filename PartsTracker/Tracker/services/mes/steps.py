@@ -227,7 +227,6 @@ def create_new_step_version(
                 measurement=smr.measurement,
                 is_mandatory=smr.is_mandatory,
                 sequence=smr.sequence,
-                characteristic_number=smr.characteristic_number,
                 tolerance_upper_override=smr.tolerance_upper_override,
                 tolerance_lower_override=smr.tolerance_lower_override,
             )
