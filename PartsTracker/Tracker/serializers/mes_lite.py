@@ -1669,6 +1669,7 @@ class PartTypesSerializer(SecureModelMixin):
             'requires_supplier_qualification', 'requires_part_approval',
             'can_make', 'can_buy', 'purchase_lead_time_days',
             'preferred_supplier', 'preferred_supplier_name',
+            'purchase_unit', 'units_per_purchase_unit', 'requires_coc', 'requires_heat_number',
             'itar_controlled', 'eccn', 'usml_category',
             'default_disassembly_process',
             'version', 'is_current_version', 'previous_version',

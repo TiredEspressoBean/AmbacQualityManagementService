@@ -3,7 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileUp, PackagePlus, Truck } from "lucide-react";
+import { FileUp, PackagePlus, Tag, Truck } from "lucide-react";
+import { ReportButton } from "@/components/reports/ReportButton";
+import { AdjustLotQuantityDialog } from "@/components/receiving/AdjustLotQuantityDialog";
 import type { Schema } from "@/lib/api/types";
 import { useListMaterialLots } from "@/hooks/useListMaterialLots";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
@@ -77,6 +79,7 @@ export function MaterialsPage() {
     const [extendLot, setExtendLot] = useState<Lot | null>(null);
     const [expectOpen, setExpectOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
+    const [adjustLot, setAdjustLot] = useState<Lot | null>(null);
     const onOrderLens = tab === "onorder" || tab === "late";
     const [receiveLot, setReceiveLot] = useState<Lot | null>(null);
 
@@ -121,7 +124,7 @@ export function MaterialsPage() {
             extraToolbarContent={
                 <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-                        <FileUp className="h-4 w-4 mr-1" /> Import POs
+                        <FileUp className="h-4 w-4 mr-1" /> Import expected
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setExpectOpen(true)}>
                         <Truck className="h-4 w-4 mr-1" /> Expect
@@ -161,7 +164,17 @@ export function MaterialsPage() {
                               : "—",
                       })]
                     : []),
-                col({ header: "Qty", renderCell: (l) => `${l.quantity ?? "—"} ${l.unit_of_measure ?? ""}`.trim() }),
+                col({
+                    header: "Qty",
+                    // Once stock is drawn or adjusted, what's left is the number that matters.
+                    renderCell: (l) => {
+                        const unit = l.unit_of_measure ?? "";
+                        const left = l.quantity_remaining;
+                        return left != null && Number(left) !== Number(l.quantity)
+                            ? <span>{`${left} ${unit}`.trim()} <span className="text-xs text-muted-foreground">of {l.quantity}</span></span>
+                            : `${l.quantity ?? "—"} ${unit}`.trim();
+                    },
+                }),
                 col({
                     header: "Status",
                     renderCell: (l) => (
@@ -210,6 +223,21 @@ export function MaterialsPage() {
                             Receive
                         </Button>
                     )}
+                    {l.status !== "ON_ORDER" && (
+                        <ReportButton
+                            reportType="material_lot_label"
+                            params={{ lot_ids: [String(l.id)], copies: 1, layout: "thermal" }}
+                            label="Label"
+                            icon={<Tag className="h-4 w-4" />}
+                            size="sm"
+                            variant="outline"
+                        />
+                    )}
+                    {["ACCEPTED", "IN_USE", "QUARANTINE", "AWAITING_INSPECTION", "RECEIVED"].includes(l.status ?? "") && (
+                        <Button size="sm" variant="ghost" onClick={() => setAdjustLot(l)}>
+                            Adjust
+                        </Button>
+                    )}
                     {canExtend(l) && (
                         <Button size="sm" variant="outline" onClick={() => setExtendLot(l)}>
                             Extend shelf life
@@ -237,11 +265,25 @@ export function MaterialsPage() {
                 itemName={receiveLot.item_name || receiveLot.lot_number}
                 orderedQuantity={receiveLot.quantity}
                 unitOfMeasure={receiveLot.unit_of_measure}
+                purchaseUnit={receiveLot.item_purchase_unit}
+                unitsPerPurchaseUnit={receiveLot.item_units_per_purchase_unit}
+                requiresHeatNumber={receiveLot.item_requires_heat_number}
                 onInspect={(id) =>
                     navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: id } })
                 }
                 open={receiveLot !== null}
                 onOpenChange={(o) => { if (!o) setReceiveLot(null); }}
+            />
+        )}
+        {adjustLot && (
+            <AdjustLotQuantityDialog
+                key={String(adjustLot.id)}
+                lotId={String(adjustLot.id)}
+                lotNumber={adjustLot.lot_number}
+                remaining={adjustLot.quantity_remaining}
+                unitOfMeasure={adjustLot.unit_of_measure}
+                open={adjustLot !== null}
+                onOpenChange={(o) => { if (!o) setAdjustLot(null); }}
             />
         )}
         {extendLot && (

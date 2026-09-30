@@ -3632,6 +3632,83 @@ export type LifeTrackingRequest = {
   unknown | undefined;
   archived?: boolean | undefined;
 };
+export type Material = {
+  id: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  part_number?: /**
+   * Supplier or internal catalog number/SKU.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  description?: /**
+   * @maxLength 255
+   */
+  string | undefined;
+  unit_of_measure?: /**
+   * @maxLength 20
+   */
+  string | undefined;
+  purchase_lead_time_days?:
+    | /**
+     * Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  safety_stock?:
+    | /**
+     * Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  preferred_supplier?: (string | null) | undefined;
+  preferred_supplier_name: string | null;
+  purchase_unit?: /**
+     * How this item is bought and counted at receiving.
+    
+    * `STOCK` - Stock unit
+    * `BOX` - Box
+    * `LB` - Pound
+     */
+  PurchaseUnitEnum | undefined;
+  units_per_purchase_unit?:
+    | /**
+     * Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  requires_coc?: /**
+   * Hold each received lot until its certificate of conformance is uploaded.
+   */
+  boolean | undefined;
+  requires_heat_number?: /**
+   * Hold each received lot until its heat / melt number is entered.
+   */
+  boolean | undefined;
+  is_active?: boolean | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type PurchaseUnitEnum =
+  /**
+   * * `STOCK` - Stock unit
+   * `BOX` - Box
+   * `LB` - Pound
+   *
+   * @enum STOCK, BOX, LB
+   */
+  "STOCK" | "BOX" | "LB";
 export type MaterialLot = {
   id: string;
   /**
@@ -3724,6 +3801,36 @@ export type MaterialLot = {
    * @maxLength 100
    */
   string | undefined;
+  heat_number?: /**
+   * Heat / melt number from the mill certificate.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  source_type?:
+    | /**
+     * Bought from the manufacturer, an authorized distributor, or an independent one.
+    
+    * `MANUFACTURER` - Manufacturer
+    * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+    * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+     */
+    (LotSourceTypeEnum | BlankEnum)
+    | undefined;
+  received_as_quantity?:
+    | /**
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  received_as_unit?: (PurchaseUnitEnum | BlankEnum) | undefined;
+  item_purchase_unit: PurchaseUnitEnum | NullEnum | null;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  item_units_per_purchase_unit: string | null;
+  item_requires_coc: boolean;
+  item_requires_heat_number: boolean;
   child_lot_count: number;
   created_at: string;
   updated_at: string;
@@ -3760,6 +3867,15 @@ export type MaterialLotStatusEnum =
   | "CONSUMED"
   | "SCRAPPED"
   | "QUARANTINE";
+export type LotSourceTypeEnum =
+  /**
+   * * `MANUFACTURER` - Manufacturer
+   * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+   * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+   *
+   * @enum MANUFACTURER, AUTHORIZED_DISTRIBUTOR, INDEPENDENT_DISTRIBUTOR
+   */
+  "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
 export type MaterialLotBulkCreateRequest = {
   lots: Array<MaterialLotBulkRowRequest>;
 };
@@ -3863,6 +3979,95 @@ export type MaterialLotRequest = {
    * @maxLength 100
    */
   string | undefined;
+  heat_number?: /**
+   * Heat / melt number from the mill certificate.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  source_type?:
+    | /**
+     * Bought from the manufacturer, an authorized distributor, or an independent one.
+    
+    * `MANUFACTURER` - Manufacturer
+    * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+    * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+     */
+    (LotSourceTypeEnum | BlankEnum)
+    | undefined;
+  received_as_quantity?:
+    | /**
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  received_as_unit?: (PurchaseUnitEnum | BlankEnum) | undefined;
+  archived?: boolean | undefined;
+};
+export type MaterialRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  part_number?: /**
+   * Supplier or internal catalog number/SKU.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  description?: /**
+   * @maxLength 255
+   */
+  string | undefined;
+  unit_of_measure?: /**
+   * @minLength 1
+   * @maxLength 20
+   */
+  string | undefined;
+  purchase_lead_time_days?:
+    | /**
+     * Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  safety_stock?:
+    | /**
+     * Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  preferred_supplier?: (string | null) | undefined;
+  purchase_unit?: /**
+     * How this item is bought and counted at receiving.
+    
+    * `STOCK` - Stock unit
+    * `BOX` - Box
+    * `LB` - Pound
+     */
+  PurchaseUnitEnum | undefined;
+  units_per_purchase_unit?:
+    | /**
+     * Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  requires_coc?: /**
+   * Hold each received lot until its certificate of conformance is uploaded.
+   */
+  boolean | undefined;
+  requires_heat_number?: /**
+   * Hold each received lot until its heat / melt number is entered.
+   */
+  boolean | undefined;
+  is_active?: boolean | undefined;
   archived?: boolean | undefined;
 };
 export type MeasurementDefinition = {
@@ -5680,50 +5885,6 @@ export type PaginatedMaterialList = {
     | undefined;
   results: Array<Material>;
 };
-export type Material = {
-  id: string;
-  /**
-   * @maxLength 100
-   */
-  name: string;
-  part_number?: /**
-   * Supplier or internal catalog number/SKU.
-   *
-   * @maxLength 100
-   */
-  string | undefined;
-  description?: /**
-   * @maxLength 255
-   */
-  string | undefined;
-  unit_of_measure?: /**
-   * @maxLength 20
-   */
-  string | undefined;
-  purchase_lead_time_days?:
-    | /**
-     * Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time).
-     *
-     * @minimum 0
-     * @maximum 2147483647
-     */
-    (number | null)
-    | undefined;
-  safety_stock?:
-    | /**
-     * Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
-     *
-     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
-     */
-    (string | null)
-    | undefined;
-  preferred_supplier?: (string | null) | undefined;
-  preferred_supplier_name: string | null;
-  is_active?: boolean | undefined;
-  created_at: string;
-  updated_at: string;
-  archived?: boolean | undefined;
-};
 export type PaginatedMaterialLotList = {
   /**
    * @example 123
@@ -6103,6 +6264,30 @@ export type PartTypes = {
     (string | null)
     | undefined;
   preferred_supplier_name: string | null;
+  purchase_unit?: /**
+     * How this part is bought and counted at receiving.
+    
+    * `STOCK` - Stock unit
+    * `BOX` - Box
+    * `LB` - Pound
+     */
+  PurchaseUnitEnum | undefined;
+  units_per_purchase_unit?:
+    | /**
+     * Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  requires_coc?: /**
+   * Hold each received lot until its certificate of conformance is uploaded.
+   */
+  boolean | undefined;
+  requires_heat_number?: /**
+   * Hold each received lot until its heat / melt number is entered.
+   */
+  boolean | undefined;
   itar_controlled?: /**
    * Part type is ITAR-controlled defense article (22 CFR 121 USML)
    */
@@ -9050,6 +9235,40 @@ export type StepProcessRef = {
   status: string;
   is_current_version: boolean;
 };
+export type PaginatedStorageLocationList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<StorageLocation>;
+};
+export type StorageLocation = {
+  id: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  description?: /**
+   * @maxLength 255
+   */
+  string | undefined;
+  is_active?: boolean | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
 export type PaginatedSubstepCompletionList = {
   /**
    * @example 123
@@ -10955,6 +11174,117 @@ export type TravelerBatchMeasurement = {
   passed: boolean | null;
   recorded_at: string | null;
 };
+export type PartTypesRequest = {
+  tenant?:
+    | /**
+     * Tenant this record belongs to
+     */
+    (string | null)
+    | undefined;
+  external_id?:
+    | /**
+     * External system identifier for integration sync
+     *
+     * @maxLength 255
+     */
+    (string | null)
+    | undefined;
+  archived?: boolean | undefined;
+  /**
+   * @minLength 1
+   * @maxLength 50
+   */
+  name: string;
+  ID_prefix?:
+    | /**
+     * @maxLength 50
+     */
+    (string | null)
+    | undefined;
+  ERP_id?:
+    | /**
+     * @maxLength 50
+     */
+    (string | null)
+    | undefined;
+  requires_supplier_qualification?: /**
+   * Require an approved SupplierQualification covering the supplier before a received lot of this part type can be accepted into stock.
+   */
+  boolean | undefined;
+  requires_part_approval?: /**
+   * Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock.
+   */
+  boolean | undefined;
+  can_make?: /**
+   * This part can be produced in-house (has a production process; shortages spawn child work orders).
+   */
+  boolean | undefined;
+  can_buy?: /**
+   * This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts.
+   */
+  boolean | undefined;
+  purchase_lead_time_days?:
+    | /**
+     * Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  preferred_supplier?:
+    | /**
+     * Default supplier when this part is purchased.
+     */
+    (string | null)
+    | undefined;
+  purchase_unit?: /**
+     * How this part is bought and counted at receiving.
+    
+    * `STOCK` - Stock unit
+    * `BOX` - Box
+    * `LB` - Pound
+     */
+  PurchaseUnitEnum | undefined;
+  units_per_purchase_unit?:
+    | /**
+     * Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  requires_coc?: /**
+   * Hold each received lot until its certificate of conformance is uploaded.
+   */
+  boolean | undefined;
+  requires_heat_number?: /**
+   * Hold each received lot until its heat / melt number is entered.
+   */
+  boolean | undefined;
+  itar_controlled?: /**
+   * Part type is ITAR-controlled defense article (22 CFR 121 USML)
+   */
+  boolean | undefined;
+  eccn?: /**
+   * Default ECCN for parts of this type (e.g., EAR99, 9A004)
+   *
+   * @maxLength 20
+   */
+  string | undefined;
+  usml_category?: /**
+   * USML Category if ITAR-controlled (e.g., IV, XI, XIX)
+   *
+   * @maxLength 10
+   */
+  string | undefined;
+  default_disassembly_process?:
+    | /**
+     * Canonical preference for the teardown picker. When set, the operator's bulk-teardown dialog preselects this Process. Optional: when null, the picker has no preselection and (for automation paths) WO creation refuses to resolve a default.
+     */
+    (string | null)
+    | undefined;
+};
 export type PartsBulkSetStatusInputRequest = {
   ids: Array<string>;
   status: PartsStatusEnum;
@@ -11845,6 +12175,85 @@ export type PatchedMaterialLotRequest = Partial<{
    * @maxLength 100
    */
   storage_location: string;
+  /**
+   * Heat / melt number from the mill certificate.
+   *
+   * @maxLength 64
+   */
+  heat_number: string;
+  /**
+     * Bought from the manufacturer, an authorized distributor, or an independent one.
+    
+    * `MANUFACTURER` - Manufacturer
+    * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+    * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+     */
+  source_type: LotSourceTypeEnum | BlankEnum;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  received_as_quantity: string | null;
+  received_as_unit: PurchaseUnitEnum | BlankEnum;
+  archived: boolean;
+}>;
+export type PatchedMaterialRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * Supplier or internal catalog number/SKU.
+   *
+   * @maxLength 100
+   */
+  part_number: string;
+  /**
+   * @maxLength 255
+   */
+  description: string;
+  /**
+   * @minLength 1
+   * @maxLength 20
+   */
+  unit_of_measure: string;
+  /**
+   * Days to source this item from a supplier — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  purchase_lead_time_days: number | null;
+  /**
+   * Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  safety_stock: string | null;
+  preferred_supplier: string | null;
+  /**
+     * How this item is bought and counted at receiving.
+    
+    * `STOCK` - Stock unit
+    * `BOX` - Box
+    * `LB` - Pound
+     */
+  purchase_unit: PurchaseUnitEnum;
+  /**
+   * Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  units_per_purchase_unit: string | null;
+  /**
+   * Hold each received lot until its certificate of conformance is uploaded.
+   */
+  requires_coc: boolean;
+  /**
+   * Hold each received lot until its heat / melt number is entered.
+   */
+  requires_heat_number: boolean;
+  is_active: boolean;
   archived: boolean;
 }>;
 export type PatchedMeasurementDefinitionRequest = Partial<{
@@ -12110,6 +12519,101 @@ export type PatchedPartApprovalRequest = Partial<{
   expiry_date: string | null;
   notes: string;
   archived: boolean;
+}>;
+export type PatchedPartTypesRequest = Partial<{
+  /**
+   * Tenant this record belongs to
+   */
+  tenant: string | null;
+  /**
+   * External system identifier for integration sync
+   *
+   * @maxLength 255
+   */
+  external_id: string | null;
+  archived: boolean;
+  /**
+   * @minLength 1
+   * @maxLength 50
+   */
+  name: string;
+  /**
+   * @maxLength 50
+   */
+  ID_prefix: string | null;
+  /**
+   * @maxLength 50
+   */
+  ERP_id: string | null;
+  /**
+   * Require an approved SupplierQualification covering the supplier before a received lot of this part type can be accepted into stock.
+   */
+  requires_supplier_qualification: boolean;
+  /**
+   * Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock.
+   */
+  requires_part_approval: boolean;
+  /**
+   * This part can be produced in-house (has a production process; shortages spawn child work orders).
+   */
+  can_make: boolean;
+  /**
+   * This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts.
+   */
+  can_buy: boolean;
+  /**
+   * Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  purchase_lead_time_days: number | null;
+  /**
+   * Default supplier when this part is purchased.
+   */
+  preferred_supplier: string | null;
+  /**
+     * How this part is bought and counted at receiving.
+    
+    * `STOCK` - Stock unit
+    * `BOX` - Box
+    * `LB` - Pound
+     */
+  purchase_unit: PurchaseUnitEnum;
+  /**
+   * Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  units_per_purchase_unit: string | null;
+  /**
+   * Hold each received lot until its certificate of conformance is uploaded.
+   */
+  requires_coc: boolean;
+  /**
+   * Hold each received lot until its heat / melt number is entered.
+   */
+  requires_heat_number: boolean;
+  /**
+   * Part type is ITAR-controlled defense article (22 CFR 121 USML)
+   */
+  itar_controlled: boolean;
+  /**
+   * Default ECCN for parts of this type (e.g., EAR99, 9A004)
+   *
+   * @maxLength 20
+   */
+  eccn: string;
+  /**
+   * USML Category if ITAR-controlled (e.g., IV, XI, XIX)
+   *
+   * @maxLength 10
+   */
+  usml_category: string;
+  /**
+   * Canonical preference for the teardown picker. When set, the operator's bulk-teardown dialog preselects this Process. Optional: when null, the picker has no preselection and (for automation paths) WO creation refuses to resolve a default.
+   */
+  default_disassembly_process: string | null;
 }>;
 export type PatchedPartsRequest = Partial<{
   /**
@@ -14379,6 +14883,25 @@ export type ReceiveExpectedLotRequest = {
      */
     (ShortReceiptEnum | NullEnum | null)
     | undefined;
+  received_as_quantity?:
+    | /**
+     * What was counted, in `received_as_unit`. Converted to the stock quantity (and replaces `quantity`) when that is the item's buying unit.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  received_as_unit?:
+    | /**
+     * @default ""
+     */
+    (PurchaseUnitEnum | BlankEnum)
+    | undefined;
+  heat_number?: /**
+   * @maxLength 64
+   */
+  string | undefined;
+  source_type?: (LotSourceTypeEnum | BlankEnum) | undefined;
 };
 export type ReceivingMeasurementInputRequest = {
   definition: string;
@@ -19421,6 +19944,12 @@ const MaterialLotStatusEnum = z.enum([
   "SCRAPPED",
   "QUARANTINE",
 ]);
+const LotSourceTypeEnum = z.enum([
+  "MANUFACTURER",
+  "AUTHORIZED_DISTRIBUTOR",
+  "INDEPENDENT_DISTRIBUTOR",
+]);
+const PurchaseUnitEnum = z.enum(["STOCK", "BOX", "LB"]);
 const MaterialLot = z.object({
   id: z.string().uuid(),
   lot_number: z.string().max(100),
@@ -19457,6 +19986,20 @@ const MaterialLot = z.object({
   shelf_life_status: z.string().nullable(),
   certificate_of_conformance: z.string().url().nullish(),
   storage_location: z.string().max(100).optional(),
+  heat_number: z.string().max(64).optional(),
+  source_type: z.union([LotSourceTypeEnum, BlankEnum]).optional(),
+  received_as_quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]).optional(),
+  item_purchase_unit: z.union([PurchaseUnitEnum, NullEnum]).nullable(),
+  item_units_per_purchase_unit: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullable(),
+  item_requires_coc: z.boolean(),
+  item_requires_heat_number: z.boolean(),
   child_lot_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -19487,6 +20030,13 @@ const MaterialLotRequest = z.object({
   expiration_date: z.string().nullish(),
   certificate_of_conformance: z.instanceof(File).nullish(),
   storage_location: z.string().max(100).optional(),
+  heat_number: z.string().max(64).optional(),
+  source_type: z.union([LotSourceTypeEnum, BlankEnum]).optional(),
+  received_as_quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]).optional(),
   archived: z.boolean().optional(),
 });
 const PatchedMaterialLotRequest = z
@@ -19509,6 +20059,13 @@ const PatchedMaterialLotRequest = z
     expiration_date: z.string().nullable(),
     certificate_of_conformance: z.instanceof(File).nullable(),
     storage_location: z.string().max(100),
+    heat_number: z.string().max(64),
+    source_type: z.union([LotSourceTypeEnum, BlankEnum]),
+    received_as_quantity: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]),
     archived: z.boolean(),
   })
   .partial();
@@ -19598,6 +20155,10 @@ const QualityReports = z.object({
   file_info: z.object({}).partial().passthrough().nullable(),
   archived: z.boolean().optional(),
 });
+const AdjustQuantityRequest = z.object({
+  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  reason: z.string().min(1),
+});
 const ReceivingVerdict = z.object({
   status: z.string(),
   is_variables: z.boolean(),
@@ -19626,6 +20187,16 @@ const ReceiveExpectedLotRequest = z.object({
   received_date: z.string().nullish(),
   storage_location: z.string().max(100).optional(),
   remainder: z.union([ShortReceiptEnum, NullEnum]).nullish(),
+  received_as_quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  received_as_unit: z
+    .union([PurchaseUnitEnum, BlankEnum])
+    .optional()
+    .default(""),
+  heat_number: z.string().max(64).optional(),
+  source_type: z.union([LotSourceTypeEnum, BlankEnum]).optional(),
 });
 const RecordBulkRequestRequest = z.object({
   defectives_found: z.number().int().gte(0),
@@ -19645,6 +20216,7 @@ const ReceivingSampleUnitRequest = z.object({
 const RecordUnitsRequestRequest = z.object({
   units: z.array(ReceivingSampleUnitRequest),
 });
+const ReleaseHoldRequest = z.object({ reason: z.string().min(1) });
 const ReceivingCharacteristic = z.object({
   id: z.string().uuid(),
   label: z.string(),
@@ -19799,6 +20371,13 @@ const Material = z.object({
     .nullish(),
   preferred_supplier: z.string().uuid().nullish(),
   preferred_supplier_name: z.string().nullable(),
+  purchase_unit: PurchaseUnitEnum.optional(),
+  units_per_purchase_unit: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  requires_coc: z.boolean().optional(),
+  requires_heat_number: z.boolean().optional(),
   is_active: z.boolean().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -19821,6 +20400,13 @@ const MaterialRequest = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
   preferred_supplier: z.string().uuid().nullish(),
+  purchase_unit: PurchaseUnitEnum.optional(),
+  units_per_purchase_unit: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  requires_coc: z.boolean().optional(),
+  requires_heat_number: z.boolean().optional(),
   is_active: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
@@ -19836,6 +20422,13 @@ const PatchedMaterialRequest = z
       .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
       .nullable(),
     preferred_supplier: z.string().uuid().nullable(),
+    purchase_unit: PurchaseUnitEnum,
+    units_per_purchase_unit: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    requires_coc: z.boolean(),
+    requires_heat_number: z.boolean(),
     is_active: z.boolean(),
     archived: z.boolean(),
   })
@@ -20479,6 +21072,13 @@ const PartTypes = z.object({
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   preferred_supplier: z.string().uuid().nullish(),
   preferred_supplier_name: z.string().nullable(),
+  purchase_unit: PurchaseUnitEnum.optional(),
+  units_per_purchase_unit: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  requires_coc: z.boolean().optional(),
+  requires_heat_number: z.boolean().optional(),
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
@@ -20506,6 +21106,13 @@ const PartTypesRequest = z.object({
   can_buy: z.boolean().optional(),
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   preferred_supplier: z.string().uuid().nullish(),
+  purchase_unit: PurchaseUnitEnum.optional(),
+  units_per_purchase_unit: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  requires_coc: z.boolean().optional(),
+  requires_heat_number: z.boolean().optional(),
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
@@ -20525,6 +21132,13 @@ const PatchedPartTypesRequest = z
     can_buy: z.boolean(),
     purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
     preferred_supplier: z.string().uuid().nullable(),
+    purchase_unit: PurchaseUnitEnum,
+    units_per_purchase_unit: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    requires_coc: z.boolean(),
+    requires_heat_number: z.boolean(),
     itar_controlled: z.boolean(),
     eccn: z.string().max(20),
     usml_category: z.string().max(10),
@@ -22923,6 +23537,35 @@ const CreateReceivingPlanInputRequest = z.object({
   part_type: z.string().uuid(),
   name: z.string().optional(),
 });
+const StorageLocation = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  description: z.string().max(255).optional(),
+  is_active: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedStorageLocationList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StorageLocation),
+});
+const StorageLocationRequest = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(255).optional(),
+  is_active: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedStorageLocationRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    description: z.string().max(255),
+    is_active: z.boolean(),
+    archived: z.boolean(),
+  })
+  .partial();
 const SubstepCompletion = z.object({
   id: z.string().uuid(),
   step_execution: z.string().uuid().nullish(),
@@ -26585,6 +27228,8 @@ export const schemas = {
   DeliveryStateEnum,
   ShortReceiptEnum,
   MaterialLotStatusEnum,
+  LotSourceTypeEnum,
+  PurchaseUnitEnum,
   MaterialLot,
   PaginatedMaterialLotList,
   MaterialLotRequest,
@@ -26597,6 +27242,7 @@ export const schemas = {
   QualityReportPersonnelRoleEnum,
   QualityReportPersonnel,
   QualityReports,
+  AdjustQuantityRequest,
   ReceivingVerdict,
   ExtendShelfLifeRequest,
   RaiseScarResponse,
@@ -26606,6 +27252,7 @@ export const schemas = {
   RecordInspectionRequestRequest,
   ReceivingSampleUnitRequest,
   RecordUnitsRequestRequest,
+  ReleaseHoldRequest,
   ReceivingCharacteristic,
   SamplePlanResponse,
   MaterialLotSplitRequest,
@@ -26932,6 +27579,10 @@ export const schemas = {
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
   CreateReceivingPlanInputRequest,
+  StorageLocation,
+  PaginatedStorageLocationList,
+  StorageLocationRequest,
+  PatchedStorageLocationRequest,
   SubstepCompletion,
   PaginatedSubstepCompletionList,
   SubstepCompletionRequest,
@@ -37748,6 +38399,26 @@ Query params:
     response: QualityReports,
   },
   {
+    method: "post",
+    path: "/api/MaterialLots/:id/adjust-quantity/",
+    alias: "api_MaterialLots_adjust_quantity_create",
+    description: `Correct what&#x27;s left of a lot to what is physically there, with a reason.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: AdjustQuantityRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
     method: "get",
     path: "/api/MaterialLots/:id/evaluate_receiving/",
     alias: "api_MaterialLots_evaluate_receiving_retrieve",
@@ -37907,6 +38578,27 @@ to incoming inspection like any other receipt).`,
       },
     ],
     response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/release-hold/",
+    alias: "api_MaterialLots_release_hold_create",
+    description: `Lift a receiving hold with a reason on record; the lot is then routed on with
+that one gate waived (inspection or dock-to-stock as usual).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
   },
   {
     method: "get",
@@ -38102,7 +38794,7 @@ work orders whose BOM calls for the item.`,
     method: "get",
     path: "/api/MaterialLots/locations/",
     alias: "api_MaterialLots_locations_retrieve",
-    description: `Every storage location already in use — on material lots and on equipment — sorted, for a location picker to suggest. Locations are free text; this is the list people have typed, not a managed table.`,
+    description: `Storage locations for a picker to suggest. When the tenant keeps a managed list (StorageLocations), its active entries; otherwise every location already typed on material lots and equipment.`,
     requestFormat: "json",
     response: z.array(z.string()),
   },
@@ -41673,7 +42365,10 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       },
     ],
     response: PartApproval,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/PartApprovals/:id/",
@@ -41714,10 +42409,7 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       },
     ],
     response: PartApproval,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/PartApprovals/:id/",
@@ -47387,7 +48079,10 @@ Usage:
       },
     ],
     response: SamplingRule,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "patch",
     path: "/api/Sampling-rules/:id/",
@@ -47422,10 +48117,7 @@ Usage:
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Sampling-rules/export/:export_format/",
@@ -51922,6 +52614,140 @@ from. One row per step (the step is the key).`,
   },
   {
     method: "get",
+    path: "/api/StorageLocations/",
+    alias: "api_StorageLocations_list",
+    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
+receiving takes free text and suggests what has been typed before.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedStorageLocationList,
+  },
+  {
+    method: "post",
+    path: "/api/StorageLocations/",
+    alias: "api_StorageLocations_create",
+    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
+receiving takes free text and suggests what has been typed before.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StorageLocationRequest,
+      },
+    ],
+    response: StorageLocation,
+  },
+  {
+    method: "get",
+    path: "/api/StorageLocations/:id/",
+    alias: "api_StorageLocations_retrieve",
+    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
+receiving takes free text and suggests what has been typed before.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StorageLocation,
+  },
+  {
+    method: "put",
+    path: "/api/StorageLocations/:id/",
+    alias: "api_StorageLocations_update",
+    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
+receiving takes free text and suggests what has been typed before.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StorageLocationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StorageLocation,
+  },
+  {
+    method: "patch",
+    path: "/api/StorageLocations/:id/",
+    alias: "api_StorageLocations_partial_update",
+    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
+receiving takes free text and suggests what has been typed before.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedStorageLocationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StorageLocation,
+  },
+  {
+    method: "delete",
+    path: "/api/StorageLocations/:id/",
+    alias: "api_StorageLocations_destroy",
+    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
+receiving takes free text and suggests what has been typed before.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/StorageLocations/metadata/",
+    alias: "api_StorageLocations_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/SubstepCompletions/",
     alias: "api_SubstepCompletions_list",
     description: `Per-execution substep completions.
@@ -52625,7 +53451,10 @@ process&#x27;s version of the parent Step.`,
       },
     ],
     response: Substep,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/Substeps/:id/",
@@ -52895,10 +53724,7 @@ transaction every time.`,
       },
     ],
     response: SubstepTranslation,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/SubstepTranslations/:id/",
@@ -57310,7 +58136,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/WorkOrders/:id/bulk_add_parts/",
@@ -57473,10 +58302,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrder,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkOrders/:id/release_readiness/",

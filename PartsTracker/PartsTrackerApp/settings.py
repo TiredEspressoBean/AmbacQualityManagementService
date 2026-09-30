@@ -400,6 +400,10 @@ SPECTACULAR_SETTINGS = {
         "ShortReceiptEnum": "Tracker.models.mes_standard.SHORT_RECEIPT_CHOICES",
         # An expected receipt's lateness: the lot's field and the late-deliveries row.
         "DeliveryStateEnum": "Tracker.serializers.mes_standard.DELIVERY_STATES",
+        # How an item is bought / counted at the dock: Material, PartTypes and the lot.
+        "PurchaseUnitEnum": "Tracker.models.mes_standard.PURCHASE_UNIT_CHOICES",
+        # A lot's origin (manufacturer / distributor) — distinct from other source_types.
+        "LotSourceTypeEnum": "Tracker.models.mes_standard.SOURCE_TYPE_CHOICES",
         # Calendar 'recurrence' fields — two distinct choice sets (ONCE/YEARLY for
         # plant closures, ONCE/WEEKLY for labor blocks + overtime) share the field
         # name; name them explicitly so drf-spectacular doesn't hash-suffix them.

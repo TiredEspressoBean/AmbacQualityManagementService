@@ -5260,6 +5260,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/adjust-quantity/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Correct what's left of a lot to what is physically there, with a reason. */
+        post: operations["api_MaterialLots_adjust_quantity_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/evaluate_receiving/": {
         parameters: {
             query?: never;
@@ -5410,6 +5427,26 @@ export interface paths {
         put?: never;
         /** @description Material lot tracking with split capability */
         post: operations["api_MaterialLots_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/release-hold/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Lift a receiving hold with a reason on record; the lot is then routed on with
+         *     that one gate waived (inspection or dock-to-stock as usual).
+         */
+        post: operations["api_MaterialLots_release_hold_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5588,7 +5625,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every storage location already in use — on material lots and on equipment — sorted, for a location picker to suggest. Locations are free text; this is the list people have typed, not a managed table. */
+        /** @description Storage locations for a picker to suggest. When the tenant keeps a managed list (StorageLocations), its active entries; otherwise every location already typed on material lots and equipment. */
         get: operations["api_MaterialLots_locations_retrieve"];
         put?: never;
         post?: never;
@@ -12454,6 +12491,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StorageLocations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The tenant's managed list of storage locations. Optional: with none set up,
+         *     receiving takes free text and suggests what has been typed before.
+         */
+        get: operations["api_StorageLocations_list"];
+        put?: never;
+        /**
+         * @description The tenant's managed list of storage locations. Optional: with none set up,
+         *     receiving takes free text and suggests what has been typed before.
+         */
+        post: operations["api_StorageLocations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StorageLocations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The tenant's managed list of storage locations. Optional: with none set up,
+         *     receiving takes free text and suggests what has been typed before.
+         */
+        get: operations["api_StorageLocations_retrieve"];
+        /**
+         * @description The tenant's managed list of storage locations. Optional: with none set up,
+         *     receiving takes free text and suggests what has been typed before.
+         */
+        put: operations["api_StorageLocations_update"];
+        post?: never;
+        /**
+         * @description The tenant's managed list of storage locations. Optional: with none set up,
+         *     receiving takes free text and suggests what has been typed before.
+         */
+        delete: operations["api_StorageLocations_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description The tenant's managed list of storage locations. Optional: with none set up,
+         *     receiving takes free text and suggests what has been typed before.
+         */
+        patch: operations["api_StorageLocations_partial_update"];
+        trace?: never;
+    };
+    "/api/StorageLocations/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_StorageLocations_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/SubstepCompletions/": {
         parameters: {
             query?: never;
@@ -19244,6 +19354,15 @@ export interface components {
             /** @default VISIBLE */
             visibility: components["schemas"]["VisibilityEnum"];
         };
+        /** @description Correct what's left of a lot to what is physically there. */
+        AdjustQuantityRequest: {
+            /**
+             * Format: decimal
+             * @description The quantity actually on hand now.
+             */
+            quantity: string;
+            reason: string;
+        };
         AdvanceLotInputRequest: {
             /** Format: uuid */
             work_order_id: string;
@@ -23617,6 +23736,13 @@ export interface components {
             email?: string;
             password: string;
         };
+        /**
+         * @description * `MANUFACTURER` - Manufacturer
+         *     * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+         *     * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+         * @enum {string}
+         */
+        LotSourceTypeEnum: "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
         MarkStagedInputRequest: {
             /** Format: uuid */
             work_order: string;
@@ -23647,6 +23773,23 @@ export interface components {
             /** Format: uuid */
             preferred_supplier?: string | null;
             readonly preferred_supplier_name: string | null;
+            /**
+             * @description How this item is bought and counted at receiving.
+             *
+             *     * `STOCK` - Stock unit
+             *     * `BOX` - Box
+             *     * `LB` - Pound
+             */
+            purchase_unit?: components["schemas"]["PurchaseUnitEnum"];
+            /**
+             * Format: decimal
+             * @description Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+             */
+            units_per_purchase_unit?: string | null;
+            /** @description Hold each received lot until its certificate of conformance is uploaded. */
+            requires_coc?: boolean;
+            /** @description Hold each received lot until its heat / melt number is entered. */
+            requires_heat_number?: boolean;
             is_active?: boolean;
             /** Format: date-time */
             readonly created_at: string;
@@ -23746,6 +23889,24 @@ export interface components {
             /** Format: uri */
             certificate_of_conformance?: string | null;
             storage_location?: string;
+            /** @description Heat / melt number from the mill certificate. */
+            heat_number?: string;
+            /**
+             * @description Bought from the manufacturer, an authorized distributor, or an independent one.
+             *
+             *     * `MANUFACTURER` - Manufacturer
+             *     * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+             *     * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+             */
+            source_type?: components["schemas"]["LotSourceTypeEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: decimal */
+            received_as_quantity?: string | null;
+            received_as_unit?: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
+            readonly item_purchase_unit: (components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: decimal */
+            readonly item_units_per_purchase_unit: string | null;
+            readonly item_requires_coc: boolean;
+            readonly item_requires_heat_number: boolean;
             readonly child_lot_count: number;
             /** Format: date-time */
             readonly created_at: string;
@@ -23838,6 +23999,19 @@ export interface components {
             /** Format: binary */
             certificate_of_conformance?: string | null;
             storage_location?: string;
+            /** @description Heat / melt number from the mill certificate. */
+            heat_number?: string;
+            /**
+             * @description Bought from the manufacturer, an authorized distributor, or an independent one.
+             *
+             *     * `MANUFACTURER` - Manufacturer
+             *     * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+             *     * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+             */
+            source_type?: components["schemas"]["LotSourceTypeEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: decimal */
+            received_as_quantity?: string | null;
+            received_as_unit?: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
             archived?: boolean;
         };
         /** @description Serializer for splitting a lot */
@@ -23882,6 +24056,23 @@ export interface components {
             safety_stock?: string | null;
             /** Format: uuid */
             preferred_supplier?: string | null;
+            /**
+             * @description How this item is bought and counted at receiving.
+             *
+             *     * `STOCK` - Stock unit
+             *     * `BOX` - Box
+             *     * `LB` - Pound
+             */
+            purchase_unit?: components["schemas"]["PurchaseUnitEnum"];
+            /**
+             * Format: decimal
+             * @description Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+             */
+            units_per_purchase_unit?: string | null;
+            /** @description Hold each received lot until its certificate of conformance is uploaded. */
+            requires_coc?: boolean;
+            /** @description Hold each received lot until its heat / melt number is entered. */
+            requires_heat_number?: boolean;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -25888,6 +26079,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Steps"][];
         };
+        PaginatedStorageLocationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["StorageLocation"][];
+        };
         PaginatedSubstepCompletionList: {
             /** @example 123 */
             count: number;
@@ -26529,6 +26735,23 @@ export interface components {
              */
             preferred_supplier?: string | null;
             readonly preferred_supplier_name: string | null;
+            /**
+             * @description How this part is bought and counted at receiving.
+             *
+             *     * `STOCK` - Stock unit
+             *     * `BOX` - Box
+             *     * `LB` - Pound
+             */
+            purchase_unit?: components["schemas"]["PurchaseUnitEnum"];
+            /**
+             * Format: decimal
+             * @description Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+             */
+            units_per_purchase_unit?: string | null;
+            /** @description Hold each received lot until its certificate of conformance is uploaded. */
+            requires_coc?: boolean;
+            /** @description Hold each received lot until its heat / melt number is entered. */
+            requires_heat_number?: boolean;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -26579,6 +26802,23 @@ export interface components {
              * @description Default supplier when this part is purchased.
              */
             preferred_supplier?: string | null;
+            /**
+             * @description How this part is bought and counted at receiving.
+             *
+             *     * `STOCK` - Stock unit
+             *     * `BOX` - Box
+             *     * `LB` - Pound
+             */
+            purchase_unit?: components["schemas"]["PurchaseUnitEnum"];
+            /**
+             * Format: decimal
+             * @description Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+             */
+            units_per_purchase_unit?: string | null;
+            /** @description Hold each received lot until its certificate of conformance is uploaded. */
+            requires_coc?: boolean;
+            /** @description Hold each received lot until its heat / melt number is entered. */
+            requires_heat_number?: boolean;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -27690,6 +27930,19 @@ export interface components {
             /** Format: binary */
             certificate_of_conformance?: string | null;
             storage_location?: string;
+            /** @description Heat / melt number from the mill certificate. */
+            heat_number?: string;
+            /**
+             * @description Bought from the manufacturer, an authorized distributor, or an independent one.
+             *
+             *     * `MANUFACTURER` - Manufacturer
+             *     * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+             *     * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+             */
+            source_type?: components["schemas"]["LotSourceTypeEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: decimal */
+            received_as_quantity?: string | null;
+            received_as_unit?: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
             archived?: boolean;
         };
         /**
@@ -27711,6 +27964,23 @@ export interface components {
             safety_stock?: string | null;
             /** Format: uuid */
             preferred_supplier?: string | null;
+            /**
+             * @description How this item is bought and counted at receiving.
+             *
+             *     * `STOCK` - Stock unit
+             *     * `BOX` - Box
+             *     * `LB` - Pound
+             */
+            purchase_unit?: components["schemas"]["PurchaseUnitEnum"];
+            /**
+             * Format: decimal
+             * @description Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+             */
+            units_per_purchase_unit?: string | null;
+            /** @description Hold each received lot until its certificate of conformance is uploaded. */
+            requires_coc?: boolean;
+            /** @description Hold each received lot until its heat / melt number is entered. */
+            requires_heat_number?: boolean;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -28021,6 +28291,23 @@ export interface components {
              * @description Default supplier when this part is purchased.
              */
             preferred_supplier?: string | null;
+            /**
+             * @description How this part is bought and counted at receiving.
+             *
+             *     * `STOCK` - Stock unit
+             *     * `BOX` - Box
+             *     * `LB` - Pound
+             */
+            purchase_unit?: components["schemas"]["PurchaseUnitEnum"];
+            /**
+             * Format: decimal
+             * @description Stock units in one purchase unit — pieces per box, or pieces per pound. Unused when the purchase unit is the stock unit.
+             */
+            units_per_purchase_unit?: string | null;
+            /** @description Hold each received lot until its certificate of conformance is uploaded. */
+            requires_coc?: boolean;
+            /** @description Hold each received lot until its heat / melt number is entered. */
+            requires_heat_number?: boolean;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -28983,6 +29270,13 @@ export interface components {
             timing?: components["schemas"]["StepTimingRequest"] | null;
             /** @description Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1). */
             change_description?: string;
+            archived?: boolean;
+        };
+        /** @description A managed place stock is kept. Optional — receiving takes free text without it. */
+        PatchedStorageLocationRequest: {
+            name?: string;
+            description?: string;
+            is_active?: boolean;
             archived?: boolean;
         };
         /** @description Per-execution completion record. */
@@ -30492,6 +30786,13 @@ export interface components {
             draft_process_id: string;
             artifact_number: string;
         };
+        /**
+         * @description * `STOCK` - Stock unit
+         *     * `BOX` - Box
+         *     * `LB` - Pound
+         * @enum {string}
+         */
+        PurchaseUnitEnum: "STOCK" | "BOX" | "LB";
         QADocumentsResponse: {
             work_order_documents: components["schemas"]["Documents"][];
             current_step_documents: components["schemas"]["Documents"][];
@@ -31288,6 +31589,15 @@ export interface components {
              *     * `CLOSED` - That's all
              */
             remainder?: (components["schemas"]["ShortReceiptEnum"] | components["schemas"]["NullEnum"]) | null;
+            /**
+             * Format: decimal
+             * @description What was counted, in `received_as_unit`. Converted to the stock quantity (and replaces `quantity`) when that is the item's buying unit.
+             */
+            received_as_quantity?: string | null;
+            /** @default  */
+            received_as_unit: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
+            heat_number?: string;
+            source_type?: components["schemas"]["LotSourceTypeEnum"] | components["schemas"]["BlankEnum"];
         };
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
@@ -31445,6 +31755,10 @@ export interface components {
         ReleaseBlocker: {
             code: string;
             detail: string;
+        };
+        /** @description Lift a receiving hold. The reason is kept on record beside the decision. */
+        ReleaseHoldRequest: {
+            reason: string;
         };
         /**
          * @description * `auto` - Date-driven (no release step)
@@ -33919,6 +34233,26 @@ export interface components {
             timing?: components["schemas"]["StepTimingRequest"] | null;
             /** @description Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1). */
             change_description?: string;
+            archived?: boolean;
+        };
+        /** @description A managed place stock is kept. Optional — receiving takes free text without it. */
+        StorageLocation: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            is_active?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /** @description A managed place stock is kept. Optional — receiving takes free text without it. */
+        StorageLocationRequest: {
+            name: string;
+            description?: string;
+            is_active?: boolean;
             archived?: boolean;
         };
         StrandedPart: {
@@ -47419,6 +47753,34 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_adjust_quantity_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["AdjustQuantityRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdjustQuantityRequest"];
+                "application/json": components["schemas"]["AdjustQuantityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
     api_MaterialLots_evaluate_receiving_retrieve: {
         parameters: {
             query?: never;
@@ -47643,6 +48005,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_release_hold_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReleaseHoldRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReleaseHoldRequest"];
+                "application/json": components["schemas"]["ReleaseHoldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
                 };
             };
         };
@@ -59528,6 +59918,178 @@ export interface operations {
                 /** @description Filter steps by process UUID (via ProcessStep) */
                 process?: string;
             };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_list: {
+        parameters: {
+            query?: {
+                is_active?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedStorageLocationList"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StorageLocationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StorageLocationRequest"];
+                "multipart/form-data": components["schemas"]["StorageLocationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLocation"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Storage Location. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLocation"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Storage Location. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StorageLocationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StorageLocationRequest"];
+                "multipart/form-data": components["schemas"]["StorageLocationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLocation"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Storage Location. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_StorageLocations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Storage Location. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedStorageLocationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedStorageLocationRequest"];
+                "multipart/form-data": components["schemas"]["PatchedStorageLocationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLocation"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_metadata_retrieve: {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;

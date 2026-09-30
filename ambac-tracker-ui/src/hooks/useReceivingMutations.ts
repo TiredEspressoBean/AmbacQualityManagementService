@@ -33,6 +33,11 @@ export type LotBulkRow = {
     manufacture_date?: string | null;
     expiration_date?: string | null;
     storage_location?: string;
+    heat_number?: string;
+    source_type?: "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
+    /** Counted in the item's buying unit: the server derives `quantity` from it. */
+    received_as_quantity?: string;
+    received_as_unit?: "BOX" | "LB";
 };
 
 export const useBulkCreateLots = () => {
@@ -155,6 +160,11 @@ export const useReceiveExpectedLot = () => {
             storage_location?: string;
             /** Required when short: BACKORDERED keeps the rest on order, CLOSED closes it. */
             remainder?: "BACKORDERED" | "CLOSED";
+            /** Counted in the item's buying unit — the server converts to the stock quantity. */
+            received_as_quantity?: string | null;
+            received_as_unit?: "BOX" | "LB";
+            heat_number?: string;
+            source_type?: "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
         }) =>
             api.api_MaterialLots_receive_create(
                 {
@@ -163,6 +173,11 @@ export const useReceiveExpectedLot = () => {
                     ...(vars.received_date ? { received_date: vars.received_date } : {}),
                     ...(vars.storage_location ? { storage_location: vars.storage_location } : {}),
                     ...(vars.remainder ? { remainder: vars.remainder } : {}),
+                    ...(vars.received_as_unit && vars.received_as_quantity
+                        ? { received_as_quantity: vars.received_as_quantity, received_as_unit: vars.received_as_unit }
+                        : {}),
+                    ...(vars.heat_number ? { heat_number: vars.heat_number } : {}),
+                    ...(vars.source_type ? { source_type: vars.source_type } : {}),
                 },
                 { params: { id: vars.id }, headers: csrf() },
             ),
@@ -338,3 +353,79 @@ export const materialLotOptions = (lotId: string) =>
                 params: { id: lotId },
             }) as Promise<Schema<"MaterialLot">>,
     });
+
+// ----- Holds and corrections -----
+
+/** Lift a receiving hold with a reason on record (QA). The lot routes on as if it had
+ *  just arrived, with that one gate waived. */
+export const useReleaseHold = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; reason: string }) =>
+            api.api_MaterialLots_release_hold_create(
+                { reason: vars.reason }, { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateReceiving(queryClient),
+    });
+};
+
+/** Correct what's left of a lot to what's physically there, with a reason. */
+export const useAdjustLotQuantity = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; quantity: string; reason: string }) =>
+            api.api_MaterialLots_adjust_quantity_create(
+                { quantity: vars.quantity, reason: vars.reason },
+                { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateSupply(queryClient),
+    });
+};
+
+/** Save a lot field (heat number) — PATCH, which also re-checks a hold waiting on it. */
+export const useUpdateLotHeatNumber = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; heat_number: string }) =>
+            api.api_MaterialLots_partial_update(
+                { heat_number: vars.heat_number }, { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateReceiving(queryClient),
+    });
+};
+
+// ----- Managed storage locations -----
+
+export const storageLocationsOptions = () =>
+    queryOptions({
+        // Not "storage-locations": LocationCombobox caches the picker's name list there.
+        queryKey: ["storage-location-records"],
+        queryFn: () => api.api_StorageLocations_list({ queries: { limit: 500, ordering: "name" } }),
+    });
+
+export const useStorageLocations = () => useQuery(storageLocationsOptions());
+
+const invalidateLocations = (queryClient: ReturnType<typeof useQueryClient>) =>
+    queryClient.invalidateQueries({
+        // Both the managed records and the picker's name list (which reads them).
+        predicate: (q) => q.queryKey[0] === "storage-location-records" || q.queryKey[0] === "storage-locations",
+    });
+
+export const useCreateStorageLocation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { name: string; description?: string }) =>
+            api.api_StorageLocations_create(
+                { name: vars.name, description: vars.description ?? "", is_active: true },
+                { headers: csrf() }),
+        onSuccess: () => invalidateLocations(queryClient),
+    });
+};
+
+export const useUpdateStorageLocation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; name?: string; description?: string; is_active?: boolean }) => {
+            const { id, ...body } = vars;
+            return api.api_StorageLocations_partial_update(body, { params: { id }, headers: csrf() });
+        },
+        onSuccess: () => invalidateLocations(queryClient),
+    });
+};

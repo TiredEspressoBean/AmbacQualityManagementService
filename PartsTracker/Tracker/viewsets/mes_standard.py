@@ -20,7 +20,7 @@ from django.db import transaction
 
 from Tracker.models import (
     WorkCenter, Shift, ScheduleSlot, DowntimeEvent,
-    Material, MaterialLot, MaterialUsage, TimeEntry,
+    Material, MaterialLot, MaterialUsage, StorageLocation, TimeEntry,
     BOM, BOMLine, AssemblyUsage,
     UserWorkCenterMembership,
 )
@@ -34,6 +34,7 @@ from Tracker.serializers.mes_standard import (
     MaterialLotSerializer, MaterialLotSplitSerializer,
     ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
     BulkExpectedReceiptSerializer, ExpectedReceiptImportResultSerializer, LateDeliverySerializer,
+    ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
     MaterialUsageSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
@@ -523,6 +524,18 @@ class MaterialViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, ListMe
     ordering = ['name']
 
 
+class StorageLocationViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
+    """The tenant's managed list of storage locations. Optional: with none set up,
+    receiving takes free text and suggests what has been typed before."""
+    queryset = StorageLocation.unscoped.all()
+    serializer_class = StorageLocationSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    search_fields = ['name', 'description']
+    filterset_fields = ['is_active']
+    ordering_fields = ['name']
+    ordering = ['name']
+
+
 # `inspection_pending` is read straight off query_params in get_queryset rather
 # than declared in filterset_fields, so drf-spectacular cannot see it and the
 # generated client didn't know the param existed. Callers had to cast the
@@ -551,7 +564,7 @@ class MaterialViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, ListMe
 class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""
     queryset = MaterialLot.unscoped.select_related(
-        'material_type', 'supplier', 'parent_lot', 'received_by'
+        'material_type', 'material', 'supplier', 'parent_lot', 'received_by'
     ).prefetch_related('life_tracking__definition')
     serializer_class = MaterialLotSerializer
     # Explicit, with MultiPart first, so the schema advertises multipart ahead
@@ -568,6 +581,13 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     # promised_date is the useful axis for ON_ORDER lots — they have no received_date yet.
     ordering_fields = ['received_date', 'lot_number', 'expiration_date', 'promised_date']
     ordering = ['-received_date']
+    # Releasing a receiving hold is a quality decision — accepting stock from an
+    # unqualified supplier, say — so it takes the disposition-approval perm, not just
+    # edit rights on the lot.
+    action_permissions = {
+        'release_hold': ['approve_disposition'],
+        'adjust_quantity': ['change_materiallot'],
+    }
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -606,6 +626,41 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         # Standards-compliant default: a received lot is auto-routed to inspection
         # (or dock-to-stock if no RECEIVING step) — never silently available.
         receiving_inspection.route_received_lot(lot, self.request.user)
+
+    def perform_update(self, serializer):
+        lot = serializer.save()
+        # Uploading the CoC or entering the heat number is what clears the hold waiting
+        # on it; the lot then routes on as if it had just arrived.
+        receiving_inspection.reevaluate_hold(lot, self.request.user)
+
+    @extend_schema(request=ReleaseHoldSerializer, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'], url_path='release-hold')
+    def release_hold(self, request, pk=None):
+        """Lift a receiving hold with a reason on record; the lot is then routed on with
+        that one gate waived (inspection or dock-to-stock as usual)."""
+        lot = self.get_object()
+        ser = ReleaseHoldSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            lot = receiving_inspection.release_hold(lot, request.user, ser.validated_data['reason'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=AdjustQuantitySerializer, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'], url_path='adjust-quantity')
+    def adjust_quantity(self, request, pk=None):
+        """Correct what's left of a lot to what is physically there, with a reason."""
+        lot = self.get_object()
+        ser = AdjustQuantitySerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from Tracker.services.mes.material_lot import adjust_quantity
+        try:
+            lot = adjust_quantity(lot, new_quantity=ser.validated_data['quantity'],
+                                  reason=ser.validated_data['reason'], user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
 
     @extend_schema(request=MaterialLotSplitSerializer, responses={201: MaterialLotSerializer})
     @action(detail=True, methods=['post'])
@@ -726,15 +781,20 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
 
     @extend_schema(
         description=(
-            "Every storage location already in use — on material lots and on equipment — "
-            "sorted, for a location picker to suggest. Locations are free text; this is "
-            "the list people have typed, not a managed table."
+            "Storage locations for a picker to suggest. When the tenant keeps a managed "
+            "list (StorageLocations), its active entries; otherwise every location "
+            "already typed on material lots and equipment."
         ),
         responses={200: {"type": "array", "items": {"type": "string"}}},
     )
     @action(detail=False, methods=['get'], pagination_class=None)
     def locations(self, request):
-        from Tracker.models import Equipments
+        from Tracker.models import Equipments, StorageLocation
+        # tenant-safe: SecureManager scopes StorageLocation to the request's tenant.
+        managed = list(StorageLocation.objects.filter(is_active=True, archived=False)
+                       .values_list('name', flat=True))
+        if managed:
+            return Response(sorted(managed, key=str.casefold))
         lots = (self.get_queryset().exclude(storage_location='')
                 .values_list('storage_location', flat=True))
         # tenant-safe: SecureManager scopes Equipments to the request's tenant.
@@ -764,6 +824,10 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                 quantity=ser.validated_data.get('quantity'),
                 storage_location=ser.validated_data.get('storage_location'),
                 remainder=ser.validated_data.get('remainder'),
+                received_as_quantity=ser.validated_data.get('received_as_quantity'),
+                received_as_unit=ser.validated_data.get('received_as_unit') or '',
+                heat_number=ser.validated_data.get('heat_number'),
+                source_type=ser.validated_data.get('source_type'),
             )
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

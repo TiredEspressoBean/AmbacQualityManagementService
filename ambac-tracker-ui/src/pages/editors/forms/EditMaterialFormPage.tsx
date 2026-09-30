@@ -33,6 +33,9 @@ import {
 } from "@/hooks/useMaterials";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import type { Schema } from "@/lib/api/types";
+import {
+    DEFAULT_RECEIVING_CONTROLS, ReceivingControlsFields, receivingControlsOf, type ReceivingControls,
+} from "@/components/receiving/ReceivingControlsFields";
 
 const formSchema = schemas.MaterialRequest.pick({
   name: true,
@@ -63,6 +66,8 @@ export default function EditMaterialFormPage() {
 
   // Preferred-supplier combobox (nullable FK) — kept out of RHF like the fixture form.
   const [supplierId, setSupplierId] = useState<string | null>(null);
+  // Receiving controls (buying unit, CoC / heat-number holds) — also kept out of RHF.
+  const [receiving, setReceiving] = useState<ReceivingControls>(DEFAULT_RECEIVING_CONTROLS);
   const { data: companiesData } = useRetrieveCompanies({ limit: 500, ordering: "name" });
   const suppliers = useMemo(
     () => (companiesData?.results ?? []).map((c) => ({ id: String(c.id), name: c.name })),
@@ -103,6 +108,7 @@ export default function EditMaterialFormPage() {
     if (mode === "edit" && material) {
       const m = material as Schema<"Material">;
       setSupplierId(m.preferred_supplier != null ? String(m.preferred_supplier) : null);
+      setReceiving(receivingControlsOf(m));
     }
   }, [mode, material]);
 
@@ -110,6 +116,7 @@ export default function EditMaterialFormPage() {
     const body = {
       ...values,
       preferred_supplier: supplierId,
+      ...receiving,
     };
     const done = () => navigate({ to: "/editor/materials" });
     if (mode === "edit" && materialId) {
@@ -267,6 +274,9 @@ export default function EditMaterialFormPage() {
                 />
                 <FormDescription>Where this is normally bought (optional).</FormDescription>
               </FormItem>
+
+              <ReceivingControlsFields value={receiving} onChange={setReceiving}
+                stockUnit={form.watch("unit_of_measure") || "EA"} />
 
               <FormField
                 control={form.control}

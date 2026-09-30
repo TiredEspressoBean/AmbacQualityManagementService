@@ -50,6 +50,9 @@ import {hasEndpoint} from "@/lib/api/endpoint-fn";
 import {PartTypeLifeLimitsPanel} from "@/components/life-limits/PartTypeLifeLimitsPanel";
 import { DisassemblyBomPanel } from "@/components/reman/DisassemblyBomPanel";
 import { RebuildLevelsPanel } from "@/components/reman/RebuildLevelsPanel";
+import {
+    DEFAULT_RECEIVING_CONTROLS, ReceivingControlsFields, receivingControlsOf, type ReceivingControls,
+} from "@/components/receiving/ReceivingControlsFields";
 
 const supplierPickerOptions = () =>
     queryOptions({
@@ -125,6 +128,8 @@ export default function PartTypeFormPage() {
     // Preferred-supplier combobox (nullable FK) — kept out of RHF like the
     // material/fixture forms.
     const [supplierId, setSupplierId] = useState<string | null>(null);
+    // Receiving controls (buying unit, CoC / heat-number holds) — also kept out of RHF.
+    const [receiving, setReceiving] = useState<ReceivingControls>(DEFAULT_RECEIVING_CONTROLS);
     const {data: companiesPage} = useQuery(supplierPickerOptions());
     const suppliers = (companiesPage?.results ?? []).map((c) => ({id: String(c.id), name: c.name}));
 
@@ -144,6 +149,7 @@ export default function PartTypeFormPage() {
             });
             const ps = (partType as { preferred_supplier?: string | null }).preferred_supplier;
             setSupplierId(ps != null ? String(ps) : null);
+            setReceiving(receivingControlsOf(partType as Partial<ReceivingControls>));
         }
     }, [mode, partType, form]);
 
@@ -151,7 +157,7 @@ export default function PartTypeFormPage() {
     const updatePartType = useUpdatePartType();
 
     function onSubmit(raw: FormValues) {
-        const values = {...raw, preferred_supplier: supplierId} as FormValues;
+        const values = {...raw, preferred_supplier: supplierId, ...receiving} as FormValues;
         if (mode === "edit" && partTypeId) {
             updatePartType.mutate({id: partTypeId, data: values}, {
                 onSuccess: () => {
@@ -296,6 +302,9 @@ export default function PartTypeFormPage() {
                                 </select>
                                 <FormDescription>Default supplier when this part is bought</FormDescription>
                             </FormItem>
+                            <div className="col-span-2">
+                                <ReceivingControlsFields value={receiving} onChange={setReceiving} />
+                            </div>
                         </div>
                     )}
                 </div>

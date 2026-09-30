@@ -11,8 +11,20 @@ export const HOLD_LABELS: Record<string, string> = {
     PART_UNAPPROVED: "Unapproved part",
     SHELF_LIFE_EXPIRED: "Shelf life expired",
     AWAITING_COC: "Awaiting CoC",
+    AWAITING_HEAT_NUMBER: "Awaiting heat number",
     GAUGE_UNAVAILABLE: "Gauge unavailable",
 };
+
+// Holds that clear themselves once the missing thing is supplied (mirrors
+// SELF_CLEARING_HOLDS). The rest are decisions a person releases, with a reason.
+export const SELF_CLEARING_HOLDS = ["AWAITING_COC", "AWAITING_HEAT_NUMBER", "SHELF_LIFE_EXPIRED"];
+
+export type SourceType = "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
+export const SOURCE_TYPE_OPTIONS: { value: SourceType; label: string }[] = [
+    { value: "MANUFACTURER", label: "Manufacturer" },
+    { value: "AUTHORIZED_DISTRIBUTOR", label: "Authorized distributor" },
+    { value: "INDEPENDENT_DISTRIBUTOR", label: "Independent distributor" },
+];
 
 // A lot an operator can re-qualify: held for shelf life, or flagged EXPIRED.
 export const canExtend = (l: Lot) =>

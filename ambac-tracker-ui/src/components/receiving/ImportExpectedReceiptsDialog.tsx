@@ -70,9 +70,10 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
         <Dialog open={open} onOpenChange={close}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Import open PO lines</DialogTitle>
+                    <DialogTitle>Import expected receipts</DialogTitle>
                     <DialogDescription>
-                        Each row becomes an expected receipt, matched on PO number and line.
+                        What&rsquo;s on order in your ERP, typed into the template: each row
+                        becomes an expected receipt, matched on the ERP&rsquo;s PO number and line.
                         Uploading again updates quantities and dates. Nothing is closed by
                         being left off the sheet — close short at receiving instead.
                     </DialogDescription>

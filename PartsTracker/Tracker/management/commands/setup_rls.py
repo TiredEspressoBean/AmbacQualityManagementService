@@ -115,6 +115,7 @@ class Command(BaseCommand):
         'Tracker_disassemblybomline',
         'Tracker_assemblyusage',
         'Tracker_materiallot',
+        'Tracker_storagelocation',
         'Tracker_materialusage',
         'Tracker_materialstaging',
         'Tracker_materialstagingline',

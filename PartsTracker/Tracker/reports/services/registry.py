@@ -45,6 +45,7 @@ REPORT_ADAPTERS: tuple[str, ...] = (
     "Tracker.reports.adapters.requirements.RequirementsAdapter",
     "Tracker.reports.adapters.staging_list.StagingListAdapter",
     "Tracker.reports.adapters.pick_sheet.PickSheetAdapter",
+    "Tracker.reports.adapters.material_lot_label.MaterialLotLabelAdapter",
 )
 
 

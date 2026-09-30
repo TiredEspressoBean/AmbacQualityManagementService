@@ -75,7 +75,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_shiftnote', 'view_shiftnoteack',
     # BOM & Materials
     'view_bom', 'view_bomline', 'view_assemblyusage', 'view_disassemblybomline',
-    'view_material',
+    'view_material', 'view_storagelocation',
     'view_materiallot', 'view_materialusage', 'view_materialstaging',
     'view_materialstagingline',
     'view_harvestedcomponent',
@@ -326,6 +326,8 @@ AUTHORING_PERMISSIONS = [
     'add_parttypes', 'change_parttypes', 'delete_parttypes',
     # Raw-material master data (like part-type master data — change-controlled)
     'add_material', 'change_material', 'delete_material',
+    # The managed list of storage locations receiving offers.
+    'add_storagelocation', 'change_storagelocation', 'delete_storagelocation',
     # Work-centers: routing master data — a WC's `kind` is the surface
     # discriminator (operator queue / QA inbox / receiving / OSP), so editing
     # one re-routes work the way editing a process does. Authoring tier, not
@@ -834,6 +836,8 @@ GROUP_PRESETS = {
             # Buyers own purchased materials: lead time, preferred supplier, safety stock
             # (what the requirements report nets against).
             'add_material', 'change_material',
+            # Receiving keeps the list of places stock is put away.
+            'add_storagelocation', 'change_storagelocation',
         ],
     },
 

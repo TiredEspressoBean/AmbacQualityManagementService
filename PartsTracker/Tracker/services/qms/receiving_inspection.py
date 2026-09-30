@@ -32,8 +32,15 @@ logger = logging.getLogger(__name__)
 HOLD_SUPPLIER_UNQUALIFIED = "SUPPLIER_UNQUALIFIED"  # set by check_supplier_qualification
 HOLD_PART_UNAPPROVED = "PART_UNAPPROVED"            # set by check_part_approval
 HOLD_SHELF_LIFE_EXPIRED = "SHELF_LIFE_EXPIRED"      # set when a lot arrives/turns expired
-HOLD_AWAITING_COC = "AWAITING_COC"                  # manual: cert of conformance missing
+HOLD_AWAITING_COC = "AWAITING_COC"                  # item requires a CoC; none uploaded yet
+HOLD_AWAITING_HEAT_NUMBER = "AWAITING_HEAT_NUMBER"  # item requires a heat number; none entered
 HOLD_GAUGE_UNAVAILABLE = "GAUGE_UNAVAILABLE"        # manual: required gauge out for cal
+
+
+# Holds that clear themselves once the missing thing is supplied. The rest are
+# decisions — an unqualified supplier or unapproved part — and need a person to release
+# them, with a reason (`release_hold`).
+SELF_CLEARING_HOLDS = (HOLD_AWAITING_COC, HOLD_AWAITING_HEAT_NUMBER, HOLD_SHELF_LIFE_EXPIRED)
 
 
 def resolve_receiving_step(part_type):
@@ -119,7 +126,7 @@ def _finalize_execution(lot, user):
         ex.save(update_fields=["status", "exited_at", "completed_by", "updated_at"])
 
 
-def route_received_lot(lot, user):
+def route_received_lot(lot, user, *, waive=()):
     """Auto-route a freshly RECEIVED lot (standards-compliant default: receipt never
     lands directly in usable stock without a decision).
 
@@ -129,6 +136,9 @@ def route_received_lot(lot, user):
     Resilient: if opening the inspection errors, the lot is left RECEIVED so it
     surfaces in the receiving queue for manual handling. (Full scorecard-driven
     skip-lot earning/reversion is a later SQM phase; this is the routing seam.)
+
+    ``waive`` names hold codes a person has already released, so re-routing after a
+    release does not immediately re-apply the hold that was lifted.
     """
     if lot.status != "RECEIVED":
         return None
@@ -137,20 +147,26 @@ def route_received_lot(lot, user):
     from Tracker.services.life_tracking.shelf_life import attach_shelf_life
     attach_shelf_life(lot)
     # Raw-material lots (lot.material set, no material_type part) have no PartTypes-keyed
-    # receiving plan / supplier-qual / part-approval gate yet — the gates below are keyed
-    # to lot.material_type (a buyable part), so a raw material simply falls through to the
-    # "no RECEIVING step" dock-to-stock path. (Raw-material incoming gates are a follow-on.)
+    # receiving plan / supplier-qual / part-approval gate yet — those gates are keyed to
+    # lot.material_type (a buyable part). The paperwork gates (CoC, heat number) read the
+    # lot's item, so they apply to both. (Raw-material RIPs are a follow-on.)
     # Supplier-qualification gate (soft hold): a lot from a supplier not qualified
     # for this part type is quarantined and flagged rather than flowing to stock.
-    if _held_for_unqualified_supplier(lot):
+    if HOLD_SUPPLIER_UNQUALIFIED not in waive and _held_for_unqualified_supplier(lot):
         return None
     # Part-approval gate (soft hold): a lot whose (part type, supplier) has no
     # active part approval (PPAP / FAI) is quarantined and flagged.
-    if _held_for_unapproved_part(lot):
+    if HOLD_PART_UNAPPROVED not in waive and _held_for_unapproved_part(lot):
         return None
     # Shelf-life gate (soft hold): a lot already past its use-by on arrival is
     # quarantined and flagged rather than routed to inspection/stock.
-    if _held_for_expired_shelf_life(lot):
+    if HOLD_SHELF_LIFE_EXPIRED not in waive and _held_for_expired_shelf_life(lot):
+        return None
+    # Paperwork gates (soft holds), opt-in per item: the lot waits until the CoC is
+    # uploaded / the heat number entered, then clears itself (`reevaluate_hold`).
+    if HOLD_AWAITING_COC not in waive and _held_for_missing(lot, HOLD_AWAITING_COC):
+        return None
+    if HOLD_AWAITING_HEAT_NUMBER not in waive and _held_for_missing(lot, HOLD_AWAITING_HEAT_NUMBER):
         return None
     step = resolve_receiving_step(lot.material_type) if lot.material_type_id else None
     if step is None:
@@ -248,6 +264,77 @@ def _emit_part_unapproved(lot) -> None:
         correlation_id=f"materiallot:{lot.id}",
         idempotency_key=f"part.unapproved:materiallot:{lot.id}",
     )
+
+
+def _missing(lot, code) -> bool:
+    """Whether ``lot``'s item asks for the paperwork ``code`` names and the lot lacks it."""
+    item = lot.item
+    if code == HOLD_AWAITING_COC:
+        return bool(getattr(item, "requires_coc", False)) and not lot.certificate_of_conformance
+    if code == HOLD_AWAITING_HEAT_NUMBER:
+        return bool(getattr(item, "requires_heat_number", False)) and not (lot.heat_number or "").strip()
+    return False
+
+
+def _held_for_missing(lot, code) -> bool:
+    if not _missing(lot, code):
+        return False
+    inventory.quarantine_lot(lot)
+    lot.hold_reason = code
+    lot.save(update_fields=["hold_reason"])
+    return True
+
+
+def _hold_still_applies(lot) -> bool:
+    from Tracker.services.life_tracking.shelf_life import is_lot_shelf_life_expired
+    if lot.hold_reason == HOLD_SHELF_LIFE_EXPIRED:
+        return is_lot_shelf_life_expired(lot)
+    return _missing(lot, lot.hold_reason)
+
+
+def reevaluate_hold(lot, user) -> bool:
+    """Clear a self-clearing hold whose cause is gone — the CoC was uploaded, the heat
+    number entered, the shelf life extended — and route the lot on as if it had just
+    arrived (which re-checks every other gate). Returns True when the hold cleared.
+
+    Called after an edit that could resolve a hold; a no-op for anything else."""
+    if lot.status != "QUARANTINE" or lot.hold_reason not in SELF_CLEARING_HOLDS:
+        return False
+    if _hold_still_applies(lot):
+        return False
+    lot.hold_reason = ""
+    lot.save(update_fields=["hold_reason", "updated_at"])
+    inventory.release_hold(lot)
+    route_received_lot(lot, user)
+    return True
+
+
+def release_hold(lot, user, reason: str):
+    """A person lifts a receiving hold — accepting stock from an unqualified supplier
+    for this lot, say. The decision and its reason are recorded as an edit of
+    ``hold_reason``; the lot is then routed on with that one gate waived (the others
+    still apply). Raises ValueError for a lot that isn't under a receiving hold."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the hold is being released")
+    if lot.status != "QUARANTINE" or not lot.hold_reason:
+        raise ValueError(f"Lot {lot.lot_number} is not under a receiving hold")
+    released = lot.hold_reason
+    with transaction.atomic():
+        RecordEdit.objects.create(
+            tenant=lot.tenant,
+            content_type=ContentType.objects.get_for_model(lot.__class__),
+            object_id=lot.id, field_name="hold_reason",
+            old_value=released, new_value="", reason=reason, edited_by=user)
+        lot.hold_reason = ""
+        lot.save(update_fields=["hold_reason", "updated_at"])
+        inventory.release_hold(lot)
+        route_received_lot(lot, user, waive=(released,))
+    lot.refresh_from_db()
+    return lot
 
 
 def _held_for_expired_shelf_life(lot) -> bool:

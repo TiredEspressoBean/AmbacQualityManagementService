@@ -227,6 +227,7 @@ router.register(r'WorkQueue', WorkQueueViewSet, basename='WorkQueue')
 # Material Lots & Usage
 router.register(r'Materials', MaterialViewSet, basename='Materials')
 router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
+router.register(r'StorageLocations', StorageLocationViewSet, basename='StorageLocations')
 router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
 
 # Outside processing (subcontract shipments — Flow B)

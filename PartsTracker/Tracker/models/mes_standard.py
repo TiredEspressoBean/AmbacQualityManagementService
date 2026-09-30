@@ -1400,6 +1400,19 @@ class OvertimeWindow(SecureModel):
         return f"Overtime shift={self.shift_id} ({self.recurrence}) {when}"
 
 
+# How a buyer buys an item, and so how a clerk counts it at the dock. STOCK = in the
+# item's own stock unit (no conversion); BOX / LB convert to stock units through
+# `units_per_purchase_unit` (pieces per box, pieces per pound).
+PURCHASE_UNIT_CHOICES = [("STOCK", "Stock unit"), ("BOX", "Box"), ("LB", "Pound")]
+
+# Where a lot came from — the first question of an AS9100 counterfeit-parts audit.
+SOURCE_TYPE_CHOICES = [
+    ("MANUFACTURER", "Manufacturer"),
+    ("AUTHORIZED_DISTRIBUTOR", "Authorized distributor"),
+    ("INDEPENDENT_DISTRIBUTOR", "Independent distributor"),
+]
+
+
 class Material(SecureModel):
     """A PURCHASED item — raw material or bought component (O-rings, seals, fasteners).
 
@@ -1428,12 +1441,50 @@ class Material(SecureModel):
                   "with instead of at the last unit. Does not block issuing — a picker "
                   "can always draw the physical stock.")
     is_active = models.BooleanField(default=True)
+    # Receiving controls — the same four on PartTypes.
+    purchase_unit = models.CharField(
+        max_length=10, choices=PURCHASE_UNIT_CHOICES, default="STOCK",
+        help_text="How this item is bought and counted at receiving.")
+    units_per_purchase_unit = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True,
+        help_text="Stock units in one purchase unit — pieces per box, or pieces per pound. "
+                  "Unused when the purchase unit is the stock unit.")
+    requires_coc = models.BooleanField(
+        default=False,
+        help_text="Hold each received lot until its certificate of conformance is uploaded.")
+    requires_heat_number = models.BooleanField(
+        default=False,
+        help_text="Hold each received lot until its heat / melt number is entered.")
 
     class Meta:
         verbose_name = 'Material'
         verbose_name_plural = 'Materials'
         ordering = ['name']
         indexes = [models.Index(fields=['tenant', 'is_active'])]
+
+    def __str__(self):
+        return self.name
+
+
+class StorageLocation(SecureModel):
+    """A place stock is kept — an optional, managed list of the tenant's locations.
+
+    `MaterialLot.storage_location` stays free text: a small shop never sets this list
+    up, and receiving still works. Once a shop does, the list is what receiving offers,
+    so "Rack 3", "rack3" and "R3" stop being three places. Flat on purpose — aisle/bin
+    nesting is warehouse management, which is the ERP's."""
+
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Storage Location'
+        verbose_name_plural = 'Storage Locations'
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'name'], name='storage_location_unique_per_tenant'),
+        ]
 
     def __str__(self):
         return self.name
@@ -1590,6 +1641,20 @@ class MaterialLot(SecureModel):
 
     # Location
     storage_location = models.CharField(max_length=100, blank=True)
+
+    # Traceability at receipt. The heat (melt) number ties a lot to the batch of metal it
+    # was made from — how a recall finds everything poured from one bad melt.
+    heat_number = models.CharField(
+        max_length=64, blank=True, help_text="Heat / melt number from the mill certificate.")
+    source_type = models.CharField(
+        max_length=30, blank=True, choices=SOURCE_TYPE_CHOICES,
+        help_text="Bought from the manufacturer, an authorized distributor, or an "
+                  "independent one.")
+    # What the clerk counted, in the unit they counted it in ("3 boxes"), beside the
+    # stock quantity it converted to ("6,000"). Null when entered in the stock unit.
+    received_as_quantity = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True)
+    received_as_unit = models.CharField(max_length=10, blank=True, choices=PURCHASE_UNIT_CHOICES)
 
     # Set by `services.reman.core_lot.receive_core_lot` only: this lot is cores received
     # in bulk, units waiting to be given an identity — not stock of the part. The part

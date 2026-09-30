@@ -182,6 +182,7 @@ from .mes_standard import (
     LaborCalendarBlock,
     OvertimeWindow,
     Material,
+    StorageLocation,
 )
 
 # Remanufacturing add-on
@@ -504,6 +505,7 @@ __all__ = [
     'LaborCalendarBlock',
     'OvertimeWindow',
     'Material',
+    'StorageLocation',
 
     # Remanufacturing Add-on
     'Core',

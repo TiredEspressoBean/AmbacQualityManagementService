@@ -32,6 +32,7 @@ from .qms import VoidableModel
 # Import Standard tier models for backward compatibility within this module
 # These are re-exported from __init__.py for external consumers
 from .mes_standard import (
+    PURCHASE_UNIT_CHOICES,
     SamplingRuleSet,
     SamplingRule,
     SamplingRuleType,
@@ -195,6 +196,21 @@ class PartTypes(SecureModel):
         help_text="Default supplier when this part is purchased.",
     )
     """Preferred supplier for the buy path."""
+
+    # Receiving controls — the same four on Material (see PURCHASE_UNIT_CHOICES there).
+    purchase_unit = models.CharField(
+        max_length=10, choices=PURCHASE_UNIT_CHOICES, default="STOCK",
+        help_text="How this part is bought and counted at receiving.")
+    units_per_purchase_unit = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True,
+        help_text="Stock units in one purchase unit — pieces per box, or pieces per pound. "
+                  "Unused when the purchase unit is the stock unit.")
+    requires_coc = models.BooleanField(
+        default=False,
+        help_text="Hold each received lot until its certificate of conformance is uploaded.")
+    requires_heat_number = models.BooleanField(
+        default=False,
+        help_text="Hold each received lot until its heat / melt number is entered.")
 
     # =========================================================================
     # ITAR / Export Control Fields (inherited by Parts of this type)

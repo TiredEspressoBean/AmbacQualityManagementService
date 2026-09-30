@@ -177,6 +177,7 @@ from .mes_standard import (
     # Materials & Lots
     MaterialViewSet,
     MaterialLotViewSet,
+    StorageLocationViewSet,
     MaterialUsageViewSet,
     IncomingInspectionViewSet,
     InspectionInboxViewSet,
@@ -406,6 +407,7 @@ __all__ = [
     # MES Standard - Material Lots
     'MaterialViewSet',
     'MaterialLotViewSet',
+    'StorageLocationViewSet',
     'IncomingInspectionViewSet',
     'InspectionInboxViewSet',
     'MaterialUsageViewSet',

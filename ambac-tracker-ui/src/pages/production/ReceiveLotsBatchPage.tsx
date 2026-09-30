@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { StockItemCombobox, stockItemFields, useStockItems } from "@/components/receiving/StockItemCombobox";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useBulkCreateLots, type LotBulkRow } from "@/hooks/useReceivingMutations";
+import { useReportEmail } from "@/hooks/useReportEmail";
+import { SOURCE_TYPE_OPTIONS, type SourceType } from "@/components/receiving/lotStatus";
 
 const NONE = "__none__";
 const today = () => new Date().toISOString().slice(0, 10);
@@ -23,16 +25,22 @@ type Row = {
     unit_of_measure: string;
     received_date: string;
     storage_location: string;
+    /** "STOCK", or the item's buying unit — then Qty is boxes / pounds, converted server-side. */
+    count_in: "STOCK" | "BOX" | "LB";
+    heat_number: string;
+    source_type: SourceType | typeof NONE;
 };
 
 const emptyRow = (): Row => ({
     lot_number: "", item: NONE, supplier: NONE, supplier_lot_number: "",
     quantity: "", unit_of_measure: "EA", received_date: today(), storage_location: "",
+    count_in: "STOCK", heat_number: "", source_type: NONE,
 });
 
 // Column order used when pasting a spreadsheet without headers.
 const PASTE_COLUMNS: (keyof Row)[] = [
     "lot_number", "item", "supplier", "quantity", "unit_of_measure", "received_date", "supplier_lot_number", "storage_location",
+    "heat_number",
 ];
 
 function parsePaste(text: string): string[][] {
@@ -45,6 +53,7 @@ export function ReceiveLotsBatchPage() {
     const [rows, setRows] = useState<Row[]>([emptyRow()]);
     const [serverErrors, setServerErrors] = useState<Record<number, unknown>>({});
     const mutation = useBulkCreateLots();
+    const { downloadReport } = useReportEmail();
     const stockItems = useStockItems();
     const { data: companies } = useRetrieveCompanies({ limit: 500 });
 
@@ -99,6 +108,12 @@ export function ReceiveLotsBatchPage() {
         if (r.supplier_lot_number.trim()) out.supplier_lot_number = r.supplier_lot_number.trim();
         if (r.unit_of_measure.trim()) out.unit_of_measure = r.unit_of_measure.trim();
         if (r.storage_location.trim()) out.storage_location = r.storage_location.trim();
+        if (r.heat_number.trim()) out.heat_number = r.heat_number.trim();
+        if (r.source_type !== NONE) out.source_type = r.source_type;
+        if (r.count_in !== "STOCK") {
+            out.received_as_quantity = r.quantity.trim();
+            out.received_as_unit = r.count_in;
+        }
         return out;
     }
 
@@ -108,8 +123,12 @@ export function ReceiveLotsBatchPage() {
         mutation.mutate(
             { lots: rows.map(toPayload) },
             {
-                onSuccess: (data: { count?: number }) => {
-                    toast.success(`Received ${data?.count ?? rows.length} lot(s)`);
+                onSuccess: (data: { count?: number; created_lot_ids?: string[] }) => {
+                    const ids = data?.created_lot_ids ?? [];
+                    toast.success(`Received ${data?.count ?? rows.length} lot(s)`, ids.length
+                        ? { action: { label: "Print labels",
+                            onClick: () => void downloadReport("material_lot_label", { lot_ids: ids, copies: 1, layout: "thermal" }) } }
+                        : undefined);
                     navigate({ to: "/production/material-lots" });
                 },
                 onError: (err: unknown) => {
@@ -130,7 +149,8 @@ export function ReceiveLotsBatchPage() {
             <CardHeader>
                 <CardTitle>Receive Lots</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                    Paste rows from a spreadsheet (Lot #, Material or part, Supplier, Qty, Unit, Received, Supplier Lot, Location) or add manually.
+                    Paste rows from a spreadsheet (Lot #, Material or part, Supplier, Qty, Unit, Received, Supplier Lot, Location, Heat #) or add manually.
+                    For an item bought by the box or pound, set &ldquo;Count in&rdquo; and enter boxes or the scale reading.
                 </p>
             </CardHeader>
             <CardContent>
@@ -142,10 +162,13 @@ export function ReceiveLotsBatchPage() {
                                 <TableHead>Material / part</TableHead>
                                 <TableHead>Supplier</TableHead>
                                 <TableHead>Qty</TableHead>
+                                <TableHead>Count in</TableHead>
                                 <TableHead>Unit</TableHead>
                                 <TableHead>Received</TableHead>
                                 <TableHead>Supplier Lot</TableHead>
                                 <TableHead>Location</TableHead>
+                                <TableHead>Heat #</TableHead>
+                                <TableHead>Bought from</TableHead>
                                 <TableHead></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -182,12 +205,35 @@ export function ReceiveLotsBatchPage() {
                                             <Input value={r.quantity} onChange={(ev) => setCell(idx, "quantity", ev.target.value)}
                                                 className={`w-20 ${e.quantity ? "border-destructive" : ""}`} />
                                         </TableCell>
+                                        <TableCell>
+                                            <Select value={r.count_in} onValueChange={(v) => setCell(idx, "count_in", v)}>
+                                                <SelectTrigger className="w-24" aria-label={`Count in, row ${idx + 1}`}><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="STOCK">Units</SelectItem>
+                                                    <SelectItem value="BOX">Boxes</SelectItem>
+                                                    <SelectItem value="LB">Pounds</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
                                         <TableCell><Input value={r.unit_of_measure} onChange={(ev) => setCell(idx, "unit_of_measure", ev.target.value)} className="w-16" /></TableCell>
                                         <TableCell><Input type="date" value={r.received_date} onChange={(ev) => setCell(idx, "received_date", ev.target.value)} className={e.received_date ? "border-destructive" : ""} /></TableCell>
                                         <TableCell><Input value={r.supplier_lot_number} onChange={(ev) => setCell(idx, "supplier_lot_number", ev.target.value)} /></TableCell>
                                         <TableCell className="min-w-44">
                                             <LocationCombobox aria-label={`Storage location, row ${idx + 1}`} value={r.storage_location}
                                                 onChange={(v) => setCell(idx, "storage_location", v)} placeholder="Location" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input value={r.heat_number} onChange={(ev) => setCell(idx, "heat_number", ev.target.value)}
+                                                className="w-24 font-mono" aria-label={`Heat number, row ${idx + 1}`} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select value={r.source_type} onValueChange={(v) => setCell(idx, "source_type", v)}>
+                                                <SelectTrigger className="min-w-32" aria-label={`Bought from, row ${idx + 1}`}><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value={NONE}>—</SelectItem>
+                                                    {SOURCE_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="sm" onClick={() => setRows((p) => p.filter((_, i) => i !== idx))} disabled={rows.length === 1}>✕</Button>

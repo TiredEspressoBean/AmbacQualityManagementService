@@ -145,7 +145,9 @@ def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, materia
 
 def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=None,
                          quantity: Decimal | None = None, storage_location: str | None = None,
-                         remainder: str | None = None):
+                         remainder: str | None = None, received_as_quantity=None,
+                         received_as_unit: str = "", heat_number: str | None = None,
+                         source_type: str | None = None):
     """ON_ORDER → RECEIVED: the truck arrived. Stamps the supplier's real lot number,
     who took it in, and when.
 
@@ -157,6 +159,10 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
     slip, never inferred (the ERP can't tell us): ``BACKORDERED`` keeps the rest on order
     as a new expected lot (same item, supplier, PO and promised date); ``CLOSED`` closes the
     order at what arrived. Either way the lot records what had been ordered.
+
+    ``received_as_quantity`` / ``received_as_unit`` take what the clerk counted in the
+    item's buying unit ("3 boxes"); it converts to the stock quantity (`to_stock_quantity`)
+    and both are kept. Given, it replaces ``quantity``.
 
     Leaves the lot at RECEIVED rather than ACCEPTED: routing to incoming inspection (or
     dock-to-stock) is `receiving_inspection.route_received_lot`'s decision, and this must
@@ -178,6 +184,18 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
             )
         ordered = Decimal(str(locked.quantity))
         short_by = Decimal("0")
+        update_extra = []
+        if received_as_quantity is not None and received_as_unit not in ("", "STOCK"):
+            quantity = to_stock_quantity(locked.item, received_as_quantity, received_as_unit)
+            locked.received_as_quantity = Decimal(str(received_as_quantity))
+            locked.received_as_unit = received_as_unit
+            update_extra += ["received_as_quantity", "received_as_unit"]
+        if heat_number is not None:
+            locked.heat_number = heat_number.strip()
+            update_extra.append("heat_number")
+        if source_type is not None:
+            locked.source_type = source_type
+            update_extra.append("source_type")
         if quantity is not None:
             if Decimal(str(quantity)) <= Decimal("0"):
                 raise ValueError("Received quantity must be greater than zero")
@@ -185,7 +203,8 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
             locked.quantity = quantity
             locked.quantity_remaining = quantity
         update = ["lot_number", "received_by", "received_date",
-                  "quantity", "quantity_remaining", "storage_location", "updated_at"]
+                  "quantity", "quantity_remaining", "storage_location", "updated_at",
+                  *update_extra]
         if short_by > 0:
             if remainder not in ("BACKORDERED", "CLOSED"):
                 raise ValueError(
@@ -321,3 +340,71 @@ def delivery_state(lot, today) -> str | None:
     if lot.promised_date <= today + timedelta(days=DUE_SOON_DAYS):
         return DELIVERY_DUE_SOON
     return None
+
+
+def to_stock_quantity(item, amount, unit: str) -> Decimal:
+    """What a clerk counted, in the unit they counted it in, as a stock quantity.
+
+    ``unit`` is a `PURCHASE_UNIT_CHOICES` code. STOCK (or blank) is already the stock
+    unit. BOX / LB convert through the item's `units_per_purchase_unit` — and only
+    when that is the unit the item is bought in, so "3 boxes" of something bought by
+    the pound is refused rather than guessed at."""
+    amount = Decimal(str(amount))
+    if amount <= 0:
+        raise ValueError("The received amount must be greater than zero")
+    if unit in ("", "STOCK"):
+        return amount
+    bought_in = getattr(item, "purchase_unit", "STOCK")
+    factor = getattr(item, "units_per_purchase_unit", None)
+    if unit != bought_in:
+        raise ValueError(
+            f"{getattr(item, 'name', 'This item')} is bought by "
+            f"{dict(_purchase_units()).get(bought_in, bought_in).lower()}, not "
+            f"{dict(_purchase_units()).get(unit, unit).lower()}")
+    if not factor:
+        raise ValueError(
+            f"{getattr(item, 'name', 'This item')} has no stock units per "
+            f"{dict(_purchase_units()).get(unit, unit).lower()} set — enter the count instead")
+    return amount * Decimal(str(factor))
+
+
+def _purchase_units():
+    from Tracker.models.mes_standard import PURCHASE_UNIT_CHOICES
+    return PURCHASE_UNIT_CHOICES
+
+
+def adjust_quantity(lot, *, new_quantity: Decimal, reason: str, user):
+    """Correct what's left of a lot to what's physically there — counted 1,940, not
+    2,000; a box crushed in the rack. UQMES isn't the stock register (the ERP is), but
+    the floor's figure is what planning nets against, so a known-wrong number has to be
+    fixable, and fixable only with a reason on record.
+
+    Sets `quantity_remaining` (what the lot has left), writing a RecordEdit with the
+    reason. Raises ValueError for a negative quantity, no reason, or a lot not yet in
+    stock (an ON_ORDER lot's quantity is the order, changed by re-expecting it)."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, RecordEdit
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the quantity is being adjusted")
+    new_quantity = Decimal(str(new_quantity))
+    if new_quantity < 0:
+        raise ValueError("A lot can't hold less than nothing")
+    with transaction.atomic():
+        locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
+        if locked.status in ("ON_ORDER", "CONSUMED", "SCRAPPED"):
+            raise ValueError(f"Lot {locked.lot_number} is {locked.status}; there is no "
+                             f"stock on hand to adjust.")
+        old = locked.quantity_remaining
+        if old == new_quantity:
+            return locked
+        RecordEdit.objects.create(
+            tenant=locked.tenant,
+            content_type=ContentType.objects.get_for_model(MaterialLot),
+            object_id=locked.id, field_name="quantity_remaining",
+            old_value=str(old), new_value=str(new_quantity), reason=reason, edited_by=user)
+        locked.quantity_remaining = new_quantity
+        locked.save(update_fields=["quantity_remaining", "updated_at"])
+    lot.refresh_from_db()
+    return lot

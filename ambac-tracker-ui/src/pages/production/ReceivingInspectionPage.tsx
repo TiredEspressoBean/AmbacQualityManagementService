@@ -19,6 +19,7 @@ import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEdi
 import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
 import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
+import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
 import { getCookie } from "@/lib/utils";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { FileText } from "lucide-react";
@@ -245,10 +246,12 @@ export function ReceivingInspectionPage() {
                         </div>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                        {lot.material_type_name ?? lot.material_description ?? "—"} · {lot.supplier_name ?? "no supplier"} · qty {lot.quantity}
+                        {lot.item_name || lot.material_description || "—"} · {lot.supplier_name ?? "no supplier"} · qty {lot.quantity}
+                        {lot.heat_number ? ` · heat ${lot.heat_number}` : ""}
                     </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                    <LotHoldPanel lot={lot} />
                     <QualificationBanner supplierId={lot.supplier as string | null} partTypeId={lot.material_type as string | null} />
                     <CocCapture lotId={lotId} cocUrl={lot.certificate_of_conformance as string | null} />
                     {noPlan && (

@@ -66,6 +66,13 @@ def quarantine_lot(lot):
     )
 
 
+def release_hold(lot):
+    """QUARANTINE → RECEIVED: a receiving hold is lifted and the lot goes back through
+    routing (inspection or dock-to-stock), exactly as if it had just arrived. Only a
+    receiving soft-hold is released this way; a lot held by a disposition is not."""
+    return _transition(lot, allowed_from=("QUARANTINE",), to="RECEIVED")
+
+
 def mark_dock_to_stock(lot):
     """RECEIVED → ACCEPTED for material that needs no incoming inspection
     (dock-to-stock). The basis (no RECEIVING step / skip-lot exemption) is the

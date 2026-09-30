@@ -99,6 +99,7 @@ export const DATA_MANAGEMENT: DMGroup[] = [
         title: "Supply & reman",
         tables: [
             { key: "materials", name: "Purchased Materials", list: "/editor/materials", add: "/editor/materials/new", endpoint: "Materials", model: "material" },
+            { key: "storage-locations", name: "Storage Locations", list: "/editor/storage-locations", endpoint: "StorageLocations", model: "storagelocation" },
             { key: "companies", name: "Companies", list: "/editor/Companies", add: "/CompaniesForm/create", endpoint: "Companies", model: "companies", versioned: true },
             { key: "repair-codes", name: "Repair Codes", list: "/editor/repair-codes", add: "/editor/repair-codes/new", endpoint: "RepairCodes", model: "repaircode", versioned: true },
             { key: "rebuild-levels", name: "Rebuild Levels", list: "/editor/rebuild-levels", add: "/editor/rebuild-levels/new", endpoint: "RebuildScopePresets", model: "rebuildscopepreset", versioned: true },

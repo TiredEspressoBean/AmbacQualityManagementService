@@ -14139,6 +14139,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/QualityReports'
           description: ''
+  /api/MaterialLots/{id}/adjust-quantity/:
+    post:
+      operationId: api_MaterialLots_adjust_quantity_create
+      description: Correct what's left of a lot to what is physically there, with
+        a reason.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdjustQuantityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdjustQuantityRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustQuantityRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/{id}/evaluate_receiving/:
     get:
       operationId: api_MaterialLots_evaluate_receiving_retrieve
@@ -14420,6 +14457,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/release-hold/:
+    post:
+      operationId: api_MaterialLots_release_hold_create
+      description: |-
+        Lift a receiving hold with a reason on record; the lot is then routed on with
+        that one gate waived (inspection or dock-to-stock as usual).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReleaseHoldRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReleaseHoldRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseHoldRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
           description: ''
   /api/MaterialLots/{id}/sample_plan/:
     get:
@@ -14732,9 +14807,9 @@ paths:
   /api/MaterialLots/locations/:
     get:
       operationId: api_MaterialLots_locations_retrieve
-      description: Every storage location already in use — on material lots and on
-        equipment — sorted, for a location picker to suggest. Locations are free text;
-        this is the list people have typed, not a managed table.
+      description: Storage locations for a picker to suggest. When the tenant keeps
+        a managed list (StorageLocations), its active entries; otherwise every location
+        already typed on material lots and equipment.
       tags:
       - api
       security:
@@ -31189,6 +31264,219 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/StorageLocations/:
+    get:
+      operationId: api_StorageLocations_list
+      description: |-
+        The tenant's managed list of storage locations. Optional: with none set up,
+        receiving takes free text and suggests what has been typed before.
+      parameters:
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStorageLocationList'
+          description: ''
+    post:
+      operationId: api_StorageLocations_create
+      description: |-
+        The tenant's managed list of storage locations. Optional: with none set up,
+        receiving takes free text and suggests what has been typed before.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageLocationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StorageLocationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StorageLocationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageLocation'
+          description: ''
+  /api/StorageLocations/{id}/:
+    get:
+      operationId: api_StorageLocations_retrieve
+      description: |-
+        The tenant's managed list of storage locations. Optional: with none set up,
+        receiving takes free text and suggests what has been typed before.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Storage Location.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageLocation'
+          description: ''
+    put:
+      operationId: api_StorageLocations_update
+      description: |-
+        The tenant's managed list of storage locations. Optional: with none set up,
+        receiving takes free text and suggests what has been typed before.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Storage Location.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageLocationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StorageLocationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StorageLocationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageLocation'
+          description: ''
+    patch:
+      operationId: api_StorageLocations_partial_update
+      description: |-
+        The tenant's managed list of storage locations. Optional: with none set up,
+        receiving takes free text and suggests what has been typed before.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Storage Location.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageLocationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageLocationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageLocationRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageLocation'
+          description: ''
+    delete:
+      operationId: api_StorageLocations_destroy
+      description: |-
+        The tenant's managed list of storage locations. Optional: with none set up,
+        receiving takes free text and suggests what has been typed before.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Storage Location.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/StorageLocations/metadata/:
+    get:
+      operationId: api_StorageLocations_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/SubstepCompletions/:
     get:
       operationId: api_SubstepCompletions_list
@@ -46374,6 +46662,21 @@ components:
           default: VISIBLE
       required:
       - message
+    AdjustQuantityRequest:
+      type: object
+      description: Correct what's left of a lot to what is physically there.
+      properties:
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          description: The quantity actually on hand now.
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - quantity
+      - reason
     AdvanceLotInputRequest:
       type: object
       properties:
@@ -55478,6 +55781,16 @@ components:
           minLength: 1
       required:
       - password
+    LotSourceTypeEnum:
+      enum:
+      - MANUFACTURER
+      - AUTHORIZED_DISTRIBUTOR
+      - INDEPENDENT_DISTRIBUTOR
+      type: string
+      description: |-
+        * `MANUFACTURER` - Manufacturer
+        * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+        * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
     MarkStagedInputRequest:
       type: object
       properties:
@@ -55542,6 +55855,29 @@ components:
           type: string
           readOnly: true
           nullable: true
+        purchase_unit:
+          allOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          description: |-
+            How this item is bought and counted at receiving.
+
+            * `STOCK` - Stock unit
+            * `BOX` - Box
+            * `LB` - Pound
+        units_per_purchase_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Stock units in one purchase unit — pieces per box, or pieces
+            per pound. Unused when the purchase unit is the stock unit.
+        requires_coc:
+          type: boolean
+          description: Hold each received lot until its certificate of conformance
+            is uploaded.
+        requires_heat_number:
+          type: boolean
+          description: Hold each received lot until its heat / melt number is entered.
         is_active:
           type: boolean
         created_at:
@@ -55752,6 +56088,47 @@ components:
         storage_location:
           type: string
           maxLength: 100
+        heat_number:
+          type: string
+          description: Heat / melt number from the mill certificate.
+          maxLength: 64
+        source_type:
+          description: |-
+            Bought from the manufacturer, an authorized distributor, or an independent one.
+
+            * `MANUFACTURER` - Manufacturer
+            * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+            * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+          oneOf:
+          - $ref: '#/components/schemas/LotSourceTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        received_as_quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        received_as_unit:
+          oneOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        item_purchase_unit:
+          nullable: true
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        item_units_per_purchase_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          readOnly: true
+        item_requires_coc:
+          type: boolean
+          readOnly: true
+        item_requires_heat_number:
+          type: boolean
+          readOnly: true
         child_lot_count:
           type: integer
           readOnly: true
@@ -55772,6 +56149,10 @@ components:
       - hold_reason
       - id
       - item_name
+      - item_purchase_unit
+      - item_requires_coc
+      - item_requires_heat_number
+      - item_units_per_purchase_unit
       - lot_number
       - material_name
       - material_type_name
@@ -55958,6 +56339,29 @@ components:
         storage_location:
           type: string
           maxLength: 100
+        heat_number:
+          type: string
+          description: Heat / melt number from the mill certificate.
+          maxLength: 64
+        source_type:
+          description: |-
+            Bought from the manufacturer, an authorized distributor, or an independent one.
+
+            * `MANUFACTURER` - Manufacturer
+            * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+            * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+          oneOf:
+          - $ref: '#/components/schemas/LotSourceTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        received_as_quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        received_as_unit:
+          oneOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         archived:
           type: boolean
       required:
@@ -56041,6 +56445,29 @@ components:
           type: string
           format: uuid
           nullable: true
+        purchase_unit:
+          allOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          description: |-
+            How this item is bought and counted at receiving.
+
+            * `STOCK` - Stock unit
+            * `BOX` - Box
+            * `LB` - Pound
+        units_per_purchase_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Stock units in one purchase unit — pieces per box, or pieces
+            per pound. Unused when the purchase unit is the stock unit.
+        requires_coc:
+          type: boolean
+          description: Hold each received lot until its certificate of conformance
+            is uploaded.
+        requires_heat_number:
+          type: boolean
+          description: Hold each received lot until its heat / melt number is entered.
         is_active:
           type: boolean
         archived:
@@ -59543,6 +59970,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Steps'
+    PaginatedStorageLocationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageLocation'
     PaginatedSubstepCompletionList:
       type: object
       required:
@@ -60658,6 +61108,29 @@ components:
           type: string
           readOnly: true
           nullable: true
+        purchase_unit:
+          allOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          description: |-
+            How this part is bought and counted at receiving.
+
+            * `STOCK` - Stock unit
+            * `BOX` - Box
+            * `LB` - Pound
+        units_per_purchase_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Stock units in one purchase unit — pieces per box, or pieces
+            per pound. Unused when the purchase unit is the stock unit.
+        requires_coc:
+          type: boolean
+          description: Hold each received lot until its certificate of conformance
+            is uploaded.
+        requires_heat_number:
+          type: boolean
+          description: Hold each received lot until its heat / melt number is entered.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -60759,6 +61232,29 @@ components:
           format: uuid
           nullable: true
           description: Default supplier when this part is purchased.
+        purchase_unit:
+          allOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          description: |-
+            How this part is bought and counted at receiving.
+
+            * `STOCK` - Stock unit
+            * `BOX` - Box
+            * `LB` - Pound
+        units_per_purchase_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Stock units in one purchase unit — pieces per box, or pieces
+            per pound. Unused when the purchase unit is the stock unit.
+        requires_coc:
+          type: boolean
+          description: Hold each received lot until its certificate of conformance
+            is uploaded.
+        requires_heat_number:
+          type: boolean
+          description: Hold each received lot until its heat / melt number is entered.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -62790,6 +63286,29 @@ components:
         storage_location:
           type: string
           maxLength: 100
+        heat_number:
+          type: string
+          description: Heat / melt number from the mill certificate.
+          maxLength: 64
+        source_type:
+          description: |-
+            Bought from the manufacturer, an authorized distributor, or an independent one.
+
+            * `MANUFACTURER` - Manufacturer
+            * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
+            * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+          oneOf:
+          - $ref: '#/components/schemas/LotSourceTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        received_as_quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+        received_as_unit:
+          oneOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         archived:
           type: boolean
     PatchedMaterialRequest:
@@ -62833,6 +63352,29 @@ components:
           type: string
           format: uuid
           nullable: true
+        purchase_unit:
+          allOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          description: |-
+            How this item is bought and counted at receiving.
+
+            * `STOCK` - Stock unit
+            * `BOX` - Box
+            * `LB` - Pound
+        units_per_purchase_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Stock units in one purchase unit — pieces per box, or pieces
+            per pound. Unused when the purchase unit is the stock unit.
+        requires_coc:
+          type: boolean
+          description: Hold each received lot until its certificate of conformance
+            is uploaded.
+        requires_heat_number:
+          type: boolean
+          description: Hold each received lot until its heat / melt number is entered.
         is_active:
           type: boolean
         archived:
@@ -63372,6 +63914,29 @@ components:
           format: uuid
           nullable: true
           description: Default supplier when this part is purchased.
+        purchase_unit:
+          allOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          description: |-
+            How this part is bought and counted at receiving.
+
+            * `STOCK` - Stock unit
+            * `BOX` - Box
+            * `LB` - Pound
+        units_per_purchase_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Stock units in one purchase unit — pieces per box, or pieces
+            per pound. Unused when the purchase unit is the stock unit.
+        requires_coc:
+          type: boolean
+          description: Hold each received lot until its certificate of conformance
+            is uploaded.
+        requires_heat_number:
+          type: boolean
+          description: Hold each received lot until its heat / melt number is entered.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -64879,6 +65444,22 @@ components:
           writeOnly: true
           description: Reason for this revision, recorded on the new version (ISO
             9001 4.4 / IATF 16949 8.5.6.1).
+        archived:
+          type: boolean
+    PatchedStorageLocationRequest:
+      type: object
+      description: A managed place stock is kept. Optional — receiving takes free
+        text without it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 255
+        is_active:
+          type: boolean
         archived:
           type: boolean
     PatchedSubstepCompletionRequest:
@@ -67628,6 +68209,16 @@ components:
       - artifact_number
       - draft_process_id
       - pcr_id
+    PurchaseUnitEnum:
+      enum:
+      - STOCK
+      - BOX
+      - LB
+      type: string
+      description: |-
+        * `STOCK` - Stock unit
+        * `BOX` - Box
+        * `LB` - Pound
     QADocumentsResponse:
       type: object
       properties:
@@ -69275,6 +69866,25 @@ components:
           oneOf:
           - $ref: '#/components/schemas/ShortReceiptEnum'
           - $ref: '#/components/schemas/NullEnum'
+        received_as_quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: What was counted, in `received_as_unit`. Converted to the stock
+            quantity (and replaces `quantity`) when that is the item's buying unit.
+        received_as_unit:
+          default: ''
+          oneOf:
+          - $ref: '#/components/schemas/PurchaseUnitEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        heat_number:
+          type: string
+          maxLength: 64
+        source_type:
+          oneOf:
+          - $ref: '#/components/schemas/LotSourceTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
       required:
       - lot_number
     ReceivingCharacteristic:
@@ -69653,6 +70263,16 @@ components:
       required:
       - code
       - detail
+    ReleaseHoldRequest:
+      type: object
+      description: Lift a receiving hold. The reason is kept on record beside the
+        decision.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     ReleaseModeEnum:
       enum:
       - auto
@@ -74330,6 +74950,56 @@ components:
       required:
       - name
       - part_type
+    StorageLocation:
+      type: object
+      description: A managed place stock is kept. Optional — receiving takes free
+        text without it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 255
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
+    StorageLocationRequest:
+      type: object
+      description: A managed place stock is kept. Optional — receiving takes free
+        text without it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 255
+        is_active:
+          type: boolean
+        archived:
+          type: boolean
+      required:
+      - name
     StrandedPart:
       type: object
       properties:

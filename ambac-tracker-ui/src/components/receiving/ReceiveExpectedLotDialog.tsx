@@ -12,6 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { SOURCE_TYPE_OPTIONS, type SourceType } from "@/components/receiving/lotStatus";
 import { useReceiveExpectedLot } from "@/hooks/useReceivingMutations";
 
 type Props = {
@@ -22,6 +26,12 @@ type Props = {
     /** Quantity ordered, prefilled so a matching delivery is one click. */
     orderedQuantity?: string | null;
     unitOfMeasure?: string | null;
+    /** The item's buying unit and conversion: with BOX / LB set, the clerk can count in
+     *  boxes or pounds and see the stock quantity it comes to. */
+    purchaseUnit?: string | null;
+    unitsPerPurchaseUnit?: string | null;
+    /** The item holds lots until their heat number is entered — say so up front. */
+    requiresHeatNumber?: boolean;
     /** Jump to the receiving-inspection screen for this lot. Offered only when routing
      *  actually parked the lot for a disposition — a dock-to-stock lot has nothing to
      *  inspect, and a dead link there is worse than no link. */
@@ -52,6 +62,9 @@ export function ReceiveExpectedLotDialog({
     itemName,
     orderedQuantity,
     unitOfMeasure,
+    purchaseUnit,
+    unitsPerPurchaseUnit,
+    requiresHeatNumber = false,
     onInspect,
     open,
     onOpenChange,
@@ -62,6 +75,14 @@ export function ReceiveExpectedLotDialog({
     const [location, setLocation] = useState("");
     // A short delivery: the clerk says, from the packing slip, whether more is coming.
     const [remainder, setRemainder] = useState<"BACKORDERED" | "CLOSED" | "">("");
+    const [heatNumber, setHeatNumber] = useState("");
+    const [sourceType, setSourceType] = useState<SourceType | "">("");
+    // Counting in the buying unit ("3 boxes") when the item has one with a conversion.
+    const buyingUnit: "BOX" | "LB" | null =
+        purchaseUnit === "BOX" || purchaseUnit === "LB" ? purchaseUnit : null;
+    const factor = buyingUnit && unitsPerPurchaseUnit ? Number(unitsPerPurchaseUnit) : 0;
+    const [countIn, setCountIn] = useState<"STOCK" | "BOX" | "LB">("STOCK");
+    const [counted, setCounted] = useState("");
     const receive = useReceiveExpectedLot();
 
     const reset = () => {
@@ -70,12 +91,22 @@ export function ReceiveExpectedLotDialog({
         setReceivedDate(today());
         setLocation("");
         setRemainder("");
+        setHeatNumber("");
+        setSourceType("");
+        setCountIn("STOCK");
+        setCounted("");
     };
 
-    const qtyValid = quantity !== "" && Number(quantity) > 0;
-    const short = qtyValid && orderedQuantity != null && Number(quantity) !== Number(orderedQuantity);
+    // In the buying unit, the stock quantity follows from the count.
+    const inBuyingUnit = countIn !== "STOCK" && factor > 0;
+    const effectiveQty = inBuyingUnit
+        ? (counted !== "" && Number(counted) > 0 ? String(Number(counted) * factor) : "")
+        : quantity;
+
+    const qtyValid = effectiveQty !== "" && Number(effectiveQty) > 0;
+    const short = qtyValid && orderedQuantity != null && Number(effectiveQty) !== Number(orderedQuantity);
     /** How many fewer arrived than were on order (negative for an overage). */
-    const shortBy = qtyValid && orderedQuantity != null ? Number(orderedQuantity) - Number(quantity) : 0;
+    const shortBy = qtyValid && orderedQuantity != null ? Number(orderedQuantity) - Number(effectiveQty) : 0;
     const canSubmit = lotNumber.trim() !== "" && qtyValid && receivedDate !== "" && !receive.isPending
         && (shortBy <= 0 || remainder !== "");
 
@@ -85,10 +116,13 @@ export function ReceiveExpectedLotDialog({
             {
                 id: lotId,
                 lot_number: lotNumber.trim(),
-                quantity,
+                quantity: effectiveQty,
                 received_date: receivedDate,
                 storage_location: location.trim(),
                 ...(shortBy > 0 && remainder ? { remainder } : {}),
+                ...(inBuyingUnit && buyingUnit ? { received_as_quantity: counted, received_as_unit: buyingUnit } : {}),
+                ...(heatNumber.trim() ? { heat_number: heatNumber.trim() } : {}),
+                ...(sourceType ? { source_type: sourceType } : {}),
             },
             {
                 onSuccess: (data: unknown) => {
@@ -152,16 +186,38 @@ export function ReceiveExpectedLotDialog({
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label htmlFor="rel-qty">
-                                Quantity received{unitOfMeasure ? ` (${unitOfMeasure})` : ""}
+                                {inBuyingUnit
+                                    ? `${countIn === "BOX" ? "Boxes" : "Weight (lb)"} received`
+                                    : `Quantity received${unitOfMeasure ? ` (${unitOfMeasure})` : ""}`}
                             </Label>
-                            <Input
-                                id="rel-qty"
-                                type="number"
-                                min="0"
-                                step="any"
-                                value={quantity}
-                                onChange={(e) => setQuantity(e.target.value)}
-                            />
+                            {factor > 0 && buyingUnit && (
+                                <div className="flex gap-1">
+                                    <Button type="button" size="sm" variant={countIn === "STOCK" ? "default" : "outline"}
+                                        onClick={() => setCountIn("STOCK")}>{unitOfMeasure || "Count"}</Button>
+                                    <Button type="button" size="sm" variant={countIn !== "STOCK" ? "default" : "outline"}
+                                        onClick={() => setCountIn(buyingUnit)}>{buyingUnit === "BOX" ? "Boxes" : "Weigh"}</Button>
+                                </div>
+                            )}
+                            {inBuyingUnit ? (
+                                <>
+                                    <Input id="rel-qty" type="number" min="0" step="any"
+                                        value={counted} onChange={(e) => setCounted(e.target.value)} />
+                                    {effectiveQty && (
+                                        <p className="text-xs text-muted-foreground">
+                                            = {effectiveQty} {unitOfMeasure ?? ""} at {unitsPerPurchaseUnit} per {countIn === "BOX" ? "box" : "lb"}
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <Input
+                                    id="rel-qty"
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(e.target.value)}
+                                />
+                            )}
                             {short && shortBy < 0 && (
                                 <p className="text-xs text-amber-600">
                                     Ordered {orderedQuantity} — booking in what actually arrived.
@@ -197,6 +253,30 @@ export function ReceiveExpectedLotDialog({
                             </label>
                         </fieldset>
                     )}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="rel-heat">
+                                Heat number{" "}
+                                <span className="text-muted-foreground">{requiresHeatNumber ? "(required)" : "(optional)"}</span>
+                            </Label>
+                            <Input id="rel-heat" className="font-mono" value={heatNumber}
+                                onChange={(e) => setHeatNumber(e.target.value)} />
+                            {requiresHeatNumber && !heatNumber.trim() && (
+                                <p className="text-xs text-amber-600">Without it the lot is held until it&rsquo;s entered.</p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Bought from</Label>
+                            <Select value={sourceType} onValueChange={(v) => setSourceType(v as SourceType)}>
+                                <SelectTrigger aria-label="Bought from"><SelectValue placeholder="Optional" /></SelectTrigger>
+                                <SelectContent>
+                                    {SOURCE_TYPE_OPTIONS.map((o) => (
+                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="rel-location">Put away at</Label>
                         <LocationCombobox id="rel-location" value={location} onChange={setLocation}

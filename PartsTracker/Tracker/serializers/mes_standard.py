@@ -15,7 +15,7 @@ from drf_spectacular.utils import extend_schema_field
 
 from Tracker.models import (
     WorkCenter, Shift, ScheduleSlot, DowntimeEvent,
-    Material, MaterialLot, MaterialUsage, TimeEntry,
+    Material, MaterialLot, MaterialUsage, StorageLocation, TimeEntry,
     BOM, BOMLine, AssemblyUsage,
     Equipments, PartTypes, Parts, WorkOrder, Steps, User, Companies,
 )
@@ -24,7 +24,9 @@ from .core import SecureModelMixin, UserSelectSerializer
 
 # ===== WORK CENTER SERIALIZERS =====
 
-from Tracker.models.mes_standard import SHORT_RECEIPT_CHOICES
+from Tracker.models.mes_standard import (
+    PURCHASE_UNIT_CHOICES, SHORT_RECEIPT_CHOICES, SOURCE_TYPE_CHOICES,
+)
 
 
 class WorkCenterSerializer(SecureModelMixin):
@@ -253,9 +255,33 @@ class MaterialSerializer(SecureModelMixin):
             'id', 'name', 'part_number', 'description', 'unit_of_measure',
             'purchase_lead_time_days', 'safety_stock',
             'preferred_supplier', 'preferred_supplier_name',
+            'purchase_unit', 'units_per_purchase_unit', 'requires_coc', 'requires_heat_number',
             'is_active', 'created_at', 'updated_at', 'archived',
         )
         read_only_fields = ('created_at', 'updated_at')
+
+
+class StorageLocationSerializer(SecureModelMixin):
+    """A managed place stock is kept. Optional — receiving takes free text without it."""
+
+    class Meta:
+        model = StorageLocation
+        fields = ('id', 'name', 'description', 'is_active', 'created_at', 'updated_at', 'archived')
+        read_only_fields = ('created_at', 'updated_at')
+
+    def validate_name(self, value):
+        # The (tenant, name) constraint is invisible to DRF (tenant isn't a field), so a
+        # duplicate reached the database as a 500. Checked here, ignoring case — "Rack 3"
+        # and "rack 3" are one place, which is the point of keeping the list.
+        name = (value or '').strip()
+        request = self.context.get('request')
+        tenant = getattr(request, 'tenant', None)
+        clash = StorageLocation.unscoped.filter(tenant=tenant, name__iexact=name)  # tenant-safe: explicit tenant filter
+        if self.instance is not None:
+            clash = clash.exclude(pk=self.instance.pk)
+        if tenant is not None and clash.exists():
+            raise serializers.ValidationError(f'There is already a location called "{name}".')
+        return name
 
 
 # An expected receipt against its promised date (services.mes.material_lot.delivery_state).
@@ -291,6 +317,12 @@ class MaterialLotSerializer(SecureModelMixin):
     # Declared, not derived: as a read-only model field DRF drops allow_blank, so the
     # schema offered only BACKORDERED/CLOSED and the FE client rejected the "" every
     # full delivery carries — every lot list failed in the browser.
+    # The item's receiving controls, so a receive screen can count in the buying unit
+    # and say which paperwork the lot will be held for. Null for an ad-hoc lot.
+    item_purchase_unit = serializers.SerializerMethodField()
+    item_units_per_purchase_unit = serializers.SerializerMethodField()
+    item_requires_coc = serializers.SerializerMethodField()
+    item_requires_heat_number = serializers.SerializerMethodField()
     short_receipt = serializers.ChoiceField(
         choices=SHORT_RECEIPT_CHOICES, allow_blank=True, read_only=True,
         help_text="For a short delivery: the remainder stays on order (BACKORDERED) or the "
@@ -310,6 +342,9 @@ class MaterialLotSerializer(SecureModelMixin):
             'status', 'hold_reason', 'manufacture_date', 'expiration_date',
             'shelf_life_status',
             'certificate_of_conformance', 'storage_location',
+            'heat_number', 'source_type', 'received_as_quantity', 'received_as_unit',
+            'item_purchase_unit', 'item_units_per_purchase_unit',
+            'item_requires_coc', 'item_requires_heat_number',
             'child_lot_count',
             'created_at', 'updated_at', 'archived',
         )
@@ -320,6 +355,42 @@ class MaterialLotSerializer(SecureModelMixin):
             # Set by receiving a short delivery, not edited.
             'ordered_quantity', 'short_receipt',
         )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # Counted in the buying unit ("3 boxes"): the stock quantity is derived from it,
+        # and both are kept. In the stock unit, the entered quantity stands as it is.
+        amount = attrs.get('received_as_quantity')
+        unit = attrs.get('received_as_unit') or ''
+        if amount is not None and unit not in ('', 'STOCK'):
+            from Tracker.services.mes.material_lot import to_stock_quantity
+            item = (attrs.get('material_type') or attrs.get('material')
+                    or (self.instance.item if self.instance else None))
+            if item is None:
+                raise serializers.ValidationError(
+                    {'received_as_unit': 'Pick the material or part before counting in its buying unit.'})
+            try:
+                attrs['quantity'] = to_stock_quantity(item, amount, unit)
+            except ValueError as e:
+                raise serializers.ValidationError({'received_as_quantity': str(e)})
+        return attrs
+
+    @extend_schema_field(serializers.ChoiceField(choices=PURCHASE_UNIT_CHOICES, allow_null=True))
+    def get_item_purchase_unit(self, obj):
+        return getattr(obj.item, 'purchase_unit', None) if obj.item is not None else None
+
+    @extend_schema_field(serializers.DecimalField(max_digits=12, decimal_places=4, allow_null=True))
+    def get_item_units_per_purchase_unit(self, obj):
+        v = getattr(obj.item, 'units_per_purchase_unit', None) if obj.item is not None else None
+        return None if v is None else f"{v:.4f}"
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_item_requires_coc(self, obj):
+        return bool(getattr(obj.item, 'requires_coc', False))
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_item_requires_heat_number(self, obj):
+        return bool(getattr(obj.item, 'requires_heat_number', False))
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_received_by_name(self, obj):
@@ -462,6 +533,29 @@ class ReceiveExpectedLotSerializer(serializers.Serializer):
         required=False, allow_null=True,
         help_text="Required when fewer arrived than were on order: BACKORDERED keeps the "
                   "rest on order as a new expected lot; CLOSED closes the order at what came.")
+    received_as_quantity = serializers.DecimalField(
+        max_digits=12, decimal_places=4, min_value=Decimal('0.0001'),
+        required=False, allow_null=True,
+        help_text="What was counted, in `received_as_unit`. Converted to the stock quantity "
+                  "(and replaces `quantity`) when that is the item's buying unit.")
+    received_as_unit = serializers.ChoiceField(
+        choices=PURCHASE_UNIT_CHOICES, required=False, allow_blank=True, default='')
+    heat_number = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    source_type = serializers.ChoiceField(
+        choices=SOURCE_TYPE_CHOICES, required=False, allow_blank=True)
+
+
+class ReleaseHoldSerializer(serializers.Serializer):
+    """Lift a receiving hold. The reason is kept on record beside the decision."""
+    reason = serializers.CharField(allow_blank=False)
+
+
+class AdjustQuantitySerializer(serializers.Serializer):
+    """Correct what's left of a lot to what is physically there."""
+    quantity = serializers.DecimalField(
+        max_digits=12, decimal_places=4, min_value=Decimal('0'),
+        help_text="The quantity actually on hand now.")
+    reason = serializers.CharField(allow_blank=False)
 
 
 class ExtendShelfLifeSerializer(serializers.Serializer):
