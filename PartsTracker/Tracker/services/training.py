@@ -61,6 +61,112 @@ def create_new_training_type_version(training_type, *, user=None, change_descrip
     return new
 
 
+# ---- Writes: requirements and records ---------------------------------------
+#
+# Every creator and editor of a TrainingRequirement / TrainingRecord goes through
+# these (serializers, the requirement spreadsheet importer, step versioning's copy,
+# seeds). They used to live in the models' save(): a requirement ran full_clean()
+# on every save, and a record filled expires_date from its training type. CLAUDE.md
+# keeps save() to self-contained auto-fill, so both moved here unchanged.
+
+def validate_training_requirement(requirement) -> None:
+    """Raise django `ValidationError` when the requirement is invalid: not exactly
+    one target (`TrainingRequirement.clean`), a duplicate of the same training on
+    the same target (the unique constraints), or a bad field value. The same
+    `full_clean()` the model's save() used to run, so the same errors."""
+    requirement.full_clean()
+
+
+def save_training_requirement(requirement):
+    """Validate, then save. The one write path for a TrainingRequirement."""
+    validate_training_requirement(requirement)
+    requirement.save()
+    return requirement
+
+
+def create_training_requirement(**fields):
+    """Create a validated TrainingRequirement."""
+    from Tracker.models import TrainingRequirement
+    return save_training_requirement(TrainingRequirement(**fields))
+
+
+def update_training_requirement(requirement, **changes):
+    """Apply `changes` to a requirement, validate, and save."""
+    for name, value in changes.items():
+        setattr(requirement, name, value)
+    return save_training_requirement(requirement)
+
+
+def upsert_training_requirement(*, defaults=None, **lookup):
+    """`update_or_create` through the validating write path (seeds). Returns
+    `(requirement, created)`."""
+    from Tracker.models import TrainingRequirement
+    # tenant-safe: callers pass `tenant` in the lookup (seeds run outside a request).
+    existing = TrainingRequirement.objects.filter(**lookup).first()
+    if existing is not None:
+        return update_training_requirement(existing, **(defaults or {})), False
+    return create_training_requirement(**lookup, **(defaults or {})), True
+
+
+def get_or_create_training_requirement(*, defaults=None, **lookup):
+    """`get_or_create` through the validating write path (seeds): an existing row
+    is returned untouched. Returns `(requirement, created)`."""
+    from Tracker.models import TrainingRequirement
+    # tenant-safe: callers pass `tenant` in the lookup (seeds run outside a request).
+    existing = TrainingRequirement.objects.filter(**lookup).first()
+    if existing is not None:
+        return existing, False
+    return create_training_requirement(**lookup, **(defaults or {})), True
+
+
+def default_training_expiry(training_type, completed_date):
+    """The expiry a record gets when none is given: `completed_date` plus the type's
+    `validity_period_days`, or None when the type never expires (or no date)."""
+    from datetime import timedelta
+    if completed_date and training_type is not None and training_type.validity_period_days:
+        return completed_date + timedelta(days=training_type.validity_period_days)
+    return None
+
+
+def apply_training_record_defaults(record) -> None:
+    """Fill `expires_date` from the training type when it is not set."""
+    if not record.expires_date:
+        expiry = default_training_expiry(record.training_type, record.completed_date)
+        if expiry is not None:
+            record.expires_date = expiry
+
+
+def save_training_record(record):
+    """Fill defaults, then save. The one write path for a TrainingRecord."""
+    apply_training_record_defaults(record)
+    record.save()
+    return record
+
+
+def create_training_record(**fields):
+    """Create a TrainingRecord, its expiry defaulted from the training type."""
+    from Tracker.models import TrainingRecord
+    return save_training_record(TrainingRecord(**fields))
+
+
+def update_training_record(record, **changes):
+    """Apply `changes` to a record, fill defaults, and save."""
+    for name, value in changes.items():
+        setattr(record, name, value)
+    return save_training_record(record)
+
+
+def upsert_training_record(*, defaults=None, **lookup):
+    """`update_or_create` through the defaulting write path (seeds). Returns
+    `(record, created)`."""
+    from Tracker.models import TrainingRecord
+    # tenant-safe: callers pass `tenant` in the lookup (seeds run outside a request).
+    existing = TrainingRecord.objects.filter(**lookup).first()
+    if existing is not None:
+        return update_training_record(existing, **(defaults or {})), False
+    return create_training_record(**lookup, **(defaults or {})), True
+
+
 def training_type_lineage(tenant_id) -> dict:
     """Map every TrainingType version id in a tenant to its chain root id.
 

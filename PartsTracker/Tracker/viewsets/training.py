@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from Tracker.models import (
     EquipmentType, JobRole, Processes, TrainingRecord, TrainingRequirement, TrainingType,
 )
-from Tracker.serializers.csv_import import create_import_serializer_for_model
+from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from Tracker.serializers.training import (
     TrainingTypeSerializer,
     TrainingRecordSerializer,
@@ -248,6 +248,27 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixi
 
 # ===== TRAINING REQUIREMENT VIEWSET =====
 
+class _TrainingRequirementImportBase(BaseCSVImportSerializer):
+    """A spreadsheet row writes a requirement through the same validating service as
+    the API (exactly one target, no duplicate) — the import writes the model
+    directly, bypassing `TrainingRequirementSerializer.create/update`."""
+
+    def create_instance(self, data):
+        from Tracker.services.training import create_training_requirement
+        # Same stamping as BaseCSVImportSerializer.create_instance.
+        if self.tenant:
+            data['tenant'] = self.tenant
+        if self.user and hasattr(TrainingRequirement, 'created_by'):
+            data['created_by'] = self.user
+        return create_training_requirement(**data)
+
+    def _save_in_place(self, instance, changes):
+        from Tracker.services.training import update_training_requirement
+        if self.user and hasattr(instance, 'modified_by'):
+            instance.modified_by = self.user
+        return update_training_requirement(instance, **changes)
+
+
 @extend_schema_view(
     list=extend_schema(
         description="List training requirements with filtering",
@@ -286,7 +307,8 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, CSVImport
             'process': (Processes, ['name', 'id']),
             'equipment_type': (EquipmentType, ['name', 'id']),
             'job_role': (JobRole, ['name', 'id']),
-        })
+        },
+        base=_TrainingRequirementImportBase)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['training_type', 'step', 'process', 'equipment_type', 'job_role', 'min_level']
     search_fields = ['training_type__name', 'step__name', 'process__name', 'equipment_type__name', 'job_role__name', 'notes']

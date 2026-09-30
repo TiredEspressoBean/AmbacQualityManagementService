@@ -1174,7 +1174,9 @@ class BOMLineViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewset
     queryset = BOMLine.unscoped.select_related('bom', 'component_type')
     serializer_class = BOMLineSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['bom', 'component_type', 'is_optional']
+    # `bom__part_type`: the BOM export from a part type's page is that part type's
+    # BOMs — without it, a part with no BOM yet exported every current BOM.
+    filterset_fields = ['bom', 'bom__part_type', 'component_type', 'is_optional']
     ordering_fields = ['line_number', 'component_type__name']
     ordering = ['bom', 'line_number']
 

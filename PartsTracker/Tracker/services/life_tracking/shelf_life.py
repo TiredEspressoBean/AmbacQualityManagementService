@@ -31,15 +31,21 @@ SHELF_LIFE_DEFINITION_NAME = "Shelf Life"
 
 def get_or_create_shelf_life_definition(tenant):
     """The tenant's canonical calendar ``Shelf Life`` definition, created on first
-    use (mirrors the values the seeders use: days, warn at 270, expire at 365)."""
+    use (mirrors the values the seeders use: days, warn at 270, expire at 365), or
+    revived if it was deleted."""
     from Tracker.models import LifeLimitDefinition
+    from Tracker.services.core.soft_delete import revive
 
     # Deliberately NOT `archived=False`: the name is unique among current versions,
-    # archived ones included, so a deleted definition must be reused, not re-created.
+    # archived ones included, so a deleted definition can't be re-created alongside
+    # it. It is REVIVED instead — un-archived in place (same row, same history, the
+    # values it had) — so the lot is not tracked against a deleted definition.
     existing = LifeLimitDefinition.objects.filter(
-        name=SHELF_LIFE_DEFINITION_NAME, is_current_version=True
+        tenant=tenant, name=SHELF_LIFE_DEFINITION_NAME, is_current_version=True
     ).first()
     if existing is not None:
+        if existing.archived:
+            revive(existing)
         return existing
     return LifeLimitDefinition.objects.create(
         tenant=tenant,

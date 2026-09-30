@@ -264,7 +264,6 @@ class MaterialLotSerializer(SecureModelMixin):
     controlled Document. ``quantity_remaining`` stays read-only (written only by
     the consumption/split services).
     """
-    is_migrated = serializers.SerializerMethodField()
 
     # A lot is stock of a buyable part (material_type → PartTypes) XOR a raw
     # material (material → Material). item_name is the subject-agnostic label.
@@ -294,14 +293,12 @@ class MaterialLotSerializer(SecureModelMixin):
             'shelf_life_status',
             'certificate_of_conformance', 'storage_location',
             'child_lot_count',
-            # Go-live stock: which load it came in with, and where its cert lives.
-            'migration_batch', 'source_reference', 'is_migrated',
             'created_at', 'updated_at', 'archived',
         )
         read_only_fields = (
             'created_at', 'updated_at', 'quantity_remaining',
             'parent_lot_number', 'child_lot_count', 'received_by',
-            'hold_reason', 'migration_batch', 'source_reference', 'is_migrated',
+            'hold_reason',
         )
 
     @extend_schema_field(serializers.CharField(allow_null=True))
@@ -316,11 +313,6 @@ class MaterialLotSerializer(SecureModelMixin):
     def get_shelf_life_status(self, obj):
         from Tracker.services.life_tracking.shelf_life import shelf_life_status
         return shelf_life_status(obj)
-
-    @extend_schema_field(serializers.BooleanField())
-    def get_is_migrated(self, obj):
-        """Loaded from another system at go-live, not captured here."""
-        return obj.migration_batch_id is not None
 
 class MaterialLotSplitSerializer(serializers.Serializer):
     """Serializer for splitting a lot"""

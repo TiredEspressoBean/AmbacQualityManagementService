@@ -143,17 +143,19 @@ class TrainingRequirementModelTests(TrainingModuleTestCase):
     def test_must_set_exactly_one_target(self):
         """Validation fails if zero or multiple targets set."""
         from django.core.exceptions import ValidationError
+        # Validation runs in the write service (the model save() no longer full_cleans).
+        from Tracker.services.training import create_training_requirement
 
         # Zero targets
         with self.assertRaises(ValidationError):
-            TrainingRequirement.objects.create(
+            create_training_requirement(
                 training_type=self.cmm_training,
                 tenant=self.tenant
             )
 
         # Multiple targets
         with self.assertRaises(ValidationError):
-            TrainingRequirement.objects.create(
+            create_training_requirement(
                 training_type=self.cmm_training,
                 step=self.inspection_step,
                 process=self.process,
@@ -163,15 +165,17 @@ class TrainingRequirementModelTests(TrainingModuleTestCase):
     def test_unique_constraint_prevents_duplicates(self):
         """Cannot create duplicate requirement for same training+target."""
         from django.core.exceptions import ValidationError
+        # Validation runs in the write service (the model save() no longer full_cleans).
+        from Tracker.services.training import create_training_requirement
 
-        TrainingRequirement.objects.create(
+        create_training_requirement(
             training_type=self.cmm_training,
             step=self.inspection_step,
             tenant=self.tenant
         )
 
         with self.assertRaises(ValidationError):
-            TrainingRequirement.objects.create(
+            create_training_requirement(
                 training_type=self.cmm_training,
                 step=self.inspection_step,
                 tenant=self.tenant
@@ -1160,8 +1164,10 @@ class TrainingRecordTests(TrainingModuleTestCase):
     """Tests for TrainingRecord model."""
 
     def test_auto_calculates_expiration(self):
-        """Expiration date is auto-calculated from training type validity period."""
-        record = TrainingRecord.objects.create(
+        """Expiration date is auto-calculated from training type validity period
+        (by the write service — the model save() no longer derives it)."""
+        from Tracker.services.training import create_training_record
+        record = create_training_record(
             user=self.operator,
             training_type=self.cmm_training,  # 365 days validity
             completed_date=date.today(),
@@ -1172,7 +1178,8 @@ class TrainingRecordTests(TrainingModuleTestCase):
 
     def test_no_expiration_for_perpetual_training(self):
         """Training with no validity period has no expiration."""
-        record = TrainingRecord.objects.create(
+        from Tracker.services.training import create_training_record
+        record = create_training_record(
             user=self.operator,
             training_type=self.safety_training,  # No validity period
             completed_date=date.today(),

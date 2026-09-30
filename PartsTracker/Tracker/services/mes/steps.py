@@ -248,14 +248,19 @@ def create_new_step_version(
         # Only copy rows where this step is the exclusive target.
         # Rows linked via `process` or `equipment_type` belong to those
         # aggregates' own version lifecycles and must not be duplicated here.
+        from Tracker.services.training import create_training_requirement
         for tr in TrainingRequirement.objects.filter(archived=False,
             step=step,
             process__isnull=True,
             equipment_type__isnull=True,
         ):
-            TrainingRequirement.objects.create(
+            # Through the validating write path (the model's save() no longer
+            # full_cleans). min_level travels with the row: copied without it, a
+            # requirement set to Trainee came back at the model default (Qualified).
+            create_training_requirement(
                 step=new_version,
                 training_type=tr.training_type,
+                min_level=tr.min_level,
                 notes=tr.notes,
                 tenant=tr.tenant,
             )
@@ -456,6 +461,10 @@ def update_step_sampling_rules(
                 rules=rules_data,
                 created_by=user,
             )
+            # Saving a step's rules applies them now: activate the successor, which
+            # takes the predecessor out of force (it used to stay active beside it).
+            from Tracker.services.mes.sampling_ruleset import activate_sampling_ruleset
+            activate_sampling_ruleset(new_ruleset, user)
         else:
             new_ruleset = SamplingRuleSet.create_with_rules(
                 part_type=step.part_type,

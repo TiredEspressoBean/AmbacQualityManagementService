@@ -210,7 +210,12 @@ class ReceiveExpectedLotTests(_MaterialFixture):
         self.assertEqual(lot.status, "RECEIVED")
         self.assertEqual(lot.lot_number, "SUP-A-4471")
         self.assertEqual(lot.received_by_id, self.user.id)
-        self.assertEqual(lot.received_date, date.today())
+        # Today on the tenant's clock — not this machine's (`date.today()`), which
+        # disagreed with it every evening in a zone behind UTC.
+        from django.utils import timezone
+        from Tracker.services.scheduling.data import plant_tz
+        self.assertEqual(lot.received_date,
+                         timezone.now().astimezone(plant_tz(lot.tenant)).date())
 
     def test_short_shipment_books_what_actually_arrived(self):
         lot = receive_expected_lot(

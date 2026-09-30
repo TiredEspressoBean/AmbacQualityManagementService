@@ -89,7 +89,9 @@ def create_new_milestone_template_version(
             **field_updates,
         )
 
-        for milestone in template.milestones.all():
+        # Live milestones only: `.all()` included deleted (archived) ones and created
+        # them as live rows, so a deleted milestone came back on every revision.
+        for milestone in template.milestones.filter(archived=False):
             Milestone.objects.create(
                 template=new_version,
                 name=milestone.name,

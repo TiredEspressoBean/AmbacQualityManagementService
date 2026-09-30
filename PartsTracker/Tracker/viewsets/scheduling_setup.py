@@ -50,8 +50,10 @@ class ReviveOnCreateMixin:
         key = {f: request.data.get(f) for f in self.revive_key}
         archived = None
         if self.revive_key and all(v not in (None, '') for v in key.values()):
-            archived = find_archived(self.queryset.model, self.tenant,
-                                     {f"{f}_id": v for f, v in key.items()})
+            model = self.queryset.model
+            archived = find_archived(model, self.tenant, {
+                (f"{f}_id" if model._meta.get_field(f).is_relation else f"{f}__iexact"): v
+                for f, v in key.items()})
         if archived is None:
             return super().create(request, *args, **kwargs)
         with transaction.atomic():  # an invalid body leaves the row archived

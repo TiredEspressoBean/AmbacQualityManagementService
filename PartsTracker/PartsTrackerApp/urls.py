@@ -38,7 +38,6 @@ from Tracker.viewsets.tenant import (
     TenantGroupViewSet, PermissionListView, PresetListView, EffectivePermissionsView,
     UserTenantsView, SwitchTenantView, DemoResetView, TenantLLMProviderViewSet
 )
-from Tracker.viewsets.migration import MigrationBatchViewSet
 from Tracker.viewsets.scheduling_setup import (
     StepEquipmentAffinityViewSet, StepTimingViewSet, WorkCenterChangeoverViewSet,
 )
@@ -272,7 +271,6 @@ router.register(r'OvertimeWindows', OvertimeWindowViewSet, basename='OvertimeWin
 router.register(r'StepTimings', StepTimingViewSet, basename='StepTimings')
 router.register(r'StepEquipmentAffinities', StepEquipmentAffinityViewSet, basename='StepEquipmentAffinities')
 router.register(r'WorkCenterChangeovers', WorkCenterChangeoverViewSet, basename='WorkCenterChangeovers')
-router.register(r'MigrationBatches', MigrationBatchViewSet, basename='MigrationBatches')
 
 # ===== DWI VIEWSETS =====
 router.register(r'Substeps', SubstepViewSet, basename='Substeps')

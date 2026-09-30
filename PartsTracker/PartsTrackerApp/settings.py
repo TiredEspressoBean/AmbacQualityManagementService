@@ -393,8 +393,6 @@ SPECTACULAR_SETTINGS = {
 
 
     "ENUM_NAME_OVERRIDES": {
-        # Go-live history load kind — collides with the other `kind` choice sets.
-        "MigrationBatchKindEnum": "Tracker.models.migration.MigrationBatchKind",
         # Inspection-inbox row 'type' — would otherwise collide with
         # MeasurementDefinition.type and rename the long-exported TypeEnum.
         "InspectionInboxTypeEnum": "Tracker.serializers.qms.INSPECTION_INBOX_TYPES",

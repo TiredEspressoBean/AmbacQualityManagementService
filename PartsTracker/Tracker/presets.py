@@ -232,7 +232,9 @@ STAFF_OPERATIONAL_WRITE = [
     'add_milestone', 'change_milestone', 'delete_milestone',
     'add_milestonetemplate', 'change_milestonetemplate',
     'add_lifelimitdefinition', 'change_lifelimitdefinition',
-    'add_parttypelifelimit', 'change_parttypelifelimit',
+    # delete_: the part type page's Life Limits panel removes a link (soft delete;
+    # linking the pair again revives it).
+    'add_parttypelifelimit', 'change_parttypelifelimit', 'delete_parttypelifelimit',
     'add_lifetracking', 'change_lifetracking',
     # Quality records
     'add_qualityreports', 'change_qualityreports',
@@ -503,17 +505,14 @@ NOTIFICATION_ADMIN_PERMISSIONS = [
     'edit_notification_rules', 'edit_notification_schedules',
     'add_notificationrule', 'change_notificationrule',
     'add_notificationschedule', 'change_notificationschedule',
+    # The tenant/customer rule + schedule viewsets are gated by TenantModelPermissions
+    # and the notification settings UI ships delete buttons, so DELETE (a soft
+    # archive via SecureModel.delete) must be reachable by the managing roles.
+    'delete_notificationrule', 'delete_notificationschedule',
     # External contacts are the customer-side recipients of customer-scoped
     # rules — the same configuration, managed by the same roles.
     'view_externalcontact', 'add_externalcontact',
     'change_externalcontact', 'delete_externalcontact',
-]
-
-# Go-live history loads (services.core.migration_import): loading a batch and signing
-# it off are manager acts, and the two are done by DIFFERENT people (the service refuses
-# a loader verifying their own batch) — so the same three manager roles hold both.
-MIGRATION_PERMISSIONS = [
-    'view_migrationbatch', 'add_migrationbatch', 'change_migrationbatch',
 ]
 
 # Authoring shift notes (floor handoff) = the supervisor tier (Shift Lead +
@@ -598,7 +597,6 @@ GROUP_PRESETS = {
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
-            *MIGRATION_PERMISSIONS,
             *COMPLIANCE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
@@ -643,7 +641,6 @@ GROUP_PRESETS = {
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
-            *MIGRATION_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
             # Classification authority (no secret tier)
@@ -707,7 +704,6 @@ GROUP_PRESETS = {
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
-            *MIGRATION_PERMISSIONS,
             # Resolve (close) NCR dispositions
             *DISPOSITION_RESOLUTION_PERMISSIONS,
             # Resolve MANUAL decision-point routing (4a)

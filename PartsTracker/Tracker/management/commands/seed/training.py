@@ -10,6 +10,8 @@ from Tracker.models import (
     TrainingType, TrainingRecord, TrainingRequirement,
     Steps, Processes, EquipmentType,
 )
+from Tracker.services.training import create_training_record, get_or_create_training_requirement
+
 from .base import BaseSeeder
 
 
@@ -113,7 +115,7 @@ class TrainingSeeder(BaseSeeder):
                 if keyword in step_name_lower:
                     for training_name in trainings:
                         if training_name in type_map:
-                            _, was_created = TrainingRequirement.objects.get_or_create(
+                            _, was_created = get_or_create_training_requirement(
                                 tenant=self.tenant,
                                 training_type=type_map[training_name],
                                 step=step,
@@ -149,7 +151,7 @@ class TrainingSeeder(BaseSeeder):
                 if keyword in eq_name_lower:
                     for training_name in trainings:
                         if training_name in type_map:
-                            _, was_created = TrainingRequirement.objects.get_or_create(
+                            _, was_created = get_or_create_training_requirement(
                                 tenant=self.tenant,
                                 training_type=type_map[training_name],
                                 equipment_type=eq_type,
@@ -252,7 +254,7 @@ class TrainingSeeder(BaseSeeder):
 
         trainer = random.choice(trainers) if trainers else None
 
-        TrainingRecord.objects.create(
+        create_training_record(
             tenant=self.tenant,
             user=employee,
             training_type=training_type,

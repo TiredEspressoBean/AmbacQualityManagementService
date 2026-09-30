@@ -100,7 +100,6 @@ class TrainingRecordSerializer(SecureModelMixin):
     Records that a user has completed a specific training.
     Includes computed status property and related info fields.
     """
-    is_migrated = serializers.SerializerMethodField()
 
     # Display/info fields
     user_info = serializers.SerializerMethodField()
@@ -117,12 +116,19 @@ class TrainingRecordSerializer(SecureModelMixin):
             'completed_date', 'level', 'level_display', 'expires_date',
             'trainer', 'trainer_info',
             'notes', 'status', 'is_current',
-            # Go-live history: which load it came in with, and where its original lives.
-            'migration_batch', 'source_reference', 'is_migrated',
             'created_at', 'updated_at', 'archived'
         ]
-        read_only_fields = ('id', 'level_display', 'status', 'is_current', 'created_at', 'updated_at',
-                            'migration_batch', 'source_reference', 'is_migrated')
+        read_only_fields = ('id', 'level_display', 'status', 'is_current', 'created_at', 'updated_at')
+
+    # Writes go through the service so the expiry default (from the training type)
+    # is applied on every write path, not in the model's save().
+    def create(self, validated_data):
+        from Tracker.services.training import create_training_record
+        return create_training_record(**validated_data)
+
+    def update(self, instance, validated_data):
+        from Tracker.services.training import update_training_record
+        return update_training_record(instance, **validated_data)
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_user_info(self, obj):
@@ -158,11 +164,6 @@ class TrainingRecordSerializer(SecureModelMixin):
             }
         return None
 
-    @extend_schema_field(serializers.BooleanField())
-    def get_is_migrated(self, obj):
-        """Loaded from another system at go-live, not captured here."""
-        return obj.migration_batch_id is not None
-
 class TrainingRequirementSerializer(SecureModelMixin):
     """
     Serializer for TrainingRequirement model.
@@ -192,6 +193,16 @@ class TrainingRequirementSerializer(SecureModelMixin):
             'created_at', 'updated_at', 'archived'
         ]
         read_only_fields = ('id', 'min_level_display', 'scope', 'scope_display', 'created_at', 'updated_at')
+
+    # Writes go through the service, which validates (exactly one target, no
+    # duplicate) — the django ValidationError it raises maps to a 400.
+    def create(self, validated_data):
+        from Tracker.services.training import create_training_requirement
+        return create_training_requirement(**validated_data)
+
+    def update(self, instance, validated_data):
+        from Tracker.services.training import update_training_requirement
+        return update_training_requirement(instance, **validated_data)
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_training_type_info(self, obj):

@@ -15,7 +15,11 @@ URL layout (registered in `PartsTrackerApp/urls.py`):
 
 Permission model (matches across rules and schedules — `edit_notification_rules`
 is reused for both since they're managed by the same admin role):
-  - Tenant + customer scopes: `Tracker.edit_notification_rules` required.
+  - Tenant + customer scopes: `TenantModelPermissions` action gating —
+    view/add/change/delete_{notificationrule,notificationschedule}, held by the
+    NOTIFICATION_ADMIN_PERMISSIONS roles (staff hold the view perms).
+    (`edit_notification_rules` backs the models' `is_editable_by`, which no
+    viewset calls — the model perms above are the gate.)
   - Personal scope: viewset filters to the request user's own rows; any
     authenticated user can manage their own without the permission.
 """
@@ -52,6 +56,7 @@ from Tracker.serializers.notification_schedule import (
 )
 from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from Tracker.viewsets.base import TenantScopedMixin
+from Tracker.viewsets.scheduling_setup import ReviveOnCreateMixin
 from Tracker.viewsets.mixins import CSVImportMixin, DataExportMixin
 
 
@@ -68,7 +73,9 @@ class TenantRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     # without a tenant context). Real filtering happens in get_queryset.
     queryset = NotificationRule.all_tenants.none()
     serializer_class = TenantRuleSerializer
-    permission_classes = [IsAuthenticated, TenantAccessPermission]
+    # Model perms gate writes: tenant/customer rules are tenant configuration, so only
+    # the NOTIFICATION_ADMIN_PERMISSIONS roles add/change/delete them (staff view).
+    permission_classes = [IsAuthenticated, TenantAccessPermission, TenantModelPermissions]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "event_code"]
     ordering_fields = ["created_at", "updated_at", "name", "priority"]
@@ -101,7 +108,9 @@ class CustomerRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationRule.all_tenants.none()
     serializer_class = CustomerRuleSerializer
-    permission_classes = [IsAuthenticated, TenantAccessPermission]
+    # Model perms gate writes: tenant/customer rules are tenant configuration, so only
+    # the NOTIFICATION_ADMIN_PERMISSIONS roles add/change/delete them (staff view).
+    permission_classes = [IsAuthenticated, TenantAccessPermission, TenantModelPermissions]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "event_code"]
     ordering_fields = ["created_at", "updated_at", "name", "priority"]
@@ -152,7 +161,7 @@ class _ExternalContactImportBase(BaseCSVImportSerializer):
 
 
 @extend_schema_view(list=extend_schema(parameters=[_customer_param]))
-class ExternalContactViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
+class ExternalContactViewSet(ReviveOnCreateMixin, TenantScopedMixin, CSVImportMixin, DataExportMixin,
                              viewsets.ModelViewSet):
     """CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
     customer FK validation handled at the serializer layer."""
@@ -163,7 +172,10 @@ class ExternalContactViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
     # customer is found by company name.
     csv_import_serializer = create_import_serializer_for_model(
         ExternalContact, lookup_fields=['id', ('customer', 'email')],
-        base=_ExternalContactImportBase)
+        base=_ExternalContactImportBase, meta={'revive_key': ('customer', 'email')})
+    # A deleted contact still holds its (customer, email) key; adding it again revives
+    # the row rather than failing as a duplicate. (Disabling is the reversible switch.)
+    revive_key = ('customer', 'email')
     # Model perms gate writes: contacts are notification config (who outside the
     # tenant gets mailed), so only the NOTIFICATION_ADMIN_PERMISSIONS roles manage them.
     permission_classes = [IsAuthenticated, TenantAccessPermission, TenantModelPermissions]
@@ -243,7 +255,9 @@ class TenantScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationSchedule.all_tenants.none()
     serializer_class = TenantScheduleSerializer
-    permission_classes = [IsAuthenticated, TenantAccessPermission]
+    # Model perms gate writes: tenant/customer schedules are tenant configuration, so only
+    # the NOTIFICATION_ADMIN_PERMISSIONS roles add/change/delete them (staff view).
+    permission_classes = [IsAuthenticated, TenantAccessPermission, TenantModelPermissions]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "provider_kind"]
     ordering_fields = ["created_at", "updated_at", "name", "cadence"]
@@ -262,7 +276,9 @@ class CustomerScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationSchedule.all_tenants.none()
     serializer_class = CustomerScheduleSerializer
-    permission_classes = [IsAuthenticated, TenantAccessPermission]
+    # Model perms gate writes: tenant/customer schedules are tenant configuration, so only
+    # the NOTIFICATION_ADMIN_PERMISSIONS roles add/change/delete them (staff view).
+    permission_classes = [IsAuthenticated, TenantAccessPermission, TenantModelPermissions]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "provider_kind"]
     ordering_fields = ["created_at", "updated_at", "name", "cadence"]

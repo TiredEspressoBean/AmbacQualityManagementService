@@ -533,7 +533,40 @@ class SamplingSeverityStateViewSet(TenantScopedMixin, ListMetadataMixin, viewset
         return super().get_queryset().select_related('step', 'supplier')
 
 
-class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+# The one sheet sampling rulesets import from and export to: each row a rule, its
+# ruleset named by part type + step + supplier + name (see services.mes.sampling_import).
+# Export labels ARE the import column names, so an exported file imports back.
+_SAMPLING_STEP_REF = 'ruleset__step__ref'
+_SAMPLING_SHEET = [
+    ('ruleset__part_type__name', 'part_type'), (_SAMPLING_STEP_REF, 'step'),
+    ('ruleset__supplier__name', 'supplier'), ('ruleset__name', 'ruleset'),
+    ('order', 'order'), ('rule_type', 'rule_type'), ('value', 'value'),
+]
+
+
+def _sampling_template():
+    from Tracker.services.template_generator import TemplateField, TemplateGenerator
+    help_text = {
+        'part_type': "The ruleset's part type (name or ERP id) — on every row of its ruleset",
+        'step': "The ruleset's step: Process > Step",
+        'supplier': "Receiving plans only: the supplier it applies to (blank = all suppliers)",
+        'ruleset': "The ruleset's name",
+        'order': "Evaluation order within the ruleset (0 first; blank = row order)",
+        'rule_type': "The sampling rule type",
+        'value': "The rule's number (N, percent…) where its type takes one",
+    }
+    required = {'part_type', 'step', 'ruleset', 'rule_type'}
+    return TemplateGenerator(
+        model_name="SamplingRules",
+        description=("One row per sampling rule. The file is the COMPLETE rule list for each "
+                     "ruleset it names; an import makes an inactive draft, never activates it."),
+        fields=[TemplateField(col, required=col in required, description=help_text.get(col, ''))
+                for _, col in _SAMPLING_SHEET])
+
+
+class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                          viewsets.ModelViewSet):
+    """Sampling rules — and sampling ruleset import/export, one sheet of rules."""
     queryset = SamplingRule.unscoped.all()
     serializer_class = SamplingRuleSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -542,6 +575,18 @@ class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
     ordering = ["order"]
     search_fields = ["rule_type", "ruleset__name"]
 
+    export_fields = [path for path, _ in _SAMPLING_SHEET]
+    export_field_labels = {path: col for path, col in _SAMPLING_SHEET}
+    # The parent ruleset's identity, on every row.
+    export_extra_paths = frozenset({'ruleset__part_type__name', _SAMPLING_STEP_REF,
+                                    'ruleset__supplier__name', 'ruleset__name'})
+    export_filename = 'sampling_rules'
+    csv_template_generator = _sampling_template()
+    # The import runs through services.mes.sampling_import; this importer only tells the
+    # template and preview which columns it reads beyond the rule's own fields.
+    csv_import_serializer = create_import_serializer_for_model(
+        SamplingRule, meta={'import_only_fields': ['part_type', 'step', 'supplier']})
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return SamplingRule.objects.none()
@@ -549,6 +594,46 @@ class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
         return qs
+
+    def get_export_queryset(self):
+        """The rules of rulesets in force (active) only — drafts and superseded rulesets
+        would put two versions of one ruleset in the file."""
+        return (super().get_export_queryset()
+                .filter(archived=False, ruleset__archived=False, ruleset__active=True)
+                .order_by('ruleset__part_type__name', 'ruleset__step__name',
+                          'ruleset__name', 'order'))
+
+    def prepare_export_data(self, queryset, fields, apply_labels=True):
+        """The ruleset's step as `Process > Step` — the export's own step-ref columns
+        cover a rule's own foreign keys only, not its ruleset's."""
+        from Tracker.services.step_refs import step_refs
+        if _SAMPLING_STEP_REF not in fields:
+            return super().prepare_export_data(queryset, fields, apply_labels=apply_labels)
+        base = ['ruleset__step' if f == _SAMPLING_STEP_REF else f for f in fields]
+        df = super().prepare_export_data(queryset, base, apply_labels=False)
+        refs = {str(k): v for k, v in step_refs(
+            queryset.values_list('ruleset__step', flat=True)).items()}
+        if 'ruleset__step' in df.columns:
+            df['ruleset__step'] = df['ruleset__step'].map(lambda v: refs.get(str(v), v))
+            df = df.rename(columns={'ruleset__step': _SAMPLING_STEP_REF})
+        if apply_labels:
+            labels = self.get_export_field_labels()
+            df = df.rename(columns={c: labels[c] for c in df.columns if c in labels})
+        return df
+
+    def _process_import_inline(self, rows, mode, serializer_class, tenant, user):
+        """A ruleset's rules import together (services.mes.sampling_import), not row by row."""
+        from django.db import transaction
+        from Tracker.services.mes.sampling_import import import_sampling_rows
+        with transaction.atomic():
+            body = import_sampling_rows(rows, tenant=tenant, user=user,
+                                        context=self.get_serializer_context())
+        return Response(body, status=status.HTTP_207_MULTI_STATUS)
+
+    def _queue_background_import(self, rows, mode, serializer_class, tenant, user):
+        # Each ruleset must land whole, so the file is imported inline however many rows
+        # it has (the upload cap still applies).
+        return self._process_import_inline(rows, mode, serializer_class, tenant, user)
 
 
 class MeasurementDefinitionFilter(django_filters.FilterSet):
@@ -589,6 +674,10 @@ class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, CSVImp
 
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
+        # The list shows current versions (the measurements page marked superseded rows
+        # instead); an old version stays retrievable by id, since history points at it.
+        if self.action == 'list':
+            qs = qs.filter(is_current_version=True)
         return qs
 
 

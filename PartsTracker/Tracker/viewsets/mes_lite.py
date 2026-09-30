@@ -1787,13 +1787,71 @@ class MilestoneTemplateViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         )
 
 
-class MilestoneViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-    """CRUD for milestones within templates. Admin-only."""
+# The one sheet milestone templates import from and export to: each row a milestone,
+# its template named on every row (see services.mes.milestone_import). Export labels
+# ARE the import column names, so an exported file imports back.
+_MILESTONE_SHEET = [
+    ('template__name', 'template'), ('display_order', 'display_order'), ('name', 'name'),
+    ('customer_display_name', 'customer_display_name'), ('description', 'description'),
+    ('is_active', 'is_active'),
+]
+
+
+def _milestone_template():
+    from Tracker.services.template_generator import TemplateField, TemplateGenerator
+    help_text = {
+        'template': "The milestone template's name — on every row of its template",
+        'display_order': "Position in the sequence (lower = earlier; blank = row order)",
+        'customer_display_name': "The name customers see (blank = the name)",
+        'is_active': "False for terminal milestones such as Closed or Cancelled",
+    }
+    required = {'template', 'name'}
+    return TemplateGenerator(
+        model_name="Milestones",
+        description=("One row per milestone. The file is the COMPLETE milestone list for each "
+                     "template it names; a changed template gets a new version."),
+        fields=[TemplateField(col, required=col in required, description=help_text.get(col, ''))
+                for _, col in _MILESTONE_SHEET])
+
+
+class MilestoneViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+    """CRUD for milestones within templates. Admin-only. Also milestone template
+    import/export, one sheet of milestones."""
     from Tracker.serializers.mes_lite import MilestoneSerializer
 
     queryset = Milestone.unscoped.all()
     serializer_class = MilestoneSerializer
     pagination_class = None
+
+    export_fields = [path for path, _ in _MILESTONE_SHEET]
+    export_field_labels = {path: col for path, col in _MILESTONE_SHEET}
+    export_extra_paths = frozenset({'template__name'})
+    export_filename = 'milestones'
+    csv_template_generator = _milestone_template()
+    # The import runs through services.mes.milestone_import; this importer only gives
+    # the template and preview their columns.
+    csv_import_serializer = create_import_serializer_for_model(Milestone)
+
+    def get_export_queryset(self):
+        """The milestones of each current template only — older versions would put two
+        versions of one template in the file."""
+        return (super().get_export_queryset()
+                .filter(archived=False, template__archived=False,
+                        template__is_current_version=True)
+                .order_by('template__name', 'display_order'))
+
+    def _process_import_inline(self, rows, mode, serializer_class, tenant, user):
+        """A template's milestones import together (services.mes.milestone_import)."""
+        from Tracker.services.mes.milestone_import import import_milestone_rows
+        with transaction.atomic():
+            body = import_milestone_rows(rows, tenant=tenant, user=user,
+                                         context=self.get_serializer_context())
+        return Response(body, status=status.HTTP_207_MULTI_STATUS)
+
+    def _queue_background_import(self, rows, mode, serializer_class, tenant, user):
+        # Each template must land whole, so the file is imported inline however many
+        # rows it has (the upload cap still applies).
+        return self._process_import_inline(rows, mode, serializer_class, tenant, user)
 
     def get_serializer_class(self):
         from Tracker.serializers.mes_lite import MilestoneSerializer

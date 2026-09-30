@@ -89,10 +89,14 @@ def supersede_sampling_ruleset(
 ) -> SamplingRuleSet:
     """Create a successor SamplingRuleSet that supersedes *ruleset*.
 
-    Inherits part_type, process, and step from the existing ruleset.
-    Returns the newly created ruleset (inactive until activated).
+    The successor is INACTIVE until `activate_sampling_ruleset` puts it in force (and
+    takes its predecessor out). It used to be created active — `create_with_rules`
+    defaults to active — beside a predecessor that stayed active, so two rulesets
+    sampled the same step. It carries every setting of *ruleset* forward (supplier,
+    plan, gate, fallback timing), not just part type / process / step. The fallback
+    link is one-to-one, so it can't be shared; it moves when the successor is activated.
     """
-    return SamplingRuleSet.create_with_rules(
+    successor = SamplingRuleSet.create_with_rules(
         part_type=ruleset.part_type,
         process=ruleset.process,
         step=ruleset.step,
@@ -100,7 +104,27 @@ def supersede_sampling_ruleset(
         rules=rules,
         supersedes=ruleset,
         created_by=user,
+        active=False,
+        supplier=ruleset.supplier,
+        is_fallback=ruleset.is_fallback,
+        fallback_duration=ruleset.fallback_duration,
     )
+    skip = {'id', 'tenant', 'name', 'active', 'supersedes', 'fallback_ruleset', 'version',
+            'created_at', 'updated_at', 'created_by', 'modified_by', 'archived',
+            'deleted_at', 'previous_version', 'is_current_version', 'origin'}
+    changed = []
+    for field in SamplingRuleSet._meta.concrete_fields:
+        if field.name in skip or field.primary_key:
+            continue
+        if getattr(successor, field.attname) != getattr(ruleset, field.attname):
+            setattr(successor, field.attname, getattr(ruleset, field.attname))
+            changed.append(field.attname)
+    if any(f.name == 'version' for f in SamplingRuleSet._meta.concrete_fields):
+        successor.version = (ruleset.version or 1) + 1
+        changed.append('version')
+    if changed:
+        successor.save(update_fields=changed + ['updated_at'])
+    return successor
 
 
 @transaction.atomic

@@ -116,9 +116,6 @@ WITHHELD_PERMS = {
 # delete_ intentionally not granted — these soft-delete / void, or hard-delete
 # is disabled (SecureModel.hard_delete raises). Records are retired, not destroyed.
 SOFT_DELETE_MODELS = {
-    # A go-live history load is a controlled record (who loaded what, and its one
-    # verification) — it is never deleted; its rows stay traceable to it.
-    'migrationbatch',
     # A demand line is cancelled (status=CANCELLED), never deleted: the fact a customer
     # asked for something survives the decision not to build it, and work orders peg to
     # the line with PROTECT anyway.
@@ -130,8 +127,10 @@ SOFT_DELETE_MODELS = {
     # ('milestone' moved out: the milestones editor has a delete button, so
     # delete_milestone is granted to staff — see presets.py.)
     'milestonetemplate',
-    'lifelimitdefinition', 'parttypelifelimit', 'lifetracking',
-    'notificationrule', 'notificationschedule',
+    'lifelimitdefinition', 'lifetracking',
+    # ('parttypelifelimit' moved out: the Life Limits panel removes links — presets.py.)
+    # ('notificationrule', 'notificationschedule' moved out: the rule and schedule
+    # pages delete, and notification managers hold delete_ — presets.py.)
     # Supplier quality / part approval: records are retired via status
     # (SUSPENDED/DISQUALIFIED/EXPIRED), and re-qualification creates a new row —
     # history is preserved, never hard-deleted.

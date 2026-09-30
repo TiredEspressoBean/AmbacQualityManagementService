@@ -24,10 +24,12 @@ from Tracker.serializers.csv_import import (
     BaseCSVImportSerializer, create_import_serializer_for_model,
 )
 from .base import TenantScopedMixin
+from .scheduling_setup import ReviveOnCreateMixin
 from .mixins import CSVImportMixin, DataExportMixin
 
 
-class LifeLimitDefinitionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class LifeLimitDefinitionViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
+                                 viewsets.ModelViewSet):
     """
     Life limit definition management.
 
@@ -35,9 +37,17 @@ class LifeLimitDefinitionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     - Flight Cycles (hard_limit=20000)
     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
     - Shot Count (soft_limit=400000, hard_limit=500000)
+
+    Import/export is one row per definition; its part-type links import on the
+    PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+    the API's does (the importer follows LifeLimitDefinitionSerializer.update).
     """
     queryset = LifeLimitDefinition.unscoped.all()
     serializer_class = LifeLimitDefinitionSerializer
+    # A definition is its name (unique among current versions); a name finds the
+    # current version.
+    csv_import_serializer = create_import_serializer_for_model(
+        LifeLimitDefinition, lookup_fields=['id', 'name'])
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['name', 'unit', 'unit_label']
     filterset_fields = ['is_calendar_based']
@@ -123,8 +133,8 @@ class _PartTypeLifeLimitImport(BaseCSVImportSerializer):
                 transformed[field] = old
 
 
-class PartTypeLifeLimitViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
-                               viewsets.ModelViewSet):
+class PartTypeLifeLimitViewSet(ReviveOnCreateMixin, TenantScopedMixin, CSVImportMixin,
+                               DataExportMixin, viewsets.ModelViewSet):
     """
     Links life limit definitions to part types.
 
@@ -138,7 +148,10 @@ class PartTypeLifeLimitViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixi
     # A link pinned to an older version imports back onto that version (see the base).
     csv_import_serializer = create_import_serializer_for_model(
         PartTypeLifeLimit, lookup_fields=['id', ('part_type', 'definition')],
-        base=_PartTypeLifeLimitImport)
+        base=_PartTypeLifeLimitImport, meta={'revive_key': ('part_type', 'definition')})
+    # A removed link still holds its (part type, definition) key; linking the pair again
+    # revives it rather than failing as a duplicate.
+    revive_key = ('part_type', 'definition')
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['part_type', 'definition', 'is_required']
     ordering_fields = ['part_type__name', 'definition__name']

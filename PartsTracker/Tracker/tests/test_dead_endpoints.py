@@ -63,7 +63,6 @@ ALLOWED_UNREACHABLE = {
     # this guard exists to close. No frontend calls these — if a life-tracking UI grows
     # a delete button, drop the entry and grant the perm instead.
     ('LifeLimitDefinitionViewSet', 'destroy'),     # limit rule archived, not deleted
-    ('PartTypeLifeLimitViewSet', 'destroy'),       # link archived, not deleted
     ('LifeTrackingViewSet', 'destroy'),            # accumulated-life evidence
 }
 

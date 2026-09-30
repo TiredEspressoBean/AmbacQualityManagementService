@@ -23,6 +23,8 @@ from Tracker.models import (
     Steps, EquipmentType, User,
 )
 
+from Tracker.services.training import upsert_training_record, upsert_training_requirement
+
 from ..base import BaseSeeder
 
 
@@ -182,7 +184,7 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
             eq_type = eq_types.get(req_data.get('equipment_type_name'))
             if not step and not eq_type:
                 continue
-            req, _ = TrainingRequirement.objects.update_or_create(
+            req, _ = upsert_training_requirement(
                 tenant=self.tenant,
                 training_type=training_type,
                 step=step,
@@ -219,7 +221,7 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
                 training_type = self._training_type_keys.get(training_key)
                 if not training_type:
                     continue
-                TrainingRequirement.objects.update_or_create(
+                upsert_training_requirement(
                     tenant=self.tenant,
                     training_type=training_type,
                     job_role=role,
@@ -238,7 +240,7 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
     def _create_training_record(self, record_data, user, training_type):
         completed_date = self.today - timedelta(days=record_data['completed_days_ago'])
         expires_date = self.today + timedelta(days=record_data['expires_days'])
-        record, _ = TrainingRecord.objects.update_or_create(
+        record, _ = upsert_training_record(
             tenant=self.tenant,
             user=user,
             training_type=training_type,

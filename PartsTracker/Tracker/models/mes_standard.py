@@ -1566,15 +1566,6 @@ class MaterialLot(SecureModel):
 
     # Location
     storage_location = models.CharField(max_length=100, blank=True)
-    # Loaded from another system at go-live (services.core.migration_import): the batch it
-    # came in with, and where its original certificate / traceability lives. Blank when
-    # received here.
-    migration_batch = models.ForeignKey(
-        'Tracker.MigrationBatch', null=True, blank=True, on_delete=models.PROTECT,
-        related_name='material_lots')
-    source_reference = models.CharField(
-        max_length=255, blank=True,
-        help_text="For migrated stock: where its certificate / traceability record lives.")
 
     # Set by `services.reman.core_lot.receive_core_lot` only: this lot is cores received
     # in bulk, units waiting to be given an identity — not stock of the part. The part

@@ -668,7 +668,12 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             return obj.work_order.process.id
         # Fallback: find approved process for part_type
         if obj.part_type:
-            process = obj.part_type.processes.filter(status__in=['APPROVED', 'DEPRECATED']).first()
+            # The version in force: approved (else deprecated), not archived — approving
+            # a revision archives its predecessor. After a part type edit the processes
+            # follow it to the new version (services.core.version_links).
+            process = (obj.part_type.processes
+                       .filter(archived=False, status__in=['APPROVED', 'DEPRECATED'])
+                       .order_by('status').first())  # 'APPROVED' sorts before 'DEPRECATED'
             if process:
                 return process.id
         return None
@@ -735,7 +740,12 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             return obj.work_order.process.name
         # Fallback: find approved process for part_type
         if obj.part_type:
-            process = obj.part_type.processes.filter(status__in=['APPROVED', 'DEPRECATED']).first()
+            # The version in force: approved (else deprecated), not archived — approving
+            # a revision archives its predecessor. After a part type edit the processes
+            # follow it to the new version (services.core.version_links).
+            process = (obj.part_type.processes
+                       .filter(archived=False, status__in=['APPROVED', 'DEPRECATED'])
+                       .order_by('status').first())  # 'APPROVED' sorts before 'DEPRECATED'
             if process:
                 return process.name
         return None
