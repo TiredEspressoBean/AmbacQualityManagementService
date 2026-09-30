@@ -51,7 +51,7 @@ from Tracker.serializers.dms import DocumentsSerializer
 from .core import ListMetadataMixin, VersionedLikeTheAPIImport, with_int_pk_schema
 from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .base import TenantScopedMixin
-from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin
+from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin, VersionHistoryMixin
 
 # Note: Most viewsets can now use CSVImportMixin and DataExportMixin for automatic
 # CSV import/export based on model introspection. Just add the mixins to get:
@@ -1720,7 +1720,7 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
 
 # ===== MILESTONE VIEWSETS =====
 
-class MilestoneTemplateViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class MilestoneTemplateViewSet(VersionHistoryMixin, TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD for milestone templates. Admin-only."""
     from Tracker.serializers.mes_lite import MilestoneTemplateSerializer, MilestoneTemplateListSerializer
 
@@ -1738,6 +1738,10 @@ class MilestoneTemplateViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return MilestoneTemplate.objects.none()
         qs = super().get_queryset()
+        if self.action == 'list':
+            # Each revision is a row; the editor lists the templates in force. A
+            # superseded revision is still reachable by id.
+            qs = qs.filter(is_current_version=True)
         return qs.prefetch_related('milestones')
 
     def perform_create(self, serializer):
@@ -2911,6 +2915,8 @@ class StepFilterSet(django_filters.FilterSet):
             # Station mapping: steps at a work-center, or unmapped (isnull=true —
             # the "no station" bucket the mapping UI surfaces).
             "work_center": ["exact", "isnull"],
+            # The list spans versions; editors and counts want the live rows.
+            "is_current_version": ["exact"],
         }
 
 
@@ -2950,7 +2956,7 @@ class StepFilterSet(django_filters.FilterSet):
         ],
     ),
 )
-class StepsViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class StepsViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = Steps.unscoped.all()
     serializer_class = StepsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -2984,6 +2990,8 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewse
         }
         """
         step = self.get_object()
+        from Tracker.viewsets.qms import _require_step_content_editable
+        _require_step_content_editable(step)
         serializer = StepSamplingRulesUpdateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
@@ -3724,7 +3732,7 @@ class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, view
 @extend_schema(parameters=[
     OpenApiParameter(name="part_type", type=str, location=OpenApiParameter.QUERY, required=False,
                      description="Filter processes by associated part type UUID"), ])
-class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+class PartTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     Part Types CRUD with CSV import/export support.
 
@@ -3934,6 +3942,8 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
 class ProcessWithStepsViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = Processes.unscoped.all()
     serializer_class = ProcessWithStepsSerializer
+    # Taking a draft's own copy of a step is an edit of the process, not a create.
+    action_permissions = {'draft_step': ['change_processes']}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["part_type", "status"]
     search_fields = ["name"]
@@ -4091,6 +4101,34 @@ class ProcessWithStepsViewSet(TenantScopedMixin, DataExportMixin, viewsets.Model
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        description=(
+            "The step row this draft edits for `step`: the same row when the draft already has "
+            "it to itself, else one new copy for the draft (its measurements, sampling rules, "
+            "training, machines, substeps and documents with it). Call before editing anything "
+            "on a step of a draft, so the process's other versions keep theirs. Repeat calls "
+            "return the draft's copy; they don't copy again."
+        ),
+        request=inline_serializer(name='DraftStepRequest', fields={'step': serializers.UUIDField()}),
+        responses={200: inline_serializer(name='DraftStepResponse', fields={
+            'step': serializers.UUIDField(),
+            'copied': serializers.BooleanField(),
+        })},
+    )
+    @action(detail=True, methods=['post'], url_path='draft-step')
+    def draft_step(self, request, pk=None):
+        from Tracker.services.mes.steps import step_for_draft
+        process = self.get_object()
+        # tenant-safe: SecureManager scopes Steps to the request's tenant.
+        step = Steps.objects.filter(pk=request.data.get('step')).first()
+        if step is None:
+            return Response({"error": "No such step."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            owned = step_for_draft(step, process, user=request.user)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"step": str(owned.pk), "copied": owned.pk != step.pk})
+
 
 # ===== EQUIPMENT VIEWSETS =====
 
@@ -4107,7 +4145,7 @@ class EquipmentSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         return qs
 
 
-class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+class EquipmentViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                       viewsets.ModelViewSet):
     queryset = Equipments.unscoped.all()
     serializer_class = EquipmentsSerializer
@@ -4136,7 +4174,7 @@ class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         return qs.select_related('equipment_type')
 
 
-class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+class EquipmentTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                            viewsets.ModelViewSet):
     queryset = EquipmentType.unscoped.all()
     serializer_class = EquipmentTypeSerializer

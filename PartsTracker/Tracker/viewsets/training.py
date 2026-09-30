@@ -25,7 +25,8 @@ from Tracker.services.training import build_training_matrix
 from Tracker.services.core.clock import tenant_today
 from .base import TenantScopedMixin
 from .core import ListMetadataMixin
-from .mixins import CSVImportMixin, DataExportMixin
+from .qms import _require_step_content_editable
+from .mixins import CSVImportMixin, DataExportMixin, VersionHistoryMixin
 
 
 # ===== TRAINING TYPE VIEWSET =====
@@ -43,7 +44,7 @@ from .mixins import CSVImportMixin, DataExportMixin
     partial_update=extend_schema(description="Partially update a training type"),
     destroy=extend_schema(description="Soft delete a training type")
 )
-class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+class TrainingTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                           viewsets.ModelViewSet):
     """
     ViewSet for managing training types.
@@ -322,6 +323,19 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, CSVImport
 
         qs = super().get_queryset()
         return qs.select_related('training_type', 'step', 'process', 'equipment_type', 'job_role')
+
+    # A step's own requirements are step content: an approved version's step keeps its own.
+    def perform_create(self, serializer):
+        _require_step_content_editable(serializer.validated_data.get('step'))
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        _require_step_content_editable(serializer.instance.step)
+        super().perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        _require_step_content_editable(instance.step)
+        super().perform_destroy(instance)
 
     @extend_schema(
         description="Get all training requirements for a specific step",

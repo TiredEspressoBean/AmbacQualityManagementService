@@ -27,7 +27,7 @@ class StepTimingRecordSerializer(SecureModelMixin):
     class Meta:
         model = StepTiming
         fields = ('id', 'step', 'step_name', 'setup_minutes', 'cycle_time_minutes',
-                  'load_unload_per_piece', 'attention_type', 'external_setup_minutes')
+                  'load_unload_per_piece', 'attention_type', 'external_setup_minutes', 'archived')
         read_only_fields = ('id', 'step_name')
 
 
@@ -39,7 +39,7 @@ class StepEquipmentAffinitySerializer(SecureModelMixin):
     class Meta:
         model = StepEquipmentAffinity
         fields = ('id', 'step', 'step_name', 'equipment', 'equipment_name', 'affinity',
-                  'cycle_time_override')
+                  'cycle_time_override', 'archived')
         read_only_fields = ('id', 'step_name', 'equipment_name')
 
 
@@ -52,5 +52,5 @@ class WorkCenterChangeoverSerializer(SecureModelMixin):
     class Meta:
         model = WorkCenterChangeover
         fields = ('id', 'equipment', 'equipment_name', 'from_step', 'from_step_name',
-                  'to_step', 'to_step_name', 'changeover_minutes')
+                  'to_step', 'to_step_name', 'changeover_minutes', 'archived')
         read_only_fields = ('id', 'equipment_name', 'from_step_name', 'to_step_name')

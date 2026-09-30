@@ -1204,6 +1204,15 @@ class StepTimingSerializer(serializers.ModelSerializer):
                   'attention_type', 'external_setup_minutes')
 
 
+class StepProcessRefSerializer(serializers.Serializer):
+    """A process version a step is part of."""
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    version = serializers.IntegerField()
+    status = serializers.CharField()
+    is_current_version = serializers.BooleanField()
+
+
 class StepsSerializer(SecureModelMixin):
     """
     Steps serializer - represents step node properties.
@@ -1219,6 +1228,11 @@ class StepsSerializer(SecureModelMixin):
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     work_center_name = serializers.CharField(source="work_center.name", read_only=True, allow_null=True)
     timing = StepTimingSerializer(required=False, allow_null=True)
+    # The process versions using this step row. A row is shared by a process, its
+    # later versions and its duplicates (that sharing is what keeps each version's
+    # routing as it was), so a content edit has to name the process it is for —
+    # editors send people to the process rather than editing the row bare.
+    processes = serializers.SerializerMethodField()
     # Why this revision exists. Write-only: it belongs to the version record, not to
     # the step. Optional — `update` falls back to a synthesized note rather than
     # refusing the edit, which is what used to happen.
@@ -1264,6 +1278,8 @@ class StepsSerializer(SecureModelMixin):
             'labor_model',
             # Time elements the scheduler and RCCP size work from (nested one-to-one)
             'timing',
+            # Process versions using this step row (read-only)
+            'processes',
             # Write-only; recorded on the new version, not on the step.
             'change_description',
             # Timestamps
@@ -1280,6 +1296,14 @@ class StepsSerializer(SecureModelMixin):
             'created_at', 'updated_at', 'part_type_info', 'part_type_name',
             'work_center_name', 'version', 'is_current_version',
         )
+
+    @extend_schema_field(StepProcessRefSerializer(many=True))
+    def get_processes(self, obj):
+        # Reads the viewset's prefetch of process_memberships__process.
+        procs = [m.process for m in obj.process_memberships.all() if not m.process.archived]
+        procs.sort(key=lambda p: (not p.is_current_version, p.name, -p.version))
+        return [{'id': p.id, 'name': p.name, 'version': p.version, 'status': p.status,
+                 'is_current_version': p.is_current_version} for p in procs]
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let archive
@@ -1896,27 +1920,39 @@ class MilestoneSerializer(SecureModelMixin):
 class MilestoneTemplateSerializer(SecureModelMixin):
     """Milestone template with nested milestones."""
     milestones = MilestoneSerializer(many=True, read_only=True)
+    # Why this revision exists. Write-only and optional: a rename without one is
+    # recorded with a stock note rather than refused, as every edit used to be.
+    change_description = serializers.CharField(
+        write_only=True, required=False, allow_blank=True,
+        help_text="Reason for this revision, recorded on the new version.")
 
     class Meta:
         model = MilestoneTemplate
         fields = [
             'id', 'name', 'description', 'is_default', 'milestones',
-            'created_at', 'updated_at', 'archived', 'version',
+            'created_at', 'updated_at', 'archived', 'version', 'change_description',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'version']
 
     # Fields whose edits are metadata/soft-delete only and should NOT
-    # trigger a new version.
-    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+    # trigger a new version. `is_default` says which template new orders get, not
+    # what the template is.
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'is_default'})
+
+    def create(self, validated_data):
+        validated_data.pop('change_description', None)  # a first version has nothing to explain
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let
         archive toggles through as a plain save."""
         from Tracker.services.core.versioning import apply_versioned_update
+        note = (validated_data.pop('change_description', None) or '').strip()
         return apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
+            version_kwargs={'change_description': note or 'Edited from the milestones page'},
         )
 
 

@@ -18,12 +18,19 @@ from .core import SecureModelMixin
 class LifeLimitDefinitionSerializer(SecureModelMixin):
     """Life limit definition serializer"""
 
+    # Why this revision exists. Write-only: it belongs to the version record. Optional —
+    # a content edit without one is recorded with a stock note instead of being refused,
+    # which is what every PATCH that changed a limit used to get.
+    change_description = serializers.CharField(
+        write_only=True, required=False, allow_blank=True,
+        help_text="Reason for this revision, recorded on the new version (AS9100D 8.3).")
+
     class Meta:
         model = LifeLimitDefinition
         fields = (
             'id', 'name', 'unit', 'unit_label',
             'is_calendar_based', 'soft_limit', 'hard_limit',
-            'created_at', 'updated_at', 'archived', 'version'
+            'created_at', 'updated_at', 'archived', 'version', 'change_description',
         )
         read_only_fields = ('created_at', 'updated_at', 'version')
 
@@ -31,14 +38,20 @@ class LifeLimitDefinitionSerializer(SecureModelMixin):
     # trigger a new version.
     _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
+    def create(self, validated_data):
+        validated_data.pop('change_description', None)  # a first version has nothing to explain
+        return super().create(validated_data)
+
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let
         archive toggles through as a plain save."""
         from Tracker.services.core.versioning import apply_versioned_update
+        note = (validated_data.pop('change_description', None) or '').strip()
         return apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
+            version_kwargs={'change_description': note or 'Edited from the life limit form'},
         )
 
 

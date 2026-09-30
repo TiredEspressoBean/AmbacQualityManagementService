@@ -344,6 +344,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ApprovalTemplates/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_ApprovalTemplates_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ApprovalTemplates/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -1485,6 +1502,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Companies/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_Companies_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Companies/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -2160,6 +2194,23 @@ export interface paths {
         head?: never;
         /** @description ViewSet for managing document types */
         patch: operations["api_DocumentTypes_partial_update"];
+        trace?: never;
+    };
+    "/api/DocumentTypes/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_DocumentTypes_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/DocumentTypes/export/{export_format}/": {
@@ -2968,6 +3019,23 @@ export interface paths {
         patch: operations["api_Equipment_types_partial_update"];
         trace?: never;
     };
+    "/api/Equipment-types/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_Equipment_types_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Equipment-types/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -3192,6 +3260,23 @@ export interface paths {
          *             serializer_class = OrderSerializer
          */
         patch: operations["api_Equipment_partial_update"];
+        trace?: never;
+    };
+    "/api/Equipment/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_Equipment_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/Equipment/export/{export_format}/": {
@@ -3488,6 +3573,23 @@ export interface paths {
          *             serializer_class = OrderSerializer
          */
         patch: operations["api_Error_types_partial_update"];
+        trace?: never;
+    };
+    "/api/Error-types/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_Error_types_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/Error-types/export/{export_format}/": {
@@ -4791,6 +4893,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/LifeLimitDefinitions/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_LifeLimitDefinitions_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/LifeLimitDefinitions/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -4868,6 +4987,23 @@ export interface paths {
         };
         /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
         get: operations["api_LifeLimitDefinitions_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_LifeLimitDefinitions_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5371,6 +5507,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/locations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every storage location already in use — on material lots and on equipment — sorted, for a location picker to suggest. Locations are free text; this is the list people have typed, not a managed table. */
+        get: operations["api_MaterialLots_locations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialUsages/": {
         parameters: {
             query?: never;
@@ -5757,6 +5910,23 @@ export interface paths {
         patch: operations["api_MeasurementDefinitions_partial_update"];
         trace?: never;
     };
+    "/api/MeasurementDefinitions/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_MeasurementDefinitions_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MeasurementDefinitions/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -5908,6 +6078,23 @@ export interface paths {
         put?: never;
         /** @description Create a new revision of a MilestoneTemplate. Returns the new version with incremented version number. Milestone children are copied to the new version. */
         post: operations["api_MilestoneTemplates_revisions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MilestoneTemplates/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_MilestoneTemplates_version_history_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7285,6 +7472,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/PartTypes/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_PartTypes_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/PartTypes/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -8556,6 +8760,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Processes_with_steps/{id}/draft-step/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The step row this draft edits for `step`: the same row when the draft already has it to itself, else one new copy for the draft (its measurements, sampling rules, training, machines, substeps and documents with it). Call before editing anything on a step of a draft, so the process's other versions keep theirs. Repeat calls return the draft's copy; they don't copy again. */
+        post: operations["api_Processes_with_steps_draft_step_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Processes_with_steps/{id}/duplicate/": {
         parameters: {
             query?: never;
@@ -9262,6 +9483,23 @@ export interface paths {
         patch: operations["api_RebuildScopePresets_partial_update"];
         trace?: never;
     };
+    "/api/RebuildScopePresets/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_RebuildScopePresets_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/RebuildSlotOverrides/": {
         parameters: {
             query?: never;
@@ -9336,6 +9574,23 @@ export interface paths {
         head?: never;
         /** @description Repair codes — what operations a finding adds to a rebuild. */
         patch: operations["api_RepairCodes_partial_update"];
+        trace?: never;
+    };
+    "/api/RepairCodes/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_RepairCodes_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/RepairCodes/export/{export_format}/": {
@@ -9615,6 +9870,23 @@ export interface paths {
          *             serializer_class = OrderSerializer
          */
         patch: operations["api_Sampling_rule_sets_partial_update"];
+        trace?: never;
+    };
+    "/api/Sampling-rule-sets/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_Sampling_rule_sets_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/Sampling-rule-sets/export/{export_format}/": {
@@ -10841,6 +11113,23 @@ export interface paths {
         patch: operations["api_Shifts_partial_update"];
         trace?: never;
     };
+    "/api/Shifts/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_Shifts_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Shifts/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -10918,6 +11207,23 @@ export interface paths {
         };
         /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
         get: operations["api_Shifts_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Shifts/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_Shifts_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12000,6 +12306,23 @@ export interface paths {
         put?: never;
         /** @description Update or create a sampling rule set for this step */
         post: operations["api_Steps_update_sampling_rules_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Steps/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_Steps_version_history_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -13269,6 +13592,23 @@ export interface paths {
         patch: operations["api_ThreeDModels_partial_update"];
         trace?: never;
     };
+    "/api/ThreeDModels/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_ThreeDModels_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ThreeDModels/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -13833,6 +14173,23 @@ export interface paths {
         head?: never;
         /** @description Partially update a training type */
         patch: operations["api_TrainingTypes_partial_update"];
+        trace?: never;
+    };
+    "/api/TrainingTypes/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_TrainingTypes_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/TrainingTypes/export/{export_format}/": {
@@ -14623,6 +14980,23 @@ export interface paths {
         head?: never;
         /** @description Work center management */
         patch: operations["api_WorkCenters_partial_update"];
+        trace?: never;
+    };
+    "/api/WorkCenters/{id}/version-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every revision of this row, oldest first. */
+        get: operations["api_WorkCenters_version_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/WorkCenters/export/{export_format}/": {
@@ -19199,7 +19573,7 @@ export interface components {
             content_type: number;
             readonly content_type_name: string;
             actor?: number | null;
-            readonly actor_info: Record<string, never> | null;
+            readonly actor_info: components["schemas"]["UserSelect"] | null;
             /** Remote address */
             remote_addr?: string | null;
             /** Format: date-time */
@@ -21433,6 +21807,15 @@ export interface components {
             work_order?: string | null;
             archived?: boolean;
         };
+        DraftStepRequestRequest: {
+            /** Format: uuid */
+            step: string;
+        };
+        DraftStepResponse: {
+            /** Format: uuid */
+            step: string;
+            copied: boolean;
+        };
         /**
          * @description * `red` - red
          *     * `orange` - orange
@@ -22083,6 +22466,7 @@ export interface components {
             /** @description Steps that require this resource. */
             steps?: string[];
             readonly step_names: string[];
+            archived?: boolean;
         };
         /**
          * @description * `FIXTURE` - Fixture
@@ -22117,6 +22501,7 @@ export interface components {
             lead_time_days?: number | null;
             /** @description Steps that require this resource. */
             steps?: string[];
+            archived?: boolean;
         };
         /**
          * @description * `PER_WORKORDER` - Per Work Order
@@ -22888,6 +23273,8 @@ export interface components {
              */
             hard_limit?: string | null;
             archived?: boolean;
+            /** @description Reason for this revision, recorded on the new version (AS9100D 8.3). */
+            change_description?: string;
         };
         /** @description Life tracking record serializer */
         LifeTracking: {
@@ -23593,6 +23980,8 @@ export interface components {
             /** @description Default template for new orders in this tenant */
             is_default?: boolean;
             archived?: boolean;
+            /** @description Reason for this revision, recorded on the new version. */
+            change_description?: string;
         };
         /**
          * @description * `saas` - saas
@@ -26915,6 +27304,7 @@ export interface components {
             lead_time_days?: number | null;
             /** @description Steps that require this resource. */
             steps?: string[];
+            archived?: boolean;
         };
         /** @description Harvested component serializer */
         PatchedHarvestedComponentRequest: {
@@ -27033,6 +27423,8 @@ export interface components {
              */
             hard_limit?: string | null;
             archived?: boolean;
+            /** @description Reason for this revision, recorded on the new version (AS9100D 8.3). */
+            change_description?: string;
         };
         /** @description Life tracking record serializer */
         PatchedLifeTrackingRequest: {
@@ -27206,6 +27598,8 @@ export interface components {
             /** @description Default template for new orders in this tenant */
             is_default?: boolean;
             archived?: boolean;
+            /** @description Reason for this revision, recorded on the new version. */
+            change_description?: string;
         };
         /**
          * @description The tenant's solver knobs — read + PATCH from the scheduling settings dialog.
@@ -28181,6 +28575,7 @@ export interface components {
              * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
              */
             cycle_time_override?: number | null;
+            archived?: boolean;
         };
         /** @description Serializer for step execution measurements. */
         PatchedStepExecutionMeasurementRequest: {
@@ -28328,6 +28723,7 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            archived?: boolean;
         };
         /**
          * @description Steps serializer - represents step node properties.
@@ -29048,6 +29444,7 @@ export interface components {
             to_step?: string;
             /** Format: double */
             changeover_minutes?: number;
+            archived?: boolean;
         };
         /**
          * @description Work center serializer with equipment list.
@@ -30710,6 +31107,8 @@ export interface components {
             quantity?: string | null;
             /** Format: date */
             received_date?: string | null;
+            /** @description Where it was put away. Omit to keep what the expected receipt recorded. */
+            storage_location?: string;
         };
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
@@ -32352,6 +32751,7 @@ export interface components {
              * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
              */
             cycle_time_override?: number | null;
+            archived?: boolean;
         };
         /** @description A machine that can run a step, how well, and optionally its own cycle time. */
         StepEquipmentAffinityRequest: {
@@ -32365,6 +32765,7 @@ export interface components {
              * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
              */
             cycle_time_override?: number | null;
+            archived?: boolean;
         };
         /**
          * @description Serializer for step execution tracking (workflow engine).
@@ -32781,6 +33182,15 @@ export interface components {
          * @enum {string}
          */
         StepOverrideStatusEnum: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+        /** @description A process version a step is part of. */
+        StepProcessRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            version: number;
+            status: string;
+            is_current_version: boolean;
+        };
         /** @description Step serializer - just the node properties (no process/order/branching) */
         StepRequest: {
             name: string;
@@ -32971,6 +33381,7 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            archived?: boolean;
         };
         /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
         StepTimingRecordRequest: {
@@ -33007,6 +33418,7 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            archived?: boolean;
         };
         /**
          * @description The step's time elements — what the scheduler and RCCP size everything from.
@@ -33222,6 +33634,7 @@ export interface components {
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             timing?: components["schemas"]["StepTiming"] | null;
+            readonly processes: components["schemas"]["StepProcessRef"][];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -35547,6 +35960,16 @@ export interface components {
         VerifyEmailRequest: {
             key: string;
         };
+        /** @description One revision of a versioned row. */
+        VersionSummary: {
+            id: string;
+            version: number;
+            is_current_version: boolean;
+            archived: boolean;
+            /** Format: date-time */
+            created_at: string;
+            readonly change_description: string | null;
+        };
         /**
          * @description * `VISIBLE` - VISIBLE
          *     * `INTERNAL` - INTERNAL
@@ -35644,6 +36067,7 @@ export interface components {
             readonly to_step_name: string;
             /** Format: double */
             changeover_minutes?: number;
+            archived?: boolean;
         };
         /** @description One cell of a machine's changeover matrix: minutes to go from one step to another. */
         WorkCenterChangeoverRequest: {
@@ -35655,6 +36079,7 @@ export interface components {
             to_step: string;
             /** Format: double */
             changeover_minutes?: number;
+            archived?: boolean;
         };
         /**
          * @description * `PRODUCTION` - Production
@@ -37099,6 +37524,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApprovalTemplate"];
+                };
+            };
+        };
+    };
+    api_ApprovalTemplates_version_history_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `ALL_REQUIRED` - All Required
+                 *     * `THRESHOLD` - Threshold
+                 *     * `ANY` - Any
+                 */
+                approval_flow_type?: "ALL_REQUIRED" | "ANY" | "THRESHOLD";
+                /**
+                 * @description * `PARALLEL` - Parallel
+                 *     * `SEQUENTIAL` - Sequential
+                 */
+                approval_sequence?: "PARALLEL" | "SEQUENTIAL";
+                /**
+                 * @description * `DOCUMENT_RELEASE` - Document Release
+                 *     * `CAPA_APPROVAL` - CAPA Approval
+                 *     * `CAPA_CRITICAL` - CAPA Critical
+                 *     * `CAPA_MAJOR` - CAPA Major
+                 *     * `ECO` - Engineering Change Order
+                 *     * `TRAINING_CERT` - Training Certification
+                 *     * `PROCESS_APPROVAL` - Process Approval
+                 *     * `PCR_APPROVAL` - Process Change Request Approval
+                 *     * `PCO_APPROVAL` - Process Change Order Approval
+                 *     * `PCN_RELEASE` - Process Change Notice Release
+                 *     * `PPAP` - PPAP
+                 *     * `FAI` - First Article (FAI / AS9102)
+                 */
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                /**
+                 * @description * `OPTIONAL` - Optional
+                 *     * `DISABLED` - Disabled
+                 */
+                delegation_policy?: "DISABLED" | "OPTIONAL";
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Approval Template. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
                 };
             };
         };
@@ -39914,6 +40397,34 @@ export interface operations {
             };
         };
     };
+    api_Companies_version_history_list: {
+        parameters: {
+            query?: {
+                name?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Company. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_Companies_export_retrieve: {
         parameters: {
             query?: {
@@ -41315,6 +41826,34 @@ export interface operations {
             };
         };
     };
+    api_DocumentTypes_version_history_list: {
+        parameters: {
+            query?: {
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                requires_approval?: boolean;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Document Type. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_DocumentTypes_export_retrieve: {
         parameters: {
             query?: {
@@ -42502,6 +43041,34 @@ export interface operations {
             };
         };
     };
+    api_Equipment_types_version_history_list: {
+        parameters: {
+            query?: {
+                name?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Equipment Type. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_Equipment_types_export_retrieve: {
         parameters: {
             query?: {
@@ -42774,6 +43341,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Equipments"];
+                };
+            };
+        };
+    };
+    api_Equipment_version_history_list: {
+        parameters: {
+            query?: {
+                equipment_type?: string;
+                location?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `IN_SERVICE` - In Service
+                 *     * `OUT_OF_SERVICE` - Out of Service
+                 *     * `IN_CALIBRATION` - In Calibration
+                 *     * `IN_MAINTENANCE` - In Maintenance
+                 *     * `RETIRED` - Retired
+                 */
+                status?: "IN_CALIBRATION" | "IN_MAINTENANCE" | "IN_SERVICE" | "OUT_OF_SERVICE" | "RETIRED";
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Equipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
                 };
             };
         };
@@ -43105,6 +43709,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityErrorsList"];
+                };
+            };
+        };
+    };
+    api_Error_types_version_history_list: {
+        parameters: {
+            query?: {
+                error_name?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this quality errors list. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
                 };
             };
         };
@@ -45873,6 +46506,34 @@ export interface operations {
             };
         };
     };
+    api_LifeLimitDefinitions_version_history_list: {
+        parameters: {
+            query?: {
+                is_calendar_based?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Limit Definition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_LifeLimitDefinitions_export_retrieve: {
         parameters: {
             query?: {
@@ -46027,6 +46688,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -46911,6 +47591,25 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_locations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
     api_MaterialUsages_list: {
         parameters: {
             query?: {
@@ -47450,6 +48149,37 @@ export interface operations {
             };
         };
     };
+    api_MeasurementDefinitions_version_history_list: {
+        parameters: {
+            query?: {
+                label?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                step?: string;
+                step__name?: string;
+                step__process?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this measurement definition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_MeasurementDefinitions_export_retrieve: {
         parameters: {
             query?: {
@@ -47797,6 +48527,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    api_MilestoneTemplates_version_history_list: {
+        parameters: {
+            query?: {
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Milestone Template. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
             };
         };
     };
@@ -50377,6 +51132,38 @@ export interface operations {
             };
         };
     };
+    api_PartTypes_version_history_list: {
+        parameters: {
+            query?: {
+                name?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description Filter processes by associated part type UUID */
+                part_type?: string;
+                requires_part_approval?: boolean;
+                requires_supplier_qualification?: boolean;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Type. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_PartTypes_export_retrieve: {
         parameters: {
             query?: {
@@ -52214,6 +53001,34 @@ export interface operations {
             };
         };
     };
+    api_Processes_with_steps_draft_step_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftStepRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DraftStepRequestRequest"];
+                "multipart/form-data": components["schemas"]["DraftStepRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftStepResponse"];
+                };
+            };
+        };
+    };
     api_Processes_with_steps_duplicate_create: {
         parameters: {
             query?: never;
@@ -53274,6 +54089,35 @@ export interface operations {
             };
         };
     };
+    api_RebuildScopePresets_version_history_list: {
+        parameters: {
+            query?: {
+                core_type?: string;
+                is_default?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Rebuild Scope Preset. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_RebuildSlotOverrides_list: {
         parameters: {
             query?: {
@@ -53599,6 +54443,45 @@ export interface operations {
             };
         };
     };
+    api_RepairCodes_version_history_list: {
+        parameters: {
+            query?: {
+                component_type?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+                 *
+                 *     * `RECONDITION` - When the recovered component needs work before it goes back
+                 *     * `REPLACE_POOL` - When the slot is filled from recovered stock
+                 *     * `REPLACE_BUY` - When the slot is filled by a purchase
+                 *     * `REUSE` - When the recovered component goes back as-is
+                 *     * `ALWAYS` - Always — part of the base scope, whatever the finding
+                 *     * `PRESET` - Only when a rebuild level includes it
+                 */
+                trigger?: "ALWAYS" | "PRESET" | "RECONDITION" | "REPLACE_BUY" | "REPLACE_POOL" | "REUSE";
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Repair Code. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_RepairCodes_export_retrieve: {
         parameters: {
             query?: {
@@ -53910,6 +54793,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SamplingRuleSet"];
+                };
+            };
+        };
+    };
+    api_Sampling_rule_sets_version_history_list: {
+        parameters: {
+            query?: {
+                active?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                process?: string;
+                /** @description A search term. */
+                search?: string;
+                step?: string;
+                version?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this sampling rule set. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
                 };
             };
         };
@@ -55936,6 +56851,32 @@ export interface operations {
             };
         };
     };
+    api_Shifts_version_history_list: {
+        parameters: {
+            query?: {
+                is_active?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Shift. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_Shifts_export_retrieve: {
         parameters: {
             query?: {
@@ -56090,6 +57031,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_Shifts_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -57861,6 +58821,7 @@ export interface operations {
     api_Steps_list: {
         parameters: {
             query?: {
+                is_current_version?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -58146,6 +59107,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Steps"];
+                };
+            };
+        };
+    };
+    api_Steps_version_history_list: {
+        parameters: {
+            query?: {
+                is_current_version?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description Filter steps by process's part type UUID */
+                part_type?: string;
+                /** @description Filter steps by process UUID (via ProcessStep) */
+                process?: string;
+                process_memberships__process?: string;
+                process_memberships__process__part_type?: string;
+                /** @description A search term. */
+                search?: string;
+                /** @description True = steps not attached to any process (e.g. purchased-material RIPs). */
+                standalone?: boolean;
+                /**
+                 * @description Visual type for flow editor.
+                 *
+                 *     * `TASK` - Task
+                 *     * `START` - Start
+                 *     * `DECISION` - Decision
+                 *     * `REWORK` - Rework
+                 *     * `TIMER` - Timer/Wait
+                 *     * `TERMINAL` - Terminal
+                 *     * `RECEIVING` - Receiving Inspection
+                 */
+                step_type?: "DECISION" | "RECEIVING" | "REWORK" | "START" | "TASK" | "TERMINAL" | "TIMER";
+                work_center?: string;
+                work_center__isnull?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
                 };
             };
         };
@@ -60701,6 +61712,40 @@ export interface operations {
             };
         };
     };
+    api_ThreeDModels_version_history_list: {
+        parameters: {
+            query?: {
+                file_type?: string;
+                file_type__icontains?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /** @description A search term. */
+                search?: string;
+                step?: string;
+                uploaded_at?: string;
+                uploaded_at__gte?: string;
+                uploaded_at__lte?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this 3D Model. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+        };
+    };
     api_ThreeDModels_export_retrieve: {
         parameters: {
             query?: {
@@ -62041,6 +63086,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrainingType"];
+                };
+            };
+        };
+    };
+    api_TrainingTypes_version_history_list: {
+        parameters: {
+            query?: {
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                validity_period_days?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Training Type. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
                 };
             };
         };
@@ -63576,6 +64649,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkCenter"];
+                };
+            };
+        };
+    };
+    api_WorkCenters_version_history_list: {
+        parameters: {
+            query?: {
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Center. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
                 };
             };
         };

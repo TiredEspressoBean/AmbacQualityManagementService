@@ -895,26 +895,18 @@ class Steps(SecureModel):
 
     @property
     def is_editable(self) -> bool:
-        """A Step (and its Substeps, measurements, etc.) is editable when at
-        least one consuming Process is in DRAFT, OR the Step has no
-        consumers yet.
+        """A Step's content (substeps, measurements, sampling, training) is
+        editable when every process using the row is a DRAFT, or none uses it.
 
-        Loosened from the original "every consumer must be DRAFT" rule
-        because Steps are shared across Process versions by design
-        (lightweight versioning copies edges, not nodes). With shared Steps,
-        the strict semantic blocks edits any time an APPROVED version
-        exists alongside a DRAFT one — which is the normal versioning
-        workflow, not a violation. Authoring means "at least one DRAFT
-        consumer exists"; the guard fires that.
-
-        The change-control flow (PCR / PCO / PCN) remains the right path
-        for edits that need formal approval review — this guard just stops
-        being the wrong gate.
+        Steps are shared across process versions by design, so a row an
+        approved version uses is that version's record and stays as it is. A
+        draft edits its own copy instead: `services.mes.steps.step_for_draft`
+        makes one the first time the draft touches a shared step, and returns
+        it after that. (This was "any consumer is a DRAFT" while no such copy
+        existed — which let a draft's edits change the approved version too.)
         """
-        memberships = self.process_memberships.all()
-        if not memberships.exists():
-            return True
-        return any(m.process.status == ProcessStatus.DRAFT for m in memberships)
+        memberships = self.process_memberships.select_related('process')
+        return all(m.process.status == ProcessStatus.DRAFT for m in memberships)
 
     def get_resolved_sampling_rules(self, supplier=_SAMPLING_SUPPLIER_UNSET):
         """Get complete resolved sampling rules for this step.

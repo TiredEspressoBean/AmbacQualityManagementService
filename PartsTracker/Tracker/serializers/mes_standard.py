@@ -358,6 +358,9 @@ class ReceiveExpectedLotSerializer(serializers.Serializer):
         help_text="Quantity actually delivered, when it differs from what was ordered. "
                   "Omit to keep the ordered quantity.")
     received_date = serializers.DateField(required=False, allow_null=True)
+    storage_location = serializers.CharField(
+        required=False, allow_blank=True, max_length=100,
+        help_text="Where it was put away. Omit to keep what the expected receipt recorded.")
 
 
 class ExtendShelfLifeSerializer(serializers.Serializer):

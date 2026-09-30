@@ -51,7 +51,7 @@ from Tracker.services.core.clock import tenant_today
 from .base import TenantScopedMixin
 from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from .core import ListMetadataMixin
-from .mixins import CSVImportMixin, DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin, VersionHistoryMixin
 
 
 # ===== WORK CENTER VIEWSETS =====
@@ -82,7 +82,7 @@ class _WorkCenterImport(BaseCSVImportSerializer):
         )
 
 
-class WorkCenterViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+class WorkCenterViewSet(VersionHistoryMixin, TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """Work center management"""
     queryset = WorkCenter.unscoped.all()
     serializer_class = WorkCenterSerializer
@@ -365,7 +365,7 @@ class _ShiftImport(BaseCSVImportSerializer):
         return result
 
 
-class ShiftViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+class ShiftViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """Shift definition management.
 
     `Shift` is a versioned model (`_is_versioned=True`, for DCAS labor audits), so
@@ -631,6 +631,28 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         return Response(MaterialLotSerializer(lot, context={'request': request}).data,
                         status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        description=(
+            "Every storage location already in use — on material lots and on equipment — "
+            "sorted, for a location picker to suggest. Locations are free text; this is "
+            "the list people have typed, not a managed table."
+        ),
+        responses={200: {"type": "array", "items": {"type": "string"}}},
+    )
+    @action(detail=False, methods=['get'], pagination_class=None)
+    def locations(self, request):
+        from Tracker.models import Equipments
+        lots = (self.get_queryset().exclude(storage_location='')
+                .values_list('storage_location', flat=True))
+        # tenant-safe: SecureManager scopes Equipments to the request's tenant.
+        machines = Equipments.objects.exclude(location='').values_list('location', flat=True)
+        seen = {}
+        for raw in [*lots, *machines]:
+            name = (raw or '').strip()
+            if name:
+                seen.setdefault(name.casefold(), name)  # one spelling per case-insensitive name
+        return Response(sorted(seen.values(), key=str.casefold))
+
     @extend_schema(request=ReceiveExpectedLotSerializer, responses={200: MaterialLotSerializer})
     @action(detail=True, methods=['post'], url_path='receive')
     def receive(self, request, pk=None):
@@ -647,6 +669,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                 received_by=request.user,
                 received_date=ser.validated_data.get('received_date'),
                 quantity=ser.validated_data.get('quantity'),
+                storage_location=ser.validated_data.get('storage_location'),
             )
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

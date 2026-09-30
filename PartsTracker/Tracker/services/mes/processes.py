@@ -547,15 +547,17 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                 return cur != v
 
             diffed = {k: v for k, v in node.items() if _changed(k, v)}
-            if diffed:
+            timing_changed = timing is not _UNSET and _timing_differs(step, timing)
+            note = f"Process editor save for {instance.name} v{instance.version}"
+            if str(node_id) in existing_process_steps and (diffed or timing_changed):
+                # The draft's own row: copied once if another process shares it,
+                # edited in place after that — not a new version per save.
+                from Tracker.services.mes.steps import step_for_draft
+                step = step_for_draft(step, instance, user=user, change_description=note, **diffed)
+            elif diffed:
+                # A step brought in from elsewhere: version it for this process.
                 step = create_new_step_version(
-                    step,
-                    user=user,
-                    change_description=(
-                        f"Process editor save for {instance.name} v{instance.version}"
-                    ),
-                    process=instance,
-                    **diffed,
+                    step, user=user, change_description=note, process=instance, **diffed,
                 )
 
             if str(node_id) in existing_process_steps:
@@ -632,6 +634,27 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
     instance.step_edges.all().delete()
     _build_edges(instance, edges_data, temp_id_map, preserved=preserved)
     return instance
+
+
+def _timing_differs(step, data) -> bool:
+    """Whether saving `data` would change the step's timing. The editor sends every
+    node's timing on every save; only a real change should cost the draft a copy."""
+    from Tracker.models.scheduling import StepTiming
+    # tenant-safe: the one-to-one of an in-tenant step.
+    current = StepTiming.objects.filter(step=step, archived=False).first()
+    if data is None:
+        return current is not None
+    fields = ('setup_minutes', 'cycle_time_minutes', 'load_unload_per_piece',
+              'attention_type', 'external_setup_minutes')
+    if current is None:
+        return any(k in data for k in fields)
+    def same(k):
+        a, b = getattr(current, k), data[k]
+        try:
+            return float(a) == float(b)
+        except (TypeError, ValueError):
+            return a == b
+    return any(k in data and not same(k) for k in fields)
 
 
 def _apply_step_timing(step, data):

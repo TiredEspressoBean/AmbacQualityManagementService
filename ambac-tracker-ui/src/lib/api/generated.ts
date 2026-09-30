@@ -531,7 +531,7 @@ export type AuditLog = {
   content_type: number;
   content_type_name: string;
   actor?: (number | null) | undefined;
-  actor_info: {};
+  actor_info: UserSelect;
   remote_addr?: (string | null) | undefined;
   timestamp: string;
   /**
@@ -2842,6 +2842,7 @@ export type Fixture = {
    */
   Array<string> | undefined;
   step_names: Array<string>;
+  archived?: boolean | undefined;
 };
 export type FixtureKindEnum =
   /**
@@ -2890,6 +2891,7 @@ export type FixtureRequest = {
    * Steps that require this resource.
    */
   Array<string> | undefined;
+  archived?: boolean | undefined;
 };
 export type GeneratedReport = {
   id: string;
@@ -8280,6 +8282,7 @@ export type StepEquipmentAffinity = {
      */
     (number | null)
     | undefined;
+  archived?: boolean | undefined;
 };
 export type AffinityEnum =
   /**
@@ -8710,6 +8713,7 @@ export type StepTimingRecord = {
    * @minimum 0
    */
   number | undefined;
+  archived?: boolean | undefined;
 };
 export type AttentionTypeEnum =
   /**
@@ -8856,6 +8860,7 @@ export type Steps = {
     (LaborModelEnum | BlankEnum | NullEnum | null)
     | undefined;
   timing?: StepTiming | undefined;
+  processes: Array<StepProcessRef>;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -8896,6 +8901,13 @@ export type StepTiming = Partial<{
    */
   external_setup_minutes: number;
 }>;
+export type StepProcessRef = {
+  id: string;
+  name: string;
+  version: number;
+  status: string;
+  is_current_version: boolean;
+};
 export type PaginatedSubstepCompletionList = {
   /**
    * @example 123
@@ -10422,6 +10434,7 @@ export type WorkCenterChangeover = {
    * @minimum 0
    */
   number | undefined;
+  archived?: boolean | undefined;
 };
 export type PaginatedWorkCenterList = {
   /**
@@ -11478,6 +11491,7 @@ export type PatchedFixtureRequest = Partial<{
    * Steps that require this resource.
    */
   steps: Array<string>;
+  archived: boolean;
 }>;
 export type PatchedHarvestedComponentRequest = Partial<{
   core: string;
@@ -12708,6 +12722,7 @@ export type PatchedStepEquipmentAffinityRequest = Partial<{
    * @minimum 0
    */
   cycle_time_override: number | null;
+  archived: boolean;
 }>;
 export type PatchedStepExecutionRequest = Partial<{
   /**
@@ -12832,6 +12847,7 @@ export type PatchedStepTimingRecordRequest = Partial<{
    * @minimum 0
    */
   external_setup_minutes: number;
+  archived: boolean;
 }>;
 export type PatchedStepsRequest = Partial<{
   /**
@@ -15124,6 +15140,7 @@ export type StepEquipmentAffinityRequest = {
      */
     (number | null)
     | undefined;
+  archived?: boolean | undefined;
 };
 export type StepExecutionCreateRequest = {
   part?:
@@ -15461,6 +15478,7 @@ export type StepTimingRecordRequest = {
    * @minimum 0
    */
   number | undefined;
+  archived?: boolean | undefined;
 };
 export type StepsRequest = {
   /**
@@ -16929,6 +16947,14 @@ const PatchedApprovalTemplateRequest = z
   .partial();
 const ApprovalTemplateActivateResponse = z.object({ status: z.string() });
 const ApprovalTemplateDeactivateResponse = z.object({ status: z.string() });
+const VersionSummary = z.object({
+  id: z.string(),
+  version: z.number().int(),
+  is_current_version: z.boolean(),
+  archived: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  change_description: z.string().nullable(),
+});
 const AssemblyUsage = z.object({
   id: z.string().uuid(),
   assembly: z.string().uuid().nullish(),
@@ -18727,6 +18753,7 @@ const Fixture = z.object({
   lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   steps: z.array(z.string().uuid()).optional(),
   step_names: z.array(z.string()),
+  archived: z.boolean().optional(),
 });
 const PaginatedFixtureList = z.object({
   count: z.number().int(),
@@ -18740,6 +18767,7 @@ const FixtureRequest = z.object({
   quantity: z.number().int().gte(0).lte(2147483647).optional(),
   lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   steps: z.array(z.string().uuid()).optional(),
+  archived: z.boolean().optional(),
 });
 const PatchedFixtureRequest = z
   .object({
@@ -18748,6 +18776,7 @@ const PatchedFixtureRequest = z
     quantity: z.number().int().gte(0).lte(2147483647),
     lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
     steps: z.array(z.string().uuid()),
+    archived: z.boolean(),
   })
   .partial();
 const HarvestedComponentRequest = z.object({
@@ -19044,6 +19073,7 @@ const LifeLimitDefinitionRequest = z.object({
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
     .nullish(),
   archived: z.boolean().optional(),
+  change_description: z.string().optional(),
 });
 const PatchedLifeLimitDefinitionRequest = z
   .object({
@@ -19060,6 +19090,7 @@ const PatchedLifeLimitDefinitionRequest = z
       .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
       .nullable(),
     archived: z.boolean(),
+    change_description: z.string(),
   })
   .partial();
 const LifeTrackingList = z.object({
@@ -19397,6 +19428,7 @@ const ReceiveExpectedLotRequest = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
   received_date: z.string().nullish(),
+  storage_location: z.string().max(100).optional(),
 });
 const RecordBulkRequestRequest = z.object({
   defectives_found: z.number().int().gte(0),
@@ -19682,6 +19714,7 @@ const MilestoneTemplateRequest = z.object({
   description: z.string().optional(),
   is_default: z.boolean().optional(),
   archived: z.boolean().optional(),
+  change_description: z.string().optional(),
 });
 const PatchedMilestoneTemplateRequest = z
   .object({
@@ -19689,6 +19722,7 @@ const PatchedMilestoneTemplateRequest = z
     description: z.string(),
     is_default: z.boolean(),
     archived: z.boolean(),
+    change_description: z.string(),
   })
   .partial();
 const CreateMilestoneTemplateRevisionInputRequest = z.object({
@@ -20803,6 +20837,11 @@ const PatchedProcessWithStepsRequest = z
     change_description: z.string().nullable(),
   })
   .partial();
+const DraftStepRequestRequest = z.object({ step: z.string().uuid() });
+const DraftStepResponse = z.object({
+  step: z.string().uuid(),
+  copied: z.boolean(),
+});
 const DuplicateProcessRequestRequest = z
   .object({ name_suffix: z.string().min(1).default(" (Copy)") })
   .partial();
@@ -22024,6 +22063,7 @@ const StepEquipmentAffinity = z.object({
   equipment_name: z.string(),
   affinity: AffinityEnum.optional(),
   cycle_time_override: z.number().gte(0).nullish(),
+  archived: z.boolean().optional(),
 });
 const PaginatedStepEquipmentAffinityList = z.object({
   count: z.number().int(),
@@ -22036,6 +22076,7 @@ const StepEquipmentAffinityRequest = z.object({
   equipment: z.string().uuid(),
   affinity: AffinityEnum.optional(),
   cycle_time_override: z.number().gte(0).nullish(),
+  archived: z.boolean().optional(),
 });
 const PatchedStepEquipmentAffinityRequest = z
   .object({
@@ -22043,6 +22084,7 @@ const PatchedStepEquipmentAffinityRequest = z
     equipment: z.string().uuid(),
     affinity: AffinityEnum,
     cycle_time_override: z.number().gte(0).nullable(),
+    archived: z.boolean(),
   })
   .partial();
 const StepExecutionMeasurement = z.object({
@@ -22340,6 +22382,7 @@ const StepTimingRecord = z.object({
   load_unload_per_piece: z.number().gte(0).optional(),
   attention_type: AttentionTypeEnum.optional(),
   external_setup_minutes: z.number().gte(0).optional(),
+  archived: z.boolean().optional(),
 });
 const PaginatedStepTimingRecordList = z.object({
   count: z.number().int(),
@@ -22354,6 +22397,7 @@ const StepTimingRecordRequest = z.object({
   load_unload_per_piece: z.number().gte(0).optional(),
   attention_type: AttentionTypeEnum.optional(),
   external_setup_minutes: z.number().gte(0).optional(),
+  archived: z.boolean().optional(),
 });
 const PatchedStepTimingRecordRequest = z
   .object({
@@ -22363,6 +22407,7 @@ const PatchedStepTimingRecordRequest = z
     load_unload_per_piece: z.number().gte(0),
     attention_type: AttentionTypeEnum,
     external_setup_minutes: z.number().gte(0),
+    archived: z.boolean(),
   })
   .partial();
 const StepTiming = z
@@ -22374,6 +22419,13 @@ const StepTiming = z
     external_setup_minutes: z.number().gte(0),
   })
   .partial();
+const StepProcessRef = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  version: z.number().int(),
+  status: z.string(),
+  is_current_version: z.boolean(),
+});
 const Steps = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -22416,6 +22468,7 @@ const Steps = z.object({
     .nullish(),
   labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
   timing: StepTiming.nullish(),
+  processes: z.array(StepProcessRef),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -23936,6 +23989,7 @@ const WorkCenterChangeover = z.object({
   to_step: z.string().uuid(),
   to_step_name: z.string(),
   changeover_minutes: z.number().gte(0).optional(),
+  archived: z.boolean().optional(),
 });
 const PaginatedWorkCenterChangeoverList = z.object({
   count: z.number().int(),
@@ -23948,6 +24002,7 @@ const WorkCenterChangeoverRequest = z.object({
   from_step: z.string().uuid(),
   to_step: z.string().uuid(),
   changeover_minutes: z.number().gte(0).optional(),
+  archived: z.boolean().optional(),
 });
 const PatchedWorkCenterChangeoverRequest = z
   .object({
@@ -23955,6 +24010,7 @@ const PatchedWorkCenterChangeoverRequest = z
     from_step: z.string().uuid(),
     to_step: z.string().uuid(),
     changeover_minutes: z.number().gte(0),
+    archived: z.boolean(),
   })
   .partial();
 const WorkCenterKindEnum = z.enum([
@@ -24466,7 +24522,7 @@ const AuditLog = z.object({
   content_type: z.number().int(),
   content_type_name: z.string(),
   actor: z.number().int().nullish(),
-  actor_info: z.object({}).partial().nullable(),
+  actor_info: UserSelect.nullable(),
   remote_addr: z.string().nullish(),
   timestamp: z.string().datetime({ offset: true }),
   action: ActionEnum,
@@ -26037,6 +26093,7 @@ export const schemas = {
   PatchedApprovalTemplateRequest,
   ApprovalTemplateActivateResponse,
   ApprovalTemplateDeactivateResponse,
+  VersionSummary,
   AssemblyUsage,
   PaginatedAssemblyUsageList,
   AssemblyUsageRequest,
@@ -26442,6 +26499,8 @@ export const schemas = {
   PaginatedProcessWithStepsList,
   ProcessWithStepsRequest,
   PatchedProcessWithStepsRequest,
+  DraftStepRequestRequest,
+  DraftStepResponse,
   DuplicateProcessRequestRequest,
   SubmitProcessForApprovalRequestRequest,
   SubmitProcessForApprovalResponse,
@@ -26600,6 +26659,7 @@ export const schemas = {
   StepTimingRecordRequest,
   PatchedStepTimingRecordRequest,
   StepTiming,
+  StepProcessRef,
   Steps,
   PaginatedStepsList,
   StepTimingRequest,
@@ -28009,6 +28069,66 @@ identity verification, and delegation support.`,
       },
     ],
     response: ApprovalTemplate,
+  },
+  {
+    method: "get",
+    path: "/api/ApprovalTemplates/:id/version-history/",
+    alias: "api_ApprovalTemplates_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "approval_flow_type",
+        type: "Query",
+        schema: z.enum(["ALL_REQUIRED", "ANY", "THRESHOLD"]).optional(),
+      },
+      {
+        name: "approval_sequence",
+        type: "Query",
+        schema: z.enum(["PARALLEL", "SEQUENTIAL"]).optional(),
+      },
+      {
+        name: "approval_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "CAPA_APPROVAL",
+            "CAPA_CRITICAL",
+            "CAPA_MAJOR",
+            "DOCUMENT_RELEASE",
+            "ECO",
+            "FAI",
+            "PCN_RELEASE",
+            "PCO_APPROVAL",
+            "PCR_APPROVAL",
+            "PPAP",
+            "PROCESS_APPROVAL",
+            "TRAINING_CERT",
+          ])
+          .optional(),
+      },
+      {
+        name: "delegation_policy",
+        type: "Query",
+        schema: z.enum(["DISABLED", "OPTIONAL"]).optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "get",
@@ -30444,6 +30564,36 @@ Provides list, create, retrieve, update, and delete operations.`,
   },
   {
     method: "get",
+    path: "/api/Companies/:id/version-history/",
+    alias: "api_Companies_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/Companies/export/:export_format/",
     alias: "api_Companies_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -31846,7 +31996,10 @@ Response:
       },
     ],
     response: OpenDispositionsResponse,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/dashboard/quality-rates/",
@@ -31932,10 +32085,7 @@ Response:
       },
     ],
     response: RepeatDefectsResponse,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/DisassemblyBOMLines/",
@@ -32771,6 +32921,36 @@ Returns documents where review_date &lt;&#x3D; today.`,
   },
   {
     method: "get",
+    path: "/api/DocumentTypes/:id/version-history/",
+    alias: "api_DocumentTypes_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "requires_approval",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/DocumentTypes/export/:export_format/",
     alias: "api_DocumentTypes_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -33388,6 +33568,36 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/Equipment-types/:id/version-history/",
+    alias: "api_Equipment_types_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/Equipment-types/export/:export_format/",
     alias: "api_Equipment_types_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -33780,6 +33990,54 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/Equipment/:id/version-history/",
+    alias: "api_Equipment_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "equipment_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "location",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "IN_CALIBRATION",
+            "IN_MAINTENANCE",
+            "IN_SERVICE",
+            "OUT_OF_SERVICE",
+            "RETIRED",
+          ])
+          .optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/Equipment/export/:export_format/",
     alias: "api_Equipment_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -34156,6 +34414,41 @@ Usage:
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Error-types/:id/version-history/",
+    alias: "api_Error_types_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "error_name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "get",
@@ -36623,6 +36916,36 @@ the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).
   },
   {
     method: "get",
+    path: "/api/LifeLimitDefinitions/:id/version-history/",
+    alias: "api_LifeLimitDefinitions_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "is_calendar_based",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/LifeLimitDefinitions/export/:export_format/",
     alias: "api_LifeLimitDefinitions_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -36671,7 +36994,10 @@ the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/LifeLimitDefinitions/import-status/:task_id/",
@@ -36722,6 +37048,14 @@ the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).
         schema: z.unknown(),
       },
     ],
+  },
+  {
+    method: "get",
+    path: "/api/LifeLimitDefinitions/metadata/",
+    alias: "api_LifeLimitDefinitions_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -36829,10 +37163,7 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
       },
     ],
     response: LifeTracking,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "put",
     path: "/api/LifeTracking/:id/",
@@ -37417,6 +37748,14 @@ so the lot lands ON_ORDER with a generated placeholder lot number.`,
   },
   {
     method: "get",
+    path: "/api/MaterialLots/locations/",
+    alias: "api_MaterialLots_locations_retrieve",
+    description: `Every storage location already in use — on material lots and on equipment — sorted, for a location picker to suggest. Locations are free text; this is the list people have typed, not a managed table.`,
+    requestFormat: "json",
+    response: z.array(z.string()),
+  },
+  {
+    method: "get",
     path: "/api/Materials/",
     alias: "api_Materials_list",
     description: `Purchased items — raw materials / bought components (O-rings, seals, fasteners).
@@ -37997,6 +38336,51 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/MeasurementDefinitions/:id/version-history/",
+    alias: "api_MeasurementDefinitions_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "label",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step__process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/MeasurementDefinitions/export/:export_format/",
     alias: "api_MeasurementDefinitions_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -38432,6 +38816,26 @@ import/export, one sheet of milestones.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/MilestoneTemplates/:id/version-history/",
+    alias: "api_MilestoneTemplates_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "get",
@@ -41048,7 +41452,10 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/PartApprovals/:id/suspend/",
@@ -41380,10 +41787,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Parts/:id/complete_step/",
@@ -42415,6 +42819,51 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PartTypeQualitySummary,
+  },
+  {
+    method: "get",
+    path: "/api/PartTypes/:id/version-history/",
+    alias: "api_PartTypes_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "requires_part_approval",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "requires_supplier_qualification",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "get",
@@ -44072,6 +44521,26 @@ Usage:
   },
   {
     method: "post",
+    path: "/api/Processes_with_steps/:id/draft-step/",
+    alias: "api_Processes_with_steps_draft_step_create",
+    description: `The step row this draft edits for &#x60;step&#x60;: the same row when the draft already has it to itself, else one new copy for the draft (its measurements, sampling rules, training, machines, substeps and documents with it). Call before editing anything on a step of a draft, so the process&#x27;s other versions keep theirs. Repeat calls return the draft&#x27;s copy; they don&#x27;t copy again.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ step: z.string().uuid() }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: DraftStepResponse,
+  },
+  {
+    method: "post",
     path: "/api/Processes_with_steps/:id/duplicate/",
     alias: "api_Processes_with_steps_duplicate_create",
     description: `Create a copy of this process for customization. The copy starts as DRAFT.`,
@@ -45592,6 +46061,41 @@ the completion blockers.`,
   },
   {
     method: "get",
+    path: "/api/RebuildScopePresets/:id/version-history/",
+    alias: "api_RebuildScopePresets_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "core_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "is_default",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/RebuildSlotOverrides/",
     alias: "api_RebuildSlotOverrides_list",
     description: `Planner decisions that differ from the proposed rebuild plan.`,
@@ -45850,6 +46354,50 @@ the completion blockers.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/RepairCodes/:id/version-history/",
+    alias: "api_RepairCodes_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "component_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "trigger",
+        type: "Query",
+        schema: z
+          .enum([
+            "ALWAYS",
+            "PRESET",
+            "RECONDITION",
+            "REPLACE_BUY",
+            "REPLACE_POOL",
+            "REUSE",
+          ])
+          .optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "get",
@@ -46300,6 +46848,56 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/Sampling-rule-sets/:id/version-history/",
+    alias: "api_Sampling_rule_sets_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "version",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/Sampling-rule-sets/export/:export_format/",
     alias: "api_Sampling_rule_sets_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -46553,7 +47151,10 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/Sampling-rules/import/",
@@ -46967,10 +47568,7 @@ marks the schedule stale; the next Solve forms/optimizes the batch.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/ScheduledTasks/bulk-reassign-machine/",
@@ -48046,6 +48644,31 @@ to current versions. Delete is the SecureModel soft-delete (archive).`,
   },
   {
     method: "get",
+    path: "/api/Shifts/:id/version-history/",
+    alias: "api_Shifts_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/Shifts/export/:export_format/",
     alias: "api_Shifts_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -48145,6 +48768,14 @@ to current versions. Delete is the SecureModel soft-delete (archive).`,
         schema: z.unknown(),
       },
     ],
+  },
+  {
+    method: "get",
+    path: "/api/Shifts/metadata/",
+    alias: "api_Shifts_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -50113,6 +50744,11 @@ Usage:
     requestFormat: "json",
     parameters: [
       {
+        name: "is_current_version",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -50525,6 +51161,86 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: Steps,
+  },
+  {
+    method: "get",
+    path: "/api/Steps/:id/version-history/",
+    alias: "api_Steps_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "is_current_version",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process_memberships__process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "process_memberships__process__part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "standalone",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "DECISION",
+            "RECEIVING",
+            "REWORK",
+            "START",
+            "TASK",
+            "TERMINAL",
+            "TIMER",
+          ])
+          .optional(),
+      },
+      {
+        name: "work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "post",
@@ -51897,7 +52613,10 @@ transaction every time.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/SupplierQualifications/",
@@ -52329,10 +53048,7 @@ Allows tenant admins to:
       },
     ],
     response: PaginatedTenantGroupList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TenantGroups/",
@@ -53243,6 +53959,66 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/ThreeDModels/:id/version-history/",
+    alias: "api_ThreeDModels_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "file_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "file_type__icontains",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "uploaded_at",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "uploaded_at__gte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "uploaded_at__lte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "get",
@@ -54450,6 +55226,36 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/TrainingTypes/:id/version-history/",
+    alias: "api_TrainingTypes_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "validity_period_days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
   },
   {
     method: "get",
@@ -55742,6 +56548,31 @@ old version. Archived ones are excluded outright, not left to &#x60;?include_arc
   },
   {
     method: "get",
+    path: "/api/WorkCenters/:id/version-history/",
+    alias: "api_WorkCenters_version_history_list",
+    description: `Every revision of this row, oldest first.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(VersionSummary),
+  },
+  {
+    method: "get",
     path: "/api/WorkCenters/export/:export_format/",
     alias: "api_WorkCenters_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
@@ -56381,7 +57212,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrderSplitResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/WorkOrders/:id/step_history/",
@@ -56785,10 +57619,7 @@ Accepts the following POST parameters: username, email, password1, password2.`,
       },
     ],
     response: Register,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/auth/registration/resend-email/",

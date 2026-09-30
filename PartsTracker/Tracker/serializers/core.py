@@ -614,7 +614,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'timestamp', 'action', 'changes')
         read_only_fields = ('id', 'timestamp', 'content_type_name', 'actor_info')
 
-    @extend_schema_field({"type": "object", "nullable": True})
+    # Declared as a bare object, the generated client parsed it to `{}` — every key
+    # stripped — so the audit log, Recent changes and record history all read the
+    # author as "System". It is the user's select shape.
+    @extend_schema_field(UserSelectSerializer(allow_null=True))
     def get_actor_info(self, obj):
         if obj.actor:
             return UserSelectSerializer(obj.actor).data

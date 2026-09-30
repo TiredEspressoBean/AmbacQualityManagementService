@@ -139,7 +139,7 @@ def record_expected_receipt(*, tenant, material, quantity: Decimal, promised_dat
 
 
 def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=None,
-                         quantity: Decimal | None = None):
+                         quantity: Decimal | None = None, storage_location: str | None = None):
     """ON_ORDER → RECEIVED: the truck arrived. Stamps the supplier's real lot number,
     who took it in, and when.
 
@@ -173,13 +173,15 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
 
         locked.lot_number = lot_number
         locked.received_by = received_by
+        if storage_location is not None:
+            locked.storage_location = storage_location.strip()
         # The shop floor's day (Tenant.default_timezone), not UTC's: a receipt at 8 pm
         # in a UTC-5 plant was dated tomorrow.
         from Tracker.services.core.clock import tenant_today
         locked.received_date = received_date or tenant_today(locked.tenant)
         locked.save(update_fields=[
             "lot_number", "received_by", "received_date",
-            "quantity", "quantity_remaining", "updated_at",
+            "quantity", "quantity_remaining", "storage_location", "updated_at",
         ])
         # Status flip goes through the stock-state seam so the ledger swap stays contained.
         inventory.mark_expected_lot_received(locked)

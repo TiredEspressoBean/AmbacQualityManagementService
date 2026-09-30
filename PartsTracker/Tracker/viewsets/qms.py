@@ -42,7 +42,7 @@ from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSer
 from Tracker.serializers.core import ApprovalRequestSerializer
 from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .core import ListMetadataMixin
-from .mixins import CSVImportMixin, DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin, VersionHistoryMixin
 from .base import TenantScopedMixin
 from Tracker.services.core.clock import tenant_today
 from .mixins import SecondPersonMixin
@@ -77,7 +77,7 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin
         ).prefetch_related('operators', 'errors', 'equipment_links__equipment')
 
 
-class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+class ErrorTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                        viewsets.ModelViewSet):
     queryset = QualityErrorsList.unscoped.all()
     serializer_class = QualityErrorsListSerializer
@@ -494,7 +494,7 @@ class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
 
 # ===== SAMPLING VIEWSETS =====
 
-class SamplingRuleSetViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class SamplingRuleSetViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = SamplingRuleSet.unscoped.all()
     serializer_class = SamplingRuleSetSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -654,7 +654,7 @@ class MeasurementDefinitionFilter(django_filters.FilterSet):
         fields = ["step__name", "label", "step"]
 
 
-class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin,
+class MeasurementsDefinitionViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin,
                                     DataExportMixin, viewsets.ModelViewSet):
     queryset = MeasurementDefinition.unscoped.all()
     serializer_class = MeasurementDefinitionSerializer
@@ -680,6 +680,28 @@ class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, CSVImp
         if self.action == 'list':
             qs = qs.filter(is_current_version=True)
         return qs
+
+    # A definition is step content: an approved version's step keeps its own.
+    def perform_create(self, serializer):
+        _require_step_content_editable(serializer.validated_data.get('step'))
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        _require_step_content_editable(serializer.instance.step)
+        super().perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        _require_step_content_editable(instance.step)
+        super().perform_destroy(instance)
+
+
+def _require_step_content_editable(step):
+    """Refuse a content edit on a step row an approved process version uses."""
+    from rest_framework.exceptions import ValidationError
+    if step is not None and not step.is_editable:
+        raise ValidationError({"step": (
+            "This step is part of an approved process version. Open it from a draft of "
+            "the process to change it; the draft gets its own copy.")})
 
 
 # Legacy `NotificationPreferenceViewSet` removed — the only path it served
@@ -1428,7 +1450,7 @@ class FishboneViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
         ]
     )
 )
-class ThreeDModelViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class ThreeDModelViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing 3D model files for quality visualization"""
     queryset = ThreeDModel.unscoped.all()
     serializer_class = ThreeDModelSerializer

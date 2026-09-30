@@ -1320,6 +1320,106 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApprovalTemplate'
           description: ''
+  /api/ApprovalTemplates/{id}/version-history/:
+    get:
+      operationId: api_ApprovalTemplates_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: query
+        name: approval_flow_type
+        schema:
+          type: string
+          enum:
+          - ALL_REQUIRED
+          - ANY
+          - THRESHOLD
+        description: |-
+          * `ALL_REQUIRED` - All Required
+          * `THRESHOLD` - Threshold
+          * `ANY` - Any
+      - in: query
+        name: approval_sequence
+        schema:
+          type: string
+          enum:
+          - PARALLEL
+          - SEQUENTIAL
+        description: |-
+          * `PARALLEL` - Parallel
+          * `SEQUENTIAL` - Sequential
+      - in: query
+        name: approval_type
+        schema:
+          type: string
+          enum:
+          - CAPA_APPROVAL
+          - CAPA_CRITICAL
+          - CAPA_MAJOR
+          - DOCUMENT_RELEASE
+          - ECO
+          - FAI
+          - PCN_RELEASE
+          - PCO_APPROVAL
+          - PCR_APPROVAL
+          - PPAP
+          - PROCESS_APPROVAL
+          - TRAINING_CERT
+        description: |-
+          * `DOCUMENT_RELEASE` - Document Release
+          * `CAPA_APPROVAL` - CAPA Approval
+          * `CAPA_CRITICAL` - CAPA Critical
+          * `CAPA_MAJOR` - CAPA Major
+          * `ECO` - Engineering Change Order
+          * `TRAINING_CERT` - Training Certification
+          * `PROCESS_APPROVAL` - Process Approval
+          * `PCR_APPROVAL` - Process Change Request Approval
+          * `PCO_APPROVAL` - Process Change Order Approval
+          * `PCN_RELEASE` - Process Change Notice Release
+          * `PPAP` - PPAP
+          * `FAI` - First Article (FAI / AS9102)
+      - in: query
+        name: delegation_policy
+        schema:
+          type: string
+          enum:
+          - DISABLED
+          - OPTIONAL
+        description: |-
+          * `OPTIONAL` - Optional
+          * `DISABLED` - Disabled
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Approval Template.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/ApprovalTemplates/export/{export_format}/:
     get:
       operationId: api_ApprovalTemplates_export_retrieve
@@ -4951,6 +5051,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/SupplierScorecard'
           description: ''
+  /api/Companies/{id}/version-history/:
+    get:
+      operationId: api_Companies_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Company.
+        required: true
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/Companies/export/{export_format}/:
     get:
       operationId: api_Companies_export_retrieve
@@ -6692,6 +6834,48 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/DocumentTypes/{id}/version-history/:
+    get:
+      operationId: api_DocumentTypes_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Document Type.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: requires_approval
+        schema:
+          type: boolean
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/DocumentTypes/export/{export_format}/:
     get:
       operationId: api_DocumentTypes_export_retrieve
@@ -8524,6 +8708,48 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Equipment-types/{id}/version-history/:
+    get:
+      operationId: api_Equipment_types_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Equipment Type.
+        required: true
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/Equipment-types/export/{export_format}/:
     get:
       operationId: api_Equipment_types_export_retrieve
@@ -8925,6 +9151,69 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Equipment/{id}/version-history/:
+    get:
+      operationId: api_Equipment_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: query
+        name: equipment_type
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Equipment.
+        required: true
+      - in: query
+        name: location
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - IN_CALIBRATION
+          - IN_MAINTENANCE
+          - IN_SERVICE
+          - OUT_OF_SERVICE
+          - RETIRED
+        description: |-
+          * `IN_SERVICE` - In Service
+          * `OUT_OF_SERVICE` - Out of Service
+          * `IN_CALIBRATION` - In Calibration
+          * `IN_MAINTENANCE` - In Maintenance
+          * `RETIRED` - Retired
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/Equipment/export/{export_format}/:
     get:
       operationId: api_Equipment_export_retrieve
@@ -9453,6 +9742,53 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Error-types/{id}/version-history/:
+    get:
+      operationId: api_Error_types_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: query
+        name: error_name
+        schema:
+          type: string
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quality errors list.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/Error-types/export/{export_format}/:
     get:
       operationId: api_Error_types_export_retrieve
@@ -12903,6 +13239,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/LifeLimitDefinition'
           description: ''
+  /api/LifeLimitDefinitions/{id}/version-history/:
+    get:
+      operationId: api_LifeLimitDefinitions_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Limit Definition.
+        required: true
+      - in: query
+        name: is_calendar_based
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/LifeLimitDefinitions/export/{export_format}/:
     get:
       operationId: api_LifeLimitDefinitions_export_retrieve
@@ -13074,6 +13452,23 @@ paths:
                 type: string
                 format: binary
                 description: Template file download
+          description: ''
+  /api/LifeLimitDefinitions/metadata/:
+    get:
+      operationId: api_LifeLimitDefinitions_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/LifeLimitDefinitions/select_options/:
     get:
@@ -14185,6 +14580,26 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/MaterialLots/locations/:
+    get:
+      operationId: api_MaterialLots_locations_retrieve
+      description: Every storage location already in use — on material lots and on
+        equipment — sorted, for a location picker to suggest. Locations are free text;
+        this is the list people have typed, not a managed table.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+          description: ''
   /api/MaterialUsages/:
     get:
       operationId: api_MaterialUsages_list
@@ -15001,6 +15416,62 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/MeasurementDefinitions/{id}/version-history/:
+    get:
+      operationId: api_MeasurementDefinitions_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this measurement definition.
+        required: true
+      - in: query
+        name: label
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__name
+        schema:
+          type: string
+      - in: query
+        name: step__process
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/MeasurementDefinitions/export/{export_format}/:
     get:
       operationId: api_MeasurementDefinitions_export_retrieve
@@ -15388,6 +15859,38 @@ paths:
       responses:
         '201':
           description: No response body
+  /api/MilestoneTemplates/{id}/version-history/:
+    get:
+      operationId: api_MilestoneTemplates_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone Template.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/Milestones/:
     get:
       operationId: api_Milestones_list
@@ -18776,6 +19279,61 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartTypeQualitySummary'
           description: ''
+  /api/PartTypes/{id}/version-history/:
+    get:
+      operationId: api_PartTypes_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Type.
+        required: true
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter processes by associated part type UUID
+      - in: query
+        name: requires_part_approval
+        schema:
+          type: boolean
+      - in: query
+        name: requires_supplier_qualification
+        schema:
+          type: boolean
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/PartTypes/export/{export_format}/:
     get:
       operationId: api_PartTypes_export_retrieve
@@ -21587,6 +22145,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProcessWithSteps'
           description: ''
+  /api/Processes_with_steps/{id}/draft-step/:
+    post:
+      operationId: api_Processes_with_steps_draft_step_create
+      description: 'The step row this draft edits for `step`: the same row when the
+        draft already has it to itself, else one new copy for the draft (its measurements,
+        sampling rules, training, machines, substeps and documents with it). Call
+        before editing anything on a step of a draft, so the process''s other versions
+        keep theirs. Repeat calls return the draft''s copy; they don''t copy again.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftStepRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DraftStepRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DraftStepRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftStepResponse'
+          description: ''
   /api/Processes_with_steps/{id}/duplicate/:
     post:
       operationId: api_Processes_with_steps_duplicate_create
@@ -23255,6 +23853,53 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/RebuildScopePresets/{id}/version-history/:
+    get:
+      operationId: api_RebuildScopePresets_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: query
+        name: core_type
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Rebuild Scope Preset.
+        required: true
+      - in: query
+        name: is_default
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/RebuildSlotOverrides/:
     get:
       operationId: api_RebuildSlotOverrides_list
@@ -23660,6 +24305,69 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/RepairCodes/{id}/version-history/:
+    get:
+      operationId: api_RepairCodes_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: query
+        name: component_type
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Repair Code.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: trigger
+        schema:
+          type: string
+          enum:
+          - ALWAYS
+          - PRESET
+          - RECONDITION
+          - REPLACE_BUY
+          - REPLACE_POOL
+          - REUSE
+        description: |-
+          Which finding raises this code. ALWAYS means it is part of the base scope and is not raised by a finding at all.
+
+          * `RECONDITION` - When the recovered component needs work before it goes back
+          * `REPLACE_POOL` - When the slot is filled from recovered stock
+          * `REPLACE_BUY` - When the slot is filled by a purchase
+          * `REUSE` - When the recovered component goes back as-is
+          * `ALWAYS` - Always — part of the base scope, whatever the finding
+          * `PRESET` - Only when a rebuild level includes it
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/RepairCodes/export/{export_format}/:
     get:
       operationId: api_RepairCodes_export_retrieve
@@ -24185,6 +24893,67 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Sampling-rule-sets/{id}/version-history/:
+    get:
+      operationId: api_Sampling_rule_sets_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: query
+        name: active
+        schema:
+          type: boolean
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this sampling rule set.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: process
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: version
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/Sampling-rule-sets/export/{export_format}/:
     get:
       operationId: api_Sampling_rule_sets_export_retrieve
@@ -26696,6 +27465,42 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Shifts/{id}/version-history/:
+    get:
+      operationId: api_Shifts_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Shift.
+        required: true
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/Shifts/export/{export_format}/:
     get:
       operationId: api_Shifts_export_retrieve
@@ -26867,6 +27672,23 @@ paths:
                 type: string
                 format: binary
                 description: Template file download
+          description: ''
+  /api/Shifts/metadata/:
+    get:
+      operationId: api_Shifts_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/StepEquipmentAffinities/:
     get:
@@ -29453,6 +30275,10 @@ paths:
                 queryset = Order.objects.all()
                 serializer_class = OrderSerializer
       parameters:
+      - in: query
+        name: is_current_version
+        schema:
+          type: boolean
       - name: limit
         required: false
         in: query
@@ -29996,6 +30822,105 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Steps'
+          description: ''
+  /api/Steps/{id}/version-history/:
+    get:
+      operationId: api_Steps_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step.
+        required: true
+      - in: query
+        name: is_current_version
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter steps by process's part type UUID
+      - in: query
+        name: process
+        schema:
+          type: string
+        description: Filter steps by process UUID (via ProcessStep)
+      - in: query
+        name: process_memberships__process
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: process_memberships__process__part_type
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: standalone
+        schema:
+          type: boolean
+        description: True = steps not attached to any process (e.g. purchased-material
+          RIPs).
+      - in: query
+        name: step_type
+        schema:
+          type: string
+          enum:
+          - DECISION
+          - RECEIVING
+          - REWORK
+          - START
+          - TASK
+          - TERMINAL
+          - TIMER
+        description: |-
+          Visual type for flow editor.
+
+          * `TASK` - Task
+          * `START` - Start
+          * `DECISION` - Decision
+          * `REWORK` - Rework
+          * `TIMER` - Timer/Wait
+          * `TERMINAL` - Terminal
+          * `RECEIVING` - Receiving Inspection
+      - in: query
+        name: work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: work_center__isnull
+        schema:
+          type: boolean
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
           description: ''
   /api/Steps/create_receiving_plan/:
     post:
@@ -33494,6 +34419,77 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/ThreeDModels/{id}/version-history/:
+    get:
+      operationId: api_ThreeDModels_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: query
+        name: file_type
+        schema:
+          type: string
+      - in: query
+        name: file_type__icontains
+        schema:
+          type: string
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this 3D Model.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: uploaded_at
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: uploaded_at__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: uploaded_at__lte
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/ThreeDModels/export/{export_format}/:
     get:
       operationId: api_ThreeDModels_export_retrieve
@@ -35286,6 +36282,48 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/TrainingTypes/{id}/version-history/:
+    get:
+      operationId: api_TrainingTypes_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Training Type.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: validity_period_days
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/TrainingTypes/export/{export_format}/:
     get:
       operationId: api_TrainingTypes_export_retrieve
@@ -37199,6 +38237,44 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/WorkCenters/{id}/version-history/:
+    get:
+      operationId: api_WorkCenters_version_history_list
+      description: Every revision of this row, oldest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Center.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionSummary'
+          description: ''
   /api/WorkCenters/export/{export_format}/:
     get:
       operationId: api_WorkCenters_export_retrieve
@@ -46053,7 +47129,8 @@ components:
           type: integer
           nullable: true
         actor_info:
-          type: object
+          allOf:
+          - $ref: '#/components/schemas/UserSelect'
           nullable: true
           readOnly: true
         remote_addr:
@@ -50655,6 +51732,25 @@ components:
       - category
       - reason
       - start_time
+    DraftStepRequestRequest:
+      type: object
+      properties:
+        step:
+          type: string
+          format: uuid
+      required:
+      - step
+    DraftStepResponse:
+      type: object
+      properties:
+        step:
+          type: string
+          format: uuid
+        copied:
+          type: boolean
+      required:
+      - copied
+      - step
     DueToneEnum:
       enum:
       - red
@@ -51971,6 +53067,8 @@ components:
           items:
             type: string
           readOnly: true
+        archived:
+          type: boolean
       required:
       - id
       - name
@@ -52030,6 +53128,8 @@ components:
             type: string
             format: uuid
           description: Steps that require this resource.
+        archived:
+          type: boolean
       required:
       - name
     FpiScopeEnum:
@@ -53694,6 +54794,11 @@ components:
           description: Absolute limit - block/retire when reached
         archived:
           type: boolean
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for this revision, recorded on the new version (AS9100D
+            8.3).
       required:
       - name
       - unit
@@ -55135,6 +56240,10 @@ components:
           description: Default template for new orders in this tenant
         archived:
           type: boolean
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for this revision, recorded on the new version.
       required:
       - name
     ModeEnum:
@@ -60978,6 +62087,8 @@ components:
             type: string
             format: uuid
           description: Steps that require this resource.
+        archived:
+          type: boolean
     PatchedHarvestedComponentRequest:
       type: object
       description: Harvested component serializer
@@ -61177,6 +62288,11 @@ components:
           description: Absolute limit - block/retire when reached
         archived:
           type: boolean
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for this revision, recorded on the new version (AS9100D
+            8.3).
     PatchedLifeTrackingRequest:
       type: object
       description: Life tracking record serializer
@@ -61464,6 +62580,10 @@ components:
           description: Default template for new orders in this tenant
         archived:
           type: boolean
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for this revision, recorded on the new version.
     PatchedOptimizationConfigRequest:
       type: object
       description: |-
@@ -63058,6 +64178,8 @@ components:
           nullable: true
           description: Per-piece cycle on THIS machine, overriding StepTiming (a faster
             or slower machine for the same step).
+        archived:
+          type: boolean
     PatchedStepExecutionMeasurementRequest:
       type: object
       description: Serializer for step execution measurements.
@@ -63244,6 +64366,8 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        archived:
+          type: boolean
     PatchedStepsRequest:
       type: object
       description: |-
@@ -64401,6 +65525,8 @@ components:
           type: number
           format: double
           minimum: 0
+        archived:
+          type: boolean
     PatchedWorkCenterRequest:
       type: object
       description: |-
@@ -67776,6 +68902,11 @@ components:
           type: string
           format: date
           nullable: true
+        storage_location:
+          type: string
+          description: Where it was put away. Omit to keep what the expected receipt
+            recorded.
+          maxLength: 100
       required:
       - lot_number
     ReceivingCharacteristic:
@@ -71100,6 +72231,8 @@ components:
           nullable: true
           description: Per-piece cycle on THIS machine, overriding StepTiming (a faster
             or slower machine for the same step).
+        archived:
+          type: boolean
       required:
       - equipment
       - equipment_name
@@ -71126,6 +72259,8 @@ components:
           nullable: true
           description: Per-piece cycle on THIS machine, overriding StepTiming (a faster
             or slower machine for the same step).
+        archived:
+          type: boolean
       required:
       - equipment
       - step
@@ -71815,6 +72950,27 @@ components:
         * `APPROVED` - Approved
         * `REJECTED` - Rejected
         * `EXPIRED` - Expired
+    StepProcessRef:
+      type: object
+      description: A process version a step is part of.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: integer
+        status:
+          type: string
+        is_current_version:
+          type: boolean
+      required:
+      - id
+      - is_current_version
+      - name
+      - status
+      - version
     StepRequest:
       type: object
       description: Step serializer - just the node properties (no process/order/branching)
@@ -72146,6 +73302,8 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        archived:
+          type: boolean
       required:
       - id
       - step
@@ -72189,6 +73347,8 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        archived:
+          type: boolean
       required:
       - step
     StepTimingRequest:
@@ -72586,6 +73746,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/StepTiming'
           nullable: true
+        processes:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepProcessRef'
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -72610,6 +73775,7 @@ components:
       - part_type
       - part_type_info
       - part_type_name
+      - processes
       - updated_at
       - version
       - work_center_name
@@ -77273,6 +78439,32 @@ components:
           minLength: 1
       required:
       - key
+    VersionSummary:
+      type: object
+      description: One revision of a versioned row.
+      properties:
+        id:
+          type: string
+        version:
+          type: integer
+        is_current_version:
+          type: boolean
+        archived:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        change_description:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - archived
+      - change_description
+      - created_at
+      - id
+      - is_current_version
+      - version
     VisibilityEnum:
       enum:
       - VISIBLE
@@ -77498,6 +78690,8 @@ components:
           type: number
           format: double
           minimum: 0
+        archived:
+          type: boolean
       required:
       - equipment
       - equipment_name
@@ -77524,6 +78718,8 @@ components:
           type: number
           format: double
           minimum: 0
+        archived:
+          type: boolean
       required:
       - equipment
       - from_step

@@ -25,10 +25,11 @@ from Tracker.serializers.csv_import import (
 )
 from .base import TenantScopedMixin
 from .scheduling_setup import ReviveOnCreateMixin
-from .mixins import CSVImportMixin, DataExportMixin
+from .core import ListMetadataMixin
+from .mixins import CSVImportMixin, DataExportMixin, VersionHistoryMixin
 
 
-class LifeLimitDefinitionViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
+class LifeLimitDefinitionViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                                  viewsets.ModelViewSet):
     """
     Life limit definition management.
@@ -42,7 +43,8 @@ class LifeLimitDefinitionViewSet(TenantScopedMixin, CSVImportMixin, DataExportMi
     PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
     the API's does (the importer follows LifeLimitDefinitionSerializer.update).
     """
-    queryset = LifeLimitDefinition.unscoped.all()
+    # Versioned: each revision is a row, so the list is the current ones.
+    queryset = LifeLimitDefinition.unscoped.filter(is_current_version=True)
     serializer_class = LifeLimitDefinitionSerializer
     # A definition is its name (unique among current versions); a name finds the
     # current version.

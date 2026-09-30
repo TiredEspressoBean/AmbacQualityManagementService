@@ -24,7 +24,8 @@ class FixtureSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Fixture
-        fields = ('id', 'name', 'kind', 'quantity', 'lead_time_days', 'steps', 'step_names')
+        # `archived` so a deleted fixture shows as such and can be restored (PATCH it false).
+        fields = ('id', 'name', 'kind', 'quantity', 'lead_time_days', 'steps', 'step_names', 'archived')
         read_only_fields = ('id', 'step_names')
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))

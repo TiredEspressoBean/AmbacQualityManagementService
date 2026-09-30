@@ -526,3 +526,112 @@ def _reevaluate_parts_sampling(parts_list: list) -> None:
         updates,
         ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"],
     )
+
+
+# ── A draft's own copy of a step ────────────────────────────────────────────────
+#
+# A step row is shared by a process, its later versions and its copies — that sharing
+# is what lets any version's routing be read as it was. A draft that edits a shared
+# step (its fields, or anything hung off it: measurements, sampling, training,
+# machines, substeps, documents) must first get a copy of its own, so the other
+# versions keep theirs. It gets ONE: once the row is used by the draft alone, later
+# edits land on it in place, rather than minting a version per edit.
+
+# Fields a clone never carries: identity and the version chain are the copy's own.
+_CLONE_SKIP = {'id', 'created_at', 'updated_at', 'version', 'previous_version',
+               'is_current_version', 'deleted_at'}
+
+
+def step_used_elsewhere(step: Steps, process: Processes) -> bool:
+    """True when anything but `process` depends on this step row as it stands.
+
+    Another process linking it (any status, archived included — its history still
+    reads the row), work already run at it, or parts sitting at it. A row with none of
+    those belongs to `process` alone and may be edited in place.
+    """
+    from Tracker.models.mes_lite import Parts, StepExecution
+    # tenant-safe: all three are keyed to one in-tenant step row.
+    return (ProcessStep.objects.filter(step=step).exclude(process=process).exists()
+            or StepExecution.objects.filter(step=step).exists()
+            or Parts.objects.filter(step=step).exists())
+
+
+def _clone(obj, **overrides):
+    """A fresh row with `obj`'s column values, `overrides` applied."""
+    data = {f.attname: getattr(obj, f.attname) for f in obj._meta.concrete_fields
+            if f.name not in _CLONE_SKIP and not f.primary_key}
+    data.update(overrides)
+    return type(obj)._base_manager.create(**data)
+
+
+def _copy_uncopied_children(old: Steps, new: Steps, process: Processes) -> None:
+    """What `create_new_step_version` leaves on the old row, copied for the draft.
+
+    Measurement definitions are owned by their step (FK), and sampling rule sets are
+    keyed to it; a fork used to leave both behind, so the draft's copy showed no
+    measurements and no sampling rules. The copied measurement requirements are
+    pointed at the copied definitions, and a variables plan at its copied
+    characteristic. BOM allocation (`BOMLine.consumed_at_step`) is left alone: a line
+    points at one step, and BOMs version on their own lifecycle.
+    """
+    from Tracker.models.mes_lite import MeasurementDefinition, StepMeasurementRequirement
+    from Tracker.models.mes_standard import SamplingRule
+
+    md_map = {}
+    # tenant-safe: definitions keyed to one in-tenant step row.
+    for md in MeasurementDefinition.objects.filter(step=old, archived=False, is_current_version=True):
+        md_map[md.pk] = _clone(md, step_id=new.pk)
+    for old_pk, copy in md_map.items():
+        # tenant-safe: requirement rows of one in-tenant step.
+        StepMeasurementRequirement.objects.filter(step=new, measurement_id=old_pk).update(measurement=copy)
+
+    # Primary rule sets first, then their fallbacks, so a fallback link can be remapped.
+    rs_map = {}
+    # tenant-safe: rule sets keyed to one in-tenant step row.
+    for rs in SamplingRuleSet.objects.filter(step=old, archived=False, active=True).order_by('is_fallback'):
+        copy = _clone(
+            rs, step_id=new.pk, process_id=process.pk, supersedes_id=None, fallback_ruleset_id=None,
+            variables_characteristic_id=(md_map[rs.variables_characteristic_id].pk
+                                         if rs.variables_characteristic_id in md_map
+                                         else rs.variables_characteristic_id),
+        )
+        rs_map[rs.pk] = (rs, copy)
+        for rule in SamplingRule.objects.filter(ruleset=rs, archived=False):  # tenant-safe: one in-tenant rule set
+            _clone(rule, ruleset_id=copy.pk)
+    for rs, copy in rs_map.values():
+        if rs.fallback_ruleset_id in rs_map:
+            copy.fallback_ruleset = rs_map[rs.fallback_ruleset_id][1]
+            copy.save(update_fields=['fallback_ruleset'])
+
+
+def step_for_draft(step: Steps, process: Processes, *, user=None, change_description: str | None = None,
+                   **field_updates) -> Steps:
+    """The row `process` (a draft) edits for `step`: `step` itself when the draft
+    already has it alone, else one new copy of it for the draft.
+
+    `field_updates` are applied either way — in place on a row the draft owns, or on
+    the copy. The copy carries every child the step has; the draft's junction and
+    edges move to it and nothing else does.
+    """
+    if not process.is_editable:
+        raise ValueError(f"{process.name} v{process.version} is approved; start a new version to edit it.")
+    # tenant-safe: one in-tenant process's junction.
+    if not ProcessStep.objects.filter(process=process, step=step).exists():
+        raise ValueError("This step isn't part of that process.")
+
+    with transaction.atomic():
+        if not step_used_elsewhere(step, process):
+            if field_updates:
+                for k, v in field_updates.items():
+                    setattr(step, k, v)
+                # Keys may be attnames (`outside_supplier_id`) as the editor sends them.
+                names = {f.attname: f.name for f in Steps._meta.concrete_fields}
+                step.save(update_fields=[names.get(k, k) for k in field_updates])
+            return step
+        new = create_new_step_version(
+            step, user=user, process=process,
+            change_description=change_description or f"Draft copy for {process.name} v{process.version}",
+            **field_updates,
+        )
+        _copy_uncopied_children(step, new, process)
+        return new

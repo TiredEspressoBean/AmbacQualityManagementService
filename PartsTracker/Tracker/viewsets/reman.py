@@ -27,7 +27,8 @@ from Tracker.serializers.reman import (
 )
 from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .base import TenantScopedMixin
-from .mixins import CSVImportMixin, DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin, VersionHistoryMixin
+from .scheduling_setup import ReviveOnCreateMixin
 
 
 # ===== CORE VIEWSETS =====
@@ -706,8 +707,10 @@ class HarvestedComponentViewSet(TenantScopedMixin, DataExportMixin, viewsets.Mod
 
 # ===== DISASSEMBLY BOM LINE VIEWSETS =====
 
-class DisassemblyBOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class DisassemblyBOMLineViewSet(ReviveOnCreateMixin, TenantScopedMixin, viewsets.ModelViewSet):
     """Disassembly BOM line management (expected yields from cores)"""
+    # A removed line keeps its (core, component) key, so adding it back revives it.
+    revive_key = ('core_type', 'component_type')
     queryset = DisassemblyBOMLine.unscoped.select_related('core_type', 'component_type')
     serializer_class = DisassemblyBOMLineSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -716,7 +719,7 @@ class DisassemblyBOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     ordering = ['core_type', 'line_number']
 
 
-class RepairCodeViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
+class RepairCodeViewSet(VersionHistoryMixin, TenantScopedMixin, CSVImportMixin, DataExportMixin,
                         viewsets.ModelViewSet):
     """Repair codes — what operations a finding adds to a rebuild."""
     queryset = RepairCode.unscoped.select_related('component_type').prefetch_related('steps')
@@ -734,7 +737,7 @@ class RepairCodeViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin,
     ordering = ['code']
 
 
-class RebuildScopePresetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class RebuildScopePresetViewSet(VersionHistoryMixin, TenantScopedMixin, viewsets.ModelViewSet):
     """Named rebuild levels — the entry scope before any finding."""
     queryset = RebuildScopePreset.unscoped.select_related('core_type').prefetch_related('codes')
     serializer_class = RebuildScopePresetSerializer

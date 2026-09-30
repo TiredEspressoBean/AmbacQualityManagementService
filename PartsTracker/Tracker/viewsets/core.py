@@ -34,7 +34,7 @@ from Tracker.serializers.dms import DocumentsSerializer, DocumentTypeSerializer
 from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from Tracker.services.core.clock import tenant_today
 from .base import TenantScopedMixin, NonTenantModelViewSet
-from .mixins import CSVImportMixin, DataExportMixin
+from .mixins import CSVImportMixin, DataExportMixin, VersionHistoryMixin
 
 
 # ===== BASE MIXINS =====
@@ -910,7 +910,7 @@ class VersionedLikeTheAPIImport(BaseCSVImportSerializer):
                             'change_description': "Imported from a spreadsheet"})
 
 
-class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+class CompanyViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                      viewsets.ModelViewSet):
     """Company management - scoped to tenant and user permissions."""
     queryset = Companies.unscoped.all()
@@ -1790,7 +1790,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
 
 # ===== DOCUMENT TYPE VIEWSET =====
 
-class DocumentTypeViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class DocumentTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing document types"""
     queryset = DocumentType.unscoped.all()
     serializer_class = DocumentTypeSerializer
@@ -1873,7 +1873,7 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
     partial_update=extend_schema(description="Partially update an approval template"),
     destroy=extend_schema(description="Soft delete an approval template")
 )
-class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class ApprovalTemplateViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing approval templates.
 
